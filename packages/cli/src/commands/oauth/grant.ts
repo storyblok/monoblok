@@ -6,7 +6,7 @@ import type { OAuthGrantSpace } from './store';
 
 export interface GrantIntrospection {
   scopes: string[];
-  expires_at: string;
+  expires_at?: string;
   app: { client_id: string; name: string };
   spaces: OAuthGrantSpace[];
 }
@@ -32,7 +32,7 @@ export const introspectGrant = async (region: RegionCode, accessToken: string): 
   const data = body.grant ?? ({} as Partial<GrantIntrospection>);
   return {
     scopes: data.scopes ?? [],
-    expires_at: data.expires_at ?? '',
+    expires_at: data.expires_at,
     app: data.app ?? { client_id: '', name: '' },
     spaces: data.spaces ?? [],
   };

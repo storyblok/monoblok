@@ -1,9 +1,13 @@
 import { createServer } from 'node:http';
 import { CommandError } from '../../utils';
 
-const SUCCESS_PAGE = `<!doctype html><html><body style="font-family: sans-serif; text-align: center; padding-top: 4rem;">
-<h1>Storyblok CLI</h1><p>Authorization received. You can close this tab and return to the terminal.</p>
+const page = (heading: string, message: string): string =>
+  `<!doctype html><html><body style="font-family: sans-serif; text-align: center; padding-top: 4rem;">
+<h1>${heading}</h1><p>${message}</p>
 </body></html>`;
+
+const SUCCESS_PAGE = page('Storyblok CLI', 'Authorization received. You can close this tab and return to the terminal.');
+const ERROR_PAGE = page('Storyblok CLI', 'Authorization failed. You can close this tab and return to the terminal.');
 
 export const waitForCallback = (port: number, path: string, timeoutMs = 300_000): Promise<{ code: string; state: string }> => {
   return new Promise((resolve, reject) => {
@@ -17,22 +21,29 @@ export const waitForCallback = (port: number, path: string, timeoutMs = 300_000)
         return;
       }
 
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(SUCCESS_PAGE);
       server.close();
       clearTimeout(timer);
 
+      const fail = (error: CommandError): void => {
+        res.writeHead(400, { 'Content-Type': 'text/html' });
+        res.end(ERROR_PAGE);
+        reject(error);
+      };
+
       const error = url.searchParams.get('error');
       if (error) {
-        reject(new CommandError(`Authorization failed: ${error} — ${url.searchParams.get('error_description') ?? 'no description'}`));
+        fail(new CommandError(`Authorization failed: ${error} — ${url.searchParams.get('error_description') ?? 'no description'}`));
         return;
       }
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state');
       if (!code || !state) {
-        reject(new CommandError('Callback did not include code and state query params.'));
+        fail(new CommandError('Callback did not include code and state query params.'));
         return;
       }
+
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(SUCCESS_PAGE);
       resolve({ code, state });
     });
 

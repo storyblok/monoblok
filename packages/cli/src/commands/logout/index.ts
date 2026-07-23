@@ -25,15 +25,13 @@ export const logoutCommand = program
         return;
       }
 
-      if (state.authType === 'oauth' && state.region) {
+      if (state.authType === "oauth" && state.region) {
         await clearOAuthSession(state.region);
-      }
-      else {
+      } else {
         await removeAllCredentials();
       }
 
       ui.ok(`Successfully logged out.`, true);
-      ui.br();
     } catch (error) {
       handleError(error as Error, verbose);
     }

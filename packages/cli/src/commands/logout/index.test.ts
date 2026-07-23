@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { logoutCommand } from './';
 import { session } from '../../session';
-import { removeAllCredentials } from '../../creds';
+import { removePatCredentials } from '../../creds';
 import { loggedOutSessionState } from '../../../test/setup';
 
 vi.mock('../../creds', () => ({
@@ -9,6 +9,7 @@ vi.mock('../../creds', () => ({
   addCredentials: vi.fn(),
   removeCredentials: vi.fn(),
   removeAllCredentials: vi.fn(),
+  removePatCredentials: vi.fn(),
 }));
 
 const preconditions = {
@@ -27,12 +28,12 @@ describe('logoutCommand', () => {
 
   it('should log out the user if has previously login', async () => {
     await logoutCommand.parseAsync(['node', 'test']);
-    expect(removeAllCredentials).toHaveBeenCalled();
+    expect(removePatCredentials).toHaveBeenCalled();
   });
 
   it('should not log out the user if has not previously login', async () => {
     preconditions.loggedOut();
     await logoutCommand.parseAsync(['node', 'test']);
-    expect(removeAllCredentials).not.toHaveBeenCalled();
+    expect(removePatCredentials).not.toHaveBeenCalled();
   });
 });

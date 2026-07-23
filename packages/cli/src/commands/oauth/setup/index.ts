@@ -8,6 +8,9 @@ import { oauthCommand } from '../command';
 import { findOrCreateCliClient } from '../actions';
 import { updateOAuthEntry } from '../store';
 
+const required = (label: string) => (value: string) =>
+  value.trim().length > 0 ? true : `${label} cannot be empty.`;
+
 export const oauthSetupCommand = oauthCommand
   .command('setup')
   .description('Provision or store OAuth client credentials for the CLI')
@@ -30,7 +33,7 @@ export const oauthSetupCommand = oauthCommand
       // Manual path: explicit client id/secret (or interactive when only one is supplied).
       if (options.clientId || options.clientSecret) {
         const clientId = options.clientId ?? await input({ message: 'OAuth client id:', required: true });
-        const clientSecret = options.clientSecret ?? await password({ message: 'OAuth client secret:' });
+        const clientSecret = options.clientSecret ?? await password({ message: 'OAuth client secret:', validate: required('OAuth client secret') });
         await updateOAuthEntry(region, { client: { client_id: clientId, client_secret: clientSecret } });
         ui.ok(`Stored OAuth client credentials for region ${regionNames[region]} (${region}).`, true);
         ui.br();
@@ -50,14 +53,14 @@ export const oauthSetupCommand = oauthCommand
 
       if (strategy === 'manual') {
         const clientId = await input({ message: 'OAuth client id:', required: true });
-        const clientSecret = await password({ message: 'OAuth client secret:' });
+        const clientSecret = await password({ message: 'OAuth client secret:', validate: required('OAuth client secret') });
         await updateOAuthEntry(region, { client: { client_id: clientId, client_secret: clientSecret } });
         ui.ok(`Stored OAuth client credentials for region ${regionNames[region]} (${region}).`, true);
         ui.br();
         return;
       }
 
-      const token = options.token ?? await password({ message: 'Personal Access Token (used once, never stored):' });
+      const token = options.token ?? await password({ message: 'Personal Access Token (used once, never stored):', validate: required('Personal Access Token') });
       const spinner = ui.createSpinner('Provisioning the Storyblok CLI OAuth app');
       const client = await findOrCreateCliClient(token, region);
       await updateOAuthEntry(region, { client });

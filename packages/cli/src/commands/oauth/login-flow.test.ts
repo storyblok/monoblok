@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
+import { DEFAULT_LOGIN_SCOPES } from './constants';
 import { buildAuthorizeUrl, performOAuthLogin } from './login-flow';
 import { getOAuthActiveRegion, getOAuthEntry } from './store';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
-vi.mock('../../utils/ui', () => ({ getUI: () => ({ info: vi.fn() }) }));
+vi.mock('../../utils/ui', () => ({ getUI: () => ({ info: vi.fn(), warn: vi.fn() }) }));
 vi.mock('./client', () => ({
   resolveOAuthClient: vi.fn(async () => ({ client_id: 'cid', client_secret: 'sec', scopes: ['stories:read'] })),
 }));
@@ -22,6 +23,8 @@ vi.mock('./token-endpoint', () => ({
 vi.mock('./grant', () => ({ introspectGrant: vi.fn() }));
 
 const { introspectGrant } = await import('./grant');
+const { resolveOAuthClient } = await import('./client');
+const { updateOAuthEntry } = await import('./store');
 
 describe('buildAuthorizeUrl', () => {
   it('should build an /oauth/init URL with PKCE and space-safe params', () => {
@@ -65,6 +68,22 @@ describe('performOAuthLogin', () => {
     await performOAuthLogin({ region: 'us', openBrowser: async () => {} });
 
     expect(await getOAuthActiveRegion()).toBe('us');
+  });
+
+  it('should request scopes from the resolved client, not a stored client with different credentials', async () => {
+    // Env-var client (no scope catalog) resolves, while a stored client for the
+    // same region carries broader scopes. The request must use the resolved
+    // client's default scopes, not the mismatched stored ones.
+    vi.mocked(resolveOAuthClient).mockResolvedValueOnce({ client_id: 'env-cid', client_secret: 'env-sec' });
+    await updateOAuthEntry('eu', { client: { client_id: 'stored-cid', client_secret: 'stored-sec', scopes: ['spaces:read'] } });
+    vi.mocked(introspectGrant).mockResolvedValueOnce({ scopes: [], spaces: [] });
+
+    let authorizeUrl = '';
+    await performOAuthLogin({ region: 'eu', openBrowser: async (url) => { authorizeUrl = url; } });
+
+    const scope = new URL(authorizeUrl).searchParams.get('scope');
+    expect(scope).toBe(DEFAULT_LOGIN_SCOPES.join(' '));
+    expect(scope).not.toContain('spaces:read');
   });
 
   it('should not persist tokens when introspection fails', async () => {

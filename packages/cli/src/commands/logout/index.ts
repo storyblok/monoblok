@@ -1,9 +1,12 @@
-import { removeAllCredentials } from "../../creds";
+import { removePatCredentials } from "../../creds";
 import { colorPalette, commands } from "../../constants";
 import { getProgram } from "../../program";
 import { handleError } from "../../utils";
 import { session } from "../../session";
 import { getUI } from "../../lib/ui";
+import { resolveOAuthClient } from "../oauth/client";
+import { getOAuthEntry } from "../oauth/store";
+import { revokeToken } from "../oauth/token-endpoint";
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -26,9 +29,24 @@ export const logoutCommand = program
       }
 
       if (state.authType === "oauth" && state.region) {
+        // Revoke the grant server-side (best-effort) before clearing the local session,
+        // so the tokens can no longer mint new tokens after logout. A network/API failure
+        // must not block the local logout.
+        const { tokens } = await getOAuthEntry(state.region);
+        const tokenToRevoke = tokens?.refresh_token ?? tokens?.access_token;
+        if (tokenToRevoke) {
+          try {
+            const client = await resolveOAuthClient(state.region);
+            await revokeToken(state.region, tokenToRevoke, client);
+          } catch (error) {
+            konsola.warn(
+              `Could not revoke the OAuth session server-side: ${(error as Error).message}`,
+            );
+          }
+        }
         await clearOAuthSession(state.region);
       } else {
-        await removeAllCredentials();
+        await removePatCredentials();
       }
 
       ui.ok(`Successfully logged out.`, true);

@@ -47,3 +47,24 @@ export const exchangeToken = async (region: RegionCode, params: Record<string, s
     raw,
   };
 };
+
+// Revokes a token server-side (RFC 7009). Revoking the refresh token invalidates the
+// whole grant, so a logged-out session can no longer mint new tokens. Like the token
+// endpoint, `/oauth/revoke` lives at the API root rather than under `/v1`.
+// Uses a raw fetch rather than `customFetch`: a successful revocation returns `200` with
+// an empty body (RFC 7009 §2.2 / storyrails `head :ok`), which `customFetch` would reject
+// as a non-JSON response.
+export const revokeToken = async (region: RegionCode, token: string, client: { client_id: string; client_secret: string }): Promise<void> => {
+  const response = await fetch(`https://${managementApiRegions[region]}/oauth/revoke`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      token,
+      client_id: client.client_id,
+      client_secret: client.client_secret,
+    }).toString(),
+  });
+  if (!response.ok) {
+    throw new CommandError(`Revocation endpoint error (${response.status} ${response.statusText}).`);
+  }
+};

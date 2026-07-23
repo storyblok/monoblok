@@ -29,9 +29,10 @@ const MAX_RATE_LIMIT = 1_000;
 
 export interface RateLimitConfig {
   /**
-   * Fixed maximum number of concurrent requests per second.
-   * When set, disables automatic per_page tier detection and all requests
-   * share a single queue at this limit. Capped at 1000.
+   * Fixed number of requests per second. When set, disables automatic
+   * per_page tier detection and all requests share a single per-second
+   * window at this limit. Capped at 1000. Despite the name, this does not
+   * cap simultaneous in-flight requests.
    */
   maxConcurrency?: number;
   /**

@@ -1,4 +1,4 @@
-import type { ISbThrottle, Queue } from './interfaces';
+import type { ISbThrottle } from './interfaces';
 
 class AbortError extends Error {
   constructor(msg: string) {
@@ -7,51 +7,79 @@ class AbortError extends Error {
   }
 }
 
+/**
+ * Wraps `fn` in a per-second rate limiter. At most `limit` calls may start
+ * within any rolling `interval` (default 1000ms); once the window is full,
+ * further calls wait until the oldest call in it ages out. This matches how the
+ * Storyblok API enforces its limits: a fixed number of requests per one-second
+ * window, not a cap on the number of simultaneous requests.
+ *
+ * The limiter holds only a list of recent start timestamps, pruned against
+ * `Date.now()` on every attempt, and every wait resolves the promise the caller
+ * already awaits. It therefore keeps no counter that a scheduled callback must
+ * decrement, and schedules no timer that outlives the awaited call. That is a
+ * hard requirement on runtimes which suspend between requests and drop pending
+ * timers (for example Cloudflare Workers): a shared limiter that released its
+ * slots from a detached timer would leak its in-flight count across requests
+ * until it deadlocked (see issues #533 and #319).
+ *
+ * A non-positive or non-finite `limit` disables throttling and lets every call
+ * through. Server-side rate limits remain enforced by the client's 429 retry
+ * path.
+ */
 function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
   fn: T,
   limit: number,
   interval: number,
 ): ISbThrottle<T> {
-  if (!Number.isFinite(limit)) {
-    throw new TypeError('Expected `limit` to be a finite number');
-  }
+  const isUnlimited = !Number.isFinite(limit) || limit <= 0;
 
-  if (!Number.isFinite(interval)) {
-    throw new TypeError('Expected `interval` to be a finite number');
-  }
-
-  const queue: Queue<Parameters<T>>[] = [];
-  let timeouts: ReturnType<typeof setTimeout>[] = [];
-  let activeCount = 0;
+  // Start timestamps of the calls currently inside the rolling window.
+  const starts: number[] = [];
+  // Rejecters for calls waiting on the window, so abort() can settle them.
+  const pending = new Set<(reason: unknown) => void>();
   let isAborted = false;
 
-  const next = async () => {
-    activeCount++;
-
-    const x = queue.shift();
-    if (x) {
-      try {
-        const res = await fn(...x.args);
-        x.resolve(res);
-      }
-      catch (error) {
-        x.reject(error);
-      }
+  const acquire = (): Promise<void> => {
+    if (isUnlimited) {
+      return Promise.resolve();
     }
 
-    const id = setTimeout(() => {
-      activeCount--;
+    return new Promise<void>((resolve, reject) => {
+      const attempt = () => {
+        if (isAborted) {
+          reject(new AbortError('Throttle function aborted'));
+          return;
+        }
 
-      if (queue.length > 0) {
-        next();
-      }
+        const now = Date.now();
+        while (starts.length > 0 && starts[0] <= now - interval) {
+          starts.shift();
+        }
 
-      timeouts = timeouts.filter(currentId => currentId !== id);
-    }, interval);
+        if (starts.length < limit) {
+          starts.push(now);
+          resolve();
+          return;
+        }
 
-    if (!timeouts.includes(id)) {
-      timeouts.push(id);
-    }
+        // Window is full: retry once the oldest call ages out. The timer only
+        // resolves the promise the caller awaits, so it is never orphaned.
+        const wait = starts[0] + interval - now;
+        let reject_: (reason: unknown) => void;
+        const id = setTimeout(() => {
+          pending.delete(reject_);
+          attempt();
+        }, wait > 0 ? wait : 0);
+        reject_ = (reason: unknown) => {
+          clearTimeout(id);
+          reject(reason);
+        };
+        pending.add(reject_);
+      };
+
+      attempt();
+    });
   };
 
   const throttled: ISbThrottle<T> = (...args) => {
@@ -63,28 +91,15 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
       );
     }
 
-    return new Promise((resolve, reject) => {
-      queue.push({
-        resolve,
-        reject,
-        args,
-      });
-
-      if (activeCount < limit) {
-        next();
-      }
-    });
+    return acquire().then(() => fn(...args));
   };
 
   throttled.abort = () => {
     isAborted = true;
-    timeouts.forEach(clearTimeout);
-    timeouts = [];
-
-    queue.forEach(x =>
-      x.reject(() => new AbortError('Throttle function aborted')),
+    pending.forEach(reject_ =>
+      reject_(new AbortError('Throttle function aborted')),
     );
-    queue.length = 0;
+    pending.clear();
   };
 
   return throttled;

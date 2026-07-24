@@ -1,6 +1,6 @@
 import { escapeHtml } from './utils';
 import { optimizeImage } from './images-optimization';
-import { areLinkMarksEqual, attrsToHtmlString, getStaticChildren, getTextNodeLinkMark, isSelfClosing, isTableHeaderRow, normalizeNodes, processAttrs, resolveTag, styleToString } from './static';
+import { areLinkMarksEqual, attrsToHtmlString, getEmojiText, getStaticChildren, getTextNodeLinkMark, isSelfClosing, isTableHeaderRow, normalizeNodes, processAttrs, resolveTag, styleToString } from './static';
 import type { RenderSpec, SbRichTextElement, SbRichTextInput, SbRichTextMark, SbRichTextNode, SbRichTextRenderContext, SbRichTextTextNode } from './static';
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
@@ -81,7 +81,8 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
     return `<${tag}>${inner}</${tag}>`;
   }
 
-  return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+  const textContent = getEmojiText(node);
+  return `<${tag}${htmlAttrs}>${textContent ?? content}</${tag}>`;
 }
 
 /** Renders an image node with optimization applied. */

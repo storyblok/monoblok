@@ -75,3 +75,22 @@ export function attrsToHtmlString(attrs: Record<string, unknown>): string {
 
   return result;
 }
+
+/**
+ * Returns the static text content for leaf nodes whose text comes from attrs
+ * rather than child nodes (e.g. emoji).
+ *
+ * @param node - The RichText node
+ * @returns The text string, or null if the node has no attr-based text content
+ *
+ * @example
+ * getEmojiText({ type: 'emoji', attrs: { emoji: '🚀' } }) // '🚀'
+ * getEmojiText({ type: 'paragraph', content: [...] })      // null
+ */
+export function getEmojiText(node: SbRichTextNode): string | null {
+  if (node.type === 'emoji') {
+    const emoji = (node.attrs as Record<string, unknown> | undefined)?.emoji;
+    return typeof emoji === 'string' ? emoji : null;
+  }
+  return null;
+}

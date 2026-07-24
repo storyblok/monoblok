@@ -1,5 +1,5 @@
 import type { Component, VNode } from 'vue';
-import { createTextVNode, h } from 'vue';
+import { createTextVNode, h, toRaw } from 'vue';
 import type {
   RenderSpec,
   SbRichTextElement,
@@ -12,6 +12,7 @@ import type {
 } from '@storyblok/richtext';
 import {
   buildStoryblokImage,
+  getEmojiText,
   getInnerMarks,
   getStaticChildren,
   groupLinkNodes,
@@ -32,7 +33,8 @@ function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
   components?: SbVueRichTextComponentMap,
 ): Component<SbVueRichTextProps[K]> | undefined {
-  return components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
+  const comp = components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
+  return comp ? toRaw(comp) : undefined;
 }
 
 export interface SbVueRichTextRenderContext {
@@ -165,7 +167,8 @@ function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, k
   }
 
   const children = node.content ? renderChildren(node.content, options) : [];
-  return h(tag, { key, ...props }, children);
+  const textContent = getEmojiText(node);
+  return h(tag, { key, ...props }, textContent ? [createTextVNode(textContent)] : children);
 }
 
 /**

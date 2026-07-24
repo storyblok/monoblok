@@ -65,6 +65,6 @@ export const tableFixtures: HtmlFixture[] = [
       ],
     },
     expected:
-      '<table><thead><tr><th style="width: 100px;"><p>THead</p></th></tr></thead><tbody><tr><td style="background-color: rgb(204, 255, 204);"><p><a href="/c"><sup>cell</sup></a></p><p><img draggable="false" loading="lazy" src="https://cdn/foo.png" data-name="plane" data-emoji="✈️" style="width: 1.25em; height: 1.25em; vertical-align: text-top;"></p></td></tr></tbody></table>',
+      '<table><thead><tr><th style="width: 100px;"><p>THead</p></th></tr></thead><tbody><tr><td style="background-color: rgb(204, 255, 204);"><p><a href="/c"><sup>cell</sup></a></p><p><span data-name="plane" data-emoji="✈️">✈️</span></p></td></tr></tbody></table>',
   },
 ];

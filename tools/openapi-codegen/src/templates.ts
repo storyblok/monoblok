@@ -31,9 +31,9 @@ export const TEMPLATES = {
     sourceLeaves: ['Component', 'Field'],
   },
   'field': {
-    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
+    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'TableFieldValue'],
     templateDeps: ['block'],
-    sourceLeaves: ['AssetFieldValue', 'BlockContentBase', 'BlockContentInputBase', 'Field', 'MultilinkFieldValue', 'PluginFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
+    sourceLeaves: ['AssetFieldValue', 'BlockContentBase', 'BlockContentInputBase', 'Field', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'TableFieldValue'],
   },
   'story': {
     provides: ['Story'],

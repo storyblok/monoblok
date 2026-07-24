@@ -5,14 +5,14 @@ import type {
   Field,
   MultilinkFieldValue,
   PluginFieldValue,
-  RichtextFieldValue,
+  RichTextFieldValue,
   TableFieldValue,
 } from './_sources';
 import type { Prettify } from './_utils';
 import type { Block, BlockFields } from './block';
 
 export type { Field };
-export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
+export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichTextFieldValue, TableFieldValue };
 
 /**
  * Registry of all blocks in the space, used to resolve nested `bloks` fields.
@@ -81,7 +81,7 @@ export type FieldType = Field['type'];
 interface FieldTypeValueMap {
   text: string;
   textarea: string;
-  richtext: RichtextFieldValue;
+  richtext: RichTextFieldValue;
   markdown: string;
   number: number;
   datetime: string;

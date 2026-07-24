@@ -1,11 +1,13 @@
 /**
  * Rate limiting for the Content API client.
  *
- * Provides both a simple token-bucket throttle and a tier-aware manager
- * that automatically selects the right concurrency limit based on request
- * type (single story vs. listing) and the per_page query parameter — mirroring
- * the tiers enforced server-side by the Storyblok CDN.
+ * Provides a tier-aware manager that selects the right per-second limit based
+ * on request type (single story vs. listing) and the per_page query parameter,
+ * mirroring the per-second tiers the Storyblok CDN enforces.
  */
+import { createThrottle, type Throttle } from './throttle';
+
+export { createThrottle };
 
 const TIER_LIMITS = {
   SINGLE_OR_SMALL: 50, // single story fetch or per_page ≤ 25
@@ -27,9 +29,15 @@ const MAX_RATE_LIMIT = 1_000;
 
 export interface RateLimitConfig {
   /**
-   * Fixed maximum number of concurrent requests per second.
-   * When set, disables automatic per_page tier detection and all requests
-   * share a single queue at this limit. Capped at 1000.
+   * Fixed number of requests to start per second. When set, disables automatic
+   * per_page tier detection and all requests share a single per-second window
+   * at this limit. Capped at 1000.
+   */
+  requestsPerSecond?: number;
+  /**
+   * @deprecated Use `requestsPerSecond` instead. This never capped simultaneous
+   * in-flight requests despite its name; it is a per-second rate.
+   * @todo(next-major): Remove this field.
    */
   maxConcurrency?: number;
   /**
@@ -43,59 +51,6 @@ export interface RateLimitConfig {
 export interface ThrottleManager {
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
   adaptToResponse: (response: Response | undefined) => void;
-}
-
-interface Throttle {
-  execute: <T>(fn: () => Promise<T>) => Promise<T>;
-  setLimit: (n: number) => void;
-}
-
-/**
- * Concurrency limiter: allows up to `initialLimit` requests to be in-flight
- * at the same time. A slot is freed as soon as the request's promise settles
- * (resolves or rejects), so throughput scales with how quickly requests
- * complete rather than being artificially capped at N per second.
- */
-export function createThrottle(initialLimit: number): Throttle {
-  let limit = initialLimit;
-  let activeCount = 0;
-  const queue: Array<() => void> = [];
-
-  const tryNext = () => {
-    while (queue.length > 0 && activeCount < limit) {
-      activeCount++;
-      const run = queue.shift()!;
-      run();
-    }
-  };
-
-  const execute = <T>(fn: () => Promise<T>): Promise<T> => {
-    return new Promise<T>((resolve, reject) => {
-      queue.push(() => {
-        fn().then(
-          (value) => {
-            activeCount--;
-            tryNext();
-            resolve(value);
-          },
-          (error) => {
-            activeCount--;
-            tryNext();
-            reject(error);
-          },
-        );
-      });
-      tryNext();
-    });
-  };
-
-  const setLimit = (n: number) => {
-    limit = n;
-    // If the limit increased, unblock any waiting requests.
-    tryNext();
-  };
-
-  return { execute, setLimit };
 }
 
 // Matches /v2/cdn/stories/<identifier> — a single story fetch (including nested slugs).
@@ -161,10 +116,10 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
 /**
  * Creates a `ThrottleManager` from the user-supplied `rateLimit` config.
  *
- * - `false`                     → no throttling (passthrough)
- * - `number`                    → fixed single queue at that limit
- * - `{ maxConcurrency: n }`      → fixed single queue at n req/s
- * - `{}` / `undefined` (default)→ auto-detect tier from path + per_page
+ * - `false`                       → no throttling (passthrough)
+ * - `number`                      → fixed single queue at that limit
+ * - `{ requestsPerSecond: n }`     → fixed single queue at n req/s
+ * - `{}` / `undefined` (default)   → auto-detect tier from path + per_page
  */
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
   // Disabled — every request goes straight through.
@@ -175,12 +130,14 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrency: config } : config;
-  const { maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
+  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { requestsPerSecond: config } : config;
+  const { requestsPerSecond, maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
+  // `maxConcurrency` is the deprecated alias for `requestsPerSecond`.
+  const fixedLimit = requestsPerSecond ?? maxConcurrency;
 
   // Fixed-limit mode — single queue, optional server-header adaptation.
-  if (maxConcurrency !== undefined) {
-    const cappedLimit = Math.min(maxConcurrency, MAX_RATE_LIMIT);
+  if (fixedLimit !== undefined) {
+    const cappedLimit = Math.min(fixedLimit, MAX_RATE_LIMIT);
     const throttle = createThrottle(cappedLimit);
 
     return {

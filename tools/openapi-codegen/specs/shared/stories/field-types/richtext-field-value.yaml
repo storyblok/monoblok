@@ -1,7 +1,7 @@
 # See: https://www.storyblok.com/docs/api/management/components/possible-field-types
 # See: https://www.storyblok.com/docs/packages/storyblok-richtext
 type: object
-description: RichText field type - structured rich text document (ProseMirror/Tiptap format)
+description: Rich text field type - structured rich text document (ProseMirror/Tiptap format)
 required:
   - type
   - content
@@ -12,7 +12,7 @@ properties:
     description: Root node type — always "doc"
   content:
     type: array
-    description: Top-level richtext nodes
+    description: Top-level rich text nodes
     items:
       $ref: '#/$defs/RichTextNode'
 
@@ -198,7 +198,7 @@ $defs:
   # -----------------------------------------------------------------------
 
   RichTextNode:
-    description: A richtext document node
+    description: A rich text document node
     oneOf:
       - $ref: '#/$defs/ParagraphNode'
       - $ref: '#/$defs/TextNode'

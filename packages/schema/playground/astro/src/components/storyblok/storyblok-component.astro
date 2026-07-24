@@ -1,30 +1,27 @@
 ---
-import type { BlockContent } from '@storyblok/schema';
-import type { Blocks } from '../../schema/schema';
+import type { AnyBlock } from '../../schema/schema';
 import Hero from './hero.astro';
 import Intro from './intro.astro';
 import Media from './media.astro';
 import TeaserList from './teaser-list.astro';
 
-type AnyBlockContent = BlockContent<Blocks, Blocks>;
-
 interface Props {
-  blok: AnyBlockContent;
+  block: AnyBlock;
 }
 
-const { blok } = Astro.props;
+const { block } = Astro.props;
 ---
 
-{blok.component === 'page' && (
-  blok.blocks?.map(block => <Astro.self blok={block} />)
+{block.component === 'page' && (
+  block.blocks?.map(child => <Astro.self block={child} />)
 )}
-{blok.component === 'hero' && <Hero blok={blok} />}
-{blok.component === 'intro' && <Intro blok={blok} />}
-{blok.component === 'media' && <Media blok={blok} />}
-{blok.component === 'teaser_list' && <TeaserList blok={blok} />}
-{!['page', 'hero', 'intro', 'media', 'teaser_list'].includes(blok.component) && import.meta.env.DEV && (
+{block.component === 'hero' && <Hero block={block} />}
+{block.component === 'intro' && <Intro block={block} />}
+{block.component === 'media' && <Media block={block} />}
+{block.component === 'teaser_list' && <TeaserList block={block} />}
+{!['page', 'hero', 'intro', 'media', 'teaser_list'].includes(block.component) && import.meta.env.DEV && (
   <div class="rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-    Unknown component: <code>{blok.component}</code>
-    <pre>{JSON.stringify(blok, null, 2)}</pre>
+    Unknown component: <code>{block.component}</code>
+    <pre>{JSON.stringify(block, null, 2)}</pre>
   </div>
 )}

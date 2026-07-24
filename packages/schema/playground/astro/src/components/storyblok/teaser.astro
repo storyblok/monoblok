@@ -1,27 +1,23 @@
 ---
-import type { BlockContent } from '@storyblok/schema';
-import type { Blocks } from '../../schema/schema';
-import type { teaserBlock } from '../../schema/blocks/teaser';
-
-type TeaserContent = BlockContent<typeof teaserBlock, Blocks>;
+import type { Block } from '../../schema/schema';
 
 interface Props {
-  blok: TeaserContent;
+  block: Block<'teaser'>;
 }
 
-const { blok } = Astro.props;
+const { block } = Astro.props;
 const href =
-  blok.link?.linktype === 'story'
-    ? `/${blok.link.cached_url ?? ''}`
-    : blok.link?.url ?? undefined;
+  block.link?.linktype === 'story'
+    ? `/${block.link.cached_url ?? ''}`
+    : block.link?.url ?? undefined;
 ---
 
 <article class="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-  {blok.image?.filename && (
+  {block.image?.filename && (
     <div class="aspect-video overflow-hidden">
       <img
-        src={blok.image.filename}
-        alt={blok.image.alt ?? ''}
+        src={block.image.filename}
+        alt={block.image.alt ?? ''}
         class="h-full w-full object-cover"
         width="600"
         height="337"
@@ -29,8 +25,8 @@ const href =
     </div>
   )}
   <div class="flex flex-1 flex-col p-6">
-    <h3 class="mb-2 text-xl font-semibold text-balance text-gray-900">{blok.title}</h3>
-    {blok.description && <p class="flex-1 text-gray-600">{blok.description}</p>}
+    <h3 class="mb-2 text-xl font-semibold text-balance text-gray-900">{block.title}</h3>
+    {block.description && <p class="flex-1 text-gray-600">{block.description}</p>}
     {href && (
       <a
         href={href}

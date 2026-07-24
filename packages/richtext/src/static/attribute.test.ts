@@ -210,10 +210,8 @@ describe('processAttrs', () => {
   // ============================================================================
 
   describe('default attribute mapping', () => {
-    it('maps fallbackImage to src', () => {
-      expect(processAttrs('image', { fallbackImage: 'test.jpg' })).toEqual({
-        src: 'test.jpg',
-      });
+    it('excludes fallbackImage from output', () => {
+      expect(processAttrs('emoji', { fallbackImage: 'https://cdn.example.com/rocket.png' })).toEqual({});
     });
 
     it('maps body to data-body', () => {

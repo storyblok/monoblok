@@ -11,4 +11,4 @@ export { normalizeNodes } from './normalize-nodes';
 export { stringToStyle, styleToString } from './style';
 export type { RenderSpec, SbRichTextDoc, SbRichTextElement, SbRichTextInput, SbRichTextProps, SbRichTextRenderContext, SbRichTextRendererMap, SbRichTextTextNode } from './types';
 export type { SbRichTextElementByType, SbRichTextMark, SbRichTextNode } from './types.generated';
-export { attrsToHtmlString, getStaticChildren, isSelfClosing, resolveTag } from './util';
+export { attrsToHtmlString, getEmojiText, getStaticChildren, isSelfClosing, resolveTag } from './util';

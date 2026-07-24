@@ -268,7 +268,7 @@ $defs:
         enum: [heading]
       attrs:
         type: object
-        required: [textAlign]
+        required: [textAlign, level]
         properties:
           level:
             description: Heading level (h1–h6)
@@ -391,10 +391,6 @@ $defs:
       type:
         type: string
         enum: [hard_break]
-      marks:
-        type: array
-        items:
-          $ref: '#/$defs/RichTextMark'
 
   HorizontalRuleNode:
     type: object
@@ -445,10 +441,6 @@ $defs:
                   copyright:
                     type: [string, 'null']
               - type: 'null'
-      marks:
-        type: array
-        items:
-          $ref: '#/$defs/RichTextMark'
 
   EmojiNode:
     type: object
@@ -470,14 +462,6 @@ $defs:
           fallbackImage:
             type: string
             description: URL to a fallback image for unsupported environments
-      content:
-        type: array
-        items:
-          $ref: '#/$defs/RichTextNode'
-      marks:
-        type: array
-        items:
-          $ref: '#/$defs/RichTextMark'
 
   TableNode:
     type: object

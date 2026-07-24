@@ -1,5 +1,5 @@
 import type { Component, VNode } from 'vue';
-import { createTextVNode, h } from 'vue';
+import { createTextVNode, h, toRaw } from 'vue';
 import type {
   RenderSpec,
   SbRichTextElement,
@@ -33,7 +33,8 @@ function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
   components?: SbVueRichTextComponentMap,
 ): Component<SbVueRichTextProps[K]> | undefined {
-  return components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
+  const comp = components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
+  return comp ? toRaw(comp) : undefined;
 }
 
 export interface SbVueRichTextRenderContext {

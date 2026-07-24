@@ -42,6 +42,14 @@ export function createThrottle(initialLimit: number): Throttle {
 
     return new Promise<void>((resolve) => {
       const attempt = () => {
+        // The limit can drop to a non-positive or non-finite value (via
+        // setLimit) while this call is waiting. Re-check the disabled guard so
+        // parked callers resolve instead of rescheduling forever.
+        if (!Number.isFinite(limit) || limit <= 0) {
+          resolve();
+          return;
+        }
+
         const now = Date.now();
         while (starts.length > 0 && starts[0] <= now - intervalMs) {
           starts.shift();

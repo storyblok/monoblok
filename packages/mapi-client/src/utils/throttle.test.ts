@@ -111,6 +111,33 @@ describe('createThrottle (per-second rate limiter)', () => {
     }
   });
 
+  it('resolves callers already waiting when setLimit drops the limit to zero', async () => {
+    // A waiting call reschedules itself until a slot frees up. If the limit is
+    // lowered to a non-positive value (e.g. adapting to a server header) while
+    // calls are parked, they must resolve rather than reschedule forever.
+    vi.useFakeTimers();
+    try {
+      const fn = vi.fn(async (i: number) => i);
+      const throttle = createThrottle(1);
+
+      const promises = Array.from({ length: 3 }, (_, i) =>
+        throttle.execute(() => fn(i)));
+
+      // First call starts; the other two are parked on the full window.
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fn).toHaveBeenCalledTimes(1);
+
+      throttle.setLimit(0);
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // Every parked call resolves once the window ages out; none hang.
+      await expect(Promise.all(promises)).resolves.toEqual([0, 1, 2]);
+    }
+    finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('propagates errors from the wrapped function', async () => {
     const throttle = createThrottle(5);
     await expect(

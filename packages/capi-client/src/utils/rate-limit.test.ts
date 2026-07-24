@@ -178,6 +178,55 @@ describe('createThrottleManager(number)', () => {
   });
 });
 
+describe('createThrottleManager({ requestsPerSecond })', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('should rate-limit to requestsPerSecond', async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ requestsPerSecond: 2 });
+    const fn = vi.fn(async () => 'done');
+
+    for (let i = 0; i < 5; i++) {
+      manager.execute('/v2/cdn/stories', {}, fn);
+    }
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fn).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fn).toHaveBeenCalledTimes(4);
+  });
+
+  it('should honor the deprecated maxConcurrency alias', async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ maxConcurrency: 2 });
+    const fn = vi.fn(async () => 'done');
+
+    for (let i = 0; i < 5; i++) {
+      manager.execute('/v2/cdn/stories', {}, fn);
+    }
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fn).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fn).toHaveBeenCalledTimes(4);
+  });
+
+  it('should prefer requestsPerSecond over maxConcurrency when both are set', async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ requestsPerSecond: 2, maxConcurrency: 50 });
+    const fn = vi.fn(async () => 'done');
+
+    for (let i = 0; i < 5; i++) {
+      manager.execute('/v2/cdn/stories', {}, fn);
+    }
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('createThrottleManager({})', () => {
   afterEach(() => vi.useRealTimers());
 

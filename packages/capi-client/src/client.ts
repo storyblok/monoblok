@@ -138,8 +138,8 @@ export interface ContentApiClientConfig<
    * Preventive rate limiting to avoid hitting the Storyblok CDN rate limits.
    *
    * - `undefined` (default): auto-detect tier from path + `per_page` query param.
-   * - `number`: fixed max concurrent requests per second (single queue).
-   * - `{ maxConcurrency?: number; adaptToServerHeaders?: boolean }`: full config.
+   * - `number`: fixed requests per second (single queue).
+   * - `{ requestsPerSecond?: number; adaptToServerHeaders?: boolean }`: full config.
    * - `false`: disable rate limiting entirely.
    */
   rateLimit?: RateLimitConfig | number | false;

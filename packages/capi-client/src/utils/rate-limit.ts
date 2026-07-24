@@ -29,10 +29,15 @@ const MAX_RATE_LIMIT = 1_000;
 
 export interface RateLimitConfig {
   /**
-   * Fixed number of requests per second. When set, disables automatic
-   * per_page tier detection and all requests share a single per-second
-   * window at this limit. Capped at 1000. Despite the name, this does not
-   * cap simultaneous in-flight requests.
+   * Fixed number of requests to start per second. When set, disables automatic
+   * per_page tier detection and all requests share a single per-second window
+   * at this limit. Capped at 1000.
+   */
+  requestsPerSecond?: number;
+  /**
+   * @deprecated Use `requestsPerSecond` instead. This never capped simultaneous
+   * in-flight requests despite its name; it is a per-second rate.
+   * @todo(next-major): Remove this field.
    */
   maxConcurrency?: number;
   /**
@@ -111,10 +116,10 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
 /**
  * Creates a `ThrottleManager` from the user-supplied `rateLimit` config.
  *
- * - `false`                     → no throttling (passthrough)
- * - `number`                    → fixed single queue at that limit
- * - `{ maxConcurrency: n }`      → fixed single queue at n req/s
- * - `{}` / `undefined` (default)→ auto-detect tier from path + per_page
+ * - `false`                       → no throttling (passthrough)
+ * - `number`                      → fixed single queue at that limit
+ * - `{ requestsPerSecond: n }`     → fixed single queue at n req/s
+ * - `{}` / `undefined` (default)   → auto-detect tier from path + per_page
  */
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
   // Disabled — every request goes straight through.
@@ -125,12 +130,14 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { maxConcurrency: config } : config;
-  const { maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
+  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { requestsPerSecond: config } : config;
+  const { requestsPerSecond, maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
+  // `maxConcurrency` is the deprecated alias for `requestsPerSecond`.
+  const fixedLimit = requestsPerSecond ?? maxConcurrency;
 
   // Fixed-limit mode — single queue, optional server-header adaptation.
-  if (maxConcurrency !== undefined) {
-    const cappedLimit = Math.min(maxConcurrency, MAX_RATE_LIMIT);
+  if (fixedLimit !== undefined) {
+    const cappedLimit = Math.min(fixedLimit, MAX_RATE_LIMIT);
     const throttle = createThrottle(cappedLimit);
 
     return {

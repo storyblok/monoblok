@@ -21,7 +21,7 @@ components:
       $ref: ./shared/stories/field-types/multilink-field-value.yaml
     PluginFieldValue:
       $ref: ./shared/stories/field-types/plugin-field-value.yaml
-    RichtextFieldValue:
+    RichTextFieldValue:
       $ref: ./shared/stories/field-types/richtext-field-value.yaml
     RichTextNode:
       $ref: ./shared/stories/field-types/richtext-field-value.yaml#/$defs/RichTextNode

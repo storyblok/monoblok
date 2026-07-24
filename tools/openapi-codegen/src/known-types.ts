@@ -352,7 +352,7 @@ export const UPSTREAM_SCHEMAS = {
     'ComponentSchemaField',
     'MultilinkFieldValue',
     'PluginFieldValue',
-    'RichtextFieldValue',
+    'RichTextFieldValue',
     'TableFieldValue',
   ] as const,
 } as const;

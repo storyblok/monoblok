@@ -1,7 +1,7 @@
 # See: https://www.storyblok.com/docs/api/management/components/possible-field-types
 # See: https://www.storyblok.com/docs/packages/storyblok-richtext
 type: object
-description: Richtext field type - structured rich text document (ProseMirror/Tiptap format)
+description: RichText field type - structured rich text document (ProseMirror/Tiptap format)
 required:
   - type
   - content
@@ -216,7 +216,7 @@ $defs:
       - $ref: '#/$defs/TableRowNode'
       - $ref: '#/$defs/TableCellNode'
       - $ref: '#/$defs/TableHeaderNode'
-      - $ref: '#/$defs/BlokNode'
+      - $ref: '#/$defs/BlockNode'
 
   ParagraphNode:
     type: object
@@ -557,7 +557,7 @@ $defs:
         items:
           $ref: '#/$defs/RichTextNode'
 
-  BlokNode:
+  BlockNode:
     type: object
     required: [type, attrs]
     properties:
@@ -570,7 +570,7 @@ $defs:
         properties:
           id:
             type: [string, 'null']
-            description: Blok instance ID
+            description: Block instance ID
           body:
             description: Array of embedded component instances
             oneOf:

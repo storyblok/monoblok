@@ -6,6 +6,7 @@ import { faqBlock } from './faq';
 import { galleryBlock } from './gallery';
 import { heroBlock } from './hero';
 import { introBlock } from './intro';
+import { kitchenSinkBlock } from './kitchen-sink';
 import { mediaBlock } from './media';
 import { statsBlock } from './stats';
 import { teaserListBlock } from './teaser-list';
@@ -30,6 +31,7 @@ export const pageBlock = defineBlock({
         faqBlock.name,
         statsBlock.name,
         comparisonTableBlock.name,
+        kitchenSinkBlock.name,
       ],
     }),
   ],

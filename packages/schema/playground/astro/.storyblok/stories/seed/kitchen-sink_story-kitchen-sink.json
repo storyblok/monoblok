@@ -1,0 +1,84 @@
+{
+  "name": "Kitchen Sink",
+  "parent_id": 0,
+  "id": 1004,
+  "uuid": "story-kitchen-sink",
+  "is_folder": false,
+  "content": {
+    "_uid": "c73b8e02-1a45-4d97-b6f8-3e91d5c0a827",
+    "blocks": [
+      {
+        "_uid": "4f8a91c2-7d3e-4b16-9a05-e2c7b4d81f30",
+        "text": "Every Field Type",
+        "textarea": "A single block exercising one field of each of the seventeen Storyblok field types.\nEach field is named after its own type.",
+        "richtext": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                { "text": "Rich text supports ", "type": "text" },
+                { "text": "bold", "type": "text", "marks": [{ "type": "bold" }] },
+                { "text": ", ", "type": "text" },
+                { "text": "italic", "type": "text", "marks": [{ "type": "italic" }] },
+                { "text": " and inline formatting.", "type": "text" }
+              ]
+            },
+            {
+              "type": "bullet_list",
+              "content": [
+                { "type": "list_item", "content": [{ "type": "paragraph", "content": [{ "text": "Rendered with renderRichText", "type": "text" }] }] },
+                { "type": "list_item", "content": [{ "type": "paragraph", "content": [{ "text": "Structured as a Prosemirror document", "type": "text" }] }] }
+              ]
+            }
+          ]
+        },
+        "markdown": "Markdown is stored as a **raw string** and parsed at render time with [marked](https://marked.js.org).\n\n- Portable\n- Diff-friendly",
+        "number": "7",
+        "datetime": "2026-07-27 09:30",
+        "boolean": true,
+        "option": "beta",
+        "options": ["one", "three"],
+        "asset": { "id": 2000, "alt": "Single asset field", "filename": "", "fieldtype": "asset" },
+        "multiasset": [
+          { "id": 2000, "alt": "First of many", "filename": "", "fieldtype": "asset" },
+          { "id": 2000, "alt": "Second of many", "filename": "", "fieldtype": "asset" },
+          { "id": 2000, "alt": "Third of many", "filename": "", "fieldtype": "asset" }
+        ],
+        "multilink": { "id": "", "url": "/about", "linktype": "url", "fieldtype": "multilink", "cached_url": "/about" },
+        "table": {
+          "tbody": [
+            { "_uid": "ks-tr-1", "body": [{ "_uid": "ks-td-1-1", "value": "number", "component": "_table_col" }, { "_uid": "ks-td-1-2", "value": "string", "component": "_table_col" }], "component": "_table_row" },
+            { "_uid": "ks-tr-2", "body": [{ "_uid": "ks-td-2-1", "value": "datetime", "component": "_table_col" }, { "_uid": "ks-td-2-2", "value": "YYYY-MM-DD HH:mm", "component": "_table_col" }], "component": "_table_row" },
+            { "_uid": "ks-tr-3", "body": [{ "_uid": "ks-td-3-1", "value": "options", "component": "_table_col" }, { "_uid": "ks-td-3-2", "value": "string[]", "component": "_table_col" }], "component": "_table_row" }
+          ],
+          "thead": [
+            { "_uid": "ks-th-1", "value": "Field type", "component": "_table_head" },
+            { "_uid": "ks-th-2", "value": "Stored as", "component": "_table_head" }
+          ]
+        },
+        "bloks": [
+          {
+            "_uid": "b1e6c40d-52a7-4f8b-9c31-7ad0e5f92b64",
+            "title": "Nested teaser",
+            "image": { "id": 2000, "alt": "Nested teaser image", "filename": "", "fieldtype": "asset" },
+            "link": { "id": "", "url": "/kitchen-sink", "linktype": "url", "fieldtype": "multilink", "cached_url": "/kitchen-sink" },
+            "component": "teaser",
+            "description": "The bloks field uses allow: [teaser], so this is the only component it accepts."
+          }
+        ],
+        "custom": { "plugin": "storyblok-colorpicker", "color": "#818cf8" },
+        "component": "kitchen_sink"
+      }
+    ],
+    "component": "page",
+    "seo_title": "Kitchen Sink — One Field of Every Type",
+    "seo_description": "A single block using one field of each of the seventeen Storyblok field types, for exercising schema type resolution."
+  },
+  "published": true,
+  "slug": "kitchen-sink",
+  "path": null,
+  "full_slug": "kitchen-sink",
+  "is_startpage": false,
+  "position": -30
+}

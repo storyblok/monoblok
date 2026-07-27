@@ -1,12 +1,13 @@
 ---
 import type { BlockContent } from '@storyblok/schema';
-import type { Blocks } from '../../schema/schema';
+import type { Blocks, FieldPlugins } from '../../schema/schema';
 import Hero from './hero.astro';
 import Intro from './intro.astro';
+import KitchenSink from './kitchen-sink.astro';
 import Media from './media.astro';
 import TeaserList from './teaser-list.astro';
 
-type AnyBlockContent = BlockContent<Blocks, Blocks>;
+type AnyBlockContent = BlockContent<Blocks, Blocks, FieldPlugins>;
 
 interface Props {
   blok: AnyBlockContent;
@@ -22,7 +23,8 @@ const { blok } = Astro.props;
 {blok.component === 'intro' && <Intro blok={blok} />}
 {blok.component === 'media' && <Media blok={blok} />}
 {blok.component === 'teaser_list' && <TeaserList blok={blok} />}
-{!['page', 'hero', 'intro', 'media', 'teaser_list'].includes(blok.component) && import.meta.env.DEV && (
+{blok.component === 'kitchen_sink' && <KitchenSink blok={blok} />}
+{!['page', 'hero', 'intro', 'media', 'teaser_list', 'kitchen_sink'].includes(blok.component) && import.meta.env.DEV && (
   <div class="rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
     Unknown component: <code>{blok.component}</code>
     <pre>{JSON.stringify(blok, null, 2)}</pre>

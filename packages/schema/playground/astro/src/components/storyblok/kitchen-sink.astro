@@ -87,7 +87,7 @@ interface Props {
 
 const { blok } = Astro.props;
 
-// The only way to render a richtext field. Does not compile — see gap 1 above.
+// richtext type incompatible with renderRichText — see gap 1 above.
 const richtextHtml = blok.richtext ? renderRichText(blok.richtext) : null;
 
 const markdownHtml = blok.markdown ? await marked.parse(blok.markdown) : null;

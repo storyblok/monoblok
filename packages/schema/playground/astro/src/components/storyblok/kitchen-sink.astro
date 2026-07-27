@@ -1,0 +1,299 @@
+---
+import { marked } from 'marked';
+import { renderRichText } from '@storyblok/richtext';
+import type { BlockContent } from '@storyblok/schema';
+import type { Blocks, FieldPlugins } from '../../schema/schema';
+import type { kitchenSinkBlock } from '../../schema/blocks/kitchen-sink';
+import Teaser from './teaser.astro';
+
+/**
+ * Renders every field of `kitchenSinkBlock` — one per Storyblok field type.
+ *
+ * This component is a conformance fixture for `@storyblok/schema`, not example
+ * application code. It consumes each field exactly one way: `BlockContent`
+ * straight off the block definition, then the value as the schema hands it over.
+ *
+ * That is the whole contract, and it is what the schema types have to support on
+ * their own. A field whose type does not fit the consumer it exists to feed is a
+ * field that cannot be used, and the type error left in place below is the report
+ * of that. Each gap has to be closed in the schema types themselves.
+ *
+ * ## Resolved types (verified against the current schema package)
+ *
+ * `text` is the block's only required field, so it resolves to a bare `string`.
+ * Every other value field resolves to `T | null | undefined`.
+ *
+ * | Field        | Resolves to                                                   |
+ * | ------------ | ------------------------------------------------------------- |
+ * | `text`       | `string`                                                      |
+ * | `textarea`   | `string`                                                      |
+ * | `richtext`   | `{ type: 'doc'; content?: { [key: string]: unknown }[] }`      |
+ * | `markdown`   | `string`                                                      |
+ * | `number`     | `number`                                                      |
+ * | `datetime`   | `string` — `"YYYY-MM-DD HH:mm"`, not ISO 8601                  |
+ * | `boolean`    | `boolean`                                                     |
+ * | `option`     | `string`                                                      |
+ * | `options`    | `string[]`                                                    |
+ * | `asset`      | `AssetFieldValue` (expanded)                                  |
+ * | `multiasset` | `AssetFieldValueRoot[]`                                       |
+ * | `multilink`  | `MultilinkFieldValue`, discriminated on `linktype`             |
+ * | `table`      | `{ thead: [...]; tbody: [...] }`                               |
+ * | `bloks`      | narrowed to `component: 'teaser'` — `allow` narrowing works    |
+ * | `custom`     | `{ color: string; plugin: string }` — plugin resolution works  |
+ *
+ * ## Known gaps
+ *
+ * 1. **`richtext` cannot be rendered.** The line below that calls
+ *    `renderRichText(blok.richtext)` does not compile, even after a truthiness
+ *    guard has removed `null | undefined`:
+ *
+ *    > Argument of type `{ type: "doc"; content?: { [key: string]: unknown }[] }`
+ *    > is not assignable to parameter of type `SbRichTextInput`. Types of
+ *    > property `content` are incompatible. Type `{ [key: string]: unknown }[] |
+ *    > undefined` is not assignable to type `SbRichTextNode<unknown>[]`.
+ *
+ *    `RichtextFieldValue` has an optional `content` of loose records, while
+ *    `SbRichTextDoc` requires `content: SbRichTextNode[]`. The two first-party
+ *    packages therefore do not compose: `@storyblok/schema` cannot feed
+ *    `@storyblok/richtext`, which is the only renderer it ships. A richtext field
+ *    is declarable and pushable but not consumable, so the type is unusable for
+ *    the single purpose the field exists to serve.
+ *
+ * 2. **`number` is typed as `number` but delivered as a string.** This one is a
+ *    genuine unsoundness, not just friction, and it is verified against a live
+ *    space in both directions:
+ *
+ *    - Pushing `"number": 7` (a JSON number) is rejected by the Management API:
+ *      *"The value of the field number in the component kitchen_sink […] must be
+ *      a string with numbers and allow '-' and '.'"*
+ *    - Pushing `"number": "7"` succeeds, and the Content Delivery API then
+ *      returns `"7"` — a string.
+ *    - But `FieldTypeValueMap` maps `number` to `number`, so `blok.number` is
+ *      typed `number | null | undefined` while actually holding `"7"`.
+ *    - And `validateStory` rejects the string form the API requires
+ *      (*"Expected number, received string"*), so the only story content the CMS
+ *      accepts is content the package's own validator calls invalid.
+ *
+ *    This is worse than gap 1 because nothing fails loudly: arithmetic on
+ *    `blok.number` typechecks and silently produces the wrong answer
+ *    (`blok.number + 1` → `"71"`). The template below only reads the value, so it
+ *    compiles clean and renders correctly, and the defect stays invisible here.
+ *    The seed story stores `"7"`, matching the API and contradicting both the
+ *    declared type and the validator.
+ *
+ * Everything else — including `table`, `multiasset`, `multilink`, `bloks`
+ * narrowing and `custom` plugin resolution — typechecks as consumed here and
+ * round-trips through a real space correctly.
+ */
+type KitchenSinkContent = BlockContent<typeof kitchenSinkBlock, Blocks, FieldPlugins>;
+
+interface Props {
+  blok: KitchenSinkContent;
+}
+
+const { blok } = Astro.props;
+
+// The only way to render a richtext field. Does not compile — see gap 1 above.
+const richtextHtml = blok.richtext ? renderRichText(blok.richtext) : null;
+
+const markdownHtml = blok.markdown ? await marked.parse(blok.markdown) : null;
+
+// Storyblok returns `"YYYY-MM-DD HH:mm"` — a space separator, which the spec's
+// date time string format does not cover, so parsing it is implementation-defined
+// (V8 accepts it, older JavaScriptCore did not). Swapping in `T` makes it a
+// conforming date-time string.
+const formattedDatetime = blok.datetime
+  ? new Date(blok.datetime.replace(' ', 'T')).toLocaleString('en-US', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    })
+  : null;
+
+const multilinkHref =
+  blok.multilink?.linktype === 'story'
+    ? `/${blok.multilink.cached_url ?? ''}`
+    : blok.multilink?.url ?? undefined;
+---
+
+<section class="px-6 py-16">
+  <div class="mx-auto max-w-4xl">
+    <header class="mb-10 border-b border-gray-200 pb-6">
+      <p class="mb-2 text-sm font-semibold tracking-widest text-indigo-600 uppercase">
+        Kitchen Sink
+      </p>
+      <h2 class="text-3xl font-bold text-balance text-gray-900">{blok.text}</h2>
+      <p class="mt-2 text-sm text-gray-500">
+        One field of every Storyblok field type, each named after its own type.
+      </p>
+    </header>
+
+    <dl class="divide-y divide-gray-200">
+      <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+        <dt class="font-mono text-sm text-gray-500">text</dt>
+        <dd class="text-gray-900">{blok.text}</dd>
+      </div>
+
+      {blok.textarea && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">textarea</dt>
+          <dd class="whitespace-pre-line text-gray-900">{blok.textarea}</dd>
+        </div>
+      )}
+
+      {richtextHtml && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">richtext</dt>
+          <dd class="prose text-gray-900" set:html={richtextHtml} />
+        </div>
+      )}
+
+      {markdownHtml && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">markdown</dt>
+          <dd class="prose text-gray-900" set:html={markdownHtml} />
+        </div>
+      )}
+
+      {blok.number != null && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">number</dt>
+          <dd class="text-gray-900">{blok.number}</dd>
+        </div>
+      )}
+
+      {formattedDatetime && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">datetime</dt>
+          <dd class="text-gray-900">
+            <time datetime={blok.datetime}>{formattedDatetime}</time>
+          </dd>
+        </div>
+      )}
+
+      {blok.boolean != null && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">boolean</dt>
+          <dd class="text-gray-900">{blok.boolean ? 'true' : 'false'}</dd>
+        </div>
+      )}
+
+      {blok.option && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">option</dt>
+          <dd class="text-gray-900">
+            <code class="rounded bg-gray-100 px-2 py-1 text-sm">{blok.option}</code>
+          </dd>
+        </div>
+      )}
+
+      {blok.options && blok.options.length > 0 && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">options</dt>
+          <dd class="flex flex-wrap gap-2">
+            {blok.options.map(value => (
+              <code class="rounded bg-gray-100 px-2 py-1 text-sm text-gray-900">{value}</code>
+            ))}
+          </dd>
+        </div>
+      )}
+
+      {blok.asset?.filename && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">asset</dt>
+          <dd>
+            <img
+              src={blok.asset.filename}
+              alt={blok.asset.alt ?? ''}
+              class="h-auto w-full max-w-sm rounded-lg object-cover shadow-sm"
+              width="600"
+              height="337"
+            />
+          </dd>
+        </div>
+      )}
+
+      {blok.multiasset && blok.multiasset.length > 0 && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">multiasset</dt>
+          <dd class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {blok.multiasset.map(asset => (
+              <img
+                src={asset.filename}
+                alt={asset.alt ?? ''}
+                class="aspect-video w-full rounded-lg object-cover shadow-sm"
+                width="300"
+                height="169"
+              />
+            ))}
+          </dd>
+        </div>
+      )}
+
+      {multilinkHref && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">multilink</dt>
+          <dd>
+            <a
+              href={multilinkHref}
+              target={blok.multilink?.target ?? undefined}
+              class="text-indigo-600 underline hover:text-indigo-800"
+            >
+              {multilinkHref}
+            </a>
+            <span class="ml-2 text-sm text-gray-500">({blok.multilink?.linktype})</span>
+          </dd>
+        </div>
+      )}
+
+      {blok.table && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">table</dt>
+          <dd class="overflow-x-auto">
+            <table class="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr class="border-b border-gray-300">
+                  {blok.table.thead.map(cell => (
+                    <th class="px-3 py-2 font-semibold text-gray-900">{cell.value}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {blok.table.tbody.map(row => (
+                  <tr class="border-b border-gray-200">
+                    {row.body?.map(cell => (
+                      <td class="px-3 py-2 text-gray-600">{cell.value}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </dd>
+        </div>
+      )}
+
+      {blok.bloks && blok.bloks.length > 0 && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">bloks</dt>
+          <dd class="grid gap-4 sm:grid-cols-2">
+            {blok.bloks.map(item => <Teaser blok={item} />)}
+          </dd>
+        </div>
+      )}
+
+      {blok.custom?.color && (
+        <div class="grid gap-2 py-5 sm:grid-cols-[10rem_1fr] sm:gap-6">
+          <dt class="font-mono text-sm text-gray-500">custom</dt>
+          <dd class="flex items-center gap-3">
+            <span
+              class="inline-block h-8 w-8 rounded-full border border-gray-300"
+              style={`background-color: ${blok.custom.color}`}
+            />
+            <code class="text-sm text-gray-900">{blok.custom.color}</code>
+            <span class="text-sm text-gray-500">({blok.custom.plugin})</span>
+          </dd>
+        </div>
+      )}
+
+    </dl>
+  </div>
+</section>

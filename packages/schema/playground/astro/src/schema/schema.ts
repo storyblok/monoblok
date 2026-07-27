@@ -9,6 +9,7 @@ import { faqBlock, faqItemBlock } from './blocks/faq';
 import { galleryBlock } from './blocks/gallery';
 import { heroBlock } from './blocks/hero';
 import { introBlock } from './blocks/intro';
+import { kitchenSinkBlock } from './blocks/kitchen-sink';
 import { mediaBlock } from './blocks/media';
 import { statItemBlock, statsBlock } from './blocks/stats';
 import { teaserListBlock } from './blocks/teaser-list';
@@ -32,6 +33,7 @@ export const schema = defineSchema({
     statsBlock,
     statItemBlock,
     comparisonTableBlock,
+    kitchenSinkBlock,
   },
   datasources: {
     bannerThemesDatasource,

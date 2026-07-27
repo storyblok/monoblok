@@ -15,6 +15,11 @@ export type { Field };
 export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichTextFieldValue, TableFieldValue };
 
 /**
+ * @deprecated Use {@link RichTextFieldValue} instead. Will be removed in a future major version.
+ */
+export type RichtextFieldValue = RichTextFieldValue;
+
+/**
  * Registry of all blocks in the space, used to resolve nested `bloks` fields.
  * A `Block` union resolves nested content against the registry; `NoBlocks`
  * (the default) leaves it loose (`BlockContentBase`).

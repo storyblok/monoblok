@@ -31,7 +31,7 @@ export const TEMPLATES = {
     sourceLeaves: ['Component', 'Field'],
   },
   'field': {
-    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'TableFieldValue'],
+    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
     templateDeps: ['block'],
     sourceLeaves: ['AssetFieldValue', 'BlockContentBase', 'BlockContentInputBase', 'Field', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'TableFieldValue'],
   },

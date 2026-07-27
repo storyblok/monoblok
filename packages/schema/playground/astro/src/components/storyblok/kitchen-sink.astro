@@ -27,41 +27,36 @@ import Teaser from './teaser.astro';
  * | ------------ | ------------------------------------------------------------- |
  * | `text`       | `string`                                                      |
  * | `textarea`   | `string`                                                      |
- * | `richtext`   | `{ type: 'doc'; content?: { [key: string]: unknown }[] }`      |
+ * | `richtext`   | `{ type: 'doc'; content?: { [key: string]: unknown }[] }`     |
  * | `markdown`   | `string`                                                      |
  * | `number`     | `number`                                                      |
- * | `datetime`   | `string` — `"YYYY-MM-DD HH:mm"`, not ISO 8601                  |
+ * | `datetime`   | `string` — `"YYYY-MM-DD HH:mm"`, not ISO 8601                 |
  * | `boolean`    | `boolean`                                                     |
  * | `option`     | `string`                                                      |
  * | `options`    | `string[]`                                                    |
  * | `asset`      | `AssetFieldValue` (expanded)                                  |
  * | `multiasset` | `AssetFieldValueRoot[]`                                       |
- * | `multilink`  | `MultilinkFieldValue`, discriminated on `linktype`             |
- * | `table`      | `{ thead: [...]; tbody: [...] }`                               |
- * | `bloks`      | narrowed to `component: 'teaser'` — `allow` narrowing works    |
- * | `custom`     | `{ color: string; plugin: string }` — plugin resolution works  |
+ * | `multilink`  | `MultilinkFieldValue`, discriminated on `linktype`            |
+ * | `table`      | `{ thead: [...]; tbody: [...] }`                              |
+ * | `bloks`      | narrowed to `component: 'teaser'` — `allow` narrowing works   |
+ * | `custom`     | `{ color: string; plugin: string }` — plugin resolution works |
  *
  * ## Known gaps
  *
- * 1. **`richtext` cannot be rendered.** The line below that calls
- *    `renderRichText(blok.richtext)` does not compile, even after a truthiness
- *    guard has removed `null | undefined`:
+ * 1. **`richtext` type is incompatible with renderRichText.**
+ *    The line below that calls `renderRichText(blok.richtext)` does not compile:
  *
  *    > Argument of type `{ type: "doc"; content?: { [key: string]: unknown }[] }`
  *    > is not assignable to parameter of type `SbRichTextInput`. Types of
  *    > property `content` are incompatible. Type `{ [key: string]: unknown }[] |
  *    > undefined` is not assignable to type `SbRichTextNode<unknown>[]`.
  *
- *    `RichtextFieldValue` has an optional `content` of loose records, while
- *    `SbRichTextDoc` requires `content: SbRichTextNode[]`. The two first-party
- *    packages therefore do not compose: `@storyblok/schema` cannot feed
- *    `@storyblok/richtext`, which is the only renderer it ships. A richtext field
- *    is declarable and pushable but not consumable, so the type is unusable for
- *    the single purpose the field exists to serve.
+ *    `RichtextFieldValue` has an optional `content` of loose records;
+ *    `SbRichTextDoc` requires `content: SbRichTextNode[]`. So
+ *    `@storyblok/schema` cannot feed `@storyblok/richtext`.
  *
- * 2. **`number` is typed as `number` but delivered as a string.** This one is a
- *    genuine unsoundness, not just friction, and it is verified against a live
- *    space in both directions:
+ * 2. **`number` is typed as `number` but delivered as a string.** This one is
+ *    verifiable against a live space in both directions:
  *
  *    - Pushing `"number": 7` (a JSON number) is rejected by the Management API:
  *      *"The value of the field number in the component kitchen_sink […] must be
@@ -74,10 +69,9 @@ import Teaser from './teaser.astro';
  *      (*"Expected number, received string"*), so the only story content the CMS
  *      accepts is content the package's own validator calls invalid.
  *
- *    This is worse than gap 1 because nothing fails loudly: arithmetic on
- *    `blok.number` typechecks and silently produces the wrong answer
- *    (`blok.number + 1` → `"71"`). The template below only reads the value, so it
- *    compiles clean and renders correctly, and the defect stays invisible here.
+ *    Nothing fails loudly: arithmetic on `blok.number` typechecks and silently produces
+ *    the wrong answer (`blok.number + 1` → `"71"`). The template below only reads the value,
+ *    so it compiles clean and renders correctly, and the defect stays invisible here.
  *    The seed story stores `"7"`, matching the API and contradicting both the
  *    declared type and the validator.
  *

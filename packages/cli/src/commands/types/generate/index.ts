@@ -1,18 +1,15 @@
 import type { Command } from "commander";
-import { join } from "pathe";
 import { colorPalette, commands } from "../../../constants";
-import { CommandError, FileSystemError, handleError, toError } from "../../../utils";
-import { resolvePath } from "../../../utils/filesystem";
+import { CommandError, FileSystemError, handleError } from "../../../utils";
 import { type ComponentsData, readComponentsFiles } from "../../components/push/actions";
 import type { GenerateTypesOptions } from "./constants";
 import { typesCommand } from "../command";
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from "./actions";
 import { readDatasourcesFiles } from "../../datasources/push/actions";
 import type { SpaceDatasourcesData } from "../../../commands/datasources/constants";
-import type { CLISpinner } from "../../../lib/ui";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
-import { assertNoLegacyFlags, generateSchemaTypes } from "./schema-types";
+import { runFutureSchemaTypes } from "./future-schema";
 
 const generateCmd = typesCommand
   .command("generate")
@@ -35,10 +32,7 @@ const generateCmd = typesCommand
     "path to the compiler options from json-schema-to-typescript",
   )
   .option("-s, --space <space>", "space ID")
-  .option(
-    "--future-schema",
-    "Generate types from the space schema (accurate optionality, block narrowing, and custom field types)",
-  )
+  .option("--future-schema", "Generate types from the space schema")
   .option(
     "--field-plugins <path>",
     "Path to a module exporting your defineFieldPlugin declarations (default: .storyblok/schema/schema.ts)",
@@ -49,45 +43,10 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
   const { space, path, verbose, suffix, filename, separateFiles } = command.optsWithGlobals();
 
   if (options.futureSchema) {
-    ui.title(`${commands.TYPES}`, colorPalette.TYPES, "Generating types from schema...");
-    let spinner: CLISpinner | undefined;
-    try {
-      assertNoLegacyFlags(options);
-      if (!space) {
-        throw new CommandError("Please provide the space as argument --space SPACE_ID.");
-      }
-
-      spinner = ui.createSpinner("Generating types...");
-      const outputDir = resolvePath(path, join("types", space));
-      const result = await generateSchemaTypes({
-        space,
-        cwd: process.cwd(),
-        outputDir,
-        filename: filename ?? "storyblok-schema",
-        separateFiles,
-        typePrefix: options.typePrefix,
-        typeSuffix: options.typeSuffix,
-        fieldPluginsPath: options.fieldPlugins,
-      });
-      spinner.succeed("Generated types");
-
-      result.files.forEach((file) => ui.ok(file));
-      if (result.unmappedFieldTypes.length > 0) {
-        ui.warn(
-          `No field plugin registered for: ${result.unmappedFieldTypes.join(", ")}. ` +
-            "These custom fields fall back to an untyped value. Declare them with defineFieldPlugin " +
-            "and point --field-plugins at the module (or place it at .storyblok/schema/schema.ts).",
-        );
-      }
-      ui.info(
-        "The generated types import from `@storyblok/schema`. Install it as a dev dependency: `npm i -D @storyblok/schema`.",
-      );
-      ui.br();
-    } catch (error) {
-      spinner?.failed(`Failed to generate types for space ${space}`);
-      ui.br();
-      handleError(toError(error), verbose);
-    }
+    await runFutureSchemaTypes({
+      options,
+      globals: { space, path, filename, separateFiles, verbose },
+    });
     return;
   }
 

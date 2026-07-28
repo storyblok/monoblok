@@ -1,5 +1,5 @@
 import type { RenderSpec, SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions, SbRichTextInput, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
-import { buildStoryblokImage, getEmojiText, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
+import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
 import React, { type ComponentType, type ReactNode } from 'react';
 
 /**
@@ -146,7 +146,7 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
   return React.createElement(
     tag,
     { key, ...props },
-    getEmojiText(node) ?? (node.content ? renderChildren(node.content, options) : null),
+    node.type === 'emoji' ? node.attrs.emoji : (node.content ? renderChildren(node.content, options) : null),
   );
 }
 

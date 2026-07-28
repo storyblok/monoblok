@@ -60,10 +60,14 @@ knows what value type to emit for them. The CLI looks for a field-plugins module
 - a `schema` export, the result of `defineSchema`, whose `fieldPlugins` record is used, or
 - a bare `fieldPlugins` export, a record of `defineFieldPlugin` results keyed by name.
 
-An explicit `--field-plugins` path that does not exist or exports neither shape is an error. If no
-module is found at the convention path, generation continues without custom field types, since most
-spaces have none. `custom` fields whose `field_type` has no matching plugin fall back to an untyped
-value and are reported as a warning after generation, listing every unmapped `field_type`.
+An explicit `--field-plugins` path that does not exist, or that exists but exports neither a
+`schema` nor a `fieldPlugins` shape, is an error. The convention path degrades silently instead: if
+`.storyblok/schema/schema.ts` does not exist, or if it exists but exports neither shape, for example
+because of a typo in the export name, generation continues without custom field types and prints no
+warning about the module itself, since most spaces have none. Check the export name if you placed a
+field-plugins module at the convention path and its types are not showing up. `custom` fields whose
+`field_type` has no matching plugin fall back to an untyped value and are reported as a warning
+after generation, listing every unmapped `field_type`.
 
 ### Supported options
 

@@ -482,7 +482,7 @@ export function generateSchemaFile(
   // Import the defineSchema helper and the Schema/Story type helpers
   lines.push('import { defineSchema } from \'@storyblok/schema\';');
   lines.push('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
-  lines.push('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
+  lines.push('import type { BlockContent, MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
 
   // Import blocks from their (slugified) group subdirectory — local
@@ -534,11 +534,29 @@ export function generateSchemaFile(
   lines.push('});');
   lines.push('');
 
-  // Schema and Blocks types derived via Schema helper
+  // Schema and Blocks types derived via Schema helper. `FieldPlugins` is
+  // threaded through the story types so registering a field plugin later is a
+  // one-line change; with none registered it resolves to an empty map and costs
+  // nothing.
   lines.push('export type Schema = InferSchema<typeof schema>;');
   lines.push('export type Blocks = Schema[\'blocks\'];');
-  lines.push('export type Story = InferStory<Blocks>;');
-  lines.push('export type StoryMapi = InferStoryMapi<Blocks>;');
+  lines.push('export type FieldPlugins = Schema[\'fieldPlugins\'];');
+  lines.push('export type Story = InferStory<Blocks, FieldPlugins>;');
+  lines.push('export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;');
+
+  if (components.length > 0) {
+    lines.push('');
+    lines.push('// Type a component\'s props by block name: `Block<"hero">`.');
+    lines.push('export type Block<TName extends Blocks[\'name\']> = BlockContent<');
+    lines.push('  Extract<Blocks, { name: TName }>,');
+    lines.push('  Blocks,');
+    lines.push('  FieldPlugins');
+    lines.push('>;');
+    lines.push('');
+    lines.push('// Loose union of every block\'s content, for a dynamic component dispatcher.');
+    lines.push('export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;');
+  }
+
   lines.push('');
 
   return lines.join('\n');

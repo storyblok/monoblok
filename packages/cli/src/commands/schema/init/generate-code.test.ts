@@ -436,7 +436,13 @@ describe('generateSchemaFile', () => {
     expect(result).not.toContain('blockFolders');
 
     expect(result).toContain('export type Schema = InferSchema<typeof schema>;');
-    expect(result).toContain('export type Story = InferStory<Blocks>;');
+    // Field plugins are threaded through the story types so registering one
+    // later does not require rewiring every consumer.
+    expect(result).toContain('export type FieldPlugins = Schema[\'fieldPlugins\'];');
+    expect(result).toContain('export type Story = InferStory<Blocks, FieldPlugins>;');
+    expect(result).toContain('export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;');
+    expect(result).toContain('export type Block<TName extends Blocks[\'name\']> = BlockContent<');
+    expect(result).toContain('export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;');
   });
 
   it('should omit empty sections from the schema object', () => {
@@ -610,6 +616,14 @@ describe('generateSchemaFile with folders', () => {
 
     expect(result).not.toContain('folders:');
     expect(result).not.toContain('./folders');
+  });
+
+  it('should omit the block helpers when the space has no components', () => {
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources([]));
+
+    // Both helpers index into `Blocks`, which has no members to index.
+    expect(result).not.toContain('export type Block<');
+    expect(result).not.toContain('export type AnyBlock');
   });
 });
 

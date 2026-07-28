@@ -1,16 +1,24 @@
 import type { Component, ComponentFolder, Datasource } from "../../../types";
 import { slugify } from "../../../utils/format";
 import { buildGroupPathByUuid } from "../folders";
+import { resolveGroupWhitelistEntries, toDslField } from "../to-dsl-field";
 import {
   COMPONENT_STRIP_KEYS,
+  componentFileName,
   DATASOURCE_STRIP_KEYS,
   formatValue,
   INDENT,
   isRecord,
   quoteString,
   RawCode,
+  resolveFileNames,
+  resolveVarNames,
+  sortSchemaByPos,
   stripKeys,
+  toKebabCase,
 } from "../utils";
+
+export { componentFileName, resolveFileNames, resolveVarNames } from "../utils";
 
 /** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
 const FIELD_STRIP_KEYS = new Set(["id", "pos"]);
@@ -31,21 +39,6 @@ function toCamelCaseIdentifier(str: string): string {
   return /^\d/.test(camel) ? `_${camel}` : camel;
 }
 
-/**
- * Converts a string to kebab-case, keeping only filesystem/shell-safe
- * characters. Handles snake_case, camelCase, PascalCase, and space-separated
- * words; any remaining non-`[a-z0-9-]` characters collapse to a single `-`.
- */
-function toKebabCase(str: string): string {
-  return str
-    .replace(/[\s_]+/g, "-")
-    .replace(/([a-z])([A-Z])/g, "$1-$2")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 /** Returns the variable name for a component. e.g. `'teaser_list'` -> `'teaserListBlock'` */
 export function componentVarName(name: string): string {
   return `${toCamelCaseIdentifier(name)}Block`;
@@ -59,66 +52,6 @@ export function datasourceVarName(name: string): string {
 /** Returns the variable name for a folder. e.g. `'My Layout'` -> `'myLayoutFolder'` */
 export function folderVarName(name: string): string {
   return `${toCamelCaseIdentifier(name)}Folder`;
-}
-
-/**
- * Resolves an ordered list of raw names to unique variable names. Names that
- * sanitize to the same identifier get a numeric suffix (`…2`, `…3`), so the
- * generated `export const`s and schema-object keys never collide. Index-aligned
- * to `rawNames`.
- */
-export function resolveVarNames(
-  rawNames: string[],
-  baseVarName: (name: string) => string,
-): string[] {
-  const used = new Set<string>();
-  return rawNames.map((raw) => {
-    const base = baseVarName(raw);
-    let candidate = base;
-    let n = 2;
-    while (used.has(candidate)) {
-      candidate = `${base}${n++}`;
-    }
-    used.add(candidate);
-    return candidate;
-  });
-}
-
-/**
- * Resolves an ordered list of already-sanitized base file names to unique ones.
- * `toKebabCase` is lossy (it collapses `_`/`-` runs and strips symbols), so two
- * distinct source names can produce the same file name even though the raw names
- * are unique. Collisions get a `-2`, `-3`, … suffix so generated files never
- * overwrite each other and each `schema.ts` import resolves unambiguously.
- *
- * `dirKeys` scopes uniqueness per directory: blocks live in their group
- * subdirectory, so two blocks with the same file name in *different* group
- * directories don't collide on disk and must keep their shared name. Pass the
- * containing directory (e.g. the joined group path) per index; omit for a flat
- * layout (datasources). Index-aligned to `baseNames`.
- */
-export function resolveFileNames(baseNames: string[], dirKeys?: string[]): string[] {
-  const usedByDir = new Map<string, Set<string>>();
-  return baseNames.map((base, i) => {
-    const dir = dirKeys?.[i] ?? "";
-    let used = usedByDir.get(dir);
-    if (!used) {
-      used = new Set<string>();
-      usedByDir.set(dir, used);
-    }
-    let candidate = base;
-    let n = 2;
-    while (used.has(candidate)) {
-      candidate = `${base}-${n++}`;
-    }
-    used.add(candidate);
-    return candidate;
-  });
-}
-
-/** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */
-export function componentFileName(name: string): string {
-  return toKebabCase(name);
 }
 
 /** Returns the file name (without extension) for a datasource, using slug if available. */
@@ -221,98 +154,20 @@ export function resolveFolders(folders: ComponentFolder[]): ResolvedFolder[] {
 }
 
 /**
- * Resolves a field's `component_group_whitelist` uuids to `defineFolder` ref
- * identifiers when every uuid maps to a known folder var, returning the ordered
- * {@link RawCode} refs. Returns `undefined` when there is nothing to resolve or
- * any uuid is unknown, so the caller keeps the raw wire form (still round-trips
- * via the diff's uuid↔path translation) rather than emitting a broken ref.
+ * Builds the `schema init` group-whitelist resolver: a group uuid becomes the
+ * bare `defineFolder` variable name its `folders.ts` declares, emitted verbatim
+ * via {@link RawCode}.
  */
-function resolveGroupWhitelistRefs(
-  whitelist: unknown,
+function rawCodeGroupResolver(
   folderVarByUuid?: Map<string, string>,
-): RawCode[] | undefined {
-  if (!folderVarByUuid || !Array.isArray(whitelist) || whitelist.length === 0) {
+): ((uuid: string) => RawCode | undefined) | undefined {
+  if (!folderVarByUuid) {
     return undefined;
   }
-  const vars = whitelist.map((uuid) =>
-    typeof uuid === "string" ? folderVarByUuid.get(uuid) : undefined,
-  );
-  if (!vars.every((v): v is string => typeof v === "string")) {
-    return undefined;
-  }
-  return vars.map((v) => new RawCode(v));
-}
-
-/**
- * Reverse of the push-time DSL→wire field mapping: renames the wire reference
- * keys back to their DSL form (`component_whitelist`→`allow`,
- * `component_group_whitelist`→`allow` with folder refs, `datasource_slug`→`datasource`).
- * The `source` selector is left untouched.
- *
- * `restrict_components: true` and `restrict_type` are dropped alongside a
- * resolved `allow` — they're the wire byproduct `defineField`'s `allow`
- * re-derives on push, not independent DSL state. A group whitelist that cannot
- * be fully resolved to folder refs keeps its raw wire form.
- *
- * A field restricted to a component *group* carries both a `component_group_whitelist`
- * and an empty `component_whitelist: []` on the wire; the group whitelist takes
- * precedence, so `allow` is only sourced from `component_whitelist` when it holds
- * actual block names — otherwise the resolved folder refs win.
- *
- * `restrict_components: false` disables the restriction while the space may still
- * store a stale whitelist. Emitting that inactive list as `allow` would make
- * `schema push` re-derive `restrict_components: true` and silently switch the
- * restriction back on, changing what editors may insert. So a disabled
- * restriction keeps its flag and drops the whitelist: the flag round-trips
- * losslessly, at the cost of discarding a list that is not in force anyway. An
- * absent `restrict_components` counts as active, matching backend enforcement.
- */
-function toDslField(
-  field: Record<string, unknown>,
-  folderVarByUuid?: Map<string, string>,
-): Record<string, unknown> {
-  const {
-    component_whitelist,
-    component_group_whitelist,
-    datasource_slug,
-    restrict_components,
-    restrict_type,
-    ...rest
-  } = field;
-  const out: Record<string, unknown> = { ...rest };
-  const restrictionDisabled = restrict_components === false;
-  const groupRefs = restrictionDisabled
-    ? undefined
-    : resolveGroupWhitelistRefs(component_group_whitelist, folderVarByUuid);
-  const hasBlockNames =
-    !restrictionDisabled && Array.isArray(component_whitelist) && component_whitelist.length > 0;
-  if (restrictionDisabled) {
-    out.restrict_components = false;
-    if (restrict_type !== undefined) {
-      out.restrict_type = restrict_type;
-    }
-  } else if (hasBlockNames) {
-    out.allow = component_whitelist;
-  } else if (groupRefs) {
-    out.allow = groupRefs;
-  } else if (component_group_whitelist !== undefined) {
-    // A group whitelist we could not resolve to folder refs: keep the raw wire
-    // form (whitelist + restrict flags) so it still round-trips on push.
-    out.component_group_whitelist = component_group_whitelist;
-    if (restrict_components !== undefined) {
-      out.restrict_components = restrict_components;
-    }
-    if (restrict_type !== undefined) {
-      out.restrict_type = restrict_type;
-    }
-  }
-  // Otherwise there is no allow list (name whitelist absent or empty, no groups);
-  // `restrict_components`/`restrict_type` are byproducts `allow` re-derives on
-  // push, so they are dropped rather than emitted as orphaned DSL state.
-  if (datasource_slug !== undefined) {
-    out.datasource = datasource_slug;
-  }
-  return out;
+  return (uuid: string) => {
+    const varName = folderVarByUuid.get(uuid);
+    return varName === undefined ? undefined : new RawCode(varName);
+  };
 }
 
 /**
@@ -343,7 +198,7 @@ function generateFieldCode(
   folderVarByUuid?: Map<string, string>,
 ): string {
   const clean = omitEmptyArrays(
-    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid),
+    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), rawCodeGroupResolver(folderVarByUuid)),
   );
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
@@ -357,6 +212,7 @@ function collectWhitelistFolderVars(
   schema: Record<string, Record<string, unknown>>,
   folderVarByUuid?: Map<string, string>,
 ): string[] {
+  const resolver = rawCodeGroupResolver(folderVarByUuid);
   const vars = new Set<string>();
   for (const field of Object.values(schema)) {
     if (!isRecord(field)) {
@@ -367,25 +223,12 @@ function collectWhitelistFolderVars(
     if (field.restrict_components === false) {
       continue;
     }
-    const refs = resolveGroupWhitelistRefs(field.component_group_whitelist, folderVarByUuid);
+    const refs = resolveGroupWhitelistEntries(field.component_group_whitelist, resolver);
     if (refs) {
       refs.forEach((ref) => vars.add(ref.code));
     }
   }
   return [...vars].sort();
-}
-
-/** Sorts schema fields by `pos` for stable ordering. */
-function sortSchemaByPos(
-  schema: Record<string, Record<string, unknown>>,
-): [string, Record<string, unknown>][] {
-  return Object.entries(schema)
-    .filter(([key]) => key !== "_uid" && key !== "component")
-    .sort(([, a], [, b]) => {
-      const posA = typeof a.pos === "number" ? a.pos : Infinity;
-      const posB = typeof b.pos === "number" ? b.pos : Infinity;
-      return posA - posB;
-    });
 }
 
 /** Generates `folders.ts`: one `defineFolder` const per remote group, parents first. */
@@ -580,13 +423,7 @@ export function generateSchemaFile(
   lines.push(
     "import type { Schema as InferSchema, Story as InferStory } from '@storyblok/schema';",
   );
-  // `BlockContent` only backs the block helpers below, which a space with no
-  // components does not get. Importing it regardless trips `noUnusedLocals`.
-  lines.push(
-    components.length > 0
-      ? "import type { BlockContent, MapiStory as InferStoryMapi } from '@storyblok/schema';"
-      : "import type { MapiStory as InferStoryMapi } from '@storyblok/schema';",
-  );
+  lines.push("import type { MapiStory as InferStoryMapi } from '@storyblok/schema';");
   lines.push("");
 
   // Import blocks from their (slugified) group subdirectory — local
@@ -638,29 +475,11 @@ export function generateSchemaFile(
   lines.push("});");
   lines.push("");
 
-  // Schema and Blocks types derived via Schema helper. `FieldPlugins` is
-  // threaded through the story types so registering a field plugin later is a
-  // one-line change; with none registered it resolves to an empty map and costs
-  // nothing.
+  // Schema and Blocks types derived via Schema helper
   lines.push("export type Schema = InferSchema<typeof schema>;");
   lines.push("export type Blocks = Schema['blocks'];");
-  lines.push("export type FieldPlugins = Schema['fieldPlugins'];");
-  lines.push("export type Story = InferStory<Blocks, FieldPlugins>;");
-  lines.push("export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;");
-
-  if (components.length > 0) {
-    lines.push("");
-    lines.push('// Type a component\'s props by block name: `Block<"hero">`.');
-    lines.push("export type Block<TName extends Blocks['name']> = BlockContent<");
-    lines.push("  Extract<Blocks, { name: TName }>,");
-    lines.push("  Blocks,");
-    lines.push("  FieldPlugins");
-    lines.push(">;");
-    lines.push("");
-    lines.push("// Loose union of every block's content, for a dynamic component dispatcher.");
-    lines.push("export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;");
-  }
-
+  lines.push("export type Story = InferStory<Blocks>;");
+  lines.push("export type StoryMapi = InferStoryMapi<Blocks>;");
   lines.push("");
 
   return lines.join("\n");

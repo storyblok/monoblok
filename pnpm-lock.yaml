@@ -1457,6 +1457,9 @@ importers:
       '@storyblok/openapi-codegen':
         specifier: workspace:*
         version: file:tools/openapi-codegen(magicast@0.5.2)
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../richtext
       '@types/node':
         specifier: ^24.5.2
         version: 24.11.0

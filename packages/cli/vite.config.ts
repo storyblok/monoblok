@@ -15,6 +15,10 @@ export default defineConfig({
   test: {
     globals: true,
     setupFiles: ["./test/setup.ts"],
+    typecheck: {
+      enabled: true,
+      include: ["src/**/*.test-d.ts"],
+    },
     coverage: {
       reporter: ["text", "json", "html"],
     },

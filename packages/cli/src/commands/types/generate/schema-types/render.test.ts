@@ -55,7 +55,8 @@ describe('renderSchemaTypes', () => {
       space: '295018',
     });
 
-    expect(output).toContain('import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
+    expect(output).toContain('import type { BlockContent, MapiStory as InferStoryMapi, Story as InferStory } from \'@storyblok/schema\';');
+    expect(output).not.toContain('InferSchema');
     expect(output).toContain('export type HeroBlockDefinition = {');
     expect(output).toContain('export type Blocks = HeroBlockDefinition | TeaserListBlockDefinition;');
     expect(output).toContain('export type FieldPlugins = Record<never, never>;');
@@ -78,7 +79,7 @@ describe('renderSchemaTypes', () => {
     expect(output).toContain('export type StoryblokSchema = { blocks: StoryblokBlocks; fieldPlugins: StoryblokFieldPlugins };');
     expect(output).toContain('export type StoryblokBlock<TName extends StoryblokBlocks[\'name\']> = BlockContent<Extract<StoryblokBlocks, { name: TName }>, StoryblokBlocks, StoryblokFieldPlugins>;');
     // the @storyblok/schema import aliases are file-internal and must not be renamed
-    expect(output).toContain('Schema as InferSchema');
+    expect(output).toContain('MapiStory as InferStoryMapi');
   });
 
   it('derives FieldPlugins from a defineSchema result', () => {
@@ -89,6 +90,7 @@ describe('renderSchemaTypes', () => {
       space: '295018',
     });
 
+    expect(output).toContain('import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
     expect(output).toContain('import type { schema as userSchema } from \'../../schema/schema\';');
     expect(output).toContain('export type FieldPlugins = InferSchema<typeof userSchema>[\'fieldPlugins\'];');
   });
@@ -101,6 +103,7 @@ describe('renderSchemaTypes', () => {
       space: '295018',
     });
 
+    expect(output).toContain('import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
     expect(output).toContain('import type { fieldPlugins as userFieldPlugins } from \'./plugins\';');
     expect(output).toContain('export type FieldPlugins = InferSchema<{ blocks: Record<string, never>; fieldPlugins: typeof userFieldPlugins }>[\'fieldPlugins\'];');
   });

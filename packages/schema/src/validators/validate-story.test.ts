@@ -379,6 +379,16 @@ describe('validateStory — constraints', () => {
     expect(disallowed).toBeDefined();
     expect(disallowed?.path).toEqual(['content', 'items', 0, 'component']);
   });
+
+  // A component missing from the schema is one mistake, not two: reporting both
+  // `unknown_component` and `disallowed_component` double-counted it and buried
+  // the real cause.
+  it('reports only unknown_component for a component the schema does not define', () => {
+    const result = validate({ items: [{ component: 'nope' }] });
+    const codes = result.issues.map(issue => issue.code);
+    expect(codes).toContain('unknown_component');
+    expect(codes).not.toContain('disallowed_component');
+  });
 });
 
 describe('validateStory — number wire format', () => {

@@ -2,8 +2,10 @@ export type { LoadedSchema, SchemaLike, ValidationIssue, ValidationResult, Valid
 export { loadSchemaEntry, validateSchema, validateStory } from './adapter';
 export type { ValidationCounts } from './filter';
 export { countIssues, filterIssuesByLevel } from './filter';
+export type { ValidationJsonReport } from './format-json';
+export { formatJson } from './format-json';
 export { formatPretty } from './format-pretty';
 export { entityToHeader, groupIssuesByEntity } from './group';
 export { writeValidationReport } from './report';
-export type { LevelOption, ValidationGroup, ValidationRunResult } from './types';
-export { LEVEL_OPTIONS, parseLevel } from './types';
+export type { FormatOption, LevelOption, ValidationGroup, ValidationRunResult } from './types';
+export { FORMAT_OPTIONS, LEVEL_OPTIONS, parseFormat, parseLevel } from './types';

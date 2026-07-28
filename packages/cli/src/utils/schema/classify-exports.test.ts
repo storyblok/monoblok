@@ -120,11 +120,37 @@ describe('collectSchemaExports', () => {
     expect(result.components).toHaveLength(1);
   });
 
+  it('should collect field plugins exported directly and via the schema object', () => {
+    const colorPicker = { fieldType: 'color-picker', value: { '~standard': {} } };
+    const rating = { fieldType: 'rating', value: { '~standard': {} } };
+
+    const result = collectSchemaExports({
+      colorPicker,
+      pageBlock: { name: 'page', fields: [] },
+      schema: {
+        // The same reference exported twice must collapse to one entry.
+        fieldPlugins: { colorPicker, rating },
+      },
+    });
+
+    expect(result.fieldPlugins).toEqual([colorPicker, rating]);
+    expect(result.components).toHaveLength(1);
+  });
+
+  it('should unwrap a schema object that only registers field plugins', () => {
+    const colorPicker = { fieldType: 'color-picker', value: { '~standard': {} } };
+
+    const result = collectSchemaExports({ schema: { fieldPlugins: { colorPicker } } });
+
+    expect(result.fieldPlugins).toEqual([colorPicker]);
+  });
+
   it('should return empty arrays when nothing matches', () => {
     expect(collectSchemaExports({ helper: () => {}, constant: 42 })).toEqual({
       components: [],
       datasources: [],
       folders: [],
+      fieldPlugins: [],
     });
   });
 });

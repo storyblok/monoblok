@@ -216,6 +216,12 @@ function checkComponentAllowed(
   if (allowEntries.length === 0 || !isRecord(item) || typeof item.component !== 'string') {
     return;
   }
+  // A component the schema does not define at all is reported once as
+  // `unknown_component` by validateBlokContent. Adding `disallowed_component`
+  // for the same node would double-count one mistake and bury the real cause.
+  if (!blocksByName.has(item.component)) {
+    return;
+  }
   const blockNamesAllowed = allowEntries.filter((entry): entry is string => typeof entry === 'string');
   const folderPathsAllowed = allowEntries.filter(
     (entry): entry is { folder: string } =>

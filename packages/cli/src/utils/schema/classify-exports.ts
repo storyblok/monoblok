@@ -41,23 +41,35 @@ export function isFolder(value: unknown): value is Record<string, unknown> {
     && !('slug' in value);
 }
 
+/**
+ * Returns true if the value looks like a `defineFieldPlugin()` result: a
+ * `fieldType` literal bound to a `value` validator. Field plugins carry no
+ * `name`, so they never collide with the block/datasource/folder guards.
+ */
+export function isFieldPlugin(value: unknown): value is Record<string, unknown> {
+  return isRecord(value)
+    && typeof value.fieldType === 'string'
+    && 'value' in value;
+}
+
 /** Returns true if the value looks like a schema object (e.g. `export const schema = { blocks: {...}, datasources: {...}, folders: {...} }`). */
 export function isSchemaObject(value: unknown): value is Record<string, Record<string, unknown>> {
   return isRecord(value)
-    && ('blocks' in value || 'datasources' in value || 'folders' in value);
+    && ('blocks' in value || 'datasources' in value || 'folders' in value || 'fieldPlugins' in value);
 }
 
-/** Raw component, datasource, and folder definitions collected from a module's exports. */
+/** Raw component, datasource, folder, and field-plugin definitions collected from a module's exports. */
 export interface CollectedSchemaExports {
   components: Record<string, unknown>[];
   datasources: Record<string, unknown>[];
   folders: Record<string, unknown>[];
+  fieldPlugins: Record<string, unknown>[];
 }
 
 /**
  * Walks a module's exports (directly or via an exported `schema` object) and
- * collects the raw component, datasource, and folder definitions. The
- * definitions are returned verbatim — no shape mapping is applied.
+ * collects the raw component, datasource, folder, and field-plugin definitions.
+ * The definitions are returned verbatim — no shape mapping is applied.
  *
  * De-duplication is by object identity, not by name: a definition commonly
  * appears twice as the SAME reference (exported directly and again inside an
@@ -71,6 +83,7 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
   const components: Record<string, unknown>[] = [];
   const datasources: Record<string, unknown>[] = [];
   const folders: Record<string, unknown>[] = [];
+  const fieldPlugins: Record<string, unknown>[] = [];
   const seen = new Set<unknown>();
 
   function collect(value: unknown) {
@@ -88,6 +101,11 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
       if (seen.has(value)) { return; }
       seen.add(value);
       datasources.push(value);
+    }
+    else if (isFieldPlugin(value)) {
+      if (seen.has(value)) { return; }
+      seen.add(value);
+      fieldPlugins.push(value);
     }
   }
 
@@ -107,7 +125,7 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
     }
   }
 
-  return { components, datasources, folders };
+  return { components, datasources, folders, fieldPlugins };
 }
 
 /**

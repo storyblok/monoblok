@@ -4,18 +4,20 @@ import type { Story } from '../constants';
 import { colorPalette, commands } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { fetchStoriesStream, fetchStoryStream } from '../streams';
 import { requireAuthentication } from '../../../utils/auth';
 import { handleError, toError } from '../../../utils/error/error';
 import { CommandError } from '../../../utils/error/command-error';
-import type { LevelOption, SchemaLike, ValidationGroup, ValidationRunResult } from '../../../utils/validation';
+import type { FormatOption, LevelOption, SchemaLike, ValidationGroup, ValidationRunResult } from '../../../utils/validation';
 import {
   countIssues,
+  formatJson,
   formatPretty,
   loadSchemaEntry,
+  parseFormat,
   parseLevel,
   validateStory,
   writeValidationReport,
@@ -24,7 +26,8 @@ import {
 interface StoriesValidateOptions {
   schema?: string;
   startsWith?: string;
-  level: LevelOption;
+  level: string;
+  format: string;
 }
 
 /** Human-readable heading for a story group, e.g. `app/home (story #123456)`. */
@@ -39,9 +42,10 @@ storiesCommand
   .option('-s, --space <space>', 'space ID')
   .option('--schema <entry-file>', 'Path to the TypeScript schema entry file')
   .option('--starts-with <path>', 'Only validate stories whose path starts with this prefix. Example: --starts-with="/en/blog/"')
-  .option('--level <level>', 'Display threshold: error|warning', parseLevel, 'warning')
+  .option('--level <level>', 'Display threshold: error|warning', 'warning')
+  .option('--format <format>', 'Output format: pretty|json', 'pretty')
   .action(async (options: StoriesValidateOptions, command) => {
-    const { schema: schemaEntry, startsWith, level } = options;
+    const { schema: schemaEntry, startsWith } = options;
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -55,10 +59,22 @@ storiesCommand
       process.exitCode = 2;
     };
 
-    logger.info('Stories validate started', { space, schemaEntry, startsWith, level });
-
     try {
       // 1. Preconditions (fatal — exit 2).
+      let level: LevelOption;
+      let format: FormatOption;
+      try {
+        level = parseLevel(options.level);
+        format = parseFormat(options.format);
+      }
+      catch (maybeError) {
+        failFatal(toError(maybeError).message);
+        return;
+      }
+
+      const isJson = format === 'json';
+      logger.info('Stories validate started', { space, schemaEntry, startsWith, level, format });
+
       if (!requireAuthentication(state, verbose)) {
         reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
         process.exitCode = 2;
@@ -89,9 +105,12 @@ storiesCommand
       let fetchFailures = 0;
       let listFailed = false;
 
-      const progress = ui.createProgressBar({ title: 'Validating Stories...'.padEnd(23) });
+      // The progress bar draws on stdout; skip it for JSON so the document stays pure.
+      const progress = isJson ? undefined : ui.createProgressBar({ title: 'Validating Stories...'.padEnd(23) });
 
-      ui.title(`${commands.STORIES}`, colorPalette.STORIES, 'Validating stories...');
+      if (!isJson) {
+        ui.title(`${commands.STORIES}`, colorPalette.STORIES, 'Validating stories...');
+      }
 
       try {
         await pipeline(
@@ -163,20 +182,18 @@ storiesCommand
       progress?.stop();
       ui.stopAllProgressBars();
 
-      // 4. Build the result and render.
+      // 4. Build the result. The run-level failures travel with it so neither
+      //    formatter can present an incomplete run as a clean one.
       const result: ValidationRunResult = {
         unitNoun: 'stories',
         unitsTotal: totalStories,
         groups,
+        fetchFailures,
+        listFailed,
       };
 
-      ui.log(formatPretty(result, level));
-      if (fetchFailures > 0) {
-        ui.warn(`${fetchFailures} story(s) could not be fetched and were not validated.`);
-      }
-
-      // 5. Report and set the exit code. The report artifact carries the run-level
-      // fetch/list failures so an incomplete run is never recorded as success.
+      // 5. Report. The artifact carries the run-level fetch/list failures so an
+      //    incomplete run is never recorded as success.
       writeValidationReport(reporter, result);
       reporter.addSummary('fetch', {
         total: totalStories,
@@ -191,15 +208,29 @@ storiesCommand
       const { errors, warnings } = countIssues(result);
       logger.info('Stories validate finished', { errors, warnings, stories: totalStories, fetchFailures, listFailed });
 
+      // 6. Render and set the exit code. A failed listing means the run never
+      //    had a population to validate, so it reports as fatal rather than
+      //    printing a clean summary over an incomplete run.
+      if (isJson) {
+        ui.writeMachineOutput(formatJson(result, level));
+      }
+
       if (listFailed) {
+        if (!isJson) {
+          ui.error('Listing stories failed; the space was not fully validated.');
+        }
         process.exitCode = 2;
+        return;
       }
-      else if (errors > 0 || fetchFailures > 0) {
-        process.exitCode = 1;
+
+      if (!isJson) {
+        ui.log(formatPretty(result, level));
+        if (fetchFailures > 0) {
+          ui.warn(`${fetchFailures} story(s) could not be fetched and were not validated.`);
+        }
       }
-      else {
-        process.exitCode = 0;
-      }
+
+      process.exitCode = errors > 0 || fetchFailures > 0 ? 1 : 0;
     }
     finally {
       // Always write the report artifact, including on every fatal early return.

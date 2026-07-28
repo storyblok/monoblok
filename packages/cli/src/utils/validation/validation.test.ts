@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { ValidationIssue } from './adapter';
 import type { ValidationRunResult } from './types';
+import { parseFormat, parseLevel } from './types';
 import { countIssues, filterIssuesByLevel } from './filter';
+import { formatJson } from './format-json';
 import { formatPretty } from './format-pretty';
 import { entityToHeader, groupIssuesByEntity } from './group';
 
@@ -88,5 +90,85 @@ describe('formatPretty', () => {
   it('should report a clean run', () => {
     const clean: ValidationRunResult = { unitNoun: 'entities', unitsTotal: 14, groups: [] };
     expect(formatPretty(clean, 'warning')).toContain('0 errors, 0 warnings across 0 of 14 entities');
+  });
+});
+
+describe('parseLevel / parseFormat', () => {
+  it('should accept the documented values', () => {
+    expect(parseLevel('error')).toBe('error');
+    expect(parseLevel('warning')).toBe('warning');
+    expect(parseFormat('pretty')).toBe('pretty');
+    expect(parseFormat('json')).toBe('json');
+  });
+
+  it('should throw a CommandError so a bad value exits 2, not commander\'s 1', () => {
+    expect(() => parseLevel('bogus')).toThrow(/Invalid --level "bogus"/);
+    expect(() => parseFormat('yaml')).toThrow(/Invalid --format "yaml"/);
+  });
+});
+
+describe('formatJson', () => {
+  const result: ValidationRunResult = {
+    unitNoun: 'entities',
+    unitsTotal: 14,
+    groups: [{ header: 'hero (block)', issues: [error, warning] }],
+  };
+
+  it('should emit parseable JSON with true totals and ok:false on errors', () => {
+    const report = JSON.parse(formatJson(result, 'warning'));
+    expect(report).toMatchObject({
+      ok: false,
+      unit: 'entities',
+      unitsTotal: 14,
+      unitsWithIssues: 1,
+      errors: 1,
+      warnings: 1,
+      fetchFailures: 0,
+      listFailed: false,
+    });
+    expect(report.groups[0].issues).toHaveLength(2);
+  });
+
+  it('should apply the level filter to groups but keep true totals', () => {
+    const report = JSON.parse(formatJson(result, 'error'));
+    expect(report.groups[0].issues.map((issue: ValidationIssue) => issue.code)).toEqual(['unresolved_allow']);
+    expect(report).toMatchObject({ errors: 1, warnings: 1 });
+  });
+
+  it('should drop groups left empty by the level filter', () => {
+    const warningsOnly: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 3,
+      groups: [{ header: 'home (story #1)', issues: [warning] }],
+    };
+    const report = JSON.parse(formatJson(warningsOnly, 'error'));
+    expect(report.groups).toEqual([]);
+    // Warnings alone keep the run ok.
+    expect(report.ok).toBe(true);
+  });
+
+  it('should report ok:false for a clean run that failed to list', () => {
+    const incomplete: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 0,
+      groups: [],
+      listFailed: true,
+    };
+    expect(JSON.parse(formatJson(incomplete, 'warning'))).toMatchObject({ ok: false, listFailed: true });
+  });
+
+  it('should report ok:false for a clean run with unfetched stories', () => {
+    const incomplete: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 5,
+      groups: [],
+      fetchFailures: 2,
+    };
+    expect(JSON.parse(formatJson(incomplete, 'warning'))).toMatchObject({ ok: false, fetchFailures: 2 });
+  });
+
+  it('should report ok:true for a complete clean run', () => {
+    const clean: ValidationRunResult = { unitNoun: 'stories', unitsTotal: 5, groups: [], fetchFailures: 0 };
+    expect(JSON.parse(formatJson(clean, 'warning'))).toMatchObject({ ok: true });
   });
 });

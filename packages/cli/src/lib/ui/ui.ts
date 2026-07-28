@@ -156,6 +156,15 @@ export class UI {
     this.console?.log(message);
   }
 
+  /**
+   * Writes machine-readable output straight to stdout, bypassing the UI enable
+   * gate. Decorative output is suppressed alongside it (see `--format json`), so
+   * stdout stays a single pipeable document even with `--no-ui-enabled`.
+   */
+  writeMachineOutput(payload: string) {
+    process.stdout.write(`${payload}\n`);
+  }
+
   list(items: string[]) {
     for (const item of items) {
       this.console?.log(`  ${item}`);

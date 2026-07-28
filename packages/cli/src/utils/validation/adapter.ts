@@ -35,15 +35,21 @@ export interface LoadedSchema {
 
 /**
  * Loads a TypeScript schema entry file via jiti and returns it in the loose
- * `SchemaLike` shape the validators accept. Blocks and datasources are sourced
- * from the entry file's exports, directly or via an exported `schema` object.
+ * `SchemaLike` shape the validators accept. Blocks, datasources, and field
+ * plugins are sourced from the entry file's exports, directly or via an exported
+ * `schema` object.
+ *
+ * Field plugins must be carried through: `validateSchema` resolves every
+ * `custom` field's `field_type` against them (dropping them reports a spurious
+ * `unresolved_field_plugin`), and `validateStory` runs their `value` validator
+ * against the field's content (dropping them silently skips that check).
  *
  * Throws when the file exports no schema definitions; the jiti import itself
  * throws when the path cannot be resolved. Both are fatal for the caller.
  */
 export async function loadSchemaEntry(entryPath: string): Promise<LoadedSchema> {
   const entryMod = await loadSchemaModule(entryPath);
-  const { components, datasources } = collectSchemaExports(entryMod);
+  const { components, datasources, fieldPlugins } = collectSchemaExports(entryMod);
 
   if (components.length === 0 && datasources.length === 0) {
     throw new CommandError(
@@ -54,6 +60,6 @@ export async function loadSchemaEntry(entryPath: string): Promise<LoadedSchema> 
   // jiti yields untyped module objects; collectSchemaExports's guards confirm
   // each entry is a `define*()` result, which conforms to the loose SchemaLike
   // runtime contract the validators accept.
-  const schema = { blocks: components, datasources } as unknown as SchemaLike;
+  const schema = { blocks: components, datasources, fieldPlugins } as unknown as SchemaLike;
   return { schema, entityCount: components.length + datasources.length };
 }

@@ -19,10 +19,19 @@ vi.mock('jiti', () => ({
   }),
 }));
 
-vi.spyOn(console, 'log');
+vi.spyOn(console, 'error');
+vi.spyOn(console, 'warn');
+vi.spyOn(process.stdout, 'write').mockReturnValue(true);
 
+/** Everything the UI printed for humans (all UI output routes to stderr). */
 function loggedOutput(): string {
-  return (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(call => String(call[0])).join('\n');
+  const spied = (method: typeof console.error) => (method as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+  return [...spied(console.error), ...spied(console.warn)].map(call => String(call[0])).join('\n');
+}
+
+/** Everything written to stdout via `UI.writeMachineOutput()` (i.e. `--format json`). */
+function machineOutput(): string {
+  return (process.stdout.write as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(call => String(call[0])).join('');
 }
 
 async function runValidate(...args: string[]): Promise<void> {
@@ -93,5 +102,60 @@ describe('schema validate command', () => {
 
     expect(process.exitCode).toBe(1);
     expect(loggedOutput()).toContain('1 error, 0 warnings across 1 of 1 entities');
+  });
+
+  // Regression: the loader dropped `fieldPlugins`, so every registered plugin
+  // was reported as unregistered and a valid schema failed CI with exit 1.
+  it('should resolve a custom field against a registered field plugin', async () => {
+    schemaModule = {
+      colorPicker: { fieldType: 'my-color-picker', value: { '~standard': {} } },
+      heroBlock: {
+        name: 'hero',
+        fields: [{ name: 'tint', type: 'custom', field_type: 'my-color-picker' }],
+      },
+    };
+
+    await runValidate();
+
+    expect(process.exitCode).toBe(0);
+    expect(loggedOutput()).not.toContain('unresolved_field_plugin');
+  });
+
+  it('should still report a custom field whose plugin is not registered', async () => {
+    schemaModule = {
+      heroBlock: {
+        name: 'hero',
+        fields: [{ name: 'tint', type: 'custom', field_type: 'my-color-picker' }],
+      },
+    };
+
+    await runValidate();
+
+    expect(process.exitCode).toBe(1);
+    expect(loggedOutput()).toContain('unresolved_field_plugin');
+  });
+
+  it('should emit pure JSON on stdout for --format json', async () => {
+    schemaModule = {
+      heroBlock: { name: 'hero', fields: [{ name: 'body', type: 'bloks', allow: ['gallery'] }] },
+    };
+
+    await runValidate('--format', 'json');
+
+    expect(process.exitCode).toBe(1);
+    const report = JSON.parse(machineOutput());
+    expect(report).toMatchObject({ ok: false, unit: 'entities', errors: 1, unitsTotal: 1 });
+    expect(report.groups[0].issues[0].code).toBe('unresolved_allow');
+  });
+
+  it('should exit 2 for an invalid --level or --format value', async () => {
+    schemaModule = { heroBlock: { name: 'hero', fields: [] } };
+
+    await runValidate('--level', 'bogus');
+    expect(process.exitCode).toBe(2);
+
+    process.exitCode = 0;
+    await runValidate('--format', 'yaml');
+    expect(process.exitCode).toBe(2);
   });
 });

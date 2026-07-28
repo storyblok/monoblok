@@ -124,7 +124,12 @@ export class UI {
       this.br();
     }
 
-    this.console?.error(`${chalk.red.bold('▲ error')} ${message}`, info || '');
+    if (info) {
+      this.console?.error(`${chalk.red.bold('▲ error')} ${message}`, info);
+    }
+    else {
+      this.console?.error(`${chalk.red.bold('▲ error')} ${message}`);
+    }
     if (margin) {
       this.br();
     }
@@ -167,7 +172,7 @@ export class UI {
 
 let uiInstance: UI | null = null;
 
-export function getUI(options: { enabled: boolean } = { enabled: false }) {
+export function getUI(options: { enabled: boolean } = { enabled: true }) {
   if (!uiInstance) {
     uiInstance = new UI(options);
   }

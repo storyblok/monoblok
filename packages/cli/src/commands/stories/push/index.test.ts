@@ -1192,7 +1192,6 @@ describe('stories push command', () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
@@ -1227,7 +1226,6 @@ describe('stories push command', () => {
 
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('No components found. Please run `storyblok components pull` to fetch the latest components.'),
-        expect.anything(),
       );
       expect(actions.createStory).not.toHaveBeenCalled();
       expect(actions.updateStory).not.toHaveBeenCalled();
@@ -1249,15 +1247,12 @@ describe('stories push command', () => {
       expect(actions.updateStory).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Missing component schemas:'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('- page (in stories: story-a)'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('run `storyblok components pull` to sync them locally'),
-        expect.anything(),
       );
       const report = getReport();
       expect(report?.status).toBe('FAILURE');
@@ -1292,7 +1287,6 @@ describe('stories push command', () => {
       expect(actions.updateStory).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('- page.color (in stories: story-a)'),
-        expect.anything(),
       );
       const report = getReport();
       expect(report?.status).toBe('FAILURE');
@@ -1362,7 +1356,6 @@ describe('stories push command', () => {
       expect(actions.createStory).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('- hero.bg_color (in stories: story-a)'),
-        expect.anything(),
       );
     });
 
@@ -1404,7 +1397,6 @@ describe('stories push command', () => {
       expect(actions.createStory).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('- hero.undeclared (in stories: story-a)'),
-        expect.anything(),
       );
     });
 
@@ -1451,7 +1443,6 @@ describe('stories push command', () => {
       expect(actions.updateStory).not.toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('- page.stray (in stories: story-a)'),
-        expect.anything(),
       );
     });
 
@@ -1638,7 +1629,6 @@ describe('stories push command', () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('story-a.json'),
@@ -1682,7 +1672,6 @@ describe('stories push command', () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
@@ -1739,7 +1728,6 @@ describe('stories push command', () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Invalid bloks field: expected an array'),
@@ -1782,7 +1770,6 @@ describe('stories push command', () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
@@ -1816,7 +1803,6 @@ describe('stories push command', () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('The server returned an error'),
@@ -1882,7 +1868,6 @@ describe('stories push command', () => {
       // The grouped report still lists the story exactly once.
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
-        expect.anything(),
       );
     });
   });

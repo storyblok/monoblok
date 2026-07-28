@@ -13,7 +13,7 @@ import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
 import { type CLISpinner, getUI } from '../../lib/ui';
 
-const ui = getUI({ enabled: true });
+const ui = getUI();
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {

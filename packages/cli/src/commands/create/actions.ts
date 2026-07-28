@@ -9,7 +9,7 @@ import { createOctokit } from '../../github';
 import { type Template, templates } from './constants';
 import { getUI } from '../../lib/ui';
 
-const ui = getUI({ enabled: true });
+const ui = getUI();
 
 /** Repository item from GitHub search API response */
 type SearchReposResponse = Awaited<ReturnType<ReturnType<typeof createOctokit>['rest']['search']['repos']>>;

@@ -41,7 +41,7 @@ describe('ui', () => {
     it('should route error() through console.error (stderr)', () => {
       const ui = new UI({ enabled: true });
       ui.error('broken');
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('broken'), '');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('broken'));
       expect(logSpy).not.toHaveBeenCalled();
     });
 

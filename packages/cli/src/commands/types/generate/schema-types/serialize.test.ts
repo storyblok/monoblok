@@ -117,7 +117,7 @@ describe('serializeBlockDefinition', () => {
       .toContain('is_nestable: false;');
   });
 
-  it('keeps section and tab fields, which resolve to never downstream', () => {
+  it('keeps tab fields, which resolve to never downstream', () => {
     const result = serializeBlockDefinition(component({
       schema: { general: { type: 'tab' } },
     }), emptyContext);

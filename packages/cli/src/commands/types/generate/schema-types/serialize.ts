@@ -19,6 +19,14 @@ export interface SerializedBlock {
 }
 
 /**
+ * Narrows a component's wire `schema` to the field-record shape that
+ * `sortSchemaByPos` accepts. Allows graceful handling of malformed schema.
+ */
+function isFieldRecordMap(value: unknown): value is Record<string, Record<string, unknown>> {
+  return isRecord(value);
+}
+
+/**
  * Serializes one `allow` entry: a bare block name, or a folder reference. Any
  * other shape yields `undefined`, which drops the whole `allow` (no narrowing
  * is safer than wrong narrowing).
@@ -91,7 +99,7 @@ export function serializeBlockDefinition(component: Component, context: Serializ
   const folderPath = typeof groupUuid === 'string' ? context.displayPathByUuid.get(groupUuid) : undefined;
   if (folderPath !== undefined) { lines.push(`${INDENT}folder: ${quoteString(folderPath)};`); }
 
-  const schema = isRecord(component.schema) ? component.schema as Record<string, Record<string, unknown>> : {};
+  const schema = isFieldRecordMap(component.schema) ? component.schema : {};
   const fields = sortSchemaByPos(schema).filter(([, data]) => isRecord(data));
 
   const customFieldTypes: string[] = [];

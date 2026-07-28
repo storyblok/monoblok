@@ -1,7 +1,7 @@
 import { relative } from 'pathe';
 
 import { toPascalCase } from '../../../../utils/format';
-import { resolveVarNames } from '../../../schema/utils';
+import { componentFileName, resolveFileNames, resolveVarNames } from '../../../schema/utils';
 import type { FieldPluginsSource } from './field-plugins';
 import type { SerializedBlock } from './serialize';
 
@@ -151,4 +151,43 @@ export function renderSchemaTypes(options: RenderOptions): string {
   lines.push(...renderSurface(names, definitionNames, fieldPlugins.declaration));
 
   return lines.join('\n');
+}
+
+/**
+ * Renders one file per block definition plus the main file holding the shared
+ * surface. Definition literals never reference each other, so the split needs
+ * no cross-imports between block files, only the main file imports them.
+ *
+ * Returns posix relative paths so the caller can join them onto the output
+ * directory; keys are stable across platforms.
+ */
+export function renderSeparateFiles(options: RenderOptions & { filename: string }): Map<string, string> {
+  const componentNames = options.blocks.map(block => block.componentName);
+  const names = buildNames(componentNames, options);
+  const fieldPlugins = renderFieldPlugins(options, names);
+  const fileNames = resolveFileNames(componentNames.map(name => componentFileName(name)));
+
+  const files = new Map<string, string>();
+
+  options.blocks.forEach((block, index) => {
+    const typeName = names.definitionByComponent.get(block.componentName)!;
+    files.set(`blocks/${fileNames[index]}.d.ts`, [
+      ...renderHeader(options.space),
+      `export type ${typeName} = ${block.definitionBody};`,
+      '',
+    ].join('\n'));
+  });
+
+  const definitionNames = componentNames.map(name => names.definitionByComponent.get(name)!);
+  const mainLines = [
+    ...renderHeader(options.space),
+    'import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';',
+    ...fieldPlugins.imports,
+    ...definitionNames.map((typeName, index) => `import type { ${typeName} } from './blocks/${fileNames[index]}';`),
+    '',
+    ...renderSurface(names, definitionNames, fieldPlugins.declaration),
+  ];
+  files.set(`${options.filename}.d.ts`, mainLines.join('\n'));
+
+  return files;
 }

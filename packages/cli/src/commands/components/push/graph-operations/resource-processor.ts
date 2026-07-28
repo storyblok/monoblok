@@ -30,20 +30,23 @@ export async function processAllResources(
   progressBar.setTotal(totalResources);
   const startTime = Date.now();
 
-  for (const level of levels) {
-    if (level.isCyclic) {
-      // Handle circular dependencies with stub creation
-      const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, progressBar);
-      mergeResults(results, cyclicResults);
-    }
-    else {
-      // Handle regular level
-      const levelResults = await processLevel(level.nodes, graph, space, backpressure, progressBar);
-      mergeResults(results, levelResults);
+  try {
+    for (const level of levels) {
+      if (level.isCyclic) {
+        // Handle circular dependencies with stub creation
+        const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, progressBar);
+        mergeResults(results, cyclicResults);
+      }
+      else {
+        // Handle regular level
+        const levelResults = await processLevel(level.nodes, graph, space, backpressure, progressBar);
+        mergeResults(results, levelResults);
+      }
     }
   }
-
-  progressBar.stop();
+  finally {
+    progressBar.stop();
+  }
 
   // Show completion summary
   const elapsedMs = Date.now() - startTime;
@@ -65,10 +68,8 @@ async function processCyclicLevel(
   backpressure: number,
   progressBar: { increment: (count?: number) => void },
 ): Promise<PushResults> {
-  const ui = getUI();
   const logger = getLogger();
-  logger.info(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
-  ui.warn(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
+  logger.warn(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
 
   // STEP 1: Create stub components for any missing components in the cycle
   await createStubComponents(level.nodes, graph, space);
@@ -98,7 +99,6 @@ async function createStubComponents(
     return; // No missing components to create stubs for
   }
 
-  const ui = getUI();
   const logger = getLogger();
   logger.info(`Creating stub components for circular dependencies: ${missingComponents.join(', ')}`);
 
@@ -113,17 +113,15 @@ async function createStubComponents(
         if (result) {
           // Update the node's target data so future references can resolve
           node.updateTargetData(result);
-          ui.ok(`Created stub component: ${node.name}`);
+          logger.info(`Created stub component: ${node.name}`);
         }
       }
       catch (error) {
-        ui.error(`Failed to create stub component ${node.name}:`, error);
+        logger.error(`Failed to create stub component ${node.name}`, { error: error as Error });
         throw error;
       }
     }
   }
-
-  ui.br();
 }
 
 /**

@@ -7,7 +7,7 @@ import { CommandError, handleError, isRegion } from '../../utils';
 import { loginWithToken } from './actions';
 import { session } from '../../session';
 import { performInteractiveLogin } from './helpers';
-import { getUI } from '../../lib/ui';
+import { type CLISpinner, getUI } from '../../lib/ui';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -45,7 +45,7 @@ export const loginCommand = program
     }
 
     if (token) {
-      const spinner = ui.createSpinner(`Logging in with token`);
+      let spinner: CLISpinner | null = null;
       try {
         let userRegion = region;
         if (!userRegion) {
@@ -58,6 +58,7 @@ export const loginCommand = program
             default: regions.EU,
           });
         }
+        spinner = ui.createSpinner(`Logging in with token`);
         const user = await loginWithToken(token, userRegion);
         if (user) {
           updateSession(user.email, token, userRegion);
@@ -69,7 +70,7 @@ export const loginCommand = program
         }
       }
       catch (error) {
-        spinner.failed();
+        spinner?.failed();
         ui.br();
         handleError(error as Error, verbose);
       }

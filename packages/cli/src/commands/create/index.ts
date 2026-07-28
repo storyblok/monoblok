@@ -11,7 +11,7 @@ import chalk from 'chalk';
 import { createSpace, type SpaceCreate, type SpaceCreateQuery } from '../spaces';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import { getUI } from '../../lib/ui';
+import { type CLISpinner, getUI } from '../../lib/ui';
 
 const ui = getUI({ enabled: true });
 
@@ -126,13 +126,14 @@ export const createCommand = program
       }
     }
 
+    let activeSpinner: CLISpinner | null = null;
     try {
-      const spinnerBlueprints = ui.createSpinner('Fetching starter templates...');
+      activeSpinner = ui.createSpinner('Fetching starter templates...');
       const templates = await fetchBlueprintRepositories();
-      spinnerBlueprints.succeed('Starter templates fetched successfully');
+      activeSpinner.succeed('Starter templates fetched successfully');
 
       if (templates.length === 0) {
-        spinnerBlueprints.failed();
+        activeSpinner.failed();
         ui.warn('No starter templates found. Please contact support@storyblok.com');
         ui.br();
         return;
@@ -273,7 +274,7 @@ export const createCommand = program
           return;
         }
 
-        const spinnerSpace = ui.createSpinner(`Creating space "${toHumanReadable(projectName)}"`);
+        activeSpinner = ui.createSpinner(`Creating space "${toHumanReadable(projectName)}"`);
 
         // Find the selected blueprint from the dynamic blueprints array
         const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
@@ -291,7 +292,7 @@ export const createCommand = program
           createSpaceQuery.assign_partner = true;
         }
         createdSpace = await createSpace(spaceToCreate, createSpaceQuery);
-        spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
+        activeSpinner.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
@@ -326,6 +327,7 @@ export const createCommand = program
         }
       }
       catch (error) {
+        activeSpinner?.failed();
         ui.br();
         handleError(error as Error, verbose);
         return;
@@ -334,6 +336,7 @@ export const createCommand = program
       // showNextSteps is already called in each relevant branch above; do not call it again here.
     }
     catch (error) {
+      activeSpinner?.failed();
       ui.br();
       handleError(error as Error, verbose);
     }

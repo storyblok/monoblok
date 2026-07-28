@@ -5,7 +5,7 @@ import { colorPalette, regionNames, regions } from '../../constants';
 import { handleError } from '../../utils';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import { session } from '../../session';
-import { getUI } from '../../lib/ui';
+import { type CLISpinner, getUI } from '../../lib/ui';
 
 /**
  * Performs interactive login flow with email/password or token
@@ -22,10 +22,9 @@ export async function performInteractiveLogin(options?: {
 }): Promise<{ token: string; region: RegionCode } | null> {
   const { verbose = false, preSelectedRegion, showWelcomeMessage = true } = options || {};
   const ui = getUI();
-  const spinner = ui.createSpinner('Preparing login...');
+  let activeSpinner: CLISpinner | null = null;
 
   try {
-    spinner.succeed();
     const strategy = await select({
       message: 'How would you like to login?',
       choices: [
@@ -68,9 +67,9 @@ export async function performInteractiveLogin(options?: {
         default: regions.EU,
       });
 
-      const loginSpinner = ui.createSpinner(`Logging in with token`);
+      activeSpinner = ui.createSpinner(`Logging in with token`);
       const user = await loginWithToken(userToken, userRegion);
-      loginSpinner.succeed();
+      activeSpinner.succeed();
 
       if (user) {
         const { updateSession, persistCredentials } = session();
@@ -104,9 +103,9 @@ export async function performInteractiveLogin(options?: {
         default: regions.EU,
       });
 
-      const loginSpinner = ui.createSpinner(`Logging in with email`);
+      activeSpinner = ui.createSpinner(`Logging in with email`);
       const response = await loginWithEmailAndPassword(userEmail, userPassword, userRegion);
-      loginSpinner.succeed();
+      activeSpinner.succeed();
 
       if (response?.otp_required) {
         const otp = await input({
@@ -137,6 +136,7 @@ export async function performInteractiveLogin(options?: {
     return null;
   }
   catch (error) {
+    activeSpinner?.failed();
     ui.br();
     handleError(error as Error, verbose);
     return null;

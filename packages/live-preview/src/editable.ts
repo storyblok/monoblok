@@ -3,8 +3,13 @@ interface EditableOptions {
   uid: string;
 }
 
-export default function storyblokEditable(block?: { _editable?: string }) {
-  const editable = block?._editable;
+export default function storyblokEditable(block?: unknown) {
+  if (typeof block !== 'object' || block === null) {
+    return {};
+  }
+
+  const editable = (block as Record<string, unknown>)._editable;
+
   if (typeof editable !== 'string' || !editable) {
     return {};
   }

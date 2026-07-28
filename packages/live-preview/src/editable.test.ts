@@ -45,4 +45,24 @@ describe('storyblokEditable', () => {
 
     expect(storyblokEditable(block)).toEqual({});
   });
+
+  it('accepts a blok type that does not declare _editable', () => {
+    // A user-defined blok interface typically has component and _uid but no _editable.
+    // The previous parameter type `{ _editable?: string }` is a weak type (all props
+    // optional). TypeScript's weak-type check (ts(2559)) rejects any argument whose
+    // type shares zero property names with the parameter type — exactly the case here.
+    // Widening the parameter to `unknown` removes the constraint entirely.
+    interface FeatureBlok {
+      headline?: string;
+      component: 'feature';
+      _uid: string;
+    }
+
+    const blok: FeatureBlok = { component: 'feature', _uid: 'test-uid' };
+
+    // Must compile without @ts-expect-error.
+    const result = storyblokEditable(blok);
+
+    expect(result).toEqual({});
+  });
 });

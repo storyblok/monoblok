@@ -1,7 +1,8 @@
 import type { Command } from "commander";
 import { join } from "pathe";
 import { colorPalette, commands } from "../../../constants";
-import { CommandError, FileSystemError, handleError } from "../../../utils";
+import { CommandError, FileSystemError, handleError, toError } from "../../../utils";
+import { resolvePath } from "../../../utils/filesystem";
 import { type ComponentsData, readComponentsFiles } from "../../components/push/actions";
 import type { GenerateTypesOptions } from "./constants";
 import { typesCommand } from "../command";
@@ -57,7 +58,7 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
       }
 
       spinner = ui.createSpinner("Generating types...");
-      const outputDir = join(path ?? ".storyblok", "types", space);
+      const outputDir = resolvePath(path, join("types", space));
       const result = await generateSchemaTypes({
         space,
         cwd: process.cwd(),
@@ -68,7 +69,7 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
         typeSuffix: options.typeSuffix,
         fieldPluginsPath: options.fieldPlugins,
       });
-      spinner.succeed();
+      spinner.succeed("Generated types");
 
       result.files.forEach((file) => ui.ok(file));
       if (result.unmappedFieldTypes.length > 0) {
@@ -85,7 +86,7 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
     } catch (error) {
       spinner?.failed(`Failed to generate types for space ${space}`);
       ui.br();
-      handleError(error as Error, verbose);
+      handleError(toError(error), verbose);
     }
     return;
   }
@@ -94,6 +95,9 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
     "`types generate` without --future-schema is deprecated. The legacy generator does not follow " +
       "field `required` flags, block whitelists, or nestable/root distinctions. Re-run with --future-schema.",
   );
+  if (options.fieldPlugins !== undefined) {
+    ui.warn("--field-plugins is ignored without --future-schema.");
+  }
   ui.title(`${commands.TYPES}`, colorPalette.TYPES, "Generating types...");
 
   if (!space) {

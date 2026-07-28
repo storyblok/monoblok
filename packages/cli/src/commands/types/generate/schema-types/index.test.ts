@@ -31,7 +31,7 @@ vi.mock('../../../schema/actions', () => ({
 }));
 
 const written = new Map<string, string>();
-vi.mock('../../../../utils', async (importOriginal) => {
+vi.mock('../../../../utils/filesystem', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,

@@ -8,7 +8,7 @@ import chalk from 'chalk';
 import type { DeleteDatasourceOptions } from './constants';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
-import { getUI } from '../../../lib/ui';
+import { getUI, stderrPromptContext } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 // Register the delete command under datasources
 // Usage: storyblok datasources delete <name> --space <SPACE_ID> [--id <ID>]
@@ -83,7 +83,7 @@ deleteCmd
           const confirmed = await confirm({
             message: `⚠️ ${chalk.yellow(` Are you sure you want to delete the ${datasource.name} datasource from space ${space}? This action cannot be undone.`)} `,
             default: false,
-          });
+          }, stderrPromptContext);
           if (!confirmed) {
             ui.warn('Deletion aborted by user.');
             return;

@@ -23,10 +23,20 @@
 | User-facing text, titles, warnings, blank lines | `const ui = getUI()` |
 | Progress spinners | `ui.createSpinner()` |
 | Progress bars | `ui.createProgressBar()` |
+| Interactive prompts | `await select({...}, stderrPromptContext)` |
 | Operational diagnostics | `const logger = getLogger()` |
 | Command errors | `handleError(new CommandError(...), verbose)` |
 
 All UI output routes to stderr. Do not add `console.*` or raw `Spinner` calls in command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics. Error handling uses `handleError()` which sets `process.exitCode` (1 for runtime errors, 2 for `CommandError`).
+
+Every `@inquirer/prompts` call (`select`, `confirm`, `input`, `password`) must pass `stderrPromptContext` (from `src/lib/ui/`) as the second argument so prompt rendering goes to stderr, not stdout:
+
+```ts
+import { select } from '@inquirer/prompts';
+import { stderrPromptContext } from '../../lib/ui';
+
+const region = await select({ message: 'Select region:', choices }, stderrPromptContext);
+```
 
 ## Tests
 

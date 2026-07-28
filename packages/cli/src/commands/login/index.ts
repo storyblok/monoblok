@@ -7,7 +7,7 @@ import { CommandError, handleError, isRegion } from '../../utils';
 import { loginWithToken } from './actions';
 import { session } from '../../session';
 import { performInteractiveLogin } from './helpers';
-import { type CLISpinner, getUI } from '../../lib/ui';
+import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -56,7 +56,7 @@ export const loginCommand = program
               value: region,
             })),
             default: regions.EU,
-          });
+          }, stderrPromptContext);
         }
         spinner = ui.createSpinner(`Logging in with token`);
         const user = await loginWithToken(token, userRegion);

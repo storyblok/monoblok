@@ -21,7 +21,6 @@ export function requireAuthentication(state: SessionState, verbose = false): sta
       new CommandError(`You are currently not logged in. Please run ${chalk.hex(colorPalette.PRIMARY)('storyblok login')} to authenticate, or ${chalk.hex(colorPalette.PRIMARY)('storyblok signup')} to sign up.`),
       verbose,
     );
-    process.exitCode = 2;
     return false;
   }
   return true;

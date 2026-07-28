@@ -5,7 +5,7 @@ import { colorPalette, regionNames, regions } from '../../constants';
 import { handleError } from '../../utils';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import { session } from '../../session';
-import { type CLISpinner, getUI } from '../../lib/ui';
+import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
 
 /**
  * Performs interactive login flow with email/password or token
@@ -39,7 +39,7 @@ export async function performInteractiveLogin(options?: {
           short: 'Token',
         },
       ],
-    });
+    }, stderrPromptContext);
 
     let userToken: string;
     let userRegion: RegionCode;
@@ -56,7 +56,7 @@ export async function performInteractiveLogin(options?: {
         validate: (value: string) => {
           return value.length > 0;
         },
-      });
+      }, stderrPromptContext);
 
       userRegion = preSelectedRegion || await select({
         message: 'Please select the region you would like to work in:',
@@ -65,7 +65,7 @@ export async function performInteractiveLogin(options?: {
           value: region,
         })),
         default: regions.EU,
-      });
+      }, stderrPromptContext);
 
       activeSpinner = ui.createSpinner(`Logging in with token`);
       const user = await loginWithToken(userToken, userRegion);
@@ -89,10 +89,10 @@ export async function performInteractiveLogin(options?: {
           const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
           return emailRegex.test(value);
         },
-      });
+      }, stderrPromptContext);
       const userPassword = await password({
         message: 'Please enter your password:',
-      });
+      }, stderrPromptContext);
 
       userRegion = preSelectedRegion || await select({
         message: 'Please select the region you would like to work in:',
@@ -101,7 +101,7 @@ export async function performInteractiveLogin(options?: {
           value: region,
         })),
         default: regions.EU,
-      });
+      }, stderrPromptContext);
 
       activeSpinner = ui.createSpinner(`Logging in with email`);
       const response = await loginWithEmailAndPassword(userEmail, userPassword, userRegion);
@@ -111,7 +111,7 @@ export async function performInteractiveLogin(options?: {
         const otp = await input({
           message: 'Add the code from your Authenticator app, or the one we sent to your e-mail / phone:',
           required: true,
-        });
+        }, stderrPromptContext);
 
         const otpResponse = await loginWithOtp(userEmail, userPassword, otp, userRegion);
         if (otpResponse?.access_token) {

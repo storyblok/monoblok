@@ -99,7 +99,7 @@ export function handleError(error: Error | FetchError, verbose = false, context?
   }
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 
-  if (!process.exitCode || process.exitCode === 0) {
+  if (!process.exitCode) {
     process.exitCode = error instanceof CommandError ? 2 : 1;
   }
 }

@@ -170,6 +170,9 @@ export class UI {
   }
 }
 
+/** Pass as the 2nd argument to all @inquirer/prompts calls so prompts render on stderr. */
+export const stderrPromptContext = { output: process.stderr } as const;
+
 let uiInstance: UI | null = null;
 
 export function getUI(options: { enabled: boolean } = { enabled: true }) {

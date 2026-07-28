@@ -57,7 +57,7 @@ describe('loginCommand', () => {
 
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
         message: 'How would you like to login?',
-      }));
+      }), expect.anything());
     });
 
     describe('login-with-email strategy', () => {
@@ -76,15 +76,15 @@ describe('loginCommand', () => {
 
         expect(input).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your email address:',
-        }));
+        }), expect.anything());
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your password:',
-        }));
+        }), expect.anything());
 
         expect(select).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please select the region you would like to work in:',
-        }));
+        }), expect.anything());
       });
 
       it('should login with email and password if provided using login-with-email strategy', async () => {
@@ -137,7 +137,7 @@ describe('loginCommand', () => {
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your Personal Access Token:',
-        }));
+        }), expect.anything());
       });
 
       it('should login with token if token is provided using login-with-token strategy', async () => {
@@ -150,7 +150,7 @@ describe('loginCommand', () => {
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your Personal Access Token:',
-        }));
+        }), expect.anything());
         // Verify that loginWithToken was called with the correct arguments
         expect(loginWithToken).toHaveBeenCalledWith('test-token', 'eu');
 

@@ -11,7 +11,7 @@ import chalk from 'chalk';
 import { createSpace, type SpaceCreate, type SpaceCreateQuery } from '../spaces';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import { type CLISpinner, getUI } from '../../lib/ui';
+import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
 
 const ui = getUI();
 
@@ -31,7 +31,7 @@ async function promptForLogin(verbose: boolean): Promise<{ token: string; region
     const shouldLogin = await confirm({
       message: 'Would you like to login now?',
       default: true,
-    });
+    }, stderrPromptContext);
 
     if (!shouldLogin) {
       ui.warn('Login cancelled. You can login later using the "storyblok login" command.');
@@ -161,7 +161,7 @@ export const createCommand = program
             name: template.name,
             value: template.value,
           })),
-        });
+        }, stderrPromptContext);
       }
 
       // Get project path and extract name
@@ -181,7 +181,7 @@ export const createCommand = program
             }
             return true;
           },
-        });
+        }, stderrPromptContext);
       }
 
       // Parse the path to get directory and project name
@@ -263,7 +263,7 @@ export const createCommand = program
           whereToCreateSpace = await select({
             message: `Where would you like to create this space?`,
             choices,
-          });
+          }, stderrPromptContext);
         }
         if (region !== regions.EU && userData.has_org) {
           whereToCreateSpace = 'org';

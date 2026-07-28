@@ -1,2 +1,2 @@
-export { getUI, UI } from './ui';
+export { getUI, stderrPromptContext, UI } from './ui';
 export type { CLISpinner } from './ui';

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { join } from 'pathe';
-import { getPackageJson, handleError } from './utils';
+import { CommandError, getPackageJson, handleError } from './utils';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
 import { getLogger, setLoggerTransports } from './lib/logger/logger';
@@ -172,7 +172,7 @@ export function getProgram(): Command {
 
     // Global error handling
     programInstance.configureOutput({
-      writeErr: str => handleError(new Error(str)),
+      writeErr: str => handleError(new CommandError(str.replace(/^error:\s*/i, '').trim())),
     });
   }
 

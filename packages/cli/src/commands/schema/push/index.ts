@@ -5,7 +5,7 @@ import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
-import { getUI } from '../../../lib/ui';
+import { getUI, stderrPromptContext } from '../../../lib/ui';
 import { session } from '../../../session';
 import { resolvePath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
@@ -110,7 +110,7 @@ schemaCommand
             const shouldGenerate = explicitMigrations || await confirm({
               message: 'Generate migration files for breaking changes?',
               default: true,
-            });
+            }, stderrPromptContext);
 
             if (shouldGenerate) {
               const migrationTimestamp = new Date().toISOString();
@@ -137,7 +137,7 @@ schemaCommand
                   const renameConfirmed = await confirm({
                     message: 'Are these renames correct?',
                     default: true,
-                  });
+                  }, stderrPromptContext);
                   if (!renameConfirmed) {
                     // Convert renames to separate removals
                     comp.changes = comp.changes.map((c) => {

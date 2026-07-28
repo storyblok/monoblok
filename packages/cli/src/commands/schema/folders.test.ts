@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComponentFolder } from "../../types";
-import { buildGroupPathByUuid, expandFolderPath, slugifyPath } from "./folders";
+import {
+  buildGroupDisplayPathByUuid,
+  buildGroupPathByUuid,
+  expandFolderPath,
+  slugifyPath,
+} from "./folders";
 
 function folder(
   partial: Partial<ComponentFolder> & { name: string; uuid: string },
@@ -94,5 +99,37 @@ describe("expandFolderPath", () => {
       { name: "Layout", path: "layout", parentPath: null },
       { name: "Heros", path: "layout/heros", parentPath: "layout" },
     ]);
+  });
+});
+
+describe("buildGroupDisplayPathByUuid", () => {
+  it("joins parent display names with slashes, preserving original casing", () => {
+    const folders = [
+      { uuid: "a", name: "My Layout", parent_uuid: null },
+      { uuid: "b", name: "Heros", parent_uuid: "a" },
+    ];
+
+    const result = buildGroupDisplayPathByUuid(folders as never);
+
+    expect(result.get("a")).toBe("My Layout");
+    expect(result.get("b")).toBe("My Layout/Heros");
+  });
+
+  it("treats a cyclic parent chain as a root instead of recursing forever", () => {
+    const folders = [
+      { uuid: "a", name: "A", parent_uuid: "b" },
+      { uuid: "b", name: "B", parent_uuid: "a" },
+    ];
+
+    const result = buildGroupDisplayPathByUuid(folders as never);
+
+    expect(result.get("a")).toBeDefined();
+    expect(result.get("b")).toBeDefined();
+  });
+
+  it("ignores a parent uuid that is not in the folder list", () => {
+    const folders = [{ uuid: "a", name: "Orphan", parent_uuid: "missing" }];
+
+    expect(buildGroupDisplayPathByUuid(folders as never).get("a")).toBe("Orphan");
   });
 });

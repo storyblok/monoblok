@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildNames, renderSchemaTypes, toRelativeImport } from './render';
+import { buildNames, renderSchemaTypes, renderSeparateFiles, toRelativeImport } from './render';
 
 const heroBlock = {
   componentName: 'hero',
@@ -120,5 +120,59 @@ describe('toRelativeImport', () => {
 
   it('prefixes a sibling path with ./', () => {
     expect(toRelativeImport('/p/types', '/p/types/plugins.ts')).toBe('./plugins');
+  });
+});
+
+describe('renderSeparateFiles', () => {
+  it('writes one definition per block file and imports them in the main file', () => {
+    const files = renderSeparateFiles({
+      blocks: [heroBlock, teaserListBlock],
+      fieldPlugins: { kind: 'none' },
+      space: '295018',
+      filename: 'storyblok-schema',
+    });
+
+    expect([...files.keys()].sort()).toEqual([
+      'blocks/hero.d.ts',
+      'blocks/teaser-list.d.ts',
+      'storyblok-schema.d.ts',
+    ]);
+
+    expect(files.get('blocks/hero.d.ts')).toContain('export type HeroBlockDefinition = {');
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { HeroBlockDefinition } from \'./blocks/hero\';');
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { TeaserListBlockDefinition } from \'./blocks/teaser-list\';');
+    expect(files.get('storyblok-schema.d.ts')).toContain('export type Blocks = HeroBlockDefinition | TeaserListBlockDefinition;');
+    expect(files.get('storyblok-schema.d.ts')).not.toContain('export type HeroBlockDefinition = {');
+  });
+
+  it('disambiguates block file names that collide after kebab-casing', () => {
+    const files = renderSeparateFiles({
+      blocks: [
+        { componentName: 'teaser-list', definitionBody: '{}', customFieldTypes: [] },
+        { componentName: 'teaser_list', definitionBody: '{}', customFieldTypes: [] },
+      ],
+      fieldPlugins: { kind: 'none' },
+      space: '295018',
+      filename: 'storyblok-schema',
+    });
+
+    expect([...files.keys()].sort()).toEqual([
+      'blocks/teaser-list-2.d.ts',
+      'blocks/teaser-list.d.ts',
+      'storyblok-schema.d.ts',
+    ]);
+  });
+
+  it('carries the field-plugins import into the main file only', () => {
+    const files = renderSeparateFiles({
+      blocks: [heroBlock],
+      fieldPlugins: { kind: 'record', modulePath: '/abs/plugins.ts', fieldTypes: ['x'] },
+      fieldPluginsImportPath: './plugins',
+      space: '295018',
+      filename: 'storyblok-schema',
+    });
+
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { fieldPlugins as userFieldPlugins } from \'./plugins\';');
+    expect(files.get('blocks/hero.d.ts')).not.toContain('userFieldPlugins');
   });
 });

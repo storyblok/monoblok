@@ -91,6 +91,7 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
     return;
   }
 
+  ui.title(`${commands.TYPES}`, colorPalette.TYPES, "Generating types...");
   ui.warn(
     "`types generate` without --future-schema is deprecated. The legacy generator does not follow " +
       "field `required` flags, block whitelists, or nestable/root distinctions. Re-run with --future-schema.",
@@ -98,7 +99,6 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
   if (options.fieldPlugins !== undefined) {
     ui.warn("--field-plugins is ignored without --future-schema.");
   }
-  ui.title(`${commands.TYPES}`, colorPalette.TYPES, "Generating types...");
 
   if (!space) {
     handleError(

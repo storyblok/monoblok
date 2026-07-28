@@ -55,6 +55,8 @@ export function buildNames(componentNames: string[], options: NameOptions): Emit
     anyBlock: decorate('AnyBlock', options),
     story: decorate('Story', options),
     storyMapi: decorate('StoryMapi', options),
+    // Assumes component names are unique, which MAPI enforces per space, so two
+    // components can never collapse into the same map entry here.
     definitionByComponent: new Map(componentNames.map((name, i) => [name, decorate(bases[i], options)])),
   };
 }
@@ -137,8 +139,8 @@ function renderSurface(names: EmittedNames, definitionNames: string[], fieldPlug
     '',
     `export type ${names.anyBlock} = BlockContent<${names.blocks}, ${names.blocks}, ${names.fieldPlugins}>;`,
     '',
-    `export type ${names.story} = InferStory<${names.blocks}>;`,
-    `export type ${names.storyMapi} = InferStoryMapi<${names.blocks}>;`,
+    `export type ${names.story} = InferStory<${names.blocks}, ${names.fieldPlugins}>;`,
+    `export type ${names.storyMapi} = InferStoryMapi<${names.blocks}, ${names.fieldPlugins}>;`,
     '',
   ];
 }

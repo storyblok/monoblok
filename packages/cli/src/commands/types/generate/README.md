@@ -71,7 +71,7 @@ after generation, listing every unmapped `field_type`.
 
 ### Supported options
 
-`--future-schema` honours `--space`, `--filename`, `--separate-files`, `--type-prefix`,
+`--future-schema` honours `--space`, `--path`, `--filename`, `--separate-files`, `--type-prefix`,
 `--type-suffix`, and `--field-plugins`. Prefix and suffix apply to every exported type name, not
 just block names, so `--type-prefix Sb` turns `Block` into `SbBlock`, `Schema` into `SbSchema`, and
 so on, along with every reference to those names inside the file.

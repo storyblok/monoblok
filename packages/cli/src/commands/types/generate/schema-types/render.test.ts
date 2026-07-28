@@ -63,8 +63,8 @@ describe('renderSchemaTypes', () => {
     expect(output).toContain('export type Schema = { blocks: Blocks; fieldPlugins: FieldPlugins };');
     expect(output).toContain('export type Block<TName extends Blocks[\'name\']> = BlockContent<Extract<Blocks, { name: TName }>, Blocks, FieldPlugins>;');
     expect(output).toContain('export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;');
-    expect(output).toContain('export type Story = InferStory<Blocks>;');
-    expect(output).toContain('export type StoryMapi = InferStoryMapi<Blocks>;');
+    expect(output).toContain('export type Story = InferStory<Blocks, FieldPlugins>;');
+    expect(output).toContain('export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;');
   });
 
   it('renames internal references consistently with prefixed declarations', () => {

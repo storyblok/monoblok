@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getEmojiText, getStaticChildren, type SbRichTextNode } from '@storyblok/richtext';
+  import { getStaticChildren, type SbRichTextNode } from '@storyblok/richtext';
   import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import RenderChildren from './RenderChildren.svelte';
@@ -47,7 +47,7 @@
 {:else if node.type === 'table'}
   <RenderTable {node} {options} />
 {:else if node.type === 'emoji'}
-  <ElementTag {node}>{getEmojiText(node)}</ElementTag>
+  <ElementTag {node}>{node.attrs.emoji}</ElementTag>
 {:else if getStaticChildren(node)}
   <RenderStaticChildren {node} {options} />
 {:else}

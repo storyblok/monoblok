@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
-import { FileSystemError, handleError } from '../../../utils';
+import { CommandError, FileSystemError, handleError } from '../../../utils';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
 import { typesCommand } from '../command';
@@ -31,6 +31,11 @@ generateCmd
     ui.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
 
     const { space, path, verbose, suffix, filename, separateFiles } = command.optsWithGlobals();
+
+    if (!space) {
+      handleError(new CommandError('Please provide the space as argument --space SPACE_ID.'), verbose);
+      return;
+    }
 
     const spinner = ui.createSpinner(`Generating types...`);
 

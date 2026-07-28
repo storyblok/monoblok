@@ -39,7 +39,7 @@ export function getProgram(): Command {
     programInstance
       .name(packageJson.name)
       .description(packageJson.description || '')
-      .version(packageJson.version, '-v, --vers', 'Output the current version')
+      .version(packageJson.version, '-v, --version', 'Output the current version')
       .helpOption('-h, --help', 'Display help for command');
 
     // Register all global config options

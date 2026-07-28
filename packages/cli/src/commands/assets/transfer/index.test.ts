@@ -176,13 +176,13 @@ describe('assets transfer command', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it('should surface a friendly error and exit 2 when enumeration fails for --all', async () => {
+  it('should surface a friendly error and exit 1 when enumeration fails for --all', async () => {
     preconditions.failsToListAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
   });
 
   it('should enumerate but not transfer in --all --dry-run mode', async () => {

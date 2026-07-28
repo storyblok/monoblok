@@ -109,12 +109,10 @@ pushCmd
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
-      process.exitCode = 2;
       return;
     }
     if (!targetSpace) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -135,17 +133,14 @@ pushCmd
         // A single asset has exactly one destination; `auto` would silently
         // fall back to space-only, so require an explicit target instead.
         handleError(new CommandError('Pushing a single asset requires --target=space or --target=shared, not --target=auto.'), verbose);
-        process.exitCode = 2;
         return;
       }
       if (target === 'shared' && !libraryId) {
         handleError(new CommandError('Pushing a single asset to a library requires --library YOUR_LIBRARY_ID.'), verbose);
-        process.exitCode = 2;
         return;
       }
       if (target === 'space' && libraryId) {
         handleError(new CommandError('--library cannot be combined with --target=space.'), verbose);
-        process.exitCode = 2;
         return;
       }
     }
@@ -179,7 +174,6 @@ pushCmd
     }
     catch (maybeError) {
       handleError(toError(maybeError), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -422,6 +416,8 @@ pushCmd
         }
         return total + entry.failed;
       }, 0);
-      process.exitCode = fatalError ? 2 : failedTotal > 0 ? 1 : 0;
+      if (!fatalError) {
+        process.exitCode = failedTotal > 0 ? 1 : 0;
+      }
     }
   });

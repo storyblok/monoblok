@@ -36,19 +36,16 @@ transferCmd
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
-      process.exitCode = 2;
       return;
     }
     if (!space) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
     const folderId = Number(options.folderId);
     if (!options.folderId || !Number.isFinite(folderId) || folderId <= 0) {
       handleError(new CommandError(`Please provide a destination folder with --folder-id YOUR_FOLDER_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -57,7 +54,6 @@ transferCmd
     // with each other and with naming explicit asset IDs.
     if (options.all && options.query) {
       handleError(new CommandError(`Cannot combine --all with --query. Use --all to transfer every asset, or --query to transfer a filtered subset.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -65,7 +61,6 @@ transferCmd
 
     if (bulk && assetIds.length > 0) {
       handleError(new CommandError(`Cannot combine explicit asset IDs with --all or --query.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -78,7 +73,6 @@ transferCmd
       }
       catch (maybeError) {
         handleError(toError(maybeError), verbose);
-        process.exitCode = 2;
         return;
       }
       logger.info('Enumerated space assets', { count: ids.length });
@@ -95,7 +89,6 @@ transferCmd
       ids = assetIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
       if (ids.length === 0) {
         handleError(new CommandError(`Please provide at least one valid asset ID, or use --all.`), verbose);
-        process.exitCode = 2;
         return;
       }
     }

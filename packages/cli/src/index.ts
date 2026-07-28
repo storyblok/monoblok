@@ -37,8 +37,8 @@ console.error('');
 program.on('command:*', () => {
   console.error(`Invalid command: ${program.args.join(' ')}`);
   console.error('');
-  program.outputHelp();
-  process.exit(1);
+  program.outputHelp({ error: true });
+  process.exit(2);
 });
 
 try {

@@ -46,6 +46,7 @@ export async function processAllResources(
   }
   finally {
     progressBar.stop();
+    ui.stopAllProgressBars();
   }
 
   // Show completion summary

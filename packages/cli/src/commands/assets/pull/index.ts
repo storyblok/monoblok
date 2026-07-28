@@ -76,12 +76,10 @@ pullCmd
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
-      process.exitCode = 2;
       return;
     }
     if (!space) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -379,6 +377,8 @@ pullCmd
         + summary.fetchAssetPages.failed
         + summary.fetchAssets.failed
         + summary.save.failed;
-      process.exitCode = fatalError ? 2 : failedTotal > 0 ? 1 : 0;
+      if (!fatalError) {
+        process.exitCode = failedTotal > 0 ? 1 : 0;
+      }
     }
   });

@@ -932,7 +932,7 @@ describe('assets push command', () => {
     expect(actions.updateAsset).not.toHaveBeenCalled();
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Unexpected token');
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when writing to the manifest fails', async () => {
@@ -1780,7 +1780,7 @@ describe('assets push command', () => {
       await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '8']);
 
       expect(actions.createSharedAsset).not.toHaveBeenCalled();
-      expect(process.exitCode).toBe(2);
+      expect(process.exitCode).toBe(1);
       expect(getLogFileContents(LOG_PREFIX)).toMatch(/Locked/);
     });
 

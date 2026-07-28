@@ -2,7 +2,9 @@
  * Component payloads shared by the fixture-drift test and the type-level test.
  * Chosen to cover every type-level rule the design depends on: a required
  * field, a whitelisted `bloks` field, a self-referencing `bloks` field, a
- * root/non-nestable block, and a `tab` field.
+ * root/non-nestable block, a `tab` field, and a `custom` field (`page.accent`)
+ * whose `field_type` matches the plugin registered in `__fixtures__/plugins.ts`,
+ * so both the plugins-off (fallback) and plugins-on (typed) renders exercise it.
  */
 export const FIXTURE_COMPONENTS = [
   {
@@ -35,6 +37,9 @@ export const FIXTURE_COMPONENTS = [
     updated_at: '',
     is_root: true,
     is_nestable: false,
-    schema: { body: { type: 'bloks', pos: 0 } },
+    schema: {
+      body: { type: 'bloks', pos: 0 },
+      accent: { type: 'custom', field_type: 'colorpicker', pos: 1 },
+    },
   },
 ];

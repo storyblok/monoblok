@@ -14,13 +14,16 @@ const LEGACY_ONLY_FLAGS: ReadonlyArray<readonly [keyof GenerateTypesOptions, str
   ['strict', '--strict'],
   ['customFieldsParser', '--custom-fields-parser'],
   ['compilerOptions', '--compiler-options'],
+  ['suffix', '--suffix'],
 ];
 
 /**
  * Rejects flags that cannot mean anything under `--future-schema`: optionality
  * now comes from each field's `required`, custom fields resolve through
- * `defineFieldPlugin`, and there is no `json-schema-to-typescript` to configure.
- * Failing loudly beats silently ignoring a flag the user believes is applied.
+ * `defineFieldPlugin`, there is no `json-schema-to-typescript` to configure,
+ * and `--suffix` only selects pulled component files, which this generator
+ * never reads. Failing loudly beats silently ignoring a flag the user
+ * believes is applied.
  */
 export function assertNoLegacyFlags(options: GenerateTypesOptions): void {
   const used = LEGACY_ONLY_FLAGS

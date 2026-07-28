@@ -1,6 +1,8 @@
+import type { Block as SchemaBlock } from '@storyblok/schema';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { AnyBlock, Block, Blocks, Schema } from './__fixtures__/expected-types';
+import type { Block as PluginBlock, Story as PluginStory } from './__fixtures__/expected-types-with-plugins';
 
 /**
  * Asserts the *behaviour* of the generated types, not their text. This is the
@@ -48,10 +50,35 @@ describe('generated types', () => {
     expectTypeOf<Schema>().toMatchObjectType<{ blocks: Blocks }>();
   });
 
+  it('emits Blocks that satisfy withTypes\'s StoryblokTypesConfig constraint', () => {
+    // `createApiClient(...).withTypes<T>()` accepts `{ components: Block } | { blocks: Block }`
+    // (`packages/capi-client/src/client.ts`), so the emitted union must extend `Block`.
+    expectTypeOf<Blocks>().toExtend<SchemaBlock>();
+  });
+
   it('accepts any block through AnyBlock', () => {
     // The discriminant must be the full union of component names, not a
     // single block's, so this fails if `AnyBlock` is ever wrongly narrowed to
     // one block (a plain `toHaveProperty('component')` would not catch that).
     expectTypeOf<AnyBlock['component']>().toEqualTypeOf<'hero' | 'grid' | 'page'>();
+  });
+});
+
+/**
+ * Renders `__fixtures__/components.ts` again with `__fixtures__/plugins.ts`
+ * registered (see `fixture-drift.test.ts`, "matches what the renderer
+ * produces with field plugins registered"). Every fixture above this point
+ * uses `fieldPlugins: { kind: 'none' }`, under which `FieldPlugins` is
+ * `Record<never, never>` and `InferStory<Blocks>` and
+ * `InferStory<Blocks, FieldPlugins>` are indistinguishable. This block is the
+ * only one that can catch `render.ts` regressing to the single-argument form.
+ */
+describe('emitted Story/StoryMapi thread FieldPlugins', () => {
+  it('resolves a registered custom field through Block<TName>', () => {
+    expectTypeOf<NonNullable<PluginBlock<'page'>['accent']>>().toHaveProperty('hex').toEqualTypeOf<string>();
+  });
+
+  it('resolves a registered custom field through Story, not just through Block<TName>', () => {
+    expectTypeOf<NonNullable<PluginStory['content']['accent']>>().toHaveProperty('hex').toEqualTypeOf<string>();
   });
 });

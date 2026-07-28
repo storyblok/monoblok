@@ -41,7 +41,7 @@ export type Block<TName extends Blocks['name']> = BlockContent<Extract<Blocks, {
 
 export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;
 
-export type Story = InferStory<Blocks>;
-export type StoryMapi = InferStoryMapi<Blocks>;
+export type Story = InferStory<Blocks, FieldPlugins>;
+export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;
 "
 `;

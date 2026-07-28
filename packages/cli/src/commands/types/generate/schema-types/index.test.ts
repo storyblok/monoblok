@@ -48,9 +48,18 @@ describe('assertNoLegacyFlags', () => {
     expect(() => assertNoLegacyFlags({ strict: true })).toThrow(/--strict/);
   });
 
+  it('rejects --suffix', () => {
+    expect(() => assertNoLegacyFlags({ suffix: 'v1' })).toThrow(/--suffix/);
+  });
+
   it('names every offending flag at once', () => {
-    expect(() => assertNoLegacyFlags({ strict: true, customFieldsParser: './p.ts', compilerOptions: './c.json' }))
-      .toThrow(/--strict.*--custom-fields-parser.*--compiler-options/s);
+    expect(() => assertNoLegacyFlags({
+      strict: true,
+      customFieldsParser: './p.ts',
+      compilerOptions: './c.json',
+      suffix: 'v1',
+    }))
+      .toThrow(/--strict.*--custom-fields-parser.*--compiler-options.*--suffix/s);
   });
 });
 

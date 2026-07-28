@@ -78,6 +78,7 @@ generateCmd
       return;
     }
 
+    konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
     konsola.warn(
       '`types generate` without --future-schema is deprecated. The legacy generator does not follow '
       + 'field `required` flags, block whitelists, or nestable/root distinctions. Re-run with --future-schema.',
@@ -85,7 +86,6 @@ generateCmd
     if (options.fieldPlugins !== undefined) {
       konsola.warn('--field-plugins is ignored without --future-schema.');
     }
-    konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
 
     const spinner = new Spinner({
       verbose,

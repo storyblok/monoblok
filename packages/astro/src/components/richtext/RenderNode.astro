@@ -3,7 +3,6 @@ import {
   type SbRichTextNode,
   type SbAstroRichTextRenderContext,
   isValidAstroComponent,
-  getEmojiText,
   getStaticChildren,
 } from '../../';
 import StoryblokComponent from '../StoryblokComponent.astro';
@@ -46,7 +45,7 @@ const contextForCustom = Custom
   ) : node.type === 'table' ? (
     <RenderTable node={node} options={options} />
   ) : node.type === 'emoji' ? (
-    <ElementTag node={node}>{getEmojiText(node)}</ElementTag>
+    <ElementTag node={node}>{node.attrs.emoji}</ElementTag>
   ) : getStaticChildren(node) ? (
     <RenderStaticChildren node={node} options={options} />
   ) : (

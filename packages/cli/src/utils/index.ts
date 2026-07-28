@@ -7,6 +7,7 @@ export * from "./array";
 export * from "./auth";
 export * from "./error/";
 export * from "./failure-reason-group";
+export * from "./filesystem";
 export * from "./format";
 export * from "./object";
 export * from "./package";

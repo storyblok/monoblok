@@ -280,5 +280,26 @@ describe("types generate", () => {
         }),
       );
     });
+
+    it('warns that the legacy generator is deprecated when --future-schema is absent', async () => {
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345']);
+
+      expect(konsola.warn).toHaveBeenCalledWith(expect.stringContaining('--future-schema'));
+    });
+  });
+
+  describe('future-schema mode', () => {
+    it('rejects legacy-only flags when --future-schema is used', async () => {
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema', '--strict']);
+
+      expect(konsola.error).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('--strict') }),
+        false,
+      );
+    });
   });
 });

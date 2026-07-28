@@ -7,6 +7,34 @@ import { colorPalette } from '../../../constants';
 import '../index';
 import { typesCommand } from '../command';
 import { readComponentsFiles } from '../../components/push/actions';
+import { generateSchemaTypes } from './schema-types';
+
+const uiTitleMock = vi.hoisted(() => vi.fn());
+const uiWarnMock = vi.hoisted(() => vi.fn());
+const uiInfoMock = vi.hoisted(() => vi.fn());
+const uiOkMock = vi.hoisted(() => vi.fn());
+const uiBrMock = vi.hoisted(() => vi.fn());
+const uiSpinnerSucceedMock = vi.hoisted(() => vi.fn());
+const uiSpinnerFailedMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../utils/ui', () => ({
+  getUI: () => ({
+    title: uiTitleMock,
+    warn: uiWarnMock,
+    info: uiInfoMock,
+    ok: uiOkMock,
+    br: uiBrMock,
+    createSpinner: () => ({ start: vi.fn(), succeed: uiSpinnerSucceedMock, failed: uiSpinnerFailedMock }),
+  }),
+}));
+
+vi.mock('./schema-types', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    generateSchemaTypes: vi.fn(),
+  };
+});
 
 const mockResponse = [{
   name: 'component-name',
@@ -226,6 +254,21 @@ describe('types generate', () => {
         expect.objectContaining({ message: expect.stringContaining('--strict') }),
         false,
       );
+    });
+
+    it('generates schema types and reports success, per-file output, and unmapped field types', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiSpinnerSucceedMock).toHaveBeenCalled();
+      expect(uiOkMock).toHaveBeenCalledWith('/project/.storyblok/types/295018/storyblok-schema.d.ts');
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('storyblok-colorpicker'));
+      expect(uiInfoMock).toHaveBeenCalledWith(expect.stringContaining('@storyblok/schema'));
+      expect(uiSpinnerFailedMock).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,9 @@
 import type { Command } from 'commander';
 import { join } from 'pathe';
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, FileSystemError, handleError, konsola } from '../../../utils';
+import { CommandError, FileSystemError, handleError, konsola, toError } from '../../../utils';
+import { resolvePath } from '../../../utils/filesystem';
+import { getUI } from '../../../utils/ui';
 import { Spinner } from '@topcli/spinner';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
@@ -34,16 +36,17 @@ generateCmd
     const { space, path, verbose, suffix, filename, separateFiles } = command.optsWithGlobals();
 
     if (options.futureSchema) {
-      konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types from schema...');
-      const spinner = new Spinner({ verbose });
+      const ui = getUI();
+      ui.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types from schema...');
+      let spinner: ReturnType<typeof ui.createSpinner> | undefined;
       try {
         assertNoLegacyFlags(options);
         if (!space) {
           throw new CommandError('Please provide the space as argument --space SPACE_ID.');
         }
 
-        spinner.start('Generating types...');
-        const outputDir = join(path ?? '.storyblok', 'types', space);
+        spinner = ui.createSpinner('Generating types...');
+        const outputDir = resolvePath(path, join('types', space));
         const result = await generateSchemaTypes({
           space,
           cwd: process.cwd(),
@@ -54,23 +57,23 @@ generateCmd
           typeSuffix: options.typeSuffix,
           fieldPluginsPath: options.fieldPlugins,
         });
-        spinner.succeed();
+        spinner.succeed('Generated types');
 
-        result.files.forEach(file => konsola.ok(file));
+        result.files.forEach(file => ui.ok(file));
         if (result.unmappedFieldTypes.length > 0) {
-          konsola.warn(
+          ui.warn(
             `No field plugin registered for: ${result.unmappedFieldTypes.join(', ')}. `
             + 'These custom fields fall back to an untyped value. Declare them with defineFieldPlugin '
             + 'and point --field-plugins at the module (or place it at .storyblok/schema/schema.ts).',
           );
         }
-        konsola.info('The generated types import from `@storyblok/schema`. Install it as a dev dependency: `npm i -D @storyblok/schema`.');
-        konsola.br();
+        ui.info('The generated types import from `@storyblok/schema`. Install it as a dev dependency: `npm i -D @storyblok/schema`.');
+        ui.br();
       }
       catch (error) {
-        spinner.failed(`Failed to generate types for space ${space}`);
-        konsola.br();
-        handleError(error as Error, verbose);
+        spinner?.failed(`Failed to generate types for space ${space}`);
+        ui.br();
+        handleError(toError(error), verbose);
       }
       return;
     }
@@ -79,6 +82,9 @@ generateCmd
       '`types generate` without --future-schema is deprecated. The legacy generator does not follow '
       + 'field `required` flags, block whitelists, or nestable/root distinctions. Re-run with --future-schema.',
     );
+    if (options.fieldPlugins !== undefined) {
+      konsola.warn('--field-plugins is ignored without --future-schema.');
+    }
     konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
 
     const spinner = new Spinner({

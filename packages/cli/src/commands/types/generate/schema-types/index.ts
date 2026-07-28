@@ -1,6 +1,7 @@
 import { join } from 'pathe';
 
-import { CommandError, saveToFile } from '../../../../utils';
+import { CommandError } from '../../../../utils';
+import { saveToFile } from '../../../../utils/filesystem';
 import { buildGroupDisplayPathByUuid } from '../../../schema/folders';
 import { fetchRemoteSchema } from '../../../schema/actions';
 import type { GenerateTypesOptions } from '../constants';

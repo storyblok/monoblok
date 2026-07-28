@@ -17,7 +17,6 @@ import {
 import {
   buildStoryblokImage,
   getInnerMarks,
-  getEmojiText,
   getStaticChildren,
   groupLinkNodes,
   isSelfClosing,
@@ -334,7 +333,7 @@ export class SbRichTextComponent implements OnDestroy {
           ? this.createStaticScaffold(staticChildren, el, attrs)
           : el;
 
-        const textContent = getEmojiText(node);
+        const textContent = node.type === 'emoji' ? node.attrs.emoji : null;
         if (textContent) {
           this.renderer.appendChild(contentHost, this.renderer.createText(textContent));
         } else if (node.content) {

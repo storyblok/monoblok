@@ -123,8 +123,11 @@ describe("buildGroupDisplayPathByUuid", () => {
 
     const result = buildGroupDisplayPathByUuid(folders as never);
 
-    expect(result.get("a")).toBeDefined();
-    expect(result.get("b")).toBeDefined();
+    // When pathFor('a') recurses into pathFor('b'), which recurses back into
+    // pathFor('a'), the cycle is detected and cut (visited.has('a') is true),
+    // returning []. This bubbles up to set b=['B'], then a=['B', 'A'].
+    expect(result.get("a")).toBe("B/A");
+    expect(result.get("b")).toBe("B");
   });
 
   it("ignores a parent uuid that is not in the folder list", () => {

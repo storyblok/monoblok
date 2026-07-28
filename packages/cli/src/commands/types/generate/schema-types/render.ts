@@ -75,6 +75,20 @@ export function renderHeader(space: string): string[] {
 }
 
 /**
+ * The `@storyblok/schema` import line. `InferStory`/`InferStoryMapi` back the
+ * always-emitted `Story`/`StoryMapi` aliases; `InferSchema` is only consumed by
+ * the `schema`/`record` branches of {@link renderFieldPlugins}, so it is pulled
+ * in only when needed, a `{ kind: 'none' }` run would otherwise import it
+ * unused. Names stay alphabetically ordered either way.
+ */
+function renderSchemaImport(fieldPlugins: FieldPluginsSource): string {
+  const names = ['BlockContent', 'MapiStory as InferStoryMapi'];
+  if (fieldPlugins.kind !== 'none') { names.push('Schema as InferSchema'); }
+  names.push('Story as InferStory');
+  return `import type { ${names.join(', ')} } from '@storyblok/schema';`;
+}
+
+/**
  * Renders the `FieldPlugins` declaration plus the import it needs.
  *
  * Both accepted module shapes resolve through `@storyblok/schema`'s `Schema`
@@ -137,7 +151,7 @@ export function renderSchemaTypes(options: RenderOptions): string {
 
   const lines = [
     ...renderHeader(options.space),
-    'import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';',
+    renderSchemaImport(options.fieldPlugins),
     ...fieldPlugins.imports,
     '',
   ];
@@ -181,7 +195,7 @@ export function renderSeparateFiles(options: RenderOptions & { filename: string 
   const definitionNames = componentNames.map(name => names.definitionByComponent.get(name)!);
   const mainLines = [
     ...renderHeader(options.space),
-    'import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';',
+    renderSchemaImport(options.fieldPlugins),
     ...fieldPlugins.imports,
     ...definitionNames.map((typeName, index) => `import type { ${typeName} } from './blocks/${fileNames[index]}';`),
     '',

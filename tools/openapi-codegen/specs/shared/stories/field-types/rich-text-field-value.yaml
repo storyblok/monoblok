@@ -220,7 +220,7 @@ $defs:
 
   ParagraphNode:
     type: object
-    required: [type, attrs]
+    required: [type]
     properties:
       type:
         type: string

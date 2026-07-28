@@ -19,7 +19,7 @@
     "seed:assets": "storyblok assets push --from seed",
     "seed:stories": "storyblok stories push --from seed --publish",
     "seed:cleanup": "tsx scripts/cleanup-space.ts && rm -rf ./.storyblok/components",
-    "test:types": "tsc --noEmit --skipLibCheck"
+    "test:types": "astro check"
   },
   "dependencies": {
     "@astrojs/node": "^10.0.6",
@@ -30,6 +30,7 @@
     "marked": "17.0.5"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@storyblok/astro": "^9.0.5",
     "@storyblok/eslint-config": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
@@ -41,7 +42,7 @@
     "storyblok": "workspace:*",
     "tailwindcss": "^4.2.4",
     "tsx": "^4.21.0",
-    "typescript": "5.4.5",
+    "typescript": "5.8.3",
     "vite": "^8.1.1"
   }
 }

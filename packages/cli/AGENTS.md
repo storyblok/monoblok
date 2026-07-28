@@ -25,7 +25,7 @@
 | Operational diagnostics | `const logger = getLogger()` |
 | Command errors | `handleError(new CommandError(...), verbose)` |
 
-Do not add `console.*`, raw `Spinner`, or direct `konsola.*` calls in new or migrated command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics.
+All UI output routes to stderr. Do not add `console.*` or raw `Spinner` calls in command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics. Error handling uses `handleError()` which sets `process.exitCode` (1 for runtime errors, 2 for `CommandError`).
 
 ## Tests
 

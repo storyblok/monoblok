@@ -2,7 +2,7 @@ import { basename, join } from 'pathe';
 import { Option } from 'commander';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter, type Report } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';

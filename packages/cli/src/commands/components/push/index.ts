@@ -12,7 +12,7 @@ import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { Component, ComponentFolder, InternalTag, Preset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
 const pushCmd = componentsCommand
@@ -211,7 +211,7 @@ pushCmd
           });
         }
       }
-      console.log(`${requestCount} requests made`);
+      logger.info(`${requestCount} requests made`);
 
       // Check if components reference datasources and inform user
       const referencedDatasources = new Set<string>();

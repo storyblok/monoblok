@@ -16,8 +16,8 @@ import {
   type MockAssetFolder,
 } from '../__tests__/helpers';
 
+vi.spyOn(console, 'log');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 const LOG_PREFIX = 'storyblok-assets-pull-';
@@ -231,7 +231,7 @@ describe('assets pull command', () => {
     expect(logFile).toContain('"fetchAssets":{"total":3,"succeeded":3,"failed":0}');
     expect(logFile).toContain('"save":{"total":3,"succeeded":3,"failed":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 3 assets pulled'),
     );
     expect(process.exitCode).toBe(0);
@@ -267,7 +267,7 @@ describe('assets pull command', () => {
     expect(assets.every(a => assetFileExists(a) === false)).toBeTruthy();
     expect(folders.every(f => folderFileExists(f) === false)).toBeTruthy();
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('DRY RUN MODE ENABLED'));
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 2 assets pulled'),
     );
     expect(process.exitCode).toBe(0);

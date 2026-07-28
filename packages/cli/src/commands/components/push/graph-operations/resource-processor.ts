@@ -1,11 +1,10 @@
-import { colorPalette } from '../../../../constants';
 import type { DependencyGraph, NodeProcessingResult, ProcessingLevel, PushResults } from './types';
 import { determineProcessingOrder } from './dependency-graph';
-import { progressDisplay } from '../progress-display';
 import { pushComponent } from '../actions';
 import type { ComponentCreate } from '../../../../types';
-import chalk from 'chalk';
 import { getActiveConfig } from '../../../../lib/config';
+import { getUI } from '../../../../lib/ui';
+import { getLogger } from '../../../../lib/logger/logger';
 
 // =============================================================================
 // RESOURCE PROCESSING
@@ -20,37 +19,37 @@ export async function processAllResources(
 
   backpressure: number = getActiveConfig().api.rateLimit,
 ): Promise<PushResults> {
+  const ui = getUI();
   const levels = determineProcessingOrder(graph);
   const results: PushResults = { successful: [], failed: [] };
 
   // Calculate total resources for progress tracking
   const totalResources = levels.reduce((sum, level) => sum + level.nodes.length, 0);
 
-  // Initialize progress display
-  progressDisplay.start(totalResources);
+  const progressBar = ui.createProgressBar({ title: 'Pushing' });
+  progressBar.setTotal(totalResources);
+  const startTime = Date.now();
 
   for (const level of levels) {
     if (level.isCyclic) {
       // Handle circular dependencies with stub creation
-      const cyclicResults = await processCyclicLevel(level, graph, space, backpressure);
+      const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, progressBar);
       mergeResults(results, cyclicResults);
     }
     else {
       // Handle regular level
-      const levelResults = await processLevel(level.nodes, graph, space, backpressure);
+      const levelResults = await processLevel(level.nodes, graph, space, backpressure, progressBar);
       mergeResults(results, levelResults);
     }
   }
 
-  // Show completion summary using progress display
-  progressDisplay.handleEvent({
-    type: 'complete',
-    summary: {
-      updated: results.successful.length,
-      unchanged: 0, // No longer skip resources - all are processed
-      failed: results.failed.length,
-    },
-  });
+  progressBar.stop();
+
+  // Show completion summary
+  const elapsedMs = Date.now() - startTime;
+  const timeStr = formatElapsedTime(elapsedMs);
+  ui.br();
+  ui.ok(`Completed: ${results.successful.length} updated, ${results.failed.length} failed${timeStr ? ` in ${timeStr}` : ''}`, true);
 
   return results;
 }
@@ -64,16 +63,18 @@ async function processCyclicLevel(
   graph: DependencyGraph,
   space: string,
   backpressure: number,
+  progressBar: { increment: (count?: number) => void },
 ): Promise<PushResults> {
-  // Clear current progress display and show circular dependency message
-  progressDisplay.clearProgress();
-  console.log(`\n🔄 Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
+  const ui = getUI();
+  const logger = getLogger();
+  logger.info(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
+  ui.warn(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
 
   // STEP 1: Create stub components for any missing components in the cycle
   await createStubComponents(level.nodes, graph, space);
 
   // STEP 2: Process the cyclic level normally (references can now resolve)
-  return await processLevel(level.nodes, graph, space, backpressure);
+  return await processLevel(level.nodes, graph, space, backpressure, progressBar);
 }
 
 /**
@@ -97,7 +98,9 @@ async function createStubComponents(
     return; // No missing components to create stubs for
   }
 
-  console.log(`📝 Creating stub components for circular dependencies: ${missingComponents.join(', ')}`);
+  const ui = getUI();
+  const logger = getLogger();
+  logger.info(`Creating stub components for circular dependencies: ${missingComponents.join(', ')}`);
 
   // Create minimal stub components
   for (const nodeId of nodeIds) {
@@ -110,18 +113,17 @@ async function createStubComponents(
         if (result) {
           // Update the node's target data so future references can resolve
           node.updateTargetData(result);
-          console.log(`${chalk.green('✓')} Created stub component: ${node.name}`);
+          ui.ok(`Created stub component: ${node.name}`);
         }
       }
       catch (error) {
-        console.error(`✗ Failed to create stub component ${node.name}:`, error);
+        ui.error(`Failed to create stub component ${node.name}:`, error);
         throw error;
       }
     }
   }
 
-  // Add a blank line before resuming normal processing
-  console.log('');
+  ui.br();
 }
 
 /**
@@ -145,6 +147,7 @@ async function processLevel(
   graph: DependencyGraph,
   space: string,
   backpressure: number,
+  progressBar: { increment: (count?: number) => void },
 ): Promise<PushResults> {
   // PASS 1: Resolve references for this level (now that dependencies from previous levels exist)
   for (const nodeId of level) {
@@ -166,7 +169,7 @@ async function processLevel(
     }
 
     // Start processing the node
-    const promise = processNode(nodeId, graph, space);
+    const promise = processNode(nodeId, graph, space, progressBar);
     promises.push(promise);
     semaphore[slotIndex] = promise;
   }
@@ -182,10 +185,10 @@ async function processNode(
   nodeId: string,
   graph: DependencyGraph,
   space: string,
+  progressBar: { increment: (count?: number) => void },
 ): Promise<NodeProcessingResult> {
   const node = graph.nodes.get(nodeId)!;
-  // Track start time for individual process timing
-  const startTime = Date.now();
+  const logger = getLogger();
 
   try {
     // Always perform upsert - change detection removed due to unstable ID issues
@@ -193,26 +196,14 @@ async function processNode(
     const result = await node.upsert(space);
     node.updateTargetData(result);
 
-    const elapsedMs = Date.now() - startTime;
-    progressDisplay.handleEvent({
-      type: 'success',
-      name: node.getName(),
-      resourceType: getResourceTypeName(node.type),
-      color: getResourceTypeColor(node.type),
-      elapsedMs,
-    });
+    progressBar.increment();
+    logger.info(`${getResourceTypeName(node.type)} updated: ${node.getName()}`);
 
     return { name: node.getName() };
   }
   catch (error) {
-    const elapsedMs = Date.now() - startTime;
-    progressDisplay.handleEvent({
-      type: 'error',
-      name: node.getName(),
-      resourceType: getResourceTypeName(node.type),
-      error,
-      elapsedMs,
-    });
+    progressBar.increment();
+    logger.error(`${getResourceTypeName(node.type)} failed: ${node.getName()}`, { error: error as Error });
     return { name: node.getName(), error };
   }
 }
@@ -256,15 +247,18 @@ function getResourceTypeName(type: string): string {
   }
 }
 
-/**
- * Gets color for a resource type
- */
-function getResourceTypeColor(type: string): string {
-  switch (type) {
-    case 'component': return colorPalette.COMPONENTS;
-    case 'group': return colorPalette.GROUPS;
-    case 'tag': return colorPalette.TAGS;
-    case 'preset': return colorPalette.PRESETS;
-    default: return colorPalette.COMPONENTS;
+function formatElapsedTime(ms: number): string {
+  if (ms < 1000) { return `${ms}ms`; }
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
   }
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+  }
+  return `${(ms / 1000).toFixed(1)}s`;
 }

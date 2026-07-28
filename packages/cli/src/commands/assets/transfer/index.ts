@@ -1,6 +1,6 @@
 import { colorPalette, commands } from '../../../constants';
 import { assetsCommand } from '../command';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';

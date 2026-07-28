@@ -150,8 +150,7 @@ export const createStoriesStream = async ({
   const listStoriesStream = Readable.from(iterator);
   return pipeline(listStoriesStream, new StoriesStream(spaceId, onProgress), (err) => {
     if (err) {
-      console.error(err);
-      getLogger().error(err.message, { errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR });
+      getLogger().error(err.message, { error: err, errorCode: ERROR_CODES.MIGRATION_CREATE_STORIES_PIPELINE_ERROR });
     }
   });
 };

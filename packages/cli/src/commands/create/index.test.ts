@@ -60,10 +60,15 @@ const { mockedUI } = vi.hoisted(() => ({
     error: vi.fn(),
     title: vi.fn(),
     br: vi.fn(),
+    createSpinner: vi.fn(() => ({
+      succeed: vi.fn(),
+      failed: vi.fn(),
+      elapsedTime: 0,
+    })),
   },
 }));
 
-vi.mock('../../utils/ui', () => ({
+vi.mock('../../lib/ui', () => ({
   getUI: vi.fn(() => mockedUI),
 }));
 // Helper function to create a complete Space mock object

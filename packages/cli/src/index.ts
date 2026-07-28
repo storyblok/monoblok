@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import 'dotenv/config';
 
-import { handleError, konsola } from './utils';
+import chalk from 'chalk';
+import { handleError } from './utils';
 import { getProgram } from './program';
 import './commands/login';
 import './commands/logout';
@@ -20,19 +21,22 @@ import './commands/stories';
 import './commands/schema';
 
 import { colorPalette } from './constants';
+import { capitalize } from './utils/format';
 
 export * from './types/storyblok';
 
 const program = getProgram();
 
-konsola.br();
-konsola.br();
-konsola.title(` Storyblok CLI `, colorPalette.PRIMARY);
+console.error('');
+console.error('');
+console.error(chalk.bgHex(colorPalette.PRIMARY).bold(` ${capitalize(` Storyblok CLI `)} `));
+console.error('');
+console.error('');
 
 // Handle invalid commands
 program.on('command:*', () => {
   console.error(`Invalid command: ${program.args.join(' ')}`);
-  konsola.br();
+  console.error('');
   program.outputHelp();
   process.exit(1);
 });

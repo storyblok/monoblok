@@ -23,8 +23,6 @@ vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
 }));
 
-vi.spyOn(console, 'log');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 vi.spyOn(console, 'error');
 
@@ -183,7 +181,7 @@ describe('schema push command', () => {
 
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--dry-run']);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
     // msw is configured with onUnhandledRequest: 'error' and no POST/PUT/DELETE
     // handlers are registered, so any mutation attempt would fail the test.
   });
@@ -271,7 +269,7 @@ describe('schema push command', () => {
 
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('nothing to push'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('nothing to push'));
     // Local files are still written so a fresh checkout can run `stories push`
     // even when the remote space is already in sync with the schema.
     const files = Object.keys(vol.toJSON());
@@ -292,7 +290,7 @@ describe('schema push command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
 
     // Stale entities appear in the diff output
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('stale'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('stale'));
     // msw is configured with onUnhandledRequest: 'error' and no DELETE handlers
     // are registered, so any delete attempt would fail the test.
   });
@@ -389,7 +387,7 @@ describe('schema push command', () => {
 
     expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining('No components'));
     // The folder create diff was rendered (the gate no longer short-circuits).
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('1 to create'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('1 to create'));
   });
 
   it('warns that deleting a stale folder will ungroup its remote components', async () => {
@@ -454,7 +452,7 @@ describe('schema push command', () => {
       .find(([filename]) => filename.includes('schema/changesets/'))?.[1];
     const changeset = JSON.parse(changesetFile ?? '{}');
     expect(changeset.changes).toEqual([]);
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('nothing to push'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('nothing to push'));
   });
 
   it('should generate migration file when field is renamed', async () => {
@@ -580,7 +578,7 @@ describe('schema push command', () => {
     expect(migrationFiles).toHaveLength(1);
     // confirm should NOT have been called (auto-generate mode)
     expect(confirm).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Generated migrations are scaffolds'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Generated migrations are scaffolds'));
   });
 
   it('should log assumed renames when --migrations is explicit', async () => {
@@ -609,9 +607,9 @@ describe('schema push command', () => {
 
     await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE, '--migrations']);
 
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assumed rename'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('author_name'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('author'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assumed rename'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('author_name'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('author'));
   });
 
   it('should generate migration for type changes', async () => {
@@ -719,7 +717,7 @@ describe('schema push command', () => {
       .filter(f => f.includes('migrations/') && f.endsWith('.js'));
     expect(migrationFiles).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
   });
 
   it('should not prompt or write files when --dry-run is used with default migrations', async () => {
@@ -759,6 +757,6 @@ describe('schema push command', () => {
     const migrationFiles = Object.keys(vol.toJSON())
       .filter(f => f.includes('migrations/') && f.endsWith('.js'));
     expect(migrationFiles).toHaveLength(0);
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
   });
 });

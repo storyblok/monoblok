@@ -1,4 +1,4 @@
-import { CommandError, handleError, isRegion, isVitest, requireAuthentication, toHumanReadable } from '../../utils';
+import { CommandError, handleError, isRegion, requireAuthentication, toHumanReadable } from '../../utils';
 import { colorPalette, commands, type RegionCode, regions } from '../../constants';
 import { performInteractiveLogin } from '../login/helpers';
 import { getProgram } from '../../program';
@@ -9,10 +9,9 @@ import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEn
 import { basename, dirname, resolve } from 'pathe';
 import chalk from 'chalk';
 import { createSpace, type SpaceCreate, type SpaceCreateQuery } from '../spaces';
-import { Spinner } from '@topcli/spinner';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import { getUI } from '../../utils/ui';
+import { getUI } from '../../lib/ui';
 
 const ui = getUI({ enabled: true });
 
@@ -127,16 +126,8 @@ export const createCommand = program
       }
     }
 
-    const spinnerBlueprints = new Spinner({
-      verbose: !isVitest,
-    });
-
-    const spinnerSpace = new Spinner({
-      verbose: !isVitest,
-    });
-
     try {
-      spinnerBlueprints.start('Fetching starter templates...');
+      const spinnerBlueprints = ui.createSpinner('Fetching starter templates...');
       const templates = await fetchBlueprintRepositories();
       spinnerBlueprints.succeed('Starter templates fetched successfully');
 
@@ -282,7 +273,7 @@ export const createCommand = program
           return;
         }
 
-        spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
+        const spinnerSpace = ui.createSpinner(`Creating space "${toHumanReadable(projectName)}"`);
 
         // Find the selected blueprint from the dynamic blueprints array
         const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
@@ -335,7 +326,6 @@ export const createCommand = program
         }
       }
       catch (error) {
-        spinnerSpace.failed();
         ui.br();
         handleError(error as Error, verbose);
         return;
@@ -344,8 +334,6 @@ export const createCommand = program
       // showNextSteps is already called in each relevant branch above; do not call it again here.
     }
     catch (error) {
-      spinnerSpace.failed();
-      spinnerBlueprints.failed();
       ui.br();
       handleError(error as Error, verbose);
     }

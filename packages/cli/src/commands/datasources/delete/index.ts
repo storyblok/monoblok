@@ -1,14 +1,14 @@
 import type { Command } from 'commander';
 import { datasourcesCommand } from '../command';
 import { deleteDatasource } from './actions';
-import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { session } from '../../../session';
 import { colorPalette, commands } from '../../../constants';
 import chalk from 'chalk';
 import type { DeleteDatasourceOptions } from './constants';
 import { fetchDatasource } from '../pull/actions';
 import { confirm } from '@inquirer/prompts';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 // Register the delete command under datasources
 // Usage: storyblok datasources delete <name> --space <SPACE_ID> [--id <ID>]
@@ -21,7 +21,8 @@ const deleteCmd = datasourcesCommand
 
 deleteCmd
   .action(async (name: string, options: DeleteDatasourceOptions, command: Command) => {
-    konsola.title(
+    const ui = getUI();
+    ui.title(
       `${commands.DATASOURCES}`,
       colorPalette.DATASOURCES,
       options.id
@@ -31,7 +32,7 @@ deleteCmd
 
     // Warn if both name and id are provided
     if (name && options.id) {
-      konsola.warn(
+      ui.warn(
         'Both a datasource name and an id were provided. Only one is required. The id will be used as the source of truth.',
       );
     }
@@ -47,7 +48,6 @@ deleteCmd
       return;
     }
 
-    const ui = getUI();
     const logger = getLogger();
     logger.info('Deleting datasource started', { space, name, id: options.id });
 
@@ -58,7 +58,7 @@ deleteCmd
         const spinner = ui.createSpinner(`Deleting datasource...`);
         await deleteDatasource(space, options.id);
         spinner.succeed(`Datasource deleted`);
-        konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully from space ${space}.`);
+        ui.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(options.id)} deleted successfully from space ${space}.`);
       }
       else {
         // Delete by name
@@ -69,28 +69,30 @@ deleteCmd
         // If --force is not set, prompt for confirmation
         if (!options.force) {
           // Echo datasource details to the user for confirmation
-          konsola.info(`Datasource details:`);
-          console.log(`  Name: ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
-          console.log(`  ID: ${chalk.hex(colorPalette.DATASOURCES)(datasource.id)}`);
-          console.log(`  Space: ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
-          console.log(`  Slug: ${chalk.hex(colorPalette.DATASOURCES)(datasource.slug)}`);
-          console.log(`  Created at: ${chalk.hex(colorPalette.DATASOURCES)(datasource.created_at)}`);
-          console.log(`  Updated at: ${chalk.hex(colorPalette.DATASOURCES)(datasource.updated_at)}`);
-          konsola.br();
+          ui.info(`Datasource details:`);
+          ui.list([
+            `Name: ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`,
+            `ID: ${chalk.hex(colorPalette.DATASOURCES)(datasource.id)}`,
+            `Space: ${chalk.hex(colorPalette.DATASOURCES)(space)}`,
+            `Slug: ${chalk.hex(colorPalette.DATASOURCES)(datasource.slug)}`,
+            `Created at: ${chalk.hex(colorPalette.DATASOURCES)(datasource.created_at)}`,
+            `Updated at: ${chalk.hex(colorPalette.DATASOURCES)(datasource.updated_at)}`,
+          ]);
+          ui.br();
           // Ask for confirmation
           const confirmed = await confirm({
             message: `⚠️ ${chalk.yellow(` Are you sure you want to delete the ${datasource.name} datasource from space ${space}? This action cannot be undone.`)} `,
             default: false,
           });
           if (!confirmed) {
-            konsola.warn('Deletion aborted by user.');
+            ui.warn('Deletion aborted by user.');
             return;
           }
         }
         const spinner = ui.createSpinner(`Deleting datasource...`);
         await deleteDatasource(space, datasource.id.toString());
         spinner.succeed(`Datasource deleted`);
-        konsola.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully from space ${space}.`);
+        ui.ok(`Datasource ${chalk.hex(colorPalette.DATASOURCES)(name)} deleted successfully from space ${space}.`);
       }
     }
     catch (error) {

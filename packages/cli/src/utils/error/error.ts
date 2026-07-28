@@ -1,10 +1,16 @@
+import chalk from 'chalk';
 import type { LogContext } from '../../lib/logger/logger';
 import { getLogger } from '../../lib/logger/logger';
-import { konsola } from '..';
 import type { FetchError } from '../fetch';
 import { APIError } from './api-error';
 import { CommandError } from './command-error';
 import { FileSystemError } from './filesystem-error';
+
+// Redirect all output to stderr through global console methods so test spies still work.
+const stderr = {
+  log: (...args: unknown[]) => console.error(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
 
 interface ErrorWithMessage {
   message: string;
@@ -50,20 +56,20 @@ function handleVerboseError(error: unknown): void {
   if (error instanceof CommandError || error instanceof APIError || error instanceof FileSystemError) {
     const errorDetails = 'getInfo' in error ? error.getInfo() : {};
     if (error instanceof CommandError) {
-      konsola.error(`Command Error: ${error.getInfo().message}`, errorDetails);
+      stderr.error(`${chalk.red.bold('▲ error')} Command Error: ${error.getInfo().message}`, errorDetails);
     }
     else if (error instanceof APIError) {
-      konsola.error(`API Error: ${error.getInfo().cause}`, errorDetails);
+      stderr.error(`${chalk.red.bold('▲ error')} API Error: ${error.getInfo().cause}`, errorDetails);
     }
     else if (error instanceof FileSystemError) {
-      konsola.error(`File System Error: ${error.getInfo().cause}`, errorDetails);
+      stderr.error(`${chalk.red.bold('▲ error')} File System Error: ${error.getInfo().cause}`, errorDetails);
     }
     else {
-      konsola.error(`Unexpected Error: ${error}`, errorDetails);
+      stderr.error(`${chalk.red.bold('▲ error')} Unexpected Error: ${error}`, errorDetails);
     }
   }
   else {
-    konsola.error(`Unexpected Error`, error);
+    stderr.error(`${chalk.red.bold('▲ error')} Unexpected Error`, error);
   }
 }
 
@@ -72,29 +78,36 @@ export function handleError(error: Error | FetchError, verbose = false, context?
   if (error instanceof APIError || error instanceof FileSystemError) {
     const messageStack = (error).messageStack;
     messageStack.forEach((message: string, index: number) => {
-      konsola.error(message, null, {
-        header: index === 0,
-        margin: false,
-      });
+      if (index === 0) {
+        const errorHeader = chalk.bgRed.bold.white(` Error `);
+        stderr.error(errorHeader);
+        stderr.log('');
+      }
+      stderr.error(`${chalk.red.bold('▲ error')} ${message}`);
     });
   }
   else {
-    konsola.error(error.message, null, {
-      header: true,
-    });
+    const errorHeader = chalk.bgRed.bold.white(` Error `);
+    stderr.error(errorHeader);
+    stderr.log('');
+    stderr.error(`${chalk.red.bold('▲ error')} ${error.message}`);
   }
   if (verbose) {
     handleVerboseError(error);
   }
   else {
-    konsola.br();
-    konsola.info('For more information about the error, run the command with the `--verbose` flag');
+    stderr.log('');
+    stderr.log(`${chalk.blue('ℹ')} For more information about the error, run the command with the \`--verbose\` flag`);
   }
 
   if (!process.env.VITEST) {
-    console.log(''); // Add a line break for readability
+    stderr.log('');
   }
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
+
+  if (!process.exitCode || process.exitCode === 0) {
+    process.exitCode = error instanceof CommandError ? 2 : 1;
+  }
 }
 
 export function logOnlyError(error: Error | FetchError, context?: LogContext): void {

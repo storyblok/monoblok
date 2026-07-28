@@ -26,10 +26,10 @@ export class ConsoleTransport implements LogTransport {
         (console.warn ?? console.log).call(console, line);
         break;
       case 'info':
-        (console.info ?? console.log).call(console, line);
+        console.error(line);
         break;
       case 'debug':
-        (console.debug ?? console.log).call(console, line);
+        console.error(line);
         break;
     }
   }

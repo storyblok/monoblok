@@ -4,7 +4,7 @@ import { getPackageJson, handleError } from './utils';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
 import { getLogger, setLoggerTransports } from './lib/logger/logger';
-import { getUI } from './utils/ui';
+import { getUI } from './lib/ui';
 import { getReporter } from './lib/reporter/reporter';
 import { FileTransport } from './lib/logger/logger-transport-file';
 import { ConsoleTransport } from './lib/logger/logger-transport-console';

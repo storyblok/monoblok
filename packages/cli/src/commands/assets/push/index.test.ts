@@ -37,7 +37,6 @@ import { makeMockStory, type MockStory } from '../../stories/__tests__/helpers';
 
 vi.spyOn(console, 'log');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 vi.spyOn(actions, 'createAsset');
@@ -550,9 +549,9 @@ describe('assets push command', () => {
     expect(logFile).toContain('"assetFolderResults":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -565,7 +564,7 @@ describe('assets push command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', 'qa-seed', '--space', targetSpace]);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -699,9 +698,9 @@ describe('assets push command', () => {
       },
     });
     // UI
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -844,10 +843,9 @@ describe('assets push command', () => {
     });
     // UI
     expect(storyActions.updateStory).not.toHaveBeenCalled();
-    expect(console.error).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -954,13 +952,13 @@ describe('assets push command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('File System Error: Permission denied');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -998,13 +996,13 @@ describe('assets push command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Invalid sidecar JSON');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1026,7 +1024,7 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1055,7 +1053,7 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1078,13 +1076,13 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1111,13 +1109,13 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1139,13 +1137,13 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1394,7 +1392,7 @@ describe('assets push command', () => {
 
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).not.toContain('ENOENT');
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
   });
 
   it('should push user-defined assets that have short_filename but no filename', async () => {
@@ -1640,7 +1638,7 @@ describe('assets push command', () => {
       expect.anything(),
       expect.anything(),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Created 1 internal asset tag in target space: missing-tag'),
     );
     expect(process.exitCode).not.toBe(1);

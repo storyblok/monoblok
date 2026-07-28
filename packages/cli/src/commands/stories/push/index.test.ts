@@ -23,9 +23,7 @@ import {
 } from '../../__tests__/helpers';
 import { makeMockStory, type MockStory, randomThirdPartyID } from '../__tests__/helpers';
 
-vi.spyOn(console, 'log');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 // memfs on Windows strips drive-letter prefixes (D:/a/… → /a/…),
@@ -355,16 +353,16 @@ describe('stories push command', () => {
       expect(logFile).toContain('"processResults":{"total":5,"succeeded":5,"failed":0}');
       expect(logFile).toContain('"updateResults":{"total":5,"succeeded":5,"failed":0}');
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 5 stories pushed, 0 stories failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 5/5 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 5/5 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 5/5 succeeded, 0 failed.'),
       );
     });
@@ -443,7 +441,7 @@ describe('stories push command', () => {
         },
       }));
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 0 stories failed'),
       );
     });
@@ -579,7 +577,7 @@ describe('stories push command', () => {
         expect.objectContaining({ old_id: storyD.uuid, new_id: storyDRemote.uuid, created_at: expect.any(String) }),
       ]));
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 4 stories pushed, 0 stories failed'),
       );
     });
@@ -647,7 +645,7 @@ describe('stories push command', () => {
         },
       }));
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 2 stories pushed, 0 stories failed'),
       );
     });
@@ -765,16 +763,16 @@ describe('stories push command', () => {
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toMatch(new RegExp(`Skipped creating story.*?"storyId":"${storyA.uuid}"`));
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 0 stories failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 1/1 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 1/1 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 1/1 succeeded, 0 failed.'),
       );
     });
@@ -825,7 +823,7 @@ describe('stories push command', () => {
 
       const report = getReport();
       expect(report?.status).toBe('SUCCESS');
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 0 stories failed'),
       );
     });
@@ -1196,20 +1194,20 @@ describe('stories push command', () => {
         expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
       );
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 0/1 succeeded, 1 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 0/0 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
       );
     });
@@ -1492,13 +1490,13 @@ describe('stories push command', () => {
 
       const report = getReport();
       expect(report?.status).toBe('FAILURE');
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 0/1 succeeded, 1 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 0/0 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
       );
     });
@@ -1533,7 +1531,7 @@ describe('stories push command', () => {
       await storiesCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE]);
 
       expect(actions.createStory).toHaveBeenCalled();
-      expect(console.error).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('▲ error'));
       const report = getReport();
       expect(report?.status).toBe('SUCCESS');
     });
@@ -1642,20 +1640,20 @@ describe('stories push command', () => {
         expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('story-a.json'),
       );
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 0/1 succeeded, 1 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 0/0 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
       );
     });
@@ -1686,23 +1684,23 @@ describe('stories push command', () => {
         expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('The server returned an error'),
       );
       // UI
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 0/1 succeeded, 1 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 0/0 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
       );
     });
@@ -1743,22 +1741,22 @@ describe('stories push command', () => {
         expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Invalid bloks field: expected an array'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
       );
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 1/1 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 0/1 succeeded, 1 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
       );
     });
@@ -1786,7 +1784,7 @@ describe('stories push command', () => {
         expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
       );
     });
@@ -1820,22 +1818,22 @@ describe('stories push command', () => {
         expect.stringContaining('Failed stories (1):'),
         expect.anything(),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('The server returned an error'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),
       );
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Creating stories: 1/1 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Processing stories: 1/1 succeeded, 0 failed.'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/1 succeeded, 1 failed.'),
       );
     });
@@ -1875,10 +1873,10 @@ describe('stories push command', () => {
         updateResults: { total: 0, succeeded: 0, failed: 0 },
       });
       // Top summary must reflect the distinct failure (1), not 0.
-      expect(console.info).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Push results: 1 story pushed, 1 story failed'),
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Updating stories: 0/0 succeeded, 0 failed.'),
       );
       // The grouped report still lists the story exactly once.

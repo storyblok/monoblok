@@ -10,7 +10,7 @@ import { resetLogger } from '../../../lib/logger/logger';
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 
-vi.spyOn(console, 'info');
+vi.spyOn(console, 'error');
 
 const LOGS_FILE_DIR = resolveCommandPath('logs', '12345');
 
@@ -38,7 +38,7 @@ describe('logs prune command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 3 log files'),
     );
     const remainingFiles = Object.keys(vol.toJSON())
@@ -51,7 +51,7 @@ describe('logs prune command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345', '--keep', '2']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 1 log file'),
     );
     const remainingFiles = Object.keys(vol.toJSON())
@@ -64,7 +64,7 @@ describe('logs prune command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345', '--keep', '3']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 0 log files'),
     );
     const remainingFiles = Object.keys(vol.toJSON())
@@ -77,7 +77,7 @@ describe('logs prune command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345', '--keep', '10']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 0 log files'),
     );
     const remainingFiles = Object.keys(vol.toJSON())

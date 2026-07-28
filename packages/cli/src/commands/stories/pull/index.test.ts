@@ -11,7 +11,6 @@ import { getLogFileContents } from '../../__tests__/helpers';
 import { makeMockStory, type MockStory, storyFileExists } from '../__tests__/helpers';
 
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 const LOG_PREFIX = 'storyblok-stories-pull-';
@@ -157,7 +156,7 @@ describe('stories pull command', () => {
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":3,"failed":0}');
     expect(logFile).toContain('"save":{"total":3,"succeeded":3,"failed":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 3 stories pulled, 0 stories failed'),
     );
   });
@@ -174,7 +173,7 @@ describe('stories pull command', () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 3 stories pulled, 0 stories failed'),
     );
   });
@@ -208,7 +207,6 @@ describe('stories pull command', () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Permission denied while accessing the file'),
-      '',
     );
   });
 
@@ -226,7 +224,6 @@ describe('stories pull command', () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('The server returned an error'),
-      '',
     );
   });
 
@@ -245,7 +242,6 @@ describe('stories pull command', () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('The server returned an error'),
-      '',
     );
   });
 });

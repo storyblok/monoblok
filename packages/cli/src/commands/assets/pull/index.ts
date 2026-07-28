@@ -4,7 +4,7 @@ import { Option } from 'commander';
 import { Sema } from 'async-sema';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { session } from '../../../session';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { getLogger } from '../../../lib/logger/logger';

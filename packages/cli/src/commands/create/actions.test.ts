@@ -19,7 +19,7 @@ const { mockedUI } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('../../utils/ui', () => ({
+vi.mock('../../lib/ui', () => ({
   getUI: vi.fn(() => mockedUI),
 }));
 

@@ -4,7 +4,7 @@ import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { fetchStoriesStream, fetchStoryStream, makeWriteStoryFSTransport, writeStoryStream } from '../streams';

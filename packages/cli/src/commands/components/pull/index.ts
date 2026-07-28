@@ -10,7 +10,7 @@ import chalk from 'chalk';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { filterSpaceData, resolveGroupSelector, resolveTagSelector } from '../utils';
 

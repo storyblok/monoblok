@@ -7,7 +7,7 @@ import { FileSystemError, handleFileSystemError } from '../../utils/error/filesy
 import open from 'open';
 import { createOctokit } from '../../github';
 import { type Template, templates } from './constants';
-import { getUI } from '../../utils/ui';
+import { getUI } from '../../lib/ui';
 
 const ui = getUI({ enabled: true });
 

@@ -1,11 +1,11 @@
-import { Spinner } from '@topcli/spinner';
 import chalk from 'chalk';
 import { input, password, select } from '@inquirer/prompts';
 import type { RegionCode } from '../../constants';
 import { colorPalette, regionNames, regions } from '../../constants';
-import { handleError, isVitest, konsola } from '../../utils';
+import { handleError } from '../../utils';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import { session } from '../../session';
+import { getUI } from '../../lib/ui';
 
 /**
  * Performs interactive login flow with email/password or token
@@ -21,11 +21,11 @@ export async function performInteractiveLogin(options?: {
   showWelcomeMessage?: boolean;
 }): Promise<{ token: string; region: RegionCode } | null> {
   const { verbose = false, preSelectedRegion, showWelcomeMessage = true } = options || {};
-  const spinner = new Spinner({
-    verbose: !isVitest,
-  });
+  const ui = getUI();
+  const spinner = ui.createSpinner('Preparing login...');
 
   try {
+    spinner.succeed();
     const strategy = await select({
       message: 'How would you like to login?',
       choices: [
@@ -46,7 +46,7 @@ export async function performInteractiveLogin(options?: {
     let userRegion: RegionCode;
 
     if (strategy === 'login-with-token') {
-      konsola.info([
+      ui.info([
         '🔑 You can use a Personal Access Token to log in.',
         'This works for all accounts, including SSO accounts.',
         `Generate one in your Storyblok account settings: ${chalk.underline.blue('https://app.storyblok.com/#/me/account?tab=token')}`,
@@ -68,16 +68,16 @@ export async function performInteractiveLogin(options?: {
         default: regions.EU,
       });
 
-      spinner.start(`Logging in with token`);
+      const loginSpinner = ui.createSpinner(`Logging in with token`);
       const user = await loginWithToken(userToken, userRegion);
-      spinner.succeed();
+      loginSpinner.succeed();
 
       if (user) {
         const { updateSession, persistCredentials } = session();
         updateSession(user.email, userToken, userRegion);
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          ui.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
         }
         return { token: userToken, region: userRegion };
       }
@@ -104,9 +104,9 @@ export async function performInteractiveLogin(options?: {
         default: regions.EU,
       });
 
-      spinner.start(`Logging in with email`);
-      spinner.succeed();
+      const loginSpinner = ui.createSpinner(`Logging in with email`);
       const response = await loginWithEmailAndPassword(userEmail, userPassword, userRegion);
+      loginSpinner.succeed();
 
       if (response?.otp_required) {
         const otp = await input({
@@ -128,7 +128,7 @@ export async function performInteractiveLogin(options?: {
         updateSession(userEmail, userToken, userRegion);
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
+          ui.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
         }
         return { token: userToken, region: userRegion };
       }
@@ -137,8 +137,7 @@ export async function performInteractiveLogin(options?: {
     return null;
   }
   catch (error) {
-    spinner.failed();
-    konsola.br();
+    ui.br();
     handleError(error as Error, verbose);
     return null;
   }

@@ -1,9 +1,9 @@
 import chalk from 'chalk';
 import { MultiBar, Presets } from 'cli-progress';
 import { Spinner } from '@topcli/spinner';
-import { colorPalette } from '../constants';
-import { capitalize } from './format';
-import { isVitest } from './';
+import { colorPalette } from '../../constants';
+import { capitalize } from '../../utils/format';
+import { isVitest } from '../../utils';
 
 interface InfoOptions {
   header?: boolean;
@@ -13,6 +13,12 @@ interface InfoOptions {
 interface ErrorOptions {
   header?: boolean;
   margin?: boolean;
+}
+
+export interface CLISpinner {
+  succeed: (text?: string) => void;
+  failed: (text?: string) => void;
+  readonly elapsedTime: number;
 }
 
 interface ProgressBar {
@@ -27,19 +33,29 @@ const noopProgressBar: ProgressBar = {
   stop: () => {},
 };
 
-const noopSpinner = {
-  failed: (_title: string) => {},
-  succeed: (_title: string) => {},
+const noopSpinner: CLISpinner = {
+  failed: (_title?: string) => {},
+  succeed: (_title?: string) => {},
   elapsedTime: 0,
 };
 
 export class UI {
-  private console: typeof console | null;
+  private console: Pick<typeof console, 'log' | 'info' | 'warn' | 'error'> | null;
   private enabled: boolean;
   private multiBar: MultiBar | null;
 
   constructor({ enabled }: { enabled: boolean }) {
-    this.console = enabled ? console : null;
+    // Redirect all output to stderr. We wrap the global console methods instead
+    // of using `new console.Console(process.stderr)` so test spies on the global
+    // console object still capture output.
+    this.console = enabled
+      ? {
+          log: (...args: unknown[]) => console.error(...args),
+          info: (...args: unknown[]) => console.error(...args),
+          warn: (...args: unknown[]) => console.warn(...args),
+          error: (...args: unknown[]) => console.error(...args),
+        }
+      : null;
     this.enabled = enabled;
     this.multiBar = enabled
       ? new MultiBar({
@@ -141,12 +157,11 @@ export class UI {
     this.multiBar?.stop();
   }
 
-  createSpinner(title: string) {
-    return this.enabled
-      ? new Spinner({
-          verbose: !isVitest,
-        }).start(title)
-      : noopSpinner;
+  createSpinner(title: string): CLISpinner {
+    if (!this.enabled) { return noopSpinner; }
+    const spinner = new Spinner({ verbose: !isVitest });
+    spinner.stream = process.stderr;
+    return spinner.start(title);
   }
 }
 

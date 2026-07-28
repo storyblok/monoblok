@@ -3,7 +3,7 @@ import { vol } from 'memfs';
 import { join } from 'pathe';
 
 import { writeLocalComponents } from './write-local-components';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import type { DiffResult, SchemaData } from '../types';
 

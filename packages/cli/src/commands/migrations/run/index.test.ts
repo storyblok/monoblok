@@ -18,7 +18,7 @@ vi.mock('../../stories/actions', () => ({
   updateStory: vi.fn(),
 }));
 
-vi.spyOn(console, 'info');
+vi.spyOn(console, 'error');
 vi.spyOn(console, 'warn');
 
 // Helper function to create mock story
@@ -188,10 +188,10 @@ describe('migrations run command', () => {
     expect(logFile).toContain('{"total":1,"succeeded":1,"skipped":0,"failed":0}');
     expect(logFile).toContain('{"total":1,"succeeded":1,"failed":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Update Results: 1 stories updated.'),
     );
   });
@@ -257,10 +257,10 @@ describe('migrations run command', () => {
     expect(logFile).toContain('Couldn\'t load migration function');
     expect(logFile).toContain('MIGRATION_LOAD_ERROR');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('No stories required updates'),
     );
   });
@@ -302,7 +302,7 @@ describe('migrations run command', () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
   });
@@ -352,7 +352,7 @@ describe('migrations run command', () => {
     );
 
     // Migration should be applied successfully
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Migration Results:'),
     );
   });
@@ -364,10 +364,10 @@ describe('migrations run command', () => {
 
     await migrationsCommand.parseAsync(['node', 'test', 'run', '--space', '12345', '--from', '67890']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('from'),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('67890'),
     );
   });

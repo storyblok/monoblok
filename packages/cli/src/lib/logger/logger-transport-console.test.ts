@@ -20,11 +20,11 @@ it('should only log level equal or more severe to the specified level', () => {
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}WARN\s{3}Warn!$/),
   );
   transportLevelError.log({ level: 'info', message: 'Info' });
-  expect(console.info).not.toHaveBeenCalledWith(
+  expect(console.error).not.toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}INFO\s{3}Info$/),
   );
   transportLevelError.log({ level: 'debug', message: 'Debug' });
-  expect(console.debug).not.toHaveBeenCalledWith(
+  expect(console.error).not.toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}DEBUG\s{2}Debug$/),
   );
 
@@ -39,11 +39,11 @@ it('should only log level equal or more severe to the specified level', () => {
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}WARN\s{3}Warn!$/),
   );
   transportLevelInfo.log({ level: 'info', message: 'Info' });
-  expect(console.info).toHaveBeenCalledWith(
+  expect(console.error).toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}INFO\s{3}Info$/),
   );
   transportLevelInfo.log({ level: 'debug', message: 'Debug' });
-  expect(console.debug).not.toHaveBeenCalledWith(
+  expect(console.error).not.toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}DEBUG\s{2}Debug$/),
   );
 });
@@ -52,7 +52,7 @@ it('should correctly stringify complex context objects', () => {
   const transport = new ConsoleTransport();
 
   transport.log({ level: 'info', message: 'empty context', context: {} });
-  expect(console.info).toHaveBeenCalledWith(
+  expect(console.error).toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}INFO\s{3}empty context$/),
   );
 
@@ -77,7 +77,7 @@ it('should correctly stringify complex context objects', () => {
       },
     },
   );
-  expect(console.info).toHaveBeenCalledWith(
+  expect(console.error).toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}INFO\s{3}complex context\s{2}\(string: string, number: 1, boolean: true, undefined: undefined, array: \["foo",\{"foo":"bar"\}\], object: \{"foo":"bar"\}, apiError: \{"name":"API Error","message":"No response from server, please check if you are correctly connected to internet","httpCode":418,"httpStatusText":"foo","stack":/),
   );
 });

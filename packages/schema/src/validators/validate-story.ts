@@ -130,21 +130,33 @@ function validateFieldValue(
         pushTypeIssue(value, 'string', path, entity, issues);
       }
       break;
-    case 'number':
-      if (typeof value !== 'number') {
-        pushTypeIssue(value, 'number', path, entity, issues);
+    case 'number': {
+      if (typeof value !== 'string') {
+        pushTypeIssue(value, 'string', path, entity, issues);
         break;
       }
-      if (field.min_value != null && value < field.min_value) {
+      // Mirrors the backend's `\A-?\d*\.?\d*\z`: an optional leading `-`, digits
+      // and at most one `.`. Exponential notation is not accepted.
+      if (!/^-?(?:\d+(?:\.\d*)?|\.\d*)?$/.test(value)) {
+        pushConstraint(`Value "${value}" is not a numeric string.`, path, entity, issues);
+        break;
+      }
+      const numeric = Number(value);
+      // `''`, `'-'` and `'.'` satisfy the pattern but carry no value: an unset
+      // number field stores `''`. There is nothing to range-check.
+      if (value === '' || !Number.isFinite(numeric)) {
+        break;
+      }
+      if (field.min_value != null && numeric < field.min_value) {
         pushConstraint(`Value ${value} is below the minimum of ${field.min_value}.`, path, entity, issues);
       }
-      if (field.max_value != null && value > field.max_value) {
+      if (field.max_value != null && numeric > field.max_value) {
         pushConstraint(`Value ${value} exceeds the maximum of ${field.max_value}.`, path, entity, issues);
       }
       if (field.decimals != null && decimalPlaces(value) > field.decimals) {
         pushConstraint(`Value ${value} has more than ${field.decimals} decimal place(s).`, path, entity, issues);
       }
-      if (field.steps != null && field.steps > 0 && !isMultipleOf(value, field.steps, field.min_value ?? 0)) {
+      if (field.steps != null && field.steps > 0 && !isMultipleOf(numeric, field.steps, field.min_value ?? 0)) {
         const base = field.min_value ?? 0;
         pushConstraint(
           `Value ${value} is not a multiple of the step ${field.steps}${base ? ` (offset from ${base})` : ''}.`,
@@ -154,6 +166,7 @@ function validateFieldValue(
         );
       }
       break;
+    }
     case 'boolean':
       if (typeof value !== 'boolean') {
         pushTypeIssue(value, 'boolean', path, entity, issues);
@@ -276,16 +289,14 @@ function checkStringLength(
   }
 }
 
-/** Counts a number's fractional digits, handling exponential notation (e.g. `1e-7` → 7). */
-function decimalPlaces(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-  const text = String(value).toLowerCase();
-  const [mantissa, exponent] = text.split('e');
-  const fractionDigits = mantissa.includes('.') ? mantissa.split('.')[1].length : 0;
-  // A negative exponent (e.g. `1e-7`) adds that many fractional digits.
-  return exponent ? Math.max(0, fractionDigits - Number(exponent)) : fractionDigits;
+/**
+ * Counts the fractional digits a numeric string actually carries. Counted off
+ * the source text rather than via `Number`, so trailing zeros are preserved
+ * (`'9.90'` → 2, where `Number('9.90')` would report 1).
+ */
+function decimalPlaces(value: string): number {
+  const [, fraction] = value.split('.');
+  return fraction?.length ?? 0;
 }
 
 /** Whether `value` lands on a `step` increment offset from `base`, with float tolerance. */

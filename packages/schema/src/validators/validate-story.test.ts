@@ -222,7 +222,7 @@ const cSchema = { blocks: { constrained, teaser } };
 
 const validContent = {
   component: 'constrained',
-  rating: 3,
+  rating: '3',
   title: 'hey',
   tags: ['a'],
   gallery: [asset()],
@@ -238,9 +238,9 @@ describe('validateStory — constraints', () => {
   });
 
   it('errors when a number is below min_value or above max_value', () => {
-    expect(validate({ rating: 0 }).issues.some(i => i.code === 'constraint_violation')).toBe(true);
-    expect(validate({ rating: 6 }).issues.some(i => i.code === 'constraint_violation')).toBe(true);
-    expect(validate({ rating: 5 }).ok).toBe(true);
+    expect(validate({ rating: '0' }).issues.some(i => i.code === 'constraint_violation')).toBe(true);
+    expect(validate({ rating: '6' }).issues.some(i => i.code === 'constraint_violation')).toBe(true);
+    expect(validate({ rating: '5' }).ok).toBe(true);
   });
 
   it('errors when a number has more decimal places than decimals allows', () => {
@@ -250,9 +250,9 @@ describe('validateStory — constraints', () => {
       fields: [defineField('price', { type: 'number', decimals: 2 })],
     });
     const s = { blocks: { priced: block } };
-    expect(validateStory({ content: { component: 'priced', price: 9.999 } }, s).issues.some(i => i.code === 'constraint_violation')).toBe(true);
-    expect(validateStory({ content: { component: 'priced', price: 9.99 } }, s).ok).toBe(true);
-    expect(validateStory({ content: { component: 'priced', price: 10 } }, s).ok).toBe(true);
+    expect(validateStory({ content: { component: 'priced', price: '9.999' } }, s).issues.some(i => i.code === 'constraint_violation')).toBe(true);
+    expect(validateStory({ content: { component: 'priced', price: '9.99' } }, s).ok).toBe(true);
+    expect(validateStory({ content: { component: 'priced', price: '10' } }, s).ok).toBe(true);
   });
 
   it('errors when a number is not a multiple of steps', () => {
@@ -262,10 +262,10 @@ describe('validateStory — constraints', () => {
       fields: [defineField('amount', { type: 'number', steps: 0.5, min_value: 1 })],
     });
     const s = { blocks: { stepped: block } };
-    expect(validateStory({ content: { component: 'stepped', amount: 2.3 } }, s).issues.some(i => i.code === 'constraint_violation')).toBe(true);
+    expect(validateStory({ content: { component: 'stepped', amount: '2.3' } }, s).issues.some(i => i.code === 'constraint_violation')).toBe(true);
     // 1, 1.5, 2 are on-step (offset from min_value 1); float artifacts tolerated.
-    expect(validateStory({ content: { component: 'stepped', amount: 2.5 } }, s).ok).toBe(true);
-    expect(validateStory({ content: { component: 'stepped', amount: 2 } }, s).ok).toBe(true);
+    expect(validateStory({ content: { component: 'stepped', amount: '2.5' } }, s).ok).toBe(true);
+    expect(validateStory({ content: { component: 'stepped', amount: '2' } }, s).ok).toBe(true);
   });
 
   it('errors when text exceeds max_length or is below minlength', () => {
@@ -295,10 +295,48 @@ describe('validateStory — constraints', () => {
   });
 
   it('errors when a blok component is not in the field allow list', () => {
-    const result = validate({ items: [{ component: 'constrained', rating: 3 }] });
+    const result = validate({ items: [{ component: 'constrained', rating: '3' }] });
     const disallowed = result.issues.find(i => i.code === 'disallowed_component');
     expect(disallowed).toBeDefined();
     expect(disallowed?.path).toEqual(['content', 'items', 0, 'component']);
+  });
+});
+
+describe('validateStory — number wire format', () => {
+  const priced = defineBlock({
+    name: 'priced',
+    is_root: true,
+    fields: [defineField('price', { type: 'number', decimals: 2 })],
+  });
+  const s = { blocks: { priced } };
+  const check = (price: unknown) => validateStory({ content: { component: 'priced', price } }, s);
+
+  // The Management API stores number fields as strings and rejects JSON numbers
+  // with "must be a string with numbers and allow '-' and '.'".
+  it('accepts the numeric string the API requires', () => {
+    expect(check('7').ok).toBe(true);
+    expect(check('-7').ok).toBe(true);
+    expect(check('0.5').ok).toBe(true);
+    expect(check('.5').ok).toBe(true);
+  });
+
+  it('rejects a JSON number, which the API refuses to store', () => {
+    expect(check(7).issues.some(i => i.code === 'invalid_value')).toBe(true);
+  });
+
+  it('rejects strings that are not numeric', () => {
+    expect(check('abc').ok).toBe(false);
+    expect(check('12a3').ok).toBe(false);
+    expect(check('12.3.4').ok).toBe(false);
+  });
+
+  it('accepts an empty string, which is how an unset number field is stored', () => {
+    expect(check('').ok).toBe(true);
+  });
+
+  it('counts decimal places off the source string, preserving trailing zeros', () => {
+    expect(check('9.99').ok).toBe(true);
+    expect(check('9.990').issues.some(i => i.code === 'constraint_violation')).toBe(true);
   });
 });
 

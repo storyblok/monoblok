@@ -88,7 +88,13 @@ interface FieldTypeValueMap {
   textarea: string;
   richtext: RichTextFieldValue;
   markdown: string;
-  number: number;
+  /**
+   * Stored and delivered as a string, not a JSON number. The Management API
+   * rejects numeric values ("must be a string with numbers and allow '-' and
+   * '.'"), the editor writes `String(value)`, and `default_value` is a string
+   * for the same reason. An unset field is `''`.
+   */
+  number: string;
   datetime: string;
   boolean: boolean;
   option: string;

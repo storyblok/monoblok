@@ -101,7 +101,7 @@ describe('createApiClient with .withTypes()', () => {
       const story = result.data.story;
       if (story.content.component === 'hero') {
         expectTypeOf(story.content.title).toEqualTypeOf<string>();
-        expectTypeOf(story.content.count).toEqualTypeOf<number>();
+        expectTypeOf(story.content.count).toEqualTypeOf<string>();
         expectTypeOf(story.content.component).toEqualTypeOf<'hero'>();
       }
     }
@@ -128,7 +128,7 @@ describe('createApiClient with .withTypes()', () => {
           expectTypeOf(story.content.headline).toEqualTypeOf<string>();
         }
         if (story.content.component === 'hero') {
-          expectTypeOf(story.content.count).toEqualTypeOf<number>();
+          expectTypeOf(story.content.count).toEqualTypeOf<string>();
         }
       }
     }
@@ -146,7 +146,7 @@ describe('createApiClient with .withTypes()', () => {
         }
         for (const hero of story.content.hero) {
           expectTypeOf(hero.component).toEqualTypeOf<'hero'>();
-          expectTypeOf(hero.count).toEqualTypeOf<number>();
+          expectTypeOf(hero.count).toEqualTypeOf<string>();
         }
         for (const blok of story.content.blocks) {
           expectTypeOf(blok.component).toEqualTypeOf<'hero' | 'teaser'>();
@@ -395,7 +395,7 @@ describe('defineBlock result from mapi shape used in capi withTypes', () => {
       if (story.content.component === 'product') {
         // required: true → no null/undefined in capi
         expectTypeOf(story.content.title).toEqualTypeOf<string>();
-        expectTypeOf(story.content.price).toEqualTypeOf<number>();
+        expectTypeOf(story.content.price).toEqualTypeOf<string>();
       }
     }
   });

@@ -228,7 +228,7 @@ describe('schema + mapi-client MAPI round-trip', () => {
       content: {
         component: pageComponent.name,
         headline: 'Hello from e2e',
-        rating: 42,
+        rating: '42',
         is_featured: true,
         description: {
           type: 'doc',
@@ -480,7 +480,7 @@ describe('schema + mapi-client MAPI round-trip', () => {
         content: {
           component: pageComponent.name,
           headline: 'Updated headline',
-          rating: 100,
+          rating: '100',
           is_featured: false,
           description: {
             type: 'doc',

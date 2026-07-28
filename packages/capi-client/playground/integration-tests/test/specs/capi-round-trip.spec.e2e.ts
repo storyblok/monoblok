@@ -159,7 +159,7 @@ describe('schema + capi-client CAPI round-trip', () => {
       content: {
         component: pageComponent.name,
         headline: 'Hello from CAPI e2e',
-        rating: 42,
+        rating: '42',
         is_featured: true,
         enddate: '2020-06-15 12:00',
         body: [

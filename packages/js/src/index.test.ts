@@ -279,6 +279,50 @@ describe('@storyblok/js', () => {
       expect(editableResult['data-blok-uid']).toBeDefined();
       expect(fetchSpy).toHaveBeenCalled();
     });
+
+    it('accepts a blok type that does not declare _editable', () => {
+      // FeatureStoryblok has no _editable and shares no property names with
+      // { _editable?: string }, which would trigger ts(2559) (weak type check).
+      // The parameter type `unknown` accepts any value, resolving this entirely.
+      interface FeatureStoryblok {
+        headline?: string;
+        component: 'feature';
+        _uid: string;
+      }
+
+      const blok: FeatureStoryblok = { component: 'feature', _uid: 'test-uid' };
+
+      // No @ts-expect-error needed — this must compile cleanly.
+      const result = storyblokEditable(blok);
+
+      // No _editable at runtime → returns empty object, no throw.
+      expect(result).toEqual({});
+    });
+
+    it('returns {} when blok has no _editable at runtime', () => {
+      expect(storyblokEditable({ component: 'feature', _uid: 'test-uid' })).toEqual({});
+    });
+
+    it('returns data attributes when _editable is present at runtime even if not in the declared type', () => {
+      interface FeatureStoryblok {
+        headline?: string;
+        component: 'feature';
+        _uid: string;
+      }
+
+      // _editable exists at runtime but is not declared on FeatureStoryblok.
+      // Cast through intersection so TypeScript knows the value is valid.
+      const blok = {
+        component: 'feature' as const,
+        _uid: 'test-uid',
+        _editable: '<!--#storyblok#{"id":"999","uid":"abc-123"}-->',
+      } satisfies FeatureStoryblok & { _editable: string };
+
+      const result = storyblokEditable(blok);
+
+      expect(result['data-blok-c']).toBe(JSON.stringify({ id: '999', uid: 'abc-123' }));
+      expect(result['data-blok-uid']).toBe('999-abc-123');
+    });
   });
 
   describe('rich text', () => {

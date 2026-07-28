@@ -1,11 +1,17 @@
-export default (blok?: { _editable?: string }) => {
-  if (typeof blok !== 'object' || typeof blok._editable !== 'string') {
+export default (blok?: unknown) => {
+  if (typeof blok !== 'object' || blok === null) {
+    return {};
+  }
+
+  const _editable = (blok as Record<string, unknown>)._editable;
+
+  if (typeof _editable !== 'string') {
     return {};
   }
 
   try {
     const options = JSON.parse(
-      blok._editable.replace(/^<!--#storyblok#/, '').replace(/-->$/, ''),
+      _editable.replace(/^<!--#storyblok#/, '').replace(/-->$/, ''),
     );
 
     if (options) {

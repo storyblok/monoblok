@@ -53,5 +53,5 @@ additionalProperties:
     - $ref: ./field-types/asset-field-value.yaml
     - $ref: ./field-types/multilink-field-value.yaml
     - $ref: ./field-types/table-field-value.yaml
-    - $ref: ./field-types/richtext-field-value.yaml
+    - $ref: ./field-types/rich-text-field-value.yaml
     - $ref: ./field-types/plugin-field-value.yaml

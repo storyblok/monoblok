@@ -12,7 +12,6 @@ import type {
 } from '@storyblok/richtext';
 import {
   buildStoryblokImage,
-  getEmojiText,
   getInnerMarks,
   getStaticChildren,
   groupLinkNodes,
@@ -167,8 +166,10 @@ function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, k
   }
 
   const children = node.content ? renderChildren(node.content, options) : [];
-  const textContent = getEmojiText(node);
-  return h(tag, { key, ...props }, textContent ? [createTextVNode(textContent)] : children);
+  if (node.type === 'emoji') {
+    return h(tag, { key, ...props }, [createTextVNode(node.attrs.emoji)]);
+  }
+  return h(tag, { key, ...props }, children);
 }
 
 /**

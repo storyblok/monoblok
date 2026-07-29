@@ -75,6 +75,13 @@ describe('redactSecretValues', () => {
     const out = redactSecretValues({ clientSecret: 'not-an-option' }, isSecretName, make) as Record<string, any>;
     expect(out.clientSecret).toBe('not-an-option');
   });
+
+  it('should not redact select-field choices (only custom plugin fields)', () => {
+    // A built-in `option` field reuses the { name, value } shape for choices.
+    const select = { type: 'option', options: [{ name: 'clientSecret', value: 'a-legit-choice' }] };
+    const out = redactSecretValues(select, isSecretName, make) as Record<string, any>;
+    expect(out.options[0].value).toBe('a-legit-choice');
+  });
 });
 
 describe('hasSecretOption', () => {
@@ -86,7 +93,12 @@ describe('hasSecretOption', () => {
   });
 
   it('should return false when no option name is a secret', () => {
-    const schema = { products: { options: [{ name: 'baseUrl', value: 'x' }] } };
+    const schema = { products: { type: 'custom', options: [{ name: 'baseUrl', value: 'x' }] } };
+    expect(hasSecretOption(schema, isSecretName)).toBe(false);
+  });
+
+  it('should not count a select field whose choice name matches a secret', () => {
+    const schema = { kind: { type: 'option', options: [{ name: 'clientSecret', value: 'x' }] } };
     expect(hasSecretOption(schema, isSecretName)).toBe(false);
   });
 });

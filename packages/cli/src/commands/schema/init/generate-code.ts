@@ -271,14 +271,12 @@ function omitEmptyArrays(obj: Record<string, unknown>): Record<string, unknown> 
  * Generates a `defineField('name', {...})` code string for a single schema field.
  * Position is implicit in the array index, so `pos` is stripped from the config.
  *
- * When `secretNameMatcher` is given, the `value` of any plugin option
- * (`options: [{ name, value }]`) whose `name` is a secret is replaced with a
- * `secret()` placeholder so it never reaches the versioned file. Redaction is
- * scoped to custom plugin fields (`type: 'custom'`): the built-in `option`/
- * `options` select fields use the same `{ name, value }` shape for their choices,
- * which must never be redacted. Redaction runs on the raw wire field, before
- * `toDslField` introduces `RawCode` folder refs — `redactSecretValues` only ever
- * walks plain data.
+ * When `secretNameMatcher` is given, the `value` of a custom plugin field's
+ * option (`options: [{ name, value }]`) whose `name` is a secret is replaced with
+ * a `secret()` placeholder so it never reaches the versioned file.
+ * `redactSecretValues` self-scopes to `type: 'custom'` fields, so select-field
+ * choices are left intact. Redaction runs on the raw wire field, before
+ * `toDslField` introduces `RawCode` folder refs — it only ever walks plain data.
  */
 function generateFieldCode(
   fieldName: string,
@@ -287,7 +285,7 @@ function generateFieldCode(
   folderVarByUuid?: Map<string, string>,
   secretNameMatcher?: (name: string) => boolean,
 ): string {
-  const input = secretNameMatcher && fieldData.type === 'custom'
+  const input = secretNameMatcher
     ? redactSecretValues(fieldData, secretNameMatcher, () => new RawCode('secret()')) as Record<string, unknown>
     : fieldData;
   const clean = omitEmptyArrays(toDslField(stripKeys(input, FIELD_STRIP_KEYS), folderVarByUuid));
@@ -362,11 +360,9 @@ export function generateComponentFile(
   const lines: string[] = [];
 
   // Emit a `secret` import only when this block actually redacts a value, so
-  // files without secrets keep a minimal import. Scoped to custom plugin fields,
-  // matching `generateFieldCode` — select-field choices are never redacted.
-  const usesSecret = !!secretNameMatcher && Object.values(
-    isRecord(component.schema) ? component.schema : {},
-  ).some(field => isRecord(field) && field.type === 'custom' && hasSecretOption(field, secretNameMatcher));
+  // files without secrets keep a minimal import. `hasSecretOption` self-scopes to
+  // custom plugin fields — select-field choices are never counted.
+  const usesSecret = !!secretNameMatcher && hasSecretOption(component.schema, secretNameMatcher);
 
   lines.push('import {');
   lines.push('  defineBlock,');

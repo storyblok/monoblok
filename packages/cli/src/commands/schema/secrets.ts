@@ -95,25 +95,29 @@ function referenceFor(item: unknown, index: number, reference: unknown): unknown
  * writing to disk. The replaced value is not recursed into; the source is never
  * mutated.
  *
- * The caller must scope this to custom plugin field configs (`type: 'custom'`):
- * the built-in `option`/`options` select fields use the same `{ name, value }`
- * shape for their choices, and those must never be redacted.
+ * Redaction is scoped to custom plugin fields: a pair is only eligible once the
+ * walk has entered a `type: 'custom'` record. The built-in `option`/`options`
+ * select fields reuse the same `{ name, value }` shape for their choices, which
+ * must never be redacted. `inCustomField` carries that context down the tree and
+ * defaults to `false` (callers pass a whole field/schema, not a bare option).
  */
 export function redactSecretValues(
   value: unknown,
   isSecretName: (name: string) => boolean,
   makePlaceholder: (name: string) => unknown,
+  inCustomField = false,
 ): unknown {
   if (Array.isArray(value)) {
-    return value.map(item => redactSecretValues(item, isSecretName, makePlaceholder));
+    return value.map(item => redactSecretValues(item, isSecretName, makePlaceholder, inCustomField));
   }
   if (isRecord(value)) {
-    const optionName = secretOptionName(value, isSecretName);
+    const custom = inCustomField || value.type === 'custom';
+    const optionName = custom ? secretOptionName(value, isSecretName) : undefined;
     const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
       out[key] = optionName && key === 'value'
         ? makePlaceholder(optionName)
-        : redactSecretValues(val, isSecretName, makePlaceholder);
+        : redactSecretValues(val, isSecretName, makePlaceholder, custom);
     }
     return out;
   }
@@ -300,15 +304,17 @@ export function hasSecretPlaceholder(value: unknown): boolean {
 }
 
 /**
- * Returns true if any Storyblok option pair anywhere within `value` has a `name`
- * matching `isSecretName`. Used to decide whether an `init`-generated file needs
- * a `secret` import.
+ * Returns true if any custom plugin field within `value` has an option pair
+ * whose `name` matches `isSecretName`. Scoped to `type: 'custom'` records the
+ * same way as {@link redactSecretValues}, so select-field choices never count.
+ * Used to decide whether an `init`-generated file needs a `secret` import.
  */
-export function hasSecretOption(value: unknown, isSecretName: (name: string) => boolean): boolean {
-  if (Array.isArray(value)) { return value.some(item => hasSecretOption(item, isSecretName)); }
+export function hasSecretOption(value: unknown, isSecretName: (name: string) => boolean, inCustomField = false): boolean {
+  if (Array.isArray(value)) { return value.some(item => hasSecretOption(item, isSecretName, inCustomField)); }
   if (isRecord(value)) {
-    if (secretOptionName(value, isSecretName)) { return true; }
-    return Object.values(value).some(val => hasSecretOption(val, isSecretName));
+    const custom = inCustomField || value.type === 'custom';
+    if (custom && secretOptionName(value, isSecretName)) { return true; }
+    return Object.values(value).some(val => hasSecretOption(val, isSecretName, custom));
   }
   return false;
 }

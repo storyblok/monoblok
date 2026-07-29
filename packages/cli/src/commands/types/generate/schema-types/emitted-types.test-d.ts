@@ -19,8 +19,11 @@ describe('generated types', () => {
     expectTypeOf<Block<'hero'>>().toHaveProperty('image').toBeNullable();
   });
 
-  it('resolves tab fields to an absent, valueless property', () => {
-    expectTypeOf<Block<'hero'>>().toHaveProperty('general').toEqualTypeOf<null | undefined>();
+  // A tab groups other fields in the editor UI and is never a key in story
+  // content, so it must not appear at all. It used to surface as `general?: null`,
+  // which offered a key no API response has.
+  it('omits tab fields from the content type entirely', () => {
+    expectTypeOf<Block<'hero'>>().not.toHaveProperty('general');
   });
 
   it('narrows a whitelisted bloks field to the allowed block only', () => {

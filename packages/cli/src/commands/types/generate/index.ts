@@ -9,6 +9,7 @@ import { readDatasourcesFiles } from "../../datasources/push/actions";
 import type { SpaceDatasourcesData } from "../../../commands/datasources/constants";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
+import { DEFAULT_SCHEMA_ENTRY_PATH } from "../../schema/constants";
 import { runFutureSchemaTypes } from "./future-schema";
 
 const generateCmd = typesCommand
@@ -35,7 +36,7 @@ const generateCmd = typesCommand
   .option("--future-schema", "Generate types from the space schema")
   .option(
     "--field-plugins <path>",
-    "Path to a module exporting your defineFieldPlugin declarations (default: .storyblok/schema/schema.ts)",
+    `Path to a module exporting your defineFieldPlugin declarations (default: ${DEFAULT_SCHEMA_ENTRY_PATH})`,
   );
 
 generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
@@ -46,6 +47,7 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
     await runFutureSchemaTypes({
       options,
       globals: { space, path, filename, separateFiles, verbose },
+      getOptionValueSource: (attributeName) => command.getOptionValueSource(attributeName),
     });
     return;
   }

@@ -369,5 +369,48 @@ describe("types generate", () => {
       expect(uiInfoMock).toHaveBeenCalledWith(expect.stringContaining("@storyblok/schema"));
       expect(uiSpinnerFailedMock).not.toHaveBeenCalled();
     });
+
+    it('forwards --field-plugins, --type-prefix, --type-suffix, and --path to the generator', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({ files: [], unmappedFieldTypes: [] });
+
+      await typesCommand.parseAsync([
+        'node',
+        'test',
+        'generate',
+        '--space',
+        '295018',
+        '--future-schema',
+        '--field-plugins',
+        './src/storyblok/plugins.ts',
+        '--type-prefix',
+        'Sb',
+        '--type-suffix',
+        'Type',
+      ]);
+
+      expect(generateSchemaTypes).toHaveBeenCalledWith(expect.objectContaining({
+        space: '295018',
+        fieldPluginsPath: './src/storyblok/plugins.ts',
+        typePrefix: 'Sb',
+        typeSuffix: 'Type',
+      }));
+    });
+
+    it('warns that --filename collides with the legacy generator output', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({ files: [], unmappedFieldTypes: [] });
+
+      await typesCommand.parseAsync([
+        'node',
+        'test',
+        'generate',
+        '--space',
+        '295018',
+        '--future-schema',
+        '--filename',
+        'shared',
+      ]);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('--filename'));
+    });
   });
 });

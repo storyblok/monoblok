@@ -57,8 +57,6 @@ storyblok types generate --space 12345 --separate-files
 
 Both generators write under `.storyblok/types/`, where the `{spaceId}` folder corresponds to the ID of your Storyblok space. Use `--path` to write somewhere other than `.storyblok`.
 
-### Legacy generator
-
 The legacy generator generates two files:
 1. A `storyblok.d.ts` file with base Storyblok types (like `StoryblokAsset`, `StoryblokRichtext`, etc.)
 2. A `storyblok-components.d.ts` file for each space inside the `.storyblok/types/{spaceId}/` directory with your component types
@@ -76,36 +74,6 @@ The following structure will be created:
     ├── storyblok.d.ts            # Base Storyblok types
     └── 295018/
         └── storyblok-components.d.ts        # Your component types
-```
-
-### `--future-schema`
-
-`--future-schema` generates a single `storyblok-schema.d.ts` file per space, which exports `Blocks`, `Schema`, `FieldPlugins`, `Block<TName>`, `AnyBlock`, `Story`, and `StoryMapi`. It writes no base-types file, because the base types come from `@storyblok/schema` at compile time.
-
-When running:
-```bash
-storyblok types generate --space 295018 --future-schema
-```
-
-The following structure will be created:
-
-```
-.storyblok/
-└── types/
-    └── 295018/
-        └── storyblok-schema.d.ts        # Your block definitions and the derived surface
-```
-
-With `--separate-files`, each block definition moves into its own file under `blocks/`, and the main file imports them:
-
-```
-.storyblok/
-└── types/
-    └── 295018/
-        ├── blocks/
-        │   ├── hero.d.ts
-        │   └── teaser-list.d.ts
-        └── storyblok-schema.d.ts        # Imports the block files, exports the surface
 ```
 
 ## Notes

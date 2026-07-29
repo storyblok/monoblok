@@ -39,7 +39,7 @@ describe('generated types', () => {
 
   it('excludes non-nestable blocks from bloks unions', () => {
     type Columns = NonNullable<Block<'grid'>['columns']>;
-    // `page` is is_nestable: false, so it must not appear; this is exact
+    // `page` has is_nestable: false, so it must not appear; this is exact
     // equality against the full expected union, so a stray `'page'` member
     // fails it (a `not.toEqualTypeOf<'page'>()` check would not: it is
     // structurally incapable of failing against a multi-member union).

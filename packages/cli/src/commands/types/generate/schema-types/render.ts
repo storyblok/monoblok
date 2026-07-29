@@ -1,7 +1,7 @@
 import { relative } from 'pathe';
 
 import { toPascalCase } from '../../../../utils/format';
-import { componentFileName, resolveFileNames, resolveVarNames } from '../../../schema/utils';
+import { componentFileName, resolveFileNames, resolveVarNames, toSafeIdentifier } from '../../../schema/utils';
 import type { FieldPluginsSource } from './field-plugins';
 import type { SerializedBlock } from './serialize';
 
@@ -44,9 +44,13 @@ function decorate(base: string, options: NameOptions): string {
  * `<Pascal>BlockDefinition`; components whose names collapse to the same
  * PascalCase identifier (e.g. `teaser-list` and `teaser_list`) get a numeric
  * suffix via {@link resolveVarNames} so the file never declares a duplicate.
+ *
+ * `toSafeIdentifier` runs on the finished base name, because Storyblok accepts
+ * component names starting with a digit (`2_col`) and an unguarded `2Col…` would
+ * make the entire emitted file unparseable, not just its own declaration.
  */
 export function buildNames(componentNames: string[], options: NameOptions): EmittedNames {
-  const bases = resolveVarNames(componentNames, name => `${toPascalCase(name)}BlockDefinition`);
+  const bases = resolveVarNames(componentNames, name => toSafeIdentifier(`${toPascalCase(name)}BlockDefinition`));
   return {
     blocks: decorate('Blocks', options),
     schema: decorate('Schema', options),
@@ -77,15 +81,27 @@ export function renderHeader(space: string): string[] {
 }
 
 /**
- * The `@storyblok/schema` import line. `InferStory`/`InferStoryMapi` back the
- * always-emitted `Story`/`StoryMapi` aliases; `InferSchema` is only consumed by
- * the `schema`/`record` branches of {@link renderFieldPlugins}, so it is pulled
- * in only when needed, a `{ kind: 'none' }` run would otherwise import it
- * unused. Names stay alphabetically ordered either way.
+ * Whether the emitted file derives `FieldPlugins` from a user module, as opposed
+ * to declaring it empty.
+ *
+ * Both the `@storyblok/schema` import line and the `FieldPlugins` declaration
+ * must agree on this: `InferSchema` is used by exactly the branches that import
+ * the user module, so deciding it once is what keeps the file from importing a
+ * name it never references.
  */
-function renderSchemaImport(fieldPlugins: FieldPluginsSource): string {
+function usesUserFieldPlugins(options: Pick<RenderOptions, 'fieldPlugins' | 'fieldPluginsImportPath'>): boolean {
+  return options.fieldPlugins.kind !== 'none' && options.fieldPluginsImportPath !== undefined;
+}
+
+/**
+ * The `@storyblok/schema` import line. `InferStory`/`InferStoryMapi` back the
+ * always-emitted `Story`/`StoryMapi` aliases; `InferSchema` is only consumed
+ * when {@link renderFieldPlugins} imports a user module. Names stay
+ * alphabetically ordered either way.
+ */
+function renderSchemaImport(options: Pick<RenderOptions, 'fieldPlugins' | 'fieldPluginsImportPath'>): string {
   const names = ['BlockContent', 'MapiStory as InferStoryMapi'];
-  if (fieldPlugins.kind !== 'none') { names.push('Schema as InferSchema'); }
+  if (usesUserFieldPlugins(options)) { names.push('Schema as InferSchema'); }
   names.push('Story as InferStory');
   return `import type { ${names.join(', ')} } from '@storyblok/schema';`;
 }
@@ -102,7 +118,7 @@ function renderSchemaImport(fieldPlugins: FieldPluginsSource): string {
 function renderFieldPlugins(options: RenderOptions, names: EmittedNames): { imports: string[]; declaration: string } {
   const { fieldPlugins, fieldPluginsImportPath } = options;
 
-  if (fieldPlugins.kind === 'none' || fieldPluginsImportPath === undefined) {
+  if (!usesUserFieldPlugins(options)) {
     return { imports: [], declaration: `export type ${names.fieldPlugins} = Record<never, never>;` };
   }
 
@@ -153,7 +169,7 @@ export function renderSchemaTypes(options: RenderOptions): string {
 
   const lines = [
     ...renderHeader(options.space),
-    renderSchemaImport(options.fieldPlugins),
+    renderSchemaImport(options),
     ...fieldPlugins.imports,
     '',
   ];
@@ -197,7 +213,7 @@ export function renderSeparateFiles(options: RenderOptions & { filename: string 
   const definitionNames = componentNames.map(name => names.definitionByComponent.get(name)!);
   const mainLines = [
     ...renderHeader(options.space),
-    renderSchemaImport(options.fieldPlugins),
+    renderSchemaImport(options),
     ...fieldPlugins.imports,
     ...definitionNames.map((typeName, index) => `import type { ${typeName} } from './blocks/${fileNames[index]}';`),
     '',

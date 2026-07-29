@@ -94,11 +94,11 @@ describe('expandFolderPath', () => {
 describe('buildGroupDisplayPathByUuid', () => {
   it('joins parent display names with slashes, preserving original casing', () => {
     const folders = [
-      { uuid: 'a', name: 'My Layout', parent_uuid: null },
-      { uuid: 'b', name: 'Heros', parent_uuid: 'a' },
+      folder({ uuid: 'a', name: 'My Layout' }),
+      folder({ uuid: 'b', name: 'Heros', parent_uuid: 'a' }),
     ];
 
-    const result = buildGroupDisplayPathByUuid(folders as never);
+    const result = buildGroupDisplayPathByUuid(folders);
 
     expect(result.get('a')).toBe('My Layout');
     expect(result.get('b')).toBe('My Layout/Heros');
@@ -106,22 +106,27 @@ describe('buildGroupDisplayPathByUuid', () => {
 
   it('treats a cyclic parent chain as a root instead of recursing forever', () => {
     const folders = [
-      { uuid: 'a', name: 'A', parent_uuid: 'b' },
-      { uuid: 'b', name: 'B', parent_uuid: 'a' },
+      folder({ uuid: 'a', name: 'A', parent_uuid: 'b' }),
+      folder({ uuid: 'b', name: 'B', parent_uuid: 'a' }),
     ];
 
-    const result = buildGroupDisplayPathByUuid(folders as never);
+    const result = buildGroupDisplayPathByUuid(folders);
 
-    // When pathFor('a') recurses into pathFor('b'), which recurses back into
-    // pathFor('a'), the cycle is detected and cut (visited.has('a') is true),
-    // returning []. This bubbles up to set b=['B'], then a=['B', 'A'].
-    expect(result.get('a')).toBe('B/A');
-    expect(result.get('b')).toBe('B');
+    // The cycle is cut wherever the walk enters it, so which of the two ends up
+    // the root depends on iteration order, not on behaviour. What must hold is
+    // that both groups terminate with a path built only from real segments, and
+    // that neither repeats a segment (which is what a missed cycle would do).
+    for (const uuid of ['a', 'b']) {
+      const segments = result.get(uuid)?.split('/') ?? [];
+      expect(segments.length).toBeGreaterThan(0);
+      expect(segments.every(segment => ['A', 'B'].includes(segment))).toBe(true);
+      expect(new Set(segments).size).toBe(segments.length);
+    }
   });
 
   it('ignores a parent uuid that is not in the folder list', () => {
-    const folders = [{ uuid: 'a', name: 'Orphan', parent_uuid: 'missing' }];
+    const folders = [folder({ uuid: 'a', name: 'Orphan', parent_uuid: 'missing' })];
 
-    expect(buildGroupDisplayPathByUuid(folders as never).get('a')).toBe('Orphan');
+    expect(buildGroupDisplayPathByUuid(folders).get('a')).toBe('Orphan');
   });
 });

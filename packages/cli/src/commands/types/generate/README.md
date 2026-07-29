@@ -22,9 +22,10 @@ storyblok types generate --space <spaceId>
 | `--field-plugins <path>` | Path to a module exporting your `defineFieldPlugin` declarations, used to type `custom` fields. Requires `--future-schema` | `.storyblok/schema/schema.ts` |
 | `--sf, --separate-files` | Generate separate type definition files for each component | `false` |
 | `--strict` | Enable strict mode with no loose typing | `false` |
-| `--filename <name>` | File name for the generated type files | `storyblok` |
+| `--filename <name>` | Base file name for the generated type files. The legacy generator ignores it under `--separate-files`; `--future-schema` uses it to name the main file | `storyblok`, or `storyblok-schema` under `--future-schema` |
 | `--type-prefix <prefix>` | Prefix to be prepended to all generated component type names | - |
-| `--suffix <suffix>` | Suffix for component names | - |
+| `--type-suffix <suffix>` | Suffix to be appended to all generated component type names | - |
+| `--suffix <suffix>` | Suffix for component names, used to select the pulled component files the legacy generator reads | - |
 | `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types | - |
 | `--compiler-options <options>` | Path to the compiler options from json-schema-to-typescript | - |
 | `--space <spaceId>` | (Required) The ID of your Storyblok space | - |
@@ -54,11 +55,13 @@ storyblok types generate --space 12345 --separate-files
 
 ## File Structure
 
-The command will generate two files:
+Both generators write under `.storyblok/types/`, where the `{spaceId}` folder corresponds to the ID of your Storyblok space. Use `--path` to write somewhere other than `.storyblok`.
+
+### Legacy generator
+
+The legacy generator generates two files:
 1. A `storyblok.d.ts` file with base Storyblok types (like `StoryblokAsset`, `StoryblokRichtext`, etc.)
 2. A `storyblok-components.d.ts` file for each space inside the `.storyblok/types/{spaceId}/` directory with your component types
-
-### Example Structure
 
 When running:
 ```bash
@@ -75,9 +78,35 @@ The following structure will be created:
         └── storyblok-components.d.ts        # Your component types
 ```
 
-> **Note:**
-> The `{spaceId}` folder corresponds to the ID of your Storyblok space.
-> The generated files are always placed under `.storyblok/types/` and `.storyblok/types/{spaceId}/`.
+### `--future-schema`
+
+`--future-schema` generates a single `storyblok-schema.d.ts` file per space, which exports `Blocks`, `Schema`, `FieldPlugins`, `Block<TName>`, `AnyBlock`, `Story`, and `StoryMapi`. It writes no base-types file, because the base types come from `@storyblok/schema` at compile time.
+
+When running:
+```bash
+storyblok types generate --space 295018 --future-schema
+```
+
+The following structure will be created:
+
+```
+.storyblok/
+└── types/
+    └── 295018/
+        └── storyblok-schema.d.ts        # Your block definitions and the derived surface
+```
+
+With `--separate-files`, each block definition moves into its own file under `blocks/`, and the main file imports them:
+
+```
+.storyblok/
+└── types/
+    └── 295018/
+        ├── blocks/
+        │   ├── hero.d.ts
+        │   └── teaser-list.d.ts
+        └── storyblok-schema.d.ts        # Imports the block files, exports the surface
+```
 
 ## Notes
 
@@ -86,3 +115,5 @@ The following structure will be created:
 - The generated types are based on your component schemas in Storyblok
 - When using `--strict`, the generated types will be more precise but may require more explicit type handling in your code
 - Custom field types can be handled by providing a parser file with `--custom-fields-parser`
+- Files generated with `--future-schema` import from `@storyblok/schema`, so install it as a dev dependency: `npm i -D @storyblok/schema`. It is a types-only import and never reaches your bundle
+- Under `--future-schema`, custom fields resolve through `defineFieldPlugin` declarations. Point `--field-plugins` at the module that exports them, or place it at the default `.storyblok/schema/schema.ts`. Custom fields with no matching declaration fall back to an untyped value and the command warns which `field_type`s were unmapped

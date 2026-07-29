@@ -15,7 +15,7 @@ export type MultilinkFieldValue = MultilinkFieldValueRoot;
 
 export type PluginFieldValue = PluginFieldValueRoot;
 
-export type RichtextFieldValue = RichtextFieldValueRoot;
+export type RichTextFieldValue = RichTextFieldValueRoot;
 
 export type TableFieldValue = TableFieldValueRoot;
 
@@ -95,7 +95,7 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     toolbar?: Array<'ai-complete' | 'ai-shorten' | 'ai-extend' | 'ai-rephrase' | 'ai-summarize' | 'ai-simplify' | 'ai-tone' | 'ai-emoji' | 'ai-translate' | 'ai-tldr' | 'ai-spelling' | 'blok' | 'ltr' | 'rtl' | 'export' | 'import' | 'bold' | 'list' | 'inlinecode' | 'code' | 'color' | 'copy' | 'cut' | 'emoji' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'highlight' | 'unset' | 'hrule' | 'image' | 'italic' | 'link' | 'anchor' | 'olist' | 'paragraph' | 'paste-action' | 'paste' | 'quote' | 'redo' | 'strike' | 'subscript' | 'superscript' | 'underline' | 'undo' | 'align-left' | 'align-center' | 'align-right' | 'align-justify'>;
     /**
-     * Custom CSS styles for the richtext field
+     * Custom CSS styles for the rich text field
      */
     style_options?: Array<{
         _uid?: string;
@@ -678,7 +678,7 @@ export type BlockContentRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichtextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
 };
 
 /**
@@ -697,7 +697,7 @@ export type BlockContentInputRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: null | string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentInputRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichtextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: null | string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentInputRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
 };
 
 /**
@@ -750,19 +750,17 @@ export type PluginFieldValueRoot = {
 };
 
 /**
- * Richtext field type - structured rich text document (ProseMirror format)
+ * Rich text field type - structured rich text document (ProseMirror/Tiptap format)
  */
-export type RichtextFieldValueRoot = {
+export type RichTextFieldValueRoot = {
     /**
-     * Root node type for richtext documents
+     * Root node type — always "doc"
      */
     type: 'doc';
     /**
-     * Array of richtext nodes (paragraphs, headings, lists, bloks, etc.)
+     * Top-level rich text nodes
      */
-    content?: Array<{
-        [key: string]: unknown;
-    }>;
+    content: Array<RichTextFieldValueRichTextNode>;
 };
 
 /**
@@ -878,4 +876,327 @@ export type ValueFieldRoot = {
      * Overwrite the field when merging (Dimensions App)
      */
     force_merge?: boolean;
+};
+
+/**
+ * A rich text document node
+ */
+export type RichTextFieldValueRichTextNode = RichTextFieldValueParagraphNode | RichTextFieldValueTextNode | RichTextFieldValueHeadingNode | RichTextFieldValueBlockquoteNode | RichTextFieldValueBulletListNode | RichTextFieldValueOrderedListNode | RichTextFieldValueListItemNode | RichTextFieldValueCodeBlockNode | RichTextFieldValueHardBreakNode | RichTextFieldValueHorizontalRuleNode | RichTextFieldValueImageNode | RichTextFieldValueEmojiNode | RichTextFieldValueTableNode | RichTextFieldValueTableRowNode | RichTextFieldValueTableCellNode | RichTextFieldValueTableHeaderNode | RichTextFieldValueBlockNode;
+
+export type RichTextFieldValueParagraphNode = {
+    type: 'paragraph';
+    attrs?: {
+        /**
+         * Text alignment
+         */
+        textAlign: 'left' | 'center' | 'right' | 'justify' | null;
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueTextNode = {
+    type: 'text';
+    /**
+     * The text content
+     */
+    text: string;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueHeadingNode = {
+    type: 'heading';
+    attrs: {
+        /**
+         * Heading level (h1–h6)
+         */
+        level: 1 | 2 | 3 | 4 | 5 | 6 | null;
+        /**
+         * Text alignment
+         */
+        textAlign: 'left' | 'center' | 'right' | 'justify' | null;
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueBlockquoteNode = {
+    type: 'blockquote';
+    attrs?: {
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueBulletListNode = {
+    type: 'bullet_list';
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueOrderedListNode = {
+    type: 'ordered_list';
+    attrs: {
+        /**
+         * Starting number for the ordered list
+         */
+        order?: number;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueListItemNode = {
+    type: 'list_item';
+    attrs?: {
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueCodeBlockNode = {
+    type: 'code_block';
+    attrs: {
+        /**
+         * Language class (e.g. "language-typescript")
+         */
+        class: string | null;
+        /**
+         * Text direction
+         */
+        dir?: 'ltr' | 'rtl' | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+    marks?: Array<RichTextFieldValueRichTextMark>;
+};
+
+export type RichTextFieldValueHardBreakNode = {
+    type: 'hard_break';
+};
+
+export type RichTextFieldValueHorizontalRuleNode = {
+    type: 'horizontal_rule';
+};
+
+export type RichTextFieldValueImageNode = {
+    type: 'image';
+    attrs: {
+        /**
+         * Storyblok asset ID
+         */
+        id: number | null;
+        /**
+         * Image URL
+         */
+        src: string | null;
+        /**
+         * Alternative text
+         */
+        alt: string | null;
+        title: string | null;
+        source: string | null;
+        copyright: string | null;
+        /**
+         * Asset metadata
+         */
+        meta_data: {
+            alt?: string | null;
+            title?: string | null;
+            source?: string | null;
+            copyright?: string | null;
+            [key: string]: string | null | string | null | string | null | string | null | string | null | undefined;
+        } | null;
+    };
+};
+
+export type RichTextFieldValueEmojiNode = {
+    type: 'emoji';
+    attrs: {
+        /**
+         * Emoji name/slug
+         */
+        name: string;
+        /**
+         * Emoji character
+         */
+        emoji: string;
+        /**
+         * URL to a fallback image for unsupported environments
+         */
+        fallbackImage: string;
+    };
+};
+
+export type RichTextFieldValueTableNode = {
+    type: 'table';
+    content?: Array<RichTextFieldValueRichTextNode>;
+};
+
+export type RichTextFieldValueTableRowNode = {
+    type: 'tableRow';
+    content?: Array<RichTextFieldValueRichTextNode>;
+};
+
+export type RichTextFieldValueTableCellNode = {
+    type: 'tableCell';
+    attrs: {
+        colspan?: number;
+        rowspan?: number;
+        /**
+         * Column widths in pixels
+         */
+        colwidth?: Array<number> | null;
+        backgroundColor?: string | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+};
+
+export type RichTextFieldValueTableHeaderNode = {
+    type: 'tableHeader';
+    attrs: {
+        colspan?: number;
+        rowspan?: number;
+        /**
+         * Column widths in pixels
+         */
+        colwidth?: Array<number> | null;
+    };
+    content?: Array<RichTextFieldValueRichTextNode>;
+};
+
+export type RichTextFieldValueBlockNode = {
+    type: 'blok';
+    attrs: {
+        /**
+         * Block instance ID
+         */
+        id: string | null;
+        /**
+         * Array of embedded component instances
+         */
+        body: Array<BlockContentRoot> | null;
+    };
+};
+
+/**
+ * Inline formatting mark applied to a text node
+ */
+export type RichTextFieldValueRichTextMark = RichTextFieldValueLinkMark | RichTextFieldValueBoldMark | RichTextFieldValueItalicMark | RichTextFieldValueStrikeMark | RichTextFieldValueUnderlineMark | RichTextFieldValueCodeMark | RichTextFieldValueSuperscriptMark | RichTextFieldValueSubscriptMark | RichTextFieldValueHighlightMark | RichTextFieldValueTextStyleMark | RichTextFieldValueAnchorMark | RichTextFieldValueStyledMark;
+
+export type RichTextFieldValueLinkMark = {
+    type: 'link';
+    /**
+     * Link attributes
+     */
+    attrs: {
+        /**
+         * Link URL
+         */
+        href: string | null;
+        /**
+         * UUID of the linked story (for internal links)
+         */
+        uuid: string | null;
+        /**
+         * Anchor/fragment identifier
+         */
+        anchor: string | null;
+        /**
+         * Link target attribute
+         */
+        target: '_self' | '_blank' | '_parent' | '_top' | null;
+        /**
+         * Type of link
+         */
+        linktype: 'story' | 'url' | 'email' | 'asset' | null;
+        /**
+         * Custom link attributes
+         */
+        custom?: {
+            [key: string]: unknown;
+        };
+    };
+};
+
+export type RichTextFieldValueBoldMark = {
+    type: 'bold';
+};
+
+export type RichTextFieldValueItalicMark = {
+    type: 'italic';
+};
+
+export type RichTextFieldValueStrikeMark = {
+    type: 'strike';
+};
+
+export type RichTextFieldValueUnderlineMark = {
+    type: 'underline';
+};
+
+export type RichTextFieldValueCodeMark = {
+    type: 'code';
+};
+
+export type RichTextFieldValueSuperscriptMark = {
+    type: 'superscript';
+};
+
+export type RichTextFieldValueSubscriptMark = {
+    type: 'subscript';
+};
+
+export type RichTextFieldValueHighlightMark = {
+    type: 'highlight';
+    attrs: {
+        /**
+         * Highlight color (CSS color value)
+         */
+        color: string | null;
+    };
+};
+
+export type RichTextFieldValueTextStyleMark = {
+    type: 'textStyle';
+    attrs: {
+        color?: string | null;
+        id?: string | null;
+        class?: string | null;
+    };
+};
+
+export type RichTextFieldValueAnchorMark = {
+    type: 'anchor';
+    attrs: {
+        /**
+         * Anchor identifier
+         */
+        id: string;
+    };
+};
+
+export type RichTextFieldValueStyledMark = {
+    type: 'styled';
+    attrs: {
+        /**
+         * CSS class name
+         */
+        class: string | null;
+    };
 };

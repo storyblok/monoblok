@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Component } from '../../../../types';
 import { FIXTURE_COMPONENTS } from './__fixtures__/components';
 import { renderSchemaTypes } from './render';
 import { serializeBlockDefinition } from './serialize';
+
+/**
+ * Serializes the fixture components the way `generateSchemaTypes` does, so the
+ * committed fixture stays a faithful sample of real output: sorted by name, with
+ * every fixture component registered as a known block so `allow` entries survive.
+ */
+function serializeFixtureBlocks() {
+  const components: Component[] = FIXTURE_COMPONENTS;
+  const knownBlockNames = new Set(components.map(component => component.name));
+  return [...components]
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .map(component => serializeBlockDefinition(component, { displayPathByUuid: new Map(), knownBlockNames }));
+}
 
 /**
  * The committed fixture is what `emitted-types.test-d.ts` typechecks. If the
@@ -12,10 +26,11 @@ import { serializeBlockDefinition } from './serialize';
  */
 describe('emitted type fixture', () => {
   it('matches what the renderer currently produces', async () => {
-    const blocks = FIXTURE_COMPONENTS.map(component =>
-      serializeBlockDefinition(component as never, { displayPathByUuid: new Map() }));
-
-    const rendered = renderSchemaTypes({ blocks, fieldPlugins: { kind: 'none' }, space: '295018' });
+    const rendered = renderSchemaTypes({
+      blocks: serializeFixtureBlocks(),
+      fieldPlugins: { kind: 'none' },
+      space: '295018',
+    });
 
     await expect(rendered).toMatchFileSnapshot('./__fixtures__/expected-types.d.ts');
   });
@@ -27,11 +42,8 @@ describe('emitted type fixture', () => {
    * just through `Block<TName>`, see the "emitted `Story`" describe block.
    */
   it('matches what the renderer produces with field plugins registered', async () => {
-    const blocks = FIXTURE_COMPONENTS.map(component =>
-      serializeBlockDefinition(component as never, { displayPathByUuid: new Map() }));
-
     const rendered = renderSchemaTypes({
-      blocks,
+      blocks: serializeFixtureBlocks(),
       fieldPlugins: { kind: 'record', modulePath: '/abs/plugins.ts', fieldTypes: ['colorpicker'] },
       fieldPluginsImportPath: './plugins',
       space: '295018',

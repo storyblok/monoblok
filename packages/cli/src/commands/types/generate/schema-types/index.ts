@@ -24,11 +24,24 @@ const LEGACY_ONLY_FLAGS: ReadonlyArray<readonly [keyof GenerateTypesOptions, str
  * and `--suffix` only selects pulled component files, which this generator
  * never reads. Failing loudly beats silently ignoring a flag the user
  * believes is applied.
+ *
+ * A flag the *config file* set is a different case, and must not be an error: a
+ * project that configures `strict` for the legacy generator would otherwise be
+ * unable to use `--future-schema` at all without editing its config, having
+ * typed nothing wrong. Those are returned instead, for the caller to report as
+ * ignored. `getOptionValueSource` comes from Commander, which records `'config'`
+ * for values hydrated by `applyConfigToCommander`; without it every set flag is
+ * treated as user-supplied.
+ *
+ * @returns the legacy-only flags that came from config and are being ignored.
  */
-export function assertNoLegacyFlags(options: GenerateTypesOptions): void {
-  const used = LEGACY_ONLY_FLAGS
-    .filter(([key]) => options[key] !== undefined)
-    .map(([, flag]) => flag);
+export function assertNoLegacyFlags(
+  options: GenerateTypesOptions,
+  getOptionValueSource?: (attributeName: string) => string | undefined,
+): string[] {
+  const set = LEGACY_ONLY_FLAGS.filter(([key]) => options[key] !== undefined);
+  const fromConfig = set.filter(([key]) => getOptionValueSource?.(key) === 'config');
+  const used = set.filter(entry => !fromConfig.includes(entry)).map(([, flag]) => flag);
 
   if (used.length > 0) {
     throw new CommandError(
@@ -37,12 +50,16 @@ export function assertNoLegacyFlags(options: GenerateTypesOptions): void {
       + '(see --field-plugins), and no JSON-schema compiler is involved.',
     );
   }
+
+  return fromConfig.map(([, flag]) => flag);
 }
 
 export interface GenerateSchemaTypesOptions {
   space: string;
   /** Project root, used to resolve the field-plugins module. */
   cwd: string;
+  /** The CLI base path (`--path`), which the field-plugins convention path honours. */
+  path?: string;
   /** Absolute directory the files are written into. */
   outputDir: string;
   /** Base file name without extension. */
@@ -78,9 +95,21 @@ export async function generateSchemaTypes(
   }
 
   const displayPathByUuid = buildGroupDisplayPathByUuid(rawComponentFolders);
-  const blocks = rawComponents.map(component => serializeBlockDefinition(component, { displayPathByUuid }));
+  const knownBlockNames = new Set(rawComponents.map(component => component.name));
+  // Sorted by name so regeneration is byte-stable: MAPI does not promise a
+  // stable component order, and this file is committed, so an upstream
+  // reordering would otherwise show up as a diff with no semantic change.
+  // Compared by code unit rather than `localeCompare`, which would order
+  // differently depending on the machine's locale.
+  const blocks = [...rawComponents]
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    .map(component => serializeBlockDefinition(component, { displayPathByUuid, knownBlockNames }));
 
-  const fieldPlugins = await resolveFieldPluginsSource({ cwd: options.cwd, override: options.fieldPluginsPath });
+  const fieldPlugins = await resolveFieldPluginsSource({
+    cwd: options.cwd,
+    path: options.path,
+    override: options.fieldPluginsPath,
+  });
   const fieldPluginsImportPath = fieldPlugins.kind === 'none'
     ? undefined
     : toRelativeImport(options.outputDir, fieldPlugins.modulePath);

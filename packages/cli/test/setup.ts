@@ -14,6 +14,7 @@ export const loggedInSessionState = (): SessionState => ({
   password: 'valid-token',
   region: 'eu',
   envLogin: false,
+  authType: 'pat',
 });
 const sessionApi = {
   state: loggedInSessionState(),
@@ -27,6 +28,7 @@ const sessionApi = {
     sessionApi.state.region = region;
   }),
   persistCredentials: vi.fn().mockResolvedValue(undefined),
+  clearOAuthSession: vi.fn().mockResolvedValue(undefined),
 };
 
 vi.mock('../src/session.ts', async (importOriginal) => {

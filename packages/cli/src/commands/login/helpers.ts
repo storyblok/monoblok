@@ -6,20 +6,32 @@ import { colorPalette, regionNames, regions } from '../../constants';
 import { handleError, isVitest, konsola } from '../../utils';
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import { session } from '../../session';
+import { performOAuthLogin } from '../oauth/login-flow';
+import type { OAuthLoginResult } from '../oauth/login-flow';
+import { getUI } from '../../utils/ui';
 
 /**
- * Performs interactive login flow with email/password or token
+ * Result of an interactive login. OAuth logins carry no token here (the access
+ * token lives in the OAuth credential store); PAT and email logins carry the
+ * personal access token.
+ */
+export type InteractiveLoginResult =
+  | { authType: 'oauth'; region: RegionCode }
+  | { authType: 'pat'; token: string; region: RegionCode };
+
+/**
+ * Performs interactive login flow with OAuth, email/password, or token
  * @param options - Options for the login flow
  * @param options.verbose - Whether to show verbose error output
  * @param options.preSelectedRegion - Pre-selected region to skip region selection
  * @param options.showWelcomeMessage - Whether to show welcome message after login
- * @returns Object with token and region, or null if cancelled/failed
+ * @returns The login result, or null if cancelled/failed
  */
 export async function performInteractiveLogin(options?: {
   verbose?: boolean;
   preSelectedRegion?: RegionCode;
   showWelcomeMessage?: boolean;
-}): Promise<{ token: string; region: RegionCode } | null> {
+}): Promise<InteractiveLoginResult | null> {
   const { verbose = false, preSelectedRegion, showWelcomeMessage = true } = options || {};
   const spinner = new Spinner({
     verbose: !isVitest,
@@ -29,6 +41,11 @@ export async function performInteractiveLogin(options?: {
     const strategy = await select({
       message: 'How would you like to login?',
       choices: [
+        {
+          name: 'With OAuth (recommended — opens your browser)',
+          value: 'login-with-oauth',
+          short: 'OAuth',
+        },
         {
           name: 'With email',
           value: 'login-with-email',
@@ -44,6 +61,19 @@ export async function performInteractiveLogin(options?: {
 
     let userToken: string;
     let userRegion: RegionCode;
+
+    if (strategy === 'login-with-oauth') {
+      const region = preSelectedRegion || await select({
+        message: 'Please select the region you would like to work in:',
+        choices: Object.values(regions).map((region: RegionCode) => ({
+          name: regionNames[region],
+          value: region,
+        })),
+        default: regions.EU,
+      });
+      const result = await performOAuthLoginStrategy({ region, verbose });
+      return result ? { authType: 'oauth', region } : null;
+    }
 
     if (strategy === 'login-with-token') {
       konsola.info([
@@ -79,7 +109,7 @@ export async function performInteractiveLogin(options?: {
         if (showWelcomeMessage) {
           konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
         }
-        return { token: userToken, region: userRegion };
+        return { authType: 'pat', token: userToken, region: userRegion };
       }
     }
     else {
@@ -130,7 +160,7 @@ export async function performInteractiveLogin(options?: {
         if (showWelcomeMessage) {
           konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
         }
-        return { token: userToken, region: userRegion };
+        return { authType: 'pat', token: userToken, region: userRegion };
       }
     }
 
@@ -139,6 +169,35 @@ export async function performInteractiveLogin(options?: {
   catch (error) {
     spinner.failed();
     konsola.br();
+    handleError(error as Error, verbose);
+    return null;
+  }
+}
+
+/**
+ * Runs the OAuth Authorization Code login flow and reports the granted scopes and spaces.
+ * @returns the login result, or null when the flow was cancelled or failed.
+ */
+export async function performOAuthLoginStrategy(options: {
+  region: RegionCode;
+  verbose?: boolean;
+}): Promise<OAuthLoginResult | null> {
+  const { region, verbose = false } = options;
+  const ui = getUI();
+  try {
+    const result = await performOAuthLogin({ region });
+    const spaceList = result.spaces.length
+      ? result.spaces.map(space => `${space.id} (${space.region})`).join(', ')
+      : 'none (grant is not space-scoped)';
+    ui.ok(
+      `Successfully logged in with OAuth in region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[region]} (${region})`)}.\n`
+      + `Granted scopes: ${result.scopes.join(', ')}\n`
+      + `Authorized spaces: ${spaceList}`,
+      true,
+    );
+    return result;
+  }
+  catch (error) {
     handleError(error as Error, verbose);
     return null;
   }

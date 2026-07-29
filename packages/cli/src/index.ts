@@ -5,6 +5,7 @@ import { handleError, konsola } from './utils';
 import { getProgram } from './program';
 import './commands/login';
 import './commands/logout';
+import './commands/oauth';
 import './commands/signup';
 import './commands/user';
 import './commands/components';
@@ -37,9 +38,7 @@ program.on('command:*', () => {
   process.exit(1);
 });
 
-try {
-  program.parse(process.argv);
-}
-catch (error) {
+program.parseAsync(process.argv).catch((error) => {
   handleError(error as Error);
-}
+  process.exitCode = 1;
+});

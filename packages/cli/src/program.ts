@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { join } from 'pathe';
-import { getPackageJson, handleError } from './utils';
+import { getPackageJson, handleError, konsola } from './utils';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
 import { getLogger, setLoggerTransports } from './lib/logger/logger';
@@ -12,6 +12,9 @@ import { resolveCommandPath } from './utils/filesystem';
 import { directories } from './constants';
 import { session } from './session';
 import { getMapiClient } from './api';
+import { isExpiringSoon } from './commands/oauth/expiry';
+import { refreshOAuthTokens } from './commands/oauth/refresh';
+import { assertSpaceAllowed } from './commands/oauth/space-guard';
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -71,14 +74,45 @@ export function getProgram(): Command {
       applyConfigToCommander(ancestry, resolvedConfig);
       setActiveConfig(resolvedConfig);
 
-      // Initialize mapiClient
+      // Initialize mapiClient with the active credential (PAT or OAuth access token).
       const { state, initializeSession } = session();
       await initializeSession();
-      if (state.password) {
+      if (state.authType === 'oauth' && state.region) {
+        let accessToken = state.oauthAccessToken;
+        if (isExpiringSoon(state.oauthExpiresAt)) {
+          try {
+            const refreshed = await refreshOAuthTokens(state.region);
+            accessToken = refreshed.access_token;
+            state.oauthAccessToken = refreshed.access_token;
+            state.oauthExpiresAt = refreshed.expires_at;
+          }
+          catch (error) {
+            // The logger/UI aren't configured yet at this point in the hook (Step 2 below
+            // sets up their transports), so surface the re-login guidance via konsola, which
+            // always prints. Do not throw: commands that don't need auth should still run;
+            // authed commands will fail downstream if the token is dead.
+            konsola.warn((error as Error).message);
+          }
+        }
+        if (accessToken) {
+          getMapiClient({
+            oauthToken: accessToken,
+            region: state.region ?? resolvedConfig.region,
+          });
+        }
+      }
+      else if (state.password) {
         getMapiClient({
           personalAccessToken: state.password,
           region: state.region ?? resolvedConfig.region,
         });
+      }
+
+      // Guard OAuth sessions against operating on spaces outside their consent grant.
+      // A thrown CommandError here propagates out of the preAction hook, rejecting
+      // `program.parseAsync()` in index.ts, which handles it once at the top level.
+      if (state.authType === 'oauth') {
+        assertSpaceAllowed(targetCommand.optsWithGlobals().space, state.oauthSpaces);
       }
 
       // Step 2: Setup logging, UI, and reporting with resolved config

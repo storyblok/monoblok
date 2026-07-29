@@ -1065,7 +1065,7 @@ describe('createCommand', () => {
 
         await createCommand.parseAsync(['node', 'test', 'my-project', '--blueprint', 'react']);
 
-        expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
+        expect(getUser).toHaveBeenCalledWith({ personalAccessToken: 'valid-token' }, 'eu');
       });
     });
   });

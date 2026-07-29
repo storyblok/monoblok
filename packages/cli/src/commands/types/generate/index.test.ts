@@ -349,6 +349,7 @@ describe("types generate", () => {
     it("generates schema types and reports success, per-file output, and unmapped field types", async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: ["/project/.storyblok/types/295018/storyblok-schema.d.ts"],
+        prunedFiles: [],
         unmappedFieldTypes: ["storyblok-colorpicker"],
         fieldPlugins: { resolved: false, path: "/project/.storyblok/schema/schema.ts" },
       });
@@ -374,6 +375,7 @@ describe("types generate", () => {
     it("points the unmapped-field-type warning at the module it read instead of the default path", async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: ["/project/.storyblok/types/295018/storyblok-schema.d.ts"],
+        prunedFiles: [],
         unmappedFieldTypes: ["storyblok-colorpicker"],
         fieldPlugins: { resolved: true, path: "/project/src/storyblok/field-plugins.ts" },
       });
@@ -400,6 +402,7 @@ describe("types generate", () => {
     it("names the searched path, not the default, when no field-plugins module resolved", async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: ["/project/config/types/295018/storyblok-schema.d.ts"],
+        prunedFiles: [],
         unmappedFieldTypes: ["storyblok-colorpicker"],
         fieldPlugins: { resolved: false, path: "/project/config/schema/schema.ts" },
       });
@@ -422,6 +425,7 @@ describe("types generate", () => {
     it("forwards --field-plugins, --type-prefix, --type-suffix, and --path to the generator", async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: [],
+        prunedFiles: [],
         unmappedFieldTypes: [],
         fieldPlugins: { resolved: false, path: "/project/.storyblok/schema/schema.ts" },
       });
@@ -454,6 +458,7 @@ describe("types generate", () => {
     it("warns that --filename collides with the legacy generator output", async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: [],
+        prunedFiles: [],
         unmappedFieldTypes: [],
         fieldPlugins: { resolved: false, path: "/project/.storyblok/schema/schema.ts" },
       });

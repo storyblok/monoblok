@@ -1,7 +1,8 @@
+import { rm } from 'node:fs/promises';
 import { join } from 'pathe';
 
 import { CommandError } from '../../../../utils';
-import { saveToFile } from '../../../../utils/filesystem';
+import { fileExists, readDirectory, saveToFile } from '../../../../utils/filesystem';
 import { buildGroupDisplayPathByUuid } from '../../../schema/folders';
 import { fetchRemoteSchema } from '../../../schema/actions';
 import type { GenerateTypesOptions } from '../constants';
@@ -55,6 +56,46 @@ export function assertNoLegacyFlags(
   return fromConfig.map(([, flag]) => flag);
 }
 
+/** The subdirectory `--separate-files` owns, one declaration file per block. */
+const BLOCKS_DIR = 'blocks';
+
+/**
+ * Deletes declaration files in `blocks/` that this run did not write.
+ *
+ * The directory is created only by `--future-schema --separate-files` and holds
+ * one file per component, so its correct contents are exactly this run's output.
+ * Without reconciling it, a component deleted in the UI leaves its type file
+ * behind — still importable, describing a block that no longer exists — and
+ * switching back to single-file output orphans the whole directory. Users are
+ * told not to hand-edit generated types, so they would not think to clean it.
+ *
+ * Scoped deliberately: only `*.d.ts` directly inside `blocks/`, never nested
+ * paths and never the output directory itself, which the legacy generator also
+ * writes into and which may hold files this command knows nothing about.
+ *
+ * @returns absolute paths deleted.
+ */
+async function pruneStaleBlockFiles(outputDir: string, outputs: Map<string, string>): Promise<string[]> {
+  const blocksDir = join(outputDir, BLOCKS_DIR);
+
+  if (!await fileExists(blocksDir)) {
+    return [];
+  }
+
+  const written = new Set([...outputs.keys()]);
+  const entries = await readDirectory(blocksDir);
+  const stale = entries.filter(entry => entry.endsWith('.d.ts') && !written.has(`${BLOCKS_DIR}/${entry}`));
+
+  const deleted: string[] = [];
+  for (const entry of stale) {
+    const absolutePath = join(blocksDir, entry);
+    await rm(absolutePath, { force: true });
+    deleted.push(absolutePath);
+  }
+
+  return deleted;
+}
+
 export interface GenerateSchemaTypesOptions {
   space: string;
   /** Project root, used to resolve the field-plugins module. */
@@ -74,6 +115,8 @@ export interface GenerateSchemaTypesOptions {
 export interface GenerateSchemaTypesResult {
   /** Absolute paths written, in write order. */
   files: string[];
+  /** Absolute paths of stale `blocks/` declarations this run deleted. */
+  prunedFiles: string[];
   /** `custom` field types with no registered plugin, typed loosely, warned about. */
   unmappedFieldTypes: string[];
   /**
@@ -141,12 +184,15 @@ export async function generateSchemaTypes(
     files.push(absolutePath);
   }
 
+  const prunedFiles = await pruneStaleBlockFiles(options.outputDir, outputs);
+
   const registered = new Set(fieldPlugins.kind === 'none' ? [] : fieldPlugins.fieldTypes);
   const unmappedFieldTypes = [...new Set(blocks.flatMap(block => block.customFieldTypes))]
     .filter(fieldType => !registered.has(fieldType));
 
   return {
     files,
+    prunedFiles,
     unmappedFieldTypes,
     fieldPlugins: fieldPlugins.kind === 'none'
       ? { resolved: false, path: fieldPlugins.searchedPath }

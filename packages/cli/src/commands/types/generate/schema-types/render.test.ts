@@ -166,6 +166,34 @@ describe('toRelativeImport', () => {
 });
 
 describe('renderSeparateFiles', () => {
+  /**
+   * Guards the invariant at the level that matters, rather than per call site:
+   * every relative specifier the renderer emits must carry a JavaScript
+   * extension. An extension-less one is TS2834 under node16/node18/nodenext in
+   * an ESM package, which is every modern Node-ESM project, and the user is told
+   * not to edit generated types so they cannot repair it. This previously
+   * regressed because the block imports were built inline instead of going
+   * through a helper, so assert over the emitted text.
+   */
+  it('emits no extension-less relative import in any file, in either mode', () => {
+    const options = {
+      blocks: [heroBlock, teaserListBlock],
+      fieldPlugins: { kind: 'record' as const, modulePath: '/abs/plugins.ts', fieldTypes: ['colorpicker'] },
+      fieldPluginsImportPath: '../../schema/plugins.js',
+      space: '295018',
+    };
+
+    const emitted = [
+      ...renderSeparateFiles({ ...options, filename: 'storyblok-schema' }).values(),
+      renderSchemaTypes(options),
+    ];
+
+    const specifiers = emitted.flatMap(content => [...content.matchAll(/from '(\.[^']*)'/g)].map(match => match[1]));
+
+    expect(specifiers.length).toBeGreaterThan(0);
+    expect(specifiers.filter(specifier => !/\.(?:js|mjs|cjs)$/.test(specifier))).toEqual([]);
+  });
+
   it('writes one definition per block file and imports them in the main file', () => {
     const files = renderSeparateFiles({
       blocks: [heroBlock, teaserListBlock],
@@ -181,8 +209,8 @@ describe('renderSeparateFiles', () => {
     ]);
 
     expect(files.get('blocks/hero.d.ts')).toContain('export type HeroBlockDefinition = {');
-    expect(files.get('storyblok-schema.d.ts')).toContain('import type { HeroBlockDefinition } from \'./blocks/hero\';');
-    expect(files.get('storyblok-schema.d.ts')).toContain('import type { TeaserListBlockDefinition } from \'./blocks/teaser-list\';');
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { HeroBlockDefinition } from \'./blocks/hero.js\';');
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { TeaserListBlockDefinition } from \'./blocks/teaser-list.js\';');
     expect(files.get('storyblok-schema.d.ts')).toContain('export type Blocks = HeroBlockDefinition | TeaserListBlockDefinition;');
     expect(files.get('storyblok-schema.d.ts')).not.toContain('export type HeroBlockDefinition = {');
   });
@@ -196,7 +224,7 @@ describe('renderSeparateFiles', () => {
     });
 
     expect(files.get('blocks/2-col.d.ts')).toContain('export type _2ColBlockDefinition = {}');
-    expect(files.get('storyblok-schema.d.ts')).toContain('import type { _2ColBlockDefinition } from \'./blocks/2-col\';');
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { _2ColBlockDefinition } from \'./blocks/2-col.js\';');
     expect(files.get('storyblok-schema.d.ts')).not.toMatch(/\b2ColBlockDefinition/);
   });
 

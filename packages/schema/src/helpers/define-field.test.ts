@@ -19,4 +19,18 @@ describe('defineField', () => {
     const field = defineField('body', { type: 'bloks', allow: ['teaser'] });
     expect(field.allow).toEqual(['teaser']);
   });
+
+  it('should normalize block refs in deny to their names', () => {
+    const hero = { name: 'hero', fields: [] } as const;
+    const field = defineField('body', { type: 'bloks', deny: [hero, 'banner'] });
+    expect(field.deny).toEqual(['hero', 'banner']);
+  });
+
+  it('should throw when deny holds a folder reference', () => {
+    // A folder ref carries a `name`, so it structurally passes for a block ref;
+    // the runtime guard is what keeps it from silently denying by folder name.
+    const heros = defineFolder({ name: 'Heros' });
+    expect(() => defineField('body', { type: 'bloks', deny: [heros] }))
+      .toThrow('defineField: "deny" on field "body" does not accept folder references; the editor denies by block name only');
+  });
 });

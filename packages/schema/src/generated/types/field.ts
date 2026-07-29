@@ -149,6 +149,22 @@ type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer T
     : never;
 
 /**
+ * Removes the registry blocks named in `deny`, the `Exclude` counterpart to
+ * {@link ApplyAllow}. The wire `component_denylist` denies by block name only,
+ * so folder refs are not accepted. A `deny` entry naming no known block is
+ * inert: it removes nothing rather than collapsing the field.
+ */
+type ApplyDeny<TField, TBlocks> = TField extends { deny: ReadonlyArray<infer TDenied extends string> }
+  ? Exclude<TBlocks, { name: TDenied }>
+  : TBlocks;
+
+/**
+ * Resolves the block union a `bloks` field accepts: `allow` narrows the registry
+ * first, then `deny` removes from what is left, so the two compose.
+ */
+type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
+
+/**
  * Resolves a `custom` field to its registered plugin value. When the field's
  * `field_type` is a key of `TFieldPlugins`, the validator output is merged with
  * the plugin envelope (`plugin`, optional `_uid`); otherwise it falls back to
@@ -173,7 +189,7 @@ export type FieldValue<
     ? [TBlocks] extends [never]
         ? BlockContentBase[]
         : [TBlocks] extends [Block]
-            ? BlockContent<ApplyAllow<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+            ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
             : BlockContentBase[]
     : TField extends { type: 'custom' }
       ? ResolveCustom<TField, TFieldPlugins>
@@ -192,7 +208,7 @@ export type FieldValueInput<
     ? [TBlocks] extends [never]
         ? BlockContentInputBase[]
         : [TBlocks] extends [Block]
-            ? BlockContentInput<ApplyAllow<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+            ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
             : BlockContentInputBase[]
     : TField extends { type: 'custom' }
       ? ResolveCustom<TField, TFieldPlugins>

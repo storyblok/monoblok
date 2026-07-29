@@ -36,6 +36,7 @@ export async function writeSchemaFiles(
   components: Component[],
   componentFolders: ComponentFolder[],
   datasources: Datasource[],
+  secretNameMatcher?: (name: string) => boolean,
 ): Promise<string[]> {
   const writtenFiles: string[] = [];
   const groupPathByUuid = buildGroupPathByUuid(componentFolders);
@@ -63,7 +64,7 @@ export async function writeSchemaFiles(
     const filePath = join(targetPath, 'blocks', ...segments, `${fileName}.ts`);
     const folder = component.component_group_uuid ? folderByUuid.get(component.component_group_uuid) : undefined;
     const folderRef = folder && { varName: folder.varName, segments };
-    await writeFileWithDirs(filePath, generateComponentFile(component, varName, folderRef, folderVarByUuid));
+    await writeFileWithDirs(filePath, generateComponentFile(component, varName, folderRef, folderVarByUuid, secretNameMatcher));
     writtenFiles.push(filePath);
   }
 

@@ -1,4 +1,5 @@
 import { readdir } from 'node:fs/promises';
+import { Option } from 'commander';
 import { resolve } from 'pathe';
 
 import { colorPalette, commands } from '../../../constants';
@@ -9,9 +10,15 @@ import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
 import { schemaCommand } from '../command';
 import { displayPath } from '../utils';
+import { createSecretNameMatcher, DEFAULT_SECRET_NAMES } from '../secrets';
 import type { SchemaInitOptions } from './constants';
 import { fetchRemoteSchema } from '../actions';
 import { writeSchemaFiles } from './actions';
+
+/** Parses a comma-separated `--secret-names` value into a trimmed, non-empty list. */
+function parseSecretNames(value: string): string[] {
+  return value.split(',').map(name => name.trim()).filter(Boolean);
+}
 
 async function isTargetEmpty(targetPath: string): Promise<boolean> {
   try {
@@ -30,6 +37,12 @@ schemaCommand
   .description('Initialize a local code-driven schema workspace from an existing Storyblok space (one-time bootstrap)')
   .option('-s, --space <space>', 'space ID')
   .option('--out-dir <dir>', 'Output directory for generated bootstrap files', '.storyblok/schema')
+  .option(
+    '--secret-names <names>',
+    `Comma-separated plugin option names to redact as \`secret()\` (added to the defaults: ${DEFAULT_SECRET_NAMES.join(', ')})`,
+    parseSecretNames,
+  )
+  .addOption(new Option('--no-redact-secrets', 'Do not redact sensitive plugin option values (write them verbatim)'))
   .action(async (options: SchemaInitOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
@@ -75,9 +88,14 @@ schemaCommand
       const { rawComponents, rawComponentFolders, rawDatasources } = fetchResult;
       fetchSpinner.succeed(`Found: ${rawComponents.length} components, ${rawComponentFolders.length} component folders, ${rawDatasources.length} datasources`);
 
-      // 2. Generate and write files
+      // 2. Generate and write files. Sensitive field-config values are redacted
+      //    to `secret()` placeholders unless `--no-redact-secrets` is set.
+      const secretNameMatcher = options.redactSecrets
+        ? createSecretNameMatcher([...DEFAULT_SECRET_NAMES, ...(options.secretNames ?? [])])
+        : undefined;
+
       const writeSpinner = ui.createSpinner(`Generating TypeScript files to ${targetDisplayPath}...`);
-      const writtenFiles = await writeSchemaFiles(targetPath, rawComponents, rawComponentFolders, rawDatasources);
+      const writtenFiles = await writeSchemaFiles(targetPath, rawComponents, rawComponentFolders, rawDatasources, secretNameMatcher);
 
       summary.total = writtenFiles.length;
       summary.succeeded = writtenFiles.length;
@@ -85,6 +103,12 @@ schemaCommand
       writeSpinner.succeed(`Generated ${writtenFiles.length} files`);
       ui.list(writtenFiles.map(file => displayPath(file, options.outDir)));
       ui.warn('`schema init` is a one-time bootstrap step for adopting an existing space. Review generated files before continuing.');
+      if (secretNameMatcher) {
+        ui.info('Sensitive plugin option values were replaced with `secret()` placeholders. `schema push` restores them from the space (or from `secret(\'ENV_VAR\')`). Review before committing.');
+      }
+      else {
+        ui.warn('Secret redaction is disabled (`--no-redact-secrets`): generated files may contain sensitive values. Review before committing.');
+      }
       ui.info('After bootstrapping, keep your local schema as the source of truth and use `schema push` for ongoing changes.');
       ui.info('Make sure `@storyblok/schema` is installed in the project that imports these files (e.g. `pnpm add @storyblok/schema`).');
     }

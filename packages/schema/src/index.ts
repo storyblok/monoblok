@@ -50,6 +50,10 @@ export type { BlockFolder } from './helpers/define-folder';
 export { defineSchema } from './helpers/define-schema';
 export type { Schema } from './helpers/schema-type';
 
+// Secret (redacted field-config placeholder)
+export { isSecretPlaceholder, secret, SECRET_MARKER } from './helpers/secret';
+export type { SecretPlaceholder } from './helpers/secret';
+
 // Validators (Zod-powered, non-throwing)
 export { createStoryValidator } from './validators/create-story-validator';
 export type { ValidationIssue, ValidationResult, ValidationSeverity } from './validators/types';

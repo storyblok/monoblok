@@ -18,6 +18,7 @@ import { fetchRemoteSchema } from '../actions';
 import { buildGroupPathByUuid } from '../folders';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { saveChangeset } from '../changeset';
+import { maskSecretsToPlaceholder } from '../secrets';
 import { analyzeBreakingChanges } from './migrations/analyze';
 import { renderMigrationCode, writeMigrationFile } from './migrations/generate';
 import { writeLocalComponents } from './write-local-components';
@@ -218,10 +219,18 @@ schemaCommand
       const resolvedPath = resolvePath(basePath, '');
       const timestamp = new Date().toISOString();
 
+      // Mask secret values in the pre-push remote snapshot before it is written
+      // to disk. Each local component (keyed by name) carries the `secret()`
+      // placeholders that mark which field-config keys to mask; rollback later
+      // hydrates them from the live space.
+      const localByName = new Map(local.components.map(c => [c.name, c]));
+      const redactedRemoteComponents = rawComponents.map(rc =>
+        maskSecretsToPlaceholder(rc, localByName.get(rc.name)) as typeof rc);
+
       const changesetPath = await saveChangeset(resolvedPath, {
         timestamp,
         spaceId: Number(space),
-        remote: { components: rawComponents, componentFolders: rawComponentFolders, datasources: rawDatasources },
+        remote: { components: redactedRemoteComponents, componentFolders: rawComponentFolders, datasources: rawDatasources },
         changes: buildChangesetEntries(diffResult, local, remote, { delete: options.delete }),
       });
       logger.info('Changeset saved', { path: displayPath(changesetPath, basePath) });
@@ -247,6 +256,10 @@ schemaCommand
         summary.succeeded = summary.total;
 
         pushSpinner.succeed(`Pushed ${result.created} creations, ${result.updated} updates${result.deleted > 0 ? `, ${result.deleted} deletions` : ''}.`);
+
+        for (const warning of result.secretWarnings) {
+          ui.warn(warning);
+        }
       }
 
       // 10. Write local component files (keeps disk in sync with intended schema state,

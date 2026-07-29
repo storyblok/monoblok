@@ -7,6 +7,7 @@ import type { DiffResult, RemoteSchemaData, SchemaData } from '../types';
 import { getMapiClient } from '../../../api';
 import { buildChangesetEntries, executePush, formatDiffOutput } from './actions';
 import { toComponentCreate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
+import { SECRET_MARKER } from '../secrets';
 
 describe('toComponentCreate', () => {
   it('should strip API-assigned fields from a component', () => {
@@ -693,6 +694,86 @@ describe('executePush - folders', () => {
 
     expect(capturedComponent).toBeDefined();
     expect(capturedComponent).toHaveProperty('component_group_uuid', null);
+  });
+
+  it('preserves the existing remote secret when the local option value is a secret() placeholder', async () => {
+    let capturedComponent: Record<string, unknown> | undefined;
+    server.use(
+      http.put('https://mapi.storyblok.com/v1/spaces/12345/components/50', async ({ request }) => {
+        const body = await request.json() as { component: Record<string, unknown> };
+        capturedComponent = body.component;
+        return HttpResponse.json({ component: { id: 50, name: 'shop' } });
+      }),
+    );
+
+    const local: SchemaData = {
+      components: [{
+        name: 'shop',
+        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: { [SECRET_MARKER]: true } }] } },
+      } as unknown as Component],
+      folders: [],
+      datasources: [],
+    };
+    const remote: RemoteSchemaData = {
+      components: new Map([['shop', {
+        id: 50,
+        name: 'shop',
+        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: 'live-secret' }] } },
+      } as unknown as Component]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+    const diffResult = makeDiffResult([
+      { type: 'component', name: 'shop', action: 'update', diff: null, local: null, remote: null },
+    ]);
+
+    await executePush('12345', local, remote, diffResult, { delete: false });
+
+    const schema = capturedComponent!.schema as Record<string, { options: Array<{ value: unknown }> }>;
+    expect(schema.products.options[0].value).toBe('live-secret');
+  });
+
+  it('sources a secret from the environment when the placeholder names a set variable', async () => {
+    let capturedComponent: Record<string, unknown> | undefined;
+    server.use(
+      http.put('https://mapi.storyblok.com/v1/spaces/12345/components/50', async ({ request }) => {
+        const body = await request.json() as { component: Record<string, unknown> };
+        capturedComponent = body.component;
+        return HttpResponse.json({ component: { id: 50, name: 'shop' } });
+      }),
+    );
+
+    const local: SchemaData = {
+      components: [{
+        name: 'shop',
+        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: { [SECRET_MARKER]: true, env: 'TEST_SHOPWARE_KEY' } }] } },
+      } as unknown as Component],
+      folders: [],
+      datasources: [],
+    };
+    const remote: RemoteSchemaData = {
+      components: new Map([['shop', {
+        id: 50,
+        name: 'shop',
+        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: 'live-secret' }] } },
+      } as unknown as Component]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+    const diffResult = makeDiffResult([
+      { type: 'component', name: 'shop', action: 'update', diff: null, local: null, remote: null },
+    ]);
+
+    process.env.TEST_SHOPWARE_KEY = 'env-secret';
+    try {
+      await executePush('12345', local, remote, diffResult, { delete: false });
+    }
+    finally {
+      delete process.env.TEST_SHOPWARE_KEY;
+    }
+
+    const schema = capturedComponent!.schema as Record<string, { options: Array<{ value: unknown }> }>;
+    expect(schema.products.options[0].value).toBe('env-secret');
   });
 
   it('deletes stale folders children-first with --delete', async () => {

@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { RemoteSchemaData, SchemaData } from '../types';
 import { diffSchema } from './diff-schema';
+import { SECRET_MARKER } from '../secrets';
 
 function makeComponent(name: string, schema: Record<string, unknown>) {
   return { id: 1, name, created_at: '', updated_at: '', schema } as any;
 }
+
+const secretPlaceholder = { [SECRET_MARKER]: true } as const;
 
 function makeDatasource(name: string, slug: string) {
   return { id: 1, name, slug, created_at: '', updated_at: '' } as any;
@@ -48,6 +51,56 @@ describe('diffSchema', () => {
 
     expect(result.unchanged).toBe(1);
     expect(result.diffs[0].action).toBe('unchanged');
+  });
+
+  it('should not diff a secret placeholder against the real remote value', () => {
+    // Local carries a `secret()` placeholder (in an option pair); remote holds
+    // the real value. The secret must be excluded from both sides — no diff.
+    const localComp = makeComponent('shop', {
+      products: { type: 'custom', pos: 0, field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: secretPlaceholder }] },
+    });
+    const remoteComp = makeComponent('shop', {
+      products: { type: 'custom', pos: 0, field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: 'real-live-secret' }] },
+    });
+
+    const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['shop', { ...remoteComp, id: 99 }]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.unchanged).toBe(1);
+    expect(result.updates).toBe(0);
+    expect(result.diffs[0].action).toBe('unchanged');
+  });
+
+  it('should still diff a non-secret change on a component that also has a secret', () => {
+    const localComp = makeComponent('shop', {
+      products: { type: 'custom', pos: 0, field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: secretPlaceholder }] },
+      label: { type: 'text', pos: 1, max_length: 50 },
+    });
+    const remoteComp = makeComponent('shop', {
+      products: { type: 'custom', pos: 0, field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: 'real-live-secret' }] },
+      label: { type: 'text', pos: 1, max_length: 20 },
+    });
+
+    const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['shop', { ...remoteComp, id: 99 }]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.updates).toBe(1);
+    expect(result.diffs[0].action).toBe('update');
+    // The diff shows the label change but never the secret value.
+    expect(result.diffs[0].diff).not.toContain('real-live-secret');
+    expect(result.diffs[0].diff).toContain('max_length');
   });
 
   it('should detect updated entities with diff string', () => {

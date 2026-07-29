@@ -11,6 +11,7 @@ import {
   RawCode,
   stripKeys,
 } from '../utils';
+import { hasSecretOption, redactSecretValues } from '../secrets';
 
 /** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
 const FIELD_STRIP_KEYS = new Set(['id', 'pos']);
@@ -269,14 +270,24 @@ function omitEmptyArrays(obj: Record<string, unknown>): Record<string, unknown> 
 /**
  * Generates a `defineField('name', {...})` code string for a single schema field.
  * Position is implicit in the array index, so `pos` is stripped from the config.
+ *
+ * When `secretNameMatcher` is given, the `value` of any plugin option
+ * (`options: [{ name, value }]`) whose `name` is a secret is replaced with a
+ * `secret()` placeholder so it never reaches the versioned file. Redaction runs
+ * on the raw wire field, before `toDslField` introduces `RawCode` folder refs —
+ * `redactSecretValues` only ever walks plain data.
  */
 function generateFieldCode(
   fieldName: string,
   fieldData: Record<string, unknown>,
   depth: number,
   folderVarByUuid?: Map<string, string>,
+  secretNameMatcher?: (name: string) => boolean,
 ): string {
-  const clean = omitEmptyArrays(toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid));
+  const input = secretNameMatcher
+    ? redactSecretValues(fieldData, secretNameMatcher, () => new RawCode('secret()')) as Record<string, unknown>
+    : fieldData;
+  const clean = omitEmptyArrays(toDslField(stripKeys(input, FIELD_STRIP_KEYS), folderVarByUuid));
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
 
@@ -343,12 +354,18 @@ export function generateComponentFile(
   varName?: string,
   folderRef?: { varName: string; segments: string[] },
   folderVarByUuid?: Map<string, string>,
+  secretNameMatcher?: (name: string) => boolean,
 ): string {
   const lines: string[] = [];
+
+  // Emit a `secret` import only when this block actually redacts a value, so
+  // files without secrets keep a minimal import.
+  const usesSecret = !!secretNameMatcher && hasSecretOption(component.schema, secretNameMatcher);
 
   lines.push('import {');
   lines.push('  defineBlock,');
   lines.push('  defineField,');
+  if (usesSecret) { lines.push('  secret,'); }
   lines.push('} from \'@storyblok/schema\';');
   lines.push('');
 
@@ -412,7 +429,7 @@ export function generateComponentFile(
     if (sortedFields.length > 0) {
       lines.push(`${INDENT}fields: [`);
       for (const [fieldName, fieldData] of sortedFields) {
-        const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid);
+        const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid, secretNameMatcher);
         lines.push(`${INDENT}${INDENT}${fieldCode},`);
       }
       lines.push(`${INDENT}],`);

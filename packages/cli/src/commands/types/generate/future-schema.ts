@@ -1,12 +1,12 @@
-import { join } from 'pathe';
+import { join, relative } from 'pathe';
 
 import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, toError } from '../../../utils';
 import { resolvePath } from '../../../utils/filesystem';
 import type { CLISpinner } from '../../../lib/ui';
 import { getUI } from '../../../lib/ui';
-import { DEFAULT_SCHEMA_ENTRY_PATH } from '../../schema/constants';
-import type { GenerateTypesOptions } from './constants';
+import { DEFAULT_SCHEMA_TYPES_FILENAME, type GenerateTypesOptions } from './constants';
+import { toDeclarationFileName } from './filename';
 import { assertNoLegacyFlags, generateSchemaTypes } from './schema-types';
 
 export interface FutureSchemaCommandOptions {
@@ -56,9 +56,9 @@ export async function runFutureSchemaTypes(
     }
     if (filename !== undefined) {
       ui.warn(
-        `--filename is set to \`${filename}\`, which is also where the legacy generator writes. `
-        + 'Regenerating with and without --future-schema will overwrite one with the other. '
-        + 'Leave it unset to keep them in separate files.',
+        `--filename is set to \`${toDeclarationFileName(filename)}\`, which is also where the legacy `
+        + 'generator writes. Regenerating with and without --future-schema will overwrite one with the '
+        + `other. Leave it unset to write to ${toDeclarationFileName(DEFAULT_SCHEMA_TYPES_FILENAME)} instead.`,
       );
     }
 
@@ -68,7 +68,7 @@ export async function runFutureSchemaTypes(
       cwd: process.cwd(),
       path,
       outputDir: resolvePath(path, join('types', space)),
-      filename: filename ?? 'storyblok-schema',
+      filename: filename ?? DEFAULT_SCHEMA_TYPES_FILENAME,
       separateFiles,
       typePrefix: options.typePrefix,
       typeSuffix: options.typeSuffix,
@@ -78,10 +78,15 @@ export async function runFutureSchemaTypes(
 
     result.files.forEach(file => ui.ok(file));
     if (result.unmappedFieldTypes.length > 0) {
+      // Names the module actually in use, or the path this run searched. `--path`
+      // moves the convention path, so the default would point at the wrong file.
+      const where = relative(process.cwd(), result.fieldPlugins.path);
+      const remedy = result.fieldPlugins.resolved
+        ? `in ${where}.`
+        : `and point --field-plugins at the module (or place it at ${where}).`;
       ui.warn(
         `No field plugin registered for: ${result.unmappedFieldTypes.join(', ')}. `
-        + 'These custom fields fall back to an untyped value. Declare them with defineFieldPlugin '
-        + `and point --field-plugins at the module (or place it at ${DEFAULT_SCHEMA_ENTRY_PATH}).`,
+        + `These custom fields fall back to an untyped value. Declare them with defineFieldPlugin ${remedy}`,
       );
     }
     ui.info('The generated types import from `@storyblok/schema`. Install it as a dev dependency: `npm i -D @storyblok/schema`.');

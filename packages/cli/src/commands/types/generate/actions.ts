@@ -9,6 +9,7 @@ import {
   toPascalCase,
 } from "../../../utils";
 import type { GenerateTypesOptions } from "./constants";
+import { toDeclarationFileName } from "./filename";
 import type { StoryblokPropertyType } from "../../../types/storyblok";
 import { storyblokSchemas } from "../../../utils/storyblok-schemas";
 import { getLogger } from "../../../lib/logger/logger";
@@ -589,7 +590,7 @@ export const saveTypesToComponentsFile = async (
       }
     } else if (typeof typedefData === "string") {
       // Save all types to a single file
-      await saveToFile(join(resolvedPath, `${filename}.d.ts`), typedefData);
+      await saveToFile(join(resolvedPath, toDeclarationFileName(filename)), typedefData);
     }
   } catch (error) {
     handleFileSystemError("write", error as Error);

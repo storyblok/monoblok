@@ -5,6 +5,7 @@ import { saveToFile } from '../../../../utils/filesystem';
 import { buildGroupDisplayPathByUuid } from '../../../schema/folders';
 import { fetchRemoteSchema } from '../../../schema/actions';
 import type { GenerateTypesOptions } from '../constants';
+import { toDeclarationFileName } from '../filename';
 import { resolveFieldPluginsSource } from './field-plugins';
 import { renderSchemaTypes, renderSeparateFiles, toRelativeImport } from './render';
 import { serializeBlockDefinition } from './serialize';
@@ -75,6 +76,12 @@ export interface GenerateSchemaTypesResult {
   files: string[];
   /** `custom` field types with no registered plugin, typed loosely, warned about. */
   unmappedFieldTypes: string[];
+  /**
+   * The field-plugins module this run used, or the path it searched when none
+   * resolved. Lets the unmapped-field-type warning name a real path instead of
+   * the default, which `--path` moves.
+   */
+  fieldPlugins: { resolved: boolean; path: string };
 }
 
 /**
@@ -125,7 +132,7 @@ export async function generateSchemaTypes(
 
   const outputs = options.separateFiles
     ? renderSeparateFiles({ ...renderOptions, filename: options.filename })
-    : new Map([[`${options.filename}.d.ts`, renderSchemaTypes(renderOptions)]]);
+    : new Map([[toDeclarationFileName(options.filename), renderSchemaTypes(renderOptions)]]);
 
   const files: string[] = [];
   for (const [relativePath, content] of outputs) {
@@ -138,5 +145,11 @@ export async function generateSchemaTypes(
   const unmappedFieldTypes = [...new Set(blocks.flatMap(block => block.customFieldTypes))]
     .filter(fieldType => !registered.has(fieldType));
 
-  return { files, unmappedFieldTypes };
+  return {
+    files,
+    unmappedFieldTypes,
+    fieldPlugins: fieldPlugins.kind === 'none'
+      ? { resolved: false, path: fieldPlugins.searchedPath }
+      : { resolved: true, path: fieldPlugins.modulePath },
+  };
 }

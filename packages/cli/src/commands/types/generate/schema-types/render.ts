@@ -2,6 +2,7 @@ import { relative } from 'pathe';
 
 import { toPascalCase } from '../../../../utils/format';
 import { componentFileName, resolveFileNames, resolveVarNames, toSafeIdentifier } from '../../../schema/utils';
+import { toDeclarationFileName } from '../filename';
 import type { FieldPluginsSource } from './field-plugins';
 import type { SerializedBlock } from './serialize';
 
@@ -65,9 +66,32 @@ export function buildNames(componentNames: string[], options: NameOptions): Emit
   };
 }
 
-/** Builds a posix, extension-less relative import specifier. */
+/**
+ * TypeScript source extensions mapped to the module extension an importer must
+ * write. TypeScript resolves `./x.js` to `x.ts`, so the emitted specifier names
+ * the *output* file even though the module on disk is TypeScript.
+ */
+const IMPORT_EXTENSION_BY_SOURCE_EXTENSION: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\.tsx?$/, '.js'],
+  [/\.mts$/, '.mjs'],
+  [/\.cts$/, '.cjs'],
+];
+
+/**
+ * Builds a posix relative import specifier.
+ *
+ * The extension is rewritten rather than stripped: an extension-less relative
+ * specifier is an error under `moduleResolution: node16`/`nodenext` in an ESM
+ * package (TS2835), and this file is generated code the user is told not to
+ * edit, so they have no way to repair it. A `.js`-style specifier resolves under
+ * every mode, including `bundler` and legacy `node10`, so this is strictly wider
+ * than the extension-less form. A module that already has a JavaScript
+ * extension keeps it.
+ */
 export function toRelativeImport(fromDir: string, toFile: string): string {
-  const specifier = relative(fromDir, toFile).replace(/\.(?:ts|tsx|mts|cts)$/, '');
+  const path = relative(fromDir, toFile);
+  const mapping = IMPORT_EXTENSION_BY_SOURCE_EXTENSION.find(([pattern]) => pattern.test(path));
+  const specifier = mapping === undefined ? path : path.replace(mapping[0], mapping[1]);
   return specifier.startsWith('.') ? specifier : `./${specifier}`;
 }
 
@@ -219,7 +243,7 @@ export function renderSeparateFiles(options: RenderOptions & { filename: string 
     '',
     ...renderSurface(names, definitionNames, fieldPlugins.declaration),
   ];
-  files.set(`${options.filename}.d.ts`, mainLines.join('\n'));
+  files.set(toDeclarationFileName(options.filename), mainLines.join('\n'));
 
   return files;
 }

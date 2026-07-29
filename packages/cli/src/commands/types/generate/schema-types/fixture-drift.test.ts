@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Component } from '../../../../types';
 import { FIXTURE_COMPONENTS } from './__fixtures__/components';
-import { renderSchemaTypes } from './render';
+import { renderSchemaTypes, toRelativeImport } from './render';
 import { serializeBlockDefinition } from './serialize';
 
 /**
@@ -45,7 +45,8 @@ describe('emitted type fixture', () => {
     const rendered = renderSchemaTypes({
       blocks: serializeFixtureBlocks(),
       fieldPlugins: { kind: 'record', modulePath: '/abs/plugins.ts', fieldTypes: ['colorpicker'] },
-      fieldPluginsImportPath: './plugins',
+      // Derived rather than hardcoded, so the fixture tracks the real specifier.
+      fieldPluginsImportPath: toRelativeImport('/abs', '/abs/plugins.ts'),
       space: '295018',
     });
 

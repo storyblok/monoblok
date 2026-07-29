@@ -2,7 +2,7 @@
 // Space: 295018
 
 import type { BlockContent, MapiStory as InferStoryMapi, Schema as InferSchema, Story as InferStory } from '@storyblok/schema';
-import type { fieldPlugins as userFieldPlugins } from './plugins';
+import type { fieldPlugins as userFieldPlugins } from './plugins.js';
 
 export type GridBlockDefinition = {
   readonly id: number;

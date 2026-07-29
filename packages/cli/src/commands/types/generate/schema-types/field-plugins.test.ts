@@ -34,7 +34,10 @@ afterEach(async () => {
 
 describe('resolveFieldPluginsSource', () => {
   it('returns none when neither an override nor the convention file exists', async () => {
-    expect(await resolveFieldPluginsSource({ cwd })).toEqual({ kind: 'none' });
+    expect(await resolveFieldPluginsSource({ cwd })).toEqual({
+      kind: 'none',
+      searchedPath: join(cwd, DEFAULT_SCHEMA_ENTRY_PATH),
+    });
   });
 
   it('detects a defineSchema result at the convention path', async () => {
@@ -86,7 +89,10 @@ describe('resolveFieldPluginsSource', () => {
     await mkdir(join(defaultTarget, '..'), { recursive: true });
     await writeFile(defaultTarget, SCHEMA_EXPORT, 'utf8');
 
-    expect(await resolveFieldPluginsSource({ cwd, path: 'config' })).toEqual({ kind: 'none' });
+    expect(await resolveFieldPluginsSource({ cwd, path: 'config' })).toEqual({
+      kind: 'none',
+      searchedPath: join(cwd, 'config', SCHEMA_ENTRY_RELATIVE_PATH),
+    });
   });
 
   it('names a near-miss export in the error for an explicit override', async () => {
@@ -112,6 +118,9 @@ describe('resolveFieldPluginsSource', () => {
     await mkdir(join(target, '..'), { recursive: true });
     await writeFile(target, 'export const schema = { blocks: {} };', 'utf8');
 
-    expect(await resolveFieldPluginsSource({ cwd })).toEqual({ kind: 'none' });
+    expect(await resolveFieldPluginsSource({ cwd })).toEqual({
+      kind: 'none',
+      searchedPath: join(cwd, DEFAULT_SCHEMA_ENTRY_PATH),
+    });
   });
 });

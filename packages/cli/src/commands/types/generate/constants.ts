@@ -1,3 +1,6 @@
+/** Base file name `--future-schema` writes when `--filename` is unset. */
+export const DEFAULT_SCHEMA_TYPES_FILENAME = 'storyblok-schema';
+
 export interface GenerateTypesOptions {
   separateFiles?: boolean;
   strict?: boolean;

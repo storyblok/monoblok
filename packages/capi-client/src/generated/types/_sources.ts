@@ -2,4 +2,4 @@
 
 export type { CapiStory } from '../capi/_internal.gen';
 export type { Component } from '../mapi/_internal.gen';
-export type { AssetFieldValue, BlockContentBase, BlockContentInputBase, Field, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue } from '../overlay/_internal.gen';
+export type { AssetFieldValue, BlockContentBase, BlockContentInputBase, Field, MultilinkFieldValue, PluginFieldValue, RichTextFieldValue, TableFieldValue } from '../overlay/_internal.gen';

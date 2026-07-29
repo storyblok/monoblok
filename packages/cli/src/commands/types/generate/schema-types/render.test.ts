@@ -45,6 +45,18 @@ describe('buildNames', () => {
     expect(first).not.toBe(second);
     expect([first, second]).toContain('TeaserListBlockDefinition');
   });
+
+  it('keeps a component name starting with a digit a valid identifier', () => {
+    const names = buildNames(['2_col'], {});
+
+    expect(names.definitionByComponent.get('2_col')).toBe('_2ColBlockDefinition');
+  });
+
+  it('keeps a digit-leading name valid under a prefix and suffix', () => {
+    const names = buildNames(['2_col'], { typePrefix: 'Sb', typeSuffix: 'Type' });
+
+    expect(names.definitionByComponent.get('2_col')).toBe('Sb_2ColBlockDefinitionType');
+  });
 });
 
 describe('renderSchemaTypes', () => {
@@ -108,6 +120,20 @@ describe('renderSchemaTypes', () => {
     expect(output).toContain('export type FieldPlugins = InferSchema<{ blocks: Record<string, never>; fieldPlugins: typeof userFieldPlugins }>[\'fieldPlugins\'];');
   });
 
+  it('declares and references a digit-leading component under its safe name', () => {
+    const output = renderSchemaTypes({
+      blocks: [{ componentName: '2_col', definitionBody: '{}', customFieldTypes: [] }, heroBlock],
+      fieldPlugins: { kind: 'none' },
+      space: '295018',
+    });
+
+    // A bare `2ColBlockDefinition` is a syntax error that takes the whole file
+    // with it, so the declaration and the union must both use the guarded name.
+    expect(output).toContain('export type _2ColBlockDefinition = {}');
+    expect(output).toContain('export type Blocks = _2ColBlockDefinition | HeroBlockDefinition;');
+    expect(output).not.toMatch(/\b2ColBlockDefinition/);
+  });
+
   it('records the space in the generated header', () => {
     const output = renderSchemaTypes({ blocks: [heroBlock], fieldPlugins: { kind: 'none' }, space: '295018' });
 
@@ -146,6 +172,19 @@ describe('renderSeparateFiles', () => {
     expect(files.get('storyblok-schema.d.ts')).toContain('import type { TeaserListBlockDefinition } from \'./blocks/teaser-list\';');
     expect(files.get('storyblok-schema.d.ts')).toContain('export type Blocks = HeroBlockDefinition | TeaserListBlockDefinition;');
     expect(files.get('storyblok-schema.d.ts')).not.toContain('export type HeroBlockDefinition = {');
+  });
+
+  it('uses the safe name in both the block file and the main file import', () => {
+    const files = renderSeparateFiles({
+      blocks: [{ componentName: '2_col', definitionBody: '{}', customFieldTypes: [] }],
+      fieldPlugins: { kind: 'none' },
+      space: '295018',
+      filename: 'storyblok-schema',
+    });
+
+    expect(files.get('blocks/2-col.d.ts')).toContain('export type _2ColBlockDefinition = {}');
+    expect(files.get('storyblok-schema.d.ts')).toContain('import type { _2ColBlockDefinition } from \'./blocks/2-col\';');
+    expect(files.get('storyblok-schema.d.ts')).not.toMatch(/\b2ColBlockDefinition/);
   });
 
   it('disambiguates block file names that collide after kebab-casing', () => {

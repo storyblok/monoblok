@@ -184,6 +184,21 @@ export function toKebabCase(str: string): string {
 }
 
 /**
+ * Guards a generated name against the two shapes that are not valid JS/TS
+ * identifiers: empty, and starting with a digit. Storyblok accepts component
+ * names like `2_col`, whose camelCase/PascalCase form would otherwise be emitted
+ * as a bare `2Col` and make the whole generated file a syntax error. Prefixing
+ * `_` keeps the name readable and collision-free (`_2Col`).
+ *
+ * Apply this to the *finished* identifier, after any fixed suffix is appended:
+ * `Foo` + `BlockDefinition` needs no guard, but a leading digit still does.
+ */
+export function toSafeIdentifier(identifier: string): string {
+  if (!identifier) { return '_'; }
+  return /^\d/.test(identifier) ? `_${identifier}` : identifier;
+}
+
+/**
  * Resolves an ordered list of raw names to unique variable names. Names that
  * sanitize to the same identifier get a numeric suffix (`…2`, `…3`), so the
  * generated `export const`s and schema-object keys never collide. Index-aligned

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { vol } from 'memfs';
 
 import { assertNoLegacyFlags, generateSchemaTypes } from './index';
 
@@ -167,8 +168,94 @@ describe('generateSchemaTypes', () => {
     expect(written.get('/out/blocks/hero.d.ts')).toContain('export type HeroBlockDefinition = {');
     // The surface file imports the block files rather than redeclaring them.
     const surface = written.get('/out/storyblok-schema.d.ts')!;
-    expect(surface).toContain('import type { HeroBlockDefinition } from \'./blocks/hero\';');
+    expect(surface).toContain('import type { HeroBlockDefinition } from \'./blocks/hero.js\';');
     expect(surface).toContain('export type Blocks = HeroBlockDefinition | PageBlockDefinition;');
+  });
+
+  /**
+   * `blocks/` holds one file per component, so a component deleted in the UI
+   * would otherwise leave an importable type describing a block that no longer
+   * exists. `saveToFile` is mocked here, so only the pre-seeded stale files are
+   * on the fake filesystem — enough to assert what pruning removes.
+   */
+  it('deletes block files for components that no longer exist', async () => {
+    written.clear();
+    vol.fromJSON({
+      '/out/blocks/hero.d.ts': 'stale but still a real component',
+      '/out/blocks/page.d.ts': 'stale but still a real component',
+      '/out/blocks/removed-component.d.ts': 'orphan',
+    });
+
+    const result = await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+      separateFiles: true,
+    });
+
+    expect(result.prunedFiles).toEqual(['/out/blocks/removed-component.d.ts']);
+    expect(Object.keys(vol.toJSON())).not.toContain('/out/blocks/removed-component.d.ts');
+    // Files for components that still exist are rewritten, not pruned.
+    expect(Object.keys(vol.toJSON())).toEqual(
+      expect.arrayContaining(['/out/blocks/hero.d.ts', '/out/blocks/page.d.ts']),
+    );
+  });
+
+  it('orphans the whole blocks directory when switching back to single-file output', async () => {
+    written.clear();
+    vol.fromJSON({
+      '/out/blocks/hero.d.ts': 'from a previous --separate-files run',
+      '/out/blocks/page.d.ts': 'from a previous --separate-files run',
+    });
+
+    const result = await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+    });
+
+    expect(result.prunedFiles.sort()).toEqual(['/out/blocks/hero.d.ts', '/out/blocks/page.d.ts']);
+  });
+
+  // The output directory is shared with the legacy generator and may hold files
+  // this command knows nothing about, so pruning stops at `blocks/`.
+  it('never touches files outside the blocks directory', async () => {
+    written.clear();
+    vol.fromJSON({
+      '/out/storyblok-components.d.ts': 'legacy generator output',
+      '/out/datasource-types.d.ts': 'legacy generator output',
+      '/out/blocks/nested/keep.d.ts': 'not a file this renderer writes',
+    });
+
+    const result = await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+      separateFiles: true,
+    });
+
+    expect(result.prunedFiles).toEqual([]);
+    expect(Object.keys(vol.toJSON())).toEqual(expect.arrayContaining([
+      '/out/storyblok-components.d.ts',
+      '/out/datasource-types.d.ts',
+      '/out/blocks/nested/keep.d.ts',
+    ]));
+  });
+
+  it('reports nothing pruned when there is no blocks directory', async () => {
+    written.clear();
+
+    const result = await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+    });
+
+    expect(result.prunedFiles).toEqual([]);
   });
 
   it('applies --type-prefix and --type-suffix to every exported name', async () => {

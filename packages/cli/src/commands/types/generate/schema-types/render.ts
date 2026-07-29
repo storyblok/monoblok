@@ -2,7 +2,7 @@ import { relative } from 'pathe';
 
 import { toPascalCase } from '../../../../utils/format';
 import { componentFileName, resolveFileNames, resolveVarNames, toSafeIdentifier } from '../../../schema/utils';
-import { toDeclarationFileName } from '../filename';
+import { toDeclarationFileName, toDeclarationImportSpecifier } from '../filename';
 import type { FieldPluginsSource } from './field-plugins';
 import type { SerializedBlock } from './serialize';
 
@@ -239,7 +239,7 @@ export function renderSeparateFiles(options: RenderOptions & { filename: string 
     ...renderHeader(options.space),
     renderSchemaImport(options),
     ...fieldPlugins.imports,
-    ...definitionNames.map((typeName, index) => `import type { ${typeName} } from './blocks/${fileNames[index]}';`),
+    ...definitionNames.map((typeName, index) => `import type { ${typeName} } from './blocks/${toDeclarationImportSpecifier(fileNames[index])}';`),
     '',
     ...renderSurface(names, definitionNames, fieldPlugins.declaration),
   ];

@@ -76,6 +76,14 @@ export async function runFutureSchemaTypes(
     spinner.succeed('Generated types');
 
     result.files.forEach(file => ui.ok(file));
+    if (result.prunedFiles.length > 0) {
+      // Says so rather than deleting silently: these are files a previous run
+      // wrote, so their disappearance would otherwise look like data loss.
+      ui.info(
+        `Removed ${result.prunedFiles.length} stale block type `
+        + `${result.prunedFiles.length === 1 ? 'file' : 'files'} for components that no longer exist.`,
+      );
+    }
     if (result.unmappedFieldTypes.length > 0) {
       // Names the module actually in use, or the path this run searched. `--path`
       // moves the convention path, so the default would point at the wrong file.

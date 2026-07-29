@@ -9,6 +9,7 @@ import type {
   FieldValueInput,
   MultilinkFieldValue,
   PluginFieldValue,
+  RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
 } from '../generated/types/field';
@@ -27,6 +28,7 @@ export type {
   FieldValueInput,
   MultilinkFieldValue,
   PluginFieldValue,
+  RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
 };

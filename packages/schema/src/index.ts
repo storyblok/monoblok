@@ -33,6 +33,7 @@ export type {
   FieldValueInput,
   MultilinkFieldValue,
   PluginFieldValue,
+  RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
 } from './helpers/define-field';

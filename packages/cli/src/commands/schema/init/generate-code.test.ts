@@ -84,6 +84,34 @@ describe('generateComponentFile', () => {
     expect(result).toContain('field_type: \'shopware-integration\',');
   });
 
+  it('should not redact choices of a built-in option/options select field', () => {
+    // Select fields use the same `{ name, value }` shape for their choices; a
+    // choice named like a secret must NOT be redacted (only `type: 'custom'`).
+    const isSecretName = (name: string) => name.toLowerCase() === 'token';
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        kind: {
+          type: 'option',
+          pos: 0,
+          options: [
+            { _uid: 'a', name: 'token', value: 'ring' },
+            { _uid: 'b', name: 'coin', value: 'gold' },
+          ],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any, undefined, undefined, undefined, isSecretName);
+
+    expect(result).not.toContain('secret,');
+    expect(result).not.toContain('secret()');
+    expect(result).toContain('value: \'ring\',');
+  });
+
   it('should not add the secret import when no option value is redacted', () => {
     const isSecretName = (name: string) => name.toLowerCase() === 'clientsecret';
     const component = {

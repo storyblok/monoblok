@@ -94,6 +94,10 @@ function referenceFor(item: unknown, index: number, reference: unknown): unknown
  * `makePlaceholder(name)` (the `name`/`_uid` are kept). Used by `init` before
  * writing to disk. The replaced value is not recursed into; the source is never
  * mutated.
+ *
+ * The caller must scope this to custom plugin field configs (`type: 'custom'`):
+ * the built-in `option`/`options` select fields use the same `{ name, value }`
+ * shape for their choices, and those must never be redacted.
  */
 export function redactSecretValues(
   value: unknown,

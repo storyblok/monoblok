@@ -38,14 +38,6 @@ export function resolveGroupWhitelistEntries<T>(
  * `component_group_whitelist` and an empty `component_whitelist: []` on the
  * wire; the group whitelist takes precedence, so `allow` is only sourced from
  * `component_whitelist` when it holds actual block names.
- *
- * `restrict_components: false` disables the restriction while the space may still
- * store a stale whitelist. Emitting that inactive list as `allow` would make
- * `schema push` re-derive `restrict_components: true` and silently switch the
- * restriction back on, changing what editors may insert. So a disabled
- * restriction keeps its flag and drops the whitelist: the flag round-trips
- * losslessly, at the cost of discarding a list that is not in force anyway. An
- * absent `restrict_components` counts as active, matching backend enforcement.
  */
 export function toDslField<T>(
   field: Record<string, unknown>,
@@ -65,8 +57,15 @@ export function toDslField<T>(
     ? undefined
     : resolveGroupWhitelistEntries(component_group_whitelist, resolveGroupEntry);
   const hasBlockNames = !restrictionDisabled
-    && Array.isArray(component_whitelist) && component_whitelist.length > 0;
+    && Array.isArray(component_whitelist)
+    && component_whitelist.length > 0;
   if (restrictionDisabled) {
+    // The restriction is switched off, so the whitelist beside it is inert.
+    // Mapping it to `allow` would make `defineField` re-derive
+    // `restrict_components: true` on the next push and silently switch a
+    // disabled restriction back on. The flag is preserved instead, and the
+    // inactive whitelist is dropped: it is not in force, and keeping it is what
+    // causes the flip.
     out.restrict_components = false;
     if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
   }

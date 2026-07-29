@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Component } from '../../../../types';
+import type { SerializeContext } from './serialize';
 import { serializeBlockDefinition } from './serialize';
 
-function component(overrides: Record<string, unknown> = {}) {
+function component(overrides: Partial<Component> = {}): Component {
   return {
     id: 1,
     name: 'hero',
@@ -12,10 +14,19 @@ function component(overrides: Record<string, unknown> = {}) {
     is_nestable: true,
     schema: {},
     ...overrides,
-  } as never;
+  };
 }
 
-const emptyContext = { displayPathByUuid: new Map<string, string>() };
+/** Context for a space whose only component is the one under test. */
+function context(overrides: Partial<SerializeContext> = {}): SerializeContext {
+  return {
+    displayPathByUuid: new Map<string, string>(),
+    knownBlockNames: new Set(['hero']),
+    ...overrides,
+  };
+}
+
+const emptyContext = context();
 
 describe('serializeBlockDefinition', () => {
   it('widens id/created_at/updated_at and keeps name/is_root/is_nestable literal', () => {
@@ -62,7 +73,7 @@ describe('serializeBlockDefinition', () => {
   it('maps component_whitelist to an allow tuple', () => {
     const result = serializeBlockDefinition(component({
       schema: { body: { type: 'bloks', component_whitelist: ['grid', 'teaser'] } },
-    }), emptyContext);
+    }), context({ knownBlockNames: new Set(['hero', 'grid', 'teaser']) }));
 
     expect(result.definitionBody).toContain('{ name: \'body\'; type: \'bloks\'; allow: [\'grid\', \'teaser\'] }');
   });
@@ -70,7 +81,7 @@ describe('serializeBlockDefinition', () => {
   it('maps a group whitelist to allow folder entries using display paths', () => {
     const result = serializeBlockDefinition(component({
       schema: { body: { type: 'bloks', component_group_whitelist: ['uuid-1'] } },
-    }), { displayPathByUuid: new Map([['uuid-1', 'My Layout/Heros']]) });
+    }), context({ displayPathByUuid: new Map([['uuid-1', 'My Layout/Heros']]) }));
 
     expect(result.definitionBody).toContain('allow: [{ folder: \'My Layout/Heros\' }]');
   });
@@ -87,7 +98,7 @@ describe('serializeBlockDefinition', () => {
   it('emits the block folder literal from its component group', () => {
     const result = serializeBlockDefinition(
       component({ component_group_uuid: 'uuid-1' }),
-      { displayPathByUuid: new Map([['uuid-1', 'My Layout']]) },
+      context({ displayPathByUuid: new Map([['uuid-1', 'My Layout']]) }),
     );
 
     expect(result.definitionBody).toContain('  folder: \'My Layout\';');
@@ -115,6 +126,73 @@ describe('serializeBlockDefinition', () => {
       .toContain('is_nestable: true;');
     expect(serializeBlockDefinition(component({ is_nestable: false }), emptyContext).definitionBody)
       .toContain('is_nestable: false;');
+  });
+
+  it('omits allow when the restriction is switched off, for names and for groups', () => {
+    const names = serializeBlockDefinition(component({
+      schema: {
+        body: { type: 'bloks', restrict_components: false, component_whitelist: ['grid'] },
+      },
+    }), context({ knownBlockNames: new Set(['hero', 'grid']) }));
+
+    // The live case: Storyblok strips a stale name whitelist when the flag is
+    // false, but never strips a group whitelist, so this state does reach us.
+    const groups = serializeBlockDefinition(component({
+      schema: {
+        body: {
+          type: 'bloks',
+          restrict_components: false,
+          restrict_type: 'groups',
+          component_group_whitelist: ['uuid-1'],
+        },
+      },
+    }), context({ displayPathByUuid: new Map([['uuid-1', 'My Layout']]) }));
+
+    expect(names.definitionBody).not.toContain('allow');
+    expect(groups.definitionBody).not.toContain('allow');
+  });
+
+  it('keeps allow when restrict_components is absent, which the backend enforces', () => {
+    const result = serializeBlockDefinition(component({
+      schema: { body: { type: 'bloks', component_whitelist: ['grid'] } },
+    }), context({ knownBlockNames: new Set(['hero', 'grid']) }));
+
+    expect(result.definitionBody).toContain('allow: [\'grid\']');
+  });
+
+  it('emits allow on richtext but not on other whitelisted field types', () => {
+    const richtext = serializeBlockDefinition(component({
+      schema: { body: { type: 'richtext', component_whitelist: ['grid'] } },
+    }), context({ knownBlockNames: new Set(['hero', 'grid']) }));
+
+    // A multilink's component_whitelist holds content type names, not block
+    // names, so emitting it would put a misleading list in the output.
+    const multilink = serializeBlockDefinition(component({
+      schema: { link: { type: 'multilink', component_whitelist: ['page'] } },
+    }), context({ knownBlockNames: new Set(['hero', 'page']) }));
+
+    expect(richtext.definitionBody).toContain('allow: [\'grid\']');
+    expect(multilink.definitionBody).toContain('{ name: \'link\'; type: \'multilink\' }');
+    expect(multilink.definitionBody).not.toContain('allow');
+  });
+
+  it('drops allow entries naming a block the space does not have', () => {
+    const result = serializeBlockDefinition(component({
+      schema: { body: { type: 'bloks', component_whitelist: ['grid', 'deleted'] } },
+    }), context({ knownBlockNames: new Set(['hero', 'grid']) }));
+
+    expect(result.definitionBody).toContain('allow: [\'grid\']');
+  });
+
+  it('omits allow entirely when no whitelisted block still exists', () => {
+    // An `allow` of only unknown names would resolve the field to `never[]`
+    // through `ApplyAllow`, rejecting every possible value.
+    const result = serializeBlockDefinition(component({
+      schema: { body: { type: 'bloks', component_whitelist: ['deleted', 'gone'] } },
+    }), emptyContext);
+
+    expect(result.definitionBody).toContain('{ name: \'body\'; type: \'bloks\' }');
+    expect(result.definitionBody).not.toContain('allow');
   });
 
   it('keeps tab fields, which resolve to never downstream', () => {

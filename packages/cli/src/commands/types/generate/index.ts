@@ -8,6 +8,7 @@ import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
 import { readDatasourcesFiles } from '../../datasources/push/actions';
 import type { SpaceDatasourcesData } from '../../../commands/datasources/constants';
+import { DEFAULT_SCHEMA_ENTRY_PATH } from '../../schema/constants';
 import { runFutureSchemaTypes } from './future-schema';
 
 const generateCmd = typesCommand
@@ -26,7 +27,7 @@ const generateCmd = typesCommand
   .option('--compiler-options <options>', 'path to the compiler options from json-schema-to-typescript')
   .option('-s, --space <space>', 'space ID')
   .option('--future-schema', 'Generate types from the space schema')
-  .option('--field-plugins <path>', 'Path to a module exporting your defineFieldPlugin declarations (default: .storyblok/schema/schema.ts)');
+  .option('--field-plugins <path>', `Path to a module exporting your defineFieldPlugin declarations (default: ${DEFAULT_SCHEMA_ENTRY_PATH})`);
 
 generateCmd
   .action(async (options: GenerateTypesOptions, command: Command) => {
@@ -36,6 +37,7 @@ generateCmd
       await runFutureSchemaTypes({
         options,
         globals: { space, path, filename, separateFiles, verbose },
+        getOptionValueSource: attributeName => command.getOptionValueSource(attributeName),
       });
       return;
     }

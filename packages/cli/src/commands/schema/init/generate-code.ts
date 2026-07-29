@@ -16,6 +16,7 @@ import {
   sortSchemaByPos,
   stripKeys,
   toKebabCase,
+  toSafeIdentifier,
 } from '../utils';
 
 export { componentFileName, resolveFileNames, resolveVarNames } from '../utils';
@@ -26,15 +27,14 @@ const FIELD_STRIP_KEYS = new Set(['id', 'pos']);
 /**
  * Converts an arbitrary name into a valid camelCase JS identifier.
  * `slugify` reduces the input to `[a-z0-9_-]` (symbols stripped, spaces → `-`);
- * we then camelCase across `_`/`-` runs and guard against an empty or
- * leading-digit result so the output is always usable as an identifier.
+ * we then camelCase across `_`/`-` runs and hand the result to
+ * {@link toSafeIdentifier}, which guards the empty and leading-digit cases.
  */
 function toCamelCaseIdentifier(str: string): string {
   const camel = slugify(str)
     .replace(/^[_-]+/, '')
     .replace(/[_-]+(.)/g, (_, char: string) => char.toUpperCase());
-  if (!camel) { return '_'; }
-  return /^\d/.test(camel) ? `_${camel}` : camel;
+  return toSafeIdentifier(camel);
 }
 
 /** Returns the variable name for a component. e.g. `'teaser_list'` -> `'teaserListBlock'` */
@@ -193,6 +193,9 @@ function collectWhitelistFolderVars(
   const vars = new Set<string>();
   for (const field of Object.values(schema)) {
     if (!isRecord(field)) { continue; }
+    // A disabled restriction emits no `allow`, so importing its folder ref would
+    // leave an unused import in the user's generated project.
+    if (field.restrict_components === false) { continue; }
     const refs = resolveGroupWhitelistEntries(field.component_group_whitelist, resolver);
     if (refs) { refs.forEach(ref => vars.add(ref.code)); }
   }

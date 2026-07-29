@@ -52,9 +52,24 @@ export function toDslField<T>(
     ...rest
   } = field;
   const out: Record<string, unknown> = { ...rest };
-  const groupEntries = resolveGroupWhitelistEntries(component_group_whitelist, resolveGroupEntry);
-  const hasBlockNames = Array.isArray(component_whitelist) && component_whitelist.length > 0;
-  if (hasBlockNames) {
+  const restrictionDisabled = restrict_components === false;
+  const groupEntries = restrictionDisabled
+    ? undefined
+    : resolveGroupWhitelistEntries(component_group_whitelist, resolveGroupEntry);
+  const hasBlockNames = !restrictionDisabled
+    && Array.isArray(component_whitelist)
+    && component_whitelist.length > 0;
+  if (restrictionDisabled) {
+    // The restriction is switched off, so the whitelist beside it is inert.
+    // Mapping it to `allow` would make `defineField` re-derive
+    // `restrict_components: true` on the next push and silently switch a
+    // disabled restriction back on. The flag is preserved instead, and the
+    // inactive whitelist is dropped: it is not in force, and keeping it is what
+    // causes the flip.
+    out.restrict_components = false;
+    if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
+  }
+  else if (hasBlockNames) {
     out.allow = component_whitelist;
   }
   else if (groupEntries) {

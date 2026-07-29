@@ -2,10 +2,10 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'pathe';
 
 import { CommandError, toError } from '../../../../utils';
+import { DEFAULT_STORAGE_DIR } from '../../../../utils/filesystem';
+import { importModule } from '../../../../utils/import-module';
+import { SCHEMA_ENTRY_RELATIVE_PATH } from '../../../schema/constants';
 import { isRecord } from '../../../schema/utils';
-
-/** Where a field-plugin declaration module is looked for when no override is given. */
-export const FIELD_PLUGINS_CONVENTION_PATH = '.storyblok/schema/schema.ts';
 
 /**
  * Where the generated `FieldPlugins` type comes from.
@@ -32,20 +32,53 @@ function collectFieldTypes(fieldPlugins: Record<string, unknown>): string[] {
 }
 
 /**
+ * Names an export that looks like it was meant to be picked up but is not named
+ * `schema` or `fieldPlugins`, so the error can point at the near miss instead of
+ * only restating the contract. Returns the first such export name.
+ *
+ * Both accepted shapes are recognised, a `defineSchema` result carrying
+ * `fieldPlugins` and a bare record of `defineFieldPlugin` results. Only the
+ * error message is affected: the emitted file imports the export by name, so
+ * accepting an arbitrary name would mean threading it through rendering too.
+ */
+function findNearMissExport(module: Record<string, unknown>): string | undefined {
+  for (const [name, value] of Object.entries(module)) {
+    if (name === 'schema' || name === 'fieldPlugins' || name === 'default') { continue; }
+    if (!isRecord(value)) { continue; }
+    if (isRecord(value.fieldPlugins)) { return name; }
+    const entries = Object.values(value);
+    if (entries.length > 0 && entries.every(entry => isRecord(entry) && typeof entry.fieldType === 'string')) {
+      return name;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Resolves the module whose `defineFieldPlugin` declarations type `custom`
- * fields. The module is loaded with `jiti` (TypeScript-aware) purely to detect
- * which export shape it has and which `fieldType`s it registers, the generated
- * file imports it by path and lets TypeScript do the real work.
+ * fields. The generated file imports the module by path and lets TypeScript do
+ * the real work; this only needs to know which export shape it has and which
+ * `fieldType`s it registers.
+ *
+ * Detecting that means *executing* the module, since the shape is a runtime
+ * value. So any top-level side effects in the user's schema file run on every
+ * `types generate`. `schema push` loads the same file the same way, but there
+ * execution is the point rather than a means of inspection.
  *
  * An explicit `--field-plugins` path that is missing or unusable is an error;
- * the convention path silently degrades to `none`, since most spaces have no
- * custom fields.
+ * the convention path degrades to `none`, since most spaces have no custom
+ * fields. That degradation is not silent in the case that matters: a `custom`
+ * field with no registered plugin is reported afterwards as an unmapped
+ * `field_type`.
  */
 export async function resolveFieldPluginsSource(
-  options: { cwd: string; override?: string },
+  options: { cwd: string; path?: string; override?: string },
 ): Promise<FieldPluginsSource> {
   const isExplicit = options.override !== undefined;
-  const modulePath = resolve(options.cwd, options.override ?? FIELD_PLUGINS_CONVENTION_PATH);
+  const modulePath = options.override === undefined
+    // Honours `--path`, the same base the generated types are written under.
+    ? resolve(options.cwd, options.path ?? DEFAULT_STORAGE_DIR, SCHEMA_ENTRY_RELATIVE_PATH)
+    : resolve(options.cwd, options.override);
 
   if (!existsSync(modulePath)) {
     if (isExplicit) {
@@ -54,12 +87,9 @@ export async function resolveFieldPluginsSource(
     return { kind: 'none' };
   }
 
-  const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
-
   let module: Record<string, unknown>;
   try {
-    module = await jiti.import(modulePath) as Record<string, unknown>;
+    module = await importModule(modulePath);
   }
   catch (maybeError) {
     throw new CommandError(`Failed to load field plugins from ${modulePath}: ${toError(maybeError).message}`);
@@ -75,8 +105,12 @@ export async function resolveFieldPluginsSource(
   }
 
   if (isExplicit) {
+    const nearMiss = findNearMissExport(module);
     throw new CommandError(
-      `${modulePath} exports neither a \`schema\` (a defineSchema result with fieldPlugins) nor a \`fieldPlugins\` record.`,
+      `${modulePath} exports neither a \`schema\` (a defineSchema result with fieldPlugins) nor a \`fieldPlugins\` record.${
+        nearMiss === undefined
+          ? ''
+          : ` Found \`${nearMiss}\`, which looks like one: rename it to \`schema\` or \`fieldPlugins\`.`}`,
     );
   }
   return { kind: 'none' };

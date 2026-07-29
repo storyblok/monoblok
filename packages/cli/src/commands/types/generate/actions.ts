@@ -404,6 +404,9 @@ export const generateTypes = async (
           _uid: {
             type: 'string',
           },
+          _editable: {
+            tsType: 'string | undefined',
+          },
         },
       };
 

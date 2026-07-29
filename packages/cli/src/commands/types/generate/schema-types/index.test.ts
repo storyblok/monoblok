@@ -53,6 +53,19 @@ describe('assertNoLegacyFlags', () => {
     expect(() => assertNoLegacyFlags({ suffix: 'v1' })).toThrow(/--suffix/);
   });
 
+  it.each([
+    ['strict', { strict: true }, /required/],
+    ['customFieldsParser', { customFieldsParser: './p.ts' }, /defineFieldPlugin/],
+    ['compilerOptions', { compilerOptions: './c.json' }, /JSON-schema compiler/],
+    ['suffix', { suffix: 'v1' }, /pulled component files/],
+  ] as const)('explains why %s cannot apply, rather than giving a shared rationale', (_name, options, reason) => {
+    expect(() => assertNoLegacyFlags(options)).toThrow(reason);
+  });
+
+  it('does not explain field optionality to someone who passed only --suffix', () => {
+    expect(() => assertNoLegacyFlags({ suffix: 'v1' })).not.toThrow(/optionality|required/);
+  });
+
   it('names every offending flag at once', () => {
     expect(() => assertNoLegacyFlags({
       strict: true,

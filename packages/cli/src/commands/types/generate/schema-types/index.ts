@@ -11,21 +11,25 @@ import { resolveFieldPluginsSource } from './field-plugins';
 import { renderSchemaTypes, renderSeparateFiles, toRelativeImport } from './render';
 import { serializeBlockDefinition } from './serialize';
 
-/** Options that only the legacy `json-schema-to-typescript` generator supports. */
-const LEGACY_ONLY_FLAGS: ReadonlyArray<readonly [keyof GenerateTypesOptions, string]> = [
-  ['strict', '--strict'],
-  ['customFieldsParser', '--custom-fields-parser'],
-  ['compilerOptions', '--compiler-options'],
-  ['suffix', '--suffix'],
+/**
+ * Options that only the legacy `json-schema-to-typescript` generator supports,
+ * each with why it cannot mean anything here.
+ *
+ * The reason is per flag rather than shared: a single combined rationale ended up
+ * explaining field optionality to someone who passed `--suffix`, which is about
+ * file selection and has nothing to do with it.
+ */
+const LEGACY_ONLY_FLAGS: ReadonlyArray<readonly [keyof GenerateTypesOptions, string, string]> = [
+  ['strict', '--strict', 'field optionality comes from each field\'s `required` flag'],
+  ['customFieldsParser', '--custom-fields-parser', 'custom fields are typed with defineFieldPlugin, see --field-plugins'],
+  ['compilerOptions', '--compiler-options', 'there is no JSON-schema compiler to configure'],
+  ['suffix', '--suffix', 'it selects pulled component files, which this generator never reads'],
 ];
 
 /**
- * Rejects flags that cannot mean anything under `--future-schema`: optionality
- * now comes from each field's `required`, custom fields resolve through
- * `defineFieldPlugin`, there is no `json-schema-to-typescript` to configure,
- * and `--suffix` only selects pulled component files, which this generator
- * never reads. Failing loudly beats silently ignoring a flag the user
- * believes is applied.
+ * Rejects flags that cannot mean anything under `--future-schema`, quoting the
+ * per-flag reason from {@link LEGACY_ONLY_FLAGS}. Failing loudly beats silently
+ * ignoring a flag the user believes is applied.
  *
  * A flag the *config file* set is a different case, and must not be an error: a
  * project that configures `strict` for the legacy generator would otherwise be
@@ -43,13 +47,17 @@ export function assertNoLegacyFlags(
 ): string[] {
   const set = LEGACY_ONLY_FLAGS.filter(([key]) => options[key] !== undefined);
   const fromConfig = set.filter(([key]) => getOptionValueSource?.(key) === 'config');
-  const used = set.filter(entry => !fromConfig.includes(entry)).map(([, flag]) => flag);
+  const used = set.filter(entry => !fromConfig.includes(entry));
 
-  if (used.length > 0) {
+  if (used.length === 1) {
+    const [, flag, reason] = used[0]!;
+    throw new CommandError(`${flag} is not supported with --future-schema: ${reason}.`);
+  }
+
+  if (used.length > 1) {
     throw new CommandError(
-      `${used.join(', ')} ${used.length === 1 ? 'is' : 'are'} not supported with --future-schema. `
-      + 'Field optionality comes from the schema, custom fields are typed with defineFieldPlugin '
-      + '(see --field-plugins), and no JSON-schema compiler is involved.',
+      `${used.map(([, flag]) => flag).join(', ')} are not supported with --future-schema. `
+      + `${used.map(([, flag, reason]) => `${flag}: ${reason}`).join('. ')}.`,
     );
   }
 

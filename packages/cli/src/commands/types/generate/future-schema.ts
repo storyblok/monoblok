@@ -4,7 +4,7 @@ import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, toError } from '../../../utils';
 import { resolvePath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
-import { DEFAULT_SCHEMA_TYPES_FILENAME, type GenerateTypesOptions } from './constants';
+import { DEFAULT_COMPONENT_TYPES_FILENAME, DEFAULT_SCHEMA_TYPES_FILENAME, type GenerateTypesOptions } from './constants';
 import { toDeclarationFileName } from './filename';
 import { assertNoLegacyFlags, generateSchemaTypes } from './schema-types';
 
@@ -53,7 +53,10 @@ export async function runFutureSchemaTypes(
     if (!space) {
       throw new CommandError('Please provide the space as argument --space SPACE_ID.');
     }
-    if (filename !== undefined) {
+    // Only the legacy generator's own file name is a collision. Warning on every
+    // --filename told users their own path clashed with a file nothing writes.
+    if (filename !== undefined
+      && toDeclarationFileName(filename) === toDeclarationFileName(DEFAULT_COMPONENT_TYPES_FILENAME)) {
       ui.warn(
         `--filename is set to \`${toDeclarationFileName(filename)}\`, which is also where the legacy `
         + 'generator writes. Regenerating with and without --future-schema will overwrite one with the '

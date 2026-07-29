@@ -334,7 +334,32 @@ describe('types generate', () => {
       }));
     });
 
-    it('warns that --filename collides with the legacy generator output', async () => {
+    it.each(['storyblok-components', 'storyblok-components.d.ts'])(
+      'warns that --filename %s collides with the legacy generator output',
+      async (filename) => {
+        vi.mocked(generateSchemaTypes).mockResolvedValue({
+          files: [],
+          prunedFiles: [],
+          unmappedFieldTypes: [],
+          fieldPlugins: { resolved: false, path: '/project/.storyblok/schema/schema.ts' },
+        });
+
+        await typesCommand.parseAsync([
+          'node',
+          'test',
+          'generate',
+          '--space',
+          '295018',
+          '--future-schema',
+          '--filename',
+          filename,
+        ]);
+
+        expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('--filename'));
+      },
+    );
+
+    it('does not warn about a --filename the legacy generator never writes', async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: [],
         prunedFiles: [],
@@ -349,11 +374,12 @@ describe('types generate', () => {
         '--space',
         '295018',
         '--future-schema',
+        '--separate-files',
         '--filename',
         'shared',
       ]);
 
-      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('--filename'));
+      expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('--filename'));
     });
   });
 });

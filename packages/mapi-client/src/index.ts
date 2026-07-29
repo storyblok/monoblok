@@ -73,6 +73,7 @@ export type {
   BlocksFieldValue as BloksFieldValue,
   MultilinkFieldValue,
   PluginFieldValue,
+  RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
 } from './generated/types/field';

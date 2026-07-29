@@ -143,7 +143,7 @@ $defs:
         required: [color]
         properties:
           color:
-            type: string
+            type: [string, 'null']
             description: Highlight color (CSS color value)
 
   TextStyleMark:
@@ -235,6 +235,12 @@ $defs:
               - type: string
                 enum: [left, center, right, justify]
               - type: 'null'
+          dir:
+            description: Text direction
+            oneOf:
+              - type: string
+                enum: [ltr, rtl]
+              - type: 'null'
       content:
         type: array
         items:
@@ -282,6 +288,12 @@ $defs:
               - type: string
                 enum: [left, center, right, justify]
               - type: 'null'
+          dir:
+            description: Text direction
+            oneOf:
+              - type: string
+                enum: [ltr, rtl]
+              - type: 'null'
       content:
         type: array
         items:
@@ -298,6 +310,15 @@ $defs:
       type:
         type: string
         enum: [blockquote]
+      attrs:
+        type: object
+        properties:
+          dir:
+            description: Text direction
+            oneOf:
+              - type: string
+                enum: [ltr, rtl]
+              - type: 'null'
       content:
         type: array
         items:
@@ -352,6 +373,15 @@ $defs:
       type:
         type: string
         enum: [list_item]
+      attrs:
+        type: object
+        properties:
+          dir:
+            description: Text direction
+            oneOf:
+              - type: string
+                enum: [ltr, rtl]
+              - type: 'null'
       content:
         type: array
         items:
@@ -375,6 +405,12 @@ $defs:
           class:
             type: [string, 'null']
             description: Language class (e.g. "language-typescript")
+          dir:
+            description: Text direction
+            oneOf:
+              - type: string
+                enum: [ltr, rtl]
+              - type: 'null'
       content:
         type: array
         items:
@@ -415,7 +451,7 @@ $defs:
             type: [integer, 'null']
             description: Storyblok asset ID
           src:
-            type: string
+            type: [string, 'null']
             description: Image URL
           alt:
             type: [string, 'null']
@@ -430,7 +466,6 @@ $defs:
             description: Asset metadata
             oneOf:
               - type: object
-                required: [alt, title, source, copyright]
                 properties:
                   alt:
                     type: [string, 'null']
@@ -440,6 +475,8 @@ $defs:
                     type: [string, 'null']
                   copyright:
                     type: [string, 'null']
+                additionalProperties:
+                  type: [string, 'null']
               - type: 'null'
 
   EmojiNode:

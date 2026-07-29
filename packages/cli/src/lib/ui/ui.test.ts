@@ -109,4 +109,34 @@ describe('ui', () => {
       bar.stop();
     });
   });
+
+  describe('setEnabled', () => {
+    it('should disable output on an initially enabled instance', () => {
+      const ui = new UI({ enabled: true });
+      ui.setEnabled(false);
+      ui.ok('should not appear');
+      ui.info('should not appear');
+      ui.warn('should not appear');
+      ui.error('should not appear');
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should enable output on an initially disabled instance', () => {
+      const ui = new UI({ enabled: false });
+      ui.setEnabled(true);
+      ui.ok('visible');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('visible'));
+    });
+
+    it('should be a no-op when the value matches the current state', () => {
+      const ui = new UI({ enabled: true });
+      ui.ok('before');
+      const callCount = errorSpy.mock.calls.length;
+      ui.setEnabled(true);
+      ui.ok('after');
+      // Only one additional call (the second ok), not a reset
+      expect(errorSpy.mock.calls.length).toBe(callCount + 1);
+    });
+  });
 });

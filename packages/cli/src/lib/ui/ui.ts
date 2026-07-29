@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { MultiBar, Presets } from 'cli-progress';
 import { Spinner } from '@topcli/spinner';
 import { colorPalette } from '../../constants';
+import { DEFAULT_GLOBAL_CONFIG } from '../config/defaults';
 import { capitalize } from '../../utils/format';
 import { isVitest } from '../../utils';
 
@@ -45,6 +46,20 @@ export class UI {
   private multiBar: MultiBar | null;
 
   constructor({ enabled }: { enabled: boolean }) {
+    this.enabled = enabled;
+    this.console = null;
+    this.multiBar = null;
+    this.applyEnabled(enabled);
+  }
+
+  /** Update the enabled state (called by getUI when preAction resolves config). */
+  setEnabled(enabled: boolean) {
+    if (this.enabled === enabled) { return; }
+    this.applyEnabled(enabled);
+  }
+
+  private applyEnabled(enabled: boolean) {
+    this.enabled = enabled;
     // Redirect all output to stderr. We wrap the global console methods instead
     // of using `new console.Console(process.stderr)` so test spies on the global
     // console object still capture output.
@@ -56,7 +71,6 @@ export class UI {
           error: (...args: unknown[]) => console.error(...args),
         }
       : null;
-    this.enabled = enabled;
     this.multiBar = enabled
       ? new MultiBar({
         clearOnComplete: false,
@@ -175,9 +189,12 @@ export const stderrPromptContext = { output: process.stderr } as const;
 
 let uiInstance: UI | null = null;
 
-export function getUI(options: { enabled: boolean } = { enabled: true }) {
+export function getUI(options?: { enabled: boolean }) {
   if (!uiInstance) {
-    uiInstance = new UI(options);
+    uiInstance = new UI(options ?? { enabled: DEFAULT_GLOBAL_CONFIG.ui.enabled });
+  }
+  else if (options !== undefined) {
+    uiInstance.setEnabled(options.enabled);
   }
 
   return uiInstance;

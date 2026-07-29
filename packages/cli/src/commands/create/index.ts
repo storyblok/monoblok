@@ -13,10 +13,9 @@ import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
 import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
 
-const ui = getUI();
-
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
+  const ui = getUI();
   ui.br();
   ui.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
   ui.br();
@@ -26,6 +25,7 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
 
 // Helper to handle interactive login prompt
 async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
+  const ui = getUI();
   try {
     ui.br();
     const shouldLogin = await confirm({
@@ -63,6 +63,7 @@ export const createCommand = program
     `The region to apply to the generated project template (does not affect space creation).`,
   )
   .action(async (projectPath: string, options: CreateOptions) => {
+    const ui = getUI();
     ui.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;

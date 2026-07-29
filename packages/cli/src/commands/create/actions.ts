@@ -9,8 +9,6 @@ import { createOctokit } from '../../github';
 import { type Template, templates } from './constants';
 import { getUI } from '../../lib/ui';
 
-const ui = getUI();
-
 /** Repository item from GitHub search API response */
 type SearchReposResponse = Awaited<ReturnType<ReturnType<typeof createOctokit>['rest']['search']['repos']>>;
 type SearchRepoItem = SearchReposResponse['data']['items'][number];
@@ -163,6 +161,7 @@ export const updateAngularEnvironmentFiles = async (
 
 // Helper to create .env file (or Angular environment files) and handle errors
 export async function handleEnvFileCreation(resolvedPath: string, token?: string, region?: RegionCode, template?: string): Promise<boolean> {
+  const ui = getUI();
   // Angular uses TypeScript environment files instead of .env
   if (template === 'angular') {
     if (!token && !region) {
@@ -307,6 +306,7 @@ export const repositoryToTemplate = (repo: SearchRepoItem): Template => {
 };
 
 export const fetchBlueprintRepositories = async (): Promise<Template[]> => {
+  const ui = getUI();
   try {
     const octokit = createOctokit();
 

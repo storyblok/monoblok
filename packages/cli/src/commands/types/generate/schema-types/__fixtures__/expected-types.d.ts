@@ -3,6 +3,18 @@
 
 import type { BlockContent, MapiStory as InferStoryMapi, Story as InferStory } from '@storyblok/schema';
 
+export type GridBlockDefinition = {
+  readonly id: number;
+  created_at: string;
+  updated_at: string;
+  name: 'grid';
+  is_root: false;
+  is_nestable: true;
+  fields: [
+    { name: 'columns'; type: 'bloks' },
+  ];
+};
+
 export type HeroBlockDefinition = {
   readonly id: number;
   created_at: string;
@@ -15,18 +27,6 @@ export type HeroBlockDefinition = {
     { name: 'image'; type: 'asset' },
     { name: 'nested'; type: 'bloks'; allow: ['grid'] },
     { name: 'general'; type: 'tab' },
-  ];
-};
-
-export type GridBlockDefinition = {
-  readonly id: number;
-  created_at: string;
-  updated_at: string;
-  name: 'grid';
-  is_root: false;
-  is_nestable: true;
-  fields: [
-    { name: 'columns'; type: 'bloks' },
   ];
 };
 
@@ -43,7 +43,7 @@ export type PageBlockDefinition = {
   ];
 };
 
-export type Blocks = HeroBlockDefinition | GridBlockDefinition | PageBlockDefinition;
+export type Blocks = GridBlockDefinition | HeroBlockDefinition | PageBlockDefinition;
 
 export type FieldPlugins = Record<never, never>;
 

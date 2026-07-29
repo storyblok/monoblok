@@ -61,6 +61,18 @@ describe('assertNoLegacyFlags', () => {
     }))
       .toThrow(/--strict.*--custom-fields-parser.*--compiler-options.*--suffix/s);
   });
+
+  it('reports rather than rejects a legacy flag the config file set', () => {
+    // Erroring here would lock a project whose config sets `strict` out of
+    // --future-schema entirely, without the user having typed anything.
+    const ignored = assertNoLegacyFlags({ strict: true }, () => 'config');
+
+    expect(ignored).toEqual(['--strict']);
+  });
+
+  it('still rejects a legacy flag typed on the command line', () => {
+    expect(() => assertNoLegacyFlags({ strict: true }, () => 'cli')).toThrow(/--strict/);
+  });
 });
 
 describe('generateSchemaTypes', () => {
@@ -108,6 +120,73 @@ describe('generateSchemaTypes', () => {
     });
 
     expect(result.unmappedFieldTypes).toEqual(['storyblok-colorpicker']);
+  });
+
+  it('sorts blocks by name so regeneration is byte-stable', async () => {
+    written.clear();
+    const { fetchRemoteSchema } = await import('../../../schema/actions');
+    // Returned in an order MAPI does not promise to keep.
+    vi.mocked(fetchRemoteSchema).mockResolvedValueOnce({
+      remote: { components: new Map(), componentFolders: new Map(), datasources: new Map() },
+      rawComponents: [
+        { id: 1, name: 'teaser', created_at: '', updated_at: '', is_root: false, is_nestable: true, schema: {} },
+        { id: 2, name: 'hero', created_at: '', updated_at: '', is_root: false, is_nestable: true, schema: {} },
+      ],
+      rawComponentFolders: [],
+      rawDatasources: [],
+    } as never);
+
+    await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+    });
+
+    const content = written.get('/out/storyblok-schema.d.ts')!;
+    expect(content).toContain('export type Blocks = HeroBlockDefinition | TeaserBlockDefinition;');
+    expect(content.indexOf('HeroBlockDefinition = {')).toBeLessThan(content.indexOf('TeaserBlockDefinition = {'));
+  });
+
+  it('writes one file per block plus the surface file under --separate-files', async () => {
+    written.clear();
+
+    const result = await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+      separateFiles: true,
+    });
+
+    expect(result.files.sort()).toEqual([
+      '/out/blocks/hero.d.ts',
+      '/out/blocks/page.d.ts',
+      '/out/storyblok-schema.d.ts',
+    ]);
+    expect(written.get('/out/blocks/hero.d.ts')).toContain('export type HeroBlockDefinition = {');
+    // The surface file imports the block files rather than redeclaring them.
+    const surface = written.get('/out/storyblok-schema.d.ts')!;
+    expect(surface).toContain('import type { HeroBlockDefinition } from \'./blocks/hero\';');
+    expect(surface).toContain('export type Blocks = HeroBlockDefinition | PageBlockDefinition;');
+  });
+
+  it('applies --type-prefix and --type-suffix to every exported name', async () => {
+    written.clear();
+
+    await generateSchemaTypes({
+      space: '295018',
+      cwd: '/project',
+      outputDir: '/out',
+      filename: 'storyblok-schema',
+      typePrefix: 'Sb',
+      typeSuffix: 'Type',
+    });
+
+    const content = written.get('/out/storyblok-schema.d.ts')!;
+    expect(content).toContain('export type SbBlocksType = SbHeroBlockDefinitionType | SbPageBlockDefinitionType;');
+    expect(content).toContain('export type SbBlockType<TName extends SbBlocksType[\'name\']>');
+    expect(content).toContain('export type SbSchemaType = {');
   });
 
   it('throws when the space has no components', async () => {

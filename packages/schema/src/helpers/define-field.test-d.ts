@@ -90,6 +90,31 @@ describe('defineField type inference', () => {
     expectTypeOf<Body[number]['component']>().toEqualTypeOf<'post'>();
   });
 
+  it('should type `default_value` per field type', () => {
+    const bool = defineField('default_open', { type: 'boolean', default_value: false });
+    expectTypeOf(bool.default_value).toEqualTypeOf<false>();
+
+    const text = defineField('title', { type: 'text', default_value: 'Hello' });
+    expectTypeOf(text.default_value).toEqualTypeOf<'Hello'>();
+
+    // Numbers are stored as strings, matching what the editor writes.
+    const num = defineField('count', { type: 'number', default_value: '42' });
+    expectTypeOf(num.default_value).toEqualTypeOf<'42'>();
+
+    // Bloks and options accept either the JSON-encoded value or the array.
+    const bloks = defineField('body', { type: 'bloks', default_value: [{ component: 'hero' }] });
+    expectTypeOf(bloks.default_value[0].component).toEqualTypeOf<'hero'>();
+    const options = defineField('tags', { type: 'options', default_value: 'a b' });
+    expectTypeOf(options.default_value).toEqualTypeOf<'a b'>();
+  });
+
+  it('should reject `default_value` values that do not match the field type', () => {
+    // @ts-expect-error boolean fields take a boolean, not a string
+    void defineField('default_open', { type: 'boolean', default_value: 'false' });
+    // @ts-expect-error text fields take a string, not a boolean
+    void defineField('title', { type: 'text', default_value: false });
+  });
+
   it('should not include `allow` when not provided on a bloks field', () => {
     const f = defineField('body', { type: 'bloks' });
     expectTypeOf(f.type).toEqualTypeOf<'bloks'>();

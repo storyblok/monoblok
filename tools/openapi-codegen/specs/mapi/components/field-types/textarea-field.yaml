@@ -10,6 +10,9 @@ allOf:
         type: string
         enum: [textarea]
         description: Field type discriminant
+      default_value:
+        type: string
+        description: Default value for the field
       max_length:
         type: integer
         description: Maximum length of the input string

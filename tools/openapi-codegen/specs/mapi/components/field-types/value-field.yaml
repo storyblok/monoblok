@@ -2,6 +2,11 @@ type: object
 description: |
   Properties shared by content-bearing fields (i.e. fields that hold a value).
   Layout-only field types like `section` and `tab` do not include these.
+
+  `default_value` is deliberately NOT here: its type depends on the field type
+  (boolean fields hold a real boolean, bloks/options also accept an array), and
+  these properties are merged via `allOf`, so a per-field-type override would
+  intersect into `never` instead of replacing. Each field type declares its own.
 properties:
   required:
     type: boolean
@@ -9,9 +14,6 @@ properties:
   regex:
     type: string
     description: Regular expression for validation
-  default_value:
-    type: string
-    description: Default value for the field (can be escaped JSON)
   translatable:
     type: boolean
     description: Whether the field is translatable

@@ -10,3 +10,6 @@ allOf:
         type: string
         enum: [table]
         description: Field type discriminant
+      default_value:
+        type: string
+        description: Default value for the field

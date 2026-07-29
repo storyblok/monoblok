@@ -10,6 +10,16 @@ allOf:
         type: string
         enum: [bloks]
         description: Field type discriminant
+      default_value:
+        description: |
+          Default value for the field: either a JSON-encoded array of blocks or
+          the array itself.
+        oneOf:
+          - type: string
+          - type: array
+            items:
+              type: object
+              additionalProperties: true
       restrict_type:
         type: string
         description: Restriction type for component selection (groups, tags, or empty for specific blocks)

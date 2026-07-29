@@ -38,11 +38,15 @@ export const zTabFieldRoot = zBaseFieldRoot.and(z.object({
  * Properties shared by content-bearing fields (i.e. fields that hold a value).
  * Layout-only field types like `section` and `tab` do not include these.
  *
+ * `default_value` is deliberately NOT here: its type depends on the field type
+ * (boolean fields hold a real boolean, bloks/options also accept an array), and
+ * these properties are merged via `allOf`, so a per-field-type override would
+ * intersect into `never` instead of replacing. Each field type declares its own.
+ *
  */
 export const zValueFieldRoot = z.object({
     required: z.optional(z.boolean()),
     regex: z.optional(z.string()),
-    default_value: z.optional(z.string()),
     translatable: z.optional(z.boolean()),
     no_translate: z.optional(z.boolean()),
     exclude_from_ai_translation: z.optional(z.boolean()),
@@ -53,6 +57,7 @@ export const zValueFieldRoot = z.object({
 
 export const zAssetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['asset']),
+    default_value: z.optional(z.string()),
     filetypes: z.optional(z.array(z.string())),
     asset_folder_id: z.optional(z.int()),
     allow_external_url: z.optional(z.boolean()),
@@ -64,6 +69,10 @@ export const zAssetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object(
 
 export const zBloksFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['bloks']),
+    default_value: z.optional(z.union([
+        z.string(),
+        z.array(z.record(z.string(), z.unknown()))
+    ])),
     restrict_type: z.optional(z.string()),
     restrict_components: z.optional(z.boolean()),
     component_whitelist: z.optional(z.array(z.string())),
@@ -80,11 +89,13 @@ export const zBloksFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object(
 
 export const zBooleanFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['boolean']),
+    default_value: z.optional(z.boolean()),
     inline_label: z.optional(z.boolean())
 }));
 
 export const zCustomFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['custom']),
+    default_value: z.optional(z.string()),
     field_type: z.optional(z.string()),
     options: z.optional(z.array(z.object({
         name: z.optional(z.string()),
@@ -98,11 +109,13 @@ export const zCustomFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object
 
 export const zDatetimeFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['datetime']),
+    default_value: z.optional(z.string()),
     disable_time: z.optional(z.boolean())
 }));
 
 export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['markdown']),
+    default_value: z.optional(z.string()),
     rich_markdown: z.optional(z.boolean()),
     rtl: z.optional(z.boolean()),
     customize_toolbar: z.optional(z.boolean()),
@@ -136,6 +149,7 @@ export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
 
 export const zMultiassetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['multiasset']),
+    default_value: z.optional(z.string()),
     filetypes: z.optional(z.array(z.string())),
     asset_folder_id: z.optional(z.int()),
     allow_external_url: z.optional(z.boolean()),
@@ -149,6 +163,7 @@ export const zMultiassetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.ob
 
 export const zMultilinkFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['multilink']),
+    default_value: z.optional(z.string()),
     restrict_content_types: z.optional(z.boolean()),
     component_whitelist: z.optional(z.array(z.string())),
     allow_target_blank: z.optional(z.boolean()),
@@ -162,6 +177,7 @@ export const zMultilinkFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obj
 
 export const zNumberFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['number']),
+    default_value: z.optional(z.string()),
     min_value: z.optional(z.number()),
     max_value: z.optional(z.number()),
     decimals: z.optional(z.int()),
@@ -170,6 +186,7 @@ export const zNumberFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object
 
 export const zOptionFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['option']),
+    default_value: z.optional(z.string()),
     options: z.optional(z.array(z.object({
         _uid: z.optional(z.string()),
         name: z.optional(z.string()),
@@ -192,6 +209,10 @@ export const zOptionFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object
 
 export const zOptionsFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['options']),
+    default_value: z.optional(z.union([
+        z.string(),
+        z.array(z.string())
+    ])),
     options: z.optional(z.array(z.object({
         _uid: z.optional(z.string()),
         name: z.optional(z.string()),
@@ -213,6 +234,7 @@ export const zOptionsFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.objec
 
 export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['richtext']),
+    default_value: z.optional(z.string()),
     customize_toolbar: z.optional(z.boolean()),
     toolbar: z.optional(z.array(z.enum([
         'ai-complete',
@@ -286,11 +308,13 @@ export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
 }));
 
 export const zTableFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
-    type: z.enum(['table'])
+    type: z.enum(['table']),
+    default_value: z.optional(z.string())
 }));
 
 export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['text']),
+    default_value: z.optional(z.string()),
     max_length: z.optional(z.int()),
     maxlength: z.optional(z.int()),
     minlength: z.optional(z.int()),
@@ -300,6 +324,7 @@ export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
 
 export const zTextareaFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['textarea']),
+    default_value: z.optional(z.string()),
     max_length: z.optional(z.int()),
     maxlength: z.optional(z.int()),
     minlength: z.optional(z.int()),

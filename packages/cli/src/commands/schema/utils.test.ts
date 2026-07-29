@@ -8,6 +8,7 @@ import {
   formatValue,
   quoteString,
   stripKeys,
+  toSafeIdentifier,
 } from "./utils";
 
 describe("fileTimestamp", () => {
@@ -192,5 +193,22 @@ describe("applyDefaults", () => {
     const defaults = { internal_tag_ids: [] };
     applyDefaults(entity, defaults);
     expect(entity).toEqual({ name: "page" });
+  });
+});
+
+describe("toSafeIdentifier", () => {
+  it("should leave a valid identifier untouched", () => {
+    expect(toSafeIdentifier("TeaserListBlockDefinition")).toBe("TeaserListBlockDefinition");
+    expect(toSafeIdentifier("_leadingUnderscore")).toBe("_leadingUnderscore");
+    expect(toSafeIdentifier("col2")).toBe("col2");
+  });
+
+  it("should prefix an underscore when the name starts with a digit", () => {
+    expect(toSafeIdentifier("2Col")).toBe("_2Col");
+    expect(toSafeIdentifier("2ColBlockDefinition")).toBe("_2ColBlockDefinition");
+  });
+
+  it("should return a bare underscore for an empty name", () => {
+    expect(toSafeIdentifier("")).toBe("_");
   });
 });

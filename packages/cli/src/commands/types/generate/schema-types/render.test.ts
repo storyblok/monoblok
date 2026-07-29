@@ -143,12 +143,25 @@ describe('renderSchemaTypes', () => {
 });
 
 describe('toRelativeImport', () => {
-  it('builds a posix relative specifier without the extension', () => {
-    expect(toRelativeImport('/p/.storyblok/types/1', '/p/.storyblok/schema/schema.ts')).toBe('../../schema/schema');
+  it('builds a posix relative specifier with a javascript extension', () => {
+    expect(toRelativeImport('/p/.storyblok/types/1', '/p/.storyblok/schema/schema.ts')).toBe('../../schema/schema.js');
   });
 
   it('prefixes a sibling path with ./', () => {
-    expect(toRelativeImport('/p/types', '/p/types/plugins.ts')).toBe('./plugins');
+    expect(toRelativeImport('/p/types', '/p/types/plugins.ts')).toBe('./plugins.js');
+  });
+
+  // An extension-less specifier is TS2835 under node16/nodenext in an ESM
+  // package, and the emitted file is generated code the user cannot repair.
+  it('keeps the specifier resolvable under node16 by never emitting a bare path', () => {
+    expect(toRelativeImport('/p/types', '/p/plugins.tsx')).toBe('../plugins.js');
+    expect(toRelativeImport('/p/types', '/p/plugins.mts')).toBe('../plugins.mjs');
+    expect(toRelativeImport('/p/types', '/p/plugins.cts')).toBe('../plugins.cjs');
+  });
+
+  it('leaves a module that already has a javascript extension alone', () => {
+    expect(toRelativeImport('/p/types', '/p/plugins.js')).toBe('../plugins.js');
+    expect(toRelativeImport('/p/types', '/p/plugins.mjs')).toBe('../plugins.mjs');
   });
 });
 

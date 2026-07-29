@@ -14,9 +14,13 @@ import { isRecord } from '../../../schema/utils';
  *   `schema init` writes).
  * - `record`, the module exports a bare `fieldPlugins` record.
  * - `none`: nothing to import; `FieldPlugins` becomes `Record<never, never>`.
+ *
+ * `none` carries the path that was searched, so a message telling the user where
+ * to put a module names the path this run actually looked at. `--path` moves it,
+ * and naming the default there would point at a file the user may already have.
  */
 export type FieldPluginsSource =
-  | { kind: 'none' }
+  | { kind: 'none'; searchedPath: string }
   | { kind: 'schema'; modulePath: string; fieldTypes: string[] }
   | { kind: 'record'; modulePath: string; fieldTypes: string[] };
 
@@ -84,7 +88,7 @@ export async function resolveFieldPluginsSource(
     if (isExplicit) {
       throw new CommandError(`Field plugins module not found: ${modulePath}`);
     }
-    return { kind: 'none' };
+    return { kind: 'none', searchedPath: modulePath };
   }
 
   let module: Record<string, unknown>;
@@ -113,5 +117,5 @@ export async function resolveFieldPluginsSource(
           : ` Found \`${nearMiss}\`, which looks like one: rename it to \`schema\` or \`fieldPlugins\`.`}`,
     );
   }
-  return { kind: 'none' };
+  return { kind: 'none', searchedPath: modulePath };
 }

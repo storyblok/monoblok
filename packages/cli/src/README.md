@@ -34,6 +34,9 @@ npm install storyblok@<version>
 | [`migrations generate`](./commands/migrations/generate/README.md) | ✅ | Replaces previous generate-migrations |
 | [`migrations run`](./commands/migrations/run/README.md) | ✅ | Replaces previous run-migrations |
 | [`migrations rollback`](./commands/migrations/rollback/README.md) | ✅ | Replaces previous rollback-migrations |
+| [`schema init`](./commands/schema/README.md) | ✅ | Bootstrap local code-driven schema from a space. Redacts plugin option secrets to `secret()` |
+| [`schema push`](./commands/schema/README.md#secret-handling) | ✅ | Apply local schema changes to a space. Restores redacted secrets from the space or `process.env` |
+| [`schema rollback`](./commands/schema/README.md#secret-handling) | ✅ | Revert a previous `schema push` |
 | [`types generate`](./commands/types/generate/README.md) | ✅ | Replaces previous generate-typescript-typedefs |
 | [`signup`](./commands/signup/README.md) | ✅ | Opens the Storyblok signup page in your browser |
 | `sync` | ⚠️ | Pending new API endpoint implementation for improved performance and reliability (Check below for more details) |

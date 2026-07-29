@@ -709,7 +709,7 @@ describe('executePush - folders', () => {
     const local: SchemaData = {
       components: [{
         name: 'shop',
-        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: { [SECRET_MARKER]: true } }] } },
+        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: SECRET_MARKER }] } },
       } as unknown as Component],
       folders: [],
       datasources: [],
@@ -746,7 +746,7 @@ describe('executePush - folders', () => {
     const local: SchemaData = {
       components: [{
         name: 'shop',
-        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: { [SECRET_MARKER]: true, env: 'TEST_SHOPWARE_KEY' } }] } },
+        schema: { products: { type: 'custom', field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: `${SECRET_MARKER}:TEST_SHOPWARE_KEY` }] } },
       } as unknown as Component],
       folders: [],
       datasources: [],

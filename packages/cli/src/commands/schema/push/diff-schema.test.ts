@@ -8,7 +8,7 @@ function makeComponent(name: string, schema: Record<string, unknown>) {
   return { id: 1, name, created_at: '', updated_at: '', schema } as any;
 }
 
-const secretPlaceholder = { [SECRET_MARKER]: true } as const;
+const secretPlaceholder = SECRET_MARKER; // the `secret()` sentinel string
 
 function makeDatasource(name: string, slug: string) {
   return { id: 1, name, slug, created_at: '', updated_at: '' } as any;
@@ -101,6 +101,37 @@ describe('diffSchema', () => {
     // The diff shows the label change but never the secret value.
     expect(result.diffs[0].diff).not.toContain('real-live-secret');
     expect(result.diffs[0].diff).toContain('max_length');
+  });
+
+  it('should detect an env-managed secret rotation as an update without revealing the value', () => {
+    const localComp = makeComponent('shop', {
+      products: { type: 'custom', pos: 0, field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: `${SECRET_MARKER}:SW_ROTATE` }] },
+    });
+    const remoteComp = makeComponent('shop', {
+      products: { type: 'custom', pos: 0, field_type: 'shopware-integration', options: [{ _uid: 'a', name: 'clientSecret', value: 'old-remote-secret' }] },
+    });
+
+    const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([['shop', { ...remoteComp, id: 99 }]]),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    process.env.SW_ROTATE = 'new-rotated-secret';
+    let result;
+    try {
+      result = diffSchema(local, remote);
+    }
+    finally {
+      delete process.env.SW_ROTATE;
+    }
+
+    expect(result.updates).toBe(1);
+    expect(result.diffs[0].action).toBe('update');
+    // Neither the env value nor the remote value appears in the printed diff.
+    expect(result.diffs[0].diff).not.toContain('new-rotated-secret');
+    expect(result.diffs[0].diff).not.toContain('old-remote-secret');
   });
 
   it('should detect updated entities with diff string', () => {

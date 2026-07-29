@@ -4,7 +4,7 @@ import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../ty
 import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS, isRecord } from '../utils';
 import { serializeComponent, serializeDatasource } from '../serialize';
 import { buildGroupPathByUuid } from '../folders';
-import { stripSecretKeys } from '../secrets';
+import { markLocalSecretsForDiff, markRemoteSecretsForDiff } from '../secrets';
 
 type EntityType = 'component' | 'datasource';
 
@@ -130,15 +130,16 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
       remoteForDiff.schema = translateGroupWhitelist(remoteForDiff.schema, uuidToPath);
     }
 
-    // Drop secret-placeholder keys from both sides so a redacted secret never
-    // shows as a diff (and never triggers an update on its own). The local
-    // schema — which still carries the `secret()` placeholders — is the
-    // reference for what to strip on both sides.
+    // Represent secrets in the diff. Preserve-remote secrets (`secret()`) are
+    // dropped from both sides so they never diff; env-managed secrets
+    // (`secret('ENV')` with the variable set) become a non-revealing fingerprint
+    // on both sides, so rotating the env value shows as an update. The local
+    // schema — which still carries the placeholders — is the reference.
     const secretRef = localForDiff.schema;
     if (remoteForDiff) {
-      remoteForDiff.schema = stripSecretKeys(remoteForDiff.schema, secretRef);
+      remoteForDiff.schema = markRemoteSecretsForDiff(remoteForDiff.schema, secretRef);
     }
-    localForDiff.schema = stripSecretKeys(localForDiff.schema, secretRef);
+    localForDiff.schema = markLocalSecretsForDiff(secretRef);
 
     const localSerialized = serializeComponent(applyDefaults(localForDiff, COMPONENT_DEFAULTS), { includeGroupUuid });
     const remoteSerialized = remoteForDiff

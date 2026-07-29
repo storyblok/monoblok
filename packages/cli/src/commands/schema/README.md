@@ -57,12 +57,17 @@ You can commit this file safely: no credentials are stored in it.
 
 A placeholder never reaches the Management API. The same restore logic applies to `schema rollback`, and the changeset and local component JSON files written to disk store placeholders rather than real values.
 
+A preserve-remote `secret()` is excluded from the diff entirely, so it never shows as a change on its own. An env-managed `secret('ENV_VAR')` participates in the diff: when the environment value differs from the value on the space, push reports an update and rotates the secret. The diff shows a non-revealing fingerprint, never the secret value itself.
+
 To manage a value from the environment, point the placeholder at a variable name:
 
 ```ts
-options: [
-  { name: 'clientSecret', value: secret('SHOPWARE_CLIENT_SECRET') },
-],
+defineField('products', {
+  type: 'custom',
+  options: [
+    { name: 'clientSecret', value: secret('SHOPWARE_CLIENT_SECRET') },
+  ],
+});
 ```
 
 ```bash

@@ -1,34 +1,40 @@
+import { createHash, randomBytes } from 'node:crypto';
+
 import { isRecord } from './utils';
 
 /**
- * Secret handling for the `schema` command. Sensitive field-config values (e.g.
- * an integration `accessKey`) must never be written to the versioned schema, and
- * must never be cleared on the remote space by a push that carries a redacted
- * local value.
+ * Secret handling for the `schema` command. Sensitive plugin option values (e.g.
+ * an integration `clientSecret`) must never be written to the versioned schema,
+ * and must never be cleared on the space by a push that carries a redacted local
+ * value.
  *
- * The mechanism is a placeholder object marked with {@link SECRET_MARKER},
- * produced by `@storyblok/schema`'s `secret()` helper. This module owns the CLI
- * side: introducing placeholders on `init` (redaction), excluding them from
- * diffing, and substituting the real value on `push` (hydration).
+ * The mechanism is a placeholder produced by `@storyblok/schema`'s `secret()`
+ * helper. It is a sentinel **string** (not an object) so it slots into a plugin
+ * option's string `value`. This module owns the CLI side: introducing
+ * placeholders on `init` (redaction), representing them in the diff, and
+ * substituting the real value on `push` (hydration).
  *
- * Detection is structural (by the marker string), not by object identity, so a
- * placeholder produced by any installed version of `@storyblok/schema` is
- * recognized — the value reaching the CLI comes from the user's project, not
- * from this package.
+ * Detection is structural (by the marker prefix), so a placeholder produced by
+ * any installed version of `@storyblok/schema` is recognized — the value
+ * reaching the CLI comes from the user's project, not from this package.
  */
 
 /** Must match `SECRET_MARKER` exported by `@storyblok/schema`. */
-export const SECRET_MARKER = '__storyblokSecret';
+export const SECRET_MARKER = '__storyblokSecret__';
 
-export interface SecretPlaceholder {
-  [SECRET_MARKER]: true;
-  /** Environment variable the real value is read from on push, when present. */
-  env?: string;
-}
+/** A redacted secret placeholder: `SECRET_MARKER`, optionally `` `${SECRET_MARKER}:ENV` ``. */
+export type SecretPlaceholder = string;
 
 /** Returns true if `value` is a secret placeholder produced by `secret()`. */
 export function isSecretPlaceholder(value: unknown): value is SecretPlaceholder {
-  return isRecord(value) && value[SECRET_MARKER] === true;
+  return typeof value === 'string'
+    && (value === SECRET_MARKER || value.startsWith(`${SECRET_MARKER}:`));
+}
+
+/** Returns the env var name a placeholder is bound to, or `undefined` for a preserve-remote secret. */
+export function secretEnvOf(placeholder: string): string | undefined {
+  const prefix = `${SECRET_MARKER}:`;
+  return placeholder.startsWith(prefix) ? placeholder.slice(prefix.length) : undefined;
 }
 
 /**
@@ -110,23 +116,80 @@ export function redactSecretValues(
   return value;
 }
 
+// Per-process salt so a secret's diff fingerprint reveals nothing and cannot be
+// correlated across runs; equality within a single diff (local vs remote) still
+// holds because both sides use the same salt.
+const FINGERPRINT_SALT = randomBytes(16);
+
+/** Short, non-reversible fingerprint of a value, for change detection in diffs without revealing it. */
+function fingerprint(value: unknown): string {
+  return createHash('sha256').update(FINGERPRINT_SALT).update(String(value)).digest('hex').slice(0, 10);
+}
+
+/** A stable, non-revealing diff token for an env-managed secret. Equal tokens ⇒ equal values. */
+function secretDiffToken(envName: string, fp: string): string {
+  return `<secret env:${envName} #${fp}>`;
+}
+
 /**
- * Deep-copies `value`, dropping every key whose value in `reference` (at the
- * same path) is a secret placeholder. Symmetric by design: pass the local schema
- * as `reference` for both the local copy (secret keys drop out) and the remote
- * copy (the same keys drop out), so a redacted secret produces no diff. Also used
- * to redact a remote snapshot for the changeset. Neither argument is mutated.
+ * Deep-copies the **local** schema for diffing: an env-managed secret
+ * (`secret('ENV')` with the variable set and non-empty) becomes a non-revealing
+ * fingerprint token of the env value, so rotating it shows as a diff; a
+ * preserve-remote secret (`secret()`, or its env var unset) is dropped so it
+ * never diffs. The source is never mutated.
  */
-export function stripSecretKeys(value: unknown, reference: unknown): unknown {
+export function markLocalSecretsForDiff(value: unknown, env: Record<string, string | undefined> = process.env): unknown {
   if (Array.isArray(value)) {
-    return value.map((item, i) => stripSecretKeys(item, referenceFor(item, i, reference)));
+    return value.map(item => markLocalSecretsForDiff(item, env));
   }
   if (isRecord(value)) {
     const out: Record<string, unknown> = {};
     for (const [key, val] of Object.entries(value)) {
-      const ref = isRecord(reference) ? reference[key] : undefined;
-      if (isSecretPlaceholder(ref)) { continue; }
-      out[key] = stripSecretKeys(val, ref);
+      if (isSecretPlaceholder(val)) {
+        const envName = secretEnvOf(val);
+        const envVal = envName ? env[envName] : undefined;
+        if (envName && envVal !== undefined && envVal !== '') {
+          out[key] = secretDiffToken(envName, fingerprint(envVal));
+        }
+        // else preserve-remote: drop so it never diffs.
+        continue;
+      }
+      out[key] = markLocalSecretsForDiff(val, env);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
+ * Deep-copies the **remote** schema for diffing, using the local schema as the
+ * reference for which values are secret. Symmetric with
+ * {@link markLocalSecretsForDiff}: an env-managed secret becomes a fingerprint
+ * token of the **remote** value; a preserve-remote secret is dropped. The
+ * arguments are never mutated.
+ */
+export function markRemoteSecretsForDiff(
+  value: unknown,
+  referenceLocal: unknown,
+  env: Record<string, string | undefined> = process.env,
+): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item, i) => markRemoteSecretsForDiff(item, referenceFor(item, i, referenceLocal), env));
+  }
+  if (isRecord(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      const ref = isRecord(referenceLocal) ? referenceLocal[key] : undefined;
+      if (isSecretPlaceholder(ref)) {
+        const envName = secretEnvOf(ref);
+        const envVal = envName ? env[envName] : undefined;
+        if (envName && envVal !== undefined && envVal !== '') {
+          out[key] = secretDiffToken(envName, fingerprint(val));
+        }
+        // else preserve-remote: drop so it never diffs.
+        continue;
+      }
+      out[key] = markRemoteSecretsForDiff(val, ref, env);
     }
     return out;
   }
@@ -135,11 +198,11 @@ export function stripSecretKeys(value: unknown, reference: unknown): unknown {
 
 /**
  * Deep-copies `value`, replacing each value whose counterpart in `reference` (at
- * the same path) is a secret placeholder with a copy of that placeholder. Unlike
- * {@link stripSecretKeys} (which drops the key), this keeps the key present as a
- * placeholder — used for the changeset's remote snapshot so a real secret is
- * never written to disk, yet `schema rollback` can still recognize the field as
- * secret and hydrate it from the live space. Neither argument is mutated.
+ * the same path) is a secret placeholder with that placeholder string. Keeps the
+ * key present (unlike a plain strip) — used for the changeset's remote snapshot
+ * so a real secret is never written to disk, yet `schema rollback` can still
+ * recognize the field as secret and hydrate it from the live space. Neither
+ * argument is mutated.
  */
 export function maskSecretsToPlaceholder(value: unknown, reference: unknown): unknown {
   if (Array.isArray(value)) {
@@ -150,7 +213,7 @@ export function maskSecretsToPlaceholder(value: unknown, reference: unknown): un
     for (const [key, val] of Object.entries(value)) {
       const ref = isRecord(reference) ? reference[key] : undefined;
       out[key] = isSecretPlaceholder(ref)
-        ? { ...ref }
+        ? ref
         : maskSecretsToPlaceholder(val, ref);
     }
     return out;
@@ -160,7 +223,7 @@ export function maskSecretsToPlaceholder(value: unknown, reference: unknown): un
 
 /** How a single secret placeholder was resolved during {@link hydrateSecretValues}. */
 export interface SecretResolution {
-  /** The config key that held the placeholder (for user-facing messages). */
+  /** The secret's option name (or object key) for user-facing messages. */
   key: string;
   /** `env`: read from `process.env`; `remote`: kept from the space; `missing`: no source. */
   source: 'env' | 'remote' | 'missing';
@@ -195,22 +258,25 @@ export function hydrateSecretValues(
   }
   if (isRecord(value)) {
     const out: Record<string, unknown> = {};
+    // Report an option secret by its `name` rather than the `value` key it sits under.
+    const label = typeof value.name === 'string' ? value.name : undefined;
     for (const [key, val] of Object.entries(value)) {
       const remoteVal = isRecord(remote) ? remote[key] : undefined;
       if (isSecretPlaceholder(val)) {
-        const envName = val.env;
+        const reportKey = key === 'value' && label ? label : key;
+        const envName = secretEnvOf(val);
         const envVal = envName ? env[envName] : undefined;
         if (envName && envVal !== undefined && envVal !== '') {
           out[key] = envVal;
-          resolutions.push({ key, source: 'env', env: envName });
+          resolutions.push({ key: reportKey, source: 'env', env: envName });
         }
         else if (remoteVal !== undefined) {
           out[key] = remoteVal;
-          resolutions.push({ key, source: 'remote' });
+          resolutions.push({ key: reportKey, source: 'remote' });
         }
         else {
           // No source: drop the key so a placeholder never reaches the API.
-          resolutions.push({ key, source: 'missing', ...(envName && { env: envName }) });
+          resolutions.push({ key: reportKey, source: 'missing', ...(envName && { env: envName }) });
         }
         continue;
       }

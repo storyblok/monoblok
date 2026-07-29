@@ -8,6 +8,7 @@ import { getReporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../utils/ui';
 import { session } from '../../../session';
 import { schemaCommand } from '../command';
+import { DEFAULT_SCHEMA_DIR } from '../constants';
 import { displayPath } from '../utils';
 import type { SchemaInitOptions } from './constants';
 import { fetchRemoteSchema } from '../actions';
@@ -29,7 +30,7 @@ schemaCommand
   .command('init')
   .description('Initialize a local code-driven schema workspace from an existing Storyblok space (one-time bootstrap)')
   .option('-s, --space <space>', 'space ID')
-  .option('--out-dir <dir>', 'Output directory for generated bootstrap files', '.storyblok/schema')
+  .option('--out-dir <dir>', 'Output directory for generated bootstrap files', DEFAULT_SCHEMA_DIR)
   .action(async (options: SchemaInitOptions, command) => {
     const ui = getUI();
     const logger = getLogger();

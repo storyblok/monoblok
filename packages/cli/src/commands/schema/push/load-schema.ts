@@ -1,5 +1,6 @@
 import type { LocalFolder, SchemaData } from '../types';
 import { CommandError } from '../../../utils';
+import { importModule } from '../../../utils/import-module';
 import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
 import { expandFolderPath } from '../folders';
 import { isRecord } from '../utils';
@@ -165,12 +166,9 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
  * has no effect. Uses jiti for TypeScript support.
  */
 export async function loadSchema(entryPath: string): Promise<SchemaData> {
-  const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
   const { resolve } = await import('pathe');
 
-  const entryAbs = resolve(entryPath);
-  const entryMod = await jiti.import(entryAbs) as Record<string, unknown>;
+  const entryMod = await importModule(resolve(entryPath));
 
   return classifyExports(entryMod);
 }

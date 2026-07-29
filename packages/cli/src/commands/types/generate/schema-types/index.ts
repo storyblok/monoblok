@@ -130,9 +130,12 @@ export interface GenerateSchemaTypesResult {
   /**
    * The field-plugins module this run used, or the path it searched when none
    * resolved. Lets the unmapped-field-type warning name a real path instead of
-   * the default, which `--path` moves.
+   * the default, which `--path` moves, and tell "write a module here" apart from
+   * "the module here exports the wrong name".
    */
-  fieldPlugins: { resolved: boolean; path: string };
+  fieldPlugins:
+    | { resolved: true; path: string }
+    | { resolved: false; reason: 'missing' | 'unusable'; path: string; nearMissExport?: string };
 }
 
 /**
@@ -203,7 +206,12 @@ export async function generateSchemaTypes(
     prunedFiles,
     unmappedFieldTypes,
     fieldPlugins: fieldPlugins.kind === 'none'
-      ? { resolved: false, path: fieldPlugins.searchedPath }
+      ? {
+          resolved: false,
+          reason: fieldPlugins.reason,
+          path: fieldPlugins.searchedPath,
+          ...(fieldPlugins.nearMissExport === undefined ? {} : { nearMissExport: fieldPlugins.nearMissExport }),
+        }
       : { resolved: true, path: fieldPlugins.modulePath },
   };
 }

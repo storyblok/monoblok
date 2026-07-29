@@ -18,9 +18,16 @@ import { isRecord } from '../../../schema/utils';
  * `none` carries the path that was searched, so a message telling the user where
  * to put a module names the path this run actually looked at. `--path` moves it,
  * and naming the default there would point at a file the user may already have.
+ *
+ * It also carries *why* nothing resolved, because the two cases need opposite
+ * advice: `missing` means write a module at that path, `unusable` means the
+ * module is already there and its export needs renaming. `schema init` writes a
+ * `schema` export with no `fieldPlugins` key, so `unusable` is the case a user
+ * following the docs hits first, and telling them to create a file they are
+ * looking at reads as the command failing to see it.
  */
 export type FieldPluginsSource =
-  | { kind: 'none'; searchedPath: string }
+  | { kind: 'none'; reason: 'missing' | 'unusable'; searchedPath: string; nearMissExport?: string }
   | { kind: 'schema'; modulePath: string; fieldTypes: string[] }
   | { kind: 'record'; modulePath: string; fieldTypes: string[] };
 
@@ -88,7 +95,7 @@ export async function resolveFieldPluginsSource(
     if (isExplicit) {
       throw new CommandError(`Field plugins module not found: ${modulePath}`);
     }
-    return { kind: 'none', searchedPath: modulePath };
+    return { kind: 'none', reason: 'missing', searchedPath: modulePath };
   }
 
   let module: Record<string, unknown>;
@@ -108,8 +115,8 @@ export async function resolveFieldPluginsSource(
     return { kind: 'record', modulePath, fieldTypes: collectFieldTypes(module.fieldPlugins) };
   }
 
+  const nearMiss = findNearMissExport(module);
   if (isExplicit) {
-    const nearMiss = findNearMissExport(module);
     throw new CommandError(
       `${modulePath} exports neither a \`schema\` (a defineSchema result with fieldPlugins) nor a \`fieldPlugins\` record.${
         nearMiss === undefined
@@ -117,5 +124,8 @@ export async function resolveFieldPluginsSource(
           : ` Found \`${nearMiss}\`, which looks like one: rename it to \`schema\` or \`fieldPlugins\`.`}`,
     );
   }
-  return { kind: 'none', searchedPath: modulePath };
+  // The convention path degrades rather than failing, but the near miss is still
+  // worth carrying: the unmapped-field-type warning can then name the export to
+  // rename instead of restating the contract.
+  return { kind: 'none', reason: 'unusable', searchedPath: modulePath, ...(nearMiss === undefined ? {} : { nearMissExport: nearMiss }) };
 }

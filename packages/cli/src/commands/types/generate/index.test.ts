@@ -261,7 +261,7 @@ describe('types generate', () => {
         files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
         prunedFiles: [],
         unmappedFieldTypes: ['storyblok-colorpicker'],
-        fieldPlugins: { resolved: false, path: '/project/.storyblok/schema/schema.ts' },
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
       });
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
@@ -294,7 +294,7 @@ describe('types generate', () => {
         files: ['/project/config/types/295018/storyblok-schema.d.ts'],
         prunedFiles: [],
         unmappedFieldTypes: ['storyblok-colorpicker'],
-        fieldPlugins: { resolved: false, path: '/project/config/schema/schema.ts' },
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/config/schema/schema.ts' },
       });
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
@@ -303,12 +303,47 @@ describe('types generate', () => {
       expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('.storyblok/schema/schema.ts'));
     });
 
+    // `schema init` writes a `schema` export with no `fieldPlugins` key, so this
+    // is the case a user following the docs hits first. Telling them to place a
+    // module where one already sits reads as the command not seeing it.
+    it('says the module at the convention path exports the wrong name, rather than telling the user to create it', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: { resolved: false, reason: 'unusable', path: '/project/.storyblok/schema/schema.ts' },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('exports neither'));
+      expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('place it at'));
+    });
+
+    it('names a near-miss export the convention-path module should be renamed from', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: {
+          resolved: false,
+          reason: 'unusable',
+          path: '/project/.storyblok/schema/schema.ts',
+          nearMissExport: 'myPlugins',
+        },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('myPlugins'));
+    });
+
     it('forwards --field-plugins, --type-prefix, --type-suffix, and --path to the generator', async () => {
       vi.mocked(generateSchemaTypes).mockResolvedValue({
         files: [],
         prunedFiles: [],
         unmappedFieldTypes: [],
-        fieldPlugins: { resolved: false, path: '/project/.storyblok/schema/schema.ts' },
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
       });
 
       await typesCommand.parseAsync([
@@ -341,7 +376,7 @@ describe('types generate', () => {
           files: [],
           prunedFiles: [],
           unmappedFieldTypes: [],
-          fieldPlugins: { resolved: false, path: '/project/.storyblok/schema/schema.ts' },
+          fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
         });
 
         await typesCommand.parseAsync([
@@ -364,7 +399,7 @@ describe('types generate', () => {
         files: [],
         prunedFiles: [],
         unmappedFieldTypes: [],
-        fieldPlugins: { resolved: false, path: '/project/.storyblok/schema/schema.ts' },
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
       });
 
       await typesCommand.parseAsync([

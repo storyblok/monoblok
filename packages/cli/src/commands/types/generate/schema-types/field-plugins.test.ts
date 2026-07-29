@@ -36,6 +36,7 @@ describe('resolveFieldPluginsSource', () => {
   it('returns none when neither an override nor the convention file exists', async () => {
     expect(await resolveFieldPluginsSource({ cwd })).toEqual({
       kind: 'none',
+      reason: 'missing',
       searchedPath: join(cwd, DEFAULT_SCHEMA_ENTRY_PATH),
     });
   });
@@ -91,6 +92,7 @@ describe('resolveFieldPluginsSource', () => {
 
     expect(await resolveFieldPluginsSource({ cwd, path: 'config' })).toEqual({
       kind: 'none',
+      reason: 'missing',
       searchedPath: join(cwd, 'config', SCHEMA_ENTRY_RELATIVE_PATH),
     });
   });
@@ -113,14 +115,31 @@ describe('resolveFieldPluginsSource', () => {
       .toThrow(/`myPlugins`/);
   });
 
-  it('returns none when the convention file exists but exports neither shape', async () => {
+  // The distinction drives the advice: `missing` means write a module here,
+  // `unusable` means rename an export in the module already here. `schema init`
+  // writes exactly this shape, so it is the case users hit first.
+  it('returns none with reason unusable when the convention file exists but exports neither shape', async () => {
     const target = join(cwd, DEFAULT_SCHEMA_ENTRY_PATH);
     await mkdir(join(target, '..'), { recursive: true });
     await writeFile(target, 'export const schema = { blocks: {} };', 'utf8');
 
     expect(await resolveFieldPluginsSource({ cwd })).toEqual({
       kind: 'none',
+      reason: 'unusable',
       searchedPath: join(cwd, DEFAULT_SCHEMA_ENTRY_PATH),
+    });
+  });
+
+  it('carries a near-miss export name from the convention path', async () => {
+    const target = join(cwd, DEFAULT_SCHEMA_ENTRY_PATH);
+    await mkdir(join(target, '..'), { recursive: true });
+    await writeFile(target, RECORD_EXPORT.replace('export const fieldPlugins', 'export const myPlugins'), 'utf8');
+
+    expect(await resolveFieldPluginsSource({ cwd })).toEqual({
+      kind: 'none',
+      reason: 'unusable',
+      searchedPath: target,
+      nearMissExport: 'myPlugins',
     });
   });
 });

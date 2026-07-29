@@ -6,7 +6,7 @@ import { resolvePath } from '../../../utils/filesystem';
 import { getUI } from '../../../utils/ui';
 import { DEFAULT_COMPONENT_TYPES_FILENAME, DEFAULT_SCHEMA_TYPES_FILENAME, type GenerateTypesOptions } from './constants';
 import { toDeclarationFileName } from './filename';
-import { assertNoLegacyFlags, generateSchemaTypes } from './schema-types';
+import { assertNoLegacyFlags, generateSchemaTypes, type GenerateSchemaTypesResult } from './schema-types';
 
 export interface FutureSchemaCommandOptions {
   /** Command options, including the legacy-only flags this mode rejects. */
@@ -24,6 +24,33 @@ export interface FutureSchemaCommandOptions {
    * from one their config file set. See {@link assertNoLegacyFlags}.
    */
   getOptionValueSource?: (attributeName: string) => string | undefined;
+}
+
+/**
+ * Advises how to fix unmapped `custom` field types, given where this run looked
+ * for field plugins.
+ *
+ * Names the module actually in use, or the path this run searched. `--path` moves
+ * the convention path, so the default would point at the wrong file. The three
+ * cases need genuinely different advice: add a declaration to a module already
+ * wired up, rename an export in a module that is already at the right path, or
+ * create one.
+ */
+function unmappedRemedy(fieldPlugins: GenerateSchemaTypesResult['fieldPlugins']): string {
+  const where = relative(process.cwd(), fieldPlugins.path);
+
+  if (fieldPlugins.resolved) {
+    return `Declare them with defineFieldPlugin in ${where}.`;
+  }
+
+  if (fieldPlugins.reason === 'unusable') {
+    return `${where} exports neither a \`schema\` (a defineSchema result with fieldPlugins) nor a \`fieldPlugins\` record, so its declarations were not read.${
+      fieldPlugins.nearMissExport === undefined
+        ? ''
+        : ` Found \`${fieldPlugins.nearMissExport}\`, which looks like one: rename it to \`schema\` or \`fieldPlugins\`.`}`;
+  }
+
+  return `Declare them with defineFieldPlugin and point --field-plugins at the module (or place it at ${where}).`;
 }
 
 /**
@@ -88,15 +115,9 @@ export async function runFutureSchemaTypes(
       );
     }
     if (result.unmappedFieldTypes.length > 0) {
-      // Names the module actually in use, or the path this run searched. `--path`
-      // moves the convention path, so the default would point at the wrong file.
-      const where = relative(process.cwd(), result.fieldPlugins.path);
-      const remedy = result.fieldPlugins.resolved
-        ? `in ${where}.`
-        : `and point --field-plugins at the module (or place it at ${where}).`;
       ui.warn(
         `No field plugin registered for: ${result.unmappedFieldTypes.join(', ')}. `
-        + `These custom fields fall back to an untyped value. Declare them with defineFieldPlugin ${remedy}`,
+        + `These custom fields fall back to an untyped value. ${unmappedRemedy(result.fieldPlugins)}`,
       );
     }
     ui.info('The generated types import from `@storyblok/schema`. Install it as a dev dependency: `npm i -D @storyblok/schema`.');

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { mapFieldToWire } from '../map-to-wire';
 import {
   componentFileName,
   componentVarName,
@@ -258,6 +259,77 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('restrict_components');
     expect(result).not.toContain('component_whitelist');
     expect(result).not.toContain('allow');
+  });
+
+  it('should keep a disabled restriction disabled instead of mapping a stale name whitelist to allow', () => {
+    // A field whose restriction is off can still store a whitelist. Emitting it as
+    // `allow` would make push re-derive `restrict_components: true`, silently
+    // restricting what editors may insert.
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: false,
+          component_whitelist: ['hero'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('restrict_components: false,');
+    expect(result).not.toContain('allow');
+    expect(result).not.toContain('component_whitelist');
+
+    // Push the emitted config back: the restriction must still be off.
+    const { value } = mapFieldToWire({ name: 'body', type: 'bloks', pos: 0, restrict_components: false });
+    expect(value).toEqual({ type: 'bloks', pos: 0, restrict_components: false });
+  });
+
+  it('should keep a disabled restriction disabled instead of mapping a stale group whitelist to allow', () => {
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: false,
+          restrict_type: 'groups',
+          component_group_whitelist: ['uuid-heros'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([['uuid-heros', 'herosFolder']]),
+    );
+
+    expect(result).toContain('restrict_components: false,');
+    expect(result).toContain('restrict_type: \'groups\',');
+    expect(result).not.toContain('allow');
+    expect(result).not.toContain('component_group_whitelist');
+    // No `allow` means no folder ref, so the folders import must not appear.
+    expect(result).not.toContain('herosFolder');
+
+    const { value } = mapFieldToWire({
+      name: 'body',
+      type: 'bloks',
+      pos: 0,
+      restrict_components: false,
+      restrict_type: 'groups',
+    });
+    expect(value).toEqual({ type: 'bloks', pos: 0, restrict_components: false, restrict_type: 'groups' });
   });
 
   it('should omit empty array fields on blocks and fields', () => {

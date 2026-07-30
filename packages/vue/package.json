@@ -16,12 +16,17 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/storyblok-vue.mjs",
-      "require": "./dist/storyblok-vue.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/storyblok-vue.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/storyblok-vue.cjs"
+      }
     }
   },
-  "main": "./dist/storyblok-vue.js",
+  "main": "./dist/storyblok-vue.cjs",
   "module": "./dist/storyblok-vue.mjs",
   "types": "./dist/index.d.ts",
   "files": [
@@ -38,6 +43,7 @@
     "test:types": "tsc --noEmit --skipLibCheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "publint": "publint .",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
     "cy:components": "cypress run --component"
@@ -61,6 +67,7 @@
     "eslint-plugin-vue": "^9.32.0",
     "kolorist": "^1.8.0",
     "pathe": "^2.0.3",
+    "publint": "^0.3.22",
     "typescript": "5.8.3",
     "vite": "^6.4.3",
     "vite-plugin-banner": "^0.8.0",

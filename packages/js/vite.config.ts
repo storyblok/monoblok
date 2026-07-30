@@ -1,10 +1,11 @@
 import { defineConfig, type Plugin } from 'vitest/config';
 import path from 'node:path';
+import { copyFileSync } from 'node:fs';
 import { lightGreen } from 'kolorist';
 import banner from 'vite-plugin-banner';
 import dts from 'vite-plugin-dts';
 
-import pkg from './package.json';
+import pkg from './package.json' with { type: 'json' };
 
 // eslint-disable-next-line no-console
 console.log(`${lightGreen('StoryblokJS')} v${pkg.version}`);
@@ -13,6 +14,13 @@ export default defineConfig({
   plugins: [
     dts({
       insertTypesEntry: true,
+      afterBuild(emittedFiles) {
+        for (const filePath of emittedFiles.keys()) {
+          if (filePath.endsWith('.d.ts')) {
+            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, '.d.cts'));
+          }
+        }
+      },
     }),
     banner({
       content: `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n * author: ${pkg.author}\n */`,
@@ -24,7 +32,7 @@ export default defineConfig({
       name: 'storyblok',
       fileName: (format) => {
         const name = 'storyblok-js';
-        return format === 'es' ? `${name}.mjs` : `${name}.js`;
+        return format === 'es' ? `${name}.mjs` : `${name}.cjs`;
       },
     },
     rollupOptions: {

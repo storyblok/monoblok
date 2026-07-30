@@ -17,12 +17,17 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/storyblok-js.mjs",
-      "require": "./dist/storyblok-js.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/storyblok-js.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/storyblok-js.cjs"
+      }
     }
   },
-  "main": "./dist/storyblok-js.js",
+  "main": "./dist/storyblok-js.cjs",
   "module": "./dist/storyblok-js.mjs",
   "types": "./dist/index.d.ts",
   "files": [
@@ -40,6 +45,7 @@
     "cy:playground": "pnpm --filter='./playground/vanilla' dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "publint": "publint .",
     "cy:run": "cypress run",
     "cy:open": "cypress open"
   },
@@ -59,6 +65,7 @@
     "jsdom": "^26.0.0",
     "kolorist": "^1.8.0",
     "pathe": "^2.0.3",
+    "publint": "^0.3.22",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",
     "vite": "^6.4.3",

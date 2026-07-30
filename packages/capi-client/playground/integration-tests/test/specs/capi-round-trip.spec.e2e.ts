@@ -59,6 +59,7 @@ const pageComponent = defineBlock({
     defineField('headline', { type: 'text', required: true }),
     defineField('rating', { type: 'number' }),
     defineField('is_featured', { type: 'boolean' }),
+    defineField('enddate', { type: 'text' }),
     defineField('body', {
       type: 'bloks',
       allow: [teaserComponent.name, sectionComponent.name],
@@ -144,8 +145,9 @@ describe('schema + capi-client CAPI round-trip', () => {
         headline: { type: 'text', required: true, pos: 0 },
         rating: { type: 'number', pos: 1 },
         is_featured: { type: 'boolean', pos: 2 },
-        body: { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], pos: 3 },
-        any_blocks: { type: 'bloks', pos: 4 },
+        enddate: { type: 'text', pos: 3 },
+        body: { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], pos: 4 },
+        any_blocks: { type: 'bloks', pos: 5 },
       },
       is_root: true,
     } } });
@@ -159,6 +161,7 @@ describe('schema + capi-client CAPI round-trip', () => {
         headline: 'Hello from CAPI e2e',
         rating: 42,
         is_featured: true,
+        enddate: '2020-06-15 12:00',
         body: [
           {
             component: teaserComponent.name,
@@ -341,6 +344,39 @@ describe('schema + capi-client CAPI round-trip', () => {
             expect(typeof nestedTeaser.title).toBe('string');
           }
         }
+      }
+    });
+
+    it('should filter stories by nested filter_query with lt_date operator', async () => {
+      const capiClient = createTypedCapiClient(previewToken);
+
+      // Use a date in the future so the story's enddate ('2020-06-15 12:00') passes the lt_date filter
+      const future = new Date();
+      future.setFullYear(future.getFullYear() + 5);
+      const year = future.getFullYear();
+      const month = String(future.getMonth() + 1).padStart(2, '0');
+      const day = String(future.getDate()).padStart(2, '0');
+      const hours = String(future.getHours()).padStart(2, '0');
+      const minutes = String(future.getMinutes()).padStart(2, '0');
+
+      const res = await capiClient.stories.list({
+        query: {
+          starts_with: STORY_SLUG_PREFIX,
+          filter_query: {
+            enddate: { lt_date: `${year}-${month}-${day} ${hours}:${minutes}` },
+          },
+        },
+      });
+
+      expect(res.data?.stories).toBeDefined();
+      expect(res.data!.stories!.length).toBeGreaterThan(0);
+
+      const story = res.data!.stories![0];
+      if (story.content.component === pageComponent.name) {
+        expect(story.content.enddate).toBe('2020-06-15 12:00');
+      }
+      else {
+        throw new Error(`Unexpected component discriminant: ${story.content.component}`);
       }
     });
   });

@@ -5,6 +5,7 @@ import { ClientError } from './error';
 import type { RateLimitConfig, ThrottleManager } from './utils/rate-limit';
 import { createThrottleManager } from './utils/rate-limit';
 import { applyCvToQuery, extractCv } from './utils/cv';
+import { querySerializer } from './utils/query-serializer';
 import { createCacheKey, shouldUseCache } from './utils/request';
 import { getRegionBaseUrl, type Region } from '@storyblok/region-helper';
 import type { Block as Component } from './generated/types/block';
@@ -240,6 +241,9 @@ export const createApiClientBase = <
       auth: accessToken,
       baseUrl: baseUrl || getRegionBaseUrl(region),
       headers,
+      // Default serializer throws on nested objects; CAPI needs `filter_query`
+      // serialized as a nested hash (`filter_query[field][op]=value`).
+      querySerializer,
       throwOnError,
       kyOptions: {
         // Enable `throwHttpErrors` to make retry work, even if `throwOnError`

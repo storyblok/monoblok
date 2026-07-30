@@ -8,6 +8,7 @@ import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from
 import { readDatasourcesFiles } from '../../datasources/push/actions';
 import type { SpaceDatasourcesData } from '../../../commands/datasources/constants';
 import { getUI } from '../../../lib/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const generateCmd = typesCommand
   .command('generate')
@@ -37,9 +38,12 @@ generateCmd
       return;
     }
 
-    const spinner = ui.createSpinner(`Generating types...`);
+    const logger = getLogger();
+    const spinner = ui.createSpinner('Processing schemas...');
 
     try {
+      logger.info('Generating types started', { space });
+
       // Input format is auto-detected based on files on disk
       const componentsData = await readComponentsFiles({
         from: space,
@@ -76,29 +80,34 @@ generateCmd
         ...dataSourceData,
       };
 
+      logger.info('Processing schemas', {
+        components: componentsData.components.length,
+        datasources: dataSourceData.datasources.length,
+      });
+
       const typedefData = await generateTypes(spaceDataWithComponentsAndDatasources, {
         ...options,
       });
 
-      if (typedefData) {
-        await saveTypesToComponentsFile(space, typedefData, {
-          filename,
-          path,
-          separateFiles,
-        });
-      }
+      await saveTypesToComponentsFile(space, typedefData, {
+        filename,
+        path,
+        separateFiles,
+      });
 
-      spinner.succeed();
+      spinner.succeed(`Types generated for ${componentsData.components.length} components`);
+
       if (separateFiles && filename) {
         ui.warn(`The --filename option is ignored when using --separate-files`);
       }
 
+      logger.info('Types generated successfully', { space });
       ui.ok(`Successfully generated types for space ${space}`, true);
       ui.br();
     }
     catch (error) {
-      spinner.failed(`Failed to generate types for space ${space}`);
-      ui.br();
+      spinner.failed('Type generation failed');
+      logger.error('Type generation failed', { error: error as Error });
       handleError(error as Error, verbose);
     }
   });

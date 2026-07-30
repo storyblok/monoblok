@@ -28,6 +28,7 @@ const mockSpaceData = {
 vi.mock('./actions', () => ({
   generateStoryblokTypes: vi.fn(),
   generateTypes: vi.fn(),
+  saveTypesToComponentsFile: vi.fn(),
   getComponentType: vi.fn(),
 }));
 

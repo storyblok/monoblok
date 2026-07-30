@@ -482,6 +482,50 @@ describe('generate types actions', () => {
       expect(result).not.toContain('InvalidDatasourceDataSource');
     }
   });
+
+  it('should handle datasource with empty entries without generating invalid types', async () => {
+    const spaceDataWithEmptyDatasource: SpaceComponentsData = {
+      components: [
+        {
+          id: 1,
+          name: 'page',
+          display_name: 'Page',
+          created_at: '2021-08-09T12:00:00Z',
+          updated_at: '2021-08-09T12:00:00Z',
+          schema: {},
+          is_root: false,
+          is_nestable: true,
+        },
+      ],
+      datasources: [
+        {
+          id: 1,
+          name: 'Icons',
+          slug: 'icons',
+          dimensions: [],
+          created_at: '2021-08-09T12:00:00Z',
+          updated_at: '2021-08-09T12:00:00Z',
+          entries: [],
+        },
+      ],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const mockOptions: GenerateTypesOptions = {
+      strict: false,
+    };
+
+    const result = await generateTypes(spaceDataWithEmptyDatasource, mockOptions);
+
+    expect(result).toBeDefined();
+    if (typeof result === 'string') {
+      expect(result).toContain('IconsDataSource');
+      // Should be a valid string type, not an empty union "()"
+      expect(result).not.toContain('= ()');
+    }
+  });
 });
 
 describe('getComponentType', () => {

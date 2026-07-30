@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 // Regression test for https://github.com/storyblok/monoblok/issues/437:
@@ -37,11 +38,11 @@ describe('module format: require() (CJS)', () => {
 
 describe('module format: import() (ESM)', () => {
   it('should load without throwing', async () => {
-    await expect(import(esmEntry)).resolves.toBeDefined();
+    await expect(import(pathToFileURL(esmEntry).href)).resolves.toBeDefined();
   });
 
   it('should export StoryblokVue plugin', async () => {
-    const mod = await import(esmEntry);
+    const mod = await import(pathToFileURL(esmEntry).href);
     expect(mod.StoryblokVue).toBeDefined();
   });
 });

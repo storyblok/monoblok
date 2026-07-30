@@ -44,6 +44,8 @@ const contextForCustom = Custom
     </Fragment>
   ) : node.type === 'table' ? (
     <RenderTable node={node} options={options} />
+  ) : node.type === 'emoji' ? (
+    <ElementTag node={node}>{node.attrs.emoji}</ElementTag>
   ) : getStaticChildren(node) ? (
     <RenderStaticChildren node={node} options={options} />
   ) : (

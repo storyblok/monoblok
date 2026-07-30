@@ -220,15 +220,14 @@ describe('@storyblok/vue', () => {
       cy.contains('h6', 'Headline 6', { timeout: 1000 });
     });
 
-    it('Should render images correctly', () => {
+    it('Should render emoji as unicode span correctly', () => {
       prepare({ use: [apiPlugin] }, RichText, {
         components: { Teaser, Grid, Page, Feature },
       });
 
-      cy.get('img')
+      cy.get('span[data-emoji]')
         .should('exist')
-        .and('have.attr', 'src')
-        .and('contain', 'emoji-datasource-apple');
+        .and('have.attr', 'data-emoji');
     });
 
     it('Should render links correctly', () => {

@@ -71,7 +71,7 @@ $defs:
                 enum: [story, url, email, asset]
               - type: 'null'
           custom:
-            type: object
+            type: [object, 'null']
             additionalProperties: true
             description: Custom link attributes
 
@@ -597,5 +597,5 @@ $defs:
             oneOf:
               - type: array
                 items:
-                  $ref: ../block-content.yaml
+                  $ref: ../block-content-input.yaml
               - type: 'null'

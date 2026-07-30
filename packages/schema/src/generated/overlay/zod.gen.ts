@@ -532,7 +532,10 @@ export const zRichTextFieldValueLinkMark = z.object({
             z.literal('asset'),
             z.null()
         ]),
-        custom: z.optional(z.record(z.string(), z.unknown()))
+        custom: z.optional(z.union([
+            z.record(z.string(), z.unknown()),
+            z.null()
+        ]))
     })
 });
 
@@ -672,7 +675,7 @@ export const zRichTextFieldValueBlockNode = z.object({
             z.null()
         ]),
         body: z.union([
-            z.array(zBlockContentRoot),
+            z.array(zBlockContentInputRoot),
             z.null()
         ])
     })

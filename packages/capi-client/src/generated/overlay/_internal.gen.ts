@@ -1090,7 +1090,7 @@ export type RichTextFieldValueBlockNode = {
         /**
          * Array of embedded component instances
          */
-        body: Array<BlockContentRoot> | null;
+        body: Array<BlockContentInputRoot> | null;
     };
 };
 
@@ -1130,7 +1130,7 @@ export type RichTextFieldValueLinkMark = {
          */
         custom?: {
             [key: string]: unknown;
-        };
+        } | null;
     };
 };
 

@@ -4,13 +4,8 @@ import { pushComponent } from '../actions';
 import type { ComponentCreate } from '../../../../types';
 import { getActiveConfig } from '../../../../lib/config';
 import { getUI } from '../../../../lib/ui';
+import type { ProgressBar } from '../../../../lib/ui';
 import { getLogger } from '../../../../lib/logger/logger';
-
-interface ProgressBar {
-  increment: (count?: number) => void;
-  setTotal: (total: number) => void;
-  stop: () => void;
-}
 
 // =============================================================================
 // RESOURCE PROCESSING

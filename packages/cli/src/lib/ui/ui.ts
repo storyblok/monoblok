@@ -22,7 +22,7 @@ export interface CLISpinner {
   readonly elapsedTime: number;
 }
 
-interface ProgressBar {
+export interface ProgressBar {
   increment: (count?: number) => void;
   setTotal: (total: number) => void;
   stop: () => void;

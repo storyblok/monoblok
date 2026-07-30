@@ -131,14 +131,15 @@ export const createCommand = program
     try {
       activeSpinner = ui.createSpinner('Fetching starter templates...');
       const templates = await fetchBlueprintRepositories();
-      activeSpinner.succeed('Starter templates fetched successfully');
 
       if (templates.length === 0) {
         activeSpinner.failed();
-        ui.warn('No starter templates found. Please contact support@storyblok.com');
+        ui.error('No starter templates found. Please contact support@storyblok.com');
         ui.br();
         return;
       }
+
+      activeSpinner.succeed('Starter templates fetched successfully');
 
       // Validate template if provided via flag
       let technologyTemplate = selectedTemplate;

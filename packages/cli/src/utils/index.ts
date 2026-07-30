@@ -7,7 +7,6 @@ export * from './array';
 export * from './auth';
 export * from './error/';
 export * from './format';
-export * from './konsola';
 export * from './object';
 export * from './package';
 export * from './pagination';

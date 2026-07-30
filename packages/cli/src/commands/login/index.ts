@@ -1,13 +1,13 @@
-import { Spinner } from '@topcli/spinner';
 import chalk from 'chalk';
 import { select } from '@inquirer/prompts';
 import type { RegionCode } from '../../constants';
 import { colorPalette, commands, regionNames, regions } from '../../constants';
 import { getProgram } from '../../program';
-import { CommandError, handleError, isRegion, isVitest, konsola } from '../../utils';
+import { CommandError, handleError, isRegion } from '../../utils';
 import { loginWithToken } from './actions';
 import { session } from '../../session';
 import { performInteractiveLogin } from './helpers';
+import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -25,7 +25,8 @@ export const loginCommand = program
     token: string;
     region: RegionCode;
   }) => {
-    konsola.title(`${commands.LOGIN}`, colorPalette.LOGIN);
+    const ui = getUI();
+    ui.title(`${commands.LOGIN}`, colorPalette.LOGIN);
     // Global options
     const verbose = program.opts().verbose;
     // Command options
@@ -34,7 +35,7 @@ export const loginCommand = program
     const { state, updateSession, persistCredentials } = session();
 
     if (state.isLoggedIn && !state.envLogin) {
-      konsola.ok(`You are already logged in. If you want to login with a different account, please logout first.`);
+      ui.ok(`You are already logged in. If you want to login with a different account, please logout first.`);
       return;
     }
 
@@ -44,9 +45,7 @@ export const loginCommand = program
     }
 
     if (token) {
-      const spinner = new Spinner({
-        verbose: !isVitest,
-      });
+      let spinner: CLISpinner | null = null;
       try {
         let userRegion = region;
         if (!userRegion) {
@@ -57,9 +56,9 @@ export const loginCommand = program
               value: region,
             })),
             default: regions.EU,
-          });
+          }, stderrPromptContext);
         }
-        spinner.start(`Logging in with token`);
+        spinner = ui.createSpinner(`Logging in with token`);
         const user = await loginWithToken(token, userRegion);
         if (user) {
           updateSession(user.email, token, userRegion);
@@ -67,12 +66,12 @@ export const loginCommand = program
           await persistCredentials(userRegion);
           spinner.succeed();
 
-          konsola.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          ui.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
         }
       }
       catch (error) {
-        spinner.failed();
-        konsola.br();
+        spinner?.failed();
+        ui.br();
         handleError(error as Error, verbose);
       }
     }
@@ -85,14 +84,14 @@ export const loginCommand = program
         });
 
         if (!result) {
-          konsola.warn('Login cancelled or failed.');
+          ui.warn('Login cancelled or failed.');
         }
       }
       catch (error) {
-        konsola.br();
+        ui.br();
         handleError(error as Error, verbose);
       }
     }
 
-    konsola.br();
+    ui.br();
   });

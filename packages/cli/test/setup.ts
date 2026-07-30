@@ -50,4 +50,5 @@ vi.mock('../src/lib/config/store', async (importOriginal) => {
 
 beforeEach(() => {
   vol.reset();
+  process.exitCode = undefined;
 });

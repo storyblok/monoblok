@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { minimatch } from 'minimatch';
 import { colorPalette, commands } from '../../../constants';
-import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import { datasourcesCommand } from '../command';
 import type { PushDatasourcesOptions } from './constants';
 import { session } from '../../../session';
@@ -9,7 +9,7 @@ import chalk from 'chalk';
 import type { SpaceDatasource, SpaceDatasourcesDataState } from '../constants';
 import { deleteDatasourceEntry, readDatasourcesFiles, updateDatasourceEntryDimension, upsertDatasource, upsertDatasourceEntry } from './actions';
 import { fetchDatasources } from '../pull/actions';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
 /**
@@ -36,7 +36,8 @@ const pushCmd = datasourcesCommand
 
 pushCmd
   .action(async (datasourceName: string | undefined, options: PushDatasourcesOptions, command: Command) => {
-    konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
+    const ui = getUI();
+    ui.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pushing datasource ${datasourceName}...` : 'Pushing datasources...');
 
     const { space, path, verbose } = command.optsWithGlobals();
 
@@ -58,8 +59,8 @@ pushCmd
     const logger = getLogger();
     logger.info('Pushing datasources started', { space, fromSpace, datasourceName, filter });
 
-    konsola.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
-    konsola.br();
+    ui.info(`Attempting to push datasources ${chalk.bold('from')} space ${chalk.hex(colorPalette.DATASOURCES)(fromSpace)} ${chalk.bold('to')} ${chalk.hex(colorPalette.DATASOURCES)(space)}`);
+    ui.br();
 
     try {
       // Read datasources data from source space (from option or target space)
@@ -100,11 +101,11 @@ pushCmd
           handleError(new CommandError(`No datasources found matching pattern "${filter}".`), verbose);
           return;
         }
-        konsola.info(`Filter applied: ${filter}`);
+        ui.info(`Filter applied: ${filter}`);
       }
 
       if (!spaceState.local.datasources.length) {
-        konsola.warn('No datasources found. Please make sure you have pulled the datasources first.');
+        ui.warn('No datasources found. Please make sure you have pulled the datasources first.');
         return;
       }
 
@@ -112,8 +113,6 @@ pushCmd
         successful: [] as string[],
         failed: [] as Array<{ name: string; error: unknown }>,
       };
-
-      const ui = getUI();
 
       for (const datasource of spaceState.local.datasources) {
         const spinner = ui.createSpinner(`Pushing ${chalk.hex(colorPalette.DATASOURCES)(datasource.name)}`);
@@ -215,7 +214,7 @@ pushCmd
           spinner.succeed(`${chalk.hex(colorPalette.DATASOURCES)(datasource.name)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`);
 
           // Flush any per-dimension skip warnings now that the spinner has stopped.
-          dimensionWarnings.forEach(warning => konsola.warn(warning));
+          dimensionWarnings.forEach(warning => ui.warn(warning));
         }
         else {
           results.failed.push({ name: datasource.name, error: result });
@@ -225,8 +224,8 @@ pushCmd
 
       if (results.failed.length > 0) {
         if (!verbose) {
-          konsola.br();
-          konsola.info('For more information about the error, run the command with the `--verbose` flag');
+          ui.br();
+          ui.info('For more information about the error, run the command with the `--verbose` flag');
         }
         else {
           results.failed.forEach((failed) => {

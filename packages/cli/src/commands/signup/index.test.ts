@@ -11,13 +11,6 @@ vi.mock('../../utils', async () => {
   const actualUtils = await vi.importActual('../../utils');
   return {
     ...actualUtils,
-    konsola: {
-      ok: vi.fn(),
-      title: vi.fn(),
-      info: vi.fn(),
-      br: vi.fn(),
-      error: vi.fn(),
-    },
     handleError: vi.fn(),
   };
 });

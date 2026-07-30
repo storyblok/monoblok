@@ -5,7 +5,7 @@ import { join } from 'pathe';
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from './constants';
 import { createRegexFromGlob } from '../../../utils';
 import type { BlokContent } from '../../stories/constants';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
 export async function readMigrationFiles(options: ReadMigrationFilesOptions): Promise<MigrationFile[]> {

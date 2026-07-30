@@ -10,8 +10,7 @@ import { resetLogger } from '../../../lib/logger/logger';
 vi.mock('node:fs');
 vi.mock('node:fs/promises');
 
-vi.spyOn(console, 'info');
-vi.spyOn(console, 'log');
+vi.spyOn(console, 'error');
 
 const LOGS_FILE_DIR = resolveCommandPath('logs', '12345');
 
@@ -47,16 +46,16 @@ describe('logs list command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'list', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Found 3 log files for space "12345":'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('storyblok-components-push-1234567892.jsonl'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('storyblok-migrations-run-1234567890.jsonl'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('storyblok-migrations-run-1234567891.jsonl'),
     );
   });
@@ -66,7 +65,7 @@ describe('logs list command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'list', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('No logs found for space "12345"'),
     );
   });
@@ -76,7 +75,7 @@ describe('logs list command', () => {
 
     await logsCommand.parseAsync(['node', 'test', 'list', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('No logs found for space "12345"'),
     );
   });

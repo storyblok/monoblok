@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { konsola } from '../../../utils';
 import { generateStoryblokTypes, generateTypes } from './actions';
-import chalk from 'chalk';
-import { colorPalette } from '../../../constants';
 // Import the main module first to ensure proper initialization
 import '../index';
 import { typesCommand } from '../command';
@@ -31,6 +28,7 @@ const mockSpaceData = {
 vi.mock('./actions', () => ({
   generateStoryblokTypes: vi.fn(),
   generateTypes: vi.fn(),
+  saveTypesToComponentsFile: vi.fn(),
   getComponentType: vi.fn(),
 }));
 
@@ -43,17 +41,6 @@ vi.mock('../../../utils', async () => {
   return {
     ...actualUtils,
     isVitestRunning: true,
-    konsola: {
-      ok: vi.fn(),
-      title: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      br: vi.fn(),
-    },
-    handleError: (error: unknown, header = false) => {
-      konsola.error(error as string, header);
-      // Optionally, prevent process.exit during tests
-    },
   };
 });
 
@@ -61,6 +48,7 @@ describe('types generate', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     // Fix the linter errors by using a type assertion
     (typesCommand as any)._optionValues = {};
     (typesCommand as any)._optionValueSources = {};
@@ -75,6 +63,7 @@ describe('types generate', () => {
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
 
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345']);
 
@@ -84,7 +73,7 @@ describe('types generate', () => {
 
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({}));
 
-      expect(konsola.ok).toHaveBeenCalledWith(`Successfully generated types for space ${chalk.hex(colorPalette.PRIMARY)('12345')}`, true);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Successfully generated types for space'));
     });
 
     it('should pass strict mode option to generateTypes when --strict flag is used', async () => {

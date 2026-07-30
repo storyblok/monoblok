@@ -12,14 +12,6 @@ vi.mock('../../actions', () => ({
   pushComponent: vi.fn(),
 }));
 
-// Mock progress display
-vi.mock('../../progress-display', () => ({
-  progressDisplay: {
-    start: vi.fn(),
-    handleEvent: vi.fn(),
-  },
-}));
-
 describe('graph Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();

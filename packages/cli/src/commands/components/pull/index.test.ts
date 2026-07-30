@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
-import { CommandError, konsola } from '../../../utils';
+import { CommandError } from '../../../utils';
 import { fetchComponent, fetchComponentGroups, fetchComponentInternalTags, fetchComponents, saveComponentsToFiles } from './actions';
 import chalk from 'chalk';
 import { colorPalette } from '../../../constants';
@@ -8,7 +8,7 @@ import { colorPalette } from '../../../constants';
 import '../index';
 import { componentsCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getProgram } from '../../../program';
 
 vi.mock('./actions', () => ({
@@ -19,8 +19,6 @@ vi.mock('./actions', () => ({
   fetchComponentInternalTags: vi.fn(),
   saveComponentsToFiles: vi.fn(),
 }));
-
-vi.mock('../../../utils/konsola');
 
 const preconditions = {
   loggedOut() {
@@ -36,6 +34,7 @@ describe('pull', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     ui = getUI();
     vi.spyOn(ui, 'ok');
     vi.spyOn(ui, 'warn');
@@ -131,18 +130,14 @@ describe('pull', () => {
     it('should throw an error if the user is not logged in', async () => {
       preconditions.loggedOut();
       await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345']);
-      expect(konsola.error).toHaveBeenCalledWith('You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.', null, {
-        header: true,
-      });
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('You are currently not logged in'));
     });
 
     it('should throw an error if the space is not provided', async () => {
       const mockError = new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`);
 
       await componentsCommand.parseAsync(['node', 'test', 'pull']);
-      expect(konsola.error).toHaveBeenCalledWith(mockError.message, null, {
-        header: true,
-      });
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining(mockError.message));
     });
   });
 
@@ -373,7 +368,7 @@ describe('pull', () => {
 
     it('errors on an unknown group name', async () => {
       await componentsCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--group', 'Ghost']);
-      expect(konsola.error).toHaveBeenCalledWith(expect.stringContaining('No component group found named "Ghost"'), null, { header: true });
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No component group found named "Ghost"'));
       expect(saveComponentsToFiles).not.toHaveBeenCalled();
     });
   });

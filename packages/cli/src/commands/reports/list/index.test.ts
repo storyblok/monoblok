@@ -6,8 +6,7 @@ import '../index';
 import { reportsCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
 
-vi.spyOn(console, 'info');
-vi.spyOn(console, 'log');
+vi.spyOn(console, 'error');
 
 const REPORTS_FILE_DIR = resolveCommandPath('reports', '12345');
 
@@ -40,16 +39,16 @@ describe('reports list command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'list', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Found 3 report files for space "12345":'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('storyblok-components-push-1234567892.jsonl'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('storyblok-migrations-run-1234567890.jsonl'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('storyblok-migrations-run-1234567891.jsonl'),
     );
   });
@@ -59,7 +58,7 @@ describe('reports list command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'list', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('No reports found for space "12345"'),
     );
   });
@@ -69,7 +68,7 @@ describe('reports list command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'list', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('No reports found for space "12345"'),
     );
   });

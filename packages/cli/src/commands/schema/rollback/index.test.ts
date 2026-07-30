@@ -14,8 +14,6 @@ vi.mock('@inquirer/prompts', () => ({
   select: vi.fn(),
 }));
 
-vi.spyOn(console, 'log');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 vi.spyOn(console, 'error');
 
@@ -141,7 +139,7 @@ describe('schema rollback command', () => {
       '--dry-run',
     ]);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
     // msw configured with onUnhandledRequest: 'error' — no fetch handlers registered, so any HTTP call would fail
   });
 
@@ -162,10 +160,10 @@ describe('schema rollback command', () => {
 
     // The folder is surfaced under a Folders section (create inverts to delete),
     // not skipped with a "not rolled back" note.
-    const logged = (console.log as unknown as { mock: { calls: unknown[][] } }).mock.calls.flat().join('\n');
+    const logged = (console.error as unknown as { mock: { calls: unknown[][] } }).mock.calls.flat().join('\n');
     expect(logged).toContain('Folders');
     expect(logged).toContain('layout');
-    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining('not rolled back'));
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('not rolled back'));
   });
 
   it('should cancel when user declines confirmation', async () => {
@@ -185,7 +183,7 @@ describe('schema rollback command', () => {
       DEFAULT_SPACE,
     ]);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('cancelled'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('cancelled'));
   });
 
   it('should roll back a create by deleting the component', async () => {
@@ -273,7 +271,7 @@ describe('schema rollback command', () => {
       DEFAULT_SPACE,
     ]);
 
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('nothing to roll back'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('nothing to roll back'));
   });
 
   it('should list changesets and prompt when no file is specified', async () => {
@@ -296,7 +294,7 @@ describe('schema rollback command', () => {
     ]);
 
     expect(select).toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
   });
 
   it('should warn when no changesets are found', async () => {
@@ -382,7 +380,7 @@ describe('schema rollback command', () => {
     ]);
 
     expect(select).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Dry run'));
   });
 
   it('should warn when --latest is used but no changesets exist', async () => {

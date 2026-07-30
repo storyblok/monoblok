@@ -1,4 +1,4 @@
-import { CommandError, handleError, isRegion, isVitest, requireAuthentication, toHumanReadable } from '../../utils';
+import { CommandError, handleError, isRegion, requireAuthentication, toHumanReadable } from '../../utils';
 import { colorPalette, commands, type RegionCode, regions } from '../../constants';
 import { performInteractiveLogin } from '../login/helpers';
 import { getProgram } from '../../program';
@@ -9,15 +9,13 @@ import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEn
 import { basename, dirname, resolve } from 'pathe';
 import chalk from 'chalk';
 import { createSpace, type SpaceCreate, type SpaceCreateQuery } from '../spaces';
-import { Spinner } from '@topcli/spinner';
 import type { User } from '../user/actions';
 import { getUser } from '../user/actions';
-import { getUI } from '../../utils/ui';
-
-const ui = getUI({ enabled: true });
+import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
+  const ui = getUI();
   ui.br();
   ui.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
   ui.br();
@@ -27,12 +25,13 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
 
 // Helper to handle interactive login prompt
 async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
+  const ui = getUI();
   try {
     ui.br();
     const shouldLogin = await confirm({
       message: 'Would you like to login now?',
       default: true,
-    });
+    }, stderrPromptContext);
 
     if (!shouldLogin) {
       ui.warn('Login cancelled. You can login later using the "storyblok login" command.');
@@ -64,6 +63,7 @@ export const createCommand = program
     `The region to apply to the generated project template (does not affect space creation).`,
   )
   .action(async (projectPath: string, options: CreateOptions) => {
+    const ui = getUI();
     ui.title(`${commands.CREATE}`, colorPalette.CREATE);
     // Global options
     const verbose = program.opts().verbose;
@@ -127,25 +127,19 @@ export const createCommand = program
       }
     }
 
-    const spinnerBlueprints = new Spinner({
-      verbose: !isVitest,
-    });
-
-    const spinnerSpace = new Spinner({
-      verbose: !isVitest,
-    });
-
+    let activeSpinner: CLISpinner | null = null;
     try {
-      spinnerBlueprints.start('Fetching starter templates...');
+      activeSpinner = ui.createSpinner('Fetching starter templates...');
       const templates = await fetchBlueprintRepositories();
-      spinnerBlueprints.succeed('Starter templates fetched successfully');
 
       if (templates.length === 0) {
-        spinnerBlueprints.failed();
-        ui.warn('No starter templates found. Please contact support@storyblok.com');
+        activeSpinner.failed();
+        ui.error('No starter templates found. Please contact support@storyblok.com');
         ui.br();
         return;
       }
+
+      activeSpinner.succeed('Starter templates fetched successfully');
 
       // Validate template if provided via flag
       let technologyTemplate = selectedTemplate;
@@ -169,7 +163,7 @@ export const createCommand = program
             name: template.name,
             value: template.value,
           })),
-        });
+        }, stderrPromptContext);
       }
 
       // Get project path and extract name
@@ -189,7 +183,7 @@ export const createCommand = program
             }
             return true;
           },
-        });
+        }, stderrPromptContext);
       }
 
       // Parse the path to get directory and project name
@@ -271,7 +265,7 @@ export const createCommand = program
           whereToCreateSpace = await select({
             message: `Where would you like to create this space?`,
             choices,
-          });
+          }, stderrPromptContext);
         }
         if (region !== regions.EU && userData.has_org) {
           whereToCreateSpace = 'org';
@@ -282,7 +276,7 @@ export const createCommand = program
           return;
         }
 
-        spinnerSpace.start(`Creating space "${toHumanReadable(projectName)}"`);
+        activeSpinner = ui.createSpinner(`Creating space "${toHumanReadable(projectName)}"`);
 
         // Find the selected blueprint from the dynamic blueprints array
         const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
@@ -300,7 +294,7 @@ export const createCommand = program
           createSpaceQuery.assign_partner = true;
         }
         createdSpace = await createSpace(spaceToCreate, createSpaceQuery);
-        spinnerSpace.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
+        activeSpinner.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
@@ -335,7 +329,7 @@ export const createCommand = program
         }
       }
       catch (error) {
-        spinnerSpace.failed();
+        activeSpinner?.failed();
         ui.br();
         handleError(error as Error, verbose);
         return;
@@ -344,8 +338,7 @@ export const createCommand = program
       // showNextSteps is already called in each relevant branch above; do not call it again here.
     }
     catch (error) {
-      spinnerSpace.failed();
-      spinnerBlueprints.failed();
+      activeSpinner?.failed();
       ui.br();
       handleError(error as Error, verbose);
     }

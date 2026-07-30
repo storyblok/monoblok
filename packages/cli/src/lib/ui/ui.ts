@@ -1,9 +1,10 @@
 import chalk from 'chalk';
 import { MultiBar, Presets } from 'cli-progress';
 import { Spinner } from '@topcli/spinner';
-import { colorPalette } from '../constants';
-import { capitalize } from './format';
-import { isVitest } from './';
+import { colorPalette } from '../../constants';
+import { DEFAULT_GLOBAL_CONFIG } from '../config/defaults';
+import { capitalize } from '../../utils/format';
+import { isVitest } from '../../utils';
 
 interface InfoOptions {
   header?: boolean;
@@ -15,7 +16,13 @@ interface ErrorOptions {
   margin?: boolean;
 }
 
-interface ProgressBar {
+export interface CLISpinner {
+  succeed: (text?: string) => void;
+  failed: (text?: string) => void;
+  readonly elapsedTime: number;
+}
+
+export interface ProgressBar {
   increment: (count?: number) => void;
   setTotal: (total: number) => void;
   stop: () => void;
@@ -27,20 +34,43 @@ const noopProgressBar: ProgressBar = {
   stop: () => {},
 };
 
-const noopSpinner = {
-  failed: (_title: string) => {},
-  succeed: (_title: string) => {},
+const noopSpinner: CLISpinner = {
+  failed: (_title?: string) => {},
+  succeed: (_title?: string) => {},
   elapsedTime: 0,
 };
 
 export class UI {
-  private console: typeof console | null;
+  private console: Pick<typeof console, 'log' | 'info' | 'warn' | 'error'> | null;
   private enabled: boolean;
   private multiBar: MultiBar | null;
 
   constructor({ enabled }: { enabled: boolean }) {
-    this.console = enabled ? console : null;
     this.enabled = enabled;
+    this.console = null;
+    this.multiBar = null;
+    this.applyEnabled(enabled);
+  }
+
+  /** Update the enabled state (called by getUI when preAction resolves config). */
+  setEnabled(enabled: boolean) {
+    if (this.enabled === enabled) { return; }
+    this.applyEnabled(enabled);
+  }
+
+  private applyEnabled(enabled: boolean) {
+    this.enabled = enabled;
+    // Redirect all output to stderr. We wrap the global console methods instead
+    // of using `new console.Console(process.stderr)` so test spies on the global
+    // console object still capture output.
+    this.console = enabled
+      ? {
+          log: (...args: unknown[]) => console.error(...args),
+          info: (...args: unknown[]) => console.error(...args),
+          warn: (...args: unknown[]) => console.warn(...args),
+          error: (...args: unknown[]) => console.error(...args),
+        }
+      : null;
     this.multiBar = enabled
       ? new MultiBar({
         clearOnComplete: false,
@@ -102,15 +132,22 @@ export class UI {
 
   error(message: string, info?: unknown, options: ErrorOptions = {}) {
     const { header = false, margin = false } = options;
+    // Errors always go to stderr, even when UI is disabled (e.g. --no-ui-enabled in CI).
+    const out = this.console ?? { error: (...args: unknown[]) => console.error(...args), log: (...args: unknown[]) => console.error(...args) };
     if (header) {
       const errorHeader = chalk.bgRed.bold.white(` Error `);
-      this.console?.error(errorHeader);
-      this.br();
+      out.error(errorHeader);
+      out.log('');
     }
 
-    this.console?.error(`${chalk.red.bold('▲ error')} ${message}`, info || '');
+    if (info) {
+      out.error(`${chalk.red.bold('▲ error')} ${message}`, info);
+    }
+    else {
+      out.error(`${chalk.red.bold('▲ error')} ${message}`);
+    }
     if (margin) {
-      this.br();
+      out.log('');
     }
   }
 
@@ -128,11 +165,13 @@ export class UI {
   createProgressBar(options: { title: string }): ProgressBar {
     const bar = this.multiBar?.create(0, 0, options);
     if (!bar) { return noopProgressBar; }
+    // cli-progress only substitutes payload tokens ({title}) when the payload is
+    // passed alongside the update. Keep forwarding the original options on every call.
     return {
-      increment: (count = 1) => bar.increment(count),
+      increment: (count = 1) => bar.increment(count, options),
       // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
       // Floor at 1 so an empty phase stays a clean 0/1 instead.
-      setTotal: total => bar.setTotal(Math.max(total, 1)),
+      setTotal: (total) => { bar.setTotal(Math.max(total, 1)); bar.update(options); },
       stop: () => bar.stop(),
     };
   }
@@ -141,20 +180,25 @@ export class UI {
     this.multiBar?.stop();
   }
 
-  createSpinner(title: string) {
-    return this.enabled
-      ? new Spinner({
-          verbose: !isVitest,
-        }).start(title)
-      : noopSpinner;
+  createSpinner(title: string): CLISpinner {
+    if (!this.enabled) { return noopSpinner; }
+    const spinner = new Spinner({ verbose: !isVitest });
+    spinner.stream = process.stderr;
+    return spinner.start(title);
   }
 }
 
+/** Pass as the 2nd argument to all @inquirer/prompts calls so prompts render on stderr. */
+export const stderrPromptContext = { output: process.stderr } as const;
+
 let uiInstance: UI | null = null;
 
-export function getUI(options: { enabled: boolean } = { enabled: false }) {
+export function getUI(options?: { enabled: boolean }) {
   if (!uiInstance) {
-    uiInstance = new UI(options);
+    uiInstance = new UI(options ?? { enabled: DEFAULT_GLOBAL_CONFIG.ui.enabled });
+  }
+  else if (options !== undefined) {
+    uiInstance.setEnabled(options.enabled);
   }
 
   return uiInstance;

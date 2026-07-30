@@ -1,7 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 import type { Component } from '../components/constants';
 import type { Story } from '../stories/constants';
-import type { UI } from '../../utils/ui';
+import type { UI } from '../../lib/ui';
 import type { WriteStoryTransport } from '../stories/streams';
 import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStoryStream } from '../stories/streams';
 import { validateStoryAgainstSchemas } from '../stories/validate-story';

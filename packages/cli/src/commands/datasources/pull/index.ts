@@ -4,13 +4,13 @@ import { session } from '../../../session';
 
 import { datasourcesCommand } from '../command';
 import type { PullDatasourcesOptions } from './constants';
-import { CommandError, handleError, konsola, requireAuthentication } from '../../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../../utils';
 import chalk from 'chalk';
 import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from './actions';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_DATASOURCES_FILENAME } from '../constants';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
 const pullCmd = datasourcesCommand
@@ -23,7 +23,8 @@ const pullCmd = datasourcesCommand
 
 pullCmd
   .action(async (datasourceName: string | undefined, options: PullDatasourcesOptions, command: Command) => {
-    konsola.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pulling datasource ${datasourceName}...` : 'Pulling datasources...');
+    const ui = getUI();
+    ui.title(`${commands.DATASOURCES}`, colorPalette.DATASOURCES, datasourceName ? `Pulling datasource ${datasourceName}...` : 'Pulling datasources...');
 
     const { space, path, verbose } = command.optsWithGlobals();
     const {
@@ -47,7 +48,6 @@ pullCmd
       return;
     }
 
-    const ui = getUI();
     const logger = getLogger();
     logger.info('Pulling datasources started', { space, datasourceName });
     const spinnerDatasources = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('datasources')}`);
@@ -77,35 +77,35 @@ pullCmd
         datasources,
         { ...options, path, separateFiles: separateFiles || !!datasourceName },
       );
-      konsola.br();
+      ui.br();
       if (separateFiles) {
         if (filename && filename !== DEFAULT_DATASOURCES_FILENAME) {
-          konsola.warn(`The --filename option is ignored when using --separate-files`);
+          ui.warn(`The --filename option is ignored when using --separate-files`);
         }
         const filePath = `${datasourcesOutputDir}/`;
         // Only show relative path if the base path wasn't absolute
         const displayPath = (path && isAbsolute(path)) ? filePath : `${relative(process.cwd(), datasourcesOutputDir)}/`;
-        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        ui.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else if (datasourceName) {
         const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${datasourceName}.json`;
         const filePath = join(datasourcesOutputDir, fileName);
         // Only show relative path if the base path wasn't absolute
         const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
-        konsola.ok(`Datasource ${chalk.hex(colorPalette.PRIMARY)(datasourceName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        ui.ok(`Datasource ${chalk.hex(colorPalette.PRIMARY)(datasourceName)} downloaded successfully in ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
       else {
         const fileName = suffix ? `${actualFilename}.${suffix}.json` : `${actualFilename}.json`;
         const filePath = join(datasourcesOutputDir, fileName);
         // Only show relative path if the base path wasn't absolute
         const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
-        konsola.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
+        ui.ok(`Datasources downloaded successfully to ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`);
       }
-      konsola.br();
+      ui.br();
     }
     catch (error) {
       spinnerDatasources.failed(`Fetching ${chalk.hex(colorPalette.DATASOURCES)('Datasources')} - Failed`);
-      konsola.br();
+      ui.br();
       handleError(error as Error, verbose);
     }
     finally {

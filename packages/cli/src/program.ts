@@ -1,15 +1,15 @@
 import { Command } from 'commander';
 import { join } from 'pathe';
-import { getPackageJson, handleError } from './utils';
+import { CommandError, getPackageJson, handleError } from './utils';
+import { directories } from './constants';
 
 import type { LogLevel, LogTransport } from './lib/logger/logger';
 import { getLogger, setLoggerTransports } from './lib/logger/logger';
-import { getUI } from './utils/ui';
+import { getUI } from './lib/ui';
 import { getReporter } from './lib/reporter/reporter';
 import { FileTransport } from './lib/logger/logger-transport-file';
 import { ConsoleTransport } from './lib/logger/logger-transport-console';
 import { resolveCommandPath } from './utils/filesystem';
-import { directories } from './constants';
 import { session } from './session';
 import { getMapiClient } from './api';
 import {
@@ -138,7 +138,7 @@ export function getProgram(): Command {
         setLoggerTransports(transports);
       }
 
-      // Initialize UI
+      // Initialize UI with resolved config
       getUI({ enabled: resolvedConfig.ui.enabled });
 
       // Initialize reporter based on config
@@ -170,9 +170,12 @@ export function getProgram(): Command {
       }
     });
 
-    // Global error handling
+    // Prevent Commander from calling process.exit() so our exitCode convention is respected
+    programInstance.exitOverride();
+
+    // Intercept Commander's error output so usage errors become CommandError (exit code 2)
     programInstance.configureOutput({
-      writeErr: str => handleError(new Error(str)),
+      writeErr: str => handleError(new CommandError(str.replace(/^error:\s*/i, '').trim())),
     });
   }
 

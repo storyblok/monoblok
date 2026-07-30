@@ -7,8 +7,7 @@ import '../index';
 import { schemaCommand } from '../command';
 import { DEFAULT_SPACE, getID } from '../../__tests__/helpers';
 
-vi.spyOn(console, 'log');
-vi.spyOn(console, 'info');
+vi.spyOn(console, 'error');
 vi.spyOn(console, 'warn');
 
 interface MockComponent {
@@ -335,7 +334,7 @@ describe('schema init command', () => {
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('bootstrap step'));
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('source of truth'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('source of truth'));
   });
 
   it('should strip API-only fields but preserve user-settable fields in generated code', async () => {
@@ -369,8 +368,8 @@ describe('schema init command', () => {
 
     await schemaCommand.parseAsync(['node', 'test', 'init', '--space', DEFAULT_SPACE]);
 
-    expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/blocks/hero.ts');
-    expect(console.log).toHaveBeenCalledWith('  .storyblok/schema/schema.ts');
+    expect(console.error).toHaveBeenCalledWith('  .storyblok/schema/blocks/hero.ts');
+    expect(console.error).toHaveBeenCalledWith('  .storyblok/schema/schema.ts');
   });
 
   it('should refuse when the target directory is not empty', async () => {

@@ -11,6 +11,7 @@
 | Reusable option types | `types.ts` |
 | Utilities shared by sibling subcommands | parent command directory (e.g. `schema/serialize.ts`, not `schema/push/serialize.ts`) — subcommands must not import from each other |
 | Shared CLI utilities | `src/utils/` |
+| User-facing terminal output | `src/lib/ui/` |
 | Config resolution, global option behavior | `src/lib/config/` |
 | Structured logs | `src/lib/logger/` |
 | Machine-readable command reports | `src/lib/reporter/` |
@@ -22,10 +23,20 @@
 | User-facing text, titles, warnings, blank lines | `const ui = getUI()` |
 | Progress spinners | `ui.createSpinner()` |
 | Progress bars | `ui.createProgressBar()` |
+| Interactive prompts | `await select({...}, stderrPromptContext)` |
 | Operational diagnostics | `const logger = getLogger()` |
 | Command errors | `handleError(new CommandError(...), verbose)` |
 
-Do not add `console.*`, raw `Spinner`, or direct `konsola.*` calls in new or migrated command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics.
+All UI output routes to stderr. Do not add `console.*` or raw `Spinner` calls in command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics. Error handling uses `handleError()` which sets `process.exitCode` (1 for runtime errors, 2 for `CommandError`).
+
+Every `@inquirer/prompts` call (`select`, `confirm`, `input`, `password`) must pass `stderrPromptContext` (from `src/lib/ui/`) as the second argument so prompt rendering goes to stderr, not stdout:
+
+```ts
+import { select } from '@inquirer/prompts';
+import { stderrPromptContext } from '../../lib/ui';
+
+const region = await select({ message: 'Select region:', choices }, stderrPromptContext);
+```
 
 ## Tests
 

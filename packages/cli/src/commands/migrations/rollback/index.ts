@@ -6,7 +6,7 @@ import { migrationsCommand } from '../command';
 import { session } from '../../../session';
 import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import chalk from 'chalk';
 

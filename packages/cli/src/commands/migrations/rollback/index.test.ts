@@ -21,7 +21,6 @@ vi.mock('../../stories/actions', () => ({
 }));
 
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'log');
 
 const LOG_PREFIX = 'storyblok-migrations-rollback-';
 
@@ -136,9 +135,8 @@ describe('migrations rollback command', () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('You are currently not logged in'),
-      '',
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('For more information about the error'),
     );
     expect(readRollbackFile).not.toHaveBeenCalled();
@@ -157,9 +155,8 @@ describe('migrations rollback command', () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Please provide the space as argument --space YOUR_SPACE_ID.'),
-      '',
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('For more information about the error'),
     );
     expect(readRollbackFile).not.toHaveBeenCalled();
@@ -182,7 +179,6 @@ describe('migrations rollback command', () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Failed to rollback migration: File not found'),
-      '',
     );
     expect(updateStory).not.toHaveBeenCalled();
     const logFile = getLogFileContents(LOG_PREFIX);

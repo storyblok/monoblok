@@ -2,7 +2,7 @@ import { unlink } from 'node:fs/promises';
 import { join } from 'pathe';
 
 import type { Logger } from '../../../lib/logger/logger';
-import type { UI } from '../../../utils/ui';
+import type { UI } from '../../../lib/ui';
 import { directories } from '../../../constants';
 import { fileExists, resolveCommandPath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
 import type { Component } from '../../../types';

@@ -18,20 +18,7 @@ export class ConsoleTransport implements LogTransport {
     }
 
     const line = this.format(record);
-    switch (record.level) {
-      case 'error':
-        (console.error ?? console.log).call(console, line);
-        break;
-      case 'warn':
-        (console.warn ?? console.log).call(console, line);
-        break;
-      case 'info':
-        (console.info ?? console.log).call(console, line);
-        break;
-      case 'debug':
-        (console.debug ?? console.log).call(console, line);
-        break;
-    }
+    console.error(line);
   }
 
   private levelRank(level: LogLevel): number {

@@ -20,7 +20,7 @@ const packageJson: NormalizedPackageJson = result
     } as NormalizedPackageJson);
 
 if (!result) {
-  console.debug('Metadata not found');
+  console.error('Metadata not found');
 }
 
 /**

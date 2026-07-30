@@ -10,9 +10,7 @@ import * as actions from '../actions';
 import { DEFAULT_SPACE } from '../../__tests__/helpers';
 import { makeMockAsset } from '../__tests__/helpers';
 
-vi.spyOn(console, 'log');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 vi.spyOn(actions, 'transferAssets');
 
@@ -79,9 +77,9 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42], 7, expect.anything());
-    // `ui.info` (→ console.info) carries the summary; successes are not listed
-    // one row per asset (see UI#info / UI#list in utils/ui.ts).
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('1 transferred, 0 failed'));
+    // `ui.info` (→ console.error) carries the summary; successes are not listed
+    // one row per asset (see UI#info / UI#list in lib/ui.ts).
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('1 transferred, 0 failed'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -91,9 +89,9 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '43', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).toHaveBeenCalledWith(DEFAULT_SPACE, [42, 43], 7, expect.anything());
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('2 transferred, 0 failed (of 2)'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('2 transferred, 0 failed (of 2)'));
     // No per-asset success rows on the successful path.
-    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('✓'));
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('✓'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -101,7 +99,7 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE]);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'), '');
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'));
     expect(process.exitCode).toBe(2);
   });
 
@@ -109,7 +107,7 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '0']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'), '');
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--folder-id'));
     expect(process.exitCode).toBe(2);
   });
 
@@ -126,7 +124,7 @@ describe('assets transfer command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('write access'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('write access'));
     expect(process.exitCode).toBe(1);
   });
 
@@ -137,8 +135,8 @@ describe('assets transfer command', () => {
 
     // Summary counts, then one grouped reason line with the count — not three
     // separate per-asset rows.
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('0 transferred, 3 failed (of 3)'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('(3)'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('0 transferred, 3 failed (of 3)'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('(3)'));
     expect(process.exitCode).toBe(1);
   });
 
@@ -156,7 +154,7 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--all'), '');
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--all'));
     expect(process.exitCode).toBe(2);
   });
 
@@ -173,18 +171,18 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    // `ui.info` calls `console.info` directly (see UI#info in utils/ui.ts).
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('No assets found'));
+    // `ui.info` calls `console.error` directly (see UI#info in lib/ui.ts).
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No assets found'));
     expect(process.exitCode).toBe(0);
   });
 
-  it('should surface a friendly error and exit 2 when enumeration fails for --all', async () => {
+  it('should surface a friendly error and exit 1 when enumeration fails for --all', async () => {
     preconditions.failsToListAssets();
 
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
   });
 
   it('should enumerate but not transfer in --all --dry-run mode', async () => {
@@ -201,7 +199,7 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '--all', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--all with --query'), '');
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--all with --query'));
     expect(process.exitCode).toBe(2);
   });
 
@@ -222,7 +220,7 @@ describe('assets transfer command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'transfer', '42', '--query', 'search=logo', '--space', DEFAULT_SPACE, '--folder-id', '7']);
 
     expect(actions.transferAssets).not.toHaveBeenCalled();
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--query'), '');
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('--query'));
     expect(process.exitCode).toBe(2);
   });
 });

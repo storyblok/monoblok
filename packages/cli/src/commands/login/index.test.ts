@@ -1,7 +1,6 @@
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loginCommand } from './';
-import { konsola } from '../../utils';
 import { input, password, select } from '@inquirer/prompts';
 import { regions } from '../../constants';
 import chalk from 'chalk';
@@ -26,18 +25,7 @@ vi.mock('../../utils', async () => {
   const actualUtils = await vi.importActual('../../utils');
   return {
     ...actualUtils,
-    konsola: {
-      ok: vi.fn(),
-      title: vi.fn(),
-      br: vi.fn(),
-      error: vi.fn(),
-      info: vi.fn(),
-    },
     isVitestRunning: true,
-    handleError: (error: Error, header = false) => {
-      konsola.error(error as unknown as string, header);
-      // Optionally, prevent process.exit during tests
-    },
   };
 });
 
@@ -59,6 +47,7 @@ describe('loginCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     preconditions.loggedOut();
   });
 
@@ -68,7 +57,7 @@ describe('loginCommand', () => {
 
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
         message: 'How would you like to login?',
-      }));
+      }), expect.anything());
     });
 
     describe('login-with-email strategy', () => {
@@ -87,15 +76,15 @@ describe('loginCommand', () => {
 
         expect(input).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your email address:',
-        }));
+        }), expect.anything());
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your password:',
-        }));
+        }), expect.anything());
 
         expect(select).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please select the region you would like to work in:',
-        }));
+        }), expect.anything());
       });
 
       it('should login with email and password if provided using login-with-email strategy', async () => {
@@ -128,7 +117,7 @@ describe('loginCommand', () => {
 
         await loginCommand.parseAsync(['node', 'test']);
 
-        expect(konsola.error).toHaveBeenCalledWith(mockError, false);
+        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error logging in with email and password'));
       });
     });
 
@@ -139,16 +128,16 @@ describe('loginCommand', () => {
 
         await loginCommand.parseAsync(['node', 'test']);
 
-        expect(konsola.info).toHaveBeenCalledWith(
+        expect(console.error).toHaveBeenCalledWith(
           expect.stringContaining('You can use a Personal Access Token to log in'),
         );
-        expect(konsola.info).toHaveBeenCalledWith(
+        expect(console.error).toHaveBeenCalledWith(
           expect.stringContaining('https://app.storyblok.com/#/me/account?tab=token'),
         );
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your Personal Access Token:',
-        }));
+        }), expect.anything());
       });
 
       it('should login with token if token is provided using login-with-token strategy', async () => {
@@ -161,7 +150,7 @@ describe('loginCommand', () => {
 
         expect(password).toHaveBeenCalledWith(expect.objectContaining({
           message: 'Please enter your Personal Access Token:',
-        }));
+        }), expect.anything());
         // Verify that loginWithToken was called with the correct arguments
         expect(loginWithToken).toHaveBeenCalledWith('test-token', 'eu');
 
@@ -181,7 +170,7 @@ describe('loginCommand', () => {
 
       expect(loginWithToken).toHaveBeenCalledWith(mockToken, 'eu');
 
-      expect(konsola.ok).toHaveBeenCalledWith('Successfully logged in to region Europe (eu). Welcome Test User.', true);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Successfully logged in to region Europe (eu). Welcome Test User.'));
     });
 
     it('should login with a valid token in another region --region', async () => {
@@ -193,7 +182,7 @@ describe('loginCommand', () => {
 
       expect(loginWithToken).toHaveBeenCalledWith(mockToken, 'us');
 
-      expect(konsola.ok).toHaveBeenCalledWith('Successfully logged in to region United States (us). Welcome Test User.', true);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Successfully logged in to region United States (us). Welcome Test User.'));
     });
 
     it('should throw an error for an invalid token', async () => {
@@ -205,8 +194,7 @@ describe('loginCommand', () => {
 
       await loginCommand.parseAsync(['node', 'test', '--token', 'invalid-token']);
 
-      // expect(handleError).toHaveBeenCalledWith(mockError, true)
-      expect(konsola.error).toHaveBeenCalledWith(mockError, false);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('The token provided'));
     });
   });
 
@@ -214,15 +202,10 @@ describe('loginCommand', () => {
     it('should handle invalid region error with correct message', async () => {
       await loginCommand.parseAsync(['node', 'test', '--region', 'invalid-region']);
 
-      expect(konsola.error).toHaveBeenCalledWith(expect.any(Error), false);
-
-      // Access the error argument
-      const errorArg = vi.mocked(konsola.error).mock.calls[0][0];
-
       // Build the expected error message
       const expectedMessage = `The provided region: invalid-region is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`;
 
-      expect((errorArg as unknown as Error).message).toBe(expectedMessage);
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining(expectedMessage));
     });
   });
 });

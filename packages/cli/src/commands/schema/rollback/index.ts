@@ -5,7 +5,7 @@ import { colorPalette, commands } from '../../../constants';
 import { CommandError, handleError, requireAuthentication, toError } from '../../../utils';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
-import { getUI } from '../../../utils/ui';
+import { getUI, stderrPromptContext } from '../../../lib/ui';
 import { session } from '../../../session';
 import { resolvePath } from '../../../utils/filesystem';
 import { schemaCommand } from '../command';
@@ -68,7 +68,7 @@ schemaCommand
         resolvedFile = await select({
           message: 'Select a changeset to roll back:',
           choices: available.map(f => ({ name: basename(f), value: f })),
-        });
+        }, stderrPromptContext);
       }
 
       // 2. Load changeset
@@ -107,7 +107,7 @@ schemaCommand
         const confirmed = await confirm({
           message: `Apply rollback of ${ops.length} change(s) from ${basename(resolvedFile)}?`,
           default: false,
-        });
+        }, stderrPromptContext);
         if (!confirmed) {
           ui.info('Rollback cancelled.');
           return;

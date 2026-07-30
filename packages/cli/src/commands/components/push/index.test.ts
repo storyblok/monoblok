@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { session } from '../../../session';
-import { CommandError, konsola } from '../../../utils';
+import { CommandError } from '../../../utils';
 import { vol } from 'memfs';
 import type { Component } from '../constants';
 // Import the main module first to ensure proper initialization
@@ -9,7 +9,7 @@ import { componentsCommand } from '../command';
 import { loggedOutSessionState } from '../../../../test/setup';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import { deleteComponentPreset, upsertComponent, upsertComponentGroup } from './actions';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 
 vi.mock('./actions', async () => {
   const actual = await vi.importActual('./actions');
@@ -37,9 +37,6 @@ vi.mock('../actions', () => ({
   fetchComponentPresets: vi.fn().mockResolvedValue([]),
   fetchComponentInternalTags: vi.fn().mockResolvedValue([]),
 }));
-
-// konsola mock still needed: handleError (shared utility) uses konsola internally
-vi.mock('../../../utils/konsola');
 
 const mockComponent: Component = {
   name: 'test-component',
@@ -70,6 +67,7 @@ describe('push', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     vol.reset();
     ui = getUI();
     vi.spyOn(ui, 'info');
@@ -116,18 +114,13 @@ describe('push', () => {
       expect(ui.info).toHaveBeenCalledWith(expect.stringContaining('target-space'));
     });
 
-    // handleError uses konsola internally (not yet migrated to UI), so these assert against konsola
     it('should throw an error if the user is not logged in', async () => {
       preconditions.loggedOut();
 
       await componentsCommand.parseAsync(['node', 'test', 'push', '--space', '12345']);
 
-      expect(konsola.error).toHaveBeenCalledWith(
-        'You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.',
-        null,
-        {
-          header: true,
-        },
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('You are currently not logged in'),
       );
     });
 
@@ -136,9 +129,7 @@ describe('push', () => {
 
       await componentsCommand.parseAsync(['node', 'test', 'push']);
 
-      expect(konsola.error).toHaveBeenCalledWith(mockError.message, null, {
-        header: true,
-      });
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining(mockError.message));
     });
   });
 
@@ -228,7 +219,7 @@ describe('push', () => {
       });
 
       const targetComponent = { ...mockComponent, id: 100 };
-      const otherComponent: SpaceComponent = {
+      const otherComponent: Component = {
         ...mockComponent,
         id: 200,
         name: 'other-component',
@@ -308,7 +299,7 @@ describe('push', () => {
     it('errors on an unknown group name', async () => {
       await componentsCommand.parseAsync(['node', 'test', 'push', '--space', 'target-space', '--from', 'source-space', '--group', 'Ghost']);
 
-      expect(konsola.error).toHaveBeenCalledWith(expect.stringContaining('No component group found named "Ghost"'), null, { header: true });
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('No component group found named "Ghost"'));
       expect(vi.mocked(upsertComponent)).not.toHaveBeenCalled();
     });
   });

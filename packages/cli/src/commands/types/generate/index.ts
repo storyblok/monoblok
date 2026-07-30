@@ -1,13 +1,14 @@
 import type { Command } from 'commander';
 import { colorPalette, commands } from '../../../constants';
-import { FileSystemError, handleError, konsola } from '../../../utils';
-import { Spinner } from '@topcli/spinner';
+import { CommandError, FileSystemError, handleError } from '../../../utils';
 import { type ComponentsData, readComponentsFiles } from '../../components/push/actions';
 import type { GenerateTypesOptions } from './constants';
 import { typesCommand } from '../command';
 import { generateStoryblokTypes, generateTypes, saveTypesToComponentsFile } from './actions';
 import { readDatasourcesFiles } from '../../datasources/push/actions';
 import type { SpaceDatasourcesData } from '../../../commands/datasources/constants';
+import { getUI } from '../../../lib/ui';
+import { getLogger } from '../../../lib/logger/logger';
 
 const generateCmd = typesCommand
   .command('generate')
@@ -27,16 +28,22 @@ const generateCmd = typesCommand
 
 generateCmd
   .action(async (options: GenerateTypesOptions, command: Command) => {
-    konsola.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
+    const ui = getUI();
+    ui.title(`${commands.TYPES}`, colorPalette.TYPES, 'Generating types...');
 
     const { space, path, verbose, suffix, filename, separateFiles } = command.optsWithGlobals();
 
-    const spinner = new Spinner({
-      verbose,
-    });
+    if (!space) {
+      handleError(new CommandError('Please provide the space as argument --space SPACE_ID.'), verbose);
+      return;
+    }
+
+    const logger = getLogger();
+    const spinner = ui.createSpinner('Processing schemas...');
 
     try {
-      spinner.start(`Generating types...`);
+      logger.info('Generating types started', { space });
+
       // Input format is auto-detected based on files on disk
       const componentsData = await readComponentsFiles({
         from: space,
@@ -73,29 +80,39 @@ generateCmd
         ...dataSourceData,
       };
 
+      logger.info('Processing schemas', {
+        components: componentsData.components.length,
+        datasources: dataSourceData.datasources.length,
+      });
+
       const typedefData = await generateTypes(spaceDataWithComponentsAndDatasources, {
         ...options,
       });
 
-      if (typedefData) {
-        await saveTypesToComponentsFile(space, typedefData, {
-          filename,
-          path,
-          separateFiles,
-        });
+      if (!typedefData) {
+        spinner.failed('No types generated');
+        return;
       }
 
-      spinner.succeed();
+      await saveTypesToComponentsFile(space, typedefData, {
+        filename,
+        path,
+        separateFiles,
+      });
+
+      spinner.succeed(`Types generated for ${componentsData.components.length} components`);
+
       if (separateFiles && filename) {
-        konsola.warn(`The --filename option is ignored when using --separate-files`);
+        ui.warn(`The --filename option is ignored when using --separate-files`);
       }
 
-      konsola.ok(`Successfully generated types for space ${space}`, true);
-      konsola.br();
+      logger.info('Types generated successfully', { space });
+      ui.ok(`Successfully generated types for space ${space}`, true);
+      ui.br();
     }
     catch (error) {
-      spinner.failed(`Failed to generate types for space ${space}`);
-      konsola.br();
+      spinner.failed('Type generation failed');
+      logger.error('Type generation failed', { error: error as Error });
       handleError(error as Error, verbose);
     }
   });

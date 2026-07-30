@@ -10,7 +10,7 @@ import chalk from 'chalk';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { DEFAULT_COMPONENTS_FILENAME } from '../constants';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { filterSpaceData, resolveGroupSelector, resolveTagSelector } from '../utils';
 
@@ -59,41 +59,63 @@ pullCmd
 
     logger.info('Pulling components started', { space, componentName });
 
-    const spinnerGroups = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components groups')}`);
-    const spinnerPresets = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components presets')}`);
-    const spinnerInternalTags = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components internal tags')}`);
-    const spinnerComponents = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components')}`);
+    // Create progress bars for each resource type (pad titles for alignment)
+    const pad = 'Components'.length;
+    const barGroups = ui.createProgressBar({ title: 'Groups'.padEnd(pad) });
+    const barPresets = ui.createProgressBar({ title: 'Presets'.padEnd(pad) });
+    const barTags = ui.createProgressBar({ title: 'Tags'.padEnd(pad) });
+    const barComponents = ui.createProgressBar({ title: 'Components' });
+
+    // Each fetch is a single API call, so total is 1 per bar
+    barGroups.setTotal(1);
+    barPresets.setTotal(1);
+    barTags.setTotal(1);
+    barComponents.setTotal(1);
 
     try {
-      // Fetch components groups
-      let groups = await fetchComponentGroups(space);
-      spinnerGroups.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Completed in ${spinnerGroups.elapsedTime.toFixed(2)}ms`);
+      // Fetch all resource types in parallel so errors surface atomically
+      const componentsFetch = componentName
+        ? fetchComponent(space, componentName).then(c => c ? [c] : undefined)
+        : fetchComponents(space);
 
-      // Fetch components presets
-      let presets = await fetchComponentPresets(space);
-      spinnerPresets.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Completed in ${spinnerPresets.elapsedTime.toFixed(2)}ms`);
+      const [groupsResult, presetsResult, tagsResult, componentsResult] = await Promise.all([
+        fetchComponentGroups(space),
+        fetchComponentPresets(space),
+        fetchComponentInternalTags(space),
+        componentsFetch,
+      ]);
 
-      // Fetch components internal tags
-      let internalTags = await fetchComponentInternalTags(space);
-      spinnerInternalTags.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Completed in ${spinnerInternalTags.elapsedTime.toFixed(2)}ms`);
+      let groups = groupsResult;
+      logger.info('Fetched groups', { count: groups?.length ?? 0 });
+      barGroups.increment();
 
-      // Save everything using the new structure
+      let presets = presetsResult;
+      logger.info('Fetched presets', { count: presets?.length ?? 0 });
+      barPresets.increment();
+
+      let internalTags = tagsResult;
+      logger.info('Fetched tags', { count: internalTags?.length ?? 0 });
+      barTags.increment();
+
       let components;
 
       if (componentName) {
-        const component = await fetchComponent(space, componentName);
-        if (!component) {
-          spinnerComponents.failed(`No component found with name "${componentName}"`);
+        if (!componentsResult || componentsResult.length === 0) {
+          barComponents.stop();
+          ui.stopAllProgressBars();
+          handleError(new CommandError(`No component found with name "${componentName}"`), verbose);
           return;
         }
-        components = [component];
+        components = componentsResult;
       }
       else {
-        components = await fetchComponents(space);
-        if (!components || components.length === 0) {
-          spinnerComponents.failed(`No components found in the space ${space}`);
+        if (!componentsResult || componentsResult.length === 0) {
+          barComponents.stop();
+          ui.stopAllProgressBars();
+          handleError(new CommandError(`No components found in the space ${space}`), verbose);
           return;
         }
+        components = componentsResult;
 
         const hasSelectors = Boolean(filter) || (group && group.length > 0) || (tag && tag.length > 0);
         if (hasSelectors) {
@@ -109,7 +131,8 @@ pullCmd
             { filter, groupUuids, tagIds },
           );
           if (filtered.components.length === 0) {
-            spinnerComponents.failed('No components found matching the given selectors.');
+            barComponents.stop();
+            ui.stopAllProgressBars();
             ui.warn('No components found matching the given selectors.');
             return;
           }
@@ -119,7 +142,15 @@ pullCmd
           internalTags = filtered.internalTags;
         }
       }
-      spinnerComponents.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Components')} - Completed in ${spinnerComponents.elapsedTime.toFixed(2)}ms`);
+      logger.info('Fetched components', { count: components.length });
+      barComponents.increment();
+
+      barGroups.stop();
+      barPresets.stop();
+      barTags.stop();
+      barComponents.stop();
+      ui.stopAllProgressBars();
+
       await saveComponentsToFiles(
         space,
         { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
@@ -154,10 +185,11 @@ pullCmd
       ui.br();
     }
     catch (error) {
-      spinnerGroups.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Failed`);
-      spinnerPresets.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Failed`);
-      spinnerInternalTags.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Failed`);
-      spinnerComponents.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Components')} - Failed`);
+      barGroups.stop();
+      barPresets.stop();
+      barTags.stop();
+      barComponents.stop();
+      ui.stopAllProgressBars();
       ui.br();
       handleError(error as Error, verbose);
     }

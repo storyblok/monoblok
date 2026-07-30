@@ -1,5 +1,10 @@
 import { defineSchema } from '@storyblok/schema';
-import type { Schema as InferSchema, Story as InferStory, MapiStory as InferStoryMapi } from '@storyblok/schema';
+import type {
+  BlockContent,
+  Schema as InferSchema,
+  Story as InferStory,
+  MapiStory as InferStoryMapi,
+} from '@storyblok/schema';
 import { storyblokColorField } from '@storyblok/schema/field-plugins';
 
 import { articleBlock } from './blocks/article';
@@ -47,3 +52,15 @@ export type Blocks = Schema['blocks'];
 export type FieldPlugins = Schema['fieldPlugins'];
 export type Story = InferStory<Blocks, FieldPlugins>;
 export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;
+
+// Type a component's props by block name: `Block<"hero">`.
+// Wraps `BlockContent`, selecting the block definition whose `name` matches and
+// baking in the schema's blocks + registered field plugins.
+export type Block<TName extends Blocks['name']> = BlockContent<
+  Extract<Blocks, { name: TName }>,
+  Blocks,
+  FieldPlugins
+>;
+
+// Loose union of every block's content, used by the dynamic component dispatcher.
+export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;

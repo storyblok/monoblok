@@ -4,7 +4,6 @@ import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase,
 import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
 import { storyblokSchemas } from '../../../utils/storyblok-schemas';
-import { getLogger } from '../../../lib/logger/logger';
 import { join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
@@ -344,188 +343,188 @@ export const generateTypes = async (
   options: GenerateTypesOptions = {
     strict: false,
   },
-): Promise<string | Array<{ name: string; content: string }>> => {
-  const typeDefs = [...DEFAULT_TYPEDEFS_HEADER];
-  const storyblokPropertyTypes = new Set<string>();
-  const contentTypeBloks = new Set<string>();
-  let customFieldsParser: ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined;
-  let compilerOptions: Record<string, unknown> | undefined;
-  // Custom fields parser
-  if (options.customFieldsParser) {
-    customFieldsParser = await loadCustomFieldsParser(options.customFieldsParser);
-  }
+): Promise<string | Array<{ name: string; content: string }> | undefined> => {
+  try {
+    const typeDefs = [...DEFAULT_TYPEDEFS_HEADER];
+    const storyblokPropertyTypes = new Set<string>();
+    const contentTypeBloks = new Set<string>();
+    let customFieldsParser: ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    let compilerOptions: Record<string, unknown> | undefined;
+    // Custom fields parser
+    if (options.customFieldsParser) {
+      customFieldsParser = await loadCustomFieldsParser(options.customFieldsParser);
+    }
 
-  // Compiler options
-  if (options.compilerOptions) {
-    compilerOptions = await loadCompilerOptions(options.compilerOptions);
-  }
-  const componentsSchema = spaceData.components.map(async (component) => {
+    // Compiler options
+    if (options.compilerOptions) {
+      compilerOptions = await loadCompilerOptions(options.compilerOptions);
+    }
+    const componentsSchema = spaceData.components.map(async (component) => {
     // Get the component type name with proper handling of numbers at the start
-    const type = getComponentType(component.name, options);
-    // Add all the Content Type and Universial Blok to contentTypeBloks
-    if (component.is_root) {
-      contentTypeBloks.add(type);
-    }
-    const componentPropertiesTypeAnnotations = await getComponentPropertiesTypeAnnotations(component, options, spaceData, customFieldsParser);
-    const requiredFields = Object.entries(component?.schema || {}).reduce(
-      (acc: string[], [key, value]) => {
-        if (value && typeof value === 'object' && 'required' in value && value.required) {
-          return [...acc, key];
-        }
-        return acc;
-      },
-      ['component', '_uid'] as string[],
-    );
-
-    // Check if any property has a type that's in storyblokSchemas.keys()
-    if (componentPropertiesTypeAnnotations) {
-      Object.entries(componentPropertiesTypeAnnotations).forEach(([_, property]) => {
-        if (property.type && Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
-          storyblokPropertyTypes.add(property.type as StoryblokPropertyType);
-        }
-        // Check if the property uses ISbStoryData
-        if (property.tsType && property.tsType.includes(STORY_TYPE)) {
-          storyblokPropertyTypes.add(STORY_TYPE);
-        }
-      });
-    }
-
-    const componentSchema: JSONSchema = {
-      $id: `#/${component.name}`,
-      title: type, // This is the key - we're using the properly formatted type name
-      type: 'object',
-      required: requiredFields,
-      properties: {
-        ...componentPropertiesTypeAnnotations,
-        component: {
-          type: 'string',
-          enum: [component.name],
+      const type = getComponentType(component.name, options);
+      // Add all the Content Type and Universial Blok to contentTypeBloks
+      if (component.is_root) {
+        contentTypeBloks.add(type);
+      }
+      const componentPropertiesTypeAnnotations = await getComponentPropertiesTypeAnnotations(component, options, spaceData, customFieldsParser);
+      const requiredFields = Object.entries(component?.schema || {}).reduce(
+        (acc: string[], [key, value]) => {
+          if (value && typeof value === 'object' && 'required' in value && value.required) {
+            return [...acc, key];
+          }
+          return acc;
         },
-        _uid: {
-          type: 'string',
-        },
-      },
-    };
-
-    return componentSchema;
-  });
-  const resolvedComponentsSchema = await Promise.all(componentsSchema);
-
-  const datasourcesSchema = spaceData.datasources.map(async (datasource) => {
-    const allComponentTypes = resolvedComponentsSchema.map(schema => schema.title);
-
-    const filtered = datasource.entries
-      ?.filter(d => d.value)
-      .map(d => d.value!);
-    const enumValues: string[] | undefined = filtered?.length ? filtered : undefined;
-
-    // Handle potential null/undefined slug
-    if (!datasource.slug) {
-      return null;
-    }
-
-    const type = getDatasourceTypeTitle(datasource.slug);
-    // Check for conflicts with existing component types
-    if (allComponentTypes.includes(type)) {
-      console.warn(`Warning: Datasource type "${type}" conflicts with existing component type`);
-    }
-    const datasourceSchema: JSONSchema = {
-      $id: `#/${datasource.slug}`,
-      title: type,
-      type: 'string',
-      ...(enumValues && { enum: enumValues }),
-    };
-    return datasourceSchema;
-  });
-  const resolvedDatasourcesSchemaWithNulls = await Promise.all(datasourcesSchema);
-  const resolvedDatasourcesSchema = resolvedDatasourcesSchemaWithNulls.filter((s): s is JSONSchema => s !== null);
-
-  // Track which schemas are components, datasources, or other types
-  const componentTitles = new Set(resolvedComponentsSchema.map(s => s.title).filter(Boolean));
-  const datasourceTitles = new Set(resolvedDatasourcesSchema.map(s => s.title).filter(Boolean));
-
-  const contentTypeSchema: JSONSchema = {
-    $id: `#/ContentType`,
-    title: 'ContentType',
-    type: 'string',
-    tsType: contentTypeBloks.size > 0 ? `${Array.from(contentTypeBloks).join(' | ')}` : 'never',
-  };
-  const schemas = [
-    ...resolvedComponentsSchema,
-    ...resolvedDatasourcesSchema,
-    contentTypeSchema,
-  ];
-
-  const logger = getLogger();
-
-  const result = await Promise.all(schemas.map(async (schema) => {
-    // Use the title as the interface name
-    const title = schema.title || schema.$id.replace('#/', '');
-    const kind = componentTitles.has(title) ? 'component' : datasourceTitles.has(title) ? 'datasource' : 'type';
-    logger.info(`Compiling ${kind}: ${title}`);
-    const startTime = Date.now();
-    const content = await compile(schema, title, {
-      additionalProperties: !options.strict,
-      bannerComment: '',
-      ...compilerOptions,
-    });
-    logger.info(`Compiled ${kind}: ${title}`, { elapsedMs: Date.now() - startTime });
-    return {
-      title,
-      content,
-      isComponent: componentTitles.has(title),
-      isDatasource: datasourceTitles.has(title),
-    };
-  }));
-
-  // Add imports for Storyblok types if needed
-  const imports = generateStoryblokImports(storyblokPropertyTypes, STORY_TYPE);
-
-  // If separate files, return an array of individual type definitions
-  if (options.separateFiles) {
-    const files: Array<{ name: string; content: string }> = [];
-
-    // Get datasource and ContentType schemas
-    const datasourceResults = result.filter(r => r.isDatasource);
-    const componentResults = result.filter(r => r.isComponent);
-
-    // Create datasources file if there are any
-    const datasourcesFile = createDatasourcesFile(datasourceResults, typeDefs);
-    if (datasourcesFile) {
-      files.push(datasourcesFile);
-    }
-
-    // Create content-types file if ContentType exists
-    // Pass contentTypeBloks to properly generate the union type with imports
-    const contentTypesFile = createContentTypesFile(
-      contentTypeBloks,
-      typeDefs,
-    );
-    if (contentTypesFile) {
-      files.push(contentTypesFile);
-    }
-
-    // For each component, determine which imports it needs and create the file
-    for (const componentResult of componentResults) {
-      const componentImports = generateComponentImports(
-        componentResult.content,
-        componentResult.title,
-        storyblokPropertyTypes,
-        datasourceResults,
-        componentResults,
-        STORY_TYPE,
+        ['component', '_uid'] as string[],
       );
-      files.push(createComponentFile(componentResult, typeDefs, componentImports));
+
+      // Check if any property has a type that's in storyblokSchemas.keys()
+      if (componentPropertiesTypeAnnotations) {
+        Object.entries(componentPropertiesTypeAnnotations).forEach(([_, property]) => {
+          if (property.type && Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
+            storyblokPropertyTypes.add(property.type as StoryblokPropertyType);
+          }
+          // Check if the property uses ISbStoryData
+          if (property.tsType && property.tsType.includes(STORY_TYPE)) {
+            storyblokPropertyTypes.add(STORY_TYPE);
+          }
+        });
+      }
+
+      const componentSchema: JSONSchema = {
+        $id: `#/${component.name}`,
+        title: type, // This is the key - we're using the properly formatted type name
+        type: 'object',
+        required: requiredFields,
+        properties: {
+          ...componentPropertiesTypeAnnotations,
+          component: {
+            type: 'string',
+            enum: [component.name],
+          },
+          _uid: {
+            type: 'string',
+          },
+          _editable: {
+            tsType: 'string | undefined',
+          },
+        },
+      };
+
+      return componentSchema;
+    });
+    const resolvedComponentsSchema = await Promise.all(componentsSchema);
+
+    const datasourcesSchema = spaceData.datasources.map(async (datasource) => {
+      const allComponentTypes = resolvedComponentsSchema.map(schema => schema.title);
+
+      const enumValues: string[] | undefined = datasource.entries
+        ?.filter(d => d.value)
+        .map(d => d.value!);
+
+      // Handle potential null/undefined slug
+      if (!datasource.slug) {
+        return null;
+      }
+
+      const type = getDatasourceTypeTitle(datasource.slug);
+      // Check for conflicts with existing component types
+      if (allComponentTypes.includes(type)) {
+        console.warn(`Warning: Datasource type "${type}" conflicts with existing component type`);
+      }
+      const datasourceSchema: JSONSchema = {
+        $id: `#/${datasource.slug}`,
+        title: type,
+        type: 'string',
+        enum: enumValues,
+      };
+      return datasourceSchema;
+    });
+    const resolvedDatasourcesSchemaWithNulls = await Promise.all(datasourcesSchema);
+    const resolvedDatasourcesSchema = resolvedDatasourcesSchemaWithNulls.filter((s): s is JSONSchema => s !== null);
+
+    // Track which schemas are components, datasources, or other types
+    const componentTitles = new Set(resolvedComponentsSchema.map(s => s.title).filter(Boolean));
+    const datasourceTitles = new Set(resolvedDatasourcesSchema.map(s => s.title).filter(Boolean));
+
+    const contentTypeSchema: JSONSchema = {
+      $id: `#/ContentType`,
+      title: 'ContentType',
+      type: 'string',
+      tsType: contentTypeBloks.size > 0 ? `${Array.from(contentTypeBloks).join(' | ')}` : 'never',
+    };
+    const schemas = [
+      ...resolvedComponentsSchema,
+      ...resolvedDatasourcesSchema,
+      contentTypeSchema,
+    ];
+
+    const result = await Promise.all(schemas.map(async (schema) => {
+    // Use the title as the interface name
+      const title = schema.title || schema.$id.replace('#/', '');
+      return {
+        title,
+        content: await compile(schema, title, {
+          additionalProperties: !options.strict,
+          bannerComment: '',
+          ...compilerOptions,
+        }),
+        isComponent: componentTitles.has(title),
+        isDatasource: datasourceTitles.has(title),
+      };
+    }));
+
+    // Add imports for Storyblok types if needed
+    const imports = generateStoryblokImports(storyblokPropertyTypes, STORY_TYPE);
+
+    // If separate files, return an array of individual type definitions
+    if (options.separateFiles) {
+      const files: Array<{ name: string; content: string }> = [];
+
+      // Get datasource and ContentType schemas
+      const datasourceResults = result.filter(r => r.isDatasource);
+      const componentResults = result.filter(r => r.isComponent);
+
+      // Create datasources file if there are any
+      const datasourcesFile = createDatasourcesFile(datasourceResults, typeDefs);
+      if (datasourcesFile) {
+        files.push(datasourcesFile);
+      }
+
+      // Create content-types file if ContentType exists
+      // Pass contentTypeBloks to properly generate the union type with imports
+      const contentTypesFile = createContentTypesFile(
+        contentTypeBloks,
+        typeDefs,
+      );
+      if (contentTypesFile) {
+        files.push(contentTypesFile);
+      }
+
+      // For each component, determine which imports it needs and create the file
+      for (const componentResult of componentResults) {
+        const componentImports = generateComponentImports(
+          componentResult.content,
+          componentResult.title,
+          storyblokPropertyTypes,
+          datasourceResults,
+          componentResults,
+          STORY_TYPE,
+        );
+        files.push(createComponentFile(componentResult, typeDefs, componentImports));
+      }
+      return files;
     }
-    return files;
+
+    // Otherwise, return a single combined file
+    const finalTypeDef = [...typeDefs, ...imports, ...result.map(r => r.content)];
+
+    return [
+      ...finalTypeDef,
+    ].join('\n');
   }
-
-  // Otherwise, return a single combined file
-  const finalTypeDef = [...typeDefs, ...imports, ...result.map(r => r.content)];
-
-  return [
-    ...finalTypeDef,
-  ].join('\n');
+  catch (error) {
+    handleError(error as Error);
+  }
 };
 
 export const saveTypesToComponentsFile = async (

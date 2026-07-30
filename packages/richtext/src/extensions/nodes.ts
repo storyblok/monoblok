@@ -42,15 +42,10 @@ export function buildEmojiExtension(
       };
     },
     renderHTML({ HTMLAttributes }) {
-      return ['img', {
+      return ['span', {
         'data-emoji': HTMLAttributes.emoji,
         'data-name': HTMLAttributes.name,
-        'src': HTMLAttributes.fallbackImage,
-        'alt': HTMLAttributes.alt,
-        'style': 'width: 1.25em; height: 1.25em; vertical-align: text-top',
-        'draggable': 'false',
-        'loading': 'lazy',
-      }];
+      }, HTMLAttributes.emoji];
     },
   });
 }

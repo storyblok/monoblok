@@ -81,6 +81,9 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
     return `<${tag}>${inner}</${tag}>`;
   }
 
+  if (node.type === 'emoji') {
+    return `<${tag}${htmlAttrs}>${escapeHtml(node.attrs.emoji)}</${tag}>`;
+  }
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
 

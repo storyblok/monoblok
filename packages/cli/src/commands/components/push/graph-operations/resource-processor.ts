@@ -12,6 +12,7 @@ import { getLogger } from '../../../../lib/logger/logger';
 
 /**
  * Processes all resources with 2-pass per level approach.
+ * Uses a progress bar for visual feedback and structured logging for per-item detail.
  */
 export async function processAllResources(
   graph: DependencyGraph,
@@ -20,40 +21,38 @@ export async function processAllResources(
   backpressure: number = getActiveConfig().api.rateLimit,
 ): Promise<PushResults> {
   const ui = getUI();
+  const logger = getLogger();
   const levels = determineProcessingOrder(graph);
   const results: PushResults = { successful: [], failed: [] };
 
   // Calculate total resources for progress tracking
   const totalResources = levels.reduce((sum, level) => sum + level.nodes.length, 0);
 
-  const progressBar = ui.createProgressBar({ title: 'Pushing' });
-  progressBar.setTotal(totalResources);
-  const startTime = Date.now();
+  logger.info('Processing order determined', {
+    levels: levels.length,
+    totalResources,
+    cyclic: levels.filter(l => l.isCyclic).length,
+  });
+
+  const bar = ui.createProgressBar({ title: 'Pushing' });
+  bar.setTotal(totalResources);
 
   try {
     for (const level of levels) {
       if (level.isCyclic) {
-        // Handle circular dependencies with stub creation
-        const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, progressBar);
+        const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, bar);
         mergeResults(results, cyclicResults);
       }
       else {
-        // Handle regular level
-        const levelResults = await processLevel(level.nodes, graph, space, backpressure, progressBar);
+        const levelResults = await processLevel(level.nodes, graph, space, backpressure, bar);
         mergeResults(results, levelResults);
       }
     }
   }
   finally {
-    progressBar.stop();
+    bar.stop();
     ui.stopAllProgressBars();
   }
-
-  // Show completion summary
-  const elapsedMs = Date.now() - startTime;
-  const timeStr = formatElapsedTime(elapsedMs);
-  ui.br();
-  ui.ok(`Completed: ${results.successful.length} updated, ${results.failed.length} failed${timeStr ? ` in ${timeStr}` : ''}`, true);
 
   return results;
 }
@@ -67,7 +66,7 @@ async function processCyclicLevel(
   graph: DependencyGraph,
   space: string,
   backpressure: number,
-  progressBar: { increment: (count?: number) => void },
+  bar: { increment: (count?: number) => void },
 ): Promise<PushResults> {
   const logger = getLogger();
   logger.warn(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
@@ -76,7 +75,7 @@ async function processCyclicLevel(
   await createStubComponents(level.nodes, graph, space);
 
   // STEP 2: Process the cyclic level normally (references can now resolve)
-  return await processLevel(level.nodes, graph, space, backpressure, progressBar);
+  return await processLevel(level.nodes, graph, space, backpressure, bar);
 }
 
 /**
@@ -146,12 +145,15 @@ async function processLevel(
   graph: DependencyGraph,
   space: string,
   backpressure: number,
-  progressBar: { increment: (count?: number) => void },
+  bar: { increment: (count?: number) => void },
 ): Promise<PushResults> {
+  const logger = getLogger();
+
   // PASS 1: Resolve references for this level (now that dependencies from previous levels exist)
   for (const nodeId of level) {
     const node = graph.nodes.get(nodeId)!;
     node.resolveReferences(graph);
+    logger.info(`Resolved references: ${node.getName()}`, { type: node.type });
   }
 
   // PASS 2: Process all nodes in this level with resolved references
@@ -168,7 +170,7 @@ async function processLevel(
     }
 
     // Start processing the node
-    const promise = processNode(nodeId, graph, space, progressBar);
+    const promise = processNode(nodeId, graph, space, bar);
     promises.push(promise);
     semaphore[slotIndex] = promise;
   }
@@ -184,25 +186,27 @@ async function processNode(
   nodeId: string,
   graph: DependencyGraph,
   space: string,
-  progressBar: { increment: (count?: number) => void },
+  bar: { increment: (count?: number) => void },
 ): Promise<NodeProcessingResult> {
   const node = graph.nodes.get(nodeId)!;
   const logger = getLogger();
+  const startTime = Date.now();
 
   try {
-    // Always perform upsert - change detection removed due to unstable ID issues
-    // Create/update the resource with resolved references
+    logger.info(`Upserting ${node.type}: ${node.getName()}`);
     const result = await node.upsert(space);
     node.updateTargetData(result);
 
-    progressBar.increment();
-    logger.info(`${getResourceTypeName(node.type)} updated: ${node.getName()}`);
+    const elapsedMs = Date.now() - startTime;
+    logger.info(`Upserted ${node.type}: ${node.getName()}`, { elapsedMs });
+    bar.increment();
 
     return { name: node.getName() };
   }
   catch (error) {
-    progressBar.increment();
-    logger.error(`${getResourceTypeName(node.type)} failed: ${node.getName()}`, { error: error as Error });
+    const elapsedMs = Date.now() - startTime;
+    logger.error(`Failed to upsert ${node.type}: ${node.getName()}`, { elapsedMs, error: error as Error });
+    bar.increment();
     return { name: node.getName(), error };
   }
 }
@@ -231,33 +235,4 @@ function aggregateResults(results: NodeProcessingResult[]): PushResults {
 function mergeResults(target: PushResults, source: PushResults): void {
   target.successful.push(...source.successful);
   target.failed.push(...source.failed);
-}
-
-/**
- * Gets display name for a resource type
- */
-function getResourceTypeName(type: string): string {
-  switch (type) {
-    case 'component': return 'component';
-    case 'group': return 'group';
-    case 'tag': return 'tag';
-    case 'preset': return 'preset';
-    default: return type;
-  }
-}
-
-function formatElapsedTime(ms: number): string {
-  if (ms < 1000) { return `${ms}ms`; }
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  if (hours > 0) {
-    const remainingMinutes = minutes % 60;
-    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-  }
-  if (minutes > 0) {
-    const remainingSeconds = seconds % 60;
-    return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
-  }
-  return `${(ms / 1000).toFixed(1)}s`;
 }

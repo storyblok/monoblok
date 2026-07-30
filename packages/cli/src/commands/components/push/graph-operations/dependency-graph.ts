@@ -497,6 +497,7 @@ export function determineProcessingOrder(graph: DependencyGraph): ProcessingLeve
  */
 export function validateGraph(graph: DependencyGraph): void {
   const logger = getLogger();
+
   logger.info(`Built dependency graph with ${graph.nodes.size} nodes`);
 
   // Check for problematic cycles

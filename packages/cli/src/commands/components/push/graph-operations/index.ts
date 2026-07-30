@@ -1,9 +1,11 @@
 import type { SpaceComponentsDataState } from '../../constants';
-import type { GraphBuildingContext, PushResults } from './types';
+import type { PushResults } from './types';
 
 import { buildDependencyGraph, validateGraph } from './dependency-graph';
 import { processAllResources } from './resource-processor';
 import { getActiveConfig } from '../../../../lib/config';
+import { getUI } from '../../../../lib/ui';
+import { getLogger } from '../../../../lib/logger/logger';
 
 // Re-export commonly used utilities
 export type { PushResults } from './types';
@@ -15,16 +17,10 @@ export type { PushResults } from './types';
 /**
  * Main function to push components using graph-based dependency resolution.
  *
- * Architecture:
- * - Build dependency graph with colocated target data
- * - For each level: resolve references then process resources
- * - Target data is embedded in each graph node for efficient upserts
- *
- * Benefits:
- * - Deterministic processing order
- * - References resolved when dependencies exist
- * - Clean behavioral node abstraction with colocated data
- * - Robust error handling and progress tracking
+ * Multi-step flow:
+ * 1. Build dependency graph with colocated target data
+ * 2. Validate graph (cycle detection)
+ * 3. Process resources level-by-level with progress bar
  */
 export async function pushWithDependencyGraph(
   space: string,
@@ -32,13 +28,35 @@ export async function pushWithDependencyGraph(
 
   backpressure: number = getActiveConfig().api.rateLimit,
 ): Promise<PushResults> {
-  // Build and validate the dependency graph with colocated target data
-  const context: GraphBuildingContext = { spaceState };
-  const graph = buildDependencyGraph(context);
-  validateGraph(graph);
+  const ui = getUI();
+  const logger = getLogger();
 
-  // Process all resources using the dependency graph
+  // Step 1: Build dependency graph
+  const graphSpinner = ui.createSpinner('Building dependency graph...');
+  logger.info('Building dependency graph');
+  const context = { spaceState };
+  const graph = buildDependencyGraph(context);
+  graphSpinner.succeed(`Dependency graph built (${graph.nodes.size} resources)`);
+
+  // Step 2: Validate graph
+  const validateSpinner = ui.createSpinner('Validating graph...');
+  try {
+    validateGraph(graph);
+    validateSpinner.succeed('Graph validation passed');
+  }
+  catch (error) {
+    validateSpinner.failed('Graph validation failed');
+    throw error;
+  }
+
+  // Step 3: Process resources (progress bar handles visual feedback)
   const results = await processAllResources(graph, space, backpressure);
+
+  // Show completion summary
+  const status = results.failed.length > 0
+    ? `${results.successful.length} updated, ${results.failed.length} failed`
+    : `${results.successful.length} updated`;
+  ui.ok(status, true);
 
   return results;
 }

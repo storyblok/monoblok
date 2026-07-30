@@ -177,8 +177,6 @@ pushCmd
         }
       }
 
-      // Use optimized graph-based dependency resolution with colocated target data
-      ui.info('Using graph-based dependency resolution');
       const graphResults = await pushWithDependencyGraph(space, spaceState);
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
@@ -211,7 +209,7 @@ pushCmd
           });
         }
       }
-      logger.info(`${requestCount} requests made`);
+      ui.log(`${requestCount} requests made`);
 
       // Check if components reference datasources and inform user
       const referencedDatasources = new Set<string>();

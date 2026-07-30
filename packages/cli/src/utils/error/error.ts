@@ -106,14 +106,11 @@ export function handleError(error: Error | FetchError, verbose = false, context?
     handleVerboseError(error);
   }
   else {
-    // Always print the verbose hint to stderr, even with --no-ui-enabled (CI)
-    console.error('');
-    console.error(`For more information about the error, run the command with the \`--verbose\` flag`);
+    ui.br();
+    ui.info('For more information about the error, run the command with the `--verbose` flag');
   }
 
-  if (!process.env.VITEST) {
-    console.error('');
-  }
+  ui.br();
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 
   if (!process.exitCode) {

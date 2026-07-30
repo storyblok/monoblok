@@ -74,11 +74,15 @@ pullCmd
 
     try {
       // Fetch all resource types in parallel so errors surface atomically
+      const componentsFetch = componentName
+        ? fetchComponent(space, componentName).then(c => c ? [c] : undefined)
+        : fetchComponents(space);
+
       const [groupsResult, presetsResult, tagsResult, componentsResult] = await Promise.all([
         fetchComponentGroups(space),
         fetchComponentPresets(space),
         fetchComponentInternalTags(space),
-        componentName ? fetchComponent(space, componentName) : fetchComponents(space),
+        componentsFetch,
       ]);
 
       let groups = groupsResult;
@@ -96,23 +100,22 @@ pullCmd
       let components;
 
       if (componentName) {
-        if (!componentsResult) {
+        if (!componentsResult || componentsResult.length === 0) {
           barComponents.stop();
           ui.stopAllProgressBars();
           handleError(new CommandError(`No component found with name "${componentName}"`), verbose);
           return;
         }
-        components = [componentsResult];
+        components = componentsResult;
       }
       else {
-        const allComponents = componentsResult as Awaited<ReturnType<typeof fetchComponents>>;
-        if (!allComponents || allComponents.length === 0) {
+        if (!componentsResult || componentsResult.length === 0) {
           barComponents.stop();
           ui.stopAllProgressBars();
           handleError(new CommandError(`No components found in the space ${space}`), verbose);
           return;
         }
-        components = allComponents;
+        components = componentsResult;
 
         const hasSelectors = Boolean(filter) || (group && group.length > 0) || (tag && tag.length > 0);
         if (hasSelectors) {

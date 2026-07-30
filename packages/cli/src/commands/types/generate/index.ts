@@ -89,6 +89,11 @@ generateCmd
         ...options,
       });
 
+      if (!typedefData) {
+        spinner.failed('No types generated');
+        return;
+      }
+
       await saveTypesToComponentsFile(space, typedefData, {
         filename,
         path,

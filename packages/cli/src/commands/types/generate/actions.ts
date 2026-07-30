@@ -4,6 +4,7 @@ import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase,
 import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
 import { storyblokSchemas } from '../../../utils/storyblok-schemas';
+import { getLogger } from '../../../lib/logger/logger';
 import { join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
@@ -417,9 +418,10 @@ export const generateTypes = async (
     const datasourcesSchema = spaceData.datasources.map(async (datasource) => {
       const allComponentTypes = resolvedComponentsSchema.map(schema => schema.title);
 
-      const enumValues: string[] | undefined = datasource.entries
+      const filtered = datasource.entries
         ?.filter(d => d.value)
         .map(d => d.value!);
+      const enumValues: string[] | undefined = filtered?.length ? filtered : undefined;
 
       // Handle potential null/undefined slug
       if (!datasource.slug) {
@@ -435,7 +437,7 @@ export const generateTypes = async (
         $id: `#/${datasource.slug}`,
         title: type,
         type: 'string',
-        enum: enumValues,
+        ...(enumValues && { enum: enumValues }),
       };
       return datasourceSchema;
     });
@@ -458,16 +460,23 @@ export const generateTypes = async (
       contentTypeSchema,
     ];
 
+    const logger = getLogger();
+
     const result = await Promise.all(schemas.map(async (schema) => {
     // Use the title as the interface name
       const title = schema.title || schema.$id.replace('#/', '');
+      const kind = componentTitles.has(title) ? 'component' : datasourceTitles.has(title) ? 'datasource' : 'type';
+      logger.info(`Compiling ${kind}: ${title}`);
+      const startTime = Date.now();
+      const content = await compile(schema, title, {
+        additionalProperties: !options.strict,
+        bannerComment: '',
+        ...compilerOptions,
+      });
+      logger.info(`Compiled ${kind}: ${title}`, { elapsedMs: Date.now() - startTime });
       return {
         title,
-        content: await compile(schema, title, {
-          additionalProperties: !options.strict,
-          bannerComment: '',
-          ...compilerOptions,
-        }),
+        content,
         isComponent: componentTitles.has(title),
         isDatasource: datasourceTitles.has(title),
       };

@@ -63,6 +63,7 @@ describe('types generate', () => {
       vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
 
       vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
 
       await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345']);
 

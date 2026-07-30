@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
+import { copyFileSync } from 'node:fs';
 import preserveDirectives from 'rollup-plugin-preserve-directives';
 import dts from 'vite-plugin-dts';
 import react from '@vitejs/plugin-react';
@@ -10,6 +11,13 @@ export default defineConfig({
     dts({
       insertTypesEntry: true,
       rollupTypes: true,
+      afterBuild(emittedFiles) {
+        for (const filePath of emittedFiles.keys()) {
+          if (filePath.endsWith('.d.ts')) {
+            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, '.d.cts'));
+          }
+        }
+      },
     }),
     preserveDirectives(),
   ],
@@ -28,7 +36,7 @@ export default defineConfig({
       name: 'storyblokReact',
       fileName: (format, entry) => {
         const name = entry;
-        return format === 'es' ? `${name}.mjs` : `${name}.js`;
+        return format === 'es' ? `${name}.mjs` : `${name}.cjs`;
       },
       formats: ['es', 'cjs'],
     },

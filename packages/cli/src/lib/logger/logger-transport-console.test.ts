@@ -35,7 +35,7 @@ it('should only log level equal or more severe to the specified level', () => {
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}ERROR\s{2}Error!$/),
   );
   transportLevelInfo.log({ level: 'warn', message: 'Warn!' });
-  expect(console.warn).toHaveBeenCalledWith(
+  expect(console.error).toHaveBeenCalledWith(
     expect.stringMatching(/^\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s{2}WARN\s{3}Warn!$/),
   );
   transportLevelInfo.log({ level: 'info', message: 'Info' });

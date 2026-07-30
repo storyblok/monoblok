@@ -40,6 +40,29 @@ describe('handleError', () => {
     handleError(new CommandError('bad input'));
     expect(process.exitCode).toBe(2);
   });
+
+  it('should exit cleanly (code 0) for prompt cancellations', () => {
+    const exitPromptError = new Error('User force closed the prompt');
+    exitPromptError.name = 'ExitPromptError';
+    handleError(exitPromptError);
+    expect(process.exitCode).toBe(0);
+    // Should not print any error output
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining('▲ error'));
+  });
+
+  it('should exit cleanly (code 0) for AbortPromptError', () => {
+    const abortError = new Error('Prompt was aborted');
+    abortError.name = 'AbortPromptError';
+    handleError(abortError);
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('should exit cleanly (code 0) for CancelPromptError', () => {
+    const cancelError = new Error('Prompt was canceled');
+    cancelError.name = 'CancelPromptError';
+    handleError(cancelError);
+    expect(process.exitCode).toBe(0);
+  });
 });
 
 describe('toError', () => {

@@ -59,41 +59,60 @@ pullCmd
 
     logger.info('Pulling components started', { space, componentName });
 
-    const spinnerGroups = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components groups')}`);
-    const spinnerPresets = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components presets')}`);
-    const spinnerInternalTags = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components internal tags')}`);
-    const spinnerComponents = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.COMPONENTS)('components')}`);
+    // Create progress bars for each resource type (pad titles for alignment)
+    const pad = 'Components'.length;
+    const barGroups = ui.createProgressBar({ title: 'Groups'.padEnd(pad) });
+    const barPresets = ui.createProgressBar({ title: 'Presets'.padEnd(pad) });
+    const barTags = ui.createProgressBar({ title: 'Tags'.padEnd(pad) });
+    const barComponents = ui.createProgressBar({ title: 'Components' });
+
+    // Each fetch is a single API call, so total is 1 per bar
+    barGroups.setTotal(1);
+    barPresets.setTotal(1);
+    barTags.setTotal(1);
+    barComponents.setTotal(1);
 
     try {
-      // Fetch components groups
-      let groups = await fetchComponentGroups(space);
-      spinnerGroups.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Completed in ${spinnerGroups.elapsedTime.toFixed(2)}ms`);
+      // Fetch all resource types in parallel so errors surface atomically
+      const [groupsResult, presetsResult, tagsResult, componentsResult] = await Promise.all([
+        fetchComponentGroups(space),
+        fetchComponentPresets(space),
+        fetchComponentInternalTags(space),
+        componentName ? fetchComponent(space, componentName) : fetchComponents(space),
+      ]);
 
-      // Fetch components presets
-      let presets = await fetchComponentPresets(space);
-      spinnerPresets.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Completed in ${spinnerPresets.elapsedTime.toFixed(2)}ms`);
+      let groups = groupsResult;
+      logger.info('Fetched groups', { count: groups?.length ?? 0 });
+      barGroups.increment();
 
-      // Fetch components internal tags
-      let internalTags = await fetchComponentInternalTags(space);
-      spinnerInternalTags.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Completed in ${spinnerInternalTags.elapsedTime.toFixed(2)}ms`);
+      let presets = presetsResult;
+      logger.info('Fetched presets', { count: presets?.length ?? 0 });
+      barPresets.increment();
 
-      // Save everything using the new structure
+      let internalTags = tagsResult;
+      logger.info('Fetched tags', { count: internalTags?.length ?? 0 });
+      barTags.increment();
+
       let components;
 
       if (componentName) {
-        const component = await fetchComponent(space, componentName);
-        if (!component) {
-          spinnerComponents.failed(`No component found with name "${componentName}"`);
+        if (!componentsResult) {
+          barComponents.stop();
+          ui.stopAllProgressBars();
+          handleError(new CommandError(`No component found with name "${componentName}"`), verbose);
           return;
         }
-        components = [component];
+        components = [componentsResult];
       }
       else {
-        components = await fetchComponents(space);
-        if (!components || components.length === 0) {
-          spinnerComponents.failed(`No components found in the space ${space}`);
+        const allComponents = componentsResult as Awaited<ReturnType<typeof fetchComponents>>;
+        if (!allComponents || allComponents.length === 0) {
+          barComponents.stop();
+          ui.stopAllProgressBars();
+          handleError(new CommandError(`No components found in the space ${space}`), verbose);
           return;
         }
+        components = allComponents;
 
         const hasSelectors = Boolean(filter) || (group && group.length > 0) || (tag && tag.length > 0);
         if (hasSelectors) {
@@ -109,7 +128,8 @@ pullCmd
             { filter, groupUuids, tagIds },
           );
           if (filtered.components.length === 0) {
-            spinnerComponents.failed('No components found matching the given selectors.');
+            barComponents.stop();
+            ui.stopAllProgressBars();
             ui.warn('No components found matching the given selectors.');
             return;
           }
@@ -119,7 +139,15 @@ pullCmd
           internalTags = filtered.internalTags;
         }
       }
-      spinnerComponents.succeed(`${chalk.hex(colorPalette.COMPONENTS)('Components')} - Completed in ${spinnerComponents.elapsedTime.toFixed(2)}ms`);
+      logger.info('Fetched components', { count: components.length });
+      barComponents.increment();
+
+      barGroups.stop();
+      barPresets.stop();
+      barTags.stop();
+      barComponents.stop();
+      ui.stopAllProgressBars();
+
       await saveComponentsToFiles(
         space,
         { components, groups: groups || [], presets: presets || [], internalTags: internalTags || [], datasources: [] },
@@ -154,10 +182,11 @@ pullCmd
       ui.br();
     }
     catch (error) {
-      spinnerGroups.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Groups')} - Failed`);
-      spinnerPresets.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Presets')} - Failed`);
-      spinnerInternalTags.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Tags')} - Failed`);
-      spinnerComponents.failed(`Pulling ${chalk.hex(colorPalette.COMPONENTS)('Components')} - Failed`);
+      barGroups.stop();
+      barPresets.stop();
+      barTags.stop();
+      barComponents.stop();
+      ui.stopAllProgressBars();
       ui.br();
       handleError(error as Error, verbose);
     }

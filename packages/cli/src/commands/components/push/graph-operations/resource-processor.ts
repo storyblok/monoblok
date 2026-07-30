@@ -1,4 +1,4 @@
-import type { DependencyGraph, NodeProcessingResult, ProcessingLevel, PushResults } from './types';
+import type { DependencyGraph, NodeProcessingResult, NodeType, ProcessingLevel, PushResults } from './types';
 import { determineProcessingOrder } from './dependency-graph';
 import { pushComponent } from '../actions';
 import type { ComponentCreate } from '../../../../types';
@@ -6,13 +6,19 @@ import { getActiveConfig } from '../../../../lib/config';
 import { getUI } from '../../../../lib/ui';
 import { getLogger } from '../../../../lib/logger/logger';
 
+interface ProgressBar {
+  increment: (count?: number) => void;
+  setTotal: (total: number) => void;
+  stop: () => void;
+}
+
 // =============================================================================
 // RESOURCE PROCESSING
 // =============================================================================
 
 /**
  * Processes all resources with 2-pass per level approach.
- * Uses a progress bar for visual feedback and structured logging for per-item detail.
+ * Uses separate progress bars per resource type and structured logging for per-item detail.
  */
 export async function processAllResources(
   graph: DependencyGraph,
@@ -25,32 +31,52 @@ export async function processAllResources(
   const levels = determineProcessingOrder(graph);
   const results: PushResults = { successful: [], failed: [] };
 
-  // Calculate total resources for progress tracking
-  const totalResources = levels.reduce((sum, level) => sum + level.nodes.length, 0);
+  // Count resources by type across all levels
+  const countByType = new Map<NodeType, number>();
+  for (const level of levels) {
+    for (const nodeId of level.nodes) {
+      const node = graph.nodes.get(nodeId);
+      if (node) {
+        countByType.set(node.type, (countByType.get(node.type) ?? 0) + 1);
+      }
+    }
+  }
 
   logger.info('Processing order determined', {
     levels: levels.length,
-    totalResources,
+    totalResources: Array.from(countByType.values()).reduce((a, b) => a + b, 0),
     cyclic: levels.filter(l => l.isCyclic).length,
   });
 
-  const bar = ui.createProgressBar({ title: 'Pushing' });
-  bar.setTotal(totalResources);
+  // Create one progress bar per resource type, in display order (pad titles for alignment)
+  const typeOrder: NodeType[] = ['tag', 'group', 'component', 'preset'];
+  const typeLabels: Record<NodeType, string> = { tag: 'Tags', group: 'Groups', component: 'Components', preset: 'Presets' };
+  const pad = Math.max(...Object.values(typeLabels).map(l => l.length));
+  const bars = new Map<NodeType, ProgressBar>();
+
+  for (const type of typeOrder) {
+    const count = countByType.get(type);
+    if (count && count > 0) {
+      const bar = ui.createProgressBar({ title: typeLabels[type].padEnd(pad) });
+      bar.setTotal(count);
+      bars.set(type, bar);
+    }
+  }
 
   try {
     for (const level of levels) {
       if (level.isCyclic) {
-        const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, bar);
+        const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, bars);
         mergeResults(results, cyclicResults);
       }
       else {
-        const levelResults = await processLevel(level.nodes, graph, space, backpressure, bar);
+        const levelResults = await processLevel(level.nodes, graph, space, backpressure, bars);
         mergeResults(results, levelResults);
       }
     }
   }
   finally {
-    bar.stop();
+    for (const bar of bars.values()) { bar.stop(); }
     ui.stopAllProgressBars();
   }
 
@@ -66,7 +92,7 @@ async function processCyclicLevel(
   graph: DependencyGraph,
   space: string,
   backpressure: number,
-  bar: { increment: (count?: number) => void },
+  bars: Map<NodeType, ProgressBar>,
 ): Promise<PushResults> {
   const logger = getLogger();
   logger.warn(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
@@ -75,7 +101,7 @@ async function processCyclicLevel(
   await createStubComponents(level.nodes, graph, space);
 
   // STEP 2: Process the cyclic level normally (references can now resolve)
-  return await processLevel(level.nodes, graph, space, backpressure, bar);
+  return await processLevel(level.nodes, graph, space, backpressure, bars);
 }
 
 /**
@@ -145,7 +171,7 @@ async function processLevel(
   graph: DependencyGraph,
   space: string,
   backpressure: number,
-  bar: { increment: (count?: number) => void },
+  bars: Map<NodeType, ProgressBar>,
 ): Promise<PushResults> {
   const logger = getLogger();
 
@@ -170,7 +196,7 @@ async function processLevel(
     }
 
     // Start processing the node
-    const promise = processNode(nodeId, graph, space, bar);
+    const promise = processNode(nodeId, graph, space, bars);
     promises.push(promise);
     semaphore[slotIndex] = promise;
   }
@@ -186,7 +212,7 @@ async function processNode(
   nodeId: string,
   graph: DependencyGraph,
   space: string,
-  bar: { increment: (count?: number) => void },
+  bars: Map<NodeType, ProgressBar>,
 ): Promise<NodeProcessingResult> {
   const node = graph.nodes.get(nodeId)!;
   const logger = getLogger();
@@ -199,14 +225,14 @@ async function processNode(
 
     const elapsedMs = Date.now() - startTime;
     logger.info(`Upserted ${node.type}: ${node.getName()}`, { elapsedMs });
-    bar.increment();
+    bars.get(node.type)?.increment();
 
     return { name: node.getName() };
   }
   catch (error) {
     const elapsedMs = Date.now() - startTime;
     logger.error(`Failed to upsert ${node.type}: ${node.getName()}`, { elapsedMs, error: error as Error });
-    bar.increment();
+    bars.get(node.type)?.increment();
     return { name: node.getName(), error };
   }
 }

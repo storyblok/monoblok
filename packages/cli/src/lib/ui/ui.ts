@@ -132,20 +132,22 @@ export class UI {
 
   error(message: string, info?: unknown, options: ErrorOptions = {}) {
     const { header = false, margin = false } = options;
+    // Errors always go to stderr, even when UI is disabled (e.g. --no-ui-enabled in CI).
+    const out = this.console ?? { error: (...args: unknown[]) => console.error(...args), log: (...args: unknown[]) => console.error(...args) };
     if (header) {
       const errorHeader = chalk.bgRed.bold.white(` Error `);
-      this.console?.error(errorHeader);
-      this.br();
+      out.error(errorHeader);
+      out.log('');
     }
 
     if (info) {
-      this.console?.error(`${chalk.red.bold('▲ error')} ${message}`, info);
+      out.error(`${chalk.red.bold('▲ error')} ${message}`, info);
     }
     else {
-      this.console?.error(`${chalk.red.bold('▲ error')} ${message}`);
+      out.error(`${chalk.red.bold('▲ error')} ${message}`);
     }
     if (margin) {
-      this.br();
+      out.log('');
     }
   }
 
@@ -163,11 +165,13 @@ export class UI {
   createProgressBar(options: { title: string }): ProgressBar {
     const bar = this.multiBar?.create(0, 0, options);
     if (!bar) { return noopProgressBar; }
+    // cli-progress only substitutes payload tokens ({title}) when the payload is
+    // passed alongside the update. Keep forwarding the original options on every call.
     return {
-      increment: (count = 1) => bar.increment(count),
+      increment: (count = 1) => bar.increment(count, options),
       // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
       // Floor at 1 so an empty phase stays a clean 0/1 instead.
-      setTotal: total => bar.setTotal(Math.max(total, 1)),
+      setTotal: (total) => { bar.setTotal(Math.max(total, 1)); bar.update(options); },
       stop: () => bar.stop(),
     };
   }

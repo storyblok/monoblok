@@ -68,7 +68,23 @@ function handleVerboseError(error: unknown): void {
   }
 }
 
+/**
+ * Detect user-initiated prompt cancellation (Ctrl+C or Escape in @inquirer/prompts).
+ * These are not application errors — exit cleanly with code 0.
+ */
+function isPromptCancellation(error: Error): boolean {
+  return error.name === 'ExitPromptError'
+    || error.name === 'AbortPromptError'
+    || error.name === 'CancelPromptError';
+}
+
 export function handleError(error: Error | FetchError, verbose = false, context?: LogContext): void {
+  // Prompt cancellations (Ctrl+C, Escape) are not errors — exit silently with code 0
+  if (isPromptCancellation(error as Error)) {
+    process.exitCode = 0;
+    return;
+  }
+
   const ui = getUI();
 
   // Print the message stack if it exists
@@ -90,12 +106,13 @@ export function handleError(error: Error | FetchError, verbose = false, context?
     handleVerboseError(error);
   }
   else {
-    ui.br();
-    ui.info(`For more information about the error, run the command with the \`--verbose\` flag`, { margin: false });
+    // Always print the verbose hint to stderr, even with --no-ui-enabled (CI)
+    console.error('');
+    console.error(`For more information about the error, run the command with the \`--verbose\` flag`);
   }
 
   if (!process.env.VITEST) {
-    ui.br();
+    console.error('');
   }
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 

@@ -76,19 +76,22 @@ describe('ui', () => {
   });
 
   describe('disabled mode', () => {
-    it('should produce no output when disabled', () => {
+    it('should suppress decorative output when disabled but still show errors', () => {
       const ui = new UI({ enabled: false });
       ui.title('title', '#000');
       ui.ok('ok');
       ui.info('info');
       ui.warn('warn');
-      ui.error('error');
       ui.log('log');
       ui.list(['item']);
       ui.br();
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
       expect(logSpy).not.toHaveBeenCalled();
+
+      // Errors always reach stderr even when UI is disabled (critical for CI)
+      ui.error('failure');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('failure'));
     });
 
     it('should return a noop spinner when disabled', () => {
@@ -111,15 +114,18 @@ describe('ui', () => {
   });
 
   describe('setEnabled', () => {
-    it('should disable output on an initially enabled instance', () => {
+    it('should disable decorative output but keep errors on an initially enabled instance', () => {
       const ui = new UI({ enabled: true });
       ui.setEnabled(false);
       ui.ok('should not appear');
       ui.info('should not appear');
       ui.warn('should not appear');
-      ui.error('should not appear');
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
+
+      // Errors still reach stderr
+      ui.error('visible error');
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('visible error'));
     });
 
     it('should enable output on an initially disabled instance', () => {

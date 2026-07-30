@@ -74,6 +74,7 @@
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",
     "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/schema": "workspace:*",
     "@types/cli-progress": "^3.11.6",
     "@types/diff": "^8.0.0",
     "@types/inquirer": "^9.0.8",

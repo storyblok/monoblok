@@ -167,3 +167,94 @@ export function stripKeys(obj: Record<string, unknown>, keysToStrip: Set<string>
   }
   return result;
 }
+
+/**
+ * Converts a string to kebab-case, keeping only filesystem/shell-safe
+ * characters. Handles snake_case, camelCase, PascalCase, and space-separated
+ * words; any remaining non-`[a-z0-9-]` characters collapse to a single `-`.
+ */
+export function toKebabCase(str: string): string {
+  return str
+    .replace(/[\s_]+/g, '-')
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Guards a generated name against the two shapes that are not valid JS/TS
+ * identifiers: empty, and starting with a digit. Storyblok accepts component
+ * names like `2_col`, whose camelCase/PascalCase form would otherwise be emitted
+ * as a bare `2Col` and make the whole generated file a syntax error. Prefixing
+ * `_` keeps the name readable and collision-free (`_2Col`).
+ *
+ * Apply this to the *finished* identifier, after any fixed suffix is appended:
+ * `Foo` + `BlockDefinition` needs no guard, but a leading digit still does.
+ */
+export function toSafeIdentifier(identifier: string): string {
+  if (!identifier) { return '_'; }
+  return /^\d/.test(identifier) ? `_${identifier}` : identifier;
+}
+
+/**
+ * Resolves an ordered list of raw names to unique variable names. Names that
+ * sanitize to the same identifier get a numeric suffix (`…2`, `…3`), so the
+ * generated `export const`s and schema-object keys never collide. Index-aligned
+ * to `rawNames`.
+ */
+export function resolveVarNames(rawNames: string[], baseVarName: (name: string) => string): string[] {
+  const used = new Set<string>();
+  return rawNames.map((raw) => {
+    const base = baseVarName(raw);
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate)) { candidate = `${base}${n++}`; }
+    used.add(candidate);
+    return candidate;
+  });
+}
+
+/**
+ * Resolves an ordered list of already-sanitized base file names to unique ones.
+ * `toKebabCase` is lossy (it collapses `_`/`-` runs and strips symbols), so two
+ * distinct source names can produce the same file name even though the raw names
+ * are unique. Collisions get a `-2`, `-3`, … suffix so generated files never
+ * overwrite each other and each `schema.ts` import resolves unambiguously.
+ *
+ * `dirKeys` scopes uniqueness per directory: blocks live in their group
+ * subdirectory, so two blocks with the same file name in *different* group
+ * directories don't collide on disk and must keep their shared name. Pass the
+ * containing directory (e.g. the joined group path) per index; omit for a flat
+ * layout (datasources). Index-aligned to `baseNames`.
+ */
+export function resolveFileNames(baseNames: string[], dirKeys?: string[]): string[] {
+  const usedByDir = new Map<string, Set<string>>();
+  return baseNames.map((base, i) => {
+    const dir = dirKeys?.[i] ?? '';
+    let used = usedByDir.get(dir);
+    if (!used) { used = new Set<string>(); usedByDir.set(dir, used); }
+    let candidate = base;
+    let n = 2;
+    while (used.has(candidate)) { candidate = `${base}-${n++}`; }
+    used.add(candidate);
+    return candidate;
+  });
+}
+
+/** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */
+export function componentFileName(name: string): string {
+  return toKebabCase(name);
+}
+
+/** Sorts schema fields by `pos` for stable ordering. */
+export function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [string, Record<string, unknown>][] {
+  return Object.entries(schema)
+    .filter(([key]) => key !== '_uid' && key !== 'component')
+    .sort(([, a], [, b]) => {
+      const posA = typeof a.pos === 'number' ? a.pos : Infinity;
+      const posB = typeof b.pos === 'number' ? b.pos : Infinity;
+      return posA - posB;
+    });
+}

@@ -7,6 +7,34 @@ import { colorPalette } from '../../../constants';
 import '../index';
 import { typesCommand } from '../command';
 import { readComponentsFiles } from '../../components/push/actions';
+import { generateSchemaTypes } from './schema-types';
+
+const uiTitleMock = vi.hoisted(() => vi.fn());
+const uiWarnMock = vi.hoisted(() => vi.fn());
+const uiInfoMock = vi.hoisted(() => vi.fn());
+const uiOkMock = vi.hoisted(() => vi.fn());
+const uiBrMock = vi.hoisted(() => vi.fn());
+const uiSpinnerSucceedMock = vi.hoisted(() => vi.fn());
+const uiSpinnerFailedMock = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../utils/ui', () => ({
+  getUI: () => ({
+    title: uiTitleMock,
+    warn: uiWarnMock,
+    info: uiInfoMock,
+    ok: uiOkMock,
+    br: uiBrMock,
+    createSpinner: () => ({ start: vi.fn(), succeed: uiSpinnerSucceedMock, failed: uiSpinnerFailedMock }),
+  }),
+}));
+
+vi.mock('./schema-types', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    generateSchemaTypes: vi.fn(),
+  };
+});
 
 const mockResponse = [{
   name: 'component-name',
@@ -205,6 +233,188 @@ describe('types generate', () => {
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({
         compilerOptions: '/path/to/options.json',
       }));
+    });
+
+    it('warns that the legacy generator is deprecated when --future-schema is absent', async () => {
+      vi.mocked(readComponentsFiles).mockResolvedValue(mockSpaceData);
+      vi.mocked(generateStoryblokTypes).mockResolvedValue(true);
+      vi.mocked(generateTypes).mockResolvedValue('// Generated types');
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '12345']);
+
+      expect(konsola.warn).toHaveBeenCalledWith(expect.stringContaining('--future-schema'));
+    });
+  });
+
+  describe('future-schema mode', () => {
+    it('rejects legacy-only flags when --future-schema is used', async () => {
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema', '--strict']);
+
+      expect(konsola.error).toHaveBeenCalledWith(
+        expect.objectContaining({ message: expect.stringContaining('--strict') }),
+        false,
+      );
+    });
+
+    it('generates schema types and reports success, per-file output, and unmapped field types', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiSpinnerSucceedMock).toHaveBeenCalled();
+      expect(uiOkMock).toHaveBeenCalledWith('/project/.storyblok/types/295018/storyblok-schema.d.ts');
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('storyblok-colorpicker'));
+      expect(uiInfoMock).toHaveBeenCalledWith(expect.stringContaining('@storyblok/schema'));
+      expect(uiSpinnerFailedMock).not.toHaveBeenCalled();
+    });
+
+    it('points the unmapped-field-type warning at the module it read instead of the default path', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: { resolved: true, path: '/project/src/storyblok/field-plugins.ts' },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('src/storyblok/field-plugins.ts'));
+      expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('--field-plugins at the module'));
+    });
+
+    // `--path` moves the convention path, so naming the default would point the
+    // user at a file they may already have.
+    it('names the searched path, not the default, when no field-plugins module resolved', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/config/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/config/schema/schema.ts' },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('config/schema/schema.ts'));
+      expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('.storyblok/schema/schema.ts'));
+    });
+
+    // `schema init` writes a `schema` export with no `fieldPlugins` key, so this
+    // is the case a user following the docs hits first. Telling them to place a
+    // module where one already sits reads as the command not seeing it.
+    it('says the module at the convention path exports the wrong name, rather than telling the user to create it', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: { resolved: false, reason: 'unusable', path: '/project/.storyblok/schema/schema.ts' },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('exports neither'));
+      expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('place it at'));
+    });
+
+    it('names a near-miss export the convention-path module should be renamed from', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: ['/project/.storyblok/types/295018/storyblok-schema.d.ts'],
+        prunedFiles: [],
+        unmappedFieldTypes: ['storyblok-colorpicker'],
+        fieldPlugins: {
+          resolved: false,
+          reason: 'unusable',
+          path: '/project/.storyblok/schema/schema.ts',
+          nearMissExport: 'myPlugins',
+        },
+      });
+
+      await typesCommand.parseAsync(['node', 'test', 'generate', '--space', '295018', '--future-schema']);
+
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('myPlugins'));
+    });
+
+    it('forwards --field-plugins, --type-prefix, --type-suffix, and --path to the generator', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: [],
+        prunedFiles: [],
+        unmappedFieldTypes: [],
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
+      });
+
+      await typesCommand.parseAsync([
+        'node',
+        'test',
+        'generate',
+        '--space',
+        '295018',
+        '--future-schema',
+        '--field-plugins',
+        './src/storyblok/plugins.ts',
+        '--type-prefix',
+        'Sb',
+        '--type-suffix',
+        'Type',
+      ]);
+
+      expect(generateSchemaTypes).toHaveBeenCalledWith(expect.objectContaining({
+        space: '295018',
+        fieldPluginsPath: './src/storyblok/plugins.ts',
+        typePrefix: 'Sb',
+        typeSuffix: 'Type',
+      }));
+    });
+
+    it.each(['storyblok-components', 'storyblok-components.d.ts'])(
+      'warns that --filename %s collides with the legacy generator output',
+      async (filename) => {
+        vi.mocked(generateSchemaTypes).mockResolvedValue({
+          files: [],
+          prunedFiles: [],
+          unmappedFieldTypes: [],
+          fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
+        });
+
+        await typesCommand.parseAsync([
+          'node',
+          'test',
+          'generate',
+          '--space',
+          '295018',
+          '--future-schema',
+          '--filename',
+          filename,
+        ]);
+
+        expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining('--filename'));
+      },
+    );
+
+    it('does not warn about a --filename the legacy generator never writes', async () => {
+      vi.mocked(generateSchemaTypes).mockResolvedValue({
+        files: [],
+        prunedFiles: [],
+        unmappedFieldTypes: [],
+        fieldPlugins: { resolved: false, reason: 'missing', path: '/project/.storyblok/schema/schema.ts' },
+      });
+
+      await typesCommand.parseAsync([
+        'node',
+        'test',
+        'generate',
+        '--space',
+        '295018',
+        '--future-schema',
+        '--separate-files',
+        '--filename',
+        'shared',
+      ]);
+
+      expect(uiWarnMock).not.toHaveBeenCalledWith(expect.stringContaining('--filename'));
     });
   });
 });

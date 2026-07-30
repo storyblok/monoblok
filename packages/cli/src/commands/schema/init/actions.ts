@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'pathe';
 
 import type { Component, ComponentFolder, Datasource } from '../../../types';
+import { SCHEMA_ENTRY_FILENAME } from '../constants';
 import { buildGroupPathByUuid } from '../folders';
 import {
   generateComponentFile,
@@ -82,7 +83,7 @@ export async function writeSchemaFiles(
   }
 
   // Write schema.ts (entry point with schema object, types, and Story alias)
-  const schemaPath = join(targetPath, 'schema.ts');
+  const schemaPath = join(targetPath, SCHEMA_ENTRY_FILENAME);
   await writeFileWithDirs(schemaPath, generateSchemaFile(resolvedComponents, resolvedDatasources, resolvedFolders));
   writtenFiles.push(schemaPath);
 

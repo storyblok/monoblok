@@ -21,6 +21,13 @@ export interface FieldPlugin<
  * validator (Zod, Valibot, ArkType, or hand-written) and is retained for
  * runtime use. A thin, strongly-typed identity helper — it does not validate.
  *
+ * The value type is read from the validator's `~standard.types`, not from what
+ * its `validate` returns. A hand-written validator must therefore be annotated
+ * (`const v: StandardSchemaV1<Color, Color> = { … }`) or declare `types`
+ * explicitly. A bare object literal satisfies the constraint and registers the
+ * `fieldType` — so nothing warns — while the field still resolves to the untyped
+ * `PluginFieldValue` fallback, which reads as the declaration having no effect.
+ *
  * @example
  * const colorPicker = defineFieldPlugin({
  *   fieldType: 'my-custom-color-picker',

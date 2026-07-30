@@ -3,7 +3,10 @@
 The `types generate` command generates TypeScript type definitions (`.d.ts` files) for your Storyblok component schemas. This helps you maintain type safety when working with your Storyblok content.
 
 > [!WARNING]
-> Before generating types, first pull your components using the `components pull` command. Make sure to use the same flags (`--separate-files`, `--suffix`) that you used when pulling components to ensure the types are generated correctly.
+> The default (legacy) generator is deprecated: it ignores field `required` flags, `bloks` field whitelists, and the nestable versus root distinction. Use `--future-schema` instead, which derives types from the space schema via `@storyblok/schema`.
+
+> [!WARNING]
+> Before generating types with the legacy generator, first pull your components using the `components pull` command. Make sure to use the same flags (`--separate-files`, `--suffix`) that you used when pulling components to ensure the types are generated correctly. `--future-schema` fetches components itself and needs no prior pull.
 
 ## Basic Usage
 
@@ -15,11 +18,14 @@ storyblok types generate --space <spaceId>
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `--future-schema` | Generate types derived from the space schema instead of the deprecated legacy generator. Not compatible with `--strict`, `--suffix`, `--custom-fields-parser`, or `--compiler-options` | `false` |
+| `--field-plugins <path>` | Path to a module exporting your `defineFieldPlugin` declarations, used to type `custom` fields. Requires `--future-schema` | `.storyblok/schema/schema.ts` |
 | `--sf, --separate-files` | Generate separate type definition files for each component | `false` |
 | `--strict` | Enable strict mode with no loose typing | `false` |
-| `--filename <name>` | File name for the generated type files | `storyblok` |
+| `--filename <name>` | Base file name for the generated type files. The legacy generator ignores it under `--separate-files`; `--future-schema` uses it to name the main file | `storyblok`, or `storyblok-schema` under `--future-schema` |
 | `--type-prefix <prefix>` | Prefix to be prepended to all generated component type names | - |
-| `--suffix <suffix>` | Suffix for component names | - |
+| `--type-suffix <suffix>` | Suffix to be appended to all generated component type names | - |
+| `--suffix <suffix>` | Suffix for component names, used to select the pulled component files the legacy generator reads | - |
 | `--custom-fields-parser <path>` | Path to the parser file for Custom Field Types | - |
 | `--compiler-options <options>` | Path to the compiler options from json-schema-to-typescript | - |
 | `--space <spaceId>` | (Required) The ID of your Storyblok space | - |
@@ -49,11 +55,11 @@ storyblok types generate --space 12345 --separate-files
 
 ## File Structure
 
-The command will generate two files:
+Both generators write under `.storyblok/types/`, where the `{spaceId}` folder corresponds to the ID of your Storyblok space. Use `--path` to write somewhere other than `.storyblok`.
+
+The legacy generator generates two files:
 1. A `storyblok.d.ts` file with base Storyblok types (like `StoryblokAsset`, `StoryblokRichtext`, etc.)
 2. A `storyblok-components.d.ts` file for each space inside the `.storyblok/types/{spaceId}/` directory with your component types
-
-### Example Structure
 
 When running:
 ```bash
@@ -70,10 +76,6 @@ The following structure will be created:
         └── storyblok-components.d.ts        # Your component types
 ```
 
-> **Note:**
-> The `{spaceId}` folder corresponds to the ID of your Storyblok space.
-> The generated files are always placed under `.storyblok/types/` and `.storyblok/types/{spaceId}/`.
-
 ## Notes
 
 - The command requires you to be logged in to Storyblok
@@ -81,3 +83,5 @@ The following structure will be created:
 - The generated types are based on your component schemas in Storyblok
 - When using `--strict`, the generated types will be more precise but may require more explicit type handling in your code
 - Custom field types can be handled by providing a parser file with `--custom-fields-parser`
+- Files generated with `--future-schema` import from `@storyblok/schema`, so install it as a dev dependency: `npm i -D @storyblok/schema`. It is a types-only import and never reaches your bundle
+- Under `--future-schema`, custom fields resolve through `defineFieldPlugin` declarations. Point `--field-plugins` at the module that exports them, or place it at the default `.storyblok/schema/schema.ts`. Custom fields with no matching declaration fall back to an untyped value and the command warns which `field_type`s were unmapped

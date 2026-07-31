@@ -19,7 +19,7 @@ export const kitchenSinkBlock = defineBlock({
       toolbar: ['bold', 'italic', 'code'],
     }),
     defineField('number_field', { type: 'number', min_value: 0, max_value: 9999, decimals: 2, steps: 0.01 }),
-    defineField('boolean_field', { type: 'boolean', inline_label: true, default_value: 'false' }),
+    defineField('boolean_field', { type: 'boolean', inline_label: true, default_value: false }),
     defineField('datetime_field', { type: 'datetime' }),
     defineField('asset_field', { type: 'asset', filetypes: ['images'] }),
     defineField('multiasset_field', { type: 'multiasset', filetypes: ['images', 'videos'] }),

@@ -25,7 +25,7 @@ export const galleryBlock = defineBlock({
     defineField('show_captions', {
       type: 'boolean',
       inline_label: true,
-      default_value: 'true',
+      default_value: true,
     }),
   ],
 });

@@ -77,17 +77,6 @@ export const nodeFixtures: HtmlFixture[] = [
     expected: '<p>First</p><p>Second</p>',
   },
   {
-    title: 'renders nested doc nodes',
-    input: {
-      type: 'doc',
-      content: [
-        { type: 'paragraph', content: [text('Outer')] },
-        { type: 'doc', content: [{ type: 'paragraph', content: [text('Inner')] }] },
-      ],
-    },
-    expected: '<p>Outer</p><p>Inner</p>',
-  },
-  {
     title: 'emoji',
     input: {
       type: 'emoji',

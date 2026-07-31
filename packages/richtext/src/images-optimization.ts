@@ -1,4 +1,4 @@
-import type { SbRichTextImageOptions } from './types';
+import type { StoryblokRichTextImageOptions } from './types';
 
 /**
  * Builds a Storyblok image object with optimized URL and attributes.
@@ -25,7 +25,7 @@ import type { SbRichTextImageOptions } from './types';
  *
  * <img {...image.attrs} src={image.src} />
  */
-export function optimizeImage(src: string, options?: boolean | Partial<SbRichTextImageOptions>): { src: string; attrs: Record<string, unknown> } {
+export function optimizeImage(src: string, options?: boolean | Partial<StoryblokRichTextImageOptions>): { src: string; attrs: Record<string, unknown> } {
   if (!options) {
     return { src, attrs: {} };
   }

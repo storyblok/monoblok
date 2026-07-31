@@ -1,28 +1,31 @@
-import type { SbRichTextMark, SbRichTextNode } from './types.generated';
+import type { RichTextMark, RichTextNode } from '../generated/overlay/types.gen';
 import { deepEqual } from '../utils';
 
 // ============================================================================
 // Link Mark Helpers
 // ============================================================================
 
+export type LinkMark = Extract<RichTextMark, { type: 'link' }>;
+
 /**
  * Gets the link mark from a text node, or null if not present.
  * @param node - The node to check
  * @returns The link mark if found, null otherwise
  */
-export function getTextNodeLinkMark(node: SbRichTextNode): LinkMark | null {
-  if (node.type !== 'text' || !node.marks) {
+export function getTextNodeLinkMark(node: RichTextNode): LinkMark | null {
+  if (node.type !== 'text') {
     return null;
   }
-
+  if (!node.marks) {
+    return null;
+  }
   for (const mark of node.marks) {
     if (mark.type === 'link') {
-      return mark;
+      return mark as LinkMark;
     }
   }
   return null;
 }
-export type LinkMark = SbRichTextMark & { type: 'link' };
 
 /**
  * Checks if two link marks have identical attributes.
@@ -45,11 +48,11 @@ export function areLinkMarksEqual(markA: LinkMark | null, markB: LinkMark | null
  * @param node - The text node
  * @returns Array of marks excluding the link mark
  */
-export function getInnerMarks(node: SbRichTextNode): SbRichTextMark[] {
-  if (node.type !== 'text' || !node.marks) {
+export function getInnerMarks(node: RichTextNode): RichTextMark[] {
+  if (node.type !== 'text') {
     return [];
   }
-  return node.marks.filter(m => m.type !== 'link');
+  return node.marks?.filter(m => m.type !== 'link') ?? [];
 }
 
 /**
@@ -61,12 +64,12 @@ export function getInnerMarks(node: SbRichTextNode): SbRichTextMark[] {
  * @param children - Array of child nodes to group
  * @returns Array of node groups for rendering
  */
-export function groupLinkNodes(children: SbRichTextNode[]): Array<{
-  nodes: SbRichTextNode[];
+export function groupLinkNodes(children: RichTextNode[]): Array<{
+  nodes: RichTextNode[];
   linkMark: LinkMark | null;
   _key: string;
 }> {
-  const groups: Array<{ nodes: SbRichTextNode[]; linkMark: LinkMark | null; _key: string }> = [];
+  const groups: Array<{ nodes: RichTextNode[]; linkMark: LinkMark | null; _key: string }> = [];
   let i = 0;
   const len = children.length;
 
@@ -76,7 +79,7 @@ export function groupLinkNodes(children: SbRichTextNode[]): Array<{
 
     if (linkMark) {
       // Find end of link group (consecutive text nodes with same link)
-      const groupNodes: SbRichTextNode[] = [node];
+      const groupNodes: RichTextNode[] = [node];
       let end = i + 1;
 
       while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
@@ -106,7 +109,10 @@ export function groupLinkNodes(children: SbRichTextNode[]): Array<{
  * @param row - The table row node to check
  * @returns True if all cells are tableHeader type
  */
-export function isTableHeaderRow(row: SbRichTextNode): boolean {
+export function isTableHeaderRow(row: RichTextNode): boolean {
+  if (row.type !== 'tableRow') {
+    return false;
+  }
   const cells = row.content;
   if (!cells?.length) {
     return false;
@@ -126,9 +132,9 @@ export function isTableHeaderRow(row: SbRichTextNode): boolean {
  * @param rows - Array of table row nodes
  * @returns Object with headerRows and bodyRows arrays
  */
-export function splitTableRows(rows: SbRichTextNode[] | undefined): {
-  headerRows: SbRichTextNode[];
-  bodyRows: SbRichTextNode[];
+export function splitTableRows(rows: RichTextNode[] | undefined): {
+  headerRows: RichTextNode[];
+  bodyRows: RichTextNode[];
 } {
   if (!rows?.length) {
     return { headerRows: [], bodyRows: [] };

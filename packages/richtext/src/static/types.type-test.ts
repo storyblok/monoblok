@@ -1,5 +1,5 @@
 /**
- * Compile-time regression tests for the `SbRichTextNode` / `SbRichTextDoc`
+ * Compile-time regression tests for the `StoryblokRichTextNode` / `StoryblokRichTextDoc`
  * contract reported in https://github.com/storyblok/monoblok/issues/16.
  *
  * The Storyblok API returns the root `doc` node with a `content` array, but
@@ -7,26 +7,26 @@
  * The types must mirror that: `content` is required on the document root and
  * optional on every other node.
  *
- * These assertions are checked by `pnpm test:types` (`tsc --noEmit`) and are
+ * These assertions are checked by `pnpm typecheck` (`tsc --noEmit`) and are
  * intentionally never executed at runtime.
  */
-import type { SbRichTextDoc, SbRichTextNode } from './index';
+import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
 
 // A `doc` with a `content` array is valid.
-export const docWithContent: SbRichTextDoc = {
+export const docWithContent: RichTextDoc = {
   type: 'doc',
   content: [],
 };
 
 // The document root must include `content`.
 // @ts-expect-error - `content` is required on the `doc` node.
-export const docWithoutContent: SbRichTextDoc = {
+export const docWithoutContent: RichTextDoc = {
   type: 'doc',
 };
 
 // Nested nodes may omit `content`. This is the exact case from #16 that the
 // previous type wrongly rejected.
-export const docWithContentlessChildren: SbRichTextDoc = {
+export const docWithContentlessChildren: RichTextDoc = {
   type: 'doc',
   content: [
     { type: 'paragraph' },
@@ -38,7 +38,7 @@ export const docWithContentlessChildren: SbRichTextDoc = {
   ],
 };
 
-// A bare nested node without `content` is assignable to `SbRichTextNode`.
-export const contentlessNode: SbRichTextNode = {
+// A bare nested node without `content` is assignable to `StoryblokRichTextNode`.
+export const contentlessNode: RichTextNode = {
   type: 'paragraph',
 };

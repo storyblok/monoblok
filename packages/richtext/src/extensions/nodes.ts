@@ -1,8 +1,13 @@
 import Emoji from '@tiptap/extension-emoji';
-import type { CodeBlockAttrs, ExtensionOptions } from './richtext-attrs';
+import type { ExtensionAttrs, ExtensionOptions } from './richtext-attrs';
 import { Node } from '@tiptap/core';
 import { BulletList, ListItem, OrderedList } from '@tiptap/extension-list';
-import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
+import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@tiptap/extension-table';
 import Blockquote from '@tiptap/extension-blockquote';
 import CodeBlock from '@tiptap/extension-code-block';
 import Document from '@tiptap/extension-document';
@@ -16,20 +21,21 @@ import { mapToAttribute } from './utils';
 
 export { Document, Text };
 
-export function buildEmojiExtension(
-  options?: ExtensionOptions<'emoji'>,
-) {
+export function buildEmojiExtension(options?: ExtensionOptions<'emoji'>) {
   const parser = options?.attributeParsers;
 
   return Emoji.extend({
-    parseHTML: options?.parseHTML ?? (() => {
-      return [{ tag: 'img[data-emoji]' }, { tag: 'span[data-emoji]' }];
-    }),
+    parseHTML:
+      options?.parseHTML
+      ?? (() => {
+        return [{ tag: 'img[data-emoji]' }, { tag: 'span[data-emoji]' }];
+      }),
     addAttributes() {
       return {
         fallbackImage: {
           default: null,
-          parseHTML: parser?.fallbackImage ?? mapToAttribute(['src', 'data-src']),
+          parseHTML:
+            parser?.fallbackImage ?? mapToAttribute(['src', 'data-src']),
         },
         name: {
           default: null,
@@ -42,10 +48,14 @@ export function buildEmojiExtension(
       };
     },
     renderHTML({ HTMLAttributes }) {
-      return ['span', {
-        'data-emoji': HTMLAttributes.emoji,
-        'data-name': HTMLAttributes.name,
-      }, HTMLAttributes.emoji];
+      return [
+        'span',
+        {
+          'data-emoji': HTMLAttributes.emoji,
+          'data-name': HTMLAttributes.name,
+        },
+        HTMLAttributes.emoji,
+      ];
     },
   });
 }
@@ -58,14 +68,17 @@ export function buildBlockquoteExtension() {
   });
 }
 
-export function buildParagraphExtension(options?: ExtensionOptions<'paragraph'>) {
+export function buildParagraphExtension(
+  options?: ExtensionOptions<'paragraph'>,
+) {
   const parser = options?.attributeParsers;
   return Paragraph.extend({
     addAttributes() {
       return {
         textAlign: {
           default: null,
-          parseHTML: parser?.textAlign || mapToAttribute(undefined, 'text-align'),
+          parseHTML:
+            parser?.textAlign || mapToAttribute(undefined, 'text-align'),
         },
       };
     },
@@ -83,7 +96,8 @@ export function buildHeadingExtension(options?: ExtensionOptions<'heading'>) {
         },
         textAlign: {
           default: null,
-          parseHTML: parser?.textAlign || mapToAttribute(undefined, 'text-align'),
+          parseHTML:
+            parser?.textAlign || mapToAttribute(undefined, 'text-align'),
         },
       };
     },
@@ -107,7 +121,9 @@ export function buildBulletListExtension() {
   });
 }
 
-export function buildOrderedListExtension(options?: ExtensionOptions<'ordered_list'>) {
+export function buildOrderedListExtension(
+  options?: ExtensionOptions<'ordered_list'>,
+) {
   const parser = options?.attributeParsers;
   return OrderedList.extend({
     name: 'ordered_list',
@@ -115,16 +131,19 @@ export function buildOrderedListExtension(options?: ExtensionOptions<'ordered_li
       return {
         order: {
           default: 1,
-          parseHTML: parser?.order || ((el) => {
-            const value = el.getAttribute('start') || el.getAttribute('data-order');
-            if (value) {
-              const num = Number(value);
-              if (!Number.isNaN(num)) {
-                return num;
+          parseHTML:
+            parser?.order
+            || ((el) => {
+              const value
+                = el.getAttribute('start') || el.getAttribute('data-order');
+              if (value) {
+                const num = Number(value);
+                if (!Number.isNaN(num)) {
+                  return num;
+                }
               }
-            }
-            return 1;
-          }),
+              return 1;
+            }),
         },
       };
     },
@@ -147,7 +166,9 @@ export function buildListItemExtension() {
   });
 }
 
-export function buildCodeBlockExtension(options?: ExtensionOptions<'code_block'>) {
+export function buildCodeBlockExtension(
+  options?: ExtensionOptions<'code_block'>,
+) {
   const parser = options?.attributeParsers;
   return CodeBlock.extend({
     name: 'code_block',
@@ -155,28 +176,29 @@ export function buildCodeBlockExtension(options?: ExtensionOptions<'code_block'>
       return {
         class: {
           default: null,
-          parseHTML: parser?.class || ((el) => {
-            const code = el.querySelector('code');
+          parseHTML:
+            parser?.class
+            || ((el) => {
+              const code = el.querySelector('code');
 
-            // Priority 1: code element
-            if (code) {
+              // Priority 1: code element
+              if (code) {
+                return (
+                  code.getAttribute('data-language')
+                  || code.getAttribute('class')
+                );
+              }
+
+              // Priority 2: pre element
               return (
-                code.getAttribute('data-language')
-                || code.getAttribute('class')
+                el.getAttribute('data-language') || el.getAttribute('class')
               );
-            }
-
-            // Priority 2: pre element
-            return (
-              el.getAttribute('data-language')
-              || el.getAttribute('class')
-            );
-          }),
+            }),
         },
       };
     },
     renderHTML({ HTMLAttributes }) {
-      const attrs = HTMLAttributes as CodeBlockAttrs;
+      const attrs = HTMLAttributes as ExtensionAttrs<'code_block'>;
 
       return ['pre', ['code', { class: attrs.class }, 0]];
     },
@@ -229,7 +251,9 @@ const parseTableWidth = (element: HTMLElement): number[] | null => {
   return null;
 };
 
-export function buildTableCellExtension(options?: ExtensionOptions<'tableCell'>) {
+export function buildTableCellExtension(
+  options?: ExtensionOptions<'tableCell'>,
+) {
   const parser = options?.attributeParsers;
 
   return TableCell.extend({
@@ -243,14 +267,18 @@ export function buildTableCellExtension(options?: ExtensionOptions<'tableCell'>)
         },
         backgroundColor: {
           default: null,
-          parseHTML: parser?.backgroundColor ?? mapToAttribute(undefined, 'background-color'),
+          parseHTML:
+            parser?.backgroundColor
+            ?? mapToAttribute(undefined, 'background-color'),
         },
       };
     },
   });
 }
 
-export function buildTableHeaderExtension(options?: ExtensionOptions<'tableHeader'>) {
+export function buildTableHeaderExtension(
+  options?: ExtensionOptions<'tableHeader'>,
+) {
   const parser = options?.attributeParsers;
 
   return TableHeader.extend({
@@ -267,9 +295,7 @@ export function buildTableHeaderExtension(options?: ExtensionOptions<'tableHeade
   });
 }
 
-export function buildImageExtension(
-  options?: ExtensionOptions<'image'>,
-) {
+export function buildImageExtension(options?: ExtensionOptions<'image'>) {
   const parser = options?.attributeParsers;
   return Image.extend({
     addAttributes() {
@@ -319,12 +345,13 @@ export function buildComponentBlokExtension(
     addAttributes() {
       return {
         id: { default: null, parseHTML: parser?.id },
-        body: { default: [], parseHTML: parser?.body,
-        },
+        body: { default: [], parseHTML: parser?.body },
       };
     },
-    parseHTML: options?.parseHTML ?? (() => {
-      return [{ tag: 'div[data-blok]' }];
-    }),
+    parseHTML:
+      options?.parseHTML
+      ?? (() => {
+        return [{ tag: 'div[data-blok]' }];
+      }),
   });
 }

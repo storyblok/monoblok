@@ -1,7 +1,29 @@
 import { escapeHtml } from './utils';
 import { optimizeImage } from './images-optimization';
-import { areLinkMarksEqual, attrsToHtmlString, getStaticChildren, getTextNodeLinkMark, isSelfClosing, isTableHeaderRow, normalizeNodes, processAttrs, resolveTag, styleToString } from './static';
-import type { RenderSpec, SbRichTextElement, SbRichTextInput, SbRichTextMark, SbRichTextNode, SbRichTextRenderContext, SbRichTextTextNode } from './static';
+import {
+  areLinkMarksEqual,
+  attrsToHtmlString,
+  getStaticChildren,
+  getTextNodeLinkMark,
+  isSelfClosing,
+  isTableHeaderRow,
+  normalizeNodes,
+  processAttrs,
+  resolveTag,
+  styleToString,
+} from './static';
+import type {
+  StoryblokRichTextElement,
+  StoryblokRichTextInput,
+  StoryblokRichTextRenderContext,
+  StoryblokRichTextRenderSpec,
+} from './static';
+import type {
+  RichTextFieldValueTextNode,
+  RichTextMark,
+  RichTextNode,
+} from './generated/overlay/types.gen';
+
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
  *
@@ -19,28 +41,59 @@ import type { RenderSpec, SbRichTextElement, SbRichTextInput, SbRichTextMark, Sb
  * ```
  */
 export function renderRichText(
-  document: SbRichTextInput,
-  context?: SbRichTextRenderContext,
+  document: StoryblokRichTextInput,
+  context?: StoryblokRichTextRenderContext,
 ): string {
   const nodes = normalizeNodes(document);
   return nodes?.length ? renderChildren(nodes, context) : '';
 }
-type NodeRenderer = (props: SbRichTextNode & { children: string; context?: SbRichTextRenderContext }) => string;
-type MarkRenderer = (props: SbRichTextMark & { children: string; context?: SbRichTextRenderContext }) => string;
+
+type NodeRenderer = (
+  props: RichTextNode & {
+    children: string;
+    context?: StoryblokRichTextRenderContext;
+  },
+) => string;
+type MarkRenderer = (
+  props: RichTextMark & {
+    children: string;
+    context?: StoryblokRichTextRenderContext;
+  },
+) => string;
+
+/** Returns the `attrs` object of a node as a plain record, or undefined when absent. */
+function nodeAttrs(node: RichTextNode): Record<string, unknown> | undefined {
+  return 'attrs' in node ? (node.attrs as Record<string, unknown>) : undefined;
+}
 
 /** Renders a single node to HTML. */
-function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): string {
-  const content = node.type !== 'text' && node.content ? renderChildren(node.content, context) : '';
+function renderNode(
+  node: RichTextNode,
+  context?: StoryblokRichTextRenderContext,
+): string {
+  const content
+    = node.type !== 'text' && 'content' in node && node.content
+      ? renderChildren(node.content, context)
+      : '';
 
   // Custom renderer takes full control
-  const customRenderer = context?.renderers?.[node.type] as NodeRenderer | undefined;
+  const customRenderer = context?.renderers?.[node.type] as
+    | NodeRenderer
+    | undefined;
   if (customRenderer) {
     // When passing context to a custom renderer, exclude that renderer type
     // to prevent infinite loops if the custom renderer calls renderRichText internally
     const contextForCustom = context?.renderers?.[node.type]
-      ? { ...context, renderers: { ...context.renderers, [node.type]: undefined } }
+      ? {
+          ...context,
+          renderers: { ...context.renderers, [node.type]: undefined },
+        }
       : context;
-    return customRenderer({ ...node, children: content, context: contextForCustom });
+    return customRenderer({
+      ...node,
+      children: content,
+      context: contextForCustom,
+    });
   }
 
   if (node.type === 'text') {
@@ -48,9 +101,7 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
   }
 
   if (node.type === 'blok') {
-    console.warn(
-      '"blok" nodes require a custom renderer in renderRichText.',
-    );
+    console.warn('"blok" nodes require a custom renderer in renderRichText.');
     return '';
   }
 
@@ -65,7 +116,8 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
     return renderOptimizedImage(node, context);
   }
 
-  const htmlAttrs = buildHtmlAttrs(node.type, node.attrs);
+  const attrs = nodeAttrs(node);
+  const htmlAttrs = buildHtmlAttrs(node.type, attrs);
 
   if (isSelfClosing(tag)) {
     return `<${tag}${htmlAttrs}>`;
@@ -77,7 +129,12 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
 
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
-    const inner = renderStaticStructure(node.type, staticChildren, node.attrs, content);
+    const inner = renderStaticStructure(
+      node.type,
+      staticChildren,
+      attrs,
+      content,
+    );
     return `<${tag}>${inner}</${tag}>`;
   }
 
@@ -89,13 +146,12 @@ function renderNode(node: SbRichTextNode, context?: SbRichTextRenderContext): st
 
 /** Renders an image node with optimization applied. */
 function renderOptimizedImage(
-  node: SbRichTextNode,
-  context: SbRichTextRenderContext,
+  node: Extract<RichTextNode, { type: 'image' }>,
+  context: StoryblokRichTextRenderContext,
 ): string {
-  const attrs = node.attrs as Record<string, unknown> | undefined;
-  const src = attrs?.src as string | undefined;
+  const src = node.attrs.src ?? undefined;
 
-  let finalAttrs: Record<string, unknown> | undefined = attrs;
+  let finalAttrs: Record<string, unknown> = { ...node.attrs };
 
   if (src) {
     const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(
@@ -104,7 +160,7 @@ function renderOptimizedImage(
     );
 
     finalAttrs = {
-      ...attrs,
+      ...finalAttrs,
       src: optimizedSrc,
       ...extraAttrs,
     };
@@ -119,7 +175,10 @@ function renderOptimizedImage(
  * This produces cleaner HTML: `<a href="...">text <b>bold</b> more</a>`
  * instead of: `<a>text</a><a><b>bold</b></a><a>more</a>`
  */
-function renderChildren(children: SbRichTextNode[], context?: SbRichTextRenderContext): string {
+function renderChildren(
+  children: RichTextNode[],
+  context?: StoryblokRichTextRenderContext,
+): string {
   let result = '';
   let i = 0;
   const len = children.length;
@@ -131,7 +190,10 @@ function renderChildren(children: SbRichTextNode[], context?: SbRichTextRenderCo
     if (linkMark) {
       // Find end of link group (consecutive text nodes with same link)
       let end = i + 1;
-      while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
+      while (
+        end < len
+        && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))
+      ) {
         end++;
       }
       result += renderLinkGroup(children, i, end, linkMark, context);
@@ -148,9 +210,9 @@ function renderChildren(children: SbRichTextNode[], context?: SbRichTextRenderCo
 
 /** Renders a text node with its marks. */
 function renderTextNode(
-  node: SbRichTextTextNode,
-  marks: SbRichTextMark[] | undefined,
-  context?: SbRichTextRenderContext,
+  node: RichTextFieldValueTextNode,
+  marks: RichTextMark[] | undefined,
+  context?: StoryblokRichTextRenderContext,
 ): string {
   let html = escapeHtml(node.text);
 
@@ -168,14 +230,16 @@ function renderTextNode(
 /** Wraps content with a single mark tag. */
 function wrapWithMark(
   content: string,
-  mark: SbRichTextMark,
-  context?: SbRichTextRenderContext,
+  mark: RichTextMark,
+  context?: StoryblokRichTextRenderContext,
 ): string {
   // Custom mark renderer
-  const customRenderer = context?.renderers?.[mark.type] as MarkRenderer | undefined;
+  const customRenderer = context?.renderers?.[mark.type] as
+    | MarkRenderer
+    | undefined;
   if (customRenderer) {
     return customRenderer({
-      ...mark,
+      ...(mark as RichTextMark),
       children: content,
       context,
     });
@@ -186,7 +250,9 @@ function wrapWithMark(
     return content;
   }
 
-  const htmlAttrs = buildHtmlAttrs(mark.type, mark.attrs);
+  const markAttrs
+    = 'attrs' in mark ? (mark.attrs as Record<string, unknown>) : undefined;
+  const htmlAttrs = buildHtmlAttrs(mark.type, markAttrs);
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
 
@@ -194,24 +260,30 @@ function wrapWithMark(
 
 /** Renders consecutive text nodes (from start to end) under a single link tag. */
 function renderLinkGroup(
-  children: SbRichTextNode[],
+  children: RichTextNode[],
   start: number,
   end: number,
-  linkMark: SbRichTextMark,
-  context?: SbRichTextRenderContext,
+  linkMark: RichTextMark & { type: 'link' },
+  context?: StoryblokRichTextRenderContext,
 ): string {
   let inner = '';
   for (let i = start; i < end; i++) {
-    const node = children[i] as SbRichTextTextNode;
+    const node = children[i];
+    // Link groups are always text nodes; guard ensures TypeScript narrows correctly
+    if (node.type !== 'text') {
+      continue;
+    }
     const innerMarks = node.marks?.filter(m => m.type !== 'link');
     inner += renderTextNode(node, innerMarks, context);
   }
 
   // Custom link renderer
-  const customRenderer = context?.renderers?.[linkMark.type] as MarkRenderer | undefined;
+  const customRenderer = context?.renderers?.[linkMark.type] as
+    | MarkRenderer
+    | undefined;
   if (customRenderer) {
     return customRenderer({
-      ...linkMark,
+      ...(linkMark as RichTextMark),
       children: inner,
       context,
     });
@@ -230,8 +302,8 @@ function renderLinkGroup(
 
 /** Renders table rows with thead/tbody grouping based on cell types. */
 function renderTableRows(
-  rows: SbRichTextNode[] | undefined,
-  context?: SbRichTextRenderContext,
+  rows: RichTextNode[] | undefined,
+  context?: StoryblokRichTextRenderContext,
 ): string {
   if (!rows?.length) {
     return '';
@@ -268,8 +340,8 @@ function renderTableRows(
 
 /** Renders nested static structure defined in render map. */
 function renderStaticStructure(
-  type: SbRichTextElement,
-  specs: readonly RenderSpec[],
+  type: StoryblokRichTextElement,
+  specs: readonly StoryblokRichTextRenderSpec[],
   parentAttrs: Record<string, unknown> | undefined,
   content: string,
 ): string {
@@ -295,7 +367,10 @@ function renderStaticStructure(
 }
 
 /** Builds HTML attribute string from node/mark type and attrs. */
-export function buildHtmlAttrs(type: SbRichTextElement, attrs: Record<string, unknown> | undefined): string {
+export function buildHtmlAttrs(
+  type: StoryblokRichTextElement,
+  attrs: Record<string, unknown> | undefined,
+): string {
   const processed = processAttrs(type, attrs, {
     colspan: 'colspan',
     rowspan: 'rowspan',

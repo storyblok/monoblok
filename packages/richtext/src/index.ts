@@ -2,4 +2,4 @@
 export { optimizeImage as buildStoryblokImage } from './images-optimization';
 export { renderRichText } from './render-richtext';
 export * from './static';
-export type { SbRichTextImageOptions } from './types';
+export type { SbRichTextImageOptions, StoryblokRichTextImageOptions } from './types';

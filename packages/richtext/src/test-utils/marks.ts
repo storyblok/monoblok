@@ -39,7 +39,7 @@ export const markFixtures: HtmlFixture[] = [
   },
   {
     title: 'highlight mark',
-    input: text('Highlight', [{ type: 'highlight' }]),
+    input: text('Highlight', [{ type: 'highlight', attrs: { color: null } }]),
     expected: '<mark>Highlight</mark>', // highlight is typically rendered as <mark>
   },
   {

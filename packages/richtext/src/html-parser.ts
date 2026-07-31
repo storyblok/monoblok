@@ -1,5 +1,5 @@
 import { generateJSON } from '@tiptap/html';
-import type { SbRichTextDoc } from './static';
+import type { StoryblokRichTextDoc } from './static';
 import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensions';
 
 /**
@@ -42,7 +42,7 @@ export function htmlToStoryblokRichtext(
   });
   return generateJSON(html, Object.values(allExtensions), {
     preserveWhitespace: options?.preserveWhitespace || false,
-  }) as SbRichTextDoc;
+  }) as StoryblokRichTextDoc;
 }
 export type { HTMLParserOptions } from './extensions';
 export { mapToAttribute } from './extensions/utils';

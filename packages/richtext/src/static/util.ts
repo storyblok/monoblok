@@ -1,5 +1,5 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
-import type { SbRichTextMark, SbRichTextNode } from './types.generated';
+import type { RichTextMark, RichTextNode } from '../generated/overlay/types.gen';
 import { SELF_CLOSING_TAGS } from '../utils';
 import { escapeAttr } from './attribute';
 /**
@@ -11,7 +11,7 @@ import { escapeAttr } from './attribute';
  * const tag = resolveTag(node);
  * console.log(tag); // Output: "p"
  */
-export function resolveTag(node: SbRichTextNode | SbRichTextMark): string | null {
+export function resolveTag(node: RichTextNode | RichTextMark): string | null {
   const type = node.type;
 
   const entry
@@ -23,7 +23,8 @@ export function resolveTag(node: SbRichTextNode | SbRichTextMark): string | null
   }
 
   if ('resolve' in entry && typeof entry.resolve === 'function') {
-    return entry.resolve(node.attrs as Parameters<typeof entry.resolve>[0]);
+    const attrs = 'attrs' in node ? node.attrs : undefined;
+    return entry.resolve(attrs as Parameters<typeof entry.resolve>[0]);
   }
 
   if ('tag' in entry && typeof entry.tag === 'string') {
@@ -56,7 +57,7 @@ export function isSelfClosing(tag: string): boolean {
  * const children = getStaticChildren({ type: 'table', attrs: {} });
  * // [{ tag: 'tbody', content: true }]
  */
-export function getStaticChildren(node: SbRichTextNode) {
+export function getStaticChildren(node: RichTextNode) {
   const renderMap = NODE_RENDER_MAP[node.type as keyof typeof NODE_RENDER_MAP];
   const staticChildren = renderMap && 'children' in renderMap ? renderMap.children : null;
   return staticChildren;

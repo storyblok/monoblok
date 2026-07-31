@@ -1,44 +1,79 @@
 import { createKeyGenerator } from '../utils';
-import type { SbRichTextInput } from './types';
-import type { SbRichTextNode } from './types.generated';
+import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
+import type { RichTextMarkWithKey, RichTextNodeWithKey, StoryblokRichTextInput } from './types';
 
 /**
  * Normalizes a Storyblok Richtext input into an array of nodes.
  * Supports single nodes, doc nodes, arrays, and nullable values.
+ *
+ * When called without `includeKeys` (or with `false`), returns a plain
+ * `RichTextNode[]` — the lean generated type with no renderer metadata.
+ *
+ * When called with `includeKeys: true`, returns `RichTextNodeWithKey[]` with
+ * `_key` fields added (recursively on content and marks) for React/Vue/Angular
+ * key-based rendering.
  */
 export function normalizeNodes(
-  input: SbRichTextInput,
+  input: StoryblokRichTextInput,
+  includeKeys: true,
+): RichTextNodeWithKey[];
+export function normalizeNodes(
+  input: StoryblokRichTextInput,
+  includeKeys?: false,
+): RichTextNode[];
+export function normalizeNodes(
+  input: StoryblokRichTextInput,
   includeKeys = false,
-): SbRichTextNode[] {
+): RichTextNode[] | RichTextNodeWithKey[] {
   if (!input) {
     return [];
   }
   if (Array.isArray(input)) {
-    return input;
+    if (!includeKeys) {
+      return input;
+    }
+    const keyGen = createKeyGenerator();
+    return addKeys(input, keyGen);
   }
-  const nodes = input.type === 'doc' ? input.content || [] : [input];
+
+  const nodes: RichTextNode[]
+    = input.type === 'doc'
+      ? (input as RichTextDoc).content || []
+      : [input as RichTextNode];
 
   if (!includeKeys) {
     return nodes;
   }
   const keyGen = createKeyGenerator();
-
   return addKeys(nodes, keyGen);
 }
+
 function addKeys(
-  nodes: SbRichTextNode[],
+  nodes: RichTextNode[],
   generateKey: (prefix: string) => string,
-): SbRichTextNode[] {
-  return nodes.map(node => ({
-    ...node,
-    _key: generateKey(node.type),
-    marks: node.marks?.map(mark => ({
-      ...mark,
-      _key: generateKey(mark.type),
-    })),
-    // Only re-attach `content` when the node actually has it. The root `doc`
-    // node always carries `content`, while leaf and empty nodes legitimately
-    // omit it, so we must not force `content: undefined` onto them.
-    ...(node.content ? { content: addKeys(node.content, generateKey) } : {}),
-  }));
+): RichTextNodeWithKey[] {
+  return nodes.map((node) => {
+    const withKey = {
+      ...node,
+      _key: generateKey(node.type),
+    } as unknown as RichTextNodeWithKey;
+
+    // Only spread marks when the node type carries them at runtime
+    if ('marks' in node && Array.isArray(node.marks)) {
+      (withKey as unknown as Record<string, unknown>).marks = node.marks.map((mark): RichTextMarkWithKey => ({
+        ...mark,
+        _key: generateKey(mark.type),
+      }));
+    }
+
+    // Recurse into content only when it exists at runtime
+    if ('content' in node && Array.isArray(node.content)) {
+      (withKey as unknown as Record<string, unknown>).content = addKeys(
+        node.content as RichTextNode[],
+        generateKey,
+      );
+    }
+
+    return withKey;
+  });
 }

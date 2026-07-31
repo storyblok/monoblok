@@ -1,5 +1,5 @@
 import type { DOMOutputSpec } from 'prosemirror-model';
-import type { RenderSpec } from '../types';
+import type { StoryblokRichTextRenderSpec } from '../types';
 import { stringToStyle, styleToString } from '../style';
 
 /** DOM spec in array form: [tag, attrs?, ...children] */
@@ -17,8 +17,10 @@ type AttrsObject = Record<string, unknown>;
 // Custom DOM specs for nodes that need special handling
 const CUSTOM_SPECS: Record<string, ArrayDOMSpec> = {};
 
-/** Parses a ProseMirror DOMOutputSpec into a RenderSpec. */
-export function parseDOMSpec(spec: DOMOutputSpec): RenderSpec | null {
+/** Parses a ProseMirror DOMOutputSpec into a StoryblokRichTextRenderSpec. */
+export function parseDOMSpec(
+  spec: DOMOutputSpec,
+): StoryblokRichTextRenderSpec | null {
   // string
   if (typeof spec === 'string') {
     return { tag: spec };
@@ -45,8 +47,8 @@ export function parseDOMSpec(spec: DOMOutputSpec): RenderSpec | null {
   return null;
 }
 
-/** Parses an array-form DOM spec into a RenderSpec. */
-function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
+/** Parses an array-form DOM spec into a StoryblokRichTextRenderSpec. */
+function parseArraySpec(spec: ArrayDOMSpec): StoryblokRichTextRenderSpec {
   const [tag, maybeAttrs, ...rest] = spec;
   let attrs: AttrsObject | undefined;
   let children: unknown[];
@@ -59,7 +61,7 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
     children = maybeAttrs !== undefined ? [maybeAttrs, ...rest] : rest;
   }
 
-  const parsedChildren: RenderSpec[] = [];
+  const parsedChildren: StoryblokRichTextRenderSpec[] = [];
   let content = false;
 
   for (const child of children) {
@@ -79,9 +81,11 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
   }
   const filteredAttrs = attrs ? filterNullAttrs(attrs) : undefined;
 
-  const result: RenderSpec = {
+  const result: StoryblokRichTextRenderSpec = {
     tag,
-    ...(filteredAttrs && Object.keys(filteredAttrs).length > 0 ? { attrs: filteredAttrs } : {}),
+    ...(filteredAttrs && Object.keys(filteredAttrs).length > 0
+      ? { attrs: filteredAttrs }
+      : {}),
     ...(content ? { content: true } : {}),
     ...(parsedChildren.length > 0 ? { children: parsedChildren } : {}),
   };
@@ -90,9 +94,7 @@ function parseArraySpec(spec: ArrayDOMSpec): RenderSpec {
 }
 
 /** Filters out null and undefined attribute values. */
-function filterNullAttrs(
-  attrs: AttrsObject,
-): Record<string, unknown> {
+function filterNullAttrs(attrs: AttrsObject): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const key of Object.keys(attrs)) {
@@ -132,16 +134,10 @@ function filterNullAttrs(
 
 /** Type guard for attribute objects. */
 function isAttrsObject(value: unknown): value is AttrsObject {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 /** Type guard for array-form DOM specs. */
-function isValidAttrValue(
-  value: unknown,
-): value is string | number | boolean {
+function isValidAttrValue(value: unknown): value is string | number | boolean {
   return (
     value !== null
     && value !== undefined
@@ -156,9 +152,5 @@ function isArraySpec(value: unknown): value is ArrayDOMSpec {
 
 /** Type guard for DOM object specs. */
 function isDOMObjectSpec(value: unknown): value is DOMObjectSpec {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && 'dom' in value
-  );
+  return typeof value === 'object' && value !== null && 'dom' in value;
 }

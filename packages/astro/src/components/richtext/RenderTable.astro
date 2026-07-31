@@ -1,10 +1,10 @@
 ---
-import { type SbRichTextNode, type SbAstroRichTextRenderContext, splitTableRows } from '../../';
+import { type StoryblokRichTextNode, type StoryblokAstroRichTextRenderContext, splitTableRows } from '../../';
 import ElementTag from './ElementTag.astro';
 import RenderNode from './RenderNode.astro';
 interface Props {
-  node: SbRichTextNode & { type: 'table' };
-  options: SbAstroRichTextRenderContext;
+  node: StoryblokRichTextNode & { type: 'table' };
+  options: StoryblokAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const { headerRows, bodyRows } = splitTableRows(node.content);

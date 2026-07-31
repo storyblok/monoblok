@@ -1,16 +1,16 @@
 ---
 import {
-  type SbRichTextTextNode,
-  type SbRichTextMark,
-  type SbAstroRichTextRenderContext,
+  type StoryblokRichTextTextNode,
+  type StoryblokRichTextMark,
+  type StoryblokAstroRichTextRenderContext,
   isValidAstroComponent,
 } from '../../';
 import ElementTag from './ElementTag.astro';
 
 interface Props {
-  node: SbRichTextTextNode;
-  marks?: SbRichTextMark[];
-  options: SbAstroRichTextRenderContext;
+  node: StoryblokRichTextTextNode;
+  marks?: StoryblokRichTextMark[];
+  options: StoryblokAstroRichTextRenderContext;
 }
 const { node, marks = [], options } = Astro.props;
 const reversedMarks = [...marks].reverse();

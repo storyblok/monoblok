@@ -1,11 +1,15 @@
 ---
-import { type SbRichTextNode, type SbAstroRichTextRenderContext, buildStoryblokImage } from '../../';
+import {
+  type StoryblokRichTextNode,
+  type StoryblokAstroRichTextRenderContext,
+  buildStoryblokImage,
+} from '../../';
 import ElementTag from './ElementTag.astro';
 
-type ImageNode = SbRichTextNode & { type: 'image' };
+type ImageNode = StoryblokRichTextNode & { type: 'image' };
 interface Props {
   node: ImageNode;
-  options: SbAstroRichTextRenderContext;
+  options: StoryblokAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const optimizedNode: ImageNode =
@@ -14,7 +18,10 @@ const optimizedNode: ImageNode =
         ...node,
         attrs: {
           ...node.attrs,
-          ...buildStoryblokImage(node.attrs.src as string, options.optimizeImage),
+          ...buildStoryblokImage(
+            node.attrs.src as string,
+            options.optimizeImage,
+          ),
         },
         type: 'image',
       }

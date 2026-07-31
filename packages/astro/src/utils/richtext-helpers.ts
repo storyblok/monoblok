@@ -1,28 +1,56 @@
-import { processAttrs, type SbRichTextElement, type SbRichTextElementByType, type SbRichTextImageOptions, styleToString } from '@storyblok/richtext';
+import {
+  processAttrs,
+  type StoryblokRichTextElement,
+  type StoryblokRichTextImageOptions,
+  type StoryblokRichTextProps,
+  styleToString,
+} from '@storyblok/richtext';
 import type { AstroComponentFactory } from 'astro/runtime/server/render/astro/index.js';
 
-export type SbAstroRichTextComponentMap = {
-  [K in SbRichTextElement]?: AstroComponentFactory;
+export type StoryblokAstroRichTextComponentMap = {
+  [K in StoryblokRichTextElement]?: AstroComponentFactory;
 };
 
-export interface SbAstroRichTextRenderContext {
-  optimizeImage?: boolean | SbRichTextImageOptions;
-  components?: SbAstroRichTextComponentMap;
+/**
+ * @deprecated Use {@link StoryblokAstroRichTextComponentMap} instead. Will be removed in the next major version.
+ */
+export type SbAstroRichTextComponentMap = StoryblokAstroRichTextComponentMap;
+
+export interface StoryblokAstroRichTextRenderContext {
+  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  components?: StoryblokAstroRichTextComponentMap;
   data?: unknown;
 }
-export type SbAstroRichTextProps<
-  T extends SbRichTextElement,
-> =
-  SbRichTextElementByType<SbAstroRichTextRenderContext>[T];
+/**
+ * @deprecated Use {@link StoryblokAstroRichTextRenderContext} instead. Will be removed in the next major version.
+ */
+export type SbAstroRichTextRenderContext = StoryblokAstroRichTextRenderContext;
 
-export function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
+export type StoryblokAstroRichTextProps<T extends StoryblokRichTextElement> =
+  Omit<StoryblokRichTextProps<T>, 'context'> & {
+    context?: StoryblokAstroRichTextRenderContext;
+  };
+/**
+ * @deprecated Use {@link StoryblokAstroRichTextProps} instead. Will be removed in the next major version.
+ */
+export type SbAstroRichTextProps<T extends StoryblokRichTextElement> =
+  StoryblokAstroRichTextProps<T>;
+
+export function isValidAstroComponent(
+  component: unknown,
+): component is AstroComponentFactory {
   return (
     typeof component === 'function'
-    || (typeof component === 'object' && component !== null && 'isAstroComponentFactory' in component)
+    || (typeof component === 'object'
+      && component !== null
+      && 'isAstroComponentFactory' in component)
   );
 }
 
-export function buildAstroAttrs(type: SbRichTextElement, attrs: Record<string, unknown>): Record<string, unknown> {
+export function buildAstroAttrs(
+  type: StoryblokRichTextElement,
+  attrs: Record<string, unknown>,
+): Record<string, unknown> {
   const processedAttrs = processAttrs(type, attrs, {
     colspan: 'colspan',
     rowspan: 'rowspan',

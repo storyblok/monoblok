@@ -10,6 +10,15 @@ allOf:
         type: string
         enum: [options]
         description: Field type discriminant
+      default_value:
+        description: |
+          Default value for the field: either a space-separated list of option
+          values or the array of values itself.
+        oneOf:
+          - type: string
+          - type: array
+            items:
+              type: string
       options:
         type: array
         description: Array of selectable options

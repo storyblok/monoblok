@@ -33,7 +33,7 @@ export const articleBlock = defineBlock({
     defineField('featured', {
       type: 'boolean',
       inline_label: true,
-      default_value: 'false',
+      default_value: false,
     }),
     defineField('slug_override', {
       type: 'text',

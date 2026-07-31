@@ -25,6 +25,10 @@ export type TextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'text';
     /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
      * Maximum length of the input string
      */
     max_length?: number;
@@ -51,6 +55,10 @@ export type TextareaFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'textarea';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
     /**
      * Maximum length of the input string
      */
@@ -86,6 +94,10 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'richtext';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
     /**
      * Whether to allow toolbar customization
      */
@@ -150,6 +162,10 @@ export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'markdown';
     /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
      * Whether to display markdown as rich text
      */
     rich_markdown?: boolean;
@@ -181,6 +197,10 @@ export type NumberFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'number';
     /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
      * Minimum value allowed
      */
     min_value?: number;
@@ -204,6 +224,10 @@ export type DatetimeFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'datetime';
     /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
      * Whether to disable time selection (date-only mode)
      */
     disable_time?: boolean;
@@ -215,6 +239,10 @@ export type BooleanFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'boolean';
     /**
+     * Default value for the field
+     */
+    default_value?: boolean;
+    /**
      * Whether to display the label next to the toggle
      */
     inline_label?: boolean;
@@ -225,6 +253,10 @@ export type OptionFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'option';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
     /**
      * Array of selectable options
      */
@@ -293,6 +325,12 @@ export type OptionsFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'options';
     /**
+     * Default value for the field: either a space-separated list of option
+     * values or the array of values itself.
+     *
+     */
+    default_value?: string | Array<string>;
+    /**
      * Array of selectable options
      */
     options?: Array<{
@@ -356,6 +394,10 @@ export type AssetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'asset';
     /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
      * Allowed file types (images, videos, audios, texts)
      */
     filetypes?: Array<string>;
@@ -390,6 +432,10 @@ export type MultiassetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'multiasset';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
     /**
      * Allowed file types (images, videos, audios, texts)
      */
@@ -434,6 +480,10 @@ export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     type: 'multilink';
     /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
      * Whether to restrict linkable content types
      */
     restrict_content_types?: boolean;
@@ -476,6 +526,14 @@ export type BloksFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'bloks';
+    /**
+     * Default value for the field: either a JSON-encoded array of blocks or
+     * the array itself.
+     *
+     */
+    default_value?: string | Array<{
+        [key: string]: unknown;
+    }>;
     /**
      * Restriction type for component selection (groups, tags, or empty for specific blocks)
      */
@@ -531,6 +589,10 @@ export type TableFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'table';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
 };
 
 export type SectionFieldRoot = BaseFieldRoot & {
@@ -581,6 +643,10 @@ export type CustomFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Field type discriminant
      */
     type: 'custom';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
     /**
      * Technical name of the field plugin
      */
@@ -838,6 +904,11 @@ export type BaseFieldRoot = {
  * Properties shared by content-bearing fields (i.e. fields that hold a value).
  * Layout-only field types like `section` and `tab` do not include these.
  *
+ * `default_value` is deliberately NOT here: its type depends on the field type
+ * (boolean fields hold a real boolean, bloks/options also accept an array), and
+ * these properties are merged via `allOf`, so a per-field-type override would
+ * intersect into `never` instead of replacing. Each field type declares its own.
+ *
  */
 export type ValueFieldRoot = {
     /**
@@ -848,10 +919,6 @@ export type ValueFieldRoot = {
      * Regular expression for validation
      */
     regex?: string;
-    /**
-     * Default value for the field (can be escaped JSON)
-     */
-    default_value?: string;
     /**
      * Whether the field is translatable
      */

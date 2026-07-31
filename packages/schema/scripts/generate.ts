@@ -33,7 +33,7 @@ await generate({
     'AssetFieldValue',
     'MultilinkFieldValue',
     'PluginFieldValue',
-    'RichtextFieldValue',
+    'RichTextFieldValue',
     'TableFieldValue',
     'Datasource',
   ],

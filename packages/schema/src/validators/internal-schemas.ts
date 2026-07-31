@@ -7,6 +7,11 @@ export {
   zAssetFieldValue,
   zMultilinkFieldValue,
   zPluginFieldValue,
-  zRichtextFieldValue,
+  zRichTextFieldValue,
   zTableFieldValue,
 } from '../generated/overlay/zod.gen';
+
+/**
+ * @deprecated Use {@link zRichTextFieldValue} instead. Will be removed in a future major version.
+ */
+export { zRichTextFieldValue as zRichtextFieldValue } from '../generated/overlay/zod.gen';

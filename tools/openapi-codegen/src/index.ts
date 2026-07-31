@@ -292,6 +292,9 @@ function copyWrapperTemplates(
   leafLocation: ReadonlyMap<string, 'public' | 'internal'>,
   sdk: 'mapi' | 'capi' | false | undefined,
 ): void {
+  if (wrappers.size === 0) {
+    return;
+  }
   const typesDir = resolve(outDir, 'types');
   mkdirSync(typesDir, { recursive: true });
 
@@ -312,9 +315,8 @@ function copyWrapperTemplates(
   // instead of being redefined per template.
   if (wrappers.size > 0) {
     writeFileSync(resolve(typesDir, '_utils.ts'), buildUtilsFile(), 'utf8');
+    writeFileSync(resolve(typesDir, '_sources.ts'), buildSourcesFile(publicPerSpec, leafPerSpec, leafLocation, sdk), 'utf8');
   }
-
-  writeFileSync(resolve(typesDir, '_sources.ts'), buildSourcesFile(publicPerSpec, leafPerSpec, leafLocation, sdk), 'utf8');
 }
 
 function buildUtilsFile(): string {

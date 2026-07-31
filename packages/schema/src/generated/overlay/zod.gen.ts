@@ -406,15 +406,208 @@ export const zPluginFieldValueRoot = z.object({
 
 export const zPluginFieldValue = zPluginFieldValueRoot;
 
-/**
- * Richtext field type - structured rich text document (ProseMirror format)
- */
-export const zRichtextFieldValueRoot = z.object({
-    type: z.enum(['doc']),
-    content: z.optional(z.array(z.record(z.string(), z.unknown())))
+export const zRichTextFieldValueAnchorMark = z.object({
+    type: z.enum(['anchor']),
+    attrs: z.object({
+        id: z.string()
+    })
 });
 
-export const zRichtextFieldValue = zRichtextFieldValueRoot;
+export const zRichTextFieldValueBoldMark = z.object({
+    type: z.enum(['bold'])
+});
+
+export const zRichTextFieldValueCodeMark = z.object({
+    type: z.enum(['code'])
+});
+
+export const zRichTextFieldValueEmojiNode = z.object({
+    type: z.enum(['emoji']),
+    attrs: z.object({
+        name: z.string(),
+        emoji: z.string(),
+        fallbackImage: z.string()
+    })
+});
+
+export const zRichTextFieldValueHardBreakNode = z.object({
+    type: z.enum(['hard_break'])
+});
+
+export const zRichTextFieldValueHighlightMark = z.object({
+    type: z.enum(['highlight']),
+    attrs: z.object({
+        color: z.union([
+            z.string(),
+            z.null()
+        ])
+    })
+});
+
+export const zRichTextFieldValueHorizontalRuleNode = z.object({
+    type: z.enum(['horizontal_rule'])
+});
+
+export const zRichTextFieldValueImageNode = z.object({
+    type: z.enum(['image']),
+    attrs: z.object({
+        id: z.union([
+            z.int(),
+            z.null()
+        ]),
+        src: z.union([
+            z.string(),
+            z.null()
+        ]),
+        alt: z.union([
+            z.string(),
+            z.null()
+        ]),
+        title: z.union([
+            z.string(),
+            z.null()
+        ]),
+        source: z.union([
+            z.string(),
+            z.null()
+        ]),
+        copyright: z.union([
+            z.string(),
+            z.null()
+        ]),
+        meta_data: z.union([
+            z.object({
+                alt: z.optional(z.union([
+                    z.string(),
+                    z.null()
+                ])),
+                title: z.optional(z.union([
+                    z.string(),
+                    z.null()
+                ])),
+                source: z.optional(z.union([
+                    z.string(),
+                    z.null()
+                ])),
+                copyright: z.optional(z.union([
+                    z.string(),
+                    z.null()
+                ]))
+            }),
+            z.null()
+        ])
+    })
+});
+
+export const zRichTextFieldValueItalicMark = z.object({
+    type: z.enum(['italic'])
+});
+
+export const zRichTextFieldValueLinkMark = z.object({
+    type: z.enum(['link']),
+    attrs: z.object({
+        href: z.union([
+            z.string(),
+            z.null()
+        ]),
+        uuid: z.union([
+            z.string(),
+            z.null()
+        ]),
+        anchor: z.union([
+            z.string(),
+            z.null()
+        ]),
+        target: z.union([
+            z.literal('_self'),
+            z.literal('_blank'),
+            z.literal('_parent'),
+            z.literal('_top'),
+            z.null()
+        ]),
+        linktype: z.union([
+            z.literal('story'),
+            z.literal('url'),
+            z.literal('email'),
+            z.literal('asset'),
+            z.null()
+        ]),
+        custom: z.optional(z.union([
+            z.record(z.string(), z.unknown()),
+            z.null()
+        ]))
+    })
+});
+
+export const zRichTextFieldValueStrikeMark = z.object({
+    type: z.enum(['strike'])
+});
+
+export const zRichTextFieldValueStyledMark = z.object({
+    type: z.enum(['styled']),
+    attrs: z.object({
+        class: z.union([
+            z.string(),
+            z.null()
+        ])
+    })
+});
+
+export const zRichTextFieldValueSubscriptMark = z.object({
+    type: z.enum(['subscript'])
+});
+
+export const zRichTextFieldValueSuperscriptMark = z.object({
+    type: z.enum(['superscript'])
+});
+
+export const zRichTextFieldValueTextStyleMark = z.object({
+    type: z.enum(['textStyle']),
+    attrs: z.object({
+        color: z.optional(z.union([
+            z.string(),
+            z.null()
+        ])),
+        id: z.optional(z.union([
+            z.string(),
+            z.null()
+        ])),
+        class: z.optional(z.union([
+            z.string(),
+            z.null()
+        ]))
+    })
+});
+
+export const zRichTextFieldValueUnderlineMark = z.object({
+    type: z.enum(['underline'])
+});
+
+/**
+ * Inline formatting mark applied to a text node
+ */
+export const zRichTextFieldValueRichTextMark = z.union([
+    zRichTextFieldValueLinkMark,
+    zRichTextFieldValueBoldMark,
+    zRichTextFieldValueItalicMark,
+    zRichTextFieldValueStrikeMark,
+    zRichTextFieldValueUnderlineMark,
+    zRichTextFieldValueCodeMark,
+    zRichTextFieldValueSuperscriptMark,
+    zRichTextFieldValueSubscriptMark,
+    zRichTextFieldValueHighlightMark,
+    zRichTextFieldValueTextStyleMark,
+    zRichTextFieldValueAnchorMark,
+    zRichTextFieldValueStyledMark
+]);
+
+export const zRichTextMark = zRichTextFieldValueRichTextMark;
+
+export const zRichTextFieldValueTextNode = z.object({
+    type: z.enum(['text']),
+    text: z.string(),
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
 
 /**
  * Table field type - structured table data
@@ -438,6 +631,14 @@ export const zTableFieldValueRoot = z.object({
 
 export const zTableFieldValue = zTableFieldValueRoot;
 
+export const zBlockContent = z.lazy((): any => zBlockContentRoot);
+
+export const zBlockContentInput = z.lazy((): any => zBlockContentInputRoot);
+
+export const zRichTextFieldValue = z.lazy((): any => zRichTextFieldValueRoot);
+
+export const zRichTextNode = z.lazy((): any => zRichTextFieldValueRichTextNode);
+
 /**
  * Content object for creating or updating a component instance. Contains a component technical name and dynamic fields whose values depend on the component's schema field types. The _uid is optional — Storyblok will auto-generate one if not provided.
  */
@@ -446,8 +647,6 @@ export const zBlockContentInputRoot = z.object({
     component: z.string(),
     _editable: z.optional(z.string())
 });
-
-export const zBlockContentInput = zBlockContentInputRoot;
 
 /**
  * Content object representing a component instance. Contains a _uid, a component technical name, and dynamic fields whose values depend on the component's schema field types (text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, multilink, bloks, table, section, custom/plugin).
@@ -458,4 +657,210 @@ export const zBlockContentRoot = z.object({
     _editable: z.optional(z.string())
 });
 
-export const zBlockContent = zBlockContentRoot;
+/**
+ * Rich text field type - structured rich text document (ProseMirror/Tiptap format)
+ */
+export const zRichTextFieldValueRoot = z.object({
+    type: z.enum(['doc']),
+    get content() {
+        return z.array(z.lazy((): any => zRichTextFieldValueRichTextNode));
+    }
+});
+
+export const zRichTextFieldValueBlockNode = z.object({
+    type: z.enum(['blok']),
+    attrs: z.object({
+        id: z.union([
+            z.string(),
+            z.null()
+        ]),
+        body: z.union([
+            z.array(zBlockContentInputRoot),
+            z.null()
+        ])
+    })
+});
+
+export const zRichTextFieldValueBlockquoteNode = z.object({
+    type: z.enum(['blockquote']),
+    attrs: z.optional(z.object({
+        dir: z.optional(z.union([
+            z.literal('ltr'),
+            z.literal('rtl'),
+            z.null()
+        ]))
+    })),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+export const zRichTextFieldValueBulletListNode = z.object({
+    type: z.enum(['bullet_list']),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+export const zRichTextFieldValueCodeBlockNode = z.object({
+    type: z.enum(['code_block']),
+    attrs: z.object({
+        class: z.union([
+            z.string(),
+            z.null()
+        ]),
+        dir: z.optional(z.union([
+            z.literal('ltr'),
+            z.literal('rtl'),
+            z.null()
+        ]))
+    }),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+export const zRichTextFieldValueHeadingNode = z.object({
+    type: z.enum(['heading']),
+    attrs: z.object({
+        level: z.union([
+            z.literal(1),
+            z.literal(2),
+            z.literal(3),
+            z.literal(4),
+            z.literal(5),
+            z.literal(6),
+            z.null()
+        ]),
+        textAlign: z.union([
+            z.literal('left'),
+            z.literal('center'),
+            z.literal('right'),
+            z.literal('justify'),
+            z.null()
+        ]),
+        dir: z.optional(z.union([
+            z.literal('ltr'),
+            z.literal('rtl'),
+            z.null()
+        ]))
+    }),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+export const zRichTextFieldValueListItemNode = z.object({
+    type: z.enum(['list_item']),
+    attrs: z.optional(z.object({
+        dir: z.optional(z.union([
+            z.literal('ltr'),
+            z.literal('rtl'),
+            z.null()
+        ]))
+    })),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+export const zRichTextFieldValueOrderedListNode = z.object({
+    type: z.enum(['ordered_list']),
+    attrs: z.object({
+        order: z.optional(z.int())
+    }),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+export const zRichTextFieldValueParagraphNode = z.object({
+    type: z.enum(['paragraph']),
+    attrs: z.optional(z.object({
+        textAlign: z.union([
+            z.literal('left'),
+            z.literal('center'),
+            z.literal('right'),
+            z.literal('justify'),
+            z.null()
+        ]),
+        dir: z.optional(z.union([
+            z.literal('ltr'),
+            z.literal('rtl'),
+            z.null()
+        ]))
+    })),
+    get content() {
+        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
+    },
+    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+});
+
+/**
+ * A rich text document node
+ */
+export const zRichTextFieldValueRichTextNode = z.union([
+    zRichTextFieldValueParagraphNode,
+    zRichTextFieldValueTextNode,
+    zRichTextFieldValueHeadingNode,
+    zRichTextFieldValueBlockquoteNode,
+    zRichTextFieldValueBulletListNode,
+    zRichTextFieldValueOrderedListNode,
+    zRichTextFieldValueListItemNode,
+    zRichTextFieldValueCodeBlockNode,
+    zRichTextFieldValueHardBreakNode,
+    zRichTextFieldValueHorizontalRuleNode,
+    zRichTextFieldValueImageNode,
+    zRichTextFieldValueEmojiNode,
+    z.lazy((): any => zRichTextFieldValueTableNode),
+    z.lazy((): any => zRichTextFieldValueTableRowNode),
+    z.lazy((): any => zRichTextFieldValueTableCellNode),
+    z.lazy((): any => zRichTextFieldValueTableHeaderNode),
+    zRichTextFieldValueBlockNode
+]);
+
+export const zRichTextFieldValueTableCellNode = z.object({
+    type: z.enum(['tableCell']),
+    attrs: z.object({
+        colspan: z.optional(z.int()),
+        rowspan: z.optional(z.int()),
+        colwidth: z.optional(z.union([
+            z.array(z.int()),
+            z.null()
+        ])),
+        backgroundColor: z.optional(z.union([
+            z.string(),
+            z.null()
+        ]))
+    }),
+    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+});
+
+export const zRichTextFieldValueTableHeaderNode = z.object({
+    type: z.enum(['tableHeader']),
+    attrs: z.object({
+        colspan: z.optional(z.int()),
+        rowspan: z.optional(z.int()),
+        colwidth: z.optional(z.union([
+            z.array(z.int()),
+            z.null()
+        ]))
+    }),
+    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+});
+
+export const zRichTextFieldValueTableNode = z.object({
+    type: z.enum(['table']),
+    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+});
+
+export const zRichTextFieldValueTableRowNode = z.object({
+    type: z.enum(['tableRow']),
+    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+});

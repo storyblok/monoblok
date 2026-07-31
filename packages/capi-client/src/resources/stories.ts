@@ -5,7 +5,7 @@ import type {
   BlockContent as BlokContent,
   MultilinkFieldValue,
   PluginFieldValue,
-  RichtextFieldValue,
+  RichTextFieldValue,
   TableFieldValue,
 } from '../generated/types/field';
 import { inlineStoriesContent, inlineStoryContent, resolveRelationMap } from '../utils/inline-relations';
@@ -21,7 +21,7 @@ type InlinedStoryContentField =
   | AssetFieldValue
   | MultilinkFieldValue
   | TableFieldValue
-  | RichtextFieldValue
+  | RichTextFieldValue
   | PluginFieldValue
   | StoryWithInlinedRelations
   | undefined;

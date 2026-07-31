@@ -5,6 +5,7 @@ export type {
   Component,
   Datasource,
   MultilinkFieldValue,
+  RichTextFieldValue,
   RichtextFieldValue,
   Story,
   TableFieldValue,

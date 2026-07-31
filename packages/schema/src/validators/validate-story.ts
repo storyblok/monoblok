@@ -5,7 +5,7 @@ import type { ValidationIssue, ValidationResult } from './types';
 import {
   zAssetFieldValue,
   zMultilinkFieldValue,
-  zRichtextFieldValue,
+  zRichTextFieldValue,
   zTableFieldValue,
 } from './internal-schemas';
 import { isRecord, toValues } from './shapes';
@@ -89,7 +89,7 @@ function validateFieldValue(
       checkValue(zTableFieldValue, value, path, entity, issues);
       break;
     case 'richtext':
-      checkValue(zRichtextFieldValue, value, path, entity, issues);
+      checkValue(zRichTextFieldValue, value, path, entity, issues);
       validateRichtextBloks(value, field, blocksByName, fieldPluginsByType, path, entity, issues);
       break;
     case 'custom': {

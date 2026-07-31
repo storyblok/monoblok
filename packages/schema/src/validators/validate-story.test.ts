@@ -388,7 +388,7 @@ describe('validateStory — richtext allow entries', () => {
 
   it('allows an embedded blok whose folder is inside an allowed folder', () => {
     const result = validateStory({
-      content: { component: 'page', body: richtextWith([{ component: 'hero', title: 'Hi' }]) },
+      content: { component: 'page', body: richtextWith([{ _uid: 'uid-1', component: 'hero', title: 'Hi' }]) },
     }, schema);
     expect(result.issues.find(i => i.code === 'disallowed_component')).toBeUndefined();
     expect(result.ok).toBe(true);
@@ -396,7 +396,7 @@ describe('validateStory — richtext allow entries', () => {
 
   it('rejects an embedded blok outside the allowed folder', () => {
     const result = validateStory({
-      content: { component: 'page', body: richtextWith([{ component: 'teaser', text: 'hi' }]) },
+      content: { component: 'page', body: richtextWith([{ _uid: 'uid-1', component: 'teaser', text: 'hi' }]) },
     }, schema);
     const disallowed = result.issues.find(i => i.code === 'disallowed_component');
     expect(disallowed).toBeDefined();

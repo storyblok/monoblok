@@ -79,7 +79,10 @@ export const ALIASES = [
   { source: 'AssetFieldValue', spec: 'overlay', emitAs: 'AssetFieldValue' },
   { source: 'MultilinkFieldValue', spec: 'overlay', emitAs: 'MultilinkFieldValue' },
   { source: 'PluginFieldValue', spec: 'overlay', emitAs: 'PluginFieldValue' },
-  { source: 'RichtextFieldValue', spec: 'overlay', emitAs: 'RichtextFieldValue' },
+  { source: 'RichTextFieldValue', spec: 'overlay', emitAs: 'RichTextFieldValue' },
+  { source: 'RichTextFieldValue', spec: 'overlay', emitAs: 'RichTextDoc' },
+  { source: 'RichTextNode', spec: 'overlay', emitAs: 'RichTextNode' },
+  { source: 'RichTextMark', spec: 'overlay', emitAs: 'RichTextMark' },
   { source: 'TableFieldValue', spec: 'overlay', emitAs: 'TableFieldValue' },
   { source: 'ComponentSchemaField', spec: 'overlay', emitAs: 'Field' },
 ] as const satisfies readonly AliasSpec[];

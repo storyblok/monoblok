@@ -417,16 +417,23 @@ function validateBlokContent(
 
   for (const field of fields) {
     const value = content[field.name];
+    // The backend's required check is `field_value.blank?`, and `''.blank?` is
+    // true, so an empty string is unset rather than a value. That matters most
+    // for `number`, whose unset wire form *is* `''` — the value branch below
+    // legitimately skips it, leaving the required check as the only diagnostic.
+    if (field.required && (value === undefined || value === null || value === '')) {
+      issues.push({
+        severity: 'error',
+        code: 'missing_required_field',
+        path: [...path, field.name],
+        entity,
+        message: `Missing required field "${field.name}" on component "${block.name}".`,
+      });
+      continue;
+    }
+    // An empty string on an optional field still goes through value validation:
+    // it is a legal value for the string-ish types but not, say, for `asset`.
     if (value === undefined || value === null) {
-      if (field.required) {
-        issues.push({
-          severity: 'error',
-          code: 'missing_required_field',
-          path: [...path, field.name],
-          entity,
-          message: `Missing required field "${field.name}" on component "${block.name}".`,
-        });
-      }
       continue;
     }
     validateFieldValue(field, value, blocksByName, fieldPluginsByType, [...path, field.name], entity, issues);

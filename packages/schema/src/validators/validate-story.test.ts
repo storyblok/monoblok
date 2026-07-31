@@ -55,6 +55,42 @@ describe('validateStory', () => {
     expect(codesFor(result)).toContain('missing_required_field');
   });
 
+  it('errors on a required field left as an empty string', () => {
+    // The backend's required check is `field_value.blank?`, and `''.blank?` is
+    // true, so an empty string is unset rather than a value.
+    const result = validateStory({ content: { component: 'page', headline: '' } }, schema);
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain('missing_required_field');
+  });
+
+  it('errors on a required number left unset', () => {
+    // A number field stores `''` when unset — the one case where the wire form
+    // of "no value" is also a legal value for the type.
+    const blocks = {
+      page: defineBlock({
+        name: 'page',
+        is_root: true,
+        fields: [defineField('count', { type: 'number', required: true })],
+      }),
+    };
+    const result = validateStory({ content: { component: 'page', count: '' } }, { blocks });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain('missing_required_field');
+  });
+
+  it('accepts an optional number left unset', () => {
+    const blocks = {
+      page: defineBlock({
+        name: 'page',
+        is_root: true,
+        fields: [defineField('count', { type: 'number' })],
+      }),
+    };
+    const result = validateStory({ content: { component: 'page', count: '' } }, { blocks });
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
+  });
+
   it('errors on an invalid asset field value', () => {
     const result = validateStory({
       content: { component: 'page', headline: 'Hi', cover: 'not-an-asset' },

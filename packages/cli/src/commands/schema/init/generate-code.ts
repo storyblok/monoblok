@@ -498,7 +498,11 @@ export function generateSchemaFile(
   // Import the defineSchema helper and the Schema/Story type helpers
   lines.push('import { defineSchema } from \'@storyblok/schema\';');
   lines.push('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
-  lines.push('import type { BlockContent, MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
+  // `BlockContent` only backs the block helpers below, which a space with no
+  // components does not get. Importing it regardless trips `noUnusedLocals`.
+  lines.push(components.length > 0
+    ? 'import type { BlockContent, MapiStory as InferStoryMapi } from \'@storyblok/schema\';'
+    : 'import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   lines.push('');
 
   // Import blocks from their (slugified) group subdirectory — local

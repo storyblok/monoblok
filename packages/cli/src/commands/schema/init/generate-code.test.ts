@@ -697,6 +697,15 @@ describe('generateSchemaFile with folders', () => {
     expect(result).not.toContain('export type Block<');
     expect(result).not.toContain('export type AnyBlock');
   });
+
+  it('should omit the BlockContent import when the space has no components', () => {
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources([]));
+
+    // `BlockContent` is only referenced by the block helpers, which are omitted
+    // here. Importing it anyway trips `noUnusedLocals` in the new project.
+    expect(result).not.toContain('BlockContent');
+    expect(result).toContain('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
+  });
 });
 
 describe('generateSchemaFile with colliding datasources', () => {

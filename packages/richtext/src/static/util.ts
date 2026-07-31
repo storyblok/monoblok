@@ -1,5 +1,8 @@
 import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
-import type { RichTextMark, RichTextNode } from '../generated/overlay/types.gen';
+import type {
+  RichTextMark,
+  RichTextNode,
+} from '../generated/overlay/types.gen';
 import { SELF_CLOSING_TAGS } from '../utils';
 import { escapeAttr } from './attribute';
 /**
@@ -59,7 +62,8 @@ export function isSelfClosing(tag: string): boolean {
  */
 export function getStaticChildren(node: RichTextNode) {
   const renderMap = NODE_RENDER_MAP[node.type as keyof typeof NODE_RENDER_MAP];
-  const staticChildren = renderMap && 'children' in renderMap ? renderMap.children : null;
+  const staticChildren
+    = renderMap && 'children' in renderMap ? renderMap.children : null;
   return staticChildren;
 }
 
@@ -75,4 +79,10 @@ export function attrsToHtmlString(attrs: Record<string, unknown>): string {
   }
 
   return result;
+}
+
+export function hasContent(
+  node: RichTextNode,
+): node is RichTextNode & { content: RichTextNode[] } {
+  return 'content' in node && Array.isArray(node.content);
 }

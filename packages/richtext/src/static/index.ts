@@ -50,6 +50,7 @@ export type SbRichTextNode = StoryblokRichTextNode;
 export {
   attrsToHtmlString,
   getStaticChildren,
+  hasContent,
   isSelfClosing,
   resolveTag,
 } from './util';

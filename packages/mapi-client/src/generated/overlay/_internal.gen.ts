@@ -701,38 +701,9 @@ export type BlockContentInputRoot = {
 };
 
 /**
- * Multilink field type - link to internal stories, external URLs, emails, etc.
+ * Multilink field type - link to internal stories, external URLs, emails, or assets.
  */
-export type MultilinkFieldValueRoot = {
-    /**
-     * Identifies this as a multilink field
-     */
-    fieldtype: 'multilink';
-    /**
-     * UUID of the linked story (for internal links)
-     */
-    id: string;
-    /**
-     * URL for external links or email addresses
-     */
-    url: string;
-    /**
-     * Type of link
-     */
-    linktype: 'story' | 'url' | 'email' | 'asset';
-    /**
-     * Cached URL path for the linked story
-     */
-    cached_url: string;
-    /**
-     * Anchor/fragment identifier for the link
-     */
-    anchor?: string | null;
-    /**
-     * Link target attribute
-     */
-    target?: '_self' | '_blank' | null;
-};
+export type MultilinkFieldValueRoot = MultilinkFieldValueStoryLink | MultilinkFieldValueUrlLink | MultilinkFieldValueEmailLink | MultilinkFieldValueAssetLink;
 
 /**
  * Plugin/Custom field type - field plugin with custom structure
@@ -879,9 +850,92 @@ export type ValueFieldRoot = {
 };
 
 /**
+ * Link to an internal Storyblok story.
+ */
+export type MultilinkFieldValueStoryLink = MultilinkFieldValueSharedLink & {
+    linktype: 'story';
+    /**
+     * Anchor/fragment identifier for the story link
+     */
+    anchor?: string;
+    /**
+     * Link relationship attribute
+     */
+    rel?: string;
+    /**
+     * Link title attribute
+     */
+    title?: string;
+} & {
+    [key: string]: string;
+};
+
+/**
+ * Link to an external URL.
+ */
+export type MultilinkFieldValueUrlLink = MultilinkFieldValueSharedLink & {
+    linktype: 'url';
+    /**
+     * Link relationship attribute
+     */
+    rel?: string;
+    /**
+     * Link title attribute
+     */
+    title?: string;
+} & {
+    [key: string]: string;
+};
+
+/**
+ * Link to an email address.
+ */
+export type MultilinkFieldValueEmailLink = MultilinkFieldValueSharedLink & {
+    linktype: 'email';
+    /**
+     * Email address
+     */
+    email?: string;
+};
+
+/**
+ * Link to a Storyblok asset.
+ */
+export type MultilinkFieldValueAssetLink = MultilinkFieldValueSharedLink & {
+    linktype: 'asset';
+};
+
+/**
  * A rich text document node
  */
 export type RichTextFieldValueRichTextNode = RichTextFieldValueParagraphNode | RichTextFieldValueTextNode | RichTextFieldValueHeadingNode | RichTextFieldValueBlockquoteNode | RichTextFieldValueBulletListNode | RichTextFieldValueOrderedListNode | RichTextFieldValueListItemNode | RichTextFieldValueCodeBlockNode | RichTextFieldValueHardBreakNode | RichTextFieldValueHorizontalRuleNode | RichTextFieldValueImageNode | RichTextFieldValueEmojiNode | RichTextFieldValueTableNode | RichTextFieldValueTableRowNode | RichTextFieldValueTableCellNode | RichTextFieldValueTableHeaderNode | RichTextFieldValueBlockNode;
+
+export type MultilinkFieldValueSharedLink = {
+    /**
+     * Identifies this as a multilink field
+     */
+    fieldtype: 'multilink';
+    /**
+     * Type of link
+     */
+    linktype: string;
+    /**
+     * UUID of the linked story for internal links
+     */
+    id: string;
+    /**
+     * URL for external links
+     */
+    url: string;
+    /**
+     * Cached URL path for the linked story
+     */
+    cached_url: string;
+    /**
+     * Link target attribute
+     */
+    target?: '_self' | '_blank';
+};
 
 export type RichTextFieldValueParagraphNode = {
     type: 'paragraph';

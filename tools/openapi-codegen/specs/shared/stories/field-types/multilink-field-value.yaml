@@ -1,38 +1,106 @@
 # See: https://www.storyblok.com/docs/api/management/components/possible-field-types
-type: object
-description: Multilink field type - link to internal stories, external URLs, emails, etc.
-required:
-  - fieldtype
-  - id
-  - url
-  - cached_url
-  - linktype
-properties:
-  fieldtype:
-    type: string
-    enum: [multilink]
-    description: Identifies this as a multilink field
-  id:
-    type: string
-    description: UUID of the linked story (for internal links)
-  url:
-    type: string
-    description: URL for external links or email addresses
-  linktype:
-    type: string
-    enum: [story, url, email, asset]
-    description: Type of link
-  cached_url:
-    type: string
-    description: Cached URL path for the linked story
-  anchor:
-    type:
-      - string
-      - 'null'
-    description: Anchor/fragment identifier for the link
-  target:
-    oneOf:
-      - type: string
+description: Multilink field type - link to internal stories, external URLs, emails, or assets.
+oneOf:
+  - $ref: '#/$defs/StoryLink'
+  - $ref: '#/$defs/UrlLink'
+  - $ref: '#/$defs/EmailLink'
+  - $ref: '#/$defs/AssetLink'
+
+$defs:
+  SharedLink:
+    type: object
+    required:
+      - fieldtype
+      - linktype
+      - id
+      - url
+      - cached_url
+    properties:
+      fieldtype:
+        type: string
+        enum: [multilink]
+        description: Identifies this as a multilink field
+      linktype:
+        type: string
+        description: Type of link
+      id:
+        type: string
+        description: UUID of the linked story for internal links
+      url:
+        type: string
+        description: URL for external links
+      cached_url:
+        type: string
+        description: Cached URL path for the linked story
+      target:
+        type: string
         enum: [_self, _blank]
-      - type: 'null'
-    description: Link target attribute
+        description: Link target attribute
+
+  StoryLink:
+    description: Link to an internal Storyblok story.
+    allOf:
+      - $ref: '#/$defs/SharedLink'
+      - type: object
+        required: [linktype]
+        properties:
+          linktype:
+            type: string
+            enum: [story]
+          anchor:
+            type: string
+            description: Anchor/fragment identifier for the story link
+          rel:
+            type: string
+            description: Link relationship attribute
+          title:
+            type: string
+            description: Link title attribute
+      - type: object
+        additionalProperties:
+          type: string
+
+  UrlLink:
+    description: Link to an external URL.
+    allOf:
+      - $ref: '#/$defs/SharedLink'
+      - type: object
+        required: [linktype]
+        properties:
+          linktype:
+            type: string
+            enum: [url]
+          rel:
+            type: string
+            description: Link relationship attribute
+          title:
+            type: string
+            description: Link title attribute
+      - type: object
+        additionalProperties:
+          type: string
+
+  EmailLink:
+    description: Link to an email address.
+    allOf:
+      - $ref: '#/$defs/SharedLink'
+      - type: object
+        required: [linktype]
+        properties:
+          linktype:
+            type: string
+            enum: [email]
+          email:
+            type: string
+            description: Email address
+
+  AssetLink:
+    description: Link to a Storyblok asset.
+    allOf:
+      - $ref: '#/$defs/SharedLink'
+      - type: object
+        required: [linktype]
+        properties:
+          linktype:
+            type: string
+            enum: [asset]

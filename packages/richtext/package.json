@@ -156,7 +156,8 @@
           "^build"
         ],
         "outputs": [
-          "{projectRoot}/src/static/render-map.generated.ts"
+          "{projectRoot}/src/static/render-map.generated.ts",
+          "{projectRoot}/src/static/richtext-element-types.generated.ts"
         ]
       },
       "generate:openapi": {
@@ -165,8 +166,7 @@
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated",
-          "{projectRoot}/src/static/types.generated.ts"
+          "{projectRoot}/src/generated"
         ],
         "cache": true,
         "dependsOn": [

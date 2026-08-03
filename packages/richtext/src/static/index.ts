@@ -1,3 +1,4 @@
+import type { StoryblokRichTextElementByType } from './richtext-element-types.generated';
 import type { StoryblokRichTextMark, StoryblokRichTextNode } from './types';
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -11,7 +12,10 @@ export {
   splitTableRows,
 } from './node-helpers';
 export { normalizeNodes } from './normalize-nodes';
+export type { StoryblokRichTextElementByType } from './richtext-element-types.generated';
+
 export { stringToStyle, styleToString } from './style';
+
 // ── Types (current public API) ────────────────────────────────────────────────
 export type {
   StoryblokRichTextDoc,
@@ -41,11 +45,12 @@ export type {
   SbRichTextTextNode,
 } from './types';
 
-// SbRichTextNode, SbRichTextMark, SbRichTextElementByType will be removed
-// when types.generated.ts is retired in the next major version.
-
+/** @deprecated Use {@link StoryblokRichTextMark} instead. Will be removed in the next major version. */
 export type SbRichTextMark = StoryblokRichTextMark;
+/** @deprecated Use {@link StoryblokRichTextNode} instead. Will be removed in the next major version. */
 export type SbRichTextNode = StoryblokRichTextNode;
+/** @deprecated Use {@link StoryblokRichTextElementByType} instead. Will be removed in the next major version. */
+export type SbRichTextElementByType<TContext = unknown> = StoryblokRichTextElementByType<TContext>;
 
 export {
   attrsToHtmlString,

@@ -39,8 +39,8 @@ export interface ExperimentEvent {
 export type Exposure = ExperimentEvent & { type: 'exposure' };
 
 /**
- * A sink for experiment events. Bring your own, or use `fetchAdapter`. The
- * return value is ignored, so adapters can be sync or async (return a promise
- * to let callers await delivery).
+ * A sink for experiment events. Bring your own, or use `fetchAdapter`.
+ * Adapters can be sync or async: return a promise so callers, and the
+ * factory's `flush` and `waitUntil`, can await delivery.
  */
 export type Adapter = (event: ExperimentEvent) => unknown;

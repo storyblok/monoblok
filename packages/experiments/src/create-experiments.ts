@@ -11,6 +11,15 @@ export interface CreateExperimentsOptions {
    * the request. Defaults to a no-op.
    */
   onError?: (error: unknown, event: ExperimentEvent) => void;
+  /**
+   * Receives every pending async delivery so the host platform keeps the
+   * process alive until it settles. Without this, serverless runtimes
+   * (Vercel, Netlify, Cloudflare) may freeze the process as soon as the
+   * response is sent and silently drop in-flight events. Pass the platform's
+   * `waitUntil` (or Next.js `after`). The promise never rejects; failures
+   * still go to `onError`.
+   */
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 export interface FactoryResolveOptions {
@@ -32,6 +41,16 @@ export interface Experiments {
   resolveExperiment: (options: FactoryResolveOptions) => FactoryResolvedExperiment;
   /** Fires a conversion event for every experiment this visitor was assigned to. */
   track: (name: string, props?: Record<string, unknown>) => void;
+  /**
+   * Resolves once every pending async delivery has settled. Never rejects;
+   * failures go to `onError`. Await it before returning a response on
+   * platforms without a `waitUntil` hook.
+   */
+  flush: () => Promise<void>;
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return typeof value === 'object' && value !== null && 'then' in value && typeof value.then === 'function';
 }
 
 /**
@@ -39,18 +58,33 @@ export interface Experiments {
  * per-request use. The bare `resolveExperiment` / `assignVariant` functions
  * stay available for full control.
  */
-export function createExperiments({ experiments, adapters = [], onError }: CreateExperimentsOptions): Experiments {
+export function createExperiments({ experiments, adapters = [], onError, waitUntil }: CreateExperimentsOptions): Experiments {
   // Per-instance (per-request) state: assignments made during resolveExperiment,
   // keyed by experiment id, so track() can attribute without re-passing context.
   const assignments = new Map<number, Assignment>();
 
-  // Fire-and-forget: an adapter that throws synchronously or rejects
-  // asynchronously must never surface as an unhandled rejection or break the
-  // request. Route failures to `onError` (default: swallow).
+  // Async deliveries still in flight, so flush() can await them.
+  const pending = new Set<Promise<void>>();
+
+  // An adapter that throws synchronously or rejects asynchronously must never
+  // surface as an unhandled rejection or break the request. Route failures to
+  // `onError` (default: swallow). Adapters are invoked synchronously so the
+  // request (e.g. a fetch) is initiated before the handler returns; async
+  // deliveries are tracked for flush() and handed to waitUntil so serverless
+  // runtimes do not freeze the process while they are in flight.
   const emit = (event: ExperimentEvent): void => {
     for (const adapter of adapters) {
       try {
-        Promise.resolve(adapter(event)).catch(error => onError?.(error, event));
+        const result = adapter(event);
+        if (isThenable(result)) {
+          const settled = Promise.resolve(result).then(
+            () => undefined,
+            (error) => { onError?.(error, event); },
+          );
+          pending.add(settled);
+          settled.then(() => pending.delete(settled));
+          waitUntil?.(settled);
+        }
       }
       catch (error) {
         onError?.(error, event);
@@ -95,6 +129,14 @@ export function createExperiments({ experiments, adapters = [], onError }: Creat
           name,
           props,
         });
+      }
+    },
+
+    async flush() {
+      // Deliveries can enqueue further deliveries (e.g. an adapter emitting
+      // through another instance), so drain until the set is empty.
+      while (pending.size > 0) {
+        await Promise.all(pending);
       }
     },
   };

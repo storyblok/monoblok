@@ -64,12 +64,12 @@ export function getInnerMarks(node: RichTextNode): RichTextMark[] {
  * @param children - Array of child nodes to group
  * @returns Array of node groups for rendering
  */
-export function groupLinkNodes(children: RichTextNode[]): Array<{
-  nodes: RichTextNode[];
+export function groupLinkNodes<T extends RichTextNode>(children: T[]): Array<{
+  nodes: T[];
   linkMark: LinkMark | null;
   _key: string;
 }> {
-  const groups: Array<{ nodes: RichTextNode[]; linkMark: LinkMark | null; _key: string }> = [];
+  const groups: Array<{ nodes: T[]; linkMark: LinkMark | null; _key: string }> = [];
   let i = 0;
   const len = children.length;
 
@@ -79,7 +79,7 @@ export function groupLinkNodes(children: RichTextNode[]): Array<{
 
     if (linkMark) {
       // Find end of link group (consecutive text nodes with same link)
-      const groupNodes: RichTextNode[] = [node];
+      const groupNodes: T[] = [node];
       let end = i + 1;
 
       while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
@@ -132,9 +132,9 @@ export function isTableHeaderRow(row: RichTextNode): boolean {
  * @param rows - Array of table row nodes
  * @returns Object with headerRows and bodyRows arrays
  */
-export function splitTableRows(rows: RichTextNode[] | undefined): {
-  headerRows: RichTextNode[];
-  bodyRows: RichTextNode[];
+export function splitTableRows<T extends RichTextNode>(rows: T[] | undefined): {
+  headerRows: T[];
+  bodyRows: T[];
 } {
   if (!rows?.length) {
     return { headerRows: [], bodyRows: [] };

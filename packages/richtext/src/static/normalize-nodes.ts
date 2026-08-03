@@ -1,6 +1,6 @@
 import { createKeyGenerator } from '../utils';
 import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
-import type { RichTextMarkWithKey, RichTextNodeWithKey, StoryblokRichTextInput } from './types';
+import type { StoryblokRichTextInput, StoryblokRichTextMarkWithKey, StoryblokRichTextNodeWithKey } from './types';
 
 /**
  * Normalizes a Storyblok Richtext input into an array of nodes.
@@ -16,7 +16,7 @@ import type { RichTextMarkWithKey, RichTextNodeWithKey, StoryblokRichTextInput }
 export function normalizeNodes(
   input: StoryblokRichTextInput,
   includeKeys: true,
-): RichTextNodeWithKey[];
+): StoryblokRichTextNodeWithKey[];
 export function normalizeNodes(
   input: StoryblokRichTextInput,
   includeKeys?: false,
@@ -24,7 +24,7 @@ export function normalizeNodes(
 export function normalizeNodes(
   input: StoryblokRichTextInput,
   includeKeys = false,
-): RichTextNode[] | RichTextNodeWithKey[] {
+): RichTextNode[] | StoryblokRichTextNodeWithKey[] {
   if (!input) {
     return [];
   }
@@ -51,16 +51,16 @@ export function normalizeNodes(
 function addKeys(
   nodes: RichTextNode[],
   generateKey: (prefix: string) => string,
-): RichTextNodeWithKey[] {
+): StoryblokRichTextNodeWithKey[] {
   return nodes.map((node) => {
     const withKey = {
       ...node,
       _key: generateKey(node.type),
-    } as unknown as RichTextNodeWithKey;
+    } as unknown as StoryblokRichTextNodeWithKey;
 
     // Only spread marks when the node type carries them at runtime
     if ('marks' in node && Array.isArray(node.marks)) {
-      (withKey as unknown as Record<string, unknown>).marks = node.marks.map((mark): RichTextMarkWithKey => ({
+      (withKey as unknown as Record<string, unknown>).marks = node.marks.map((mark): StoryblokRichTextMarkWithKey => ({
         ...mark,
         _key: generateKey(mark.type),
       }));

@@ -48,23 +48,24 @@ export type StoryblokRichTextNode = RichTextNode;
 export type StoryblokRichTextMark = RichTextMark;
 
 /**
- * A `RichTextMark` with an added `_key` field for stable list rendering.
+ * A `StoryblokRichTextMark` with an added `_key` field for stable list
+ * rendering. Produced by `normalizeNodes(input, true)`.
  */
-export type RichTextMarkWithKey = RichTextMark & { _key: string };
-
+export type StoryblokRichTextMarkWithKey = RichTextMark & { _key: string };
 /**
- * A `RichTextNode` with an added `_key` field for stable list rendering.
+ * A `StoryblokRichTextNode` with an added `_key` field for stable list
+ * rendering. Produced by `normalizeNodes(input, true)`.
  *
- * Produced by `normalizeNodes(input, true)`. The `content` and `marks`
- * properties are recursively typed so nested nodes/marks also carry `_key`.
- *
- * The base discriminated union is preserved — narrow with `node.type` as usual.
+ * The `content` and `marks` properties are recursively typed so nested
+ * nodes/marks also carry `_key`. The base discriminated union is preserved —
+ * narrow with `node.type` as usual.
  */
-export type RichTextNodeWithKey = RichTextNode & {
+export type StoryblokRichTextNodeWithKey = RichTextNode & {
   _key: string;
-  content?: RichTextNodeWithKey[];
-  marks?: RichTextMarkWithKey[];
+  content?: StoryblokRichTextNodeWithKey[];
+  marks?: StoryblokRichTextMarkWithKey[];
 };
+
 export type StoryblokRichTextTextNode = Extract<RichTextNode, { type: 'text' }>;
 
 /** @deprecated Use {@link StoryblokRichTextTextNode} instead. Will be removed in the next major version. */
@@ -94,7 +95,9 @@ type RichTextElementMap = {
 };
 
 export type StoryblokRichTextProps<T extends StoryblokRichTextElement> =
-  RichTextElementMap[T] & {
+  Omit<RichTextElementMap[T], 'content' | 'marks'> & {
+    content?: StoryblokRichTextNodeWithKey[];
+    marks?: StoryblokRichTextMarkWithKey[];
     children: string;
     context?: StoryblokRichTextRenderContext;
   };

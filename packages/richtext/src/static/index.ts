@@ -14,14 +14,14 @@ export { normalizeNodes } from './normalize-nodes';
 export { stringToStyle, styleToString } from './style';
 // ── Types (current public API) ────────────────────────────────────────────────
 export type {
-  RichTextMarkWithKey,
-  RichTextNodeWithKey,
   StoryblokRichTextDoc,
   StoryblokRichTextElement,
   StoryblokRichTextImageOptions,
   StoryblokRichTextInput,
   StoryblokRichTextMark,
+  StoryblokRichTextMarkWithKey,
   StoryblokRichTextNode,
+  StoryblokRichTextNodeWithKey,
   StoryblokRichTextProps,
   StoryblokRichTextRenderContext,
   StoryblokRichTextRendererMap,

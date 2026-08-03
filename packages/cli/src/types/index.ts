@@ -25,7 +25,6 @@ export type {
   SharedAssetFolder,
   SharedAssetFolderCreate,
   SharedAssetFolderUpdate,
-  SharedInternalTag,
   SharedInternalTagCreate,
   Space,
   SpaceCreate,

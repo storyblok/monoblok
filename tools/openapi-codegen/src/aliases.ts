@@ -64,6 +64,12 @@ export const ALIASES = [
   { source: 'InternalTag', spec: 'mapi', emitAs: 'InternalTag' },
   { source: 'InternalTagRequest', spec: 'mapi', emitAs: 'InternalTagCreate', unwrap: 'internal_tag' },
   { source: 'InternalTagRequest', spec: 'mapi', emitAs: 'InternalTagUpdate', unwrap: 'internal_tag' },
+  // Shared (organization-level) asset library. Shared internal tags are
+  // serialized as plain `InternalTag`s, so only the request shape needs a name.
+  { source: 'SharedAssetFolder', spec: 'mapi', emitAs: 'SharedAssetFolder' },
+  { source: 'CreateSpaceSharedAssetFolderData', spec: 'mapi', emitAs: 'SharedAssetFolderCreate', unwrap: 'body.shared_asset_folder' },
+  { source: 'UpdateSpaceSharedAssetFolderData', spec: 'mapi', emitAs: 'SharedAssetFolderUpdate', unwrap: 'body.shared_asset_folder' },
+  { source: 'SharedInternalTagRequest', spec: 'mapi', emitAs: 'SharedInternalTagCreate', unwrap: 'shared_internal_tag' },
   { source: 'Preset', spec: 'mapi', emitAs: 'Preset' },
   { source: 'CreatePresetRequest', spec: 'mapi', emitAs: 'PresetCreate', unwrap: 'preset' },
   { source: 'UpdatePresetRequest', spec: 'mapi', emitAs: 'PresetUpdate', unwrap: 'preset' },

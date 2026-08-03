@@ -6,6 +6,7 @@ import type {
   BulkRestoreAssetsResponses,
   BulkUpdateAssetsData,
   BulkUpdateAssetsResponses,
+  ConvertAssetToSharedAssetData,
   CreateAssetData,
   CreateAssetResponses,
   DeleteAssetResponses,
@@ -276,25 +277,24 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
     /**
      * Converts a space-local asset into a shared (org-level) asset.
      *
-     * Wraps the generated `convertAssetToSharedAsset` SDK call
-     * (`POST /v1/spaces/{space_id}/assets/{id}/convert`), which takes the
-     * destination folder as the required `target_asset_folder_id` query param
-     * and no request body. One-way only (space to org).
+     * Moves the asset into the shared asset folder given by the required
+     * `target_asset_folder_id` query param; takes no request body. One-way
+     * only: a shared asset cannot be converted back to a space-local one.
+     * Converting an already-shared asset returns it unchanged.
      *
-     * The generated response type is the OpenAPI spec's bare `Asset` schema
-     * component (missing several fields); we surface it as the curated `Asset`
-     * alias instead, matching the rest of this resource (see `ListAssetsResult`).
+     * The result is typed as `Asset` — the same shape `get()` returns — so
+     * consumers work against a single asset type across this resource.
      */
     convertToShared<ThrowOnError extends boolean = false>(
-      assetId: number | string,
-      options: { query: { target_asset_folder_id: number }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+      assetId: number,
+      options: { query: ConvertAssetToSharedAssetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
     ): Promise<ApiResponse<Asset, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<Asset, ThrowOnError>(() =>
         mapi.convertAssetToSharedAsset({
           client,
-          path: { space_id: resolvedSpaceId, id: Number(assetId) },
+          path: { space_id: resolvedSpaceId, id: assetId },
           query,
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),

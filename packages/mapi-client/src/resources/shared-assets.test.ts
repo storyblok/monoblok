@@ -39,4 +39,35 @@ describe('sharedAssets resource', () => {
 
     expect(asset.id).toBe(55);
   });
+
+  // Regression guard: replacing a shared asset's file re-signs the *existing*
+  // asset by passing an undocumented `id` query param (and no
+  // `asset_folder_id`). Neither is in the OpenAPI spec, so the generated types
+  // cannot enforce it — dropping `id` would silently create a duplicate asset
+  // instead of replacing the file.
+  it('re-signs an existing shared asset when replacing its file', async () => {
+    const signRequests: URL[] = [];
+    const updatedIds: string[] = [];
+    server.use(
+      http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_assets', ({ request }) => {
+        signRequests.push(new URL(request.url));
+        return HttpResponse.json({ id: 77, post_url: 'https://s3.test/upload', fields: { 'key': 'g/1/y.png', 'Content-Type': 'image/png' } });
+      }),
+      http.post('https://s3.test/upload', () => new HttpResponse(null, { status: 204 })),
+      http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/77/finish_upload', () =>
+        HttpResponse.json({ id: 77, filename: 'https://a.storyblok.com/g/1/y.png' })),
+      http.put('https://mapi.storyblok.com/v1/spaces/12345/shared_assets/:assetId', ({ params }) => {
+        updatedIds.push(String(params.assetId));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await client.sharedAssets.update(77, { body: { asset: { title: 'New title' }, short_filename: 'y.png' }, file: new ArrayBuffer(4) });
+
+    expect(signRequests).toHaveLength(1);
+    expect(signRequests[0]?.searchParams.get('id')).toBe('77');
+    expect(signRequests[0]?.searchParams.get('filename')).toBe('y.png');
+    expect(signRequests[0]?.searchParams.has('asset_folder_id')).toBe(false);
+    expect(updatedIds).toEqual(['77']);
+  });
 });

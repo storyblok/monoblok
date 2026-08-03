@@ -1,7 +1,7 @@
-import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTag, SharedInternalTagCreate } from '../../types';
+import type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTagCreate } from '../../types';
 import type { AssetUploadRequest } from '@storyblok/management-api-client';
 
-export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTag, SharedInternalTagCreate };
+export type { Asset, AssetCreate, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetListQuery, AssetUpdate, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTagCreate };
 
 /**
  * CLI upload payload. Extends mapi-client's `AssetUploadRequest` (which carries

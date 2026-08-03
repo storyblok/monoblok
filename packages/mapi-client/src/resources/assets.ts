@@ -276,12 +276,14 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
     /**
      * Converts a space-local asset into a shared (org-level) asset.
      *
-     * Wraps `POST /v1/spaces/{space_id}/assets/{asset_id}/convert`, which takes
-     * the destination folder as the required `target_asset_folder_id` query
-     * param and no request body. One-way only (space to org).
+     * Wraps the generated `convertAssetToSharedAsset` SDK call
+     * (`POST /v1/spaces/{space_id}/assets/{id}/convert`), which takes the
+     * destination folder as the required `target_asset_folder_id` query param
+     * and no request body. One-way only (space to org).
      *
-     * Not part of the generated SDK, so this issues a raw `client.post`.
-     * The response is assumed to match `Asset`.
+     * The generated response type is the OpenAPI spec's bare `Asset` schema
+     * component (missing several fields); we surface it as the curated `Asset`
+     * alias instead, matching the rest of this resource (see `ListAssetsResult`).
      */
     convertToShared<ThrowOnError extends boolean = false>(
       assetId: number | string,
@@ -290,9 +292,9 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<Asset, ThrowOnError>(() =>
-        client.post({
-          url: '/v1/spaces/{space_id}/assets/{asset_id}/convert',
-          path: { space_id: resolvedSpaceId, asset_id: assetId },
+        mapi.convertAssetToSharedAsset({
+          client,
+          path: { space_id: resolvedSpaceId, id: Number(assetId) },
           query,
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),

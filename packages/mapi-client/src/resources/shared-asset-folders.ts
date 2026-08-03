@@ -1,5 +1,17 @@
+import * as mapi from '../generated/mapi/sdk.gen';
+import type {
+  CreateSpaceSharedAssetFolderData,
+  DeleteSpaceSharedAssetFolderData,
+  GetSpaceSharedAssetFolderResponses,
+  ListSpaceSharedAssetFoldersData,
+  ListSpaceSharedAssetFoldersResponses,
+  SharedAssetFolder,
+  UpdateSpaceSharedAssetFolderData,
+} from '../generated/mapi/types.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
+
+export type { SharedAssetFolder };
 
 export type AccessLevel = 'read' | 'write';
 
@@ -8,43 +20,19 @@ export interface AssetFolderAccess {
   access_level: AccessLevel;
 }
 
+export type SharedAssetFolderCreate = CreateSpaceSharedAssetFolderData['body']['shared_asset_folder'];
+
+export type SharedAssetFolderUpdate = UpdateSpaceSharedAssetFolderData['body']['shared_asset_folder'];
+
+export type SharedAssetFolderListResponse = ListSpaceSharedAssetFoldersResponses[200];
+
+export type SharedAssetFolderGetResponse = GetSpaceSharedAssetFolderResponses[200];
+
 /**
  * A shared (organization-level) asset folder. Top-level folders
  * (`parent_id === null`) are "libraries"; per-space access is exposed via
- * `asset_folder_access`. Not part of the generated SDK — these endpoints are
- * issued as raw `client.*` calls.
+ * `asset_folder_access`.
  */
-export interface SharedAssetFolder {
-  id: number;
-  name: string;
-  parent_id: number | null;
-  uuid: string;
-  parent_uuid: string | null;
-  description?: string | null;
-  color?: string | null;
-  regions?: string[];
-  asset_folder_access?: AssetFolderAccess[];
-}
-
-export interface SharedAssetFolderCreate {
-  name: string;
-  parent_id?: number | null;
-  description?: string | null;
-  color?: string | null;
-  regions?: string[];
-  asset_folder_access?: AssetFolderAccess[];
-}
-
-export type SharedAssetFolderUpdate = Partial<SharedAssetFolderCreate>;
-
-export interface SharedAssetFolderListResponse {
-  shared_asset_folders: SharedAssetFolder[];
-}
-
-export interface SharedAssetFolderGetResponse {
-  shared_asset_folder: SharedAssetFolder;
-}
-
 export function createSharedAssetFoldersResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
@@ -53,30 +41,30 @@ export function createSharedAssetFoldersResource<DefaultThrowOnError extends boo
   const maybeThrow = (throwOnError?: boolean) => (throwOnError === undefined ? {} : { throwOnError });
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: { search?: string; with_parent?: string; by_ids?: string }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<SharedAssetFolderListResponse, ThrowOnError>> {
+    list<ThrowOnError extends boolean = false>(options: { query?: ListSpaceSharedAssetFoldersData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<SharedAssetFolderListResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedAssetFolderListResponse, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_asset_folders', path: { space_id: getSpaceId(path) }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.listSpaceSharedAssetFolders({ client, path: { space_id: getSpaceId(path) }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     get<ThrowOnError extends boolean = false>(folderId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<SharedAssetFolderGetResponse, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedAssetFolderGetResponse, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_asset_folders/{asset_folder_id}', path: { space_id: getSpaceId(path), asset_folder_id: folderId }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.getSpaceSharedAssetFolder({ client, path: { space_id: getSpaceId(path), id: Number(folderId) }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     create<ThrowOnError extends boolean = false>(options: { body: { shared_asset_folder: SharedAssetFolderCreate }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SharedAssetFolderGetResponse, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedAssetFolderGetResponse, ThrowOnError>(() =>
-        client.post({ url: '/v1/spaces/{space_id}/shared_asset_folders', path: { space_id: getSpaceId(path) }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.createSpaceSharedAssetFolder({ client, path: { space_id: getSpaceId(path) }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     update<ThrowOnError extends boolean = false>(folderId: number | string, options: { body: { shared_asset_folder: SharedAssetFolderUpdate }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<void, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<void, ThrowOnError>(() =>
-        client.put({ url: '/v1/spaces/{space_id}/shared_asset_folders/{asset_folder_id}', path: { space_id: getSpaceId(path), asset_folder_id: folderId }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.updateSpaceSharedAssetFolder({ client, path: { space_id: getSpaceId(path), id: Number(folderId) }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
-    delete<ThrowOnError extends boolean = false>(folderId: number | string, options: { query?: { recursive?: boolean }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(folderId: number | string, options: { query?: DeleteSpaceSharedAssetFolderData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<void, ThrowOnError>(() =>
-        client.delete({ url: '/v1/spaces/{space_id}/shared_asset_folders/{asset_folder_id}', path: { space_id: getSpaceId(path), asset_folder_id: folderId }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.deleteSpaceSharedAssetFolder({ client, path: { space_id: getSpaceId(path), id: Number(folderId) }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
   };
 }

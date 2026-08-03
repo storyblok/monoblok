@@ -1,44 +1,31 @@
+import * as mapi from '../generated/mapi/sdk.gen';
+import type {
+  CreateSharedInternalTagResponses,
+  DeleteSharedInternalTagData,
+  ListSharedInternalTagsData,
+  ListSharedInternalTagsResponses,
+  SharedInternalTagRequest,
+} from '../generated/mapi/types.gen';
+import type { InternalTag } from '../generated/mapi/types-aliased.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
-export type SharedInternalTagObjectType = 'asset' | 'component' | 'idea';
+export type SharedInternalTagObjectType = NonNullable<SharedInternalTagRequest['shared_internal_tag']['object_type']>;
 
-export interface SharedInternalTag {
-  id: number;
-  name: string;
-  object_type: SharedInternalTagObjectType;
-  assets_count?: number;
-}
+export type SharedInternalTag = InternalTag;
 
-export interface SharedInternalTagCreate {
-  name: string;
-  object_type: SharedInternalTagObjectType;
-  /** The library root folder the tag is scoped to. Required on every call. */
-  asset_folder_id: number;
-}
+export type SharedInternalTagCreate = SharedInternalTagRequest['shared_internal_tag'];
 
-export interface SharedInternalTagListQuery {
-  /** The library root folder. Required. */
-  asset_folder_id: number;
-  search?: string;
-  by_object_type?: string;
-  by_ids?: string;
-  page?: number;
-  per_page?: number;
-}
+export type SharedInternalTagListQuery = ListSharedInternalTagsData['query'];
 
-export interface SharedInternalTagListResponse {
-  internal_tags: SharedInternalTag[];
-}
+export type SharedInternalTagListResponse = ListSharedInternalTagsResponses[200];
 
-export interface SharedInternalTagMutateResponse {
-  internal_tag: SharedInternalTag;
-}
+export type SharedInternalTagMutateResponse = CreateSharedInternalTagResponses[200];
 
 /**
  * Shared (organization-level) internal tags, scoped to a library. Every method
  * carries `asset_folder_id` = library root (query param on list/delete, body
- * field on create/update). Not part of the generated SDK — raw `client.*`.
+ * field on create/update).
  */
 export function createSharedInternalTagsResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
@@ -51,22 +38,22 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
     list<ThrowOnError extends boolean = false>(options: { query: SharedInternalTagListQuery; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SharedInternalTagListResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedInternalTagListResponse, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_internal_tags', path: { space_id: getSpaceId(path) }, query: { ...query }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.listSharedInternalTags({ client, path: { space_id: getSpaceId(path) }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     create<ThrowOnError extends boolean = false>(options: { body: { shared_internal_tag: SharedInternalTagCreate }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SharedInternalTagMutateResponse, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedInternalTagMutateResponse, ThrowOnError>(() =>
-        client.post({ url: '/v1/spaces/{space_id}/shared_internal_tags', path: { space_id: getSpaceId(path) }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.createSharedInternalTag({ client, path: { space_id: getSpaceId(path) }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     update<ThrowOnError extends boolean = false>(tagId: number, options: { body: { shared_internal_tag: SharedInternalTagCreate }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<SharedInternalTagMutateResponse, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedInternalTagMutateResponse, ThrowOnError>(() =>
-        client.patch({ url: '/v1/spaces/{space_id}/shared_internal_tags/{internal_tag_id}', path: { space_id: getSpaceId(path), internal_tag_id: tagId }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.updateSharedInternalTag({ client, path: { space_id: getSpaceId(path), id: tagId }, body, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
-    delete<ThrowOnError extends boolean = false>(tagId: number, options: { query: { asset_folder_id: number }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = false>(tagId: number, options: { query: DeleteSharedInternalTagData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<void, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<void, ThrowOnError>(() =>
-        client.delete({ url: '/v1/spaces/{space_id}/shared_internal_tags/{internal_tag_id}', path: { space_id: getSpaceId(path), internal_tag_id: tagId }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.deleteSharedInternalTag({ client, path: { space_id: getSpaceId(path), id: tagId }, query, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
   };
 }

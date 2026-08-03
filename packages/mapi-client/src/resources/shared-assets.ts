@@ -1,3 +1,5 @@
+import * as mapi from '../generated/mapi/sdk.gen';
+import type { CreateSpaceSharedAssetData, CreateSpaceSharedAssetResponses } from '../generated/mapi/types.gen';
 import type { Asset, AssetUpdate } from '../generated/mapi/types-aliased.gen';
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { uploadToS3 } from './assets';
@@ -30,16 +32,20 @@ export interface SharedAssetListResponse {
   assets: Asset[];
 }
 
-interface SignResponse {
-  id?: number;
-  post_url?: string;
-  fields?: Record<string, unknown>;
-}
+/**
+ * The generated `createSpaceSharedAsset` (sign) call's query type requires
+ * `asset_folder_id`, and has no `id` field. In practice the endpoint also
+ * accepts an `id` to re-sign an upload for an *existing* shared asset
+ * (used by `update()` to replace a file in place), and tolerates
+ * `asset_folder_id` being omitted in that case — neither is represented in
+ * the OpenAPI spec. `SharedAssetUploadRequest` keeps both fields optional to
+ * match this real, tested behavior.
+ */
+type SignSharedAssetQuery = NonNullable<CreateSpaceSharedAssetData['query']>;
 
 /**
- * Shared (organization-level) assets. These endpoints are not part of the
- * generated SDK, so methods issue raw `client.*` calls. The active space must
- * have read (list/get) or write (create/update/delete) access to the library.
+ * Shared (organization-level) assets. The active space must have read
+ * (list/get) or write (create/update/delete) access to the library.
  */
 export function createSharedAssetsResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
@@ -52,12 +58,12 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
     list<ThrowOnError extends boolean = false>(options: { query?: SharedAssetListQuery; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<SharedAssetListResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<SharedAssetListResponse, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_assets', path: { space_id: getSpaceId(path) }, query: query && { ...query }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.listSpaceSharedAssets({ client, path: { space_id: getSpaceId(path) }, query: query && { ...query }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     get<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<Asset, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<Asset, ThrowOnError>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: getSpaceId(path), asset_id: assetId }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.getSpaceSharedAsset({ client, path: { space_id: getSpaceId(path), id: Number(assetId) }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
     /** Uploads a file to a shared library (sign → S3 → finish_upload → get). */
     async upload(options: { body: SharedAssetUploadRequest; file: Blob | ArrayBuffer; signal?: AbortSignal; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<Asset> {
@@ -66,8 +72,8 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
       const resolvedSpaceId = getSpaceId(path);
       const opts = kyOpts(fetchOptions);
 
-      const signResult = await wrapRequest<SignResponse, true>(() =>
-        client.post({ url: '/v1/spaces/{space_id}/shared_assets', path: { space_id: resolvedSpaceId }, query: { filename: short_filename, ...rest }, signal, throwOnError: true, ...opts }), true);
+      const signResult = await wrapRequest<CreateSpaceSharedAssetResponses[200], true>(() =>
+        mapi.createSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId }, query: { filename: short_filename, ...rest } as SignSharedAssetQuery, signal, throwOnError: true, ...opts }), true);
       if (!signResult.data.id) {
         throw new Error('Invalid signed response: missing id');
       }
@@ -76,10 +82,10 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
       await uploadToS3(signResult.data, file, short_filename);
 
       await wrapRequest<unknown, true>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}/finish_upload', path: { space_id: resolvedSpaceId, asset_id: assetId }, signal, throwOnError: true, ...opts }), true);
+        mapi.finishSpaceSharedAssetUpload({ client, path: { space_id: resolvedSpaceId, id: assetId }, signal, throwOnError: true, ...opts }), true);
 
       const getResult = await wrapRequest<Asset, true>(() =>
-        client.get({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: resolvedSpaceId, asset_id: assetId }, signal, throwOnError: true, ...opts }), true);
+        mapi.getSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId, id: assetId }, signal, throwOnError: true, ...opts }), true);
       return getResult.data;
     },
     /** Creates a shared asset (upload + metadata). Returns the resulting `Asset`. */
@@ -100,9 +106,9 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
       const hasMetadata = Object.values(metadata).some(v => v !== undefined && v !== null);
       if (hasMetadata) {
         await wrapRequest<void, true>(() =>
-          client.put({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: resolvedSpaceId, asset_id: asset.id }, body: { asset: { ...metadata, asset_folder_id } }, signal, throwOnError: true, ...opts }), true);
+          mapi.updateSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId, id: asset.id }, body: { asset: { ...metadata, asset_folder_id } }, signal, throwOnError: true, ...opts }), true);
         const updated = await wrapRequest<Asset, true>(() =>
-          client.get({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: resolvedSpaceId, asset_id: asset.id }, signal, throwOnError: true, ...opts }), true);
+          mapi.getSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId, id: asset.id }, signal, throwOnError: true, ...opts }), true);
         return updated.data;
       }
       return asset;
@@ -115,28 +121,28 @@ export function createSharedAssetsResource<DefaultThrowOnError extends boolean =
 
       if (file !== undefined) {
         const { short_filename, ...assetBody } = body as { short_filename: string; asset: AssetUpdate };
-        const signResult = await wrapRequest<SignResponse, true>(() =>
-          client.post({ url: '/v1/spaces/{space_id}/shared_assets', path: { space_id: resolvedSpaceId }, query: { filename: short_filename, id: Number(assetId) }, signal, throwOnError: true, ...opts }), true);
+        const signResult = await wrapRequest<CreateSpaceSharedAssetResponses[200], true>(() =>
+          mapi.createSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId }, query: { filename: short_filename, id: Number(assetId) } as unknown as SignSharedAssetQuery, signal, throwOnError: true, ...opts }), true);
         if (!signResult.data.id) {
           throw new Error('Invalid signed response: missing id');
         }
         await uploadToS3(signResult.data, file, short_filename);
         await wrapRequest<unknown, true>(() =>
-          client.get({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}/finish_upload', path: { space_id: resolvedSpaceId, asset_id: signResult.data.id }, signal, throwOnError: true, ...opts }), true);
+          mapi.finishSpaceSharedAssetUpload({ client, path: { space_id: resolvedSpaceId, id: signResult.data.id }, signal, throwOnError: true, ...opts }), true);
         if (assetBody.asset && Object.keys(assetBody.asset).length > 0) {
           await wrapRequest<void, true>(() =>
-            client.put({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: resolvedSpaceId, asset_id: assetId }, body: assetBody, signal, throwOnError: true, ...opts }), true);
+            mapi.updateSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId, id: Number(assetId) }, body: assetBody, signal, throwOnError: true, ...opts }), true);
         }
       }
       else {
         await wrapRequest<void, true>(() =>
-          client.put({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: resolvedSpaceId, asset_id: assetId }, body, signal, throwOnError: true, ...opts }), true);
+          mapi.updateSpaceSharedAsset({ client, path: { space_id: resolvedSpaceId, id: Number(assetId) }, body, signal, throwOnError: true, ...opts }), true);
       }
     },
     delete<ThrowOnError extends boolean = false>(assetId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<Asset, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       return wrapRequest<Asset, ThrowOnError>(() =>
-        client.delete({ url: '/v1/spaces/{space_id}/shared_assets/{asset_id}', path: { space_id: getSpaceId(path), asset_id: assetId }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
+        mapi.deleteSpaceSharedAsset({ client, path: { space_id: getSpaceId(path), id: Number(assetId) }, signal, ...maybeThrow(throwOnError), ...kyOpts(fetchOptions) }), throwOnError);
     },
   };
 }

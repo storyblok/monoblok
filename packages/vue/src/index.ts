@@ -22,7 +22,19 @@ export { default as StoryblokComponent } from './components/StoryblokComponent.v
 
 export { default as StoryblokRichText } from './components/StoryblokRichText.vue';
 export { useStoryblokRichText } from './composables/use-storyblok-rich-text';
-export type { SbVueRichTextComponentMap, SbVueRichTextProps, SbVueRichTextRenderContext } from './rich-text-renderer';
+export type {
+  StoryblokVueRichTextComponentMap,
+  StoryblokVueRichTextDocumentProps,
+  StoryblokVueRichTextProps,
+  StoryblokVueRichTextRenderContext,
+} from './rich-text-renderer';
+
+// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
+export type {
+  SbVueRichTextComponentMap,
+  SbVueRichTextProps,
+  SbVueRichTextRenderContext,
+} from './rich-text-renderer';
 
 export * from './types';
 
@@ -123,10 +135,40 @@ export const StoryblokVue: Plugin = {
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
 
 export type {
+  StoryblokRichTextElement,
+  StoryblokRichTextImageOptions,
+  StoryblokRichTextInput,
+  StoryblokRichTextMark,
+  StoryblokRichTextMarkWithKey,
+  StoryblokRichTextNode,
+  StoryblokRichTextNodeWithKey,
+  StoryblokRichTextProps,
+  StoryblokRichTextRenderContext,
+  StoryblokRichTextRenderSpec,
+  StoryblokRichTextTextNode,
+} from '@storyblok/richtext';
+
+// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
+export type {
+  RenderSpec,
   SbRichTextDoc,
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
   SbRichTextProps,
   SbRichTextRenderContext,
+} from '@storyblok/richtext';
+
+// Re-exporting helpers from @storyblok/richtext for custom component implementations.
+export {
+  attrsToHtmlString,
+  getInnerMarks,
+  getStaticChildren,
+  groupLinkNodes,
+  hasContent,
+  isSelfClosing,
+  normalizeNodes,
+  processAttrs,
+  resolveTag,
+  styleToString,
 } from '@storyblok/richtext';

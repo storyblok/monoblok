@@ -280,7 +280,10 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
      * Moves the asset into the shared asset folder given by the required
      * `target_asset_folder_id` query param; takes no request body. One-way
      * only: a shared asset cannot be converted back to a space-local one.
-     * Converting an already-shared asset returns it unchanged.
+     *
+     * Not idempotent. Converting clears the asset's `space_id`, so a second
+     * call for the same id fails with 404 — the asset is no longer reachable
+     * through this space-scoped endpoint. Use `sharedAssets.get()` afterwards.
      *
      * The result is typed as `Asset` — the same shape `get()` returns — so
      * consumers work against a single asset type across this resource.

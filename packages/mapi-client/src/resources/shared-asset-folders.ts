@@ -12,10 +12,16 @@ import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
 /**
- * Shared (organization-level) asset folders. Top-level folders
- * (`parent_id === null`) are "libraries"; per-space access is exposed via
+ * Shared (organization-level) asset folders. A folder the server returns with
+ * `parent_id: null` is a "library" root; per-space access is exposed via
  * `asset_folder_access`. The active space must have read (list/get) or write
  * (create/update/delete) access to the library.
+ *
+ * Library roots cannot be created from a space — only in org context, via
+ * `POST /v1/orgs/{org_id}/shared_asset_folders`. `create()` here therefore
+ * always makes a child folder: `parent_id` is a plain `number` (no `null` to
+ * pass), and omitting it fails with 400 "Cannot create shared root asset folder
+ * in space context." `update()` does accept `parent_id: null`.
  */
 export function createSharedAssetFoldersResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;

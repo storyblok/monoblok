@@ -205,6 +205,49 @@ describe('validateStory', () => {
   });
 });
 
+const linkedPage = defineBlock({
+  name: 'linked-page',
+  is_root: true,
+  fields: [defineField('cta', { type: 'multilink' })],
+});
+const linkedSchema = { blocks: { linkedPage } };
+const multilinkBase = {
+  fieldtype: 'multilink',
+  id: '',
+  url: '',
+  cached_url: '',
+};
+const validateMultilink = (cta: unknown) => validateStory({
+  content: { component: 'linked-page', cta },
+}, linkedSchema);
+
+describe('validateStory — multilink values', () => {
+  it('accepts every raw Storyfront multilink variant', () => {
+    const variants = [
+      { ...multilinkBase, linktype: 'story', anchor: 'features', rel: 'bookmark' },
+      { ...multilinkBase, linktype: 'url', url: 'https://example.com', title: 'Example' },
+      { ...multilinkBase, linktype: 'email', email: 'hello@example.com' },
+      { ...multilinkBase, linktype: 'asset', id: 'asset-id' },
+    ];
+
+    for (const variant of variants) {
+      expect(validateMultilink(variant).ok).toBe(true);
+    }
+  });
+
+  it.each([
+    ['nullable target', { ...multilinkBase, linktype: 'asset', target: null }],
+    ['nullable story anchor', { ...multilinkBase, linktype: 'story', anchor: null }],
+    ['non-string URL attribute', { ...multilinkBase, linktype: 'url', rel: 42 }],
+    ['non-string custom story attribute', { ...multilinkBase, linktype: 'story', analytics: 42 }],
+  ])('rejects %s', (_label, value) => {
+    const result = validateMultilink(value);
+
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain('invalid_value');
+  });
+});
+
 const asset = () => ({ fieldtype: 'asset' as const, id: null, alt: null, filename: '' });
 
 const constrained = defineBlock({

@@ -394,30 +394,58 @@ export const zAssetFieldValueRoot = z.object({
 
 export const zAssetFieldValue = zAssetFieldValueRoot;
 
-/**
- * Multilink field type - link to internal stories, external URLs, emails, etc.
- */
-export const zMultilinkFieldValueRoot = z.object({
+export const zMultilinkFieldValueSharedLink = z.object({
     fieldtype: z.enum(['multilink']),
+    linktype: z.string(),
     id: z.string(),
     url: z.string(),
-    linktype: z.enum([
-        'story',
-        'url',
-        'email',
-        'asset'
-    ]),
     cached_url: z.string(),
-    anchor: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    target: z.optional(z.union([
-        z.literal('_self'),
-        z.literal('_blank'),
-        z.null()
-    ]))
+    target: z.optional(z.enum(['_self', '_blank']))
 });
+
+/**
+ * Link to a Storyblok asset.
+ */
+export const zMultilinkFieldValueAssetLink = zMultilinkFieldValueSharedLink.and(z.object({
+    linktype: z.enum(['asset'])
+}));
+
+/**
+ * Link to an email address.
+ */
+export const zMultilinkFieldValueEmailLink = zMultilinkFieldValueSharedLink.and(z.object({
+    linktype: z.enum(['email']),
+    email: z.optional(z.string())
+}));
+
+/**
+ * Link to an internal Storyblok story.
+ */
+export const zMultilinkFieldValueStoryLink = zMultilinkFieldValueSharedLink.and(z.object({
+    linktype: z.enum(['story']),
+    anchor: z.optional(z.string()),
+    rel: z.optional(z.string()),
+    title: z.optional(z.string())
+})).and(z.record(z.string(), z.string()));
+
+/**
+ * Link to an external URL.
+ */
+export const zMultilinkFieldValueUrlLink = zMultilinkFieldValueSharedLink.and(z.object({
+    linktype: z.enum(['url']),
+    rel: z.optional(z.string()),
+    title: z.optional(z.string())
+})).and(z.record(z.string(), z.string()));
+
+/**
+ * Multilink field type - link to internal stories, external URLs, emails, or assets.
+ */
+export const zMultilinkFieldValueRoot = z.union([
+    zMultilinkFieldValueStoryLink,
+    zMultilinkFieldValueUrlLink,
+    zMultilinkFieldValueEmailLink,
+    zMultilinkFieldValueAssetLink
+]);
 
 export const zMultilinkFieldValue = zMultilinkFieldValueRoot;
 

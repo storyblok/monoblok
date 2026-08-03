@@ -66,7 +66,7 @@
           { "id": 2000, "alt": "Type-safe content delivery", "filename": "", "fieldtype": "asset" },
           { "id": 2000, "alt": "Management API integration", "filename": "", "fieldtype": "asset" }
         ],
-        "columns": 3,
+        "columns": "3",
         "headline": "Gallery",
         "component": "gallery",
         "show_captions": true
@@ -100,10 +100,10 @@
       {
         "_uid": "0e87d5ee-bc93-4d0c-85e6-871927b8d21a",
         "items": [
-          { "_uid": "3047e784-5749-4b08-8d26-2e7667ad5b3a", "label": "Customers", "value": 5000, "prefix": "", "suffix": "+", "component": "stat_item" },
-          { "_uid": "10fd1ad3-ce19-4e02-8e26-82cd549847ee", "label": "Uptime", "value": 99.9, "prefix": "", "suffix": "%", "component": "stat_item" },
-          { "_uid": "96b7ef79-32a5-49bd-be7f-8ce85b6ffd8f", "label": "Revenue", "value": 2.4, "prefix": "$", "suffix": "M", "component": "stat_item" },
-          { "_uid": "f92d8081-6aea-4520-a349-05db866a077a", "label": "Support", "value": 24, "prefix": "", "suffix": "/7", "component": "stat_item" }
+          { "_uid": "3047e784-5749-4b08-8d26-2e7667ad5b3a", "label": "Customers", "value": "5000", "prefix": "", "suffix": "+", "component": "stat_item" },
+          { "_uid": "10fd1ad3-ce19-4e02-8e26-82cd549847ee", "label": "Uptime", "value": "99.9", "prefix": "", "suffix": "%", "component": "stat_item" },
+          { "_uid": "96b7ef79-32a5-49bd-be7f-8ce85b6ffd8f", "label": "Revenue", "value": "2.4", "prefix": "$", "suffix": "M", "component": "stat_item" },
+          { "_uid": "f92d8081-6aea-4520-a349-05db866a077a", "label": "Support", "value": "24", "prefix": "", "suffix": "/7", "component": "stat_item" }
         ],
         "headline": "By the Numbers",
         "component": "stats",

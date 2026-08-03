@@ -37,13 +37,13 @@ type IsBaseBlock<T> = [Block] extends [T] ? true : false;
  * required (`required: true`) from optional fields. Each `F` is a member of the
  * field union, so it provably satisfies `FieldValue`'s `Field` constraint.
  */
-type ContentFields<TFields extends BlockFields, TBlocks, TFieldPlugins = Record<never, never>> = Prettify<
+type ContentFields<TFields extends BlockFields, TBlocks extends Block | NoBlocks, TFieldPlugins = Record<never, never>> = Prettify<
   { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValue<F, TBlocks, TFieldPlugins> }
   & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValue<F, TBlocks, TFieldPlugins> | null }
 >;
 
 /** Input (write) variant of {@link ContentFields}, resolving each field via {@link FieldValueInput}. */
-type ContentFieldsInput<TFields extends BlockFields, TBlocks, TFieldPlugins = Record<never, never>> = Prettify<
+type ContentFieldsInput<TFields extends BlockFields, TBlocks extends Block | NoBlocks, TFieldPlugins = Record<never, never>> = Prettify<
   { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValueInput<F, TBlocks, TFieldPlugins> }
   & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValueInput<F, TBlocks, TFieldPlugins> | null }
 >;
@@ -54,7 +54,7 @@ type ContentFieldsInput<TFields extends BlockFields, TBlocks, TFieldPlugins = Re
  * runtime shape (any block, `_editable` optional). With a schema-typed
  * `TBlock`, fields are narrowed per the block's `fields`.
  */
-export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
+export type BlockContent<TBlock extends Block = Block, TBlocks extends Block | NoBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
   IsBaseBlock<TBlock> extends true
     ? BlockContentBase
     // distribute over each member of the `TBlock` union
@@ -66,7 +66,7 @@ export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks, TFiel
       : never;
 
 /** Input variant of {@link BlockContent} for write operations (creating/updating stories via the MAPI). `_uid` is optional. */
-export type BlockContentInput<TBlock extends Block = Block, TBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
+export type BlockContentInput<TBlock extends Block = Block, TBlocks extends Block | NoBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
   IsBaseBlock<TBlock> extends true
     ? BlockContentInputBase
     // distribute over each member of the `TBlock` union
@@ -79,7 +79,7 @@ export type BlockContentInput<TBlock extends Block = Block, TBlocks = NoBlocks, 
 
 export type BlocksFieldValue<
   TBlock extends Block = Block,
-  TBlocks = NoBlocks,
+  TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
 > = BlockContent<TBlock, TBlocks, TFieldPlugins>[];
 
@@ -91,7 +91,13 @@ interface FieldTypeValueMap {
   textarea: string;
   richtext: RichTextFieldValue;
   markdown: string;
-  number: number;
+  /**
+   * Stored and delivered as a string, not a JSON number. The Management API
+   * rejects numeric values ("must be a string with numbers and allow '-' and
+   * '.'"), the editor writes `String(value)`, and `default_value` is a string
+   * for the same reason. An unset field is `''`.
+   */
+  number: string;
   datetime: string;
   boolean: boolean;
   option: string;
@@ -143,6 +149,22 @@ type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer T
     : never;
 
 /**
+ * Removes the registry blocks named in `deny`, the `Exclude` counterpart to
+ * {@link ApplyAllow}. The wire `component_denylist` denies by block name only,
+ * so folder refs are not accepted. A `deny` entry naming no known block is
+ * inert: it removes nothing rather than collapsing the field.
+ */
+type ApplyDeny<TField, TBlocks> = TField extends { deny: ReadonlyArray<infer TDenied extends string> }
+  ? Exclude<TBlocks, { name: TDenied }>
+  : TBlocks;
+
+/**
+ * Resolves the block union a `bloks` field accepts: `allow` narrows the registry
+ * first, then `deny` removes from what is left, so the two compose.
+ */
+type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
+
+/**
  * Resolves a `custom` field to its registered plugin value. When the field's
  * `field_type` is a key of `TFieldPlugins`, the validator output is merged with
  * the plugin envelope (`plugin`, optional `_uid`); otherwise it falls back to
@@ -158,7 +180,7 @@ type ResolveCustom<TField, TFieldPlugins> =
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
   TField extends Field = Field,
-  TBlocks = NoBlocks,
+  TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
 > = Prettify<
   TField extends { type: 'bloks' }
@@ -167,7 +189,7 @@ export type FieldValue<
     ? [TBlocks] extends [never]
         ? BlockContentBase[]
         : [TBlocks] extends [Block]
-            ? BlockContent<ApplyAllow<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+            ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
             : BlockContentBase[]
     : TField extends { type: 'custom' }
       ? ResolveCustom<TField, TFieldPlugins>
@@ -177,7 +199,7 @@ export type FieldValue<
 /** Resolves a field definition to its input value type (write). */
 export type FieldValueInput<
   TField extends Field = Field,
-  TBlocks = NoBlocks,
+  TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
 > = Prettify<
   TField extends { type: 'bloks' }
@@ -186,7 +208,7 @@ export type FieldValueInput<
     ? [TBlocks] extends [never]
         ? BlockContentInputBase[]
         : [TBlocks] extends [Block]
-            ? BlockContentInput<ApplyAllow<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+            ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
             : BlockContentInputBase[]
     : TField extends { type: 'custom' }
       ? ResolveCustom<TField, TFieldPlugins>

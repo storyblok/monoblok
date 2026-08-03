@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { mapFieldToWire } from '../map-to-wire';
 import {
   componentFileName,
   componentVarName,
@@ -260,6 +261,77 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('allow');
   });
 
+  it('should keep a disabled restriction disabled instead of mapping a stale name whitelist to allow', () => {
+    // A field whose restriction is off can still store a whitelist. Emitting it as
+    // `allow` would make push re-derive `restrict_components: true`, silently
+    // restricting what editors may insert.
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: false,
+          component_whitelist: ['hero'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain('restrict_components: false,');
+    expect(result).not.toContain('allow');
+    expect(result).not.toContain('component_whitelist');
+
+    // Push the emitted config back: the restriction must still be off.
+    const { value } = mapFieldToWire({ name: 'body', type: 'bloks', pos: 0, restrict_components: false });
+    expect(value).toEqual({ type: 'bloks', pos: 0, restrict_components: false });
+  });
+
+  it('should keep a disabled restriction disabled instead of mapping a stale group whitelist to allow', () => {
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        body: {
+          type: 'bloks',
+          pos: 0,
+          restrict_components: false,
+          restrict_type: 'groups',
+          component_group_whitelist: ['uuid-heros'],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([['uuid-heros', 'herosFolder']]),
+    );
+
+    expect(result).toContain('restrict_components: false,');
+    expect(result).toContain('restrict_type: \'groups\',');
+    expect(result).not.toContain('allow');
+    expect(result).not.toContain('component_group_whitelist');
+    // No `allow` means no folder ref, so the folders import must not appear.
+    expect(result).not.toContain('herosFolder');
+
+    const { value } = mapFieldToWire({
+      name: 'body',
+      type: 'bloks',
+      pos: 0,
+      restrict_components: false,
+      restrict_type: 'groups',
+    });
+    expect(value).toEqual({ type: 'bloks', pos: 0, restrict_components: false, restrict_type: 'groups' });
+  });
+
   it('should omit empty array fields on blocks and fields', () => {
     const component = {
       id: 1,
@@ -436,7 +508,13 @@ describe('generateSchemaFile', () => {
     expect(result).not.toContain('blockFolders');
 
     expect(result).toContain('export type Schema = InferSchema<typeof schema>;');
-    expect(result).toContain('export type Story = InferStory<Blocks>;');
+    // Field plugins are threaded through the story types so registering one
+    // later does not require rewiring every consumer.
+    expect(result).toContain('export type FieldPlugins = Schema[\'fieldPlugins\'];');
+    expect(result).toContain('export type Story = InferStory<Blocks, FieldPlugins>;');
+    expect(result).toContain('export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;');
+    expect(result).toContain('export type Block<TName extends Blocks[\'name\']> = BlockContent<');
+    expect(result).toContain('export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;');
   });
 
   it('should omit empty sections from the schema object', () => {
@@ -610,6 +688,23 @@ describe('generateSchemaFile with folders', () => {
 
     expect(result).not.toContain('folders:');
     expect(result).not.toContain('./folders');
+  });
+
+  it('should omit the block helpers when the space has no components', () => {
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources([]));
+
+    // Both helpers index into `Blocks`, which has no members to index.
+    expect(result).not.toContain('export type Block<');
+    expect(result).not.toContain('export type AnyBlock');
+  });
+
+  it('should omit the BlockContent import when the space has no components', () => {
+    const result = generateSchemaFile(resolveComponents([], []), resolveDatasources([]));
+
+    // `BlockContent` is only referenced by the block helpers, which are omitted
+    // here. Importing it anyway trips `noUnusedLocals` in the new project.
+    expect(result).not.toContain('BlockContent');
+    expect(result).toContain('import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
   });
 });
 

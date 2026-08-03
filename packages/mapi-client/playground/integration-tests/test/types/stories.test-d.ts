@@ -106,7 +106,7 @@ describe('createManagementApiClient with .withTypes()', () => {
       const story = result.data.story;
       if (story.content.component === 'hero') {
         expectTypeOf(story.content.title).toEqualTypeOf<string | null | undefined>();
-        expectTypeOf(story.content.count).toEqualTypeOf<number | null | undefined>();
+        expectTypeOf(story.content.count).toEqualTypeOf<string | null | undefined>();
         expectTypeOf(story.content.component).toEqualTypeOf<'hero'>();
       }
     }
@@ -130,7 +130,7 @@ describe('createManagementApiClient with .withTypes()', () => {
           expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
         }
         if (story.content.component === 'hero') {
-          expectTypeOf(story.content.count).toEqualTypeOf<number | null | undefined>();
+          expectTypeOf(story.content.count).toEqualTypeOf<string | null | undefined>();
         }
       }
     }
@@ -151,7 +151,7 @@ describe('createManagementApiClient with .withTypes()', () => {
         if (story.content.hero) {
           for (const hero of story.content.hero) {
             expectTypeOf(hero.component).toEqualTypeOf<'hero'>();
-            expectTypeOf(hero.count).toEqualTypeOf<number | null | undefined>();
+            expectTypeOf(hero.count).toEqualTypeOf<string | null | undefined>();
           }
         }
         if (story.content.blocks) {

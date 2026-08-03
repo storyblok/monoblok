@@ -115,6 +115,56 @@ describe('defineField type inference', () => {
     void defineField('title', { type: 'text', default_value: false });
   });
 
+  it('should normalize a `deny` list to a literal tuple of block names', () => {
+    const heroBlock = defineBlock({ name: 'hero', fields: [] });
+    const f = defineField('body', { type: 'bloks', deny: [heroBlock, 'banner'] });
+    expectTypeOf(f.deny).toEqualTypeOf<readonly ['hero', 'banner']>();
+  });
+
+  it('should narrow bloks content by `deny` alone', () => {
+    const _heroBlock = defineBlock({ name: 'hero', is_nestable: true, fields: [] });
+    const _bannerBlock = defineBlock({ name: 'banner', is_nestable: true, fields: [] });
+    const _pageBlock = defineBlock({
+      name: 'page',
+      is_root: true,
+      fields: [defineField('body', { type: 'bloks', deny: ['banner'] })],
+    });
+    type Body = FieldValue<(typeof _pageBlock)['fields'][0], typeof _heroBlock | typeof _bannerBlock>;
+    expectTypeOf<Body[number]['component']>().toEqualTypeOf<'hero'>();
+  });
+
+  it('should compose `allow` and `deny` on the same bloks field', () => {
+    const _heroBlock = defineBlock({ name: 'hero', is_nestable: true, fields: [] });
+    const _teaserBlock = defineBlock({ name: 'teaser', is_nestable: true, fields: [] });
+    const _bannerBlock = defineBlock({ name: 'banner', is_nestable: true, fields: [] });
+    const _pageBlock = defineBlock({
+      name: 'page',
+      is_root: true,
+      fields: [defineField('body', {
+        type: 'bloks',
+        allow: ['hero', 'teaser', 'banner'],
+        deny: ['banner'],
+      })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)['fields'][0],
+      typeof _heroBlock | typeof _teaserBlock | typeof _bannerBlock
+    >;
+    expectTypeOf<Body[number]['component']>().toEqualTypeOf<'hero' | 'teaser'>();
+  });
+
+  it('should treat a `deny` entry naming an unknown block as inert', () => {
+    const _heroBlock = defineBlock({ name: 'hero', is_nestable: true, fields: [] });
+    const _teaserBlock = defineBlock({ name: 'teaser', is_nestable: true, fields: [] });
+    const _pageBlock = defineBlock({
+      name: 'page',
+      is_root: true,
+      fields: [defineField('body', { type: 'bloks', deny: ['ghost'] })],
+    });
+    type Body = FieldValue<(typeof _pageBlock)['fields'][0], typeof _heroBlock | typeof _teaserBlock>;
+    expectTypeOf<Body[number]['component']>().toEqualTypeOf<'hero' | 'teaser'>();
+  });
+
   it('should not include `allow` when not provided on a bloks field', () => {
     const f = defineField('body', { type: 'bloks' });
     expectTypeOf(f.type).toEqualTypeOf<'bloks'>();

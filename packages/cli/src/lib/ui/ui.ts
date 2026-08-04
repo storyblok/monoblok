@@ -28,6 +28,26 @@ export interface ProgressBar {
   stop: () => void;
 }
 
+let stdoutEpipeGuarded = false;
+
+/**
+ * Installs a one-time `EPIPE` guard on stdout.
+ *
+ * A downstream reader that exits early (`… --format json | head -5`) closes the
+ * pipe while the write is still in flight. Node reports that asynchronously as an
+ * `'error'` event on `process.stdout`; unhandled, it crashes with a stack trace
+ * and exit code 1 — overwriting the exit code the command computed, so a clean
+ * run looks like a failure to CI. There is nothing left to write, so EPIPE is
+ * swallowed; any other stdout error still surfaces.
+ */
+function guardStdoutEpipe(): void {
+  if (stdoutEpipeGuarded) { return; }
+  stdoutEpipeGuarded = true;
+  process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code !== 'EPIPE') { throw error; }
+  });
+}
+
 const noopProgressBar: ProgressBar = {
   increment: () => {},
   setTotal: () => {},
@@ -162,6 +182,7 @@ export class UI {
    * stdout stays a single pipeable document even with `--no-ui-enabled`.
    */
   writeMachineOutput(payload: string) {
+    guardStdoutEpipe();
     process.stdout.write(`${payload}\n`);
   }
 

@@ -6,6 +6,7 @@ import type {
   BulkRestoreAssetsResponses,
   BulkUpdateAssetsData,
   BulkUpdateAssetsResponses,
+  ConvertAssetToSharedAssetData,
   CreateAssetData,
   CreateAssetResponses,
   DeleteAssetResponses,
@@ -276,23 +277,27 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
     /**
      * Converts a space-local asset into a shared (org-level) asset.
      *
-     * Wraps `POST /v1/spaces/{space_id}/assets/{asset_id}/convert`, which takes
-     * the destination folder as the required `target_asset_folder_id` query
-     * param and no request body. One-way only (space to org).
+     * Moves the asset into the shared asset folder given by the required
+     * `target_asset_folder_id` query param; takes no request body. One-way
+     * only: a shared asset cannot be converted back to a space-local one.
      *
-     * Not part of the generated SDK, so this issues a raw `client.post`.
-     * The response is assumed to match `Asset`.
+     * Not idempotent. Converting clears the asset's `space_id`, so a second
+     * call for the same id fails with 404 — the asset is no longer reachable
+     * through this space-scoped endpoint. Use `sharedAssets.get()` afterwards.
+     *
+     * The result is typed as `Asset` — the same shape `get()` returns — so
+     * consumers work against a single asset type across this resource.
      */
     convertToShared<ThrowOnError extends boolean = false>(
-      assetId: number | string,
-      options: { query: { target_asset_folder_id: number }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+      assetId: number,
+      options: { query: ConvertAssetToSharedAssetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
     ): Promise<ApiResponse<Asset, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<Asset, ThrowOnError>(() =>
-        client.post({
-          url: '/v1/spaces/{space_id}/assets/{asset_id}/convert',
-          path: { space_id: resolvedSpaceId, asset_id: assetId },
+        mapi.convertAssetToSharedAsset({
+          client,
+          path: { space_id: resolvedSpaceId, id: assetId },
           query,
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),

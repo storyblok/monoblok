@@ -49,6 +49,10 @@ export type {
   Preset,
   PresetCreate,
   PresetUpdate,
+  SharedAssetFolder,
+  SharedAssetFolderCreate,
+  SharedAssetFolderUpdate,
+  SharedInternalTagCreate,
   Space,
   SpaceCreate,
   SpaceUpdate,
@@ -86,9 +90,7 @@ export type {
 
 // Resource-defined helpers
 export type { AssetCreate as AssetUploadRequest, AssetListQuery } from './resources/assets';
-export type { AccessLevel, AssetFolderAccess, SharedAssetFolder, SharedAssetFolderCreate, SharedAssetFolderGetResponse, SharedAssetFolderListResponse, SharedAssetFolderUpdate } from './resources/shared-asset-folders';
 export type { SharedAssetCreate, SharedAssetListQuery, SharedAssetListResponse, SharedAssetUploadRequest } from './resources/shared-assets';
-export type { SharedInternalTag, SharedInternalTagCreate, SharedInternalTagListQuery, SharedInternalTagListResponse, SharedInternalTagMutateResponse, SharedInternalTagObjectType } from './resources/shared-internal-tags';
 export type { SpaceCreateQuery } from './resources/spaces';
 export type { StoryListQuery } from './resources/stories';
 // Utilities

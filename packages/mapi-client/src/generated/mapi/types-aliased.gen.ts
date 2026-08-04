@@ -785,6 +785,66 @@ export type InternalTagCreate = {
 
 export type InternalTagUpdate = InternalTagCreate;
 
+export type SharedAssetFolder = {
+    id: number;
+    name: string;
+    /**
+     * ID of parent space if this is a child space.
+     */
+    parent_id: number | null;
+    /**
+     * Unique UUID identifier for the discussion.
+     */
+    uuid: string;
+    parent_uuid: string | null;
+    description?: string | null;
+    color?: string | null;
+    regions?: Array<'eu' | 'ap' | 'ca' | 'us' | 'cn' | 'all'>;
+    asset_folder_access?: Array<{
+        space_id?: number;
+        access_level?: 'write' | 'read';
+    }>;
+};
+
+export type SharedAssetFolderCreate = {
+    name: string;
+    parent_id?: number;
+    description?: string;
+    color?: string;
+    regions?: Array<'eu' | 'ap' | 'ca' | 'us' | 'cn' | 'all'>;
+    asset_folder_access?: Array<{
+        space_id?: number;
+        access_level?: 'read' | 'write';
+    }>;
+};
+
+export type SharedAssetFolderUpdate = {
+    name?: string;
+    parent_id?: number | null;
+    description?: string;
+    color?: string;
+    regions?: Array<'eu' | 'ap' | 'ca' | 'us' | 'cn' | 'all'>;
+    asset_folder_access?: Array<{
+        space_id?: number;
+        access_level?: 'read' | 'write';
+    }>;
+};
+
+export type SharedInternalTagCreate = {
+    /**
+     * The name of the shared internal tag
+     */
+    name: string;
+    /**
+     * The type of object this tag is associated with
+     */
+    object_type?: 'asset' | 'component' | 'idea';
+    /**
+     * The id of the root Shared Library asset_folder this tag is scoped to
+     */
+    asset_folder_id: number;
+};
+
 export type Preset = {
     /**
      * Unique identifier of the preset

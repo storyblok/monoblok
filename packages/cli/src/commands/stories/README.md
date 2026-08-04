@@ -6,7 +6,7 @@ The `stories` module provides tools to manage Storyblok stories and their conten
 
 - [`pull`](./pull/README.md): Download stories from your Storyblok space.
 - [`push`](./push/README.md): Upload stories to your Storyblok space.
-- [`validate`](./validate/README.md): Check every story's content against a local code-defined schema.
+- `validate`: Check every story's content against a local code-defined schema.
 
 > See each subcommand for detailed usage, options, and examples.
 

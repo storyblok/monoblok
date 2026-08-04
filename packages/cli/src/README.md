@@ -31,8 +31,8 @@ npm install storyblok@<version>
 | [`assets push`](./commands/assets/push/README.md) | ✅ | Upload assets and asset folders to your Storyblok space |
 | [`stories pull`](./commands/stories/pull/README.md) | ✅ | Download stories from your Storyblok space |
 | [`stories push`](./commands/stories/push/README.md) | ✅ | Upload stories to your Storyblok space |
-| [`stories validate`](./commands/stories/validate/README.md) | ✅ | Validate every story's draft content against a local code-defined schema |
-| [`schema validate`](./commands/schema/validate/README.md) | ✅ | Validate a local code-defined schema. Offline — no login, no space |
+| `stories validate` | ✅ | Validate every story's draft content against a local code-defined schema |
+| `schema validate` | ✅ | Validate a local code-defined schema. Offline — no login, no space |
 | [`migrations generate`](./commands/migrations/generate/README.md) | ✅ | Replaces previous generate-migrations |
 | [`migrations run`](./commands/migrations/run/README.md) | ✅ | Replaces previous run-migrations |
 | [`migrations rollback`](./commands/migrations/rollback/README.md) | ✅ | Replaces previous rollback-migrations |

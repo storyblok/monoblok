@@ -34,7 +34,7 @@ export interface RegistryConfig {
 }
 
 export interface RegistryResult {
-  StoryblokComponent: ComponentType<{ blok: SbBlokData } & Record<string, unknown>>;
+  StoryblokComponent: ComponentType<{ block: SbBlokData } & Record<string, unknown>>;
   StoryblokBlocks: ComponentType<{ blocks: SbBlokData[] } & Record<string, unknown>>;
   resolve: (name: string) => StoryblokComponentType | null;
 }
@@ -86,15 +86,15 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     return normalizeEntry(entry).component;
   };
 
-  function StoryblokComponent({ blok, ...rest }: { blok: SbBlokData } & Record<string, unknown>): ReactNode {
-    const entry = config.components[blok.component];
+  function StoryblokComponent({ block, ...rest }: { block: SbBlokData } & Record<string, unknown>): ReactNode {
+    const entry = config.components[block.component];
 
     if (!entry) {
       if (config.fallback) {
         const FallbackComponent = config.fallback;
-        return <FallbackComponent block={blok} {...rest} />;
+        return <FallbackComponent block={block} {...rest} />;
       }
-      console.warn(`[Storyblok] Unknown component: ${blok.component}`);
+      console.warn(`[Storyblok] Unknown component: ${block.component}`);
       return null;
     }
 
@@ -108,12 +108,12 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     if (needsSuspense) {
       return (
         <Suspense fallback={fallback ?? defaultSuspenseFallback}>
-          <Component block={blok} {...rest} />
+          <Component block={block} {...rest} />
         </Suspense>
       );
     }
 
-    return <Component block={blok} {...rest} />;
+    return <Component block={block} {...rest} />;
   }
 
   function StoryblokBlocks({ blocks, ...rest }: { blocks: SbBlokData[] } & Record<string, unknown>): ReactNode {
@@ -123,8 +123,8 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
 
     return (
       <>
-        {blocks.map(blok => (
-          <StoryblokComponent key={blok._uid} blok={blok} {...rest} />
+        {blocks.map(block => (
+          <StoryblokComponent key={block._uid} block={block} {...rest} />
         ))}
       </>
     );

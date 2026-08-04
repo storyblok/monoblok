@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '../index';
 import { schemaCommand } from '../command';
+import { resetReporter } from '../../../lib/reporter/reporter';
 
 // Mock jiti so the loader classifies controlled module exports instead of
 // reading/transpiling a real file (node:fs is mocked with memfs in tests).
@@ -45,8 +46,9 @@ describe('schema validate command', () => {
   });
 
   afterEach(() => {
-    process.exitCode = 0;
     vi.clearAllMocks();
+    resetReporter();
+    process.exitCode = undefined;
   });
 
   it('should exit 0 for a schema with resolvable references', async () => {

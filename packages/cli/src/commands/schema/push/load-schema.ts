@@ -1,6 +1,6 @@
 import type { LocalFolder, SchemaData } from '../types';
-import { CommandError } from '../../../utils';
-import { collectSchemaExports, isRecord, loadSchemaModule } from '../../../utils/schema/classify-exports';
+import { CommandError, isRecord } from '../../../utils';
+import { collectSchemaExports, loadSchemaModule } from '../../../utils/schema/classify-exports';
 import { expandFolderPath } from '../folders';
 import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
 

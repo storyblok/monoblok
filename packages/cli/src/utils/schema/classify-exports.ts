@@ -11,11 +11,7 @@
  */
 
 import { resolve } from 'pathe';
-
-/** Narrows a value to a plain object (excludes `null` and arrays). */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+import { isRecord } from '../object';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
 export function isComponent(value: unknown): value is Record<string, unknown> {

@@ -77,6 +77,9 @@ describe('stories validate command', () => {
     schemaModule = {
       page: { name: 'page', fields: [{ name: 'headline', type: 'text', required: true }] },
     };
+    // The loader checks the entry file exists before handing it to jiti, so it
+    // has to be present in the mocked filesystem even though jiti is stubbed.
+    vol.fromJSON({ 'src/schema.ts': 'export const page = {};' });
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -309,6 +312,33 @@ describe('stories validate command', () => {
     expect(loggedOutput()).not.toContain('No stories matched');
   });
 
+  // The pretty run warns; a `--format json` consumer sees no stderr, so without
+  // this the document is indistinguishable from a clean run over real content.
+  it('should surface a filter that matched no stories in the JSON document', async () => {
+    preconditions.canListStories([]);
+
+    await runValidate('--starts-with', 'nope/', '--format', 'json');
+
+    expect(JSON.parse(machineOutput())).toMatchObject({
+      ok: true,
+      unitsTotal: 0,
+      noMatches: true,
+      filter: { option: '--starts-with', value: 'nope/' },
+    });
+  });
+
+  it('should echo the normalized filter, not the raw argument', async () => {
+    const story = makeMockStory({ full_slug: 'en/home', content: { component: 'page', headline: 'Hi' } });
+    preconditions.canListStories([story], { starts_with: 'en/' });
+    preconditions.canFetchStories([story]);
+
+    await runValidate('--starts-with', '/en/', '--format', 'json');
+
+    const report = JSON.parse(machineOutput());
+    expect(report.filter).toEqual({ option: '--starts-with', value: 'en/' });
+    expect(report).not.toHaveProperty('noMatches');
+  });
+
   // Stories are fetched concurrently, so arrival order varies between runs;
   // unsorted output is not diffable in CI.
   it('should order groups by path, not by arrival', async () => {
@@ -323,6 +353,26 @@ describe('stories validate command', () => {
 
     const report = JSON.parse(machineOutput());
     expect(report.groups.map((group: { ref: { slug: string } }) => group.ref.slug)).toEqual(['alpha', 'zebra']);
+  });
+
+  // Regression: ordering with `localeCompare` depends on the runtime's default
+  // locale and ICU build. `älpha` sorts before `zebra` under `en`/`de` but after
+  // it under `sv`, so two CI runners with a different `LANG` produced different
+  // output for identical content — the opposite of the diffable ordering the sort
+  // exists for. Plain string comparison is locale-independent, which puts the
+  // non-ASCII slug last here.
+  it('should order groups independently of the runtime locale', async () => {
+    const stories = [
+      makeMockStory({ id: 1, full_slug: 'älpha', content: { component: 'page' } }),
+      makeMockStory({ id: 2, full_slug: 'zebra', content: { component: 'page' } }),
+    ];
+    preconditions.canListStories(stories);
+    preconditions.canFetchStories(stories);
+
+    await runValidate('--format', 'json');
+
+    const slugs = JSON.parse(machineOutput()).groups.map((group: { ref: { slug: string } }) => group.ref.slug);
+    expect(slugs).toEqual(['zebra', 'älpha']);
   });
 
   it('should carry each story\'s identity in the JSON groups', async () => {

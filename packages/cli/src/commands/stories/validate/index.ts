@@ -233,10 +233,19 @@ storiesCommand
 
       // Stories arrive in completion order, not list order, so identical content
       // would print in a different order on every run. Sort by path to keep the
-      // output diffable in CI.
-      groups.sort((a, b) =>
-        (a.ref.slug ?? a.header).localeCompare(b.ref.slug ?? b.header)
-        || (a.ref.id ?? 0) - (b.ref.id ?? 0));
+      // output diffable in CI. Compared as plain strings rather than with
+      // `localeCompare`, whose result depends on the runtime's default locale and
+      // ICU build: two CI runners with a different `LANG` would order the same
+      // slugs differently, which is the opposite of diffable. These are slugs,
+      // not display names, so there is no human collation worth preserving.
+      groups.sort((a, b) => {
+        const left = a.ref.slug ?? a.header;
+        const right = b.ref.slug ?? b.header;
+        if (left !== right) {
+          return left < right ? -1 : 1;
+        }
+        return (a.ref.id ?? 0) - (b.ref.id ?? 0);
+      });
 
       // 4. Build the result. The run-level failures travel with it so neither
       //    formatter can present an incomplete run as a clean one.
@@ -245,6 +254,9 @@ storiesCommand
         unitNoun: 'stories',
         unitsTotal: totalStories,
         groups,
+        // Travels with the result so both formatters can say the population was
+        // narrowed, rather than only the pretty one knowing.
+        ...(startsWith === undefined ? {} : { filter: { option: '--starts-with', value: startsWith } }),
         fetchFailures,
         fetchErrors,
         listFailed,
@@ -287,8 +299,8 @@ storiesCommand
         // A prefix that selects nothing produces the same green summary as a
         // clean space. Say so, or the run reads as a pass over content it never
         // looked at.
-        if (startsWith !== undefined && totalStories === 0) {
-          ui.warn(`No stories matched --starts-with "${startsWith}"; nothing was validated.`);
+        if (result.filter && totalStories === 0) {
+          ui.warn(`No stories matched ${result.filter.option} "${result.filter.value}"; nothing was validated.`);
         }
         if (fetchFailures > 0) {
           ui.warn(`${fetchFailures} story(s) could not be fetched and were not validated.`);

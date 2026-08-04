@@ -50,29 +50,65 @@ const EXPECTED_SHAPE = {
 const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
 
 /**
- * Rewrites a validator's own message into the style the hand-written messages
- * use (capitalized, one trailing period).
- *
- * A failure on the value as a whole (`atRoot`) is where a validator says the
- * least: Zod reports a bare `Invalid input` for a failed union — every member
- * mismatched, so it can name none of them — which tells the reader nothing about
- * what a multilink or richtext value should look like. `expected` replaces those
- * with a description of the accepted shape. Messages about a specific key inside
- * the value already name it, so they are kept verbatim.
+ * Whether a content value counts as "no value". Mirrors the backend's required
+ * check, which is `field_value.blank?`, and `''.blank?` is true. Applied
+ * uniformly so one representation of unset cannot read as a type error on one
+ * field type and as unset on another.
  */
-function formatValidatorMessage(message: string, expected: string | undefined, atRoot: boolean): string {
-  const raw = message.trim();
-  const text = expected !== undefined && atRoot ? expected : raw;
+function isUnset(value: unknown): boolean {
+  return value === undefined || value === null || value === '';
+}
+
+/** Capitalizes and gives the text exactly one trailing period. */
+function asSentence(text: string): string {
   const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
   return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;
 }
 
-/**
- * Formatted messages that name nothing. `expected` only replaces these at the
- * root of a value, so a union that fails deeper inside — a malformed richtext
- * node, say — still surfaces Zod's bare text.
- */
+/** Validator messages that name nothing at all, and so are worth rewording. */
 const UNINFORMATIVE_MESSAGES = new Set(['Invalid input.']);
+
+/**
+ * Said in place of a validator message that names nothing. Deliberately does not
+ * borrow the field's expected shape: at a nested path that shape describes the
+ * wrong thing (a richtext *node* is not a richtext *document*), so it would trade
+ * a vague message for a misleading one.
+ */
+const VAGUE_MESSAGE = 'Value does not match any shape this field accepts.';
+
+/**
+ * Maps a vague issue to the path of the field value it came from, so
+ * {@link dropSubsumedIssues} can tell whether anything else in that same value
+ * explains it. Keyed weakly: every issue object is created once, for one call.
+ */
+const vagueIssueValuePaths = new WeakMap<ValidationIssue, string>();
+
+/**
+ * Rewrites a validator's own message into the style the hand-written messages use.
+ *
+ * A validator says the least when the value as a whole fails (`atRoot`): Zod
+ * reports a bare `Invalid input` for a failed union, every member having
+ * mismatched so it can name none of them, which tells the reader nothing about
+ * what a multilink or richtext value should look like. `expected` describes the
+ * accepted shape and stands in for those.
+ *
+ * Deeper down, a message that names a key is kept verbatim, but one that names
+ * nothing is reworded: `Invalid input.` gives a reader nothing to act on.
+ */
+function formatValidatorMessage(
+  message: string,
+  expected: string | undefined,
+  atRoot: boolean,
+): { message: string; vague: boolean } {
+  const formatted = asSentence(message.trim());
+  if (expected !== undefined && atRoot) {
+    return { message: asSentence(expected), vague: false };
+  }
+  if (UNINFORMATIVE_MESSAGES.has(formatted)) {
+    return { message: VAGUE_MESSAGE, vague: true };
+  }
+  return { message: formatted, vague: false };
+}
 
 /**
  * Joins a path into a comparable string. The separator is a NUL byte, which no
@@ -84,23 +120,30 @@ function pathKey(path: (string | number)[]): string {
 }
 
 /**
- * Drops issues that say nothing where a more specific issue already covers the
- * same value. A malformed richtext blok reports twice — once as the bare
- * `Invalid input.` the node's union produces, once as the `unknown_component`
- * the blok walk finds underneath it — and only the second tells the reader what
- * to fix. An uninformative issue is kept when nothing deeper explains it, so a
- * value is never rejected silently.
+ * Drops vague issues that something else in the same field value already
+ * explains.
+ *
+ * A malformed richtext blok reports twice: once as the vague failure the node's
+ * union produces, once as the `unknown_component` the blok walk finds underneath
+ * it, and only the second tells the reader what to fix. An empty asset object
+ * likewise reports one vague issue per key that carries no message of its own,
+ * alongside the keys that do name what is wrong.
+ *
+ * Scoped to the value the vague issue came from, so an issue on an unrelated
+ * field never suppresses it, and a vague issue that nothing else explains is
+ * always kept: a value is never rejected silently.
  */
 function dropSubsumedIssues(issues: ValidationIssue[]): ValidationIssue[] {
-  const informativePaths = issues
-    .filter(issue => !UNINFORMATIVE_MESSAGES.has(issue.message))
+  const explanatoryPaths = issues
+    .filter(issue => !vagueIssueValuePaths.has(issue))
     .map(issue => pathKey(issue.path));
   return issues.filter((issue) => {
-    if (!UNINFORMATIVE_MESSAGES.has(issue.message)) {
+    const valuePath = vagueIssueValuePaths.get(issue);
+    if (valuePath === undefined) {
       return true;
     }
-    const prefix = `${pathKey(issue.path)}\u0000`;
-    return !informativePaths.some(candidate => candidate.startsWith(prefix));
+    const prefix = `${valuePath}\u0000`;
+    return !explanatoryPaths.some(candidate => candidate.startsWith(prefix));
   });
 }
 
@@ -133,17 +176,26 @@ function checkValue(
     return;
   }
   if (result.issues) {
-    for (const issue of result.issues) {
-      const issuePath = (issue.path ?? []).map(segment =>
+    for (const rawIssue of result.issues) {
+      const issuePath = (rawIssue.path ?? []).map(segment =>
         (typeof segment === 'object' && segment !== null ? String(segment.key) : (segment as string | number)),
       );
-      issues.push({
+      const { message, vague } = formatValidatorMessage(
+        rawIssue.message,
+        expected,
+        issuePath.length === 0,
+      );
+      const issue: ValidationIssue = {
         severity: 'error',
         code: 'invalid_value',
         path: [...path, ...issuePath],
         entity,
-        message: formatValidatorMessage(issue.message, expected, issuePath.length === 0),
-      });
+        message,
+      };
+      if (vague) {
+        vagueIssueValuePaths.set(issue, pathKey(path));
+      }
+      issues.push(issue);
     }
   }
 }
@@ -225,14 +277,18 @@ function validateFieldValue(
       break;
     case 'number': {
       if (typeof value !== 'string') {
-        // The wire form of a number field is a string, so a JSON number is
-        // invalid even though it reads as the more natural value. Say why.
-        pushInvalidValue(
-          `Expected a numeric string (number fields are stored as strings), received ${describeType(value)}.`,
+        // The wire form of a number field is a string, so a JSON number is not
+        // what the editor writes. Reported as a warning rather than an error: the
+        // backend neither coerces nor rejects it, so API-authored and migrated
+        // content carries it and still reads fine. It is drift worth surfacing,
+        // not a broken value worth failing a build over.
+        issues.push({
+          severity: 'warning',
+          code: 'invalid_value',
           path,
           entity,
-          issues,
-        );
+          message: `Expected a numeric string (number fields are stored as strings), received ${describeType(value)}.`,
+        });
         break;
       }
       // Mirrors the backend's `\A-?\d*\.?\d*\z`: an optional leading `-`, digits
@@ -594,7 +650,7 @@ function validateBlokContent(
     // true, so an empty string is unset rather than a value. That matters most
     // for `number`, whose unset wire form *is* `''` — the value branch below
     // legitimately skips it, leaving the required check as the only diagnostic.
-    if (field.required && (value === undefined || value === null || value === '')) {
+    if (field.required && isUnset(value)) {
       issues.push({
         severity: 'error',
         code: 'missing_required_field',
@@ -603,9 +659,13 @@ function validateBlokContent(
         message: `Missing required field "${field.name}" on component "${block.name}".`,
       });
     }
-    // An empty string on an optional field still goes through value validation:
-    // it is a legal value for the string-ish types but not, say, for `asset`.
-    else if (value !== undefined && value !== null) {
+    // `''` counts as unset for every field type, matching the required check
+    // above. Validating it as a value instead made the same content both unset
+    // and wrongly typed depending on the field: `''` passed for `number` and
+    // `datetime`, whose unset wire form it is, and failed for `boolean`, `asset`,
+    // and `multilink`. Nothing is lost by skipping it, since an empty string
+    // carries no value to be wrong about.
+    else if (!isUnset(value)) {
       validateFieldValue(field, value, blocksByName, fieldPluginsByType, [...path, field.name], entity, issues);
     }
 
@@ -614,7 +674,7 @@ function validateBlokContent(
     // locale nobody has translated yet is normal, not a missing value.
     for (const key of translatedKeysByField.get(field.name) ?? []) {
       const translatedValue = content[key];
-      if (translatedValue === undefined || translatedValue === null) {
+      if (isUnset(translatedValue)) {
         continue;
       }
       validateFieldValue(field, translatedValue, blocksByName, fieldPluginsByType, [...path, key], entity, issues);

@@ -780,6 +780,98 @@ describe('validateStory — field-level translations', () => {
 // A validator that fails on a union deep inside a value reports a bare
 // `Invalid input`, which names nothing. When a more specific issue already
 // covers the same value, the vague one is noise.
+// One representation of "no value" should read the same on every field type.
+// `''` used to pass for `number` and `datetime`, whose unset wire form it is, and
+// fail as a type error for `boolean`, `asset`, and `multilink`.
+describe('validateStory — the empty string counts as unset', () => {
+  const every = defineBlock({
+    name: 'every',
+    is_root: true,
+    fields: [
+      defineField('num', { type: 'number' }),
+      defineField('when', { type: 'datetime' }),
+      defineField('flag', { type: 'boolean' }),
+      defineField('cover', { type: 'asset' }),
+      defineField('link', { type: 'multilink' }),
+      defineField('body', { type: 'richtext' }),
+    ],
+  });
+  const s = { blocks: { every } };
+
+  it.each(['num', 'when', 'flag', 'cover', 'link', 'body'])('accepts an optional %s left as ""', (name) => {
+    const result = validateStory({ content: { component: 'every', [name]: '' } }, s);
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('still reports a required field left as ""', () => {
+    const required = defineBlock({
+      name: 'required',
+      is_root: true,
+      fields: [defineField('cover', { type: 'asset', required: true })],
+    });
+    const result = validateStory({ content: { component: 'required', cover: '' } }, { blocks: { required } });
+    expect(codesFor(result)).toEqual(['missing_required_field']);
+  });
+
+  it('still validates a non-empty value of the same field', () => {
+    const result = validateStory({ content: { component: 'every', flag: 'yes' } }, s);
+    expect(codesFor(result)).toEqual(['invalid_value']);
+  });
+});
+
+// A number field stores its value as a string, so a JSON number is drift worth
+// surfacing. It is not a broken value, though: the backend neither coerces nor
+// rejects it, so API-authored and migrated content carries it and still reads.
+describe('validateStory — a JSON number in a number field', () => {
+  const counted = defineBlock({
+    name: 'counted',
+    is_root: true,
+    fields: [defineField('count', { type: 'number' })],
+  });
+  const s = { blocks: { counted } };
+
+  it('warns rather than errors, and keeps the run ok', () => {
+    const result = validateStory({ content: { component: 'counted', count: 42 } }, s);
+    expect(result.ok).toBe(true);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]).toMatchObject({ severity: 'warning', code: 'invalid_value' });
+    expect(result.issues[0]?.message).toBe(
+      'Expected a numeric string (number fields are stored as strings), received number.',
+    );
+  });
+
+  it('still errors on a string that is not numeric', () => {
+    const result = validateStory({ content: { component: 'counted', count: 'abc' } }, s);
+    expect(result.ok).toBe(false);
+  });
+});
+
+// An empty object fails several keys of one value at once, and the keys that
+// carry no message of their own are pure noise next to the ones that do.
+describe('validateStory — an empty object in an object-shaped field', () => {
+  const shaped = defineBlock({
+    name: 'shaped',
+    is_root: true,
+    fields: [defineField('cover', { type: 'asset' })],
+  });
+  const s = { blocks: { shaped } };
+
+  it('reports only the keys that name what is wrong', () => {
+    const result = validateStory({ content: { component: 'shaped', cover: {} } }, s);
+
+    expect(result.ok).toBe(false);
+    for (const issue of result.issues) {
+      expect(issue.message).not.toBe('Invalid input.');
+      expect(issue.message).not.toBe('Value does not match any shape this field accepts.');
+    }
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'cover', 'fieldtype'],
+      ['content', 'cover', 'filename'],
+    ]);
+  });
+});
+
 describe('validateStory — subsumed issues', () => {
   const page = defineBlock({
     name: 'page',
@@ -802,9 +894,12 @@ describe('validateStory — subsumed issues', () => {
     expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0, 'attrs', 'body', 0, 'component']);
   });
 
-  it('keeps the bare union message when nothing deeper explains it', () => {
+  it('keeps the vague message when nothing deeper explains it', () => {
     // Same malformed node, but the embedded blok itself is valid, so the vague
-    // issue is the only signal the node is wrong.
+    // issue is the only signal the node is wrong. It says so in words a reader can
+    // act on rather than passing Zod's bare `Invalid input` through, and it stays
+    // at the node's own path: the field's expected shape describes a whole
+    // richtext document, not one node inside it.
     const result = validateStory({
       content: {
         component: 'page',
@@ -812,7 +907,7 @@ describe('validateStory — subsumed issues', () => {
       },
     }, s);
     expect(result.issues).toHaveLength(1);
-    expect(result.issues[0]?.message).toBe('Invalid input.');
+    expect(result.issues[0]?.message).toBe('Value does not match any shape this field accepts.');
     expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0]);
   });
 

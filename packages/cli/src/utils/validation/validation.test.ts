@@ -7,6 +7,8 @@ import { countIssues, filterIssuesByLevel } from './filter';
 import { formatJson } from './format-json';
 import { formatPretty } from './format-pretty';
 import { entityToHeader, entityToRef, groupIssuesByEntity } from './group';
+import { writeValidationReport } from './report';
+import type { Reporter } from '../../lib/reporter/reporter';
 
 const error: ValidationIssue = {
   severity: 'error',
@@ -84,6 +86,109 @@ describe('countIssues', () => {
       groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
     };
     expect(countIssues(result)).toEqual({ errors: 1, warnings: 1, unitsWithIssues: 1 });
+  });
+
+  // Regression: `validateSchema` attributes every nameless block to the single
+  // `schema` pseudo-entity, so counting groups reported two broken blocks as one
+  // affected unit — and `unitsTotal - unitsWithIssues` then counted one of them
+  // as clean.
+  it('should count each definition in the schema pseudo-group as its own unit', () => {
+    const namelessBlock = (index: number): ValidationIssue => ({
+      severity: 'error',
+      code: 'invalid_block_name',
+      path: ['blocks', index],
+      entity: 'schema',
+      message: `Block at index ${index} is missing a non-empty string "name".`,
+    });
+    const result: ValidationRunResult = {
+      unitNoun: 'entities',
+      unitsTotal: 3,
+      groups: [{
+        header: 'schema',
+        ref: { kind: 'schema' },
+        issues: [namelessBlock(0), namelessBlock(1)],
+      }],
+    };
+    expect(countIssues(result)).toMatchObject({ unitsWithIssues: 2 });
+  });
+
+  it('should count two issues on the same definition as one unit', () => {
+    const at = (code: string): ValidationIssue => ({
+      severity: 'error',
+      code,
+      path: ['blocks', 0],
+      entity: 'schema',
+      message: 'Broken block.',
+    });
+    const result: ValidationRunResult = {
+      unitNoun: 'entities',
+      unitsTotal: 3,
+      groups: [{
+        header: 'schema',
+        ref: { kind: 'schema' },
+        issues: [at('invalid_block_name'), at('missing_field_name')],
+      }],
+    };
+    expect(countIssues(result)).toMatchObject({ unitsWithIssues: 1 });
+  });
+
+  // A story's `entity` is the offending block, so counting by entity instead of
+  // by group would collapse every story that shares one.
+  it('should count one unit per story even when they share a block', () => {
+    const result: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 5,
+      groups: [
+        { header: 'a (story #1)', ref: { kind: 'story', id: 1, slug: 'a' }, issues: [error] },
+        { header: 'b (story #2)', ref: { kind: 'story', id: 2, slug: 'b' }, issues: [error] },
+      ],
+    };
+    expect(countIssues(result)).toMatchObject({ unitsWithIssues: 2 });
+  });
+});
+
+describe('writeValidationReport', () => {
+  /** Captures what the reporter was handed, without touching the filesystem. */
+  function fakeReporter() {
+    const summaries: Record<string, unknown> = {};
+    const metas: Record<string, unknown> = {};
+    const reporter = {
+      addSummary(key: string, value: unknown) {
+        summaries[key] = value;
+        return reporter;
+      },
+      addMeta(key: string, value: unknown) {
+        metas[key] = value;
+        return reporter;
+      },
+    };
+    return { reporter, summaries, metas };
+  }
+
+  // The artifact's `succeeded` is derived, so a wrong unit count silently
+  // reported a broken definition as clean.
+  it('should keep succeeded + failed equal to the unit total', () => {
+    const { reporter, summaries } = fakeReporter();
+    const namelessBlock = (index: number): ValidationIssue => ({
+      severity: 'error',
+      code: 'invalid_block_name',
+      path: ['blocks', index],
+      entity: 'schema',
+      message: 'Nameless block.',
+    });
+    const result: ValidationRunResult = {
+      unitNoun: 'entities',
+      unitsTotal: 3,
+      groups: [{
+        header: 'schema',
+        ref: { kind: 'schema' },
+        issues: [namelessBlock(0), namelessBlock(1)],
+      }],
+    };
+
+    writeValidationReport(reporter as unknown as Reporter, result);
+
+    expect(summaries.validation).toEqual({ total: 3, succeeded: 1, failed: 2 });
   });
 });
 
@@ -236,6 +341,60 @@ describe('formatJson', () => {
     const report = JSON.parse(formatJson(clean, 'warning'));
     expect(report).not.toHaveProperty('fetchErrors');
     expect(report).not.toHaveProperty('listError');
+  });
+
+  // A prefix that selects nothing otherwise produces the same document as a
+  // clean run over real content, so a consumer cannot tell them apart.
+  it('should echo the filter that narrowed the population', () => {
+    const filtered: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 3,
+      groups: [],
+      filter: { option: '--starts-with', value: 'en/' },
+    };
+    expect(JSON.parse(formatJson(filtered, 'warning'))).toMatchObject({
+      filter: { option: '--starts-with', value: 'en/' },
+    });
+  });
+
+  it('should flag a filter that matched nothing', () => {
+    const empty: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 0,
+      groups: [],
+      filter: { option: '--starts-with', value: 'nope/' },
+    };
+    expect(JSON.parse(formatJson(empty, 'warning'))).toMatchObject({ noMatches: true, unitsTotal: 0 });
+  });
+
+  it('should not flag no-matches when the filter did select stories', () => {
+    const filtered: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 3,
+      groups: [],
+      filter: { option: '--starts-with', value: 'en/' },
+    };
+    expect(JSON.parse(formatJson(filtered, 'warning'))).not.toHaveProperty('noMatches');
+  });
+
+  it('should not flag no-matches for an unfiltered run over an empty space', () => {
+    const empty: ValidationRunResult = { unitNoun: 'stories', unitsTotal: 0, groups: [] };
+    const report = JSON.parse(formatJson(empty, 'warning'));
+    expect(report).not.toHaveProperty('noMatches');
+    expect(report).not.toHaveProperty('filter');
+  });
+
+  it('should leave a failed listing to explain its own empty population', () => {
+    // `listFailed` already says why nothing was validated; `noMatches` would
+    // blame the filter for a failure it did not cause.
+    const failed: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 0,
+      groups: [],
+      filter: { option: '--starts-with', value: 'en/' },
+      listFailed: true,
+    };
+    expect(JSON.parse(formatJson(failed, 'warning'))).not.toHaveProperty('noMatches');
   });
 
   it('should carry each group\'s identity so a consumer never parses the header', () => {

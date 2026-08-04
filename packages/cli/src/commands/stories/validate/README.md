@@ -91,13 +91,16 @@ storyblok stories validate --space YOUR_SPACE_ID --schema ./schema.ts --format j
 
 - `ok` is `true` only for a complete run with no errors. A failed listing (`listFailed`) or any story that could not be fetched (`fetchFailures`) makes it `false` even with zero issues.
 - `listError` and `fetchErrors` carry the reasons behind an incomplete run, which a consumer reading only stdout would otherwise never see.
+- `filter` echoes the option that narrowed the population (`{ "option": "--starts-with", "value": "en/" }`), and `noMatches: true` is added when that filter selected nothing. Both are omitted otherwise. A prefix that matches no story is still `ok: true`, so without these the document would be indistinguishable from a clean run over real content.
 - `ref` is the machine-readable identity of a group — use it instead of parsing `header`.
 - The counts are always true totals. `--level` only filters which issues appear under `groups`.
+- Check the exit code before parsing: exit `2` means the run never produced a document, so stdout is empty and the reason is on stderr.
 
 ## Notes
 
 - The entry file must export at least one block. A schema that defines none would report every story as `unknown_component`, so it is rejected as a bad invocation instead.
 - Folders are skipped: they carry no content. They are excluded from the story total.
+- Field-level translations (`headline__i18n__de`) are validated against the field they belong to, so a translated value is held to the same rules as the default one. `required` stays scoped to the default value — an untranslated locale is normal content, not a missing value.
 - `--starts-with` is matched against `full_slug`, which never begins with a slash; a leading slash is stripped. When the prefix selects no stories the command says so rather than reporting a clean run over nothing.
 - Group order is sorted by path, so output from two runs over identical content is diffable.
 

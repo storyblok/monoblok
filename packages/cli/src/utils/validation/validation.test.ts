@@ -43,6 +43,10 @@ describe('entityToHeader', () => {
   it('should leave bare entities untouched', () => {
     expect(entityToHeader('schema')).toBe('schema');
   });
+
+  it('should not render a blank header for an entity with no name', () => {
+    expect(entityToHeader('block:')).toBe('<unnamed block>');
+  });
 });
 
 describe('groupIssuesByEntity', () => {

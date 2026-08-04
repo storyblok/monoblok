@@ -1,10 +1,10 @@
 import type {
+  StoryblokRichTextProps as StoryblokRichTextCoreProps,
   StoryblokRichTextElement,
   StoryblokRichTextImageOptions,
   StoryblokRichTextInput,
   StoryblokRichTextMark,
   StoryblokRichTextNodeWithKey,
-  StoryblokRichTextProps,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
 } from '@storyblok/richtext';
@@ -23,11 +23,11 @@ import React, { type ComponentType, type ReactNode } from 'react';
 
 /**
  * Props type for React richtext node/mark components.
- * Extends the OpenAPI-sourced StoryblokRichTextProps<T> with a React-specific
+ * Extends the OpenAPI-sourced StoryblokRichTextCoreProps<T> with a React-specific
  * context and ReactNode children (instead of the static renderer's string children).
  */
 export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> =
-  Omit<StoryblokRichTextProps<T>, 'context' | 'children'> & {
+  Omit<StoryblokRichTextCoreProps<T>, 'context' | 'children'> & {
     context?: StoryblokReactRichTextRenderContext;
     children?: ReactNode;
   };
@@ -71,6 +71,11 @@ export type SbReactRichTextRenderContext = StoryblokReactRichTextRenderContext;
 export interface StoryblokReactRichTextDocumentProps extends StoryblokReactRichTextRenderContext {
   document?: StoryblokRichTextInput;
 }
+
+/**
+ * @deprecated Use {@link StoryblokReactRichTextDocumentProps} instead. Will be removed in the next major version.
+ */
+export type StoryblokRichTextProps = StoryblokReactRichTextDocumentProps;
 
 const extendAttrMap = {
   class: 'className',

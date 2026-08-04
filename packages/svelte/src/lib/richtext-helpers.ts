@@ -28,7 +28,7 @@ export interface StoryblokSvelteRichTextRenderContext {
 export type SbSvelteRichTextRenderContext = StoryblokSvelteRichTextRenderContext;
 
 export type StoryblokSvelteRichTextProps<T extends StoryblokRichTextElement> =
-  Omit<StoryblokRichTextProps<T>, 'context'> & {
+  Omit<StoryblokRichTextProps<T>, 'context' | 'children'> & {
     context?: StoryblokSvelteRichTextRenderContext;
     children?: Snippet;
   };

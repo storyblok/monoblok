@@ -27,7 +27,7 @@ export interface StoryblokAstroRichTextRenderContext {
 export type SbAstroRichTextRenderContext = StoryblokAstroRichTextRenderContext;
 
 export type StoryblokAstroRichTextProps<T extends StoryblokRichTextElement> =
-  Omit<StoryblokRichTextProps<T>, 'context'> & {
+  Omit<StoryblokRichTextProps<T>, 'context' | 'children'> & {
     context?: StoryblokAstroRichTextRenderContext;
   };
 /**

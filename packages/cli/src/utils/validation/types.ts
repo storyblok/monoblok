@@ -39,9 +39,21 @@ export interface ValidationGroup {
 }
 
 /**
+ * The option that narrowed the validated population, echoed back so a consumer
+ * can tell an empty run apart from a clean one. Without it, a prefix that
+ * selects nothing produces the same `unitsTotal: 0` document as a space with no
+ * stories at all.
+ */
+export interface ValidationFilter {
+  /** The CLI option that applied the filter, e.g. `--starts-with`. */
+  option: string;
+  value: string;
+}
+
+/**
  * The outcome of a validation run, ready to format. `unitsTotal` is the full
- * population (all entities / all stories); the summary reports groups-with-issues
- * of that total.
+ * population (all entities / all stories); the summary reports the number of
+ * units with issues out of that total.
  *
  * `fetchFailures` and `listFailed` carry run-level (non-validation) failures so a
  * machine consumer never reads a clean result over an incomplete run. Their
@@ -53,6 +65,8 @@ export interface ValidationRunResult {
   unitNoun: string;
   unitsTotal: number;
   groups: ValidationGroup[];
+  /** The filter that narrowed the population, when one was applied. */
+  filter?: ValidationFilter;
   /** Units that could not be fetched and were therefore not validated. */
   fetchFailures?: number;
   /** Why each unit could not be fetched, in the order the failures happened. */

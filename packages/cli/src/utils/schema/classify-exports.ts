@@ -74,10 +74,10 @@ export interface CollectedSchemaExports {
  * De-duplication is by object identity, not by name: a definition commonly
  * appears twice as the SAME reference (exported directly and again inside an
  * exported `schema` object) and must be collapsed. Two DIFFERENT definitions
- * that share a name are both kept so downstream validation can report the
- * collision (`duplicate_block_name` / `duplicate_datasource_slug`) and
- * `schema push` surfaces it via the MAPI rejection instead of silently
- * dropping one.
+ * that share a name are both kept, so every consumer sees the collision rather
+ * than silently losing one: `schema validate` reports it as
+ * `duplicate_block_name` / `duplicate_datasource_slug`, and `schema push`
+ * rejects the entry file before it touches the API (see `classifyExports`).
  */
 export function collectSchemaExports(moduleExports: Record<string, unknown>): CollectedSchemaExports {
   const components: Record<string, unknown>[] = [];

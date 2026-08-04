@@ -58,6 +58,50 @@ function buildLocalFolders(registered: string[], derived: string[]): LocalFolder
 }
 
 /**
+ * Fails the load when two different definitions claim the same push identity.
+ *
+ * {@link collectSchemaExports} de-duplicates by object identity, so a name
+ * collision arrives here as two entries. Left alone, the diff emits two `create`
+ * actions for one name, both resolving to the first definition — the second is
+ * dropped, the two concurrent creates race, and the first rejection aborts the
+ * push after other entities were already written. Reporting it up front keeps
+ * the failure deterministic and off the network. `schema validate` reports the
+ * same collision as `duplicate_block_name` / `duplicate_datasource_slug`.
+ */
+function assertUniqueIdentities(
+  components: Record<string, unknown>[],
+  datasources: Record<string, unknown>[],
+): void {
+  const collisions: string[] = [];
+  const collect = (label: string, values: unknown[]) => {
+    const seen = new Set<string>();
+    const reported = new Set<string>();
+    for (const value of values) {
+      if (typeof value !== 'string') { continue; }
+      if (seen.has(value) && !reported.has(value)) {
+        reported.add(value);
+        collisions.push(`${label} "${value}"`);
+      }
+      seen.add(value);
+    }
+  };
+
+  // Blocks and datasources are diffed by `name`; a datasource `slug` collision
+  // is rejected by the Management API even when the names differ.
+  collect('block name', components.map(component => component.name));
+  collect('datasource name', datasources.map(datasource => datasource.name));
+  collect('datasource slug', datasources.map(datasource => datasource.slug));
+
+  if (collisions.length > 0) {
+    throw new CommandError(
+      `Duplicate schema definitions: ${collisions.join(', ')}. `
+      + `Each block name, datasource name, and datasource slug must be unique; `
+      + `rename or remove the duplicate before pushing.`,
+    );
+  }
+}
+
+/**
  * Classifies a module's exports into wire components, datasources, and folders,
  * mapping the content-shape DSL (`fields`/`allow`/`datasource`/`folder`) to the
  * MAPI wire shape. Raw classification (including identity-based de-duplication)
@@ -65,6 +109,8 @@ function buildLocalFolders(registered: string[], derived: string[]): LocalFolder
  */
 export function classifyExports(moduleExports: Record<string, unknown>): SchemaData {
   const { components, datasources, folders } = collectSchemaExports(moduleExports);
+
+  assertUniqueIdentities(components, datasources);
 
   // Harvest derived (unregistered) folder display paths from each component's
   // `folder` field and its `allow` entries. Reads the raw DSL objects, before

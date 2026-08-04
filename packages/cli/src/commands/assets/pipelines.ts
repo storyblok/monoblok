@@ -129,7 +129,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
-        ui.warn(`Failed to push "${assetData?.filename ?? assetBinaryPath}": ${error.message}`);
+        ui.warn(`Failed to read "${assetData?.filename ?? assetBinaryPath}": ${error.message}`);
       },
     }));
   }

@@ -14,6 +14,20 @@ import { slugifyFolderPath } from '../utils/slugify-folder-path';
 /** Field-content keys that are not user-defined fields. */
 const RESERVED_KEYS = new Set(['_uid', 'component', '_editable']);
 
+/** Separator the CMS puts between a field name and a locale for field-level translations. */
+const I18N_SEPARATOR = '__i18n__';
+
+/**
+ * Strips the field-level translation suffix from a content key, e.g.
+ * `headline__i18n__de` → `headline`. Field-level translations are stored as
+ * siblings of the default value and belong to the same field definition, so the
+ * suffix has to come off before the key is looked up in the block's fields.
+ */
+function baseFieldName(key: string): string {
+  const index = key.indexOf(I18N_SEPARATOR);
+  return index === -1 ? key : key.slice(0, index);
+}
+
 /**
  * Human descriptions of the accepted wire shape per field type, used when the
  * underlying validator can only report that the value as a whole is wrong (see
@@ -51,6 +65,43 @@ function formatValidatorMessage(message: string, expected: string | undefined, a
   const text = expected !== undefined && atRoot ? expected : raw;
   const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
   return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;
+}
+
+/**
+ * Formatted messages that name nothing. `expected` only replaces these at the
+ * root of a value, so a union that fails deeper inside — a malformed richtext
+ * node, say — still surfaces Zod's bare text.
+ */
+const UNINFORMATIVE_MESSAGES = new Set(['Invalid input.']);
+
+/**
+ * Joins a path into a comparable string. The separator is a NUL byte, which no
+ * content key can contain, so a prefix match can only ever land on a whole
+ * segment boundary.
+ */
+function pathKey(path: (string | number)[]): string {
+  return path.join('\u0000');
+}
+
+/**
+ * Drops issues that say nothing where a more specific issue already covers the
+ * same value. A malformed richtext blok reports twice — once as the bare
+ * `Invalid input.` the node's union produces, once as the `unknown_component`
+ * the blok walk finds underneath it — and only the second tells the reader what
+ * to fix. An uninformative issue is kept when nothing deeper explains it, so a
+ * value is never rejected silently.
+ */
+function dropSubsumedIssues(issues: ValidationIssue[]): ValidationIssue[] {
+  const informativePaths = issues
+    .filter(issue => !UNINFORMATIVE_MESSAGES.has(issue.message))
+    .map(issue => pathKey(issue.path));
+  return issues.filter((issue) => {
+    if (!UNINFORMATIVE_MESSAGES.has(issue.message)) {
+      return true;
+    }
+    const prefix = `${pathKey(issue.path)}\u0000`;
+    return !informativePaths.some(candidate => candidate.startsWith(prefix));
+  });
 }
 
 /**
@@ -507,8 +558,16 @@ function validateBlokContent(
   const fields = block.fields ?? [];
   const fieldsByName = new Map(fields.map(field => [field.name, field]));
 
+  // Translated keys are grouped under the field they belong to so the value loop
+  // below can check each locale against the same field definition.
+  const translatedKeysByField = new Map<string, string[]>();
+
   for (const key of Object.keys(content)) {
-    if (!RESERVED_KEYS.has(key) && !fieldsByName.has(key)) {
+    if (RESERVED_KEYS.has(key)) {
+      continue;
+    }
+    const fieldName = baseFieldName(key);
+    if (!fieldsByName.has(fieldName)) {
       issues.push({
         severity: 'warning',
         code: 'unknown_field',
@@ -516,6 +575,16 @@ function validateBlokContent(
         entity,
         message: `Unknown field "${key}" on component "${block.name}".`,
       });
+      continue;
+    }
+    if (key !== fieldName) {
+      const translated = translatedKeysByField.get(fieldName);
+      if (translated) {
+        translated.push(key);
+      }
+      else {
+        translatedKeysByField.set(fieldName, [key]);
+      }
     }
   }
 
@@ -533,14 +602,23 @@ function validateBlokContent(
         entity,
         message: `Missing required field "${field.name}" on component "${block.name}".`,
       });
-      continue;
     }
     // An empty string on an optional field still goes through value validation:
     // it is a legal value for the string-ish types but not, say, for `asset`.
-    if (value === undefined || value === null) {
-      continue;
+    else if (value !== undefined && value !== null) {
+      validateFieldValue(field, value, blocksByName, fieldPluginsByType, [...path, field.name], entity, issues);
     }
-    validateFieldValue(field, value, blocksByName, fieldPluginsByType, [...path, field.name], entity, issues);
+
+    // A translated value is the same field in another locale, so it is held to
+    // the same value rules. `required` stays scoped to the default value: a
+    // locale nobody has translated yet is normal, not a missing value.
+    for (const key of translatedKeysByField.get(field.name) ?? []) {
+      const translatedValue = content[key];
+      if (translatedValue === undefined || translatedValue === null) {
+        continue;
+      }
+      validateFieldValue(field, translatedValue, blocksByName, fieldPluginsByType, [...path, key], entity, issues);
+    }
   }
 }
 
@@ -549,6 +627,10 @@ function validateBlokContent(
  * components (error), unknown fields (warning), missing required fields (error),
  * invalid field-value shapes (error), and values outside a field's declared
  * options (error), recursing into nested `bloks` and richtext-embedded bloks.
+ *
+ * Field-level translations (`headline__i18n__de`) are validated against the
+ * field they belong to, so a translated value is held to the same rules as the
+ * default one and is not mistaken for an unknown field.
  *
  * @example
  * const result = validateStory(story, { blocks: { page, hero } });
@@ -561,5 +643,9 @@ export function validateStory(story: unknown, schema: SchemaLike): ValidationRes
   );
   const content = isRecord(story) ? story.content : undefined;
   validateBlokContent(content, blocksByName, fieldPluginsByType, ['content'], issues);
-  return { ok: issues.every(issue => issue.severity !== 'error'), issues };
+  // One mistake should read as one issue. Suppression happens here, over the
+  // whole story, because the specific issue often comes from a different walk
+  // than the vague one it explains.
+  const reported = dropSubsumedIssues(issues);
+  return { ok: reported.every(issue => issue.severity !== 'error'), issues: reported };
 }

@@ -639,3 +639,149 @@ describe('validateStory — value messages', () => {
     expect(message?.endsWith('.')).toBe(true);
   });
 });
+
+// Field-level translations are stored as `<field>__i18n__<locale>` siblings of
+// the default value. Treating them as separate keys made every translated field
+// warn as unknown *and* left its value unchecked, so a wrong type in any locale
+// but the default passed silently.
+describe('validateStory — field-level translations', () => {
+  const page = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [
+      defineField('headline', { type: 'text', required: true }),
+      defineField('cover', { type: 'asset' }),
+      defineField('body', { type: 'bloks', allow: [teaser] }),
+    ],
+  });
+  const s = { blocks: { page, teaser } };
+
+  it('accepts a translated value without reporting it as an unknown field', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', headline__i18n__de: 'Hallo' },
+    }, s);
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('validates a translated value against its field definition', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', headline__i18n__de: 12345 },
+    }, s);
+    expect(result.ok).toBe(false);
+    const issue = result.issues.find(i => i.code === 'invalid_value');
+    expect(issue?.path).toEqual(['content', 'headline__i18n__de']);
+    expect(issue?.message).toBe('Expected string, received number.');
+  });
+
+  it('recurses into bloks nested under a translated field', () => {
+    const result = validateStory({
+      content: {
+        component: 'page',
+        headline: 'Hello',
+        body__i18n__de: [{ _uid: 'uid-1', component: 'ghost' }],
+      },
+    }, s);
+    expect(codesFor(result)).toContain('unknown_component');
+    expect(result.issues[0]?.path).toEqual(['content', 'body__i18n__de', 0, 'component']);
+  });
+
+  it('reports every locale of a field independently', () => {
+    const result = validateStory({
+      content: {
+        component: 'page',
+        headline: 'Hello',
+        headline__i18n__de: 1,
+        headline__i18n__fr: 2,
+      },
+    }, s);
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'headline__i18n__de'],
+      ['content', 'headline__i18n__fr'],
+    ]);
+  });
+
+  it('keeps required scoped to the default value, so an untranslated locale is not a missing value', () => {
+    // Only `de` is translated. `fr` being absent is normal content, not drift.
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', headline__i18n__de: 'Hallo' },
+    }, s);
+    expect(codesFor(result)).not.toContain('missing_required_field');
+  });
+
+  it('still reports a required field left unset even when a locale carries a value', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: '', headline__i18n__de: 'Hallo' },
+    }, s);
+    expect(codesFor(result)).toContain('missing_required_field');
+  });
+
+  it('warns on a translated key whose base field the block does not define', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', ghost__i18n__de: 'x' },
+    }, s);
+    const issue = result.issues.find(i => i.code === 'unknown_field');
+    expect(issue?.severity).toBe('warning');
+    expect(issue?.message).toBe('Unknown field "ghost__i18n__de" on component "page".');
+  });
+});
+
+// A validator that fails on a union deep inside a value reports a bare
+// `Invalid input`, which names nothing. When a more specific issue already
+// covers the same value, the vague one is noise.
+describe('validateStory — subsumed issues', () => {
+  const page = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [defineField('body', { type: 'richtext' })],
+  });
+  const s = { blocks: { page, teaser } };
+
+  it('drops the bare union message when a deeper issue explains the same node', () => {
+    // `attrs.id` is missing, so the node fails the richtext union; the blok walk
+    // separately finds the unknown component underneath it.
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: { type: 'doc', content: [{ type: 'blok', attrs: { body: [{ _uid: 'u', component: 'ghost' }] } }] },
+      },
+    }, s);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]?.code).toBe('unknown_component');
+    expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0, 'attrs', 'body', 0, 'component']);
+  });
+
+  it('keeps the bare union message when nothing deeper explains it', () => {
+    // Same malformed node, but the embedded blok itself is valid, so the vague
+    // issue is the only signal the node is wrong.
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: { type: 'doc', content: [{ type: 'blok', attrs: { body: [{ _uid: 'u', component: 'teaser', text: 'hi' }] } }] },
+      },
+    }, s);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]?.message).toBe('Invalid input.');
+    expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0]);
+  });
+
+  it('does not let an issue on a sibling path suppress an unrelated vague issue', () => {
+    const twoFields = defineBlock({
+      name: 'two',
+      is_root: true,
+      fields: [defineField('a', { type: 'richtext' }), defineField('b', { type: 'text' })],
+    });
+    const result = validateStory({
+      content: {
+        component: 'two',
+        a: { type: 'doc', content: [{ type: 'blok', attrs: { body: [{ _uid: 'u', component: 'teaser', text: 'hi' }] } }] },
+        b: 42,
+      },
+    }, { blocks: { two: twoFields, teaser } });
+    expect(result.issues).toHaveLength(2);
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'a', 'content', 0],
+      ['content', 'b'],
+    ]);
+  });
+});

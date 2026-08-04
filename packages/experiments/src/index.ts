@@ -1,14 +1,16 @@
 export { assignVariant } from './assign-variant';
-export type { AssignVariantOptions } from './assign-variant';
 export { createExperiments } from './create-experiments';
 export type {
   CreateExperimentsOptions,
   Experiments,
   FactoryResolvedExperiment,
-  FactoryResolveOptions,
+  TrackOptions,
 } from './create-experiments';
+export { defineGoal } from './define-goal';
+export type { ConversionGoal } from './define-goal';
+export { findExperimentBySlug } from './find-experiment-by-slug';
 export { resolveExperiment } from './resolve-experiment';
-export type { ResolvedExperiment, ResolveExperimentOptions } from './resolve-experiment';
+export type { ResolvedExperiment } from './resolve-experiment';
 export type {
   Adapter,
   Assignment,

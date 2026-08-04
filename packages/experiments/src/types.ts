@@ -9,16 +9,22 @@ export type StoryMapping = ExperimentVariant['story_mappings'][number];
 export interface Assignment {
   /** The experiment this assignment belongs to. */
   experimentId: number;
+  /** The visitor this assignment was computed for. */
+  visitorId: string;
   variant: ExperimentVariant;
 }
 
-/** Slim experiment projection carried on an event. */
+/**
+ * The experiment as carried on an event: just enough to identify it in a sink,
+ * without the variants and story mappings that the full `Experiment` config
+ * from the API holds.
+ */
 export interface EventExperiment {
   id: number;
   name: string;
 }
 
-/** Slim variant projection carried on an event. */
+/** The variant as carried on an event, identifying it without its config. */
 export interface EventVariant {
   name: string;
   public_id: string;
@@ -29,8 +35,15 @@ export interface ExperimentEvent {
   type: 'exposure' | 'conversion';
   experiment: EventExperiment;
   variant: EventVariant;
+  /**
+   * The visitor this event belongs to. Use it to join a conversion back to its
+   * exposure, and to count each visitor once per variant.
+   */
+  visitorId: string;
   /** Conversion goal name (e.g. `"signup"`). */
   name?: string;
+  /** Numeric metric value for the goal (revenue in cents, cart total, …). */
+  value?: number;
   /** Arbitrary event properties forwarded to the sink. */
   props?: Record<string, unknown>;
 }

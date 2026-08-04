@@ -32,3 +32,37 @@ export const homepageExperiment: Experiment = {
     },
   ],
 };
+
+/**
+ * A second, unrelated experiment on the `pricing` slug. Used to cover the
+ * multi-experiment case: a visitor is bucketed into every running experiment,
+ * not only the one whose slug was rendered.
+ */
+export const pricingExperiment: Experiment = {
+  id: 456,
+  name: 'pricing_table',
+  display_name: 'Pricing Table',
+  story_ids: [3, 4],
+  variants: [
+    {
+      name: 'control',
+      display_name: 'Control',
+      public_id: 'var_pricing_control',
+      weight: 50,
+      is_control: true,
+      story_mappings: [
+        { original_story_id: 3, original_slug: 'pricing', variant_story_id: 3, variant_slug: 'pricing' },
+      ],
+    },
+    {
+      name: 'compact',
+      display_name: 'Compact',
+      public_id: 'var_pricing_compact',
+      weight: 50,
+      is_control: false,
+      story_mappings: [
+        { original_story_id: 3, original_slug: 'pricing', variant_story_id: 4, variant_slug: 'pricing-compact' },
+      ],
+    },
+  ],
+};

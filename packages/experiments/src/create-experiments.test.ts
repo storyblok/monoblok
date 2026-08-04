@@ -15,21 +15,40 @@ describe('createExperiments', () => {
     expect(adapter.mock.calls[0][0]).toMatchObject({ type: 'exposure', experiment: { id: 123 } });
   });
 
-  it('track fires a conversion bound to the resolved assignment', () => {
+  it('track fires a conversion for the given visitor', async () => {
     const events: ExperimentEvent[] = [];
     const exp = createExperiments({ experiments: [homepageExperiment], adapters: [event => events.push(event)] });
 
-    exp.resolveExperiment({ slug: 'home', visitorId: 'visitor-1' });
-    exp.track('signup', { plan: 'pro' });
+    await exp.track('signup', 'visitor-1', { props: { plan: 'pro' } });
 
     const conversion = events.find(event => event.type === 'conversion');
     expect(conversion).toMatchObject({
       type: 'conversion',
       experiment: { id: 123, name: 'homepage_hero' },
       name: 'signup',
+      visitorId: 'visitor-1',
       props: { plan: 'pro' },
     });
     expect(conversion?.variant.public_id).toMatch(/^var_/);
+  });
+
+  it('track carries a numeric value when given one', async () => {
+    const events: ExperimentEvent[] = [];
+    const exp = createExperiments({ experiments: [homepageExperiment], adapters: [event => events.push(event)] });
+
+    await exp.track('purchase', 'visitor-1', { value: 4900 });
+
+    expect(events[0].value).toBe(4900);
+  });
+
+  it('track omits value and props when not given', async () => {
+    const events: ExperimentEvent[] = [];
+    const exp = createExperiments({ experiments: [homepageExperiment], adapters: [event => events.push(event)] });
+
+    await exp.track('signup', 'visitor-1');
+
+    expect(events[0].value).toBeUndefined();
+    expect(events[0].props).toBeUndefined();
   });
 
   it('does not fire an exposure for an unmatched slug', () => {
@@ -42,13 +61,22 @@ describe('createExperiments', () => {
     expect(adapter).not.toHaveBeenCalled();
   });
 
-  it('does not fire a conversion when nothing was resolved', () => {
+  it('does not fire a conversion on the deprecated path when nothing was resolved', async () => {
     const adapter = vi.fn();
     const exp = createExperiments({ experiments: [homepageExperiment], adapters: [adapter] });
 
-    exp.track('signup');
+    await exp.track('signup');
 
     expect(adapter).not.toHaveBeenCalled();
+  });
+
+  it('fires a conversion for an unrendered experiment when given a visitorId', async () => {
+    const adapter = vi.fn();
+    const exp = createExperiments({ experiments: [homepageExperiment], adapters: [adapter] });
+
+    await exp.track('signup', 'visitor-1');
+
+    expect(adapter).toHaveBeenCalledTimes(1);
   });
 
   it('swallows a synchronously throwing adapter and routes it to onError', () => {

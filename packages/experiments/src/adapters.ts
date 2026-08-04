@@ -7,6 +7,36 @@ export interface FetchAdapterOptions {
   fetch?: typeof globalThis.fetch;
   /** Extra headers merged onto the request. */
   headers?: Record<string, string>;
+  /**
+   * Base to resolve a relative `url` against, e.g. the incoming `request.url`.
+   * Only needed on the server: in a browser the current page is used.
+   */
+  baseUrl?: string;
+}
+
+export interface BeaconAdapterOptions {
+  /** Override `navigator.sendBeacon` (e.g. for testing). */
+  sendBeacon?: (url: string, body: string) => boolean;
+}
+
+/**
+ * Resolves `url` to an absolute target at construction time, so a bad URL fails
+ * loudly here instead of on every delivery — where `onError` swallows it.
+ *
+ * A relative path resolves against `baseUrl`, or against the current page in a
+ * browser. On a server there is no ambient origin, so a relative path with no
+ * `baseUrl` is unresolvable and throws.
+ */
+function resolveTarget(url: string, baseUrl?: string): string {
+  const base = baseUrl ?? globalThis.location?.href;
+  try {
+    return new URL(url, base).toString();
+  }
+  catch {
+    throw new Error(
+      `fetchAdapter: cannot resolve "${url}". Server-side fetch has no origin to resolve a relative path against — pass an absolute url, or set \`baseUrl\` to the incoming request url.`,
+    );
+  }
 }
 
 /**
@@ -17,18 +47,49 @@ export interface FetchAdapterOptions {
  * `fetch` only rejects on a network failure, so a non-2xx response is turned
  * into a thrown error to make delivery failures observable (surfaced through
  * `createExperiments`'s `onError`).
+ *
+ * In a browser a relative `url` works as usual — it resolves against the
+ * current page. On a server there is no ambient origin, so pass an absolute
+ * url, or a relative one plus `baseUrl` (typically the incoming `request.url`).
+ * Either way an unresolvable url throws here, at construction, rather than
+ * failing silently on every delivery.
+ *
+ * Pointing this at your own deployment costs an extra invocation per event; for
+ * a same-deployment sink, pass a plain function as the adapter instead.
  */
 export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Adapter {
-  const { fetch = globalThis.fetch, headers } = options;
+  const { fetch = globalThis.fetch, headers, baseUrl } = options;
+  const target = resolveTarget(url, baseUrl);
   return async (event: ExperimentEvent) => {
-    const response = await fetch(url, {
+    const response = await fetch(target, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...headers },
       body: JSON.stringify(event),
     });
     if (!response.ok) {
-      throw new Error(`fetchAdapter: POST ${url} failed with ${response.status} ${response.statusText}`);
+      throw new Error(`fetchAdapter: POST ${target} failed with ${response.status} ${response.statusText}`);
     }
     return response;
+  };
+}
+
+/**
+ * A browser adapter that queues each event with `navigator.sendBeacon`. The
+ * beacon survives page unload, so it works on a link or a form submit as well
+ * as a button, where a `fetch` would be cancelled by the navigation.
+ *
+ * Delivery is fire-and-forget: the browser reports only whether it accepted the
+ * payload for sending, not whether it arrived.
+ */
+export function beaconAdapter(url: string, options: BeaconAdapterOptions = {}): Adapter {
+  return (event: ExperimentEvent): void => {
+    const sendBeacon = options.sendBeacon
+      ?? globalThis.navigator?.sendBeacon?.bind(globalThis.navigator);
+    if (!sendBeacon) {
+      throw new Error('beaconAdapter: navigator.sendBeacon is unavailable. Use it in a browser, or pass `fetchAdapter` on the server.');
+    }
+    if (!sendBeacon(url, JSON.stringify(event))) {
+      throw new Error(`beaconAdapter: the browser refused to queue the event for ${url}, most likely because the payload exceeds its beacon size limit.`);
+    }
   };
 }

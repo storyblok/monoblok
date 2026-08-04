@@ -24,7 +24,7 @@ export function assignVariant({ experiment, visitorId }: AssignVariantOptions): 
   // No positive weights: fall back to the control variant (or the first one).
   if (totalWeight <= 0) {
     const fallback = variants.find(variant => variant.is_control) ?? variants[0];
-    return { experimentId: experiment.id, variant: fallback };
+    return { experimentId: experiment.id, visitorId, variant: fallback };
   }
 
   // Map the 0..99 bucket onto the cumulative weight distribution.
@@ -33,10 +33,10 @@ export function assignVariant({ experiment, visitorId }: AssignVariantOptions): 
   for (const variant of variants) {
     cumulative += Math.max(0, variant.weight);
     if (target < cumulative) {
-      return { experimentId: experiment.id, variant };
+      return { experimentId: experiment.id, visitorId, variant };
     }
   }
 
   // Floating-point edge: fall through to the last weighted variant.
-  return { experimentId: experiment.id, variant: variants[variants.length - 1] };
+  return { experimentId: experiment.id, visitorId, variant: variants[variants.length - 1] };
 }

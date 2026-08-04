@@ -25,6 +25,14 @@ describe('assignVariant', () => {
     expect(assignment?.experimentId).toBe(123);
   });
 
+  it('returns the visitorId with the assignment', () => {
+    // An assignment is visitor-specific, so it has to carry the visitor: it is
+    // what lets a downstream exposure or conversion event identify the visitor
+    // without the caller re-threading it.
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
+    expect(assignment?.visitorId).toBe('visitor-1');
+  });
+
   it('honors weights: 100/0 always assigns control', () => {
     const experiment = withWeights(100, 0);
     for (let i = 0; i < 200; i++) {

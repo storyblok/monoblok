@@ -46,6 +46,7 @@ const EXPERIMENT_NAME = 'e2e_experiments_hero';
 const EXPERIMENT_PREFIX = 'e2e_experiments_';
 const STORY_SLUG_PREFIX = 'e2e-experiments-';
 const ORIGINAL_SLUG = `${STORY_SLUG_PREFIX}home`;
+const VISITOR_ID = 'visitor-e2e';
 
 const mapi = createManagementApiClient({
   personalAccessToken: token,
@@ -263,7 +264,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
   describe('resolveExperiment', () => {
     it('renders the original slug for the control variant', () => {
       const control = experiment.variants.find(variant => variant.is_control)!;
-      const assignment = { experimentId: experiment.id, variant: control };
+      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant: control };
 
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
@@ -274,7 +275,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
 
     it('renders the mapped variant slug for a variant assignment', () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const assignment = { experimentId: experiment.id, variant };
+      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant };
 
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
@@ -293,7 +294,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
   describe('event delivery', () => {
     it('produces an exposure event an adapter can consume', () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const assignment = { experimentId: experiment.id, variant };
+      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant };
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       const captured: ExperimentEvent[] = [];
@@ -327,7 +328,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
   describe('story round-trip', () => {
     it('resolves to a slug that the CAPI can fetch', async () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const assignment = { experimentId: experiment.id, variant };
+      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant };
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       const capi = createApiClient({ accessToken: previewToken });

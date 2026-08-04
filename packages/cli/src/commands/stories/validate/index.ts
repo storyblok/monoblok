@@ -143,7 +143,14 @@ storiesCommand
       // adjusted in place. Keeps the bar counting the same population the summary
       // reports instead of finishing one short per folder.
       const syncProgressTotal = () => {
-        startProgress()?.setTotal(Math.max(listedTotal - foldersSkipped, 0));
+        const total = Math.max(listedTotal - foldersSkipped, 0);
+        // Nothing to count yet, so do not bring a bar into existence: a filter
+        // that matched nothing would otherwise leave an empty `0/1` bar sitting
+        // above the warning that says nothing was validated.
+        if (total === 0 && progress === undefined) {
+          return;
+        }
+        startProgress()?.setTotal(total);
       };
       const stopProgress = () => {
         progress?.stop();

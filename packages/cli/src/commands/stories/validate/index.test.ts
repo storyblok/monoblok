@@ -6,6 +6,7 @@ import { vol } from 'memfs';
 import '../index';
 import { storiesCommand } from '../command';
 import { resetReporter } from '../../../lib/reporter/reporter';
+import { getUI } from '../../../lib/ui';
 import { session } from '../../../session';
 import { loggedOutSessionState } from '../../../../test/setup';
 import { makeMockStory } from '../__tests__/helpers';
@@ -302,6 +303,29 @@ describe('stories validate command', () => {
 
     expect(process.exitCode).toBe(0);
     expect(loggedOutput()).toContain('No stories matched --starts-with "nope/"');
+  });
+
+  // The bar is created lazily so a run with nothing to count leaves no bar
+  // behind. A zero-match filter used to draw `0% | 0/1 processed` above the
+  // warning saying nothing was validated.
+  it('should create no progress bar when there is nothing to count', async () => {
+    const createProgressBar = vi.spyOn(getUI(), 'createProgressBar');
+    preconditions.canListStories([]);
+
+    await runValidate('--starts-with', 'nope/');
+
+    expect(createProgressBar).not.toHaveBeenCalled();
+  });
+
+  it('should create a progress bar once there are stories to count', async () => {
+    const createProgressBar = vi.spyOn(getUI(), 'createProgressBar');
+    const stories = [makeMockStory({ content: { component: 'page', headline: 'Hi' } })];
+    preconditions.canListStories(stories);
+    preconditions.canFetchStories(stories);
+
+    await runValidate();
+
+    expect(createProgressBar).toHaveBeenCalled();
   });
 
   it('should not warn about an empty space when no filter was given', async () => {

@@ -273,7 +273,6 @@ describe('validateStory — multilink values', () => {
 
   it.each([
     ['nullable target', { ...multilinkBase, linktype: 'asset', target: null }],
-    ['nullable story anchor', { ...multilinkBase, linktype: 'story', anchor: null }],
     ['non-string URL attribute', { ...multilinkBase, linktype: 'url', rel: 42 }],
     ['non-string custom story attribute', { ...multilinkBase, linktype: 'story', analytics: 42 }],
   ])('rejects %s', (_label, value) => {
@@ -281,6 +280,16 @@ describe('validateStory — multilink values', () => {
 
     expect(result.ok).toBe(false);
     expect(codesFor(result)).toContain('invalid_value');
+  });
+
+  // This case used to be asserted as a rejection, but the editor produces it:
+  // the anchor modal emits `anchor.value || null`, so clearing an existing
+  // anchor stores `anchor: null`. Rejecting it flagged ordinary edited content.
+  it('accepts a story anchor cleared to null', () => {
+    const result = validateMultilink({ ...multilinkBase, linktype: 'story', anchor: null });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
   });
 });
 
@@ -637,6 +646,48 @@ describe('validateStory — value messages', () => {
     const message = messageFor({ cover: { fieldtype: 'asset', id: 1, alt: null } });
     expect(message).toContain('expected string');
     expect(message?.endsWith('.')).toBe(true);
+  });
+});
+
+// Regression: table content authored before `_uid`/`component` were introduced
+// carries only `value`, and the API still serves it. Requiring those keys made
+// every legacy table report three errors naming keys the author never wrote.
+describe('validateStory — legacy table content', () => {
+  const spec = defineBlock({
+    name: 'spec',
+    is_root: true,
+    fields: [defineField('data', { type: 'table' })],
+  });
+  const s = { blocks: { spec } };
+  const validate = (data: unknown) => validateStory({ content: { component: 'spec', data } }, s);
+
+  it('accepts a table whose cells carry only a value', () => {
+    const result = validate({
+      thead: [{ value: 'Header' }],
+      tbody: [{ body: [{ value: 'Cell' }] }],
+    });
+    expect(result.issues).toEqual([]);
+  });
+
+  it('accepts a table carrying the component keys', () => {
+    const result = validate({
+      fieldtype: 'table',
+      thead: [{ _uid: 'a', component: '_table_head', value: 'Header' }],
+      tbody: [{ _uid: 'b', component: '_table_row', body: [{ _uid: 'c', component: '_table_col', value: 'Cell' }] }],
+    });
+    expect(result.issues).toEqual([]);
+  });
+
+  it('still rejects a component key naming the wrong type', () => {
+    const result = validate({
+      thead: [{ component: '_table_row', value: 'Header' }],
+      tbody: [],
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('still rejects a table missing thead or tbody', () => {
+    expect(validate({ thead: [] }).ok).toBe(false);
   });
 });
 

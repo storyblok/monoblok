@@ -48,7 +48,7 @@ $defs:
             type: string
             enum: [story]
           anchor:
-            type: string
+            type: [string, 'null']
             description: Anchor/fragment identifier for the story link
           rel:
             type: string
@@ -56,9 +56,14 @@ $defs:
           title:
             type: string
             description: Link title attribute
+      # Custom link attributes are string-valued by construction in the editor,
+      # but null has to pass: the anchor modal emits `null` when an existing
+      # anchor is cleared (storyfront MultiLinkAnchor.vue, `anchor.value || null`),
+      # so any link whose anchor was removed is stored with `anchor: null`. This
+      # branch carries no `properties`, so it applies to every key.
       - type: object
         additionalProperties:
-          type: string
+          type: [string, 'null']
 
   UrlLink:
     description: Link to an external URL.

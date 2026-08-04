@@ -423,10 +423,16 @@ export const zMultilinkFieldValueEmailLink = zMultilinkFieldValueSharedLink.and(
  */
 export const zMultilinkFieldValueStoryLink = zMultilinkFieldValueSharedLink.and(z.object({
     linktype: z.enum(['story']),
-    anchor: z.optional(z.string()),
+    anchor: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
     rel: z.optional(z.string()),
     title: z.optional(z.string())
-})).and(z.record(z.string(), z.string()));
+})).and(z.record(z.string(), z.union([
+    z.string(),
+    z.null()
+])));
 
 /**
  * Link to an external URL.
@@ -667,16 +673,16 @@ export const zRichTextFieldValueTextNode = z.object({
  */
 export const zTableFieldValueRoot = z.object({
     thead: z.array(z.object({
-        _uid: z.string(),
-        component: z.enum(['_table_head']),
+        _uid: z.optional(z.string()),
+        component: z.optional(z.enum(['_table_head'])),
         value: z.optional(z.string())
     })),
     tbody: z.array(z.object({
-        _uid: z.string(),
-        component: z.enum(['_table_row']),
+        _uid: z.optional(z.string()),
+        component: z.optional(z.enum(['_table_row'])),
         body: z.optional(z.array(z.object({
-            _uid: z.string(),
-            component: z.enum(['_table_col']),
+            _uid: z.optional(z.string()),
+            component: z.optional(z.enum(['_table_col'])),
             value: z.optional(z.string())
         })))
     }))

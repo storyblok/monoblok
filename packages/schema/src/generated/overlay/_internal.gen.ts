@@ -808,8 +808,8 @@ export type TableFieldValueRoot = {
      * Table header cells
      */
     thead: Array<{
-        _uid: string;
-        component: '_table_head';
+        _uid?: string;
+        component?: '_table_head';
         /**
          * Header cell content
          */
@@ -819,14 +819,14 @@ export type TableFieldValueRoot = {
      * Table body rows
      */
     tbody: Array<{
-        _uid: string;
-        component: '_table_row';
+        _uid?: string;
+        component?: '_table_row';
         /**
          * Cells in this row
          */
         body?: Array<{
-            _uid: string;
-            component: '_table_col';
+            _uid?: string;
+            component?: '_table_col';
             /**
              * Cell content
              */
@@ -924,7 +924,7 @@ export type MultilinkFieldValueStoryLink = MultilinkFieldValueSharedLink & {
     /**
      * Anchor/fragment identifier for the story link
      */
-    anchor?: string;
+    anchor?: string | null;
     /**
      * Link relationship attribute
      */
@@ -934,7 +934,7 @@ export type MultilinkFieldValueStoryLink = MultilinkFieldValueSharedLink & {
      */
     title?: string;
 } & {
-    [key: string]: string;
+    [key: string]: string | null;
 };
 
 /**

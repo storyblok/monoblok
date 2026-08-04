@@ -132,8 +132,19 @@ export class APIError extends Error {
     }
     this.messageStack.push(customMessage || API_ERRORS[errorId]);
 
+    // Surface the API's human-readable error/message string directly when present,
+    // regardless of status code.
+    const responseData = this.response?.data as { [key: string]: string | string[] } | undefined;
+    const apiMessage = typeof responseData?.error === 'string'
+      ? responseData.error
+      : typeof responseData?.message === 'string'
+        ? responseData.message
+        : undefined;
+    if (apiMessage && !customMessage) {
+      this.message = apiMessage;
+    }
+
     if (this.code === 422) {
-      const responseData = this.response?.data as { [key: string]: string[] } | undefined;
       // Scope the "name already taken" rewrite to the action that raised it so a
       // folder create failure does not claim "component" (and vice versa).
       if (responseData?.name?.[0] === 'has already been taken') {

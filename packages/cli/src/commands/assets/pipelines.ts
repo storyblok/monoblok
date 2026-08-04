@@ -129,6 +129,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
+        ui.warn(`Failed to push "${assetData?.filename ?? assetBinaryPath}": ${error.message}`);
       },
     }));
   }
@@ -144,6 +145,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
+        ui.warn(`Failed to read asset: ${error.message}`);
       },
     }));
   }
@@ -171,6 +173,7 @@ export const upsertAssetsPipeline = async ({
     onAssetError: (error, asset) => {
       summary.failed += 1;
       logOnlyError(error, { assetId: asset.id });
+      ui.warn(`Failed to push "${asset.filename ?? asset.short_filename ?? asset.id}": ${error.message}`);
     },
   }));
   await pipeline(steps);

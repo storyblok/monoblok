@@ -38,13 +38,23 @@ let stdoutEpipeGuarded = false;
  * `'error'` event on `process.stdout`; unhandled, it crashes with a stack trace
  * and exit code 1 — overwriting the exit code the command computed, so a clean
  * run looks like a failure to CI. There is nothing left to write, so EPIPE is
- * swallowed; any other stdout error still surfaces.
+ * swallowed.
+ *
+ * Any other stdout error is reported and exits 1. Rethrowing it here would land
+ * in the same trap the guard exists to avoid: a throw inside an `'error'`
+ * listener is an uncaught exception, so the stack trace and clobbered exit code
+ * come back for every `code` that is not EPIPE.
  */
-function guardStdoutEpipe(): void {
+function guardStdoutEpipe(ui: UI): void {
   if (stdoutEpipeGuarded) { return; }
   stdoutEpipeGuarded = true;
   process.stdout.on('error', (error: NodeJS.ErrnoException) => {
-    if (error.code !== 'EPIPE') { throw error; }
+    if (error.code === 'EPIPE') { return; }
+    ui.error(`Failed to write to stdout: ${error.message}`);
+    // A runtime failure, not a bad invocation, so 1 rather than 2. Set here
+    // because the write already failed: the document on stdout is truncated,
+    // and a consumer must not read the command's own exit code as success.
+    process.exitCode = 1;
   });
 }
 
@@ -182,7 +192,7 @@ export class UI {
    * stdout stays a single pipeable document even with `--no-ui-enabled`.
    */
   writeMachineOutput(payload: string) {
-    guardStdoutEpipe();
+    guardStdoutEpipe(this);
     process.stdout.write(`${payload}\n`);
   }
 

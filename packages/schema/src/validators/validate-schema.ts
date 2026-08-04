@@ -4,7 +4,7 @@ import { isRecord, toValues } from './shapes';
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
- * (missing or duplicate block names, field names, and datasource slugs) and cross-references
+ * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every `custom` field's `field_type`
  * resolves to a registered field plugin).
@@ -28,6 +28,9 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
   }
 
   const datasourceSlugs = new Set<string>();
+  // `schema push` diffs local against remote datasources by `name`, so a name is
+  // an identity just like a slug: it has to exist, and it has to be unique.
+  const datasourceNames = new Set<string>();
   for (let index = 0; index < datasources.length; index++) {
     const datasource = datasources[index];
     const slug = datasource?.slug;
@@ -54,6 +57,31 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
       });
     }
     datasourceSlugs.add(slug);
+
+    // Attributed to this datasource rather than to the one it collides with:
+    // the second claimant is the one that has to be renamed.
+    const name = datasource?.name;
+    if (typeof name !== 'string' || name.trim() === '') {
+      issues.push({
+        severity: 'error',
+        code: 'invalid_datasource_name',
+        path: ['datasources', slug, 'name'],
+        entity: `datasource:${slug}`,
+        message: `Datasource "${slug}" is missing a non-empty string "name".`,
+      });
+      continue;
+    }
+    if (datasourceNames.has(name)) {
+      issues.push({
+        severity: 'error',
+        code: 'duplicate_datasource_name',
+        path: ['datasources', slug, 'name'],
+        entity: `datasource:${slug}`,
+        message: `Duplicate datasource name "${name}" on datasource "${slug}". `
+          + `\`schema push\` matches datasources by name, so the two would collide.`,
+      });
+    }
+    datasourceNames.add(name);
   }
 
   const blockNames = new Set<string>();

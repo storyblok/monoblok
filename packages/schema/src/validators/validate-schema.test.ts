@@ -4,7 +4,7 @@ import { defineBlock } from '../helpers/define-block';
 import { defineDatasource } from '../helpers/define-datasource';
 import { defineField } from '../helpers/define-field';
 import { defineFolder } from '../helpers/define-folder';
-import type { SchemaBlockLike } from './shapes';
+import type { SchemaBlockLike, SchemaDatasourceLike } from './shapes';
 import { validateSchema } from './validate-schema';
 
 const colors = defineDatasource({ name: 'Colors', slug: 'colors' });
@@ -76,6 +76,36 @@ describe('validateSchema', () => {
     const dup = defineDatasource({ name: 'Colors 2', slug: 'colors' });
     const result = validateSchema({ blocks: {}, datasources: [colors, dup] });
     expect(codesFor(result)).toContain('duplicate_datasource_slug');
+  });
+
+  // Regression: `schema push` diffs datasources by `name`, so this pair aborts
+  // the push (`Duplicate schema definitions: datasource name "Colors"`) even
+  // though the slugs differ. `validateSchema` only tracked slugs, so `schema
+  // validate` reported a clean schema and exited 0 right before that abort.
+  it('flags two datasources claiming the same name', () => {
+    const dup = defineDatasource({ name: 'Colors', slug: 'colors-2' });
+    const result = validateSchema({ blocks: {}, datasources: [colors, dup] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(['duplicate_datasource_name']);
+    // Attributed to the second claimant: that is the one that has to be renamed.
+    expect(result.issues[0]).toMatchObject({
+      entity: 'datasource:colors-2',
+      path: ['datasources', 'colors-2', 'name'],
+    });
+  });
+
+  it('does not flag datasources with distinct names', () => {
+    const other = defineDatasource({ name: 'Sizes', slug: 'sizes' });
+    const result = validateSchema({ blocks: {}, datasources: [colors, other] });
+    expect(result.ok).toBe(true);
+  });
+
+  it('flags a datasource whose name is missing or blank', () => {
+    // Bypass defineDatasource, whose input type requires `name`.
+    const nameless = { slug: 'colors-2' } as SchemaDatasourceLike;
+    const result = validateSchema({ blocks: {}, datasources: [colors, nameless] });
+    expect(codesFor(result)).toEqual(['invalid_datasource_name']);
+    expect(result.issues[0]).toMatchObject({ entity: 'datasource:colors-2' });
   });
 
   it('flags an allow reference to an unknown block', () => {

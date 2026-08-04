@@ -66,7 +66,8 @@ function buildLocalFolders(registered: string[], derived: string[]): LocalFolder
  * dropped, the two concurrent creates race, and the first rejection aborts the
  * push after other entities were already written. Reporting it up front keeps
  * the failure deterministic and off the network. `schema validate` reports the
- * same collision as `duplicate_block_name` / `duplicate_datasource_slug`.
+ * same collision as `duplicate_block_name` / `duplicate_datasource_name` /
+ * `duplicate_datasource_slug`.
  */
 function assertUniqueIdentities(
   components: Record<string, unknown>[],

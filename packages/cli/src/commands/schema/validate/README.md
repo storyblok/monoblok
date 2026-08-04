@@ -36,8 +36,8 @@ hero (block)
 
 Identity:
 
-- `invalid_block_name` / `invalid_datasource_slug` — a block without a usable `name`, or a datasource without a usable `slug`. Neither can be pushed or referenced.
-- `duplicate_block_name` / `duplicate_datasource_slug` — two definitions claiming the same identity. `schema push` rejects the same collision before it touches the API.
+- `invalid_block_name` / `invalid_datasource_name` / `invalid_datasource_slug` — a block without a usable `name`, or a datasource without a usable `name` or `slug`. Neither can be pushed or referenced.
+- `duplicate_block_name` / `duplicate_datasource_name` / `duplicate_datasource_slug` — two definitions claiming the same identity. `schema push` rejects the same collision before it touches the API. A datasource has two identities: `slug` (rejected by the Management API) and `name`, which is what `schema push` diffs local against remote by, so two datasources sharing a name collide even with different slugs.
 - `invalid_field` / `missing_field_name` / `duplicate_field_name` — a field entry the wire mapper would otherwise drop silently, or two fields sharing a name within one block.
 
 Cross-references:
@@ -86,6 +86,8 @@ storyblok schema validate ./schema.ts --format json > report.json
 
 - `ref` is the machine-readable identity of a group — use it instead of parsing `header`.
 - The counts are always true totals. `--level` only filters which issues appear under `groups`.
+- Check the exit code before parsing: exit `2` means the run never produced a document, so stdout is empty and the reason is on stderr.
+- `unitsWithIssues` counts affected definitions, not groups, so `unitsTotal - unitsWithIssues` is a true count of clean ones. The two differ for definitions with no usable identity: a nameless block cannot be attributed to a name, so all of them share the one `schema` group while still counting separately here.
 
 ## Notes
 

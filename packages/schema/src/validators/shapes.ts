@@ -21,6 +21,15 @@ export interface SchemaFieldLike {
   allow?: readonly (string | { folder: string })[];
   /** Normalized datasource slug for option/options fields. */
   datasource?: string;
+  /** `option`/`options`: the self-sourced selectable options. */
+  options?: readonly { name?: string; value?: string }[];
+  /**
+   * `option`/`options`: where the selectable options come from. Undefined (or
+   * empty) means self — the `options` array above. Any other value
+   * (`internal`, `external`, `internal_stories`, `internal_languages`) resolves
+   * in the space, so the accepted values are not knowable from the schema.
+   */
+  source?: string;
   // Value constraints enforced by `validateStory` (all optional).
   /** `text`/`textarea`/`markdown`: maximum string length. */
   max_length?: number;

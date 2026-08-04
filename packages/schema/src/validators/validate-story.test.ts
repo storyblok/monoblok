@@ -413,6 +413,14 @@ describe('validateStory — number wire format', () => {
     expect(check(7).issues.some(i => i.code === 'invalid_value')).toBe(true);
   });
 
+  // `Expected string, received number.` reads like a validator bug on a field
+  // that looks numeric; the message has to name the wire format.
+  it('explains that the wire form of a number field is a string', () => {
+    expect(check(7).issues[0].message).toBe(
+      'Expected a numeric string (number fields are stored as strings), received number.',
+    );
+  });
+
   it('rejects strings that are not numeric', () => {
     expect(check('abc').ok).toBe(false);
     expect(check('12a3').ok).toBe(false);
@@ -531,5 +539,103 @@ describe('validateStory — richtext allow entries', () => {
     expect(disallowed?.message).toBe(
       'Component "teaser" is not allowed in field "body"; allowed: folder:Layout.',
     );
+  });
+});
+
+// Removing or renaming an option in the schema is exactly the change that
+// orphans existing content, so a stored value outside the declared list must be
+// reported rather than passing as "some string".
+describe('validateStory — declared options', () => {
+  const article = defineBlock({
+    name: 'article',
+    is_root: true,
+    fields: [
+      defineField('tier', { type: 'option', options: [{ name: 'Gold', value: 'gold' }, { name: 'Silver', value: 'silver' }] }),
+      defineField('tags', { type: 'options', options: [{ name: 'A', value: 'a' }, { name: 'B', value: 'b' }] }),
+    ],
+  });
+  const s = { blocks: { article } };
+  const check = (content: Record<string, unknown>) =>
+    validateStory({ content: { component: 'article', ...content } }, s);
+
+  it('accepts a declared option value', () => {
+    expect(check({ tier: 'gold', tags: ['a', 'b'] }).ok).toBe(true);
+  });
+
+  it('rejects an option value that is not declared', () => {
+    const issue = check({ tier: 'bronze' }).issues.find(i => i.code === 'unknown_option');
+    expect(issue?.path).toEqual(['content', 'tier']);
+    expect(issue?.message).toBe('Value "bronze" is not one of the options declared for field "tier": "gold", "silver".');
+  });
+
+  it('rejects an undeclared entry of a multi-option value and points at its index', () => {
+    const issue = check({ tags: ['a', 'zz'] }).issues.find(i => i.code === 'unknown_option');
+    expect(issue?.path).toEqual(['content', 'tags', 1]);
+  });
+
+  it('accepts an empty string, which is how an unset option field is stored', () => {
+    expect(check({ tier: '' }).ok).toBe(true);
+  });
+
+  it('skips fields whose options are resolved in the space', () => {
+    // A datasource-backed field carries no entries in the schema (entries are
+    // content), so its accepted values are not knowable offline.
+    const themed = defineBlock({
+      name: 'themed',
+      is_root: true,
+      fields: [defineField('theme', { type: 'option', source: 'internal', datasource: 'colors' })],
+    });
+    const result = validateStory({ content: { component: 'themed', theme: 'anything' } }, { blocks: { themed } });
+    expect(result.ok).toBe(true);
+  });
+
+  it('skips a field that declares no options', () => {
+    const free = defineBlock({
+      name: 'free',
+      is_root: true,
+      fields: [defineField('tier', { type: 'option' })],
+    });
+    expect(validateStory({ content: { component: 'free', tier: 'whatever' } }, { blocks: { free } }).ok).toBe(true);
+  });
+});
+
+// Zod reports a bare `Invalid input` for a failed union, which told the user
+// nothing about what a valid multilink/asset/richtext value looks like.
+describe('validateStory — value messages', () => {
+  const linked = defineBlock({
+    name: 'linked',
+    is_root: true,
+    fields: [
+      defineField('link', { type: 'multilink' }),
+      defineField('cover', { type: 'asset' }),
+      defineField('body', { type: 'richtext' }),
+    ],
+  });
+  const s = { blocks: { linked } };
+  const messageFor = (content: Record<string, unknown>) =>
+    validateStory({ content: { component: 'linked', ...content } }, s).issues[0]?.message;
+
+  it('describes the accepted shape when a multilink union fails', () => {
+    expect(messageFor({ link: { linktype: 'nonsense' } })).toBe(
+      'Expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }.',
+    );
+  });
+
+  it('describes the accepted shape when an asset value is not an object', () => {
+    expect(messageFor({ cover: 'https://a.storyblok.com/f/1/x.png' })).toBe(
+      'Expected an asset object: { fieldtype: "asset", id, alt, filename }.',
+    );
+  });
+
+  it('describes the accepted shape when a richtext value is not a document', () => {
+    expect(messageFor({ body: 'plain text' })).toBe(
+      'Expected a richtext document: { type: "doc", content: [...] }.',
+    );
+  });
+
+  it('keeps the validator message for a failure inside the value, which names the key', () => {
+    const message = messageFor({ cover: { fieldtype: 'asset', id: 1, alt: null } });
+    expect(message).toContain('expected string');
+    expect(message?.endsWith('.')).toBe(true);
   });
 });

@@ -15,6 +15,19 @@ import { slugifyFolderPath } from '../utils/slugify-folder-path';
 const RESERVED_KEYS = new Set(['_uid', 'component', '_editable']);
 
 /**
+ * Human descriptions of the accepted wire shape per field type, used when the
+ * underlying validator can only report that the value as a whole is wrong (see
+ * {@link formatValidatorMessage}).
+ */
+const EXPECTED_SHAPE = {
+  asset: 'expected an asset object: { fieldtype: "asset", id, alt, filename }',
+  multilink: 'expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }',
+  richtext: 'expected a richtext document: { type: "doc", content: [...] }',
+  table: 'expected a table object: { fieldtype: "table", thead: [...], tbody: [...] }',
+  plugin: 'expected a field plugin object carrying a "plugin" key',
+} as const;
+
+/**
  * Relaxed plugin envelope used by the `custom` case. Mirrors the generated
  * `zPluginFieldValue` but relaxes `_uid` from a UUID to a plain string, matching
  * the CMS, which persists arbitrary `_uid` strings. Kept local so a codegen
@@ -22,13 +35,36 @@ const RESERVED_KEYS = new Set(['_uid', 'component', '_editable']);
  */
 const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
 
-/** Maps a Standard Schema validator to a {@link ValidationIssue} reporter at `path`. */
+/**
+ * Rewrites a validator's own message into the style the hand-written messages
+ * use (capitalized, one trailing period).
+ *
+ * A failure on the value as a whole (`atRoot`) is where a validator says the
+ * least: Zod reports a bare `Invalid input` for a failed union — every member
+ * mismatched, so it can name none of them — which tells the reader nothing about
+ * what a multilink or richtext value should look like. `expected` replaces those
+ * with a description of the accepted shape. Messages about a specific key inside
+ * the value already name it, so they are kept verbatim.
+ */
+function formatValidatorMessage(message: string, expected: string | undefined, atRoot: boolean): string {
+  const raw = message.trim();
+  const text = expected !== undefined && atRoot ? expected : raw;
+  const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
+  return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;
+}
+
+/**
+ * Maps a Standard Schema validator to a {@link ValidationIssue} reporter at `path`.
+ * `expected` describes the accepted shape and is used when the validator's own
+ * message carries no information (see {@link formatValidatorMessage}).
+ */
 function checkValue(
   schema: StandardSchemaV1,
   value: unknown,
   path: (string | number)[],
   entity: string,
   issues: ValidationIssue[],
+  expected?: string,
 ): void {
   const result = schema['~standard'].validate(value);
   // `validateStory` is synchronous. The internal Zod schemas never return a
@@ -55,7 +91,7 @@ function checkValue(
         code: 'invalid_value',
         path: [...path, ...issuePath],
         entity,
-        message: issue.message,
+        message: formatValidatorMessage(issue.message, expected, issuePath.length === 0),
       });
     }
   }
@@ -72,28 +108,28 @@ function validateFieldValue(
 ): void {
   switch (field.type) {
     case 'asset':
-      checkValue(zAssetFieldValue, value, path, entity, issues);
+      checkValue(zAssetFieldValue, value, path, entity, issues, EXPECTED_SHAPE.asset);
       break;
     case 'multiasset':
       if (!Array.isArray(value)) {
         pushTypeIssue(value, 'array', path, entity, issues);
         break;
       }
-      value.forEach((item, index) => checkValue(zAssetFieldValue, item, [...path, index], entity, issues));
+      value.forEach((item, index) => checkValue(zAssetFieldValue, item, [...path, index], entity, issues, EXPECTED_SHAPE.asset));
       checkCount(value.length, field.minimum_entries, field.maximum_entries, 'asset(s)', path, entity, issues);
       break;
     case 'multilink':
-      checkValue(zMultilinkFieldValue, value, path, entity, issues);
+      checkValue(zMultilinkFieldValue, value, path, entity, issues, EXPECTED_SHAPE.multilink);
       break;
     case 'table':
-      checkValue(zTableFieldValue, value, path, entity, issues);
+      checkValue(zTableFieldValue, value, path, entity, issues, EXPECTED_SHAPE.table);
       break;
     case 'richtext':
-      checkValue(zRichTextFieldValue, value, path, entity, issues);
+      checkValue(zRichTextFieldValue, value, path, entity, issues, EXPECTED_SHAPE.richtext);
       validateRichtextBloks(value, field, blocksByName, fieldPluginsByType, path, entity, issues);
       break;
     case 'custom': {
-      checkValue(zPluginEnvelope, value, path, entity, issues);
+      checkValue(zPluginEnvelope, value, path, entity, issues, EXPECTED_SHAPE.plugin);
       const validator = field.field_type ? fieldPluginsByType.get(field.field_type) : undefined;
       if (validator && isRecord(value)) {
         // Envelope keys sit alongside the plugin's own keys; strip them so the
@@ -125,6 +161,12 @@ function validateFieldValue(
       checkStringLength(field, value, path, entity, issues);
       break;
     case 'option':
+      if (typeof value !== 'string') {
+        pushTypeIssue(value, 'string', path, entity, issues);
+        break;
+      }
+      checkDeclaredOption(field, value, path, entity, issues);
+      break;
     case 'datetime':
       if (typeof value !== 'string') {
         pushTypeIssue(value, 'string', path, entity, issues);
@@ -132,7 +174,14 @@ function validateFieldValue(
       break;
     case 'number': {
       if (typeof value !== 'string') {
-        pushTypeIssue(value, 'string', path, entity, issues);
+        // The wire form of a number field is a string, so a JSON number is
+        // invalid even though it reads as the more natural value. Say why.
+        pushInvalidValue(
+          `Expected a numeric string (number fields are stored as strings), received ${describeType(value)}.`,
+          path,
+          entity,
+          issues,
+        );
         break;
       }
       // Mirrors the backend's `\A-?\d*\.?\d*\z`: an optional leading `-`, digits
@@ -178,6 +227,7 @@ function validateFieldValue(
         break;
       }
       checkCount(value.length, toCount(field.min_options), toCount(field.max_options), 'option(s)', path, entity, issues);
+      value.forEach((item: string, index) => checkDeclaredOption(field, item, [...path, index], entity, issues));
       break;
     case 'section':
     case 'tab':
@@ -248,6 +298,45 @@ function checkComponentAllowed(
       message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${allowedList}.`,
     });
   }
+}
+
+/**
+ * Reports a value that is not among a field's declared options — the drift left
+ * behind when an option is renamed or removed from the schema while stories
+ * still carry the old value.
+ *
+ * Only self-sourced fields can be checked. Every other `source` resolves its
+ * options inside the space (`internal` from a datasource, `internal_stories`
+ * from the story tree, `internal_languages` from the space languages, `external`
+ * from a remote JSON URL), and a datasource definition deliberately carries no
+ * entries — entries are content, not schema — so the accepted values are not
+ * knowable here. An empty string is the unset form of an option field, not a
+ * value, and a field declaring no options constrains nothing.
+ */
+function checkDeclaredOption(
+  field: SchemaFieldLike,
+  value: string,
+  path: (string | number)[],
+  entity: string,
+  issues: ValidationIssue[],
+): void {
+  if (value === '' || (field.source !== undefined && field.source !== '')) {
+    return;
+  }
+  const declared = (field.options ?? [])
+    .map(option => option.value)
+    .filter((optionValue): optionValue is string => typeof optionValue === 'string' && optionValue !== '');
+  if (declared.length === 0 || declared.includes(value)) {
+    return;
+  }
+  issues.push({
+    severity: 'error',
+    code: 'unknown_option',
+    path,
+    entity,
+    message: `Value "${value}" is not one of the options declared for field "${field.name}": `
+      + `${declared.map(optionValue => `"${optionValue}"`).join(', ')}.`,
+  });
 }
 
 /** Reports a constraint (bound/length/count) violation as an error issue. */
@@ -321,6 +410,21 @@ function toCount(value: string | undefined): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+/** Names a received value's type for a message (`null` is reported as itself). */
+function describeType(value: unknown): string {
+  return value === null ? 'null' : typeof value;
+}
+
+/** Reports an invalid field value with a caller-provided message. */
+function pushInvalidValue(
+  message: string,
+  path: (string | number)[],
+  entity: string,
+  issues: ValidationIssue[],
+): void {
+  issues.push({ severity: 'error', code: 'invalid_value', path, entity, message });
+}
+
 function pushTypeIssue(
   value: unknown,
   expected: string,
@@ -328,13 +432,7 @@ function pushTypeIssue(
   entity: string,
   issues: ValidationIssue[],
 ): void {
-  issues.push({
-    severity: 'error',
-    code: 'invalid_value',
-    path,
-    entity,
-    message: `Expected ${expected}, received ${value === null ? 'null' : typeof value}.`,
-  });
+  pushInvalidValue(`Expected ${expected}, received ${describeType(value)}.`, path, entity, issues);
 }
 
 /**
@@ -449,8 +547,8 @@ function validateBlokContent(
 /**
  * Validates a story's content against a schema without throwing. Reports unknown
  * components (error), unknown fields (warning), missing required fields (error),
- * and invalid field-value shapes (error), recursing into nested `bloks` and
- * richtext-embedded bloks.
+ * invalid field-value shapes (error), and values outside a field's declared
+ * options (error), recursing into nested `bloks` and richtext-embedded bloks.
  *
  * @example
  * const result = validateStory(story, { blocks: { page, hero } });

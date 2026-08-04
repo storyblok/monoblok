@@ -116,6 +116,15 @@ export const upsertAssetsPipeline = async ({
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 
+  // Extract the human-readable message from the API response body when present
+  // (e.g. { error: "..." } or { message: "..." }), falling back to error.message.
+  const getAssetErrorMessage = (error: Error): string => {
+    const data = (error as any)?.response?.data;
+    return (typeof data?.error === 'string' ? data.error : undefined)
+      ?? (typeof data?.message === 'string' ? data.message : undefined)
+      ?? error.message;
+  };
+
   const steps = [];
   // Use the asset provided via the CLI.
   if (assetBinaryPath && assetData) {
@@ -129,7 +138,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
-        ui.warn(`Failed to read "${assetData?.filename ?? assetBinaryPath}": ${error.message}`);
+        ui.warn(`Failed to read "${assetData?.filename ?? assetBinaryPath}": ${getAssetErrorMessage(error)}`);
       },
     }));
   }
@@ -145,7 +154,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
-        ui.warn(`Failed to read asset: ${error.message}`);
+        ui.warn(`Failed to read asset: ${getAssetErrorMessage(error)}`);
       },
     }));
   }
@@ -173,7 +182,7 @@ export const upsertAssetsPipeline = async ({
     onAssetError: (error, asset) => {
       summary.failed += 1;
       logOnlyError(error, { assetId: asset.id });
-      ui.warn(`Failed to push "${asset.filename ?? asset.short_filename ?? asset.id}": ${error.message}`);
+      ui.warn(`Failed to push "${asset.filename ?? asset.short_filename ?? asset.id}": ${getAssetErrorMessage(error)}`);
     },
   }));
   await pipeline(steps);

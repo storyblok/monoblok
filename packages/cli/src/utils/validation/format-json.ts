@@ -15,7 +15,11 @@ export interface ValidationJsonReport {
   errors: number;
   warnings: number;
   fetchFailures: number;
+  /** Why each unit could not be fetched. Omitted when nothing failed. */
+  fetchErrors?: ValidationRunResult['fetchErrors'];
   listFailed: boolean;
+  /** Why listing failed. Omitted unless `listFailed` is `true`. */
+  listError?: string;
   groups: ValidationRunResult['groups'];
 }
 
@@ -37,7 +41,11 @@ export function formatJson(result: ValidationRunResult, level: LevelOption): str
     errors,
     warnings,
     fetchFailures,
+    // Only present when they carry information: an empty array or a null reason
+    // is noise in a document a machine reads.
+    ...(result.fetchErrors?.length ? { fetchErrors: result.fetchErrors } : {}),
     listFailed,
+    ...(listFailed && result.listError ? { listError: result.listError } : {}),
     groups: result.groups
       .map(group => ({ ...group, issues: filterIssuesByLevel(group.issues, level) }))
       .filter(group => group.issues.length > 0),

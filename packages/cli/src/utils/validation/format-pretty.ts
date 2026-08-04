@@ -15,6 +15,10 @@ function pluralize(count: number, noun: string): string {
  * Renders a validation run as human-readable text. Groups are printed with a
  * header and indented issue lines; a summary line closes the output. The summary
  * always reports true totals — `level` only filters which issue lines appear.
+ *
+ * True totals over a filtered listing read as a contradiction (warnings counted
+ * that were never shown, an affected-unit count above the number of groups
+ * printed), so the summary says outright what the threshold withheld.
  */
 export function formatPretty(result: ValidationRunResult, level: LevelOption): string {
   const lines: string[] = [];
@@ -40,9 +44,12 @@ export function formatPretty(result: ValidationRunResult, level: LevelOption): s
     : warnings > 0
       ? chalk.yellow('⚠')
       : chalk.green('✔');
+  const hidden = level === 'error' && warnings > 0
+    ? chalk.dim(` (${pluralize(warnings, 'warning')} hidden by --level error)`)
+    : '';
   lines.push(
     `${summarySymbol} ${pluralize(errors, 'error')}, ${pluralize(warnings, 'warning')} `
-    + `across ${unitsWithIssues} of ${result.unitsTotal} ${result.unitNoun}`,
+    + `across ${unitsWithIssues} of ${result.unitsTotal} ${result.unitNoun}${hidden}`,
   );
 
   return lines.join('\n');

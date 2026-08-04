@@ -6,7 +6,7 @@ import { parseFormat, parseLevel } from './types';
 import { countIssues, filterIssuesByLevel } from './filter';
 import { formatJson } from './format-json';
 import { formatPretty } from './format-pretty';
-import { entityToHeader, groupIssuesByEntity } from './group';
+import { entityToHeader, entityToRef, groupIssuesByEntity } from './group';
 
 const error: ValidationIssue = {
   severity: 'error',
@@ -23,6 +23,8 @@ const warning: ValidationIssue = {
   entity: 'block:hero',
   message: 'Unknown field "legacy_cta" on component "hero".',
 };
+
+const heroRef = { kind: 'block', name: 'hero' } as const;
 
 describe('filterIssuesByLevel', () => {
   it('should pass through everything at the warning threshold', () => {
@@ -49,12 +51,28 @@ describe('entityToHeader', () => {
   });
 });
 
+describe('entityToRef', () => {
+  it('should carry the type and name a consumer would otherwise parse out of the header', () => {
+    expect(entityToRef('block:hero')).toEqual({ kind: 'block', name: 'hero' });
+    expect(entityToRef('datasource:colors')).toEqual({ kind: 'datasource', name: 'colors' });
+  });
+
+  it('should not guess a type for an entity the validators do not attribute', () => {
+    expect(entityToRef('schema')).toEqual({ kind: 'schema' });
+    expect(entityToRef('story')).toEqual({ kind: 'schema' });
+  });
+});
+
 describe('groupIssuesByEntity', () => {
   it('should group issues by entity in first-seen order', () => {
     const other: ValidationIssue = { ...error, entity: 'block:page' };
     const groups = groupIssuesByEntity([error, other, warning]);
     expect(groups.map(g => g.header)).toEqual(['hero (block)', 'page (block)']);
     expect(groups[0].issues).toHaveLength(2);
+  });
+
+  it('should attach a machine-readable ref to every group', () => {
+    expect(groupIssuesByEntity([error])[0].ref).toEqual({ kind: 'block', name: 'hero' });
   });
 });
 
@@ -63,7 +81,7 @@ describe('countIssues', () => {
     const result: ValidationRunResult = {
       unitNoun: 'entities',
       unitsTotal: 14,
-      groups: [{ header: 'hero (block)', issues: [error, warning] }],
+      groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
     };
     expect(countIssues(result)).toEqual({ errors: 1, warnings: 1, unitsWithIssues: 1 });
   });
@@ -73,7 +91,7 @@ describe('formatPretty', () => {
   const result: ValidationRunResult = {
     unitNoun: 'entities',
     unitsTotal: 14,
-    groups: [{ header: 'hero (block)', issues: [error, warning] }],
+    groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
   };
 
   it('should render group headers, issue lines, and a true-total summary', () => {
@@ -89,6 +107,22 @@ describe('formatPretty', () => {
     const output = formatPretty(result, 'error');
     expect(output).not.toContain('unknown_field');
     expect(output).toContain('1 error, 1 warning across 1 of 14 entities');
+  });
+
+  // Counting warnings that were never printed reads as a contradiction, so the
+  // summary has to say the threshold withheld them.
+  it('should say how many warnings the error threshold withheld', () => {
+    expect(formatPretty(result, 'error')).toContain('(1 warning hidden by --level error)');
+  });
+
+  it('should not mention hidden warnings when there are none to hide', () => {
+    expect(formatPretty(result, 'warning')).not.toContain('hidden by');
+    const errorsOnly: ValidationRunResult = {
+      unitNoun: 'entities',
+      unitsTotal: 14,
+      groups: [{ header: 'hero (block)', ref: heroRef, issues: [error] }],
+    };
+    expect(formatPretty(errorsOnly, 'error')).not.toContain('hidden by');
   });
 
   it('should report a clean run', () => {
@@ -115,7 +149,7 @@ describe('formatJson', () => {
   const result: ValidationRunResult = {
     unitNoun: 'entities',
     unitsTotal: 14,
-    groups: [{ header: 'hero (block)', issues: [error, warning] }],
+    groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
   };
 
   it('should emit parseable JSON with true totals and ok:false on errors', () => {
@@ -143,7 +177,7 @@ describe('formatJson', () => {
     const warningsOnly: ValidationRunResult = {
       unitNoun: 'stories',
       unitsTotal: 3,
-      groups: [{ header: 'home (story #1)', issues: [warning] }],
+      groups: [{ header: 'home (story #1)', ref: { kind: 'story', id: 1, slug: 'home' }, issues: [warning] }],
     };
     const report = JSON.parse(formatJson(warningsOnly, 'error'));
     expect(report.groups).toEqual([]);
@@ -169,6 +203,44 @@ describe('formatJson', () => {
       fetchFailures: 2,
     };
     expect(JSON.parse(formatJson(incomplete, 'warning'))).toMatchObject({ ok: false, fetchFailures: 2 });
+  });
+
+  // A JSON consumer never sees stderr, so an incomplete run has to carry its
+  // reason in the document.
+  it('should carry the reason a listing failed', () => {
+    const incomplete: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 0,
+      groups: [],
+      listFailed: true,
+      listError: 'The requested resource was not found',
+    };
+    expect(JSON.parse(formatJson(incomplete, 'warning')).listError).toBe('The requested resource was not found');
+  });
+
+  it('should carry the reason each unit could not be fetched', () => {
+    const incomplete: ValidationRunResult = {
+      unitNoun: 'stories',
+      unitsTotal: 2,
+      groups: [],
+      fetchFailures: 1,
+      fetchErrors: [{ id: 42, slug: 'home', message: 'Internal Server Error' }],
+    };
+    expect(JSON.parse(formatJson(incomplete, 'warning')).fetchErrors).toEqual([
+      { id: 42, slug: 'home', message: 'Internal Server Error' },
+    ]);
+  });
+
+  it('should omit the failure reasons when nothing failed', () => {
+    const clean: ValidationRunResult = { unitNoun: 'stories', unitsTotal: 5, groups: [], fetchErrors: [] };
+    const report = JSON.parse(formatJson(clean, 'warning'));
+    expect(report).not.toHaveProperty('fetchErrors');
+    expect(report).not.toHaveProperty('listError');
+  });
+
+  it('should carry each group\'s identity so a consumer never parses the header', () => {
+    const report = JSON.parse(formatJson(result, 'warning'));
+    expect(report.groups[0].ref).toEqual({ kind: 'block', name: 'hero' });
   });
 
   it('should report ok:true for a complete clean run', () => {

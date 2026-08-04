@@ -268,13 +268,101 @@ describe('stories validate command', () => {
 
   it('should scope validation with --starts-with', async () => {
     const story = makeMockStory({ full_slug: 'en/home', content: { component: 'page', headline: 'Hi' } });
-    preconditions.canListStories([story], { starts_with: '/en/' });
+    preconditions.canListStories([story], { starts_with: 'en/' });
+    preconditions.canFetchStories([story]);
+
+    await runValidate('--starts-with', 'en/');
+
+    expect(process.exitCode).toBe(0);
+    expect(loggedOutput()).toContain('across 0 of 1 stories');
+  });
+
+  // Regression: a `full_slug` never starts with a slash and MAPI matches the
+  // prefix literally, so the documented `--starts-with="/en/blog/"` form
+  // selected nothing and reported a green run over 0 stories.
+  it('should strip a leading slash from --starts-with', async () => {
+    const story = makeMockStory({ full_slug: 'en/home', content: { component: 'page', headline: 'Hi' } });
+    // The handler only answers when `starts_with` is exactly `en/`.
+    preconditions.canListStories([story], { starts_with: 'en/' });
     preconditions.canFetchStories([story]);
 
     await runValidate('--starts-with', '/en/');
 
     expect(process.exitCode).toBe(0);
     expect(loggedOutput()).toContain('across 0 of 1 stories');
+  });
+
+  it('should warn when --starts-with matched no stories', async () => {
+    preconditions.canListStories([]);
+
+    await runValidate('--starts-with', 'nope/');
+
+    expect(process.exitCode).toBe(0);
+    expect(loggedOutput()).toContain('No stories matched --starts-with "nope/"');
+  });
+
+  it('should not warn about an empty space when no filter was given', async () => {
+    preconditions.canListStories([]);
+
+    await runValidate();
+
+    expect(loggedOutput()).not.toContain('No stories matched');
+  });
+
+  // Stories are fetched concurrently, so arrival order varies between runs;
+  // unsorted output is not diffable in CI.
+  it('should order groups by path, not by arrival', async () => {
+    const stories = [
+      makeMockStory({ id: 2, full_slug: 'zebra', content: { component: 'page' } }),
+      makeMockStory({ id: 1, full_slug: 'alpha', content: { component: 'page' } }),
+    ];
+    preconditions.canListStories(stories);
+    preconditions.canFetchStories(stories);
+
+    await runValidate('--format', 'json');
+
+    const report = JSON.parse(machineOutput());
+    expect(report.groups.map((group: { ref: { slug: string } }) => group.ref.slug)).toEqual(['alpha', 'zebra']);
+  });
+
+  it('should carry each story\'s identity in the JSON groups', async () => {
+    const story = makeMockStory({
+      id: 123456,
+      name: 'Home',
+      full_slug: 'app/home',
+      content: { component: 'page' },
+    });
+    preconditions.canListStories([story]);
+    preconditions.canFetchStories([story]);
+
+    await runValidate('--format', 'json');
+
+    expect(JSON.parse(machineOutput()).groups[0].ref).toEqual({
+      kind: 'story',
+      id: 123456,
+      slug: 'app/home',
+      name: 'Home',
+    });
+  });
+
+  it('should carry the reason a failed listing aborted the run in JSON', async () => {
+    preconditions.listEndpointFails();
+
+    await runValidate('--format', 'json');
+
+    expect(JSON.parse(machineOutput()).listError).toBeTruthy();
+  });
+
+  it('should carry the reason a story could not be fetched in JSON', async () => {
+    const story = makeMockStory({ id: 999, full_slug: 'broken', content: { component: 'page', headline: 'Hi' } });
+    preconditions.canListStories([story]);
+    preconditions.storyFetchFails(story.id);
+
+    await runValidate('--format', 'json');
+
+    const [failure] = JSON.parse(machineOutput()).fetchErrors;
+    expect(failure).toMatchObject({ id: 999, slug: 'broken' });
+    expect(failure.message).toBeTruthy();
   });
 
   it('should exit 2 when not logged in', async () => {

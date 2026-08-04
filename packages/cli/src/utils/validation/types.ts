@@ -12,11 +12,29 @@ export type FormatOption = 'pretty' | 'json';
 export const FORMAT_OPTIONS = ['pretty', 'json'] as const satisfies readonly FormatOption[];
 
 /**
+ * Machine-readable identity of a {@link ValidationGroup}. `header` is a rendered
+ * string; this is what a consumer keys on to link an issue back to the story or
+ * schema entity it came from, without parsing the heading.
+ */
+export interface ValidationGroupRef {
+  /** What the group stands for. */
+  kind: 'story' | 'block' | 'datasource' | 'schema';
+  /** Story ID (`kind: 'story'`). */
+  id?: number;
+  /** Story `full_slug` (`kind: 'story'`). */
+  slug?: string;
+  /** Story name, block name, or datasource slug. */
+  name?: string;
+}
+
+/**
  * A group of issues under one heading — a schema entity (`hero (block)`) or a
  * story (`app/home (story #123456)`). Only groups with issues are included.
+ * `header` renders for humans, `ref` carries the same identity for machines.
  */
 export interface ValidationGroup {
   header: string;
+  ref: ValidationGroupRef;
   issues: ValidationIssue[];
 }
 
@@ -26,7 +44,9 @@ export interface ValidationGroup {
  * of that total.
  *
  * `fetchFailures` and `listFailed` carry run-level (non-validation) failures so a
- * machine consumer never reads a clean result over an incomplete run.
+ * machine consumer never reads a clean result over an incomplete run. Their
+ * causes travel alongside them: a `--format json` consumer sees no stderr, so
+ * without these the reason for an incomplete run would be lost.
  */
 export interface ValidationRunResult {
   /** Plural noun for the summary line, e.g. `entities` or `stories`. */
@@ -35,8 +55,12 @@ export interface ValidationRunResult {
   groups: ValidationGroup[];
   /** Units that could not be fetched and were therefore not validated. */
   fetchFailures?: number;
+  /** Why each unit could not be fetched, in the order the failures happened. */
+  fetchErrors?: { id?: number; slug?: string; message: string }[];
   /** Whether listing the population failed, making the run incomplete. */
   listFailed?: boolean;
+  /** Why listing the population failed. */
+  listError?: string;
 }
 
 /**

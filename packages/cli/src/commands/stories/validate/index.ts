@@ -1,9 +1,11 @@
 import { Transform, Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Story } from '../constants';
+import { normalizeStartsWith } from '../constants';
 import { colorPalette, commands } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
+import type { ProgressBar } from '../../../lib/ui';
 import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
@@ -11,7 +13,7 @@ import { fetchStoriesStream, fetchStoryStream } from '../streams';
 import { requireAuthentication } from '../../../utils/auth';
 import { handleError, toError } from '../../../utils/error/error';
 import { CommandError } from '../../../utils/error/command-error';
-import type { FormatOption, LevelOption, SchemaLike, ValidationGroup, ValidationRunResult } from '../../../utils/validation';
+import type { FormatOption, LevelOption, SchemaLike, ValidationGroup, ValidationGroupRef, ValidationRunResult } from '../../../utils/validation';
 import {
   countIssues,
   formatJson,
@@ -36,16 +38,31 @@ function storyHeader(story: Story): string {
   return `${slug} (story #${story.id})`;
 }
 
+/** Machine-readable identity for a story group, so a consumer never parses the header. */
+function storyRef(story: Story): ValidationGroupRef {
+  return {
+    kind: 'story',
+    id: story.id,
+    ...(story.full_slug ? { slug: story.full_slug } : {}),
+    ...(story.name ? { name: story.name } : {}),
+  };
+}
+
 storiesCommand
   .command('validate')
-  .description('Validate every story\'s content in a space against a local code-defined schema.')
+  .description('Validate every story\'s draft content in a space against a local code-defined schema.')
   .option('-s, --space <space>', 'space ID')
   .option('--schema <entry-file>', 'Path to the TypeScript schema entry file')
-  .option('--starts-with <path>', 'Only validate stories whose path starts with this prefix. Example: --starts-with="/en/blog/"')
+  .option('--starts-with <path>', 'Only validate stories whose path starts with this prefix. Example: --starts-with="en/blog/"')
   .option('--level <level>', 'Display threshold: error|warning', 'warning')
   .option('--format <format>', 'Output format: pretty|json', 'pretty')
   .action(async (options: StoriesValidateOptions, command) => {
-    const { schema: schemaEntry, startsWith } = options;
+    const { schema: schemaEntry } = options;
+    // A leading slash would make `starts_with` match nothing; `/` alone leaves no
+    // prefix at all, which is the same as not filtering.
+    const startsWith = options.startsWith === undefined
+      ? undefined
+      : normalizeStartsWith(options.startsWith) || undefined;
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -104,11 +121,34 @@ storiesCommand
       // 3. Fetch every non-folder story and validate its content.
       const groups: ValidationGroup[] = [];
       let totalStories = 0;
-      let fetchFailures = 0;
+      const fetchErrors: NonNullable<ValidationRunResult['fetchErrors']> = [];
       let listFailed = false;
+      let listError: string | undefined;
 
-      // The progress bar draws on stdout; skip it for JSON so the document stays pure.
-      const progress = isJson ? undefined : ui.createProgressBar({ title: 'Validating Stories...'.padEnd(23) });
+      // The progress bar draws on stdout: skip it for JSON so the document stays
+      // pure, and create it only once there is something to count so a run that
+      // never lists a story does not leave an empty bar behind its error output.
+      let progress: ProgressBar | undefined;
+      let listedTotal = 0;
+      let foldersSkipped = 0;
+      const startProgress = (): ProgressBar | undefined => {
+        if (isJson) {
+          return undefined;
+        }
+        progress ??= ui.createProgressBar({ title: 'Validating Stories...'.padEnd(23) });
+        return progress;
+      };
+      // The list `Total` header counts folders too, and is re-reported on every
+      // page, so the bar's total is recomputed from both numbers rather than
+      // adjusted in place. Keeps the bar counting the same population the summary
+      // reports instead of finishing one short per folder.
+      const syncProgressTotal = () => {
+        startProgress()?.setTotal(Math.max(listedTotal - foldersSkipped, 0));
+      };
+      const stopProgress = () => {
+        progress?.stop();
+        ui.stopAllProgressBars();
+      };
 
       if (!isJson) {
         ui.title(`${commands.STORIES}`, colorPalette.STORIES, 'Validating stories...');
@@ -119,23 +159,28 @@ storiesCommand
           fetchStoriesStream({
             spaceId: space,
             params: { starts_with: startsWith },
-            // The list `Total` header counts folders too; folders are increment-
-            // ed as they are skipped below so the bar still reaches 100%.
-            setTotalStories: total => progress?.setTotal(total),
+            setTotalStories: (total) => {
+              listedTotal = total;
+              syncProgressTotal();
+            },
             onPageError: (error, page, total) => {
               // A failure listing stories is fatal — we cannot validate a partial space.
               listFailed = true;
+              listError = error.message;
+              // Leave no live bar redrawing itself underneath the error output.
+              stopProgress();
               logger.error('Failed to list stories', { error: error.message, page, total });
               handleError(error, verbose, { page, total });
             },
           }),
-          // Skip folders: they carry no content to validate. Still advance the
-          // progress bar so its folder-inclusive total completes.
+          // Skip folders: they carry no content to validate, and are not part of
+          // the population the summary counts.
           new Transform({
             objectMode: true,
             transform(story: Story, _encoding, callback) {
               if (story.is_folder) {
-                progress?.increment();
+                foldersSkipped += 1;
+                syncProgressTotal();
                 callback();
                 return;
               }
@@ -147,7 +192,11 @@ storiesCommand
           fetchStoryStream({
             spaceId: space,
             onStoryError: (error, story) => {
-              fetchFailures += 1;
+              fetchErrors.push({
+                id: story.id,
+                ...(story.full_slug ? { slug: story.full_slug } : {}),
+                message: error.message,
+              });
               progress?.increment();
               logger.error('Failed to fetch story', { error: error.message, storyId: story.id });
               handleError(error, verbose, { storyId: story.id });
@@ -159,7 +208,7 @@ storiesCommand
               try {
                 const { issues } = await validateStory(story, schema);
                 if (issues.length > 0) {
-                  groups.push({ header: storyHeader(story), issues });
+                  groups.push({ header: storyHeader(story), ref: storyRef(story), issues });
                 }
                 progress?.increment();
                 callback();
@@ -175,23 +224,31 @@ storiesCommand
       }
       catch (maybeError) {
         // An unexpected pipeline failure (e.g. the network is down) is fatal.
-        progress?.stop();
-        ui.stopAllProgressBars();
+        stopProgress();
         failFatal(toError(maybeError).message);
         return;
       }
 
-      progress?.stop();
-      ui.stopAllProgressBars();
+      stopProgress();
+
+      // Stories arrive in completion order, not list order, so identical content
+      // would print in a different order on every run. Sort by path to keep the
+      // output diffable in CI.
+      groups.sort((a, b) =>
+        (a.ref.slug ?? a.header).localeCompare(b.ref.slug ?? b.header)
+        || (a.ref.id ?? 0) - (b.ref.id ?? 0));
 
       // 4. Build the result. The run-level failures travel with it so neither
       //    formatter can present an incomplete run as a clean one.
+      const fetchFailures = fetchErrors.length;
       const result: ValidationRunResult = {
         unitNoun: 'stories',
         unitsTotal: totalStories,
         groups,
         fetchFailures,
+        fetchErrors,
         listFailed,
+        listError,
       };
 
       // 5. Report. The artifact carries the run-level fetch/list failures so an
@@ -227,6 +284,12 @@ storiesCommand
 
       if (!isJson) {
         ui.log(formatPretty(result, level));
+        // A prefix that selects nothing produces the same green summary as a
+        // clean space. Say so, or the run reads as a pass over content it never
+        // looked at.
+        if (startsWith !== undefined && totalStories === 0) {
+          ui.warn(`No stories matched --starts-with "${startsWith}"; nothing was validated.`);
+        }
         if (fetchFailures > 0) {
           ui.warn(`${fetchFailures} story(s) could not be fetched and were not validated.`);
         }

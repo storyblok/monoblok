@@ -85,6 +85,29 @@ describe('schema validate command', () => {
     expect(process.exitCode).toBe(2);
   });
 
+  // A missing entry file used to surface Node's resolution failure verbatim,
+  // `Require stack:` dump included.
+  it('should name the missing entry file instead of dumping the module error', async () => {
+    importError = new Error('Cannot find module \'src/schema.ts\'\nRequire stack:\n- /somewhere/jiti.mjs');
+
+    await runValidate();
+
+    const output = loggedOutput();
+    expect(output).toContain('Schema entry file not found at "src/schema.ts"');
+    expect(output).not.toContain('Require stack');
+  });
+
+  // A dependency the entry file imports failing to resolve is a different
+  // problem; rewriting it would hide which module is actually missing.
+  it('should keep the original error when a module the entry file imports is missing', async () => {
+    importError = new Error('Cannot find module \'@storyblok/nope\'');
+
+    await runValidate();
+
+    expect(loggedOutput()).toContain('@storyblok/nope');
+    expect(loggedOutput()).not.toContain('Schema entry file not found');
+  });
+
   it('should exit 2 when the entry file exports no schema definitions', async () => {
     schemaModule = { helper: () => {}, constant: 42 };
 

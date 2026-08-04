@@ -11,6 +11,8 @@
  */
 
 import { resolve } from 'pathe';
+import { CommandError } from '../error/command-error';
+import { toError } from '../error/error';
 import { isRecord } from '../object';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
@@ -130,10 +132,27 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
  * is irrelevant. Shared by `schema push` (wire mapping) and the validate
  * commands (DSL shape). The jiti import throws when the path cannot be
  * resolved — fatal for the callers.
+ *
+ * A missing entry file is a bad invocation, so it surfaces as a
+ * {@link CommandError} instead of Node's resolution failure with its `Require
+ * stack:` dump. A module the entry file itself imports failing to resolve is a
+ * different problem and keeps the original error: only a failure naming the
+ * entry path is rewritten.
  */
 export async function loadSchemaModule(entryPath: string): Promise<Record<string, unknown>> {
   const { createJiti } = await import('jiti');
   const jiti = createJiti(import.meta.url, { interopDefault: true });
   const entryAbs = resolve(entryPath);
-  return await jiti.import(entryAbs) as Record<string, unknown>;
+  try {
+    return await jiti.import(entryAbs) as Record<string, unknown>;
+  }
+  catch (maybeError) {
+    const error = toError(maybeError);
+    const notFound = /cannot find module|ERR_MODULE_NOT_FOUND/i.test(error.message)
+      && (error.message.includes(entryAbs) || error.message.includes(entryPath));
+    if (notFound) {
+      throw new CommandError(`Schema entry file not found at "${entryPath}".`);
+    }
+    throw error;
+  }
 }

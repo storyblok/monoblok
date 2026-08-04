@@ -131,11 +131,12 @@ export const SUPPORTED_ASSET_EXTENSIONS = new Set([
   '.wma',
   '.m4a',
   '.opus',
-  // Documents: application/msword, text/plain, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  // Documents: application/msword, text/plain, application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, text/vtt
   '.pdf',
   '.doc',
   '.docx',
   '.txt',
+  '.vtt',
 ]);
 
 export const directories = {

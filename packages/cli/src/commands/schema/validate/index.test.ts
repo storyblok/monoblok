@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { vol } from 'memfs';
 
 import '../index';
 import { schemaCommand } from '../command';
@@ -43,6 +44,9 @@ describe('schema validate command', () => {
   beforeEach(() => {
     schemaModule = {};
     importError = null;
+    // The loader checks the entry file exists before handing it to jiti, so it
+    // has to be present in the mocked filesystem even though jiti is stubbed.
+    vol.fromJSON({ 'src/schema.ts': 'export const page = {};' });
   });
 
   afterEach(() => {
@@ -88,7 +92,7 @@ describe('schema validate command', () => {
   // A missing entry file used to surface Node's resolution failure verbatim,
   // `Require stack:` dump included.
   it('should name the missing entry file instead of dumping the module error', async () => {
-    importError = new Error('Cannot find module \'src/schema.ts\'\nRequire stack:\n- /somewhere/jiti.mjs');
+    vol.reset();
 
     await runValidate();
 
@@ -97,10 +101,15 @@ describe('schema validate command', () => {
     expect(output).not.toContain('Require stack');
   });
 
-  // A dependency the entry file imports failing to resolve is a different
-  // problem; rewriting it would hide which module is actually missing.
+  // Regression: a dependency the entry file imports failing to resolve raises
+  // `Cannot find module '@storyblok/nope'` with a `Require stack:` naming the
+  // entry file. Deciding "entry file missing" from that message therefore
+  // reported an installed-dependency problem as a missing entry file, hiding
+  // which module is actually absent.
   it('should keep the original error when a module the entry file imports is missing', async () => {
-    importError = new Error('Cannot find module \'@storyblok/nope\'');
+    importError = new Error(
+      'Cannot find module \'@storyblok/nope\'\nRequire stack:\n- /repo/src/schema.ts',
+    );
 
     await runValidate();
 

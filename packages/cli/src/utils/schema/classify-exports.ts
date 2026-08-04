@@ -10,9 +10,9 @@
  * `@storyblok/schema` validators.
  */
 
+import { stat } from 'node:fs/promises';
 import { resolve } from 'pathe';
 import { CommandError } from '../error/command-error';
-import { toError } from '../error/error';
 import { isRecord } from '../object';
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
@@ -74,8 +74,9 @@ export interface CollectedSchemaExports {
  * exported `schema` object) and must be collapsed. Two DIFFERENT definitions
  * that share a name are both kept, so every consumer sees the collision rather
  * than silently losing one: `schema validate` reports it as
- * `duplicate_block_name` / `duplicate_datasource_slug`, and `schema push`
- * rejects the entry file before it touches the API (see `classifyExports`).
+ * `duplicate_block_name` / `duplicate_datasource_name` /
+ * `duplicate_datasource_slug`, and `schema push` rejects the entry file before it
+ * touches the API (see `classifyExports`).
  */
 export function collectSchemaExports(moduleExports: Record<string, unknown>): CollectedSchemaExports {
   const components: Record<string, unknown>[] = [];
@@ -135,24 +136,21 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
  *
  * A missing entry file is a bad invocation, so it surfaces as a
  * {@link CommandError} instead of Node's resolution failure with its `Require
- * stack:` dump. A module the entry file itself imports failing to resolve is a
- * different problem and keeps the original error: only a failure naming the
- * entry path is rewritten.
+ * stack:` dump. The file is checked before the import rather than by inspecting
+ * the failure: a module the entry file itself imports and cannot resolve raises
+ * `Cannot find module '<specifier>'` with a `Require stack:` naming the entry
+ * file, so matching the entry path against the message reported a missing
+ * dependency as a missing entry file.
  */
 export async function loadSchemaModule(entryPath: string): Promise<Record<string, unknown>> {
-  const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
   const entryAbs = resolve(entryPath);
   try {
-    return await jiti.import(entryAbs) as Record<string, unknown>;
+    await stat(entryAbs);
   }
-  catch (maybeError) {
-    const error = toError(maybeError);
-    const notFound = /cannot find module|ERR_MODULE_NOT_FOUND/i.test(error.message)
-      && (error.message.includes(entryAbs) || error.message.includes(entryPath));
-    if (notFound) {
-      throw new CommandError(`Schema entry file not found at "${entryPath}".`);
-    }
-    throw error;
+  catch {
+    throw new CommandError(`Schema entry file not found at "${entryPath}".`);
   }
+  const { createJiti } = await import('jiti');
+  const jiti = createJiti(import.meta.url, { interopDefault: true });
+  return await jiti.import(entryAbs) as Record<string, unknown>;
 }

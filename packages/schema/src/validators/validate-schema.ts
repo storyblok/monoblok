@@ -4,7 +4,7 @@ import { isRecord, toValues } from './shapes';
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
- * (duplicate block names, field names, and datasource slugs) and cross-references
+ * (missing or duplicate block names, field names, and datasource slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every `custom` field's `field_type`
  * resolves to a registered field plugin).
@@ -28,9 +28,20 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
   }
 
   const datasourceSlugs = new Set<string>();
-  for (const datasource of datasources) {
+  for (let index = 0; index < datasources.length; index++) {
+    const datasource = datasources[index];
     const slug = datasource?.slug;
-    if (typeof slug !== 'string') {
+    // A datasource without a usable slug has no identity: it cannot be pushed,
+    // and no option field can reference it. Reported against `schema`, since
+    // there is no slug to attribute the issue to.
+    if (typeof slug !== 'string' || slug.trim() === '') {
+      issues.push({
+        severity: 'error',
+        code: 'invalid_datasource_slug',
+        path: ['datasources', index],
+        entity: 'schema',
+        message: `Datasource at index ${index} is missing a non-empty string "slug".`,
+      });
       continue;
     }
     if (datasourceSlugs.has(slug)) {
@@ -46,9 +57,21 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
   }
 
   const blockNames = new Set<string>();
-  for (const block of blocks) {
+  for (let index = 0; index < blocks.length; index++) {
+    const block = blocks[index];
     const name = block?.name;
-    if (typeof name !== 'string') {
+    // A block without a usable name has no identity: it cannot be pushed, and no
+    // `allow` entry can reference it. Reported against `schema`, since there is
+    // no name to attribute the issue to — and so no consumer has to render an
+    // entity heading for a nameless block.
+    if (typeof name !== 'string' || name.trim() === '') {
+      issues.push({
+        severity: 'error',
+        code: 'invalid_block_name',
+        path: ['blocks', index],
+        entity: 'schema',
+        message: `Block at index ${index} is missing a non-empty string "name".`,
+      });
       continue;
     }
     if (blockNames.has(name)) {
@@ -65,8 +88,17 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
 
   // Field-level checks run after the name/slug sets are fully populated so that
   // forward and circular references (resolved by name) validate correctly.
-  for (const block of blocks) {
-    const blockName = typeof block?.name === 'string' ? block.name : '';
+  for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+    const block = blocks[blockIndex];
+    const name = block?.name;
+    const named = typeof name === 'string' && name.trim() !== '';
+    // A nameless block is already reported above; its fields are still checked,
+    // but attributed to `schema` and located by index so no issue carries an
+    // empty entity name or an empty path segment.
+    const blockName = named ? name : '';
+    const blockLabel = named ? `block "${blockName}"` : `the block at index ${blockIndex}`;
+    const blockEntity = named ? `block:${blockName}` : 'schema';
+    const blockKey: string | number = named ? blockName : blockIndex;
     const fieldNames = new Set<string>();
     const fields = block?.fields ?? [];
     for (let index = 0; index < fields.length; index++) {
@@ -77,9 +109,9 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         issues.push({
           severity: 'error',
           code: 'invalid_field',
-          path: ['blocks', blockName, index],
-          entity: `block:${blockName}`,
-          message: `Field at index ${index} in block "${blockName}" is not an object.`,
+          path: ['blocks', blockKey, index],
+          entity: blockEntity,
+          message: `Field at index ${index} in ${blockLabel} is not an object.`,
         });
         continue;
       }
@@ -89,9 +121,9 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           issues.push({
             severity: 'error',
             code: 'duplicate_field_name',
-            path: ['blocks', blockName, fieldName],
-            entity: `block:${blockName}`,
-            message: `Duplicate field name "${fieldName}" in block "${blockName}".`,
+            path: ['blocks', blockKey, fieldName],
+            entity: blockEntity,
+            message: `Duplicate field name "${fieldName}" in ${blockLabel}.`,
           });
         }
         fieldNames.add(fieldName);
@@ -100,9 +132,9 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         issues.push({
           severity: 'error',
           code: 'missing_field_name',
-          path: ['blocks', blockName, index],
-          entity: `block:${blockName}`,
-          message: `Field at index ${index} in block "${blockName}" is missing a string "name".`,
+          path: ['blocks', blockKey, index],
+          entity: blockEntity,
+          message: `Field at index ${index} in ${blockLabel} is missing a string "name".`,
         });
       }
 
@@ -111,8 +143,8 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           issues.push({
             severity: 'error',
             code: 'unresolved_allow',
-            path: ['blocks', blockName, fieldName ?? '', 'allow'],
-            entity: `block:${blockName}`,
+            path: ['blocks', blockKey, fieldName ?? index, 'allow'],
+            entity: blockEntity,
             message: `Field "${fieldName}" allows unknown block "${allowed}".`,
           });
         }
@@ -123,8 +155,8 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         issues.push({
           severity: 'error',
           code: 'unresolved_datasource',
-          path: ['blocks', blockName, fieldName ?? '', 'datasource'],
-          entity: `block:${blockName}`,
+          path: ['blocks', blockKey, fieldName ?? index, 'datasource'],
+          entity: blockEntity,
           message: `Field "${fieldName}" references unknown datasource "${datasource}".`,
         });
       }
@@ -134,8 +166,8 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         issues.push({
           severity: 'error',
           code: 'unresolved_field_plugin',
-          path: ['blocks', blockName, fieldName ?? '', 'field_type'],
-          entity: `block:${blockName}`,
+          path: ['blocks', blockKey, fieldName ?? index, 'field_type'],
+          entity: blockEntity,
           message: `Field "${fieldName}" references unregistered field plugin "${fieldType}".`,
         });
       }

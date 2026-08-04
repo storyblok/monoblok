@@ -34,6 +34,37 @@ describe('validateSchema', () => {
     expect(codesFor(result)).toContain('duplicate_block_name');
   });
 
+  // A block with no usable name has no identity: it cannot be pushed, nothing can
+  // `allow` it, and there is no name to head its issues with. Report the missing
+  // name against the schema instead of silently skipping the block.
+  it('flags a block whose name is missing or blank', () => {
+    const nameless: SchemaBlockLike = { fields: [] } as unknown as SchemaBlockLike;
+    const blank: SchemaBlockLike = { name: '   ', fields: [] };
+    const result = validateSchema({ blocks: [nameless, blank] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(['invalid_block_name', 'invalid_block_name']);
+    expect(result.issues.map(issue => [issue.entity, issue.path])).toEqual([
+      ['schema', ['blocks', 0]],
+      ['schema', ['blocks', 1]],
+    ]);
+  });
+
+  it('attributes a nameless block\'s field issues to the schema, located by index', () => {
+    const nameless = { fields: [{ type: 'text' }] } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: [nameless] });
+    const missingName = result.issues.find(issue => issue.code === 'missing_field_name');
+    expect(missingName?.entity).toBe('schema');
+    expect(missingName?.path).toEqual(['blocks', 0, 0]);
+    expect(missingName?.message).toContain('the block at index 0');
+  });
+
+  it('flags a datasource whose slug is missing or blank', () => {
+    const result = validateSchema({ blocks: {}, datasources: [{}, { slug: '' }] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(['invalid_datasource_slug', 'invalid_datasource_slug']);
+    expect(result.issues[0]).toMatchObject({ entity: 'schema', path: ['datasources', 0] });
+  });
+
   it('flags duplicate field names within a block', () => {
     // Build the block shape directly to bypass defineBlock's runtime guard.
     const block: SchemaBlockLike = { name: 'dup', fields: [{ name: 'a', type: 'text' }, { name: 'a', type: 'textarea' }] };

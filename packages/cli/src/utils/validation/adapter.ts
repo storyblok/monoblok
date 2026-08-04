@@ -33,6 +33,17 @@ export interface LoadedSchema {
   entityCount: number;
 }
 
+export interface LoadSchemaEntryOptions {
+  /**
+   * Require at least one block. Set by consumers that validate content: without
+   * block definitions every story reports `unknown_component`, which points at
+   * the content instead of at the real cause (an entry file that defines no
+   * blocks). `schema validate` leaves this off — a datasource-only schema is a
+   * legitimate thing to check statically.
+   */
+  requireBlocks?: boolean;
+}
+
 /**
  * Loads a TypeScript schema entry file via jiti and returns it in the loose
  * `SchemaLike` shape the validators accept. Blocks, datasources, and field
@@ -44,16 +55,25 @@ export interface LoadedSchema {
  * `unresolved_field_plugin`), and `validateStory` runs their `value` validator
  * against the field's content (dropping them silently skips that check).
  *
- * Throws when the file exports no schema definitions; the jiti import itself
- * throws when the path cannot be resolved. Both are fatal for the caller.
+ * Throws when the file exports no schema definitions (see
+ * {@link LoadSchemaEntryOptions.requireBlocks}); the jiti import itself throws
+ * when the path cannot be resolved. Both are fatal for the caller.
  */
-export async function loadSchemaEntry(entryPath: string): Promise<LoadedSchema> {
+export async function loadSchemaEntry(
+  entryPath: string,
+  options: LoadSchemaEntryOptions = {},
+): Promise<LoadedSchema> {
   const entryMod = await loadSchemaModule(entryPath);
   const { components, datasources, fieldPlugins } = collectSchemaExports(entryMod);
 
   if (components.length === 0 && datasources.length === 0) {
     throw new CommandError(
       'No blocks or datasources found in the schema entry file. Verify the file exports schema definitions.',
+    );
+  }
+  if (options.requireBlocks && components.length === 0) {
+    throw new CommandError(
+      'No blocks found in the schema entry file. Story content cannot be validated against a schema that defines no blocks.',
     );
   }
 

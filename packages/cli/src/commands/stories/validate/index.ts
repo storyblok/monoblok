@@ -92,7 +92,9 @@ storiesCommand
       // 2. Load the schema (fatal on bad/empty/unresolvable entry file — exit 2).
       let schema: SchemaLike;
       try {
-        ({ schema } = await loadSchemaEntry(schemaEntry));
+        // Story content cannot be validated without block definitions, so an
+        // entry file with none is a bad invocation rather than a clean run.
+        ({ schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true }));
       }
       catch (maybeError) {
         failFatal(toError(maybeError).message);

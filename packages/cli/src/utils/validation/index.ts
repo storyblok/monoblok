@@ -1,4 +1,4 @@
-export type { LoadedSchema, SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity } from './adapter';
+export type { LoadedSchema, LoadSchemaEntryOptions, SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity } from './adapter';
 export { loadSchemaEntry, validateSchema, validateStory } from './adapter';
 export type { ValidationCounts } from './filter';
 export { countIssues, filterIssuesByLevel } from './filter';

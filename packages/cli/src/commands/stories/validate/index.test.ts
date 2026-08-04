@@ -255,6 +255,17 @@ describe('stories validate command', () => {
     expect(process.exitCode).toBe(2);
   });
 
+  // Without blocks, every story would report `unknown_component` — a wall of
+  // issues pointing at the content instead of at the schema entry file.
+  it('should exit 2 when the schema entry defines datasources but no blocks', async () => {
+    schemaModule = { colors: { name: 'Colors', slug: 'colors' } };
+
+    await runValidate();
+
+    expect(process.exitCode).toBe(2);
+    expect(loggedOutput()).toContain('No blocks found in the schema entry file');
+  });
+
   it('should scope validation with --starts-with', async () => {
     const story = makeMockStory({ full_slug: 'en/home', content: { component: 'page', headline: 'Hi' } });
     preconditions.canListStories([story], { starts_with: '/en/' });

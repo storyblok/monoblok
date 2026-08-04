@@ -44,12 +44,15 @@ export function formatPretty(result: ValidationRunResult, level: LevelOption): s
     : warnings > 0
       ? chalk.yellow('⚠')
       : chalk.green('✔');
+  // Errors and warnings are pluralized, so a plural unit noun next to a count of
+  // one reads as an oversight: `1 error, 0 warnings across 1 of 1 stories`.
+  const unitNoun = result.unitsTotal === 1 ? result.unitNounSingular : result.unitNoun;
   const hidden = level === 'error' && warnings > 0
     ? chalk.dim(` (${pluralize(warnings, 'warning')} hidden by --level error)`)
     : '';
   lines.push(
     `${summarySymbol} ${pluralize(errors, 'error')}, ${pluralize(warnings, 'warning')} `
-    + `across ${unitsWithIssues} of ${result.unitsTotal} ${result.unitNoun}${hidden}`,
+    + `across ${unitsWithIssues} of ${result.unitsTotal} ${unitNoun}${hidden}`,
   );
 
   return lines.join('\n');

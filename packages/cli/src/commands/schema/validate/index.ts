@@ -71,6 +71,7 @@ schemaCommand
       const { issues } = await validateSchema(loaded.schema);
       const result: ValidationRunResult = {
         unitNoun: 'entities',
+        unitNounSingular: 'entity',
         unitsTotal: loaded.entityCount,
         groups: groupIssuesByEntity(issues),
       };

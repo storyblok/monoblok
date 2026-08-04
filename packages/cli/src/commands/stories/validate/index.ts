@@ -259,6 +259,7 @@ storiesCommand
       const fetchFailures = fetchErrors.length;
       const result: ValidationRunResult = {
         unitNoun: 'stories',
+        unitNounSingular: 'story',
         unitsTotal: totalStories,
         groups,
         // Travels with the result so both formatters can say the population was

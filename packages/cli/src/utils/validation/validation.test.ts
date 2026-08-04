@@ -82,6 +82,7 @@ describe('countIssues', () => {
   it('should count errors, warnings, and units with issues', () => {
     const result: ValidationRunResult = {
       unitNoun: 'entities',
+      unitNounSingular: 'entity',
       unitsTotal: 14,
       groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
     };
@@ -102,6 +103,7 @@ describe('countIssues', () => {
     });
     const result: ValidationRunResult = {
       unitNoun: 'entities',
+      unitNounSingular: 'entity',
       unitsTotal: 3,
       groups: [{
         header: 'schema',
@@ -122,6 +124,7 @@ describe('countIssues', () => {
     });
     const result: ValidationRunResult = {
       unitNoun: 'entities',
+      unitNounSingular: 'entity',
       unitsTotal: 3,
       groups: [{
         header: 'schema',
@@ -137,6 +140,7 @@ describe('countIssues', () => {
   it('should count one unit per story even when they share a block', () => {
     const result: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 5,
       groups: [
         { header: 'a (story #1)', ref: { kind: 'story', id: 1, slug: 'a' }, issues: [error] },
@@ -144,6 +148,26 @@ describe('countIssues', () => {
       ],
     };
     expect(countIssues(result)).toMatchObject({ unitsWithIssues: 2 });
+  });
+});
+
+describe('formatPretty unit noun', () => {
+  const oneUnit = (unitsTotal: number): ValidationRunResult => ({
+    unitNoun: 'stories',
+    unitNounSingular: 'story',
+    unitsTotal,
+    groups: [{ header: 'home (story #1)', ref: { kind: 'story', id: 1, slug: 'home' }, issues: [error] }],
+  });
+
+  // Errors and warnings were pluralized while the unit noun was not, so a
+  // single-unit run read `1 error, 0 warnings across 1 of 1 stories`.
+  it('should use the singular noun for a run over one unit', () => {
+    expect(formatPretty(oneUnit(1), 'warning')).toContain('across 1 of 1 story');
+  });
+
+  it('should use the plural noun for any other total', () => {
+    expect(formatPretty(oneUnit(4), 'warning')).toContain('across 1 of 4 stories');
+    expect(formatPretty(oneUnit(0), 'warning')).toContain('across 1 of 0 stories');
   });
 });
 
@@ -178,6 +202,7 @@ describe('writeValidationReport', () => {
     });
     const result: ValidationRunResult = {
       unitNoun: 'entities',
+      unitNounSingular: 'entity',
       unitsTotal: 3,
       groups: [{
         header: 'schema',
@@ -195,6 +220,7 @@ describe('writeValidationReport', () => {
 describe('formatPretty', () => {
   const result: ValidationRunResult = {
     unitNoun: 'entities',
+    unitNounSingular: 'entity',
     unitsTotal: 14,
     groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
   };
@@ -224,6 +250,7 @@ describe('formatPretty', () => {
     expect(formatPretty(result, 'warning')).not.toContain('hidden by');
     const errorsOnly: ValidationRunResult = {
       unitNoun: 'entities',
+      unitNounSingular: 'entity',
       unitsTotal: 14,
       groups: [{ header: 'hero (block)', ref: heroRef, issues: [error] }],
     };
@@ -253,6 +280,7 @@ describe('parseLevel / parseFormat', () => {
 describe('formatJson', () => {
   const result: ValidationRunResult = {
     unitNoun: 'entities',
+    unitNounSingular: 'entity',
     unitsTotal: 14,
     groups: [{ header: 'hero (block)', ref: heroRef, issues: [error, warning] }],
   };
@@ -281,6 +309,7 @@ describe('formatJson', () => {
   it('should drop groups left empty by the level filter', () => {
     const warningsOnly: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 3,
       groups: [{ header: 'home (story #1)', ref: { kind: 'story', id: 1, slug: 'home' }, issues: [warning] }],
     };
@@ -293,6 +322,7 @@ describe('formatJson', () => {
   it('should report ok:false for a clean run that failed to list', () => {
     const incomplete: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 0,
       groups: [],
       listFailed: true,
@@ -303,6 +333,7 @@ describe('formatJson', () => {
   it('should report ok:false for a clean run with unfetched stories', () => {
     const incomplete: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 5,
       groups: [],
       fetchFailures: 2,
@@ -315,6 +346,7 @@ describe('formatJson', () => {
   it('should carry the reason a listing failed', () => {
     const incomplete: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 0,
       groups: [],
       listFailed: true,
@@ -326,6 +358,7 @@ describe('formatJson', () => {
   it('should carry the reason each unit could not be fetched', () => {
     const incomplete: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 2,
       groups: [],
       fetchFailures: 1,
@@ -348,6 +381,7 @@ describe('formatJson', () => {
   it('should echo the filter that narrowed the population', () => {
     const filtered: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 3,
       groups: [],
       filter: { option: '--starts-with', value: 'en/' },
@@ -360,6 +394,7 @@ describe('formatJson', () => {
   it('should flag a filter that matched nothing', () => {
     const empty: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 0,
       groups: [],
       filter: { option: '--starts-with', value: 'nope/' },
@@ -370,6 +405,7 @@ describe('formatJson', () => {
   it('should not flag no-matches when the filter did select stories', () => {
     const filtered: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 3,
       groups: [],
       filter: { option: '--starts-with', value: 'en/' },
@@ -389,6 +425,7 @@ describe('formatJson', () => {
     // blame the filter for a failure it did not cause.
     const failed: ValidationRunResult = {
       unitNoun: 'stories',
+      unitNounSingular: 'story',
       unitsTotal: 0,
       groups: [],
       filter: { option: '--starts-with', value: 'en/' },

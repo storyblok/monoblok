@@ -61,8 +61,14 @@ export interface ValidationFilter {
  * without these the reason for an incomplete run would be lost.
  */
 export interface ValidationRunResult {
-  /** Plural noun for the summary line, e.g. `entities` or `stories`. */
+  /** Plural noun for the summary line and the JSON `unit` field, e.g. `entities` or `stories`. */
   unitNoun: string;
+  /**
+   * Singular of {@link unitNoun}, for a run over exactly one unit. Carried rather
+   * than derived: `entities` and `stories` both need more than a trailing `s`,
+   * and a de-pluralizing helper would be wrong more often than it is right.
+   */
+  unitNounSingular: string;
   unitsTotal: number;
   groups: ValidationGroup[];
   /** The filter that narrowed the population, when one was applied. */

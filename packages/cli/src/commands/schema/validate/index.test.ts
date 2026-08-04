@@ -78,7 +78,7 @@ describe('schema validate command', () => {
     const output = loggedOutput();
     expect(output).toContain('hero (block)');
     expect(output).toContain('unresolved_allow');
-    expect(output).toContain('1 error, 0 warnings across 1 of 1 entities');
+    expect(output).toContain('1 error, 0 warnings across 1 of 1 entity');
   });
 
   it('should exit 2 when the entry file cannot be resolved', async () => {
@@ -135,7 +135,7 @@ describe('schema validate command', () => {
     await runValidate('--level', 'error');
 
     expect(process.exitCode).toBe(1);
-    expect(loggedOutput()).toContain('1 error, 0 warnings across 1 of 1 entities');
+    expect(loggedOutput()).toContain('1 error, 0 warnings across 1 of 1 entity');
   });
 
   // Regression: the loader dropped `fieldPlugins`, so every registered plugin

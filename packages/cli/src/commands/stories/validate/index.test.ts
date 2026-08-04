@@ -121,7 +121,7 @@ describe('stories validate command', () => {
     expect(output).toContain('app/home (story #123456)');
     expect(output).toContain('missing_required_field');
     expect(output).toContain('unknown_field');
-    expect(output).toContain('1 error, 1 warning across 1 of 1 stories');
+    expect(output).toContain('1 error, 1 warning across 1 of 1 story');
   });
 
   it('should skip folders and exclude them from the total', async () => {
@@ -135,7 +135,7 @@ describe('stories validate command', () => {
     await runValidate();
 
     expect(process.exitCode).toBe(0);
-    expect(loggedOutput()).toContain('across 0 of 1 stories');
+    expect(loggedOutput()).toContain('across 0 of 1 story');
   });
 
   it('should exit 1 and count per-story fetch failures', async () => {
@@ -278,7 +278,7 @@ describe('stories validate command', () => {
     await runValidate('--starts-with', 'en/');
 
     expect(process.exitCode).toBe(0);
-    expect(loggedOutput()).toContain('across 0 of 1 stories');
+    expect(loggedOutput()).toContain('across 0 of 1 story');
   });
 
   // Regression: a `full_slug` never starts with a slash and MAPI matches the
@@ -293,7 +293,7 @@ describe('stories validate command', () => {
     await runValidate('--starts-with', '/en/');
 
     expect(process.exitCode).toBe(0);
-    expect(loggedOutput()).toContain('across 0 of 1 stories');
+    expect(loggedOutput()).toContain('across 0 of 1 story');
   });
 
   it('should warn when --starts-with matched no stories', async () => {

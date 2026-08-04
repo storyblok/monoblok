@@ -3,37 +3,41 @@ import { onStoryblokEditorEvent } from '@storyblok/live-preview';
 import type { Story } from '@storyblok/api-client';
 import {
   type ReactNode,
+  Suspense,
+  use,
   useEffect,
   useRef,
   useState,
-  useTransition,
 } from 'react';
 
 export interface StoryblokPreviewProps {
   /**
    * Server action responsible for rendering updated content.
    */
-  renderContent: (
-    story: Story,
-  ) => Promise<ReactNode>;
+  renderContent: (story: Story) => Promise<ReactNode>;
   /**
    * Initial server-rendered content passed as children.
    *
-   * Pass the initial RSC tree as children (not as a prop) so that React can
-   * stream it through the RSC channel. Storing async Server Component output
-   * in useState(initialContent) forces the RSC serializer to fully await every
-   * async component before sending any HTML, bypassing Suspense streaming.
-   * Using children keeps the subtree in the RSC stream where Suspense works.
+   * Returned directly on first render with no state involvement, so Suspense
+   * boundaries inside the tree stream normally.
    */
   children: ReactNode;
   /**
    * Milliseconds to wait after the last editor event before triggering a
    * re-render. Prevents a Server Action call on every individual keystroke.
    *
-   * Defaults to 300 ms — enough to let a fast typist finish a word before
-   * the preview updates, while still feeling responsive.
+   * Defaults to 300 ms.
    */
   debounceMs?: number;
+}
+
+/**
+ * Inner component that calls use() inside its own Suspense boundary.
+ * Keeping it separate means use() only suspends this subtree, not the whole
+ * page.
+ */
+function LiveContent({ promise }: { promise: Promise<ReactNode> }) {
+  return <>{use(promise)}</>;
 }
 
 export function StoryblokPreview({
@@ -41,13 +45,18 @@ export function StoryblokPreview({
   children,
   debounceMs = 300,
 }: StoryblokPreviewProps) {
-  const [isPending, startTransition] = useTransition();
+  // Store the Promise itself — not the resolved ReactNode.
+  //
+  // Storing ReactNode in useState forces the RSC serializer to fully await
+  // every async component in the tree before it can commit the state value,
+  // bypassing Suspense streaming and causing a full 10-second block.
+  //
+  // Storing a Promise avoids this: React.use() + Suspense handle the async
+  // resolution on the client after the initial page has already streamed.
+  const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(
+    null,
+  );
 
-  // null = no editor update yet; renders children (initial RSC tree) instead.
-  const [updatedContent, setUpdatedContent] = useState<ReactNode | null>(null);
-
-  // Holds the pending debounce timer so we can cancel it when a new event
-  // arrives before the delay expires.
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -60,31 +69,20 @@ export function StoryblokPreview({
           return;
         }
 
-        // Cancel the previous pending re-render and wait for the user to
-        // pause before kicking off a new Server Action call. Without this,
-        // every keystroke would fire a separate (potentially slow) fetch.
         if (debounceTimer.current !== null) {
           clearTimeout(debounceTimer.current);
         }
 
         debounceTimer.current = setTimeout(() => {
           debounceTimer.current = null;
+          if (!mounted) {
+            return;
+          }
 
-          startTransition(async () => {
-            try {
-              const next = await renderContent(updatedStory as Story);
-
-              if (mounted) {
-                setUpdatedContent(next);
-              }
-            }
-            catch (err) {
-              console.error(
-                '[StoryblokPreview] Failed to render preview:',
-                err,
-              );
-            }
-          });
+          // Set the promise directly — no useTransition, no awaiting here.
+          // React.use() inside LiveContent reads it; Suspense shows children
+          // (current content) as the fallback while the new render loads.
+          setLivePromise(renderContent(updatedStory as Story));
         }, debounceMs);
       });
     };
@@ -100,24 +98,20 @@ export function StoryblokPreview({
     };
   }, [renderContent, debounceMs]);
 
-  return (
-    <>
-      {isPending && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 2,
-            background: '#3b82f6',
-            zIndex: 9999,
-          }}
-        />
-      )}
+  // No editor update yet — return children with zero state involvement.
+  // This is the initial SSR/streaming path: Suspense boundaries inside the
+  // children tree fire normally because nothing here interferes with them.
+  if (!livePromise) {
+    return <>{children}</>;
+  }
 
-      {updatedContent ?? children}
-    </>
+  // Editor update in flight or resolved.
+  // Show the current content (children) as the Suspense fallback so the page
+  // stays visible while the server action completes, then swaps seamlessly.
+  return (
+    <Suspense fallback={children}>
+      <LiveContent promise={livePromise} />
+    </Suspense>
   );
 }
 

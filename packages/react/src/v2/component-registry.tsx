@@ -2,14 +2,14 @@ import { type ComponentType, type ReactNode, Suspense } from 'react';
 import type { SbBlokData } from '.';
 
 /** Internal type: how the registry calls components (always passes SbBlokData) */
-type StoryblokComponentType = ComponentType<{ blok: SbBlokData }>;
+type StoryblokComponentType = ComponentType<{ block: SbBlokData }>;
 
 /**
- * Registration type: accepts any component whose blok prop is a subtype of SbBlokData.
+ * Registration type: accepts any component whose block prop is a subtype of SbBlokData.
  * Using `any` here intentionally avoids contravariance errors — components that declare
- * specific blok shapes (e.g. `SbBlokData & { headline: string }`) are valid entries.
+ * specific block shapes (e.g. `Block<"feature">`) are valid entries.
  */
-type AnyBlokComponent = ComponentType<{ blok: any }>;
+type AnyBlokComponent = ComponentType<{ block: any }>;
 
 /**
  * Component entry that supports async components with Suspense.
@@ -92,7 +92,7 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     if (!entry) {
       if (config.fallback) {
         const FallbackComponent = config.fallback;
-        return <FallbackComponent blok={blok} {...rest} />;
+        return <FallbackComponent block={blok} {...rest} />;
       }
       console.warn(`[Storyblok] Unknown component: ${blok.component}`);
       return null;
@@ -108,12 +108,12 @@ export function createRegistry(config: RegistryConfig): RegistryResult {
     if (needsSuspense) {
       return (
         <Suspense fallback={fallback ?? defaultSuspenseFallback}>
-          <Component blok={blok} {...rest} />
+          <Component block={blok} {...rest} />
         </Suspense>
       );
     }
 
-    return <Component blok={blok} {...rest} />;
+    return <Component block={blok} {...rest} />;
   }
 
   function StoryblokBlocks({ blocks, ...rest }: { blocks: SbBlokData[] } & Record<string, unknown>): ReactNode {

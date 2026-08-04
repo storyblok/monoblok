@@ -11,6 +11,7 @@ import { handleAPIError } from '../../../utils';
 import { fileExists, readDirectory } from '../../../utils/filesystem';
 import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 import { buildGroupPathByUuid } from '../folders';
+import { hydrateSecretValues } from '../secrets';
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [
@@ -322,10 +323,14 @@ export async function executeRollback(
     }
   }
 
-  // 2. Component creates/updates
+  // 2. Component creates/updates. A restored snapshot may carry `secret()`
+  //    placeholders (secrets are never stored in the changeset); hydrate them
+  //    from the live space (or `process.env`) so the rollback neither writes a
+  //    placeholder to the API nor clears an existing secret.
   for (const op of componentOps.filter(o => o.action !== 'delete')) {
     if (op.action === 'create') {
-      const payload = toComponentCreate(remapGroupUuids(stripApiFields(op.payload), groupUuidMap));
+      const hydrated = hydrateSecretValues(op.payload, undefined, process.env, []) as Record<string, unknown>;
+      const payload = toComponentCreate(remapGroupUuids(stripApiFields(hydrated), groupUuidMap));
       try {
         await client.components.create({
           path: { space_id: spaceIdNum },
@@ -341,7 +346,13 @@ export async function executeRollback(
     else if (op.action === 'update') {
       const existing = remote.components.get(op.name);
       if (existing?.id) {
-        const payload = toComponentUpdate(remapGroupUuids(stripApiFields(op.payload), groupUuidMap));
+        const hydrated = hydrateSecretValues(
+          op.payload,
+          existing as unknown as Record<string, unknown>,
+          process.env,
+          [],
+        ) as Record<string, unknown>;
+        const payload = toComponentUpdate(remapGroupUuids(stripApiFields(hydrated), groupUuidMap));
         try {
           await client.components.update(existing.id, {
             path: { space_id: spaceIdNum },

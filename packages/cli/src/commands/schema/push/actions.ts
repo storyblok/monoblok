@@ -7,6 +7,7 @@ import { CommandError, handleAPIError } from '../../../utils';
 import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
 import { buildGroupPathByUuid } from '../folders';
 import { isRecord } from '../utils';
+import { hydrateSecretValues, maskSecretsToPlaceholder, type SecretResolution } from '../secrets';
 
 /** A resolved component group reference: its numeric id and server uuid. */
 interface GroupRef { id: number; uuid: string }
@@ -144,12 +145,13 @@ export async function executePush(
   remote: RemoteSchemaData,
   diffResult: DiffResult,
   options: { delete: boolean },
-): Promise<{ created: number; updated: number; deleted: number }> {
+): Promise<{ created: number; updated: number; deleted: number; secretWarnings: string[] }> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
   let created = 0;
   let updated = 0;
   let deleted = 0;
+  const secretWarnings: string[] = [];
 
   // 1. Create missing folders (component groups) parent-first, building a
   //    `slug path → { id, uuid }` map from the remote groups plus the ones we
@@ -202,7 +204,25 @@ export async function executePush(
   for (const diff of componentDiffs) {
     if (diff.action !== 'create' && diff.action !== 'update') { continue; }
     const localComp = local.components.find(c => c.name === diff.name);
-    if (localComp) { resolvedComponents.set(diff.name, resolveGroupRefs(localComp, groupByPath)); }
+    if (!localComp) { continue; }
+    const resolved = resolveGroupRefs(localComp, groupByPath);
+
+    // Substitute `secret()` placeholders with their real value just before the
+    // payload is built — from `process.env` when the placeholder names a set
+    // variable, otherwise from the value already on the space (so an existing
+    // secret is preserved, never cleared). A placeholder never reaches the API.
+    const remoteComp = remote.components.get(diff.name) as unknown as Record<string, unknown> | undefined;
+    const resolutions: SecretResolution[] = [];
+    const hydrated = hydrateSecretValues(resolved, remoteComp, process.env, resolutions) as Component;
+    for (const r of resolutions) {
+      if (r.source === 'missing') {
+        secretWarnings.push(
+          `Secret '${r.key}' on component '${diff.name}' has no value`
+          + `${r.env ? ` (env '${r.env}' is unset)` : ''} and no existing value on the space; it was left empty.`,
+        );
+      }
+    }
+    resolvedComponents.set(diff.name, hydrated);
   }
   const componentResults = await Promise.allSettled(
     componentDiffs.map(async (diff) => {
@@ -375,7 +395,7 @@ export async function executePush(
     }
   }
 
-  return { created, updated, deleted };
+  return { created, updated, deleted, secretWarnings };
 }
 
 /** Builds changeset entries from diff results for storage. */
@@ -423,7 +443,12 @@ export function buildChangesetEntries(
       type: diff.type,
       name: diff.name,
       action,
-      ...(remoteSrc && { before: { ...remoteSrc } }),
+      // Mask secret values (identified by the local schema's `secret()`
+      // placeholders) in the pre-push remote snapshot, so real secrets are never
+      // written to the changeset yet `schema rollback` can still recognize the
+      // field and hydrate it from the live space. `after` (local) only ever
+      // holds redacted placeholders.
+      ...(remoteSrc && { before: maskSecretsToPlaceholder(remoteSrc, localSrc) as Record<string, unknown> }),
       ...(localSrc && { after: { ...localSrc } }),
     });
   }

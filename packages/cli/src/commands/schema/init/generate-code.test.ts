@@ -54,6 +54,81 @@ describe('generateComponentFile', () => {
     expect(result).not.toContain('created_at');
   });
 
+  it('should redact secret plugin option values as secret() placeholders', () => {
+    const isSecretName = (name: string) => ['clientid', 'clientsecret'].includes(name.toLowerCase());
+    const component = {
+      id: 1,
+      name: 'shop',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        products: {
+          type: 'custom',
+          pos: 0,
+          field_type: 'shopware-integration',
+          options: [
+            { _uid: 'a', name: 'baseUrl', value: 'https://shop.example' },
+            { _uid: 'b', name: 'clientSecret', value: 'WXpZbzltM1kx' },
+          ],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any, undefined, undefined, undefined, isSecretName);
+
+    // The secret import is added and the option value is replaced with secret().
+    expect(result).toContain('  secret,');
+    expect(result).toContain('value: secret(),');
+    expect(result).not.toContain('WXpZbzltM1kx');
+    // Non-secret option values and the plugin name are untouched.
+    expect(result).toContain('value: \'https://shop.example\',');
+    expect(result).toContain('field_type: \'shopware-integration\',');
+  });
+
+  it('should not redact choices of a built-in option/options select field', () => {
+    // Select fields use the same `{ name, value }` shape for their choices; a
+    // choice named like a secret must NOT be redacted (only `type: 'custom'`).
+    const isSecretName = (name: string) => name.toLowerCase() === 'token';
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: {
+        kind: {
+          type: 'option',
+          pos: 0,
+          options: [
+            { _uid: 'a', name: 'token', value: 'ring' },
+            { _uid: 'b', name: 'coin', value: 'gold' },
+          ],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any, undefined, undefined, undefined, isSecretName);
+
+    expect(result).not.toContain('secret,');
+    expect(result).not.toContain('secret()');
+    expect(result).toContain('value: \'ring\',');
+  });
+
+  it('should not add the secret import when no option value is redacted', () => {
+    const isSecretName = (name: string) => name.toLowerCase() === 'clientsecret';
+    const component = {
+      id: 1,
+      name: 'page',
+      created_at: '',
+      updated_at: '',
+      schema: { title: { type: 'text', pos: 0 } },
+    };
+
+    const result = generateComponentFile(component as any, undefined, undefined, undefined, isSecretName);
+
+    expect(result).not.toContain('secret,');
+    expect(result).not.toContain('secret()');
+  });
+
   it('should escape backslashes and newlines in field values so the output round-trips', () => {
     const component = {
       id: 1,

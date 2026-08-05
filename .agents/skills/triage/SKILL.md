@@ -31,8 +31,8 @@ gh issue view <number> --repo storyblok/monoblok --json title,body,labels,state,
 
 **Linear:**
 ```bash
-bash .claude/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
-bash .claude/skills/triage/scripts/linear-fetch.sh triage
+bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
+bash .agents/skills/triage/scripts/linear-fetch.sh triage
 ```
 
 ### Step 3: Assess each ticket

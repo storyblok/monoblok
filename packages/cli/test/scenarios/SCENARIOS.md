@@ -3,7 +3,7 @@
 Seed with:
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario <name> \
   --scenario-dir packages/cli/test/scenarios
 ```
@@ -11,7 +11,7 @@ bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 For basic story testing, use the global `has-stories` scenario instead:
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
 ```
 
 | Scenario | Seeds |

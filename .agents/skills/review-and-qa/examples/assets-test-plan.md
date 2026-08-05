@@ -14,8 +14,8 @@ pnpm nx build storyblok
 set -a && source ./.env.qa-engineer-manual && set +a
 cli="node ./packages/cli/dist/index.mjs"
 
-bash ./.claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh
-bash ./.claude/skills/qa-engineer-manual/scripts/cleanup-local.sh
+bash ./.agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh
+bash ./.agents/skills/qa-engineer-manual/scripts/cleanup-local.sh
 $cli logout && $cli login --token "$STORYBLOK_TOKEN" --region eu
 ```
 
@@ -26,7 +26,7 @@ $cli logout && $cli login --token "$STORYBLOK_TOKEN" --region eu
 #### 1.1 Basic pull
 
 ```bash
-bash ./.claude/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
+bash ./.agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
 $cli assets pull --space $STORYBLOK_SPACE_ID
 ```
 
@@ -64,7 +64,7 @@ $cli assets pull --space $STORYBLOK_SPACE_ID --dry-run
 #### 2.1 Push to different space (migration)
 
 ```bash
-bash ./.claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash ./.agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-nested-asset-folders \
   --scenario-dir packages/cli/test/scenarios
 $cli assets pull --space $STORYBLOK_SPACE_ID
@@ -97,7 +97,7 @@ $cli assets push --space $STORYBLOK_SPACE_ID_TARGET --from $STORYBLOK_SPACE_ID
 
 ```bash
 mkdir -p ./.claude/tmp
-bash ./.claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
+bash ./.agents/skills/qa-engineer-manual/scripts/generate-asset.sh \
   --filename "local-asset.png" --alt "Test Alt" \
   --copy-png ./.claude/tmp/local-asset.png > ./.claude/tmp/local-asset.json
 $cli assets push --space $STORYBLOK_SPACE_ID_TARGET ./.claude/tmp/local-asset.png

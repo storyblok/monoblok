@@ -14,9 +14,9 @@ set -euo pipefail
 # Requires STORYBLOK_TOKEN loaded from ${PWD}/.env.qa-engineer-manual
 #
 # Usage:
-#   bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
-#   bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-rich-content --scenario-dir /path/to/scenarios
-#   bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-rich-content --scenario-dir /path/to/scenarios
+#   bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
+#   bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-rich-content --scenario-dir /path/to/scenarios
+#   bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-rich-content --scenario-dir /path/to/scenarios
 
 # shellcheck source=_common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
@@ -93,7 +93,7 @@ PUSH_ATTEMPTS=2
 VERIFY_ATTEMPTS=3
 repo_root="$(git rev-parse --show-toplevel)"
 cli_bin="${repo_root}/packages/cli/dist/index.mjs"
-skill_dir="${repo_root}/.claude/skills/qa-engineer-manual"
+skill_dir="${repo_root}/.agents/skills/qa-engineer-manual"
 staging_dir="${repo_root}/.storyblok"
 
 # Resolve scenarios directory: custom (--scenario-dir) or built-in

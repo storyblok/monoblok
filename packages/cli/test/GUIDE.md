@@ -22,7 +22,7 @@
 Use the provided [scenarios](./scenarios/SCENARIOS.md) to quickly seed QA spaces with predictable data for manual testing. Scenarios expect a clean space, so run cleanup first when you want a fresh start.
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-nested-stories \
   --scenario-dir packages/cli/test/scenarios
 ```
@@ -58,12 +58,12 @@ Shared libraries are org-global, so you must never wipe them wholesale. The `--s
 
 ```bash
 # Inspect a library.
-bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-assets --library <libraryId>
-bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-folders
-bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-tags --library <libraryId>
+bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource shared-assets --library <libraryId>
+bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource shared-folders
+bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource shared-tags --library <libraryId>
 
 # Delete all shared resources in the library's folder tree (assets, child folders, tags).
-bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
+bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 ```
 
 ## Schema command

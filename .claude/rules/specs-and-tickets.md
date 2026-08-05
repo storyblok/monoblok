@@ -22,4 +22,4 @@ paths:
 - Single deliverable, 1-3 day effort
 - Clear boundaries on what's in and out
 
-See `.claude/skills/spec/` for templates, guide, and examples.
+See `.agents/skills/spec/` for templates, guide, and examples.

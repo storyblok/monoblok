@@ -12,6 +12,7 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 - **Plan first** - For non-trivial changes, write a plan before coding
 - **Verify always** - Run lint/typecheck/tests before considering work done
 - **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
+- **Check versions** - Look up the latest version before installing a new npm package.
 
 ## Sibling repos
 
@@ -30,7 +31,7 @@ These sibling repos may not be available; ignore them if absent.
 
 ## OpenAPI codegen
 
-`tools/openapi-codegen/` owns OpenAPI spec fetching and the shared generator. Specs are git-ignored and pinned by SHA in `spec.lock`. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. CI must not run `generate`. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo. See `tools/openapi-codegen/README.md`.
+`tools/openapi-codegen/` owns OpenAPI spec fetching and the shared generator. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo! Read `tools/openapi-codegen/README.md` when working with OpenAPI specs.
 
 ## Architecture Decision Records
 
@@ -38,7 +39,6 @@ When a significant architectural decision is made, add a concise new ADR in `adr
 
 ## Git
 
-- **ALWAYS:** look up the latest npm package version before installing a new package.
 - **IMPORTANT:** On `main`, only stage or commit when explicitly asked to.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
 - **Branch naming:** `[fix|feat|chore]/DX-XXX-[title]` e.g. `feat/DX-351-type-safe-schema-support`, `fix/DX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
@@ -62,4 +62,4 @@ For more context, read relevant files in `docs/`:
 - `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load when changes need reference docs, when versioning docs for a major release, or when adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
 - `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
-- `testing-patterns.md` - Windows compatibility gotchas, session mocking. Load when writing or debugging tests.
+- `testing-patterns.md` - Test stack, file layout, session mocking, and Windows gotchas. Load when writing, debugging, or reviewing tests.

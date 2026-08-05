@@ -39,6 +39,7 @@ logger.error('Operation failed', { context });
 3. **Minimum set** - Happy path + negative case + 1-2 edge cases
 4. **Windows-compatible** - CI runs on Windows too. Use `pathe` (not `node:path`), strip drive letters when comparing with memfs keys, sort directory listings before asserting.
 5. **Titles start with `should`** - `it('should pull stories into the local workspace')`, describing the behavior rather than the function called.
+6. **Integration-first** - Every behavior change needs integration coverage of the command or public entry point, written before the implementation. Unit tests supplement it; see the `qa-engineer-unit` skill.
 
 See `docs/testing-patterns.md` for detailed mocking examples (msw, memfs, session).
 

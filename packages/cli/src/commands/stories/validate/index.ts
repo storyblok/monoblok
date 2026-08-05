@@ -72,8 +72,8 @@ storiesCommand
     const failFatal = (message: string): void => {
       // Record a failure so the report reflects the aborted run, not SUCCESS.
       reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
+      // `handleError` owns the exit code: a CommandError already exits 2.
       handleError(new CommandError(message), verbose);
-      process.exitCode = 2;
     };
 
     try {
@@ -93,8 +93,9 @@ storiesCommand
       logger.info('Stories validate started', { space, schemaEntry, startsWith, level, format });
 
       if (!requireAuthentication(state, verbose)) {
+        // `requireAuthentication` has already reported through `handleError`,
+        // which owns the exit code.
         reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
-        process.exitCode = 2;
         return;
       }
       if (!space) {
@@ -298,7 +299,9 @@ storiesCommand
         if (!isJson) {
           ui.error('Listing stories failed; the space was not fully validated.');
         }
-        process.exitCode = 2;
+        // `onPageError` already reported the API failure through `handleError`,
+        // which owns the exit code. Returning here is what keeps the clean
+        // summary from printing over an incomplete run.
         return;
       }
 

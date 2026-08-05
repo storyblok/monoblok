@@ -148,22 +148,24 @@ describe('stories validate command', () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it('should exit 2 when the list endpoint is down', async () => {
+  // A listing failure is an API failure, not a bad invocation, so it exits 1 like
+  // every other runtime error: `handleError` owns the mapping.
+  it('should exit 1 when the list endpoint is down', async () => {
     preconditions.listEndpointFails();
 
     await runValidate();
 
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
   });
 
-  // A failed listing used to fall through to the formatter, ending an exit-2 run
+  // A failed listing used to fall through to the formatter, ending a failed run
   // with a green "0 errors, 0 warnings" line.
   it('should not print a clean summary when the listing failed', async () => {
     preconditions.listEndpointFails();
 
     await runValidate();
 
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
     expect(loggedOutput()).not.toContain('0 errors, 0 warnings');
   });
 
@@ -172,7 +174,7 @@ describe('stories validate command', () => {
 
     await runValidate('--format', 'json');
 
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
     expect(JSON.parse(machineOutput())).toMatchObject({ ok: false, listFailed: true });
   });
 

@@ -1,6 +1,8 @@
 # See: https://www.storyblok.com/docs/api/management/components/possible-field-types
 # Note: Table fields do NOT have a 'fieldtype' property in API responses
 # They are identified by the presence of 'thead' and 'tbody' properties
+# Note: `_uid` and `component` are not required. Table content authored before
+# they were introduced carries only `value`, and the API still serves it.
 type: object
 description: Table field type - structured table data
 required:
@@ -12,9 +14,6 @@ properties:
     description: Table header cells
     items:
       type: object
-      required:
-        - _uid
-        - component
       properties:
         _uid:
           type: string
@@ -29,9 +28,6 @@ properties:
     description: Table body rows
     items:
       type: object
-      required:
-        - _uid
-        - component
       properties:
         _uid:
           type: string
@@ -43,9 +39,6 @@ properties:
           description: Cells in this row
           items:
             type: object
-            required:
-              - _uid
-              - component
             properties:
               _uid:
                 type: string

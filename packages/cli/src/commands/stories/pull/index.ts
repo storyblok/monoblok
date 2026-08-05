@@ -1,5 +1,6 @@
 import { pipeline } from 'node:stream/promises';
 import type { Story } from '../constants';
+import { normalizeStartsWith } from '../constants';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
@@ -18,7 +19,7 @@ const pullCmd = storiesCommand
   .option('-s, --space <space>', 'space ID')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
-  .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
+  .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="en/blog/"')
   .description(`Download your space's stories as separate json files.`);
 
 pullCmd
@@ -60,7 +61,11 @@ pullCmd
           spaceId: space,
           params: {
             filter_query: options.query ? parseFilterQuery(options.query) : undefined,
-            starts_with: options.startsWith,
+            // A `full_slug` never starts with a slash and MAPI matches the prefix
+            // literally, so `/en/blog/` would pull nothing at all.
+            starts_with: options.startsWith === undefined
+              ? undefined
+              : normalizeStartsWith(options.startsWith) || undefined,
           },
           setTotalPages: (totalPages) => {
             summary.fetchStoryPages.total = totalPages;

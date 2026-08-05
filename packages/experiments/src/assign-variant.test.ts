@@ -20,7 +20,14 @@ describe('assignVariant', () => {
     }
   });
 
-  it('returns the experiment id with the assignment', () => {
+  it('returns the experiment identity with the assignment', () => {
+    // The identity, not only the id: it is what makes an assignment enough on
+    // its own to build a conversion event, with no lookup back into the payload.
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
+    expect(assignment?.experiment).toEqual({ id: 123, name: 'homepage_hero' });
+  });
+
+  it('still fills the deprecated experimentId', () => {
     const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
     expect(assignment?.experimentId).toBe(123);
   });

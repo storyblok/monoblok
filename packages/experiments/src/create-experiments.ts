@@ -1,6 +1,7 @@
 import type { ConversionGoal } from './define-goal';
-import type { Adapter, Assignment, Experiment, ExperimentEvent, ExperimentVariant, Exposure } from './types';
+import type { Adapter, Assignment, Conversion, Experiment, ExperimentEvent, ExperimentVariant, Exposure } from './types';
 import { assignVariant } from './assign-variant';
+import { createConversion } from './create-conversion';
 import { findExperimentBySlug } from './find-experiment-by-slug';
 import { resolveExperiment } from './resolve-experiment';
 
@@ -85,6 +86,9 @@ export interface Experiments {
    * running experiment rather than only the one that was rendered. Join on
    * `visitorId` in the sink to scope conversions to visitors who saw an
    * exposure.
+   *
+   * Sugar for `assignments` → `createEvent` → `send` over every assignment.
+   * Drop to those three when you need to scope or deduplicate first.
    */
   track: {
     (goal: string | ConversionGoal, visitorId: string, options?: TrackOptions): Promise<void>;
@@ -103,11 +107,24 @@ export interface Experiments {
     (goal: string | ConversionGoal, props?: Record<string, unknown>): Promise<void>;
   };
   /**
-   * Builds the conversion events for `visitorId` without delivering them, for
-   * when the send has to happen elsewhere: embedded in a page and beaconed on
-   * click, or handed to a queue.
+   * Every assignment for `visitorId`: one per running experiment the visitor is
+   * bucketed into, in the order the experiments were configured.
+   *
+   * Computed from the deterministic hash, so it needs no prior
+   * `resolveExperiment`, no stored state, and works from any request. Fires
+   * nothing. Filter it to scope what you record, then build one conversion per
+   * assignment with `createEvent`.
    */
-  createEvent: (goal: string | ConversionGoal, visitorId: string, options?: TrackOptions) => ExperimentEvent[];
+  assignments: (visitorId: string) => Assignment[];
+  /**
+   * Builds the conversion event for one assignment without delivering it, for
+   * when the send has to happen elsewhere: embedded in a page and beaconed on
+   * click, handed to a queue, or held back until a per-visitor check has run.
+   *
+   * Get the assignment from `assignments`, or from `assignVariant` when you
+   * already hold the experiment.
+   */
+  createEvent: (goal: string | ConversionGoal, assignment: Assignment, options?: TrackOptions) => Conversion;
   /**
    * Delivers an already-built event through the configured adapters. Use it to
    * forward an event that arrived from the browser, or to fire an exposure that
@@ -141,10 +158,12 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
  * 3. `rememberedAssignments` and the `.set` call in `resolveExperiment`. This is
  *    the only per-visitor state left in the factory; dropping it is what makes a
  *    module-scope instance provably safe rather than safe-by-convention.
+ * 4. `Assignment.experimentId`, superseded by `experiment.id` and kept only so
+ *    1.x readers keep compiling. Lives in `types.ts`, filled in `assign-variant.ts`.
  *
  * Consider also renaming `ExperimentEvent.props` to `properties`, which is what
- * PostHog, Mixpanel, Segment, and GrowthBook all call the same bag. It was left
- * alone here only to avoid breaking existing adapters that read `event.props`.
+ * most analytics platforms call the same bag. It was left alone here only to
+ * avoid breaking existing adapters that read `event.props`.
  */
 
 /**
@@ -199,45 +218,16 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
     await Promise.all(events.map(send));
   };
 
-  const toGoal = (goal: string | ConversionGoal): ConversionGoal =>
-    typeof goal === 'string' ? { name: goal } : goal;
-
-  const conversionFrom = (
-    assignment: Assignment,
-    goal: ConversionGoal,
-    overrides: TrackOptions,
-  ): ExperimentEvent | undefined => {
-    const experiment = experiments.find(candidate => candidate.id === assignment.experimentId);
-    if (!experiment) {
-      return undefined;
-    }
-    const value = overrides.value ?? goal.value;
-    const props = overrides.props ?? goal.props;
-    return {
-      type: 'conversion',
-      experiment: { id: experiment.id, name: experiment.name },
-      variant: { name: assignment.variant.name, public_id: assignment.variant.public_id },
-      visitorId: assignment.visitorId,
-      name: goal.name,
-      ...(value === undefined ? {} : { value }),
-      ...(props === undefined ? {} : { props }),
-    };
-  };
-
-  const isEvent = (event: ExperimentEvent | undefined): event is ExperimentEvent => event !== undefined;
-
-  const buildEvents = (
-    goal: string | ConversionGoal,
-    visitorId: string,
-    options: TrackOptions = {},
-  ): ExperimentEvent[] => {
-    const resolvedGoal = toGoal(goal);
-    return experiments
+  const assignments = (visitorId: string): Assignment[] =>
+    experiments
       .map(experiment => assignVariant({ experiment, visitorId }))
-      .filter((assignment): assignment is Assignment => assignment !== undefined)
-      .map(assignment => conversionFrom(assignment, resolvedGoal, options))
-      .filter(isEvent);
-  };
+      .filter((assignment): assignment is Assignment => assignment !== undefined);
+
+  const createEvent = (
+    goal: string | ConversionGoal,
+    assignment: Assignment,
+    options: TrackOptions = {},
+  ): Conversion => createConversion({ assignment, goal, value: options.value, props: options.props });
 
   async function track(
     goal: string | ConversionGoal,
@@ -249,16 +239,13 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
     // `visitorId` key matters: `track('signup', { visitorId })` was a real 1.x
     // call, and key-sniffing would silently reinterpret it as the new shape.
     if (typeof visitorIdOrProps === 'string') {
-      await sendAll(buildEvents(goal, visitorIdOrProps, options));
+      await sendAll(assignments(visitorIdOrProps).map(assignment => createEvent(goal, assignment, options)));
       return;
     }
 
-    const resolvedGoal = toGoal(goal);
-    const overrides = visitorIdOrProps === undefined ? {} : { props: visitorIdOrProps };
+    const overrides = { props: visitorIdOrProps };
     await sendAll(
-      [...rememberedAssignments.values()]
-        .map(assignment => conversionFrom(assignment, resolvedGoal, overrides))
-        .filter(isEvent),
+      [...rememberedAssignments.values()].map(assignment => createEvent(goal, assignment, overrides)),
     );
   }
 
@@ -282,9 +269,9 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
 
     track,
 
-    createEvent(goal, visitorId, options) {
-      return buildEvents(goal, visitorId, options);
-    },
+    assignments,
+
+    createEvent,
 
     send,
 

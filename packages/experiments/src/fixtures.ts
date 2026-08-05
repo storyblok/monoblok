@@ -1,4 +1,17 @@
-import type { Experiment } from './types';
+import type { Assignment, Experiment } from './types';
+
+/**
+ * An assignment shaped exactly as `assignVariant` builds one, for tests that
+ * need a specific variant rather than whatever the visitor hashes into.
+ */
+export function assignmentFor(experiment: Experiment, variantIndex: number, visitorId = 'visitor-1'): Assignment {
+  return {
+    experiment: { id: experiment.id, name: experiment.name },
+    experimentId: experiment.id,
+    visitorId,
+    variant: experiment.variants[variantIndex],
+  };
+}
 
 /**
  * A homepage experiment with a 50/50 control/variant split. `control` renders

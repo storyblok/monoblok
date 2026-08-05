@@ -17,7 +17,7 @@ export function mapsSlug(experiment: Experiment, slug: string): boolean {
  * Returns `undefined` when no experiment applies to the slug.
  *
  * A story can belong to more than one running experiment, so prefer selecting
- * by an existing assignment's `experimentId` when you have one — this lookup is
+ * by an existing assignment's `experiment.id` when you have one — this lookup is
  * for the case where you only know the slug.
  */
 export function findExperimentBySlug({ experiments, slug }: FindExperimentBySlugOptions): Experiment | undefined {

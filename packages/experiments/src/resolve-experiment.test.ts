@@ -1,19 +1,10 @@
-import type { Assignment, Experiment } from './types';
+import type { Experiment } from './types';
 import { describe, expect, it } from 'vitest';
-import { homepageExperiment } from './fixtures';
+import { assignmentFor, homepageExperiment } from './fixtures';
 import { resolveExperiment } from './resolve-experiment';
 
-const controlAssignment: Assignment = {
-  experimentId: 123,
-  visitorId: 'visitor-1',
-  variant: homepageExperiment.variants[0],
-};
-
-const variantAssignment: Assignment = {
-  experimentId: 123,
-  visitorId: 'visitor-1',
-  variant: homepageExperiment.variants[1],
-};
+const controlAssignment = assignmentFor(homepageExperiment, 0);
+const variantAssignment = assignmentFor(homepageExperiment, 1);
 
 describe('resolveExperiment', () => {
   it('renders the original slug for control, with an exposure', () => {
@@ -73,7 +64,7 @@ describe('resolveExperiment', () => {
     const result = resolveExperiment({
       experiments: [homepageExperiment],
       slug: 'home',
-      assignment: { ...variantAssignment, experimentId: 999 },
+      assignment: { ...variantAssignment, experiment: { id: 999, name: 'other' }, experimentId: 999 },
     });
     expect(result.slug).toBe('home');
     expect(result.exposure).toBeUndefined();
@@ -103,7 +94,7 @@ describe('resolveExperiment', () => {
     const result = resolveExperiment({
       experiments: [nested],
       slug: 'pages/home',
-      assignment: { experimentId: 123, visitorId: 'visitor-1', variant: nested.variants[1] },
+      assignment: assignmentFor(nested, 1),
     });
     expect(result.slug).toBe('pages/home-b');
     expect(result.exposure?.variant.public_id).toBe('var_b');
@@ -133,7 +124,7 @@ describe('resolveExperiment', () => {
     const result = resolveExperiment({
       experiments: [first, second],
       slug: 'home',
-      assignment: { experimentId: 456, visitorId: 'visitor-1', variant: second.variants[1] },
+      assignment: assignmentFor(second, 1),
     });
     expect(result.slug).toBe('home-c');
     expect(result.variant?.public_id).toBe('var_b2');
@@ -156,7 +147,7 @@ describe('resolveExperiment', () => {
     const result = resolveExperiment({
       experiments: [nullSlug],
       slug: 'home',
-      assignment: { experimentId: 123, visitorId: 'visitor-1', variant: nullSlug.variants[1] },
+      assignment: assignmentFor(nullSlug, 1),
     });
     expect(result.slug).toBe('home');
     expect(result.variant?.public_id).toBe('var_b');

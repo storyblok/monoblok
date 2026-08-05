@@ -1,10 +1,20 @@
-import type { Assignment, Experiment } from './types';
+import type { Assignment, Experiment, ExperimentVariant } from './types';
 import { hashToBucket } from './hash';
 
 export interface AssignVariantOptions {
   experiment: Experiment;
   visitorId: string;
 }
+
+// The assignment carries the experiment's identity rather than only its id, so
+// building a conversion from it needs no lookup. `experimentId` is the
+// deprecated 1.x spelling of `experiment.id`.
+const assignmentFor = (experiment: Experiment, visitorId: string, variant: ExperimentVariant): Assignment => ({
+  experiment: { id: experiment.id, name: experiment.name },
+  experimentId: experiment.id,
+  visitorId,
+  variant,
+});
 
 /**
  * Deterministically buckets `visitorId` into one of the experiment's variants
@@ -24,7 +34,7 @@ export function assignVariant({ experiment, visitorId }: AssignVariantOptions): 
   // No positive weights: fall back to the control variant (or the first one).
   if (totalWeight <= 0) {
     const fallback = variants.find(variant => variant.is_control) ?? variants[0];
-    return { experimentId: experiment.id, visitorId, variant: fallback };
+    return assignmentFor(experiment, visitorId, fallback);
   }
 
   // Map the 0..99 bucket onto the cumulative weight distribution.
@@ -33,10 +43,10 @@ export function assignVariant({ experiment, visitorId }: AssignVariantOptions): 
   for (const variant of variants) {
     cumulative += Math.max(0, variant.weight);
     if (target < cumulative) {
-      return { experimentId: experiment.id, visitorId, variant };
+      return assignmentFor(experiment, visitorId, variant);
     }
   }
 
   // Floating-point edge: fall through to the last weighted variant.
-  return { experimentId: experiment.id, visitorId, variant: variants[variants.length - 1] };
+  return assignmentFor(experiment, visitorId, variants[variants.length - 1]);
 }

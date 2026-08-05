@@ -5,15 +5,6 @@ export type { Experiment, ExperimentVariant } from './generated/capi/types.gen';
 /** One `original_slug` → `variant_slug` mapping on a variant. */
 export type StoryMapping = ExperimentVariant['story_mappings'][number];
 
-/** A visitor's resolved variant for a single experiment. */
-export interface Assignment {
-  /** The experiment this assignment belongs to. */
-  experimentId: number;
-  /** The visitor this assignment was computed for. */
-  visitorId: string;
-  variant: ExperimentVariant;
-}
-
 /**
  * The experiment as carried on an event: just enough to identify it in a sink,
  * without the variants and story mappings that the full `Experiment` config
@@ -28,6 +19,24 @@ export interface EventExperiment {
 export interface EventVariant {
   name: string;
   public_id: string;
+}
+
+/**
+ * A visitor's resolved variant for a single experiment. Self-contained: it
+ * names the experiment, the variant, and the visitor, which is everything an
+ * event needs, so `createConversion` can build one without a lookup.
+ */
+export interface Assignment {
+  /** The experiment this assignment belongs to. */
+  experiment: EventExperiment;
+  /**
+   * @deprecated Use `experiment.id`. Kept so code reading `assignment.experimentId`
+   * keeps compiling; scheduled for removal in 2.0.
+   */
+  experimentId: number;
+  /** The visitor this assignment was computed for. */
+  visitorId: string;
+  variant: ExperimentVariant;
 }
 
 /** An exposure or conversion event handed to an adapter. */
@@ -50,6 +59,9 @@ export interface ExperimentEvent {
 
 /** The event fired when a visitor is exposed to an experiment. */
 export type Exposure = ExperimentEvent & { type: 'exposure' };
+
+/** The event fired when a visitor reaches a goal. */
+export type Conversion = ExperimentEvent & { type: 'conversion' };
 
 /**
  * A sink for experiment events. Bring your own, or use `fetchAdapter`.

@@ -1,7 +1,7 @@
 import type { ExperimentEvent } from './types';
 import { describe, expect, it, vi } from 'vitest';
 import { createExperiments } from './create-experiments';
-import { homepageExperiment } from './fixtures';
+import { homepageExperiment, pricingExperiment } from './fixtures';
 
 describe('createExperiments', () => {
   it('auto-fires exactly one exposure on resolve', () => {
@@ -49,6 +49,36 @@ describe('createExperiments', () => {
 
     expect(events[0].value).toBeUndefined();
     expect(events[0].props).toBeUndefined();
+  });
+
+  it('assignments reports one assignment per experiment and fires nothing', () => {
+    const adapter = vi.fn();
+    const exp = createExperiments({
+      experiments: [homepageExperiment, pricingExperiment],
+      adapters: [adapter],
+    });
+
+    const assignments = exp.assignments('visitor-1');
+
+    expect(assignments.map(assignment => assignment.experiment.id)).toEqual([123, 456]);
+    expect(adapter).not.toHaveBeenCalled();
+  });
+
+  it('createEvent builds one conversion for one assignment without delivering it', () => {
+    const adapter = vi.fn();
+    const exp = createExperiments({ experiments: [homepageExperiment], adapters: [adapter] });
+
+    const [assignment] = exp.assignments('visitor-1');
+    const event = exp.createEvent('signup', assignment, { value: 4900 });
+
+    expect(event).toMatchObject({
+      type: 'conversion',
+      name: 'signup',
+      visitorId: 'visitor-1',
+      value: 4900,
+      experiment: { id: 123, name: 'homepage_hero' },
+    });
+    expect(adapter).not.toHaveBeenCalled();
   });
 
   it('does not fire an exposure for an unmatched slug', () => {

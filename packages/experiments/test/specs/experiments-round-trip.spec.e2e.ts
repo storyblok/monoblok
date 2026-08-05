@@ -31,7 +31,7 @@
  * The target space must have A/B testing (experiments) enabled.
  */
 
-import type { Experiment, ExperimentEvent } from '@storyblok/experiments';
+import type { Assignment, Experiment, ExperimentEvent, ExperimentVariant } from '@storyblok/experiments';
 import { createApiClient } from '@storyblok/api-client';
 import { createManagementApiClient } from '@storyblok/management-api-client';
 import { assignVariant, createExperiments, resolveExperiment } from '@storyblok/experiments';
@@ -137,6 +137,14 @@ describe('@storyblok/experiments CDN round-trip', () => {
   let experiments: Experiment[];
   let experiment: Experiment;
   let variantSlug: string;
+
+  /** An assignment for a chosen variant, shaped as `assignVariant` builds one. */
+  const assignmentFor = (variant: ExperimentVariant): Assignment => ({
+    experiment: { id: experiment.id, name: experiment.name },
+    experimentId: experiment.id,
+    visitorId: VISITOR_ID,
+    variant,
+  });
 
   beforeAll(async () => {
     await cleanup();
@@ -264,7 +272,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
   describe('resolveExperiment', () => {
     it('renders the original slug for the control variant', () => {
       const control = experiment.variants.find(variant => variant.is_control)!;
-      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant: control };
+      const assignment = assignmentFor(control);
 
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
@@ -275,7 +283,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
 
     it('renders the mapped variant slug for a variant assignment', () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant };
+      const assignment = assignmentFor(variant);
 
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
@@ -294,7 +302,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
   describe('event delivery', () => {
     it('produces an exposure event an adapter can consume', () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant };
+      const assignment = assignmentFor(variant);
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       const captured: ExperimentEvent[] = [];
@@ -328,7 +336,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
   describe('story round-trip', () => {
     it('resolves to a slug that the CAPI can fetch', async () => {
       const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const assignment = { experimentId: experiment.id, visitorId: VISITOR_ID, variant };
+      const assignment = assignmentFor(variant);
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       const capi = createApiClient({ accessToken: previewToken });

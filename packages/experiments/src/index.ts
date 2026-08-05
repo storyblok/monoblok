@@ -1,4 +1,6 @@
 export { assignVariant } from './assign-variant';
+export { createConversion } from './create-conversion';
+export type { CreateConversionOptions } from './create-conversion';
 export { createExperiments } from './create-experiments';
 export type {
   CreateExperimentsOptions,
@@ -14,6 +16,7 @@ export type { ResolvedExperiment } from './resolve-experiment';
 export type {
   Adapter,
   Assignment,
+  Conversion,
   EventExperiment,
   EventVariant,
   Experiment,

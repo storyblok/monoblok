@@ -1,6 +1,7 @@
 import type { Experiment, ExperimentEvent } from './types';
 import { describe, expect, it, vi } from 'vitest';
 import { assignVariant } from './assign-variant';
+import { createConversion } from './create-conversion';
 import { createExperiments } from './create-experiments';
 import { defineGoal } from './define-goal';
 import { homepageExperiment, pricingExperiment } from './fixtures';
@@ -195,11 +196,11 @@ describe('scenario: client builds the payload, server forwards it', () => {
     const sink = createSink();
     const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
 
-    const events = experiments.createEvent('signup', 'visitor-7', { props: { plan: 'pro' }, value: 4900 });
+    const [assignment] = experiments.assignments('visitor-7');
+    const event = experiments.createEvent('signup', assignment, { props: { plan: 'pro' }, value: 4900 });
 
     expect(sink.events).toHaveLength(0);
-    expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({
+    expect(event).toMatchObject({
       type: 'conversion',
       name: 'signup',
       visitorId: 'visitor-7',
@@ -207,7 +208,7 @@ describe('scenario: client builds the payload, server forwards it', () => {
       props: { plan: 'pro' },
       experiment: { id: 123, name: 'homepage_hero' },
     });
-    expect(events[0].variant.public_id).toBe(variantOf(homepageExperiment, 'visitor-7'));
+    expect(event.variant.public_id).toBe(variantOf(homepageExperiment, 'visitor-7'));
   });
 
   it('round-trips a createEvent payload through send', async () => {
@@ -215,7 +216,8 @@ describe('scenario: client builds the payload, server forwards it', () => {
     const config = { experiments: [homepageExperiment], adapters: [sink.adapter] };
 
     // Render: embed the payload for a beacon.
-    const [payload] = createExperiments(config).createEvent('signup', 'visitor-7');
+    const render = createExperiments(config);
+    const payload = render.createEvent('signup', render.assignments('visitor-7')[0]);
     const serialized = JSON.stringify(payload);
     // Endpoint: forward exactly what the browser sent.
     await createExperiments(config).send(JSON.parse(serialized) as ExperimentEvent);
@@ -227,9 +229,10 @@ describe('scenario: client builds the payload, server forwards it', () => {
   it('accepts a defineGoal declaration and applies call-site overrides', () => {
     const signup = defineGoal({ name: 'signup', props: { source: 'hero' } });
     const experiments = createExperiments({ experiments: [homepageExperiment] });
+    const [assignment] = experiments.assignments('visitor-7');
 
-    const [defaults] = experiments.createEvent(signup, 'visitor-7');
-    const [overridden] = experiments.createEvent(signup, 'visitor-7', { props: { source: 'footer' }, value: 100 });
+    const defaults = experiments.createEvent(signup, assignment);
+    const overridden = experiments.createEvent(signup, assignment, { props: { source: 'footer' }, value: 100 });
 
     expect(defaults).toMatchObject({ name: 'signup', props: { source: 'hero' } });
     expect(defaults.value).toBeUndefined();
@@ -242,15 +245,58 @@ describe('scenario: client builds the payload, server forwards it', () => {
     const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
 
     await experiments.track(purchase, 'visitor-7');
-    const [built] = experiments.createEvent(purchase, 'visitor-7');
+    const built = experiments.createEvent(purchase, experiments.assignments('visitor-7')[0]);
 
     expect(sink.ofType('conversion')[0]).toEqual(built);
   });
 
-  it('returns no events for a visitor with no running experiments', () => {
+  it('bare createConversion builds the same event without the factory', () => {
+    const experiments = createExperiments({ experiments: [homepageExperiment] });
+    const [assignment] = experiments.assignments('visitor-7');
+
+    expect(createConversion({ assignment, goal: 'signup', value: 4900 })).toEqual(
+      experiments.createEvent('signup', assignment, { value: 4900 }),
+    );
+  });
+});
+
+describe('scenario: scoping and deduplicating conversions', () => {
+  it('reports one assignment per running experiment, firing nothing', () => {
+    const sink = createSink();
+    const experiments = createExperiments({
+      experiments: [homepageExperiment, pricingExperiment],
+      adapters: [sink.adapter],
+    });
+
+    const assignments = experiments.assignments('visitor-7');
+
+    expect(assignments.map(assignment => assignment.experiment.id)).toEqual([123, 456]);
+    expect(assignments.map(assignment => assignment.visitorId)).toEqual(['visitor-7', 'visitor-7']);
+    expect(sink.events).toHaveLength(0);
+  });
+
+  it('records only the experiments left after the caller filters', async () => {
+    const sink = createSink();
+    const experiments = createExperiments({
+      experiments: [homepageExperiment, pricingExperiment],
+      adapters: [sink.adapter],
+    });
+
+    // The shape an app uses to honor a per-visitor cookie, or to scope the goal
+    // to one experiment: filter the assignments, then build and send only those.
+    const scoped = experiments
+      .assignments('visitor-7')
+      .filter(assignment => assignment.experiment.id === pricingExperiment.id);
+    await Promise.all(scoped.map(assignment => experiments.send(experiments.createEvent('signup', assignment))));
+
+    expect(sink.ofType('conversion')).toHaveLength(1);
+    expect(sink.ofType('conversion')[0].experiment.id).toBe(456);
+  });
+
+  it('reports no assignments for a visitor with no running experiments', () => {
     const experiments = createExperiments({ experiments: [] });
 
-    expect(experiments.createEvent('signup', 'visitor-7')).toEqual([]);
+    expect(experiments.assignments('visitor-7')).toEqual([]);
   });
 });
 
@@ -389,7 +435,7 @@ describe('scenario: serverless delivery lifetime', () => {
       onError,
     });
 
-    const [event] = experiments.createEvent('signup', 'visitor-7');
+    const event = experiments.createEvent('signup', experiments.assignments('visitor-7')[0]);
     await expect(experiments.send(event)).resolves.toBeUndefined();
     expect(onError).toHaveBeenCalledTimes(1);
   });

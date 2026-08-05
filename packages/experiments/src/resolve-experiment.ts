@@ -36,7 +36,7 @@ export function resolveExperiment({ experiments, slug, assignment }: ResolveExpe
   // can belong to multiple running experiments, so a slug-first lookup could pick
   // a different experiment than the one the visitor was bucketed into and drop the
   // assignment (no exposure, no remap).
-  const experiment = experiments.find(candidate => candidate.id === assignment.experimentId);
+  const experiment = experiments.find(candidate => candidate.id === assignment.experiment.id);
   if (!experiment) {
     return { slug };
   }

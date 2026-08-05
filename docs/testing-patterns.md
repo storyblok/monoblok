@@ -2,7 +2,7 @@
 
 - Stack: Vitest + memfs (filesystem) + msw (API). Tests co-located as `*.test.ts`.
 - Place tests alongside source files (e.g., `program.ts` -> `program.test.ts`).
-- Rely on the `qa-engineer-integration` or `qa-engineer-unit` skills for further testing instructions.
+- For unit tests, use the `qa-engineer-unit` skill.
 
 ## API mocking
 

@@ -77,11 +77,15 @@ const UNINFORMATIVE_MESSAGES = new Set(['Invalid input.']);
 const VAGUE_MESSAGE = 'Value does not match any shape this field accepts.';
 
 /**
- * Maps a vague issue to the path of the field value it came from, so
- * {@link dropSubsumedIssues} can tell whether anything else in that same value
- * explains it. Keyed weakly: every issue object is created once, for one call.
+ * Maps a vague issue to where it sits, so {@link dropSubsumedIssues} can tell
+ * whether anything else explains it. `path` is the issue's own path; `valueDepth`
+ * is the depth of the field value it came from, which the scoping must never
+ * reach above. Keyed weakly: every issue object is created once, for one call.
  */
-const vagueIssueValuePaths = new WeakMap<ValidationIssue, string>();
+const vagueIssueScopes = new WeakMap<ValidationIssue, {
+  path: (string | number)[];
+  valueDepth: number;
+}>();
 
 /**
  * Rewrites a validator's own message into the style the hand-written messages use.
@@ -129,21 +133,38 @@ function pathKey(path: (string | number)[]): string {
  * likewise reports one vague issue per key that carries no message of its own,
  * alongside the keys that do name what is wrong.
  *
- * Scoped to the value the vague issue came from, so an issue on an unrelated
- * field never suppresses it, and a vague issue that nothing else explains is
- * always kept: a value is never rejected silently.
+ * Scoped to the vague issue's own path, so a clear issue somewhere else never
+ * suppresses it. Widened by one segment when the vague issue sits on an object
+ * key, because a key carrying no message of its own says nothing next to a named
+ * problem on the same object — the two describe one broken value. An array index
+ * is never widened: elements are independent, so a malformed richtext node must
+ * not be silenced by an unrelated node beside it. The widening also never reaches
+ * above the field value itself, so a vague issue on one field survives a clear
+ * issue on another.
+ *
+ * A vague issue that nothing else explains is always kept: a value is never
+ * rejected silently.
  */
 function dropSubsumedIssues(issues: ValidationIssue[]): ValidationIssue[] {
   const explanatoryPaths = issues
-    .filter(issue => !vagueIssueValuePaths.has(issue))
+    .filter(issue => !vagueIssueScopes.has(issue))
     .map(issue => pathKey(issue.path));
+  const hasIssueUnder = (path: (string | number)[]): boolean => {
+    const prefix = `${pathKey(path)}\u0000`;
+    return explanatoryPaths.some(candidate => candidate.startsWith(prefix));
+  };
+
   return issues.filter((issue) => {
-    const valuePath = vagueIssueValuePaths.get(issue);
-    if (valuePath === undefined) {
+    const scope = vagueIssueScopes.get(issue);
+    if (scope === undefined) {
       return true;
     }
-    const prefix = `${valuePath}\u0000`;
-    return !explanatoryPaths.some(candidate => candidate.startsWith(prefix));
+    if (hasIssueUnder(scope.path)) {
+      return false;
+    }
+    const key = scope.path.at(-1);
+    const widens = typeof key === 'string' && scope.path.length > scope.valueDepth;
+    return widens ? !hasIssueUnder(scope.path.slice(0, -1)) : true;
   });
 }
 
@@ -193,7 +214,7 @@ function checkValue(
         message,
       };
       if (vague) {
-        vagueIssueValuePaths.set(issue, pathKey(path));
+        vagueIssueScopes.set(issue, { path: issue.path, valueDepth: path.length });
       }
       issues.push(issue);
     }

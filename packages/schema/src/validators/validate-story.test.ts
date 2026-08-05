@@ -911,7 +911,29 @@ describe('validateStory — subsumed issues', () => {
     expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0]);
   });
 
-  it('does not let an issue on a sibling path suppress an unrelated vague issue', () => {
+  it('does not let an issue on a sibling node suppress an unrelated vague issue', () => {
+    // Two malformed nodes in one richtext field. The second names its problem;
+    // the first has only the vague union failure to go on. Suppressing the first
+    // because the second is explained would hide a whole broken node, so both
+    // are reported.
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: { type: 'doc', content: [
+          { type: 'blok', attrs: { body: [{ _uid: 'u1', component: 'teaser', text: 'hi' }] } },
+          { type: 'blok', attrs: { body: [{ _uid: 'u2', component: 'ghost' }] } },
+        ] },
+      },
+    }, s);
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'body', 'content', 0],
+      ['content', 'body', 'content', 1, 'attrs', 'body', 0, 'component'],
+    ]);
+    expect(result.issues[0]?.message).toBe('Value does not match any shape this field accepts.');
+    expect(result.issues[1]?.code).toBe('unknown_component');
+  });
+
+  it('does not let an issue on a sibling field suppress an unrelated vague issue', () => {
     const twoFields = defineBlock({
       name: 'two',
       is_root: true,

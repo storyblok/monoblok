@@ -19,12 +19,13 @@ The project uses `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <p
 - `tools/`: Internal development tools and scripts.
 - Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 
-## Storyblok REST and Application Reference
+## Sibling repos
 
-- `../storyrails` (Storyblok backend) - Load when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
-- `../storyfront` (headless CMS frontend) - Load when matching UI/app behavior and you need information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+- `../storyrails` (Storyblok backend) - Consult when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
+- `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+- `../storyblok-docs-platform` (docs site) - Consult when publishing or updating package reference docs; see `docs/docs-platform.md` for the monoblok-side conventions. User-facing documentation lives there, not here: package READMEs stay minimal and link to the docs site.
 
-These sibling repos may not be available; ignore them if absent. Check `../storyrails/monoblok.md` or `../storyfront/monoblok.md` file on how to consult the repo.
+These sibling repos may not be available; ignore them if absent.
 
 ## Conventions
 
@@ -65,7 +66,7 @@ For more context, read relevant files in `docs/`:
 
 - `announcements.md` - SDK announcement article format and tone. Load when drafting a release/announcement post.
 - `cli-architecture.md` - CLI command patterns, UI module, migration checklist. Load when adding or modifying a `storyblok` CLI command.
-- `docs-platform.md` - Docs site conventions, versioning, library doc paths. Load when editing docs site content or library docs.
+- `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load when changes need reference docs, when versioning docs for a major release, or when adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
 - `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
 - `testing-patterns.md` - Windows compatibility gotchas, session mocking. Load when writing or debugging tests.

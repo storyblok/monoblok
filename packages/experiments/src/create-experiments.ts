@@ -102,6 +102,11 @@ export interface Experiments {
      * arrives in a later request (the usual SSR case), and misattributes on an
      * instance shared between visitors.
      *
+     * Throws a `TypeError` when the second argument is present but is neither a
+     * string nor an object, since that is a `visitorId` that went missing rather
+     * than a props bag. Forward an optional props bag as `track(goal)` when it is
+     * absent, or migrate to the explicit form.
+     *
      * Scheduled for removal in 2.0 — see the `2.0 cleanup` note in this file.
      */
     (goal: string | ConversionGoal, props?: Record<string, unknown>): Promise<void>;
@@ -153,8 +158,9 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
  * be removed together, since each piece exists to support the others:
  *
  * 1. The `track(goal, props?)` overload on `Experiments`.
- * 2. The `visitorIdOrProps` branch in `track`, leaving
- *    `track(goal, visitorId, options?)` with a plain signature.
+ * 2. The `visitorIdOrProps` branch in `track`, along with the `arguments.length`
+ *    ambiguity guard it needs, leaving `track(goal, visitorId, options?)` with a
+ *    plain signature and a required `visitorId`.
  * 3. `rememberedAssignments` and the `.set` call in `resolveExperiment`. This is
  *    the only per-visitor state left in the factory; dropping it is what makes a
  *    module-scope instance provably safe rather than safe-by-convention.
@@ -229,9 +235,12 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
     options: TrackOptions = {},
   ): Conversion => createConversion({ assignment, goal, value: options.value, props: options.props });
 
-  async function track(
+  // Not `async`: a bad argument throws synchronously, so it surfaces at the call
+  // site instead of becoming a rejected promise. `track` promises never to
+  // reject, and an un-awaited rejection would take the process down.
+  function track(
     goal: string | ConversionGoal,
-    visitorIdOrProps?: string | Record<string, unknown>,
+    visitorIdOrProps?: string | Record<string, unknown> | null,
     options?: TrackOptions,
   ): Promise<void> {
     // A string second argument is unambiguously the visitorId; an object is the
@@ -239,13 +248,32 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
     // `visitorId` key matters: `track('signup', { visitorId })` was a real 1.x
     // call, and key-sniffing would silently reinterpret it as the new shape.
     if (typeof visitorIdOrProps === 'string') {
-      await sendAll(assignments(visitorIdOrProps).map(assignment => createEvent(goal, assignment, options)));
-      return;
+      return sendAll(assignments(visitorIdOrProps).map(assignment => createEvent(goal, assignment, options)));
     }
 
-    const overrides = { props: visitorIdOrProps };
-    await sendAll(
-      [...rememberedAssignments.values()].map(assignment => createEvent(goal, assignment, overrides)),
+    // A second argument that was passed but is neither a visitorId nor a props
+    // bag is almost always a `visitorId` that went missing — an unset cookie
+    // reaching `track(goal, cookies.get('sb_vid')?.value)`. Falling through to
+    // the deprecated path would attribute the conversion to whichever visitor
+    // this instance resolved last, which on the now-recommended module-scope
+    // instance is a different visitor's request. Refuse loudly instead: silent
+    // misattribution is the failure taking an explicit visitorId exists to
+    // prevent, and it is invisible in the sink. `track(goal)` stays valid, so
+    // this only rejects a value the caller actually passed.
+    //
+    // Arity is the only way to tell `track(goal, undefined)` from `track(goal)`:
+    // a default parameter value is applied to an explicitly passed `undefined`
+    // too, so the two are indistinguishable by value.
+    const secondArgumentPassed = arguments.length > 1;
+    if (secondArgumentPassed && (visitorIdOrProps === null || typeof visitorIdOrProps !== 'object')) {
+      throw new TypeError(
+        `track: the second argument must be a visitorId string or a props object, got ${visitorIdOrProps === null ? 'null' : typeof visitorIdOrProps}. `
+        + 'Pass the visitor explicitly as `track(goal, visitorId, { props })`, or call `track(goal)` with no second argument to keep the deprecated behavior.',
+      );
+    }
+
+    return sendAll(
+      [...rememberedAssignments.values()].map(assignment => createEvent(goal, assignment, { props: visitorIdOrProps ?? undefined })),
     );
   }
 

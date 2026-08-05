@@ -54,6 +54,20 @@ function resolveTarget(url: string, baseUrl?: string): string {
  * Either way an unresolvable url throws here, at construction, rather than
  * failing silently on every delivery.
  *
+ * That check runs eagerly, which is a behavior change from 1.x, where a relative
+ * url on the server constructed fine and then failed on every delivery into
+ * `onError`. Two consequences worth knowing:
+ *
+ * - A module-scope `fetchAdapter('/api/events')` in a module that both server and
+ *   client code import now throws on the server, even when only the browser ever
+ *   delivers through it. Pass `baseUrl`, use an absolute url, or build the
+ *   adapter where it is used. On the client, prefer `beaconAdapter`, which takes
+ *   a relative url and survives page unload.
+ * - In a browser the url is resolved once, at construction, against the page that
+ *   was current then. Root-relative paths (`/api/events`) are unaffected; a
+ *   path-relative one (`api/events`) keeps resolving against that first page
+ *   after client-side navigation.
+ *
  * Pointing this at your own deployment costs an extra invocation per event; for
  * a same-deployment sink, pass a plain function as the adapter instead.
  */

@@ -505,3 +505,65 @@ describe('scenario: 1.x callers keep working', () => {
     expect(conversion.variant.public_id).toBe(variantOf(homepageExperiment, visitorB));
   });
 });
+
+describe('scenario: a visitorId that went missing', () => {
+  /**
+   * The failure mode this guards: `track(goal, cookies.get('sb_vid')?.value)` on
+   * an instance shared across requests. Without the guard the undefined falls
+   * through to the deprecated path and the conversion is attributed to whichever
+   * visitor happened to resolve last — wrong, and invisible in the sink.
+   */
+  it('refuses an undefined second argument instead of attributing it to the last visitor', () => {
+    const sink = createSink();
+    const [visitorA] = visitorsWithDifferentVariants(homepageExperiment);
+    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+
+    experiments.resolveExperiment({ slug: 'home', visitorId: visitorA });
+
+    expect(() => experiments.track('signup', undefined)).toThrow(TypeError);
+    expect(sink.ofType('conversion')).toHaveLength(0);
+  });
+
+  it('throws synchronously so an un-awaited call cannot become an unhandled rejection', () => {
+    const experiments = createExperiments({ experiments: [homepageExperiment] });
+
+    // `track` promises never to reject, so misuse has to surface at the call site
+    // rather than on a floating promise nobody is holding.
+    let thrown: unknown;
+    try {
+      void experiments.track('signup', undefined);
+    }
+    catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(TypeError);
+  });
+
+  it('names both ways out', () => {
+    const experiments = createExperiments({ experiments: [homepageExperiment] });
+
+    expect(() => experiments.track('signup', undefined)).toThrow(/track\(goal, visitorId/);
+    expect(() => experiments.track('signup', undefined)).toThrow(/no second argument/);
+  });
+
+  it('refuses other non-string, non-object second arguments', () => {
+    const experiments = createExperiments({ experiments: [homepageExperiment] });
+
+    // @ts-expect-error null is not a valid props bag; JS callers can still get here.
+    expect(() => experiments.track('signup', null)).toThrow(/got null/);
+    // @ts-expect-error a number is neither a visitorId nor a props bag.
+    expect(() => experiments.track('signup', 42)).toThrow(/got number/);
+  });
+
+  it('still accepts the deprecated call with no second argument at all', async () => {
+    const sink = createSink();
+    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+
+    experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
+    // The distinction the guard rests on: omitted is fine, explicitly undefined is not.
+    await expect(experiments.track('signup')).resolves.toBeUndefined();
+
+    expect(sink.ofType('conversion')).toHaveLength(1);
+  });
+});

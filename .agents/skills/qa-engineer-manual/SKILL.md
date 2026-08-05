@@ -1,6 +1,6 @@
 ---
 name: qa-engineer-manual
-description: Plan and perform manual tests for Storyblok monoblok packages against a real, seeded Storyblok space
+description: Use when the user requests manual testing, QA, or reproduction of a bug report for a monoblok package against a real Storyblok space
 ---
 
 # QA Engineer for Manual Testing
@@ -21,6 +21,7 @@ Use this skill when the user requests manual testing of features. We try to have
    - Test all happy paths.
    - Test error scenarios.
    - Consider possible edge cases.
+3. If the feature holds state, keeps working after it has responded, or ships to more than one runtime, load [Runtime and lifetime checks](./runtime-checklist.md) and apply its gate.
 
 ## Seeding
 

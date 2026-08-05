@@ -65,9 +65,12 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { join } from 'pathe';
 
 import '../index';
 import { storiesCommand } from '../command';
+import { directories } from '../../constants';
+import { resolveCommandPath } from '../../utils/filesystem';
 
 const server = setupServer();
 
@@ -75,10 +78,12 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
+const storiesDir = resolveCommandPath(directories.stories, '12345');
+
 const preconditions = {
   hasEmptyStoriesDirectory() {
     vol.fromJSON({
-      '.storyblok/stories/12345/.gitkeep': '',
+      [join(storiesDir, '.gitkeep')]: '',
     });
   },
   canPullStory(story: { id: number; slug: string; uuid: string }) {
@@ -107,6 +112,8 @@ describe('stories pull command', () => {
   });
 });
 ```
+
+Resolve paths with `resolveCommandPath` and the `directories` constants instead of hardcoding `.storyblok/...`, so a layout change does not break every test. Name each precondition after the state it establishes, including the failure ones (`failsToUpdateRemoteStories`), so a test reads as its own setup.
 
 ## Command patterns
 

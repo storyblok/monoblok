@@ -44,7 +44,7 @@ When a significant architectural decision is made, add a concise new ADR in `adr
 ## Git
 
 - **ALWAYS:** look up the latest npm package version before installing a new package.
-- **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
+- **IMPORTANT:** On `main`, only stage or commit when explicitly asked to.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
 - **Branch naming:** `[fix|feat|chore]/DX-XXX-[title]` e.g. `feat/DX-351-type-safe-schema-support`, `fix/DX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
 - **Commits:** If information is available, add `Fixes DX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.

@@ -1,23 +1,17 @@
-# Storyblok monoblok Agent Guidelines
+# Storyblok monoblok
 
-> **Note:** `AGENTS.md` is the source of truth. `CLAUDE.md` is a symlink to `AGENTS.md`.
-
-## Rules
-
-1. **Be concise** - Drop: filler, pleasantries, hedging.
-2. **Small diffs** - One logical change per commit
-3. **Plan first** - For non-trivial changes, write a plan before coding
-4. **Verify always** - Run lint/typecheck/tests before considering work done
-5. **Deps: prefer none, don't hand-roll** - Write a few-line helper yourself. But don't reimplement error-prone functionality (parsing, crypto, dates, globbing). Use dependencies already in the lockfile; else add a small well-established dep or flag the tradeoff. Never hand-roll silently.
-6. **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
-
-## Monorepo setup
-
-The project uses `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` and `pnpm nx run-many` to build, test, lint, and run parallel CI checks across your projects. E.g., `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
+We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` and `pnpm nx run-many` to build, test, lint, and run parallel CI checks across projects. E.g., `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
 
 - `packages/`: Public packages and integrations.
 - `tools/`: Internal development tools and scripts.
 - Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
+
+## Rules
+
+- **Be concise** - Drop: filler, pleasantries, hedging.
+- **Plan first** - For non-trivial changes, write a plan before coding
+- **Verify always** - Run lint/typecheck/tests before considering work done
+- **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
 
 ## Sibling repos
 
@@ -64,7 +58,7 @@ Worktrees live in `.worktrees/<prefix>-<branch-name>` e.g., `.worktrees/fix-pull
 
 For more context, read relevant files in `docs/`:
 
-- `announcements.md` - SDK announcement article format and tone. Load when drafting a release/announcement post.
+- `announcements.md` - announcement article format and tone. Load when drafting a release/announcement post.
 - `cli-architecture.md` - CLI command patterns, UI module, migration checklist. Load when adding or modifying a `storyblok` CLI command.
 - `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load when changes need reference docs, when versioning docs for a major release, or when adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.

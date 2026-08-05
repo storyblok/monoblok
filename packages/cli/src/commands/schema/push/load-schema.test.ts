@@ -1,40 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyExports, isComponent, isDatasource } from './load-schema';
+import { classifyExports } from './load-schema';
 
-describe('isComponent', () => {
-  it('should return true for objects with name and a fields array', () => {
-    expect(isComponent({ name: 'page', fields: [{ name: 'title', type: 'text' }] })).toBe(true);
-  });
-
-  it('should return false for objects without fields', () => {
-    expect(isComponent({ name: 'folder' })).toBe(false);
-  });
-
-  it('should return false for non-objects', () => {
-    expect(isComponent('string')).toBe(false);
-    expect(isComponent(null)).toBe(false);
-    expect(isComponent(undefined)).toBe(false);
-  });
-
-  it('should return false for objects with fields but no name', () => {
-    expect(isComponent({ fields: [] })).toBe(false);
-  });
-});
-
-describe('isDatasource', () => {
-  it('should return true for objects with name and slug', () => {
-    expect(isDatasource({ name: 'Colors', slug: 'colors' })).toBe(true);
-  });
-
-  it('should return false for objects without slug', () => {
-    expect(isDatasource({ name: 'Colors' })).toBe(false);
-  });
-
-  it('should return false for components (has a fields array)', () => {
-    expect(isDatasource({ name: 'page', slug: 'page', fields: [] })).toBe(false);
-  });
-});
+// The DSL export predicates (`isComponent` / `isDatasource` / `isSchemaObject`)
+// are unit-tested in `src/utils/schema/classify-exports.test.ts`. This suite
+// covers the push-specific wire mapping in `classifyExports`.
 
 describe('classifyExports', () => {
   it('should classify a mixed module and map blocks to the wire schema shape', () => {
@@ -127,6 +97,45 @@ describe('classifyExports', () => {
     expect(result.components[0].name).toBe('page');
     expect(result.components[1].name).toBe('hero');
     expect(result.datasources).toHaveLength(0);
+  });
+});
+
+// Regression: `collectSchemaExports` dedups by object identity, so two distinct
+// definitions sharing a name both reach the push. The diff then emits two
+// `create` actions for one name, both resolving to the first definition — a
+// silent drop plus a race. The collision must be fatal before any API call.
+describe('classifyExports duplicate identities', () => {
+  it('should throw on two different blocks with the same name', () => {
+    expect(() => classifyExports({
+      a: { name: 'hero', fields: [{ name: 'headline', type: 'text' }] },
+      b: { name: 'hero', fields: [{ name: 'subline', type: 'text' }] },
+    })).toThrow('Duplicate schema definitions: block name "hero"');
+  });
+
+  it('should throw on two different datasources with the same slug', () => {
+    expect(() => classifyExports({
+      a: { name: 'Colors', slug: 'colors' },
+      b: { name: 'Brand Colors', slug: 'colors' },
+    })).toThrow('Duplicate schema definitions: datasource slug "colors"');
+  });
+
+  it('should report every colliding identity in one error', () => {
+    expect(() => classifyExports({
+      a: { name: 'hero', fields: [] },
+      b: { name: 'hero', fields: [{ name: 'headline', type: 'text' }] },
+      c: { name: 'page', fields: [] },
+      d: { name: 'page', fields: [{ name: 'title', type: 'text' }] },
+    })).toThrow('Duplicate schema definitions: block name "hero", block name "page"');
+  });
+
+  it('should not throw when the same definition is exported directly and via the schema object', () => {
+    const hero = { name: 'hero', fields: [{ name: 'headline', type: 'text' }] };
+    const colors = { name: 'Colors', slug: 'colors' };
+
+    const result = classifyExports({ hero, colors, schema: { blocks: { hero }, datasources: { colors } } });
+
+    expect(result.components).toHaveLength(1);
+    expect(result.datasources).toHaveLength(1);
   });
 });
 

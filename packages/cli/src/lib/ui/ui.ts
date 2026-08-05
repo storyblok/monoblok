@@ -28,6 +28,36 @@ export interface ProgressBar {
   stop: () => void;
 }
 
+let stdoutEpipeGuarded = false;
+
+/**
+ * Installs a one-time `EPIPE` guard on stdout.
+ *
+ * A downstream reader that exits early (`… --format json | head -5`) closes the
+ * pipe while the write is still in flight. Node reports that asynchronously as an
+ * `'error'` event on `process.stdout`; unhandled, it crashes with a stack trace
+ * and exit code 1 — overwriting the exit code the command computed, so a clean
+ * run looks like a failure to CI. There is nothing left to write, so EPIPE is
+ * swallowed.
+ *
+ * Any other stdout error is reported and exits 1. Rethrowing it here would land
+ * in the same trap the guard exists to avoid: a throw inside an `'error'`
+ * listener is an uncaught exception, so the stack trace and clobbered exit code
+ * come back for every `code` that is not EPIPE.
+ */
+function guardStdoutEpipe(ui: UI): void {
+  if (stdoutEpipeGuarded) { return; }
+  stdoutEpipeGuarded = true;
+  process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EPIPE') { return; }
+    ui.error(`Failed to write to stdout: ${error.message}`);
+    // A runtime failure, not a bad invocation, so 1 rather than 2. Set here
+    // because the write already failed: the document on stdout is truncated,
+    // and a consumer must not read the command's own exit code as success.
+    process.exitCode = 1;
+  });
+}
+
 const noopProgressBar: ProgressBar = {
   increment: () => {},
   setTotal: () => {},
@@ -154,6 +184,16 @@ export class UI {
   /** Plain console.log passthrough — use for preformatted or multi-line text. */
   log(message: string) {
     this.console?.log(message);
+  }
+
+  /**
+   * Writes machine-readable output straight to stdout, bypassing the UI enable
+   * gate. Decorative output is suppressed alongside it (see `--format json`), so
+   * stdout stays a single pipeable document even with `--no-ui-enabled`.
+   */
+  writeMachineOutput(payload: string) {
+    guardStdoutEpipe(this);
+    process.stdout.write(`${payload}\n`);
   }
 
   list(items: string[]) {

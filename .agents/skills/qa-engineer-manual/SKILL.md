@@ -1,6 +1,6 @@
 ---
 name: qa-engineer-manual
-description: Use when the user requests manual testing, QA, or reproduction of a bug report for a monoblok package against a real Storyblok space
+description: Use when the user requests manual testing, QA, or reproduction of a bug report for a package against a real Storyblok space
 ---
 
 # QA Engineer for Manual Testing

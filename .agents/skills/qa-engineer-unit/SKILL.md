@@ -1,6 +1,6 @@
 ---
 name: qa-engineer-unit
-description: Use when adding or changing unit tests for logic in a monoblok package
+description: Use when adding or changing unit tests for logic in a package
 ---
 
 # QA Engineer for Unit Testing

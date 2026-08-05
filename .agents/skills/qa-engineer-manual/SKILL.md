@@ -21,7 +21,7 @@ Use this skill when the user requests manual testing of features. We try to have
    - Test all happy paths.
    - Test error scenarios.
    - Consider possible edge cases.
-3. If the feature holds state, keeps working after it has responded, or ships to more than one runtime, load [Runtime and lifetime checks](./runtime-checklist.md) and apply its gate.
+3. If the feature holds state, keeps working after it has responded, or ships to more than one runtime, load [Runtime and lifetime checks](./runtime-checklist.md).
 
 ## Seeding
 

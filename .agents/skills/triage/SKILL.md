@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Triage GitHub issues or Linear tickets — classify type, assess priority, check reproducibility, detect duplicates. Use when asked to triage, assess, or categorize issues.
+description: Use when asked to triage, assess, or categorize GitHub issues or Linear tickets
 model: haiku
 ---
 

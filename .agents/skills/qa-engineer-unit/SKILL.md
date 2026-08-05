@@ -1,6 +1,6 @@
 ---
 name: qa-engineer-unit
-description: Write focused unit tests for complex logic with Vitest
+description: Use when adding or changing unit tests for logic in a monoblok package
 ---
 
 # QA Engineer for Unit Testing

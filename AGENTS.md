@@ -59,7 +59,6 @@ Worktrees live in `.worktrees/<prefix>-<branch-name>` e.g., `.worktrees/fix-pull
 For more context, read relevant files in `docs/`:
 
 - `announcements.md` - announcement article format and tone. Load when drafting a release/announcement post.
-- `cli-architecture.md` - CLI command patterns, UI module, migration checklist. Load when adding or modifying a `storyblok` CLI command.
 - `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load when changes need reference docs, when versioning docs for a major release, or when adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
 - `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.

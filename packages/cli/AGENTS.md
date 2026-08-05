@@ -5,6 +5,7 @@
 | Need | Put it here |
 | --- | --- |
 | Top-level CLI registration | `src/index.ts` import |
+| Module initialization, global `preAction` behavior | `src/program.ts` |
 | Commander command definition | `src/commands/<name>/index.ts` or `command.ts` |
 | API calls, filesystem writes, transformations | `actions.ts` |
 | Option constants | `constants.ts` |
@@ -15,6 +16,10 @@
 | Config resolution, global option behavior | `src/lib/config/` |
 | Structured logs | `src/lib/logger/` |
 | Machine-readable command reports | `src/lib/reporter/` |
+
+## Module initialization
+
+The `preAction` hook in `src/program.ts` initializes everything in order: config → session and API client → logger → UI → reporter → command action. Anything a command action relies on is already resolved by the time it runs, so read config through `command.optsWithGlobals()` and reach for modules through their getters rather than initializing them yourself.
 
 ## Terminal output
 
@@ -149,3 +154,13 @@ Use the logger for non-user-facing runtime details:
 const logger = getLogger();
 logger.info('Pulling components started', { space, componentName });
 ```
+
+## Older commands
+
+Not every command has been migrated. When you touch one that has not, bring it along:
+
+1. Replace raw `Spinner` with `ui.createSpinner()`, which handles test suppression itself
+2. Remove `isVitest`; command code must never import it
+3. Add `getLogger()` for structured logging
+
+`src/commands/datasources/pull/` is the canonical migrated command.

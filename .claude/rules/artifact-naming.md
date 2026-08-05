@@ -13,8 +13,10 @@ claude-output/<type>-<identifier>-<subtype>.md
 
 | Command | Pattern | Example |
 |---------|---------|---------|
-| `/review-and-qa` | `review-<id>.md` | `review-pr-435.md`, `review-login-flow.md` |
+| `/triage` | `triage-<id>.md` | `triage-424.md`, `triage-DX-296.md` |
 | `/investigate` | `investigate-<id>.md` | `investigate-424.md`, `investigate-DX-296.md` |
+| `/plan` | `plan-<id>.md` | `plan-424.md`, `plan-DX-296.md` |
+| `/review-and-qa` | `review-<id>.md` | `review-pr-435.md`, `review-login-flow.md` |
 | `/spec` (project) | `spec-<id>.md` | `spec-dx-310.md`, `spec-asset-optimization.md` |
 | `/spec` (ticket) | `ticket-<id>.md` | `ticket-dx-237.md`, `ticket-add-logout-button.md` |
 | PR description | `pr-<id>-summary.md` | `pr-435-summary.md`, `pr-DX-308-summary.md` |

@@ -34,8 +34,9 @@ schemaCommand
     const { verbose } = command.optsWithGlobals();
 
     try {
-      // 1. Parse the display options. An invalid value is fatal (exit 2), like
-      //    the other bad-invocation paths.
+      // 1. Parse the display options. An invalid value is a bad invocation, so
+      //    `parseLevel`/`parseFormat` throw a CommandError and `handleError`
+      //    exits 2 — it owns the exit code, callers must not override it.
       let level: LevelOption;
       let format: FormatOption;
       try {
@@ -45,7 +46,6 @@ schemaCommand
       catch (maybeError) {
         reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
         handleError(toError(maybeError), verbose);
-        process.exitCode = 2;
         return;
       }
 
@@ -53,6 +53,11 @@ schemaCommand
       logger.info('Schema validate started', { entryFile, level, format });
 
       // 2. Load the schema entry file. A missing/empty/unresolvable file is fatal.
+      //    `handleError` owns the exit code and splits the two cases apart: a
+      //    missing or definition-less entry file is a bad invocation (CommandError,
+      //    exit 2), while a file that throws on import — a syntax error, an
+      //    unresolvable dependency — is a runtime failure (exit 1) and keeps its
+      //    original error so `--verbose` can still name the offending line.
       let loaded: Awaited<ReturnType<typeof loadSchemaEntry>>;
       try {
         loaded = await loadSchemaEntry(entryFile);
@@ -63,7 +68,6 @@ schemaCommand
         reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
         handleError(error, verbose);
         logger.error('Schema validate failed to load entry file', { error: error.message });
-        process.exitCode = 2;
         return;
       }
 

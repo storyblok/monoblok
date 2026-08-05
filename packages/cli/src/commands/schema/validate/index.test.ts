@@ -81,8 +81,19 @@ describe('schema validate command', () => {
     expect(output).toContain('1 error, 0 warnings across 1 of 1 entity');
   });
 
-  it('should exit 2 when the entry file cannot be resolved', async () => {
+  // The file is there but importing it throws, so this is a runtime failure, not
+  // a bad invocation: `handleError` maps a plain Error to 1. Exit 2 is reserved
+  // for CommandError — a missing entry file or one exporting no definitions.
+  it('should exit 1 when importing the entry file throws', async () => {
     importError = new Error('Cannot find module \'src/schema.ts\'');
+
+    await runValidate();
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('should exit 2 when the entry file does not exist', async () => {
+    vol.reset();
 
     await runValidate();
 

@@ -1,6 +1,10 @@
 # Using `@storyblok/react/next` with Next.js App Router
 
-This guide explains how `@storyblok/react/next` works, how it is wired up in this project, and how to handle real-world patterns: async components with slow fetches, draft mode, and mixing client interactivity with server-rendered content.
+This guide explains how `@storyblok/react/next` works, how it is wired up in this project, and how to handle real-world patterns: async components with slow fetches, live preview, and mixing client interactivity with server-rendered content.
+
+> **Playground:** A fully working Next.js App Router example using this SDK is available at
+> [github.com/dipankarmaikap/nextjs-storyblok-react-sdk-v2](https://github.com/dipankarmaikap/nextjs-storyblok-react-sdk-v2).
+> All code snippets in this guide are taken from that repository.
 
 ---
 
@@ -11,10 +15,9 @@ This guide explains how `@storyblok/react/next` works, how it is wired up in thi
   - [0. Installation](#0-installation)
   - [1. Setup: client and registry](#1-setup-client-and-registry)
   - [2. Rendering a page](#2-rendering-a-page)
-  - [3. Draft mode: enable and disable](#3-draft-mode-enable-and-disable)
-    - [Enable — `app/api/draft/route.ts`](#enable--appapidraftroutets)
-    - [Disable — `app/api/disable-draft/route.ts`](#disable--appapidisable-draftroutets)
-    - [How the page reacts to draft mode](#how-the-page-reacts-to-draft-mode)
+  - [3. Production vs. preview: the two-deployment strategy](#3-production-vs-preview-the-two-deployment-strategy)
+    - [How it works](#how-it-works)
+    - [How the page reacts to `isPreview`](#how-the-page-reacts-to-ispreview)
   - [4. Live preview with `StoryblokPreview`](#4-live-preview-with-storyblokpreview)
   - [5. Async components with slow fetches — WeatherWidget](#5-async-components-with-slow-fetches--weatherwidget)
     - [The problem](#the-problem)
@@ -37,7 +40,7 @@ This guide explains how `@storyblok/react/next` works, how it is wired up in thi
 This guide uses a prerelease build published via [pkg.pr.new](https://pkg.pr.new). Install it directly by URL — no registry publish required:
 
 ```bash
-npm i https://pkg.pr.new/@storyblok/react@fc8fac6
+npm i https://pkg.pr.new/@storyblok/react@a76b1c7
 ```
 
 This installs the exact commit that the guide is written against.
@@ -46,9 +49,11 @@ This installs the exact commit that the guide is written against.
 
 ## 1. Setup: client and registry
 
-Everything starts in `app/lib/storyblok.tsx`. Two things are created here:
+Everything starts in `app/lib/storyblok.tsx`. Three things are created here:
 
-**`createApiClient`** — a typed wrapper around the Storyblok Delivery API.
+**`isPreview`** — a module-level boolean that is `true` on the preview deployment and `false` on production. It is evaluated once per cold start and stays fixed for the lifetime of the process.
+
+**`createApiClient`** — a typed wrapper around the Storyblok Delivery API. On the preview deployment, `cache: { strategy: "network-first" }` is set so every request goes to Storyblok directly, bypassing the in-memory cache. On production, the default cache-first strategy (60 s TTL) applies.
 
 **`createRegistry`** — maps Storyblok component names (as defined in your space) to React components. It also accepts per-component Suspense configuration.
 
@@ -56,9 +61,24 @@ Everything starts in `app/lib/storyblok.tsx`. Two things are created here:
 // app/lib/storyblok.tsx
 import { createApiClient, createRegistry } from '@storyblok/react/next';
 
+/**
+ * True on the preview deployment (STORYBLOK_ENV=preview).
+ * False on production (env var absent or set to any other value).
+ *
+ * This is a module-level constant: it is evaluated once per cold start and
+ * stays fixed for the lifetime of the process. Use it everywhere you need
+ * to branch between "show draft content + live editing" and "show published
+ * content + full caching".
+ */
+export const isPreview = process.env.STORYBLOK_ENV === 'preview';
+
 export const client = createApiClient({
   accessToken: process.env.NEXT_PUBLIC_STORYBLOK_DELIVERY_API_TOKEN!,
-  region: process.env.NEXT_PUBLIC_STORYBLOK_REGION,
+  region: process.env.NEXT_PUBLIC_STORYBLOK_REGION as 'us' | 'eu',
+  // On the preview deployment, bypass the in-memory cache so every request
+  // fetches the latest draft content from Storyblok directly.
+  // On production, the default cache-first strategy (60 s TTL) applies.
+  ...(isPreview && { cache: { strategy: 'network-first' } }),
 });
 
 export const { StoryblokComponent, StoryblokBlocks } = createRegistry({
@@ -89,43 +109,86 @@ export const { StoryblokComponent, StoryblokBlocks } = createRegistry({
 
 ## 2. Rendering a page
 
-`app/page.tsx` is a **Server Component**. It:
+The recommended pattern uses a catch-all route `app/[[...slug]]/page.tsx` to handle every URL in the app.
 
-1. Fetches the story from Storyblok using `client.stories.get`.
-2. Calls the `renderContent` Server Action to turn the story content into React elements.
-3. Either returns the static content directly (production) or wraps it in `StoryblokPreview` (draft mode).
+Because Next.js 16 makes `params` a `Promise`, slug access is deferred inside a `<Suspense>` boundary to keep the outer component synchronous (static shell). `PageContent` then suspends on the Storyblok fetch.
+
+**`StoryContent`** is a small Server Component that acts as a single source of truth for how a story is rendered. It is used in two places: the initial server render in `page.tsx`, and inside the `renderContent` Server Action called by `StoryblokPreview` on live editor updates. Keeping the layout markup in one place means you never have to keep two callsites in sync.
 
 ```tsx
-// app/page.tsx
+// app/components/StoryContent.tsx
+import type { Story } from '@storyblok/react/next';
+import { StoryblokComponent } from '../lib/storyblok';
+
+export function StoryContent({ story }: { story: Story }) {
+  return (
+    <main>
+      <StoryblokComponent blok={story.content} />
+    </main>
+  );
+}
+```
+
+```tsx
+// app/[[...slug]]/page.tsx
+import { Suspense } from 'react';
 import { StoryblokPreview } from '@storyblok/react/next/rsc';
-import { draftMode } from 'next/headers';
-import { renderContent } from './lib/actions';
-import { client } from './lib/storyblok';
+import { renderContent } from '../lib/actions';
+import { client, isPreview } from '../lib/storyblok';
+import { StoryContent } from '../components/StoryContent';
 
-export default async function Home() {
-  const { isEnabled: isDraftMode } = await draftMode();
+type Params = Promise<{ slug?: string[] }>;
 
-  const { data } = await client.stories.get('home', {
-    query: { version: 'draft' },
-  });
+/**
+ * Optional catch-all route — handles every URL in the app.
+ *
+ * slug segments   → Storyblok story slug
+ * /               → undefined          → "home"
+ * /about          → ["about"]          → "about"
+ * /blog/my-post   → ["blog","my-post"] → "blog/my-post"
+ *
+ * In Next.js 16 `params` is a Promise, so slug access is pushed inside
+ * a <Suspense> boundary to keep the outer component sync (static shell).
+ * PageContent then suspends for the Storyblok fetch.
+ */
+export default function CatchAllPage({ params }: { params: Params }) {
+  return (
+    <Suspense>
+      {params.then(({ slug }) => {
+        const storySlug = slug?.join('/') ?? 'home';
+        const storyPromise = client.stories.get(storySlug, {
+          query: { version: isPreview ? 'draft' : 'published' },
+        });
+        return <PageContent storyPromise={storyPromise} />;
+      })}
+    </Suspense>
+  );
+}
 
+async function PageContent({
+  storyPromise,
+}: {
+  storyPromise: ReturnType<typeof client.stories.get>;
+}) {
+  const { data } = await storyPromise;
   const story = data?.story;
+
   if (!story) {
     return <main>Story not found</main>;
   }
 
-  const content = await renderContent(story);
+  const content = <StoryContent story={story} />;
 
   // In production: return pre-rendered content directly
-  if (!isDraftMode) {
+  if (!isPreview) {
     return content;
   }
 
-  // In draft mode: wrap in StoryblokPreview for live updates
+  // On the preview deployment: wrap in StoryblokPreview for live updates
   return (
     <>
       <div style={{ background: 'yellow', padding: '10px' }}>
-        DRAFT MODE IS ON
+        PREVIEW MODE IS ON
       </div>
       <StoryblokPreview renderContent={renderContent}>
         {content}
@@ -143,14 +206,10 @@ The `renderContent` Server Action is kept in a separate file so it can be passed
 
 import type { ReactNode } from 'react';
 import type { Story } from '@storyblok/react/next';
-import { StoryblokComponent } from './storyblok';
+import { StoryContent } from '../components/StoryContent';
 
 export async function renderContent(story: Story): Promise<ReactNode> {
-  return (
-    <main>
-      <StoryblokComponent blok={story.content} />
-    </main>
-  );
+  return <StoryContent story={story} />;
 }
 ```
 
@@ -158,61 +217,33 @@ export async function renderContent(story: Story): Promise<ReactNode> {
 
 ---
 
-## 3. Draft mode: enable and disable
+## 3. Production vs. preview: the two-deployment strategy
 
-Next.js Draft Mode sets a secure cookie that instructs the app to skip caches and serve unpublished content.
+Rather than using Next.js Draft Mode cookies to toggle preview on a single deployment, the recommended approach is **two separate deployments of the same codebase** driven by a single environment variable.
 
-### Enable — `app/api/draft/route.ts`
+### How it works
 
-Storyblok calls this URL (configured in your space's Visual Editor settings) when a user opens the editor preview. A secret token is validated before enabling draft mode.
+| Deployment | `STORYBLOK_ENV`            | `isPreview` | Story version | API cache                      | Live editing            |
+| ---------- | -------------------------- | ----------- | ------------- | ------------------------------ | ----------------------- |
+| Production | unset (or any other value) | `false`     | `published`   | cache-first (60 s TTL)         | off                     |
+| Preview    | `"preview"`                | `true`      | `draft`       | `network-first` (always fresh) | on (`StoryblokPreview`) |
 
-```ts
-// app/api/draft/route.ts
-import { draftMode } from 'next/headers';
-import { NextRequest } from 'next/server';
+Set `STORYBLOK_ENV=preview` only in the environment variables of your preview deployment (e.g. a Vercel preview environment or a separate Vercel project). The production deployment does not set this variable.
 
-export async function GET(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get('secret');
+**Why two deployments instead of a cookie?**
 
-  // Reject requests without the correct token
-  if (secret !== process.env.NEXT_PUBLIC_STORYBLOK_DELIVERY_API_TOKEN) {
-    return new Response('Invalid token', { status: 401 });
-  }
+- **No per-request branching.** `isPreview` is a module-level constant evaluated at cold start. The production render path is entirely free of preview-related code — no cookie reads, no `draftMode()` calls, no conditional fetches.
+- **Predictable caching.** The production deployment can rely on stable Next.js Data Cache behaviour. The preview deployment opts fully out of caching (`network-first`) so editors always see their latest save.
+- **Simpler ops.** Each deployment has a clear, single purpose. There is no risk of a user accidentally accessing draft content on the production URL because the token that enables preview is never set there.
 
-  const draft = await draftMode();
-  draft.enable();
+**Configure the Visual Editor preview URL** in your Storyblok space settings to point at the preview deployment URL. The production URL stays clean.
 
-  return new Response('Draft mode enabled', { status: 200 });
-}
-```
-
-### Disable — `app/api/disable-draft/route.ts`
-
-Visiting this route clears the draft cookie and returns the app to production mode.
-
-```ts
-// app/api/disable-draft/route.ts
-import { draftMode } from 'next/headers';
-import { NextRequest } from 'next/server';
-
-export async function GET(_request: NextRequest) {
-  const draft = await draftMode();
-  draft.disable();
-
-  return new Response('Draft mode disabled', { status: 200 });
-}
-```
-
-### How the page reacts to draft mode
-
-Back in `app/page.tsx`, the `draftMode()` check decides which rendering path to take:
+### How the page reacts to `isPreview`
 
 ```
-isDraftMode === false  →  return static content (no live preview overhead)
-isDraftMode === true   →  return StoryblokPreview (listens for editor messages)
+isPreview === false  →  fetch published  →  return static content
+isPreview === true   →  fetch draft      →  return StoryblokPreview (listens for editor messages)
 ```
-
-This keeps the production render path completely free of any preview-specific code.
 
 ---
 
@@ -226,32 +257,16 @@ This keeps the production render path completely free of any preview-specific co
 - **Debounces** editor events (default 300 ms) so rapid keystrokes do not each fire a separate Server Action call.
 
 ```tsx
-<StoryblokPreview renderContent={renderContent}>
-  {content}
-</StoryblokPreview>;
+<StoryblokPreview renderContent={renderContent}>{content}</StoryblokPreview>;
 ```
 
 **Props**
 
-| Prop | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `renderContent` | `(story: Story) => Promise<ReactNode>` | ✓ | — | Server Action called on each editor update |
-| `children` | `ReactNode` | ✓ | — | Initial server-rendered content |
-| `debounceMs` | `number` | — | `300` | Milliseconds to wait after the last editor event before triggering a re-render |
-
-**Why `children` and not a named prop?**
-
-Passing the initial RSC tree as `children` (directly from the Server Component) keeps it inside React's RSC streaming channel. Suspense boundaries in that tree work correctly — the page streams the skeleton immediately and flushes the slow component once it resolves.
-
-If the same tree were passed as a named prop (e.g. `initialContent={content}`) and stored in `useState`, the RSC serialiser would need to fully await every async component in the subtree before it could send the prop value to the Client Component. That bypasses Suspense and blocks the entire response for the full duration of the slowest component — exactly the 10-second block you would otherwise see with `WeatherWidget`.
-
-**Why debounce?**
-
-Without debouncing, every keystroke in the Visual Editor fires an `onStoryblokEditorEvent`. Each event triggers a `renderContent` Server Action call. If the component tree contains a slow async component (e.g. an external API fetch), and the editor is editing the field that forms part of the cache key (e.g. the `location` field on `WeatherWidget`), each intermediate value — `"L"`, `"Lo"`, `"Lon"` — would kick off its own slow fetch. With a 300 ms debounce the Server Action only fires after the user pauses, eliminating wasted in-flight requests.
-
-Because `renderContent` is a Server Action, all re-renders run entirely on the server — the client never receives raw Storyblok JSON or executes component logic in the browser.
-
----
+| Prop            | Type                                   | Required | Default | Description                                                                    |
+| --------------- | -------------------------------------- | -------- | ------- | ------------------------------------------------------------------------------ |
+| `renderContent` | `(story: Story) => Promise<ReactNode>` | ✓        | —       | Server Action called on each editor update                                     |
+| `children`      | `ReactNode`                            | ✓        | —       | Initial server-rendered content                                                |
+| `debounceMs`    | `number`                               | —        | `300`   | Milliseconds to wait after the last editor event before triggering a re-render |
 
 ## 5. Async components with slow fetches — WeatherWidget
 
@@ -278,16 +293,12 @@ export const { StoryblokComponent, StoryblokBlocks } = createRegistry({
 
 ### The component
 
-`WeatherWidget` is a plain `async` Server Component. It reads the current draft mode state and calls `getWeather`, which routes to the correct cache layer. No special hooks or wrappers are required.
+`WeatherWidget` is a plain `async` Server Component. It calls `getWeather`, which routes through the cache layers below.
 
 ```tsx
 // app/components/WeatherWidget.tsx
 export async function WeatherWidget({ blok }: WeatherWidgetProps) {
-  // draftMode() is request-scoped — must be called inside the component,
-  // never at module level where it would only run once at startup.
-  const { isEnabled: isDraftMode } = await draftMode();
-
-  const weatherData = await getWeather(blok.location, isDraftMode);
+  const weatherData = await getWeather(blok.location ?? '');
 
   return (
     <div {...storyblokEditable(blok)}>
@@ -299,10 +310,6 @@ export async function WeatherWidget({ blok }: WeatherWidgetProps) {
         {' '}
         km/h
       </p>
-      <p>
-        Mode:
-        {isDraftMode ? 'draft' : 'production'}
-      </p>
     </div>
   );
 }
@@ -310,74 +317,42 @@ export async function WeatherWidget({ blok }: WeatherWidgetProps) {
 
 ### Caching strategy
 
-Four layers work together to avoid re-running a slow 10-second fetch unnecessarily:
+Weather data is fetched from an external API that is completely independent of Storyblok story content. Because of this, the same cache is used on both the production and preview deployments. There is no reason to bypass it in preview — doing so would cause a slow skeleton flash on every editor change even though the weather data has not changed.
 
-| Layer | API | Scope | Used when |
-| ----------------------- | ----------- | -------------------------- | ----------------------------------------------------------------------------- |
-| `react.cache()` | React | Single request | Deduplicates calls within one render (e.g. two bloks with the same location) |
-| `unstable_cache()` | Next.js | Cross-request (Data Cache) | Production — persists results across requests, 60 s TTL |
-| `LRUCache` | `lru-cache` | Server process | Draft mode — TTL (5 min) keeps data fresh; `max: 500` bounds memory |
-| `inFlightDraftFetches` | `Map` | In-flight only | Deduplicates concurrent fetches for the same key before the cache is warm |
+Three layers work together:
+
+| Layer              | API     | Scope                      | Purpose                                                                      |
+| ------------------ | ------- | -------------------------- | ---------------------------------------------------------------------------- |
+| `react.cache()`    | React   | Single request             | Deduplicates calls within one render (e.g. two bloks with the same location) |
+| `unstable_cache()` | Next.js | Cross-request (Data Cache) | Persists results across requests, 60 s TTL                                   |
+| Raw fetch          | —       | —                          | The slow external API call (simulated at 10 s)                               |
 
 ```tsx
 // Layer 1 — raw fetch (slow, no caching)
 async function fetchWeatherData(location: string): Promise<WeatherData> {
-  // ...
+  // calls external weather API …
 }
 
-// Layer 2a — production: cross-request cache, revalidates every 60 seconds
-const getWeatherProduction = unstable_cache(fetchWeatherData, ['weather'], {
+// Layer 2 — cross-request cache (Next.js Data Cache, 60-second TTL)
+//
+// unstable_cache persists results to the Next.js Data Cache (disk-backed)
+// so entries survive across requests and serverless instances.
+// Used on both production and preview — weather data is external and
+// independent of Storyblok story content, so bypassing it in preview
+// would cause a needless skeleton flash on every editor change.
+const getCachedWeather = unstable_cache(fetchWeatherData, ['weather'], {
   revalidate: 60,
 });
 
-// Layer 2b — draft mode: LRUCache with TTL + max-size cap
+// Layer 3 — request deduplication (React cache)
 //
-// TTL (5 min): entries expire so editors always see reasonably fresh data,
-// and keys never accessed again eventually fall out of the cache.
-//
-// max (500): hard cap — the least-recently-used key is evicted first when
-// the limit is reached, preventing unbounded memory growth.
-//
-// inFlightDraftFetches: if multiple editor events arrive before the first
-// fetch for a given location completes, they all share the same Promise
-// instead of each starting an independent 10-second request.
-const draftModeCache = new LRUCache<string, WeatherData>({
-  max: 500,
-  ttl: 5 * 60 * 1000,
-});
-const inFlightDraftFetches = new Map<string, Promise<WeatherData>>();
-
-async function getWeatherDraft(location: string): Promise<WeatherData> {
-  const cached = draftModeCache.get(location);
-  if (cached) {
-    return cached;
-  }
-
-  const inFlight = inFlightDraftFetches.get(location);
-  if (inFlight) {
-    return inFlight;
-  }
-
-  const promise = fetchWeatherData(location).then((data) => {
-    draftModeCache.set(location, data);
-    inFlightDraftFetches.delete(location);
-    return data;
-  });
-  inFlightDraftFetches.set(location, promise);
-  return promise;
-}
-
-// Layer 3 — request deduplication: routes to the correct layer
-//           react.cache() ensures only one lookup per location per request
-const getWeather = cache(async (location: string, isDraftMode: boolean) => {
-  if (isDraftMode) {
-    return getWeatherDraft(location); // → LRUCache (TTL + max size)
-  }
-  return getWeatherProduction(location); // → Next.js Data Cache
-});
+// react.cache() deduplicates calls within a single render pass.
+// If two WeatherWidget bloks on the same page share the same location,
+// only one cache lookup is made for the entire request.
+const getWeather = cache(getCachedWeather);
 ```
 
-The routing decision (`isDraftMode ? LRUCache : unstable_cache`) is made in `getWeather`, not inside `fetchWeatherData`. This keeps each layer's responsibility clear and means `unstable_cache` is never involved in draft-mode requests.
+The `network-first` strategy set on `createApiClient` for the preview deployment only bypasses the **Storyblok API client's** internal cache (story JSON). It does not affect `unstable_cache` or `react.cache()` used by `WeatherWidget` — those remain intact on both deployments.
 
 ### The skeleton
 

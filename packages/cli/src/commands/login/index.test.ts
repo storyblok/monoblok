@@ -21,14 +21,6 @@ vi.mock('../../creds', () => ({
   removeAllCredentials: vi.fn(),
 }));
 
-vi.mock('../../utils', async () => {
-  const actualUtils = await vi.importActual('../../utils');
-  return {
-    ...actualUtils,
-    isVitestRunning: true,
-  };
-});
-
 vi.mock('@inquirer/prompts', () => ({
   input: vi.fn(),
   password: vi.fn(),

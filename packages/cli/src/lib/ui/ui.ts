@@ -3,8 +3,8 @@ import { MultiBar, Presets } from 'cli-progress';
 import { Spinner } from '@topcli/spinner';
 import { colorPalette } from '../../constants';
 import { DEFAULT_GLOBAL_CONFIG } from '../config/defaults';
+import { getActiveConfig } from '../config/store';
 import { capitalize } from '../../utils/format';
-import { isVitest } from '../../utils';
 
 interface InfoOptions {
   header?: boolean;
@@ -182,7 +182,7 @@ export class UI {
 
   createSpinner(title: string): CLISpinner {
     if (!this.enabled) { return noopSpinner; }
-    const spinner = new Spinner({ verbose: !isVitest });
+    const spinner = new Spinner({ verbose: getActiveConfig().verbose });
     spinner.stream = process.stderr;
     return spinner.start(title);
   }

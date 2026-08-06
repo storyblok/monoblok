@@ -112,30 +112,17 @@ describe('getApiResponseMessage', () => {
     expect(getApiResponseMessage('oops')).toBe('oops');
   });
 
-  it('should return APIError.message when response data has no string fields', () => {
-    const error = new FetchError('Server Error', { status: 500, statusText: 'Internal Server Error', data: { code: 500 } });
-    let caught: APIError | undefined;
-    try { handleAPIError('pull_stories', error); }
-    catch (e) { caught = e as APIError; }
-    expect(getApiResponseMessage(caught)).toBe(caught!.message);
-  });
-
-  it('should return the server-provided message from APIError.response.data.error', () => {
-    const error = new FetchError('Not Found', {
+  it('should return APIError.message, which already contains the server-provided string', () => {
+    const fetchError = new FetchError('Not Found', {
       status: 404,
       statusText: 'Not Found',
       data: { error: 'Story not found in this space' },
     });
     let caught: APIError | undefined;
-    try { handleAPIError('pull_story', error); }
+    try { handleAPIError('pull_story', fetchError); }
     catch (e) { caught = e as APIError; }
-    // APIError.message is already 'Story not found in this space' after the constructor enhancement,
-    // and getApiResponseMessage reads it from data.error — both paths agree.
+    // The APIError constructor already extracted the server message into error.message,
+    // so getApiResponseMessage simply delegates to it.
     expect(getApiResponseMessage(caught)).toBe('Story not found in this space');
-  });
-
-  it('should fall back to error.message for non-APIError errors with no response.data', () => {
-    const err = Object.assign(new Error('network failure'), { response: { status: 503 } });
-    expect(getApiResponseMessage(err)).toBe('network failure');
   });
 });

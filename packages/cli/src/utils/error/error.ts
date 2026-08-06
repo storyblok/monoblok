@@ -123,29 +123,14 @@ export function logOnlyError(error: Error | FetchError, context?: LogContext): v
 }
 
 /**
- * Extracts a human-readable message from an API error response body when present,
- * falling back to `error.message`.
+ * Extracts a human-readable message from an error for display in per-item
+ * stream failure warnings (e.g. `ui.warn`).
  *
- * Handles response bodies of the form `{ error: "..." }` or `{ message: "..." }`,
- * which are common across Storyblok MAPI endpoints. Generic enough to be used by
- * any command that surfaces per-item API failures to the user.
+ * For `APIError` instances, `error.message` already reflects the server-provided
+ * string (set by the `APIError` constructor from `response.data.error` /
+ * `response.data.message`). For all other errors it falls back to `error.message`
+ * or `String(error)`.
  */
 export function getApiResponseMessage(error: unknown): string {
-  const fallback = error instanceof Error ? error.message : String(error);
-
-  if (!(error instanceof APIError)) {
-    return fallback;
-  }
-
-  const data = error.response?.data;
-
-  if (typeof data?.error === 'string') {
-    return data.error;
-  }
-
-  if (typeof data?.message === 'string') {
-    return data.message;
-  }
-
-  return fallback;
+  return error instanceof Error ? error.message : String(error);
 }

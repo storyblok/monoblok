@@ -159,12 +159,14 @@ export class APIError extends Error {
     // the 422 rewrite above already produced a specific message.
     if (!customMessage && this.message === API_ERRORS[errorId]) {
       const data = this.response?.data;
-      const serverMessage
-        = typeof data?.error === 'string' && data.error
-          ? data.error
-          : typeof data?.message === 'string' && data.message
-            ? data.message
-            : undefined;
+      let serverMessage: string | undefined;
+
+      if (typeof data?.error === 'string' && data.error) {
+        serverMessage = data.error;
+      }
+      else if (typeof data?.message === 'string' && data.message) {
+        serverMessage = data.message;
+      }
 
       if (serverMessage) {
         this.message = serverMessage;

@@ -3,8 +3,7 @@ import { handleError, toError } from '../../../utils';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { getUI } from '../../../lib/ui';
-import { schemaCommand } from '../command';
-import type { FormatOption, LevelOption, ValidationRunResult } from '../../../utils/validation';
+import type { FormatOption, LevelOption, ValidationRunResult } from '../../../lib/validation';
 import {
   countIssues,
   formatJson,
@@ -15,7 +14,8 @@ import {
   parseLevel,
   validateSchema,
   writeValidationReport,
-} from '../../../utils/validation';
+} from '../../../lib/validation';
+import { schemaCommand } from '../command';
 
 interface SchemaValidateOptions {
   level: string;

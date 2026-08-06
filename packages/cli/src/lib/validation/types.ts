@@ -1,4 +1,4 @@
-import { CommandError } from '../error';
+import { CommandError } from '../../utils/error';
 import type { ValidationIssue } from './adapter';
 
 /** Display filter (threshold). Never affects exit codes or summary totals. */

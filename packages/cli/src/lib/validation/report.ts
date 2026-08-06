@@ -1,4 +1,4 @@
-import type { Reporter } from '../../lib/reporter/reporter';
+import type { Reporter } from '../reporter/reporter';
 import type { ValidationRunResult } from './types';
 import { countIssues } from './filter';
 

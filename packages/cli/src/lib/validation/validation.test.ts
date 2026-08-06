@@ -8,7 +8,7 @@ import { formatJson } from './format-json';
 import { formatPretty } from './format-pretty';
 import { entityToHeader, entityToRef, groupIssuesByEntity } from './group';
 import { writeValidationReport } from './report';
-import type { Reporter } from '../../lib/reporter/reporter';
+import type { Reporter } from '../reporter/reporter';
 
 const error: ValidationIssue = {
   severity: 'error',

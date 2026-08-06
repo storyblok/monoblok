@@ -5,8 +5,8 @@
  */
 
 import type { SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity } from '@storyblok/schema';
-import { CommandError } from '../error';
-import { collectSchemaExports, loadSchemaModule } from '../schema/classify-exports';
+import { CommandError } from '../../utils/error';
+import { collectSchemaExports, loadSchemaModule } from '../../utils/schema/classify-exports';
 
 export type { SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity };
 

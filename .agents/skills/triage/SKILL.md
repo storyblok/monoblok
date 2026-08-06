@@ -1,7 +1,7 @@
 ---
 name: triage
 description: Use when asked to triage, assess, or categorize GitHub issues or Linear tickets
-model: haiku
+model: sonnet
 ---
 
 # Triage Issues

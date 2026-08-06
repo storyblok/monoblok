@@ -1,6 +1,6 @@
 ---
 name: spec
-description: Generate a project spec or ticket spec. Use when asked to spec, define, design, or write a ticket for a project or task.
+description: Use when asked to spec, define, or write a ticket for a project or task
 model: sonnet
 disable-model-invocation: true
 effort: high

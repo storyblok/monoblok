@@ -1,6 +1,6 @@
 ---
 name: qa-engineer-manual
-description: Plan and perform manual tests for Storyblok monoblok packages against a real, seeded Storyblok space
+description: Use when the user requests manual testing, QA, or reproduction of a bug report for a package against a real Storyblok space
 ---
 
 # QA Engineer for Manual Testing
@@ -21,6 +21,7 @@ Use this skill when the user requests manual testing of features. We try to have
    - Test all happy paths.
    - Test error scenarios.
    - Consider possible edge cases.
+3. If the feature holds state, keeps working after it has responded, or ships to more than one runtime, load [Runtime and lifetime checks](./runtime-checklist.md).
 
 ## Seeding
 
@@ -62,7 +63,7 @@ node ./packages/cli/dist/index.mjs login --token "$STORYBLOK_TOKEN" --region eu
 ### Seed a scenario
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories
 ```
 
@@ -75,7 +76,7 @@ Packages might define their own scenarios in `./packages/PACKAGE_NAME/test/scena
 Use `--scenario-dir` to point at a scenarios directory outside of qa-engineer-manual — for example, scenarios defined by a package in its `./test/scenarios` directory.
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-rich-content \
   --scenario-dir packages/migrations/test/scenarios
 ```
@@ -85,7 +86,7 @@ External scenarios follow the same structure as built-in ones. Default component
 ### Skip specific resource types
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories \
   --skip-datasources
 ```
@@ -97,18 +98,18 @@ Flags: `--skip-components`, `--skip-datasources`, `--skip-assets`, `--skip-stori
 By default, seeding wipes the space first. Use `--no-clean` to push additively — useful for layering multiple scenarios or adding data to an existing space.
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories
 
 # Later, add more data without wiping:
-bash .claude/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-many-assets --no-clean --skip-components
 ```
 
 ### Clean up a space
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh
+bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh
 ```
 
 Deletes all stories, components (except the default `page` component), assets, asset folders, and internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with `--space <id>`). This runs automatically before every seed, but can also be used standalone.
@@ -120,7 +121,7 @@ Shared (org-level) asset libraries are global: they belong to the organization a
 Because this removes all content inside the library regardless of name, only run it against a dedicated QA library, never a shared library that holds real org content.
 
 ```bash
-bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
+bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 ```
 
 Inspect a library first with `list.sh --resource shared-assets|shared-folders|shared-tags`. Package guides (for example `packages/cli/test/GUIDE.md`) describe the CLI push/pull workflow against libraries.

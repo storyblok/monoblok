@@ -1,6 +1,6 @@
 ---
 name: qa-engineer-unit
-description: Write focused unit tests for complex logic with Vitest
+description: Use when adding or changing unit tests for logic in a package
 ---
 
 # QA Engineer for Unit Testing
@@ -13,7 +13,7 @@ description: Write focused unit tests for complex logic with Vitest
 
 ## When to use
 
-Unit tests are optional and only required for complex code paths that are hard to cover in integration tests. Use this skill to supplement the required integration coverage. Do not use it to replace integration tests.
+Unit tests are optional and only required for complex code paths that are hard to cover in integration tests. Integration coverage is required for every behavior change.
 
 ## Best practices
 

@@ -1,7 +1,7 @@
 ---
 name: triage
-description: Triage GitHub issues or Linear tickets — classify type, assess priority, check reproducibility, detect duplicates. Use when asked to triage, assess, or categorize issues.
-model: haiku
+description: Use when asked to triage, assess, or categorize GitHub issues or Linear tickets
+model: sonnet
 ---
 
 # Triage Issues
@@ -31,8 +31,8 @@ gh issue view <number> --repo storyblok/monoblok --json title,body,labels,state,
 
 **Linear:**
 ```bash
-bash .claude/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
-bash .claude/skills/triage/scripts/linear-fetch.sh triage
+bash .agents/skills/triage/scripts/linear-fetch.sh issue DX-123 DX-456
+bash .agents/skills/triage/scripts/linear-fetch.sh triage
 ```
 
 ### Step 3: Assess each ticket

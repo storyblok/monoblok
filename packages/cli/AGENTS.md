@@ -5,6 +5,7 @@
 | Need | Put it here |
 | --- | --- |
 | Top-level CLI registration | `src/index.ts` import |
+| Module initialization, global `preAction` behavior | `src/program.ts` |
 | Commander command definition | `src/commands/<name>/index.ts` or `command.ts` |
 | API calls, filesystem writes, transformations | `actions.ts` |
 | Option constants | `constants.ts` |
@@ -15,6 +16,10 @@
 | Config resolution, global option behavior | `src/lib/config/` |
 | Structured logs | `src/lib/logger/` |
 | Machine-readable command reports | `src/lib/reporter/` |
+
+## Module initialization
+
+The `preAction` hook in `src/program.ts` initializes everything in order: config → session and API client → logger → UI → reporter → command action. Anything a command action relies on is already resolved by the time it runs, so read config through `command.optsWithGlobals()` and reach for modules through their getters rather than initializing them yourself.
 
 ## Terminal output
 
@@ -60,20 +65,25 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { join } from 'pathe';
 
 import '../index';
 import { storiesCommand } from '../command';
+import { directories } from '../../constants';
+import { resolveCommandPath } from '../../utils/filesystem';
 
 const server = setupServer();
 
-beforeAll(() => server.listen());
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
+
+const storiesDir = resolveCommandPath(directories.stories, '12345');
 
 const preconditions = {
   hasEmptyStoriesDirectory() {
     vol.fromJSON({
-      '.storyblok/stories/12345/.gitkeep': '',
+      [join(storiesDir, '.gitkeep')]: '',
     });
   },
   canPullStory(story: { id: number; slug: string; uuid: string }) {
@@ -102,6 +112,8 @@ describe('stories pull command', () => {
   });
 });
 ```
+
+Resolve paths with `resolveCommandPath` and the `directories` constants instead of hardcoding `.storyblok/...`, so a layout change does not break every test. Name each precondition after the state it establishes, including the failure ones (`failsToUpdateRemoteStories`), so a test reads as its own setup.
 
 ## Command patterns
 
@@ -149,3 +161,13 @@ Use the logger for non-user-facing runtime details:
 const logger = getLogger();
 logger.info('Pulling components started', { space, componentName });
 ```
+
+## Older commands
+
+Not every command has been migrated. When you touch one that has not, bring it along:
+
+1. Replace raw `Spinner` with `ui.createSpinner()`, which handles test suppression itself
+2. Remove `isVitest`; command code must never import it
+3. Add `getLogger()` for structured logging
+
+`src/commands/datasources/pull/` is the canonical migrated command.

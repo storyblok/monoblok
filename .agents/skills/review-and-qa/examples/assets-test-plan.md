@@ -7,13 +7,16 @@ description: Example of a detailed test plan for a CLI feature
 
 ## Environment setup
 
+Run everything from the repo root: the qa-engineer-manual scripts load `.env.qa-engineer-manual` from the current working directory.
+
 ```bash
-cd ./packages/cli
-./.claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh
-./.claude/skills/qa-engineer-manual/scripts/cleanup-local.sh
 pnpm nx build storyblok
-source ./.env.qa
-./dist/index.mjs logout && ./dist/index.mjs login --token "$STORYBLOK_TOKEN" --region eu
+set -a && source ./.env.qa-engineer-manual && set +a
+cli="node ./packages/cli/dist/index.mjs"
+
+bash ./.agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh
+bash ./.agents/skills/qa-engineer-manual/scripts/cleanup-local.sh
+$cli logout && $cli login --token "$STORYBLOK_TOKEN" --region eu
 ```
 
 ## Test cases
@@ -23,8 +26,8 @@ source ./.env.qa
 #### 1.1 Basic pull
 
 ```bash
-./.claude/skills/qa-engineer-manual/scripts/asset-create.sh
-./dist/index.mjs assets pull --space $STORYBLOK_SPACE_ID
+bash ./.agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
+$cli assets pull --space $STORYBLOK_SPACE_ID
 ```
 
 **Verify:**
@@ -37,8 +40,8 @@ source ./.env.qa
 #### 1.2 Pull with query filter
 
 ```bash
-./dist/index.mjs assets pull --space $STORYBLOK_SPACE_ID --query "in_folder=-1"
-./dist/index.mjs assets pull --space $STORYBLOK_SPACE_ID --query "search=hero"
+$cli assets pull --space $STORYBLOK_SPACE_ID --query "in_folder=-1"
+$cli assets pull --space $STORYBLOK_SPACE_ID --query "search=hero"
 ```
 
 **Verify:**
@@ -48,7 +51,7 @@ source ./.env.qa
 #### 1.3 Pull dry run
 
 ```bash
-./dist/index.mjs assets pull --space $STORYBLOK_SPACE_ID --dry-run
+$cli assets pull --space $STORYBLOK_SPACE_ID --dry-run
 ```
 
 **Verify:**
@@ -61,9 +64,11 @@ source ./.env.qa
 #### 2.1 Push to different space (migration)
 
 ```bash
-./.claude/skills/qa-engineer-manual/scenarios/has-nested-asset-folders.sh
-./dist/index.mjs assets pull --space $STORYBLOK_SPACE_ID
-./dist/index.mjs assets push --space $STORYBLOK_SPACE_ID_TARGET --from $STORYBLOK_SPACE_ID
+bash ./.agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+  --scenario has-nested-asset-folders \
+  --scenario-dir packages/cli/test/scenarios
+$cli assets pull --space $STORYBLOK_SPACE_ID
+$cli assets push --space $STORYBLOK_SPACE_ID_TARGET --from $STORYBLOK_SPACE_ID
 ```
 
 **Verify:**
@@ -76,7 +81,7 @@ source ./.env.qa
 
 ```bash
 # Start push, interrupt with Ctrl+C, then resume:
-./dist/index.mjs assets push --space $STORYBLOK_SPACE_ID_TARGET --from $STORYBLOK_SPACE_ID
+$cli assets push --space $STORYBLOK_SPACE_ID_TARGET --from $STORYBLOK_SPACE_ID
 ```
 
 **Verify:**
@@ -88,10 +93,14 @@ source ./.env.qa
 
 #### 3.1 Push local file with sidecar JSON
 
+`generate-asset.sh` copies the template PNG to `--copy-png` and writes the sidecar JSON to stdout.
+
 ```bash
-./.claude/skills/qa-engineer-manual/scripts/png-create.sh ./\.claude/tmp/local-asset.png
-echo '{"meta_data":{"alt":"Test Alt"}}' > ./.claude/tmp/local-asset.json
-./dist/index.mjs assets push --space $STORYBLOK_SPACE_ID_TARGET ./.claude/tmp/local-asset.png
+mkdir -p ./.claude/tmp
+bash ./.agents/skills/qa-engineer-manual/scripts/generate-asset.sh \
+  --filename "local-asset.png" --alt "Test Alt" \
+  --copy-png ./.claude/tmp/local-asset.png > ./.claude/tmp/local-asset.json
+$cli assets push --space $STORYBLOK_SPACE_ID_TARGET ./.claude/tmp/local-asset.png
 ```
 
 **Verify:**
@@ -101,7 +110,7 @@ echo '{"meta_data":{"alt":"Test Alt"}}' > ./.claude/tmp/local-asset.json
 #### 3.2 Push external URL
 
 ```bash
-./dist/index.mjs assets push --space $STORYBLOK_SPACE_ID_TARGET "https://picsum.photos/id/1/800/600.jpg"
+$cli assets push --space $STORYBLOK_SPACE_ID_TARGET "https://picsum.photos/id/1/800/600.jpg"
 ```
 
 **Verify:**
@@ -114,7 +123,7 @@ echo '{"meta_data":{"alt":"Test Alt"}}' > ./.claude/tmp/local-asset.json
 #### 4.1 Invalid space ID
 
 ```bash
-./dist/index.mjs assets pull --space 99999999
+$cli assets pull --space 99999999
 ```
 
 **Verify:**
@@ -124,7 +133,7 @@ echo '{"meta_data":{"alt":"Test Alt"}}' > ./.claude/tmp/local-asset.json
 #### 4.2 Invalid asset path
 
 ```bash
-./dist/index.mjs assets push --space $STORYBLOK_SPACE_ID_TARGET ./nonexistent/file.png
+$cli assets push --space $STORYBLOK_SPACE_ID_TARGET ./nonexistent/file.png
 ```
 
 **Verify:**

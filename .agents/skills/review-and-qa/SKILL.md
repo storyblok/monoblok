@@ -1,6 +1,6 @@
 ---
 name: review-and-qa
-description: Review the changes for <commit|branch|pr> and create a QA review plan
+description: Use when asked to review a commit, branch, or PR, or to produce a QA plan for changes
 model: opus
 context: fork
 agent: reviewer

@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Create an implementation plan for a task. Use when asked to plan, design, or architect a solution.
+description: Use when asked to plan, design, or architect a solution, before writing implementation code
 model: sonnet
 effort: high
 ---

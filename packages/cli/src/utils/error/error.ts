@@ -121,3 +121,31 @@ export function handleError(error: Error | FetchError, verbose = false, context?
 export function logOnlyError(error: Error | FetchError, context?: LogContext): void {
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 }
+
+/**
+ * Extracts a human-readable message from an API error response body when present,
+ * falling back to `error.message`.
+ *
+ * Handles response bodies of the form `{ error: "..." }` or `{ message: "..." }`,
+ * which are common across Storyblok MAPI endpoints. Generic enough to be used by
+ * any command that surfaces per-item API failures to the user.
+ */
+export function getApiResponseMessage(error: unknown): string {
+  const fallback = error instanceof Error ? error.message : String(error);
+
+  if (!(error instanceof APIError)) {
+    return fallback;
+  }
+
+  const data = error.response?.data;
+
+  if (typeof data?.error === 'string') {
+    return data.error;
+  }
+
+  if (typeof data?.message === 'string') {
+    return data.message;
+  }
+
+  return fallback;
+}

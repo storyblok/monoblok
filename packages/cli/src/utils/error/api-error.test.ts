@@ -224,3 +224,105 @@ describe('handleAPIError', () => {
     }
   });
 });
+
+describe('aPIError server message extraction', () => {
+  it('should use data.error string as message when present', () => {
+    const error = new FetchError('Not Found', {
+      status: 404,
+      statusText: 'Not Found',
+      data: { error: 'Story not found in this space' },
+    });
+    try {
+      handleAPIError('pull_story', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('Story not found in this space');
+      expect((e as APIError).messageStack).toContain('Story not found in this space');
+    }
+  });
+
+  it('should use data.message string as message when data.error is absent', () => {
+    const error = new FetchError('Unauthorized', {
+      status: 401,
+      statusText: 'Unauthorized',
+      data: { message: 'Token has expired' },
+    });
+    try {
+      handleAPIError('get_user', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('Token has expired');
+      expect((e as APIError).messageStack).toContain('Token has expired');
+    }
+  });
+
+  it('should prefer data.error over data.message when both are present', () => {
+    const error = new FetchError('Bad Request', {
+      status: 400,
+      statusText: 'Bad Request',
+      data: { error: 'Invalid slug format', message: 'Something went wrong' },
+    });
+    try {
+      handleAPIError('create_story', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('Invalid slug format');
+    }
+  });
+
+  it('should not override a customMessage with the server message', () => {
+    const error = new FetchError('Not Found', {
+      status: 404,
+      statusText: 'Not Found',
+      data: { error: 'Story not found in this space' },
+    });
+    try {
+      handleAPIError('pull_story', error, 'Custom override message');
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('Custom override message');
+    }
+  });
+
+  it('should not override the 422 name-taken rewrite with the server message', () => {
+    const error = new FetchError('Unprocessable', {
+      status: 422,
+      statusText: 'Unprocessable Entity',
+      data: { name: ['has already been taken'], error: 'Validation failed' },
+    });
+    try {
+      handleAPIError('push_component', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('A component with this name already exists');
+    }
+  });
+
+  it('should fall back to generic API_ERRORS message when data has no error/message string', () => {
+    const error = new FetchError('Server Error', {
+      status: 500,
+      statusText: 'Internal Server Error',
+      data: { code: 500 },
+    });
+    try {
+      handleAPIError('pull_stories', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('The server returned an error');
+    }
+  });
+
+  it('should not replace message with an empty string from data.error', () => {
+    const error = new FetchError('Server Error', {
+      status: 500,
+      statusText: 'Internal Server Error',
+      data: { error: '' },
+    });
+    try {
+      handleAPIError('pull_stories', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('The server returned an error');
+    }
+  });
+});

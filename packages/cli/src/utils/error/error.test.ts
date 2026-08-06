@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getResponseStatus, handleError, toError } from './error';
+import { getApiResponseMessage, getResponseStatus, handleError, toError } from './error';
 import { CommandError } from './command-error';
+import type { APIError } from './api-error';
+import { handleAPIError } from './api-error';
+import { FetchError } from '../fetch';
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -97,5 +100,42 @@ describe('getResponseStatus', () => {
   it('should extract a numeric status from an error with a response', () => {
     const err = Object.assign(new Error('fail'), { response: { status: 403 } });
     expect(getResponseStatus(err)).toBe(403);
+  });
+});
+
+describe('getApiResponseMessage', () => {
+  it('should return error.message for a plain Error', () => {
+    expect(getApiResponseMessage(new Error('plain error'))).toBe('plain error');
+  });
+
+  it('should return String(error) for non-Error values', () => {
+    expect(getApiResponseMessage('oops')).toBe('oops');
+  });
+
+  it('should return APIError.message when response data has no string fields', () => {
+    const error = new FetchError('Server Error', { status: 500, statusText: 'Internal Server Error', data: { code: 500 } });
+    let caught: APIError | undefined;
+    try { handleAPIError('pull_stories', error); }
+    catch (e) { caught = e as APIError; }
+    expect(getApiResponseMessage(caught)).toBe(caught!.message);
+  });
+
+  it('should return the server-provided message from APIError.response.data.error', () => {
+    const error = new FetchError('Not Found', {
+      status: 404,
+      statusText: 'Not Found',
+      data: { error: 'Story not found in this space' },
+    });
+    let caught: APIError | undefined;
+    try { handleAPIError('pull_story', error); }
+    catch (e) { caught = e as APIError; }
+    // APIError.message is already 'Story not found in this space' after the constructor enhancement,
+    // and getApiResponseMessage reads it from data.error — both paths agree.
+    expect(getApiResponseMessage(caught)).toBe('Story not found in this space');
+  });
+
+  it('should fall back to error.message for non-APIError errors with no response.data', () => {
+    const err = Object.assign(new Error('network failure'), { response: { status: 503 } });
+    expect(getApiResponseMessage(err)).toBe('network failure');
   });
 });

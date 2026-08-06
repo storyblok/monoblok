@@ -152,6 +152,32 @@ export class APIError extends Error {
         }
       });
     }
+
+    // Replace the generic API_ERRORS description with a server-provided human-readable
+    // message when the response body carries one (e.g. { error: "..." } or
+    // { message: "..." }). Skipped when a customMessage was already provided or when
+    // the 422 rewrite above already produced a specific message.
+    if (!customMessage && this.message === API_ERRORS[errorId]) {
+      const data = this.response?.data;
+      const serverMessage
+        = typeof data?.error === 'string' && data.error
+          ? data.error
+          : typeof data?.message === 'string' && data.message
+            ? data.message
+            : undefined;
+
+      if (serverMessage) {
+        this.message = serverMessage;
+        // Replace the generic tail entry so the rendered stack stays clean.
+        const lastIdx = this.messageStack.length - 1;
+        if (lastIdx >= 0 && this.messageStack[lastIdx] === API_ERRORS[errorId]) {
+          this.messageStack[lastIdx] = serverMessage;
+        }
+        else {
+          this.messageStack.push(serverMessage);
+        }
+      }
+    }
   }
 
   getInfo() {

@@ -1023,7 +1023,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('The server returned an error');
+    expect(logFile).toContain('Creation failed');
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
@@ -1052,7 +1052,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('The server returned an error');
+    expect(logFile).toContain('Update failed');
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
@@ -1075,7 +1075,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('The server returned an error');
+    expect(logFile).toContain('Creation failed');
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
@@ -1108,7 +1108,7 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('The server returned an error');
+    expect(logFile).toContain('Update failed');
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );

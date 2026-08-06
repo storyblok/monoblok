@@ -7,7 +7,7 @@ import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStorySt
 import { validateStoryAgainstSchemas } from '../stories/validate-story';
 import type { Logger } from '../../lib/logger/logger';
 import type { Report } from '../../lib/reporter/reporter';
-import { logOnlyError } from '../../utils/error/error';
+import { getApiResponseMessage, logOnlyError } from '../../utils/error/error';
 import type {
   AppendAssetFolderManifestTransport,
   AppendAssetManifestTransport,
@@ -116,15 +116,6 @@ export const upsertAssetsPipeline = async ({
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 
-  // Extract the human-readable message from the API response body when present
-  // (e.g. { error: "..." } or { message: "..." }), falling back to error.message.
-  const getAssetErrorMessage = (error: Error): string => {
-    const data = (error as any)?.response?.data;
-    return (typeof data?.error === 'string' ? data.error : undefined)
-      ?? (typeof data?.message === 'string' ? data.message : undefined)
-      ?? error.message;
-  };
-
   const steps = [];
   // Use the asset provided via the CLI.
   if (assetBinaryPath && assetData) {
@@ -138,7 +129,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
-        ui.warn(`Failed to read "${assetData?.filename ?? assetBinaryPath}": ${getAssetErrorMessage(error)}`);
+        ui.warn(`Failed to read "${assetData?.filename ?? assetBinaryPath}": ${getApiResponseMessage(error)}`);
       },
     }));
   }
@@ -154,7 +145,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
-        ui.warn(`Failed to read asset: ${getAssetErrorMessage(error)}`);
+        ui.warn(`Failed to read asset: ${getApiResponseMessage(error)}`);
       },
     }));
   }
@@ -182,7 +173,7 @@ export const upsertAssetsPipeline = async ({
     onAssetError: (error, asset) => {
       summary.failed += 1;
       logOnlyError(error, { assetId: asset.id });
-      ui.warn(`Failed to push "${asset.filename ?? asset.short_filename ?? asset.id}": ${getAssetErrorMessage(error)}`);
+      ui.warn(`Failed to push "${asset.filename ?? asset.short_filename ?? asset.id}": ${getApiResponseMessage(error)}`);
     },
   }));
   await pipeline(steps);

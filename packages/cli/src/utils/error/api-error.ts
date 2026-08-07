@@ -83,6 +83,81 @@ function getErrorId(status: number): keyof typeof API_ERRORS {
   }
 }
 
+/**
+ * Canonical HTTP reason phrases for status codes where MAPI echoes them back
+ * as an uninformative `{"error":"..."}` body. HTTP/2 sends an empty statusText,
+ * so we can't rely on the response header alone — fall back to the phrase here.
+ */
+const HTTP_REASON_PHRASES: Partial<Record<number, string>> = {
+  401: 'Unauthorized',
+  403: 'Forbidden',
+};
+
+/**
+ * Returns the first non-empty string field from `data` that is not identical
+ * to the HTTP statusText or the canonical HTTP reason phrase for the status code.
+ * Skipping those prevents echoed reason phrases (e.g. {"error":"Unauthorized"} on 401)
+ * from replacing the more informative API_ERRORS constants. HTTP/2 sends an empty
+ * statusText, so the canonical phrase is used as a fallback comparison value.
+ * Checks `error` before `message` to match MAPI's field priority.
+ */
+function extractServerString(data: Record<string, unknown>, status: number, statusText: string | undefined): string | undefined {
+  const boringPhrase = statusText || HTTP_REASON_PHRASES[status] || '';
+  for (const field of [data.error, data.message]) {
+    if (typeof field === 'string' && field && field !== boringPhrase) {
+      return field;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Pushes `key: value` entries from `fields` into `stack` for every key whose
+ * value is a string array. Used for both top-level and nested MAPI 422 shapes.
+ */
+function pushFieldErrors(stack: string[], fields: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(fields)) {
+    if (Array.isArray(value)) {
+      for (const e of value) {
+        stack.push(`${key}: ${e}`);
+      }
+    }
+  }
+}
+
+/**
+ * Returns the first raw string value from a field-error map, ignoring the key.
+ * Used to set a clean summary message without leaking internal field names like
+ * Rails' "base" key or API-specific parameter names.
+ * Covers both flat shapes {"slug":["taken"]} and nested {"error":{"base":["…"]}}.
+ */
+function firstFieldValue(data: Record<string, unknown>): string | undefined {
+  for (const value of Object.values(data)) {
+    if (Array.isArray(value) && typeof value[0] === 'string' && value[0]) {
+      return value[0];
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      const nested = firstFieldValue(value as Record<string, unknown>);
+      if (nested) { return nested; }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Replaces the last entry in `stack` when it equals `target`; otherwise appends.
+ * Used to swap the generic API_ERRORS placeholder with a server-provided message.
+ */
+function replaceOrAppend(stack: string[], target: string, replacement: string): void {
+  const lastIdx = stack.length - 1;
+  if (lastIdx >= 0 && stack[lastIdx] === target) {
+    stack[lastIdx] = replacement;
+  }
+  else {
+    stack.push(replacement);
+  }
+}
+
 export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown, customMessage?: string): never {
   if (error instanceof FetchError) {
     const errorId = getErrorId(error.response.status);
@@ -132,11 +207,23 @@ export class APIError extends Error {
     }
     this.messageStack.push(customMessage || API_ERRORS[errorId]);
 
+    const responseData = this.response?.data as Record<string, unknown> | undefined;
+    const statusText = this.response?.statusText;
+
+    // Extract a server-provided human-readable message early so it is available
+    // both during the 422 block and for the final message override below.
+    // Guards: skip when customMessage was provided; skip when the server string
+    // merely echoes the HTTP reason phrase (e.g. {"error":"Unauthorized"} on 401 —
+    // HTTP/2 sends empty statusText, so we also compare against the canonical phrase).
+    const serverMessage = customMessage ? undefined : extractServerString(responseData ?? {}, this.code, statusText);
+
+    const stackLengthBefore422 = this.messageStack.length;
+
     if (this.code === 422) {
-      const responseData = this.response?.data as { [key: string]: string[] } | undefined;
       // Scope the "name already taken" rewrite to the action that raised it so a
       // folder create failure does not claim "component" (and vice versa).
-      if (responseData?.name?.[0] === 'has already been taken') {
+      const nameField = responseData?.name;
+      if (Array.isArray(nameField) && nameField[0] === 'has already been taken') {
         if (action === 'push_component_folder') {
           this.message = 'A component folder with this name already exists';
         }
@@ -144,40 +231,37 @@ export class APIError extends Error {
           this.message = 'A component with this name already exists';
         }
       }
-      Object.entries(responseData || {}).forEach(([key, errors]) => {
-        if (Array.isArray(errors)) {
-          errors.forEach((e) => {
-            this.messageStack.push(`${key}: ${e}`);
-          });
+
+      // Push top-level field arrays: {"slug":["taken"]}
+      pushFieldErrors(this.messageStack, responseData ?? {});
+
+      // Push one level of nesting: {"error":{"base":["msg"]}} / {"errors":{…}}
+      for (const key of ['error', 'errors'] as const) {
+        const nested = responseData?.[key];
+        if (nested !== null && typeof nested === 'object' && !Array.isArray(nested)) {
+          pushFieldErrors(this.messageStack, nested as Record<string, unknown>);
         }
-      });
+      }
     }
 
-    // Replace the generic API_ERRORS description with a server-provided human-readable
-    // message when the response body carries one (e.g. { error: "..." } or
-    // { message: "..." }). Skipped when a customMessage was already provided or when
-    // the 422 rewrite above already produced a specific message.
+    // Replace the generic API_ERRORS placeholder with the most specific message available.
+    // Priority: (1) top-level server string (e.g. {"error":"Your space must be verified…"}),
+    // (2) first raw field value from the 422 response (e.g. "This asset folder is not valid").
+    // The messageStack keeps full key:value entries for verbose display; this.message gets
+    // the raw value so internal field names (Rails "base", param names, etc.) don't leak through.
+    // Skipped when a customMessage was provided or when the 422 name-taken rewrite already
+    // produced a specific message.
     if (!customMessage && this.message === API_ERRORS[errorId]) {
-      const data = this.response?.data;
-      let serverMessage: string | undefined;
-
-      if (typeof data?.error === 'string' && data.error) {
-        serverMessage = data.error;
-      }
-      else if (typeof data?.message === 'string' && data.message) {
-        serverMessage = data.message;
-      }
-
       if (serverMessage) {
         this.message = serverMessage;
-        // Replace the generic tail entry so the rendered stack stays clean.
-        const lastIdx = this.messageStack.length - 1;
-        if (lastIdx >= 0 && this.messageStack[lastIdx] === API_ERRORS[errorId]) {
-          this.messageStack[lastIdx] = serverMessage;
-        }
-        else {
-          this.messageStack.push(serverMessage);
-        }
+        this.cause = serverMessage;
+        replaceOrAppend(this.messageStack, API_ERRORS[errorId], serverMessage);
+      }
+      else if (this.messageStack.length > stackLengthBefore422) {
+        // 422 with field errors — extract the first raw value from the response data
+        // (not from the formatted messageStack strings) so no key prefix leaks through.
+        this.message = firstFieldValue(responseData ?? {}) ?? this.messageStack[stackLengthBefore422];
+        this.cause = this.message;
       }
     }
   }

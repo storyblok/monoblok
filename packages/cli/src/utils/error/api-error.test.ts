@@ -325,4 +325,92 @@ describe('aPIError server message extraction', () => {
       expect((e as APIError).message).toBe('The server returned an error');
     }
   });
+
+  it('should NOT override message when server error string matches HTTP statusText (401 regression, HTTP/1.1)', () => {
+    // MAPI returns {"error":"Unauthorized"} for 401. The old code replaced the
+    // friendly "The user is not authorized to access the API" with "Unauthorized".
+    const error = new FetchError('Unauthorized', {
+      status: 401,
+      statusText: 'Unauthorized',
+      data: { error: 'Unauthorized' },
+    });
+    try {
+      handleAPIError('pull_components', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('The user is not authorized to access the API');
+      expect((e as APIError).cause).toBe('The user is not authorized to access the API');
+    }
+  });
+
+  it('should NOT override message when server error string matches canonical reason phrase (401 regression, HTTP/2 empty statusText)', () => {
+    // HTTP/2 sends empty statusText; MAPI still returns {"error":"Unauthorized"}.
+    // Without the canonical-phrase fallback the guard would pass and "Unauthorized"
+    // would replace the friendlier API_ERRORS.unauthorized constant.
+    const error = new FetchError('', {
+      status: 401,
+      statusText: '',
+      data: { error: 'Unauthorized' },
+    });
+    try {
+      handleAPIError('pull_components', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('The user is not authorized to access the API');
+      expect((e as APIError).cause).toBe('The user is not authorized to access the API');
+    }
+  });
+
+  it('should sync cause with message when a server message overrides the generic entry', () => {
+    const error = new FetchError('Not Found', {
+      status: 404,
+      statusText: 'Not Found',
+      data: { error: 'Space not found' },
+    });
+    try {
+      handleAPIError('pull_stories', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('Space not found');
+      expect((e as APIError).cause).toBe('Space not found');
+    }
+  });
+
+  it('should extract messages from 422 nested error object {"error":{"base":["msg"]}}', () => {
+    // Real MAPI asset-create shape: POST /assets with bad asset_folder_id
+    const error = new FetchError('Unprocessable Entity', {
+      status: 422,
+      statusText: 'Unprocessable Entity',
+      data: { error: { base: ['This asset folder is not valid'] } },
+    });
+    try {
+      handleAPIError('push_asset_create', error);
+    }
+    catch (e) {
+      expect((e as APIError).messageStack).toContain('base: This asset folder is not valid');
+      // message must surface the raw value without the "base:" key prefix
+      expect((e as APIError).message).toBe('This asset folder is not valid');
+    }
+  });
+
+  it('should extract messages from 422 nested error object with multiple fields', () => {
+    // Real MAPI asset-create shape: bad internal_tag_ids
+    const error = new FetchError('Unprocessable Entity', {
+      status: 422,
+      statusText: 'Unprocessable Entity',
+      data: { error: { internal_tag_ids: ['Invalid internal_tag, there is at least one internal_tag not found in our database'] } },
+    });
+    try {
+      handleAPIError('push_asset_create', error);
+    }
+    catch (e) {
+      expect((e as APIError).messageStack).toContain(
+        'internal_tag_ids: Invalid internal_tag, there is at least one internal_tag not found in our database',
+      );
+      // message surfaces the raw value without the field key prefix
+      expect((e as APIError).message).toBe(
+        'Invalid internal_tag, there is at least one internal_tag not found in our database',
+      );
+    }
+  });
 });

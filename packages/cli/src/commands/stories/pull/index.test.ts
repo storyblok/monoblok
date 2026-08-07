@@ -223,7 +223,7 @@ describe('stories pull command', () => {
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Internal Server Error'),
+      expect.stringContaining('The server returned an error'),
     );
   });
 
@@ -241,7 +241,7 @@ describe('stories pull command', () => {
     expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');
     // UI
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining('Internal Server Error'),
+      expect.stringContaining('The server returned an error'),
     );
   });
 });

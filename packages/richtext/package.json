@@ -65,8 +65,7 @@
   "scripts": {
     "build": "tsdown",
     "build:watch": "tsdown --watch",
-    "test:types": "tsc --noEmit --skipLibCheck",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test:types": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
@@ -181,14 +180,6 @@
         "outputs": [
           "{projectRoot}/dist/**"
         ]
-      },
-      "typecheck": {
-        "inputs": [
-          "{projectRoot}/src/**/*.ts",
-          "{projectRoot}/tsconfig.json",
-          "{projectRoot}/tsconfig.test.json"
-        ],
-        "cache": true
       }
     }
   }

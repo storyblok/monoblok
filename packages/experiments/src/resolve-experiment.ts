@@ -1,4 +1,5 @@
 import type { Assignment, Experiment, ExperimentVariant, Exposure } from './types';
+import { mapsSlug } from './find-experiment-by-slug';
 
 export interface ResolveExperimentOptions {
   experiments: Experiment[];
@@ -6,6 +7,11 @@ export interface ResolveExperimentOptions {
   assignment?: Assignment;
 }
 
+/**
+ * The outcome of resolving one slug for one visitor. Not an experiment itself:
+ * it holds what to render and what to report, while `Experiment` is the config
+ * from the API and `EventExperiment` is the identity carried on an event.
+ */
 export interface ResolvedExperiment {
   /** The slug to render: `original_slug` for control, `variant_slug` otherwise. */
   slug: string;
@@ -30,16 +36,13 @@ export function resolveExperiment({ experiments, slug, assignment }: ResolveExpe
   // can belong to multiple running experiments, so a slug-first lookup could pick
   // a different experiment than the one the visitor was bucketed into and drop the
   // assignment (no exposure, no remap).
-  const experiment = experiments.find(candidate => candidate.id === assignment.experimentId);
+  const experiment = experiments.find(candidate => candidate.id === assignment.experiment.id);
   if (!experiment) {
     return { slug };
   }
 
   // The assigned experiment must actually map this slug; otherwise pass through.
-  const mapsSlug = experiment.variants.some(variant =>
-    variant.story_mappings.some(mapping => mapping.original_slug === slug),
-  );
-  if (!mapsSlug) {
+  if (!mapsSlug(experiment, slug)) {
     return { slug };
   }
 
@@ -52,6 +55,7 @@ export function resolveExperiment({ experiments, slug, assignment }: ResolveExpe
     type: 'exposure',
     experiment: { id: experiment.id, name: experiment.name },
     variant: { name: variant.name, public_id: variant.public_id },
+    visitorId: assignment.visitorId,
   };
 
   // Control renders the original slug; a variant renders its mapped slug.

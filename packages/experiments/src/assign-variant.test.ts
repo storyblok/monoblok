@@ -20,9 +20,24 @@ describe('assignVariant', () => {
     }
   });
 
-  it('returns the experiment id with the assignment', () => {
+  it('returns the experiment identity with the assignment', () => {
+    // The identity, not only the id: it is what makes an assignment enough on
+    // its own to build a conversion event, with no lookup back into the payload.
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
+    expect(assignment?.experiment).toEqual({ id: 123, name: 'homepage_hero' });
+  });
+
+  it('still fills the deprecated experimentId', () => {
     const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
     expect(assignment?.experimentId).toBe(123);
+  });
+
+  it('returns the visitorId with the assignment', () => {
+    // An assignment is visitor-specific, so it has to carry the visitor: it is
+    // what lets a downstream exposure or conversion event identify the visitor
+    // without the caller re-threading it.
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
+    expect(assignment?.visitorId).toBe('visitor-1');
   });
 
   it('honors weights: 100/0 always assigns control', () => {

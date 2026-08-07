@@ -21,5 +21,8 @@ export async function loadConfig(options: {
     globalRc: false,
     dotenv: false,
     packageJson: false,
+    jitiOptions: {
+      tsconfigPaths: true,
+    },
   });
 }

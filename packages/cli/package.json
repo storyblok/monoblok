@@ -62,7 +62,7 @@
     "diff": "^8.0.4",
     "dotenv": "^16.5.0",
     "filenamify": "^6.0.0",
-    "jiti": "^2.6.1",
+    "jiti": "catalog:",
     "json-schema-to-typescript": "^15.0.4",
     "minimatch": "^10.0.3",
     "octokit": "^5.0.3",

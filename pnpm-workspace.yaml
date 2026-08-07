@@ -10,6 +10,7 @@ catalog:
   # namespace), otherwise a duplicate ReactNode causes type errors.
   "@types/react": 19.2.3
   "@types/react-dom": 19.2.3
+  jiti: 2.7.0
 
 injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:

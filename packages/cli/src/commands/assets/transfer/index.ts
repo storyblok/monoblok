@@ -7,6 +7,7 @@ import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
 import { handleError, logOnlyError, toError } from '../../../utils/error/error';
+import { FailureReasonGroup } from '../../../utils/failure-reason-group';
 import { fetchAllSpaceAssetIds, transferAssets } from '../actions';
 
 const transferCmd = assetsCommand
@@ -123,23 +124,13 @@ transferCmd
     ui.info(`Transfer results: ${summary.succeeded} transferred, ${summary.failed} failed (of ${summary.total}).`);
 
     if (summary.failed > 0) {
-      // Group failures by reason so the output stays a short summary even when
-      // thousands of assets fail with the same cause, instead of printing one
-      // line per failed asset. Per-asset detail is still in the log/report.
-      const countsByReason = new Map<string, number>();
+      const failures = new FailureReasonGroup();
       for (const result of results) {
         if (result.status === 'failed') {
-          const reason = result.reason ?? 'Unknown error';
-          countsByReason.set(reason, (countsByReason.get(reason) ?? 0) + 1);
+          failures.record(result.reason ?? 'Unknown error');
         }
       }
-      const byReason = [...countsByReason.entries()].sort((a, b) => b[1] - a[1]);
-      const MAX_REASONS = 10;
-      const lines = byReason.slice(0, MAX_REASONS).map(([reason, count]) => `✗ ${reason} (${count})`);
-      if (byReason.length > MAX_REASONS) {
-        lines.push(`… and ${byReason.length - MAX_REASONS} more failure reason(s)`);
-      }
-      ui.list(lines);
+      ui.list(failures.toListLines('transfer'));
     }
 
     reporter.addSummary('transferResults', summary);

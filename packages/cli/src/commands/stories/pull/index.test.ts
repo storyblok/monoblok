@@ -229,7 +229,7 @@ describe('stories pull command', () => {
 
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('The server returned an error');
+    expect(logFile).toContain('Internal Server Error');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":0,"failed":1}');
     expect(logFile).toContain('"fetchStories":{"total":0,"succeeded":0,"failed":0}');
     expect(logFile).toContain('"save":{"total":0,"succeeded":0,"failed":0}');
@@ -247,7 +247,7 @@ describe('stories pull command', () => {
 
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('The server returned an error');
+    expect(logFile).toContain('Internal Server Error');
     expect(logFile).toContain('"fetchStoryPages":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":2,"failed":1}');
     expect(logFile).toContain('"save":{"total":2,"succeeded":2,"failed":0}');

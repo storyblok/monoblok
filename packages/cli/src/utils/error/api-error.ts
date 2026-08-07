@@ -83,15 +83,70 @@ function getErrorId(status: number): keyof typeof API_ERRORS {
   }
 }
 
+/**
+ * HTTP reason phrases for status codes where MAPI echoes them back verbatim.
+ * HTTP/2 sends empty statusText, so we can't rely on the response header alone.
+ */
+const HTTP_REASON_PHRASES: Partial<Record<number, string>> = {
+  401: 'Unauthorized',
+  403: 'Forbidden',
+};
+
+/** Returns the first data.error / data.message string, unless it just echoes the HTTP reason phrase. */
+function extractServerString(data: Record<string, unknown>, status: number, statusText: string | undefined): string | undefined {
+  const boringPhrase = statusText || HTTP_REASON_PHRASES[status] || '';
+  for (const field of [data.error, data.message]) {
+    if (typeof field === 'string' && field && field !== boringPhrase) {
+      return field;
+    }
+  }
+  return undefined;
+}
+
+function pushFieldErrors(stack: string[], fields: Record<string, unknown>): void {
+  for (const [key, value] of Object.entries(fields)) {
+    if (Array.isArray(value)) {
+      for (const e of value) {
+        stack.push(`${key}: ${e}`);
+      }
+    }
+  }
+}
+
+/**
+ * Key prefixes to strip when promoting a field error to this.message.
+ * "base" is the Rails convention for model-level errors not tied to a field.
+ * Add entries here to suppress other internal keys without changing any logic.
+ */
+const STRIP_FIELD_PREFIXES = ['base: '] as const;
+
+function stripBasePrefix(entry: string): string {
+  for (const prefix of STRIP_FIELD_PREFIXES) {
+    if (entry.startsWith(prefix)) {
+      return entry.slice(prefix.length);
+    }
+  }
+  return entry;
+}
+
+function replaceOrAppend(stack: string[], target: string, replacement: string): void {
+  const lastIdx = stack.length - 1;
+  if (lastIdx >= 0 && stack[lastIdx] === target) {
+    stack[lastIdx] = replacement;
+  }
+  else {
+    stack.push(replacement);
+  }
+}
+
 export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown, customMessage?: string): never {
   if (error instanceof FetchError) {
     const errorId = getErrorId(error.response.status);
     throw new APIError(errorId, action, error, customMessage);
   }
 
-  // Handle non-FetchError objects that have a response property (e.g. mapi-client ClientError).
-  // ClientError itself doesn't carry request context, but some wrappers attach
-  // a `request` field — forward it best-effort so verbose output can show it.
+  // Handle non-FetchError objects with a response property (e.g. mapi-client ClientError).
+  // Forward request context best-effort so --verbose can show it.
   const response = (error as any)?.response;
   if (response?.status) {
     const reqCandidate = (error as any)?.request;
@@ -132,11 +187,17 @@ export class APIError extends Error {
     }
     this.messageStack.push(customMessage || API_ERRORS[errorId]);
 
+    const responseData = this.response?.data as Record<string, unknown> | undefined;
+    const statusText = this.response?.statusText;
+
+    const serverMessage = customMessage ? undefined : extractServerString(responseData ?? {}, this.code, statusText);
+
+    const stackLengthBefore422 = this.messageStack.length;
+
     if (this.code === 422) {
-      const responseData = this.response?.data as { [key: string]: string[] } | undefined;
-      // Scope the "name already taken" rewrite to the action that raised it so a
-      // folder create failure does not claim "component" (and vice versa).
-      if (responseData?.name?.[0] === 'has already been taken') {
+      // Scope the name-taken rewrite to the action that raised it.
+      const nameField = responseData?.name;
+      if (Array.isArray(nameField) && nameField[0] === 'has already been taken') {
         if (action === 'push_component_folder') {
           this.message = 'A component folder with this name already exists';
         }
@@ -144,13 +205,30 @@ export class APIError extends Error {
           this.message = 'A component with this name already exists';
         }
       }
-      Object.entries(responseData || {}).forEach(([key, errors]) => {
-        if (Array.isArray(errors)) {
-          errors.forEach((e) => {
-            this.messageStack.push(`${key}: ${e}`);
-          });
+
+      pushFieldErrors(this.messageStack, responseData ?? {});
+
+      // One level of nesting: {"error":{"base":["msg"]}} / {"errors":{…}}
+      for (const key of ['error', 'errors'] as const) {
+        const nested = responseData?.[key];
+        if (nested !== null && typeof nested === 'object' && !Array.isArray(nested)) {
+          pushFieldErrors(this.messageStack, nested as Record<string, unknown>);
         }
-      });
+      }
+    }
+
+    // Promote the most specific available message; skip when customMessage or
+    // the 422 name-taken rewrite already set a specific one.
+    if (!customMessage && this.message === API_ERRORS[errorId]) {
+      if (serverMessage) {
+        this.message = serverMessage;
+        this.cause = serverMessage;
+        replaceOrAppend(this.messageStack, API_ERRORS[errorId], serverMessage);
+      }
+      else if (this.messageStack.length > stackLengthBefore422) {
+        this.message = stripBasePrefix(this.messageStack[stackLengthBefore422]);
+        this.cause = this.message;
+      }
     }
   }
 

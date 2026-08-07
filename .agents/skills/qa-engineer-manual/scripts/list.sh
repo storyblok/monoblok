@@ -4,16 +4,16 @@ set -euo pipefail
 # Lists resources in a Storyblok space.
 #
 # Usage:
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource stories
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource assets --space <spaceId>
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource components
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource datasources
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource stories
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource assets --space <spaceId>
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource components
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource datasources
 #
 # Shared (org-level) asset libraries — require --library <libraryId> for the
 # asset/tag listings (a top-level shared asset folder id):
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-assets --library <libraryId>
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-folders
-#   bash .claude/skills/qa-engineer-manual/scripts/list.sh --resource shared-tags --library <libraryId>
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource shared-assets --library <libraryId>
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource shared-folders
+#   bash .agents/skills/qa-engineer-manual/scripts/list.sh --resource shared-tags --library <libraryId>
 
 # shellcheck source=_common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"

@@ -146,7 +146,7 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
   return React.createElement(
     tag,
     { key, ...props },
-    node.content ? renderChildren(node.content, options) : null,
+    node.type === 'emoji' ? node.attrs.emoji : (node.content ? renderChildren(node.content, options) : null),
   );
 }
 

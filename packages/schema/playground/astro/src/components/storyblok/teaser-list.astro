@@ -1,0 +1,23 @@
+---
+import type { Block } from '../../schema/schema';
+import Teaser from './teaser.astro';
+
+interface Props {
+  block: Block<'teaser_list'>;
+}
+
+const { block } = Astro.props;
+---
+
+<section class="px-6 py-16">
+  <div class="mx-auto max-w-6xl">
+    {block.headline && (
+      <h2 class="mb-10 text-center text-3xl font-bold text-balance text-gray-900">{block.headline}</h2>
+    )}
+    <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+      {block.items?.map(item => (
+        <Teaser block={item} />
+      ))}
+    </div>
+  </div>
+</section>

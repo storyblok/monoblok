@@ -60,11 +60,17 @@ const { mockedUI } = vi.hoisted(() => ({
     error: vi.fn(),
     title: vi.fn(),
     br: vi.fn(),
+    createSpinner: vi.fn(() => ({
+      succeed: vi.fn(),
+      failed: vi.fn(),
+      elapsedTime: 0,
+    })),
   },
 }));
 
-vi.mock('../../utils/ui', () => ({
+vi.mock('../../lib/ui', () => ({
   getUI: vi.fn(() => mockedUI),
+  stderrPromptContext: { output: process.stderr },
 }));
 // Helper function to create a complete Space mock object
 const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
@@ -208,7 +214,7 @@ describe('createCommand', () => {
       expect(createSpace).toHaveBeenCalledWith({
         name: 'My Project',
         domain: templates.REACT.location,
-      });
+      }, {});
     });
 
     it('should warn and show interactive selection for invalid template', async () => {
@@ -233,7 +239,7 @@ describe('createCommand', () => {
       );
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
         message: 'Please select the technology you would like to use:',
-      }));
+      }), expect.anything());
     });
 
     it('should accept valid template via deprecated --blueprint flag with warning', async () => {
@@ -295,7 +301,7 @@ describe('createCommand', () => {
       );
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
         message: 'Please select the technology you would like to use:',
-      }));
+      }), expect.anything());
     });
   });
 
@@ -322,7 +328,7 @@ describe('createCommand', () => {
         choices: expect.arrayContaining([
           expect.objectContaining({ name: expect.any(String), value: expect.any(String) }),
         ]),
-      }));
+      }), expect.anything());
     });
 
     it('should prompt for project path when none provided', async () => {
@@ -347,7 +353,7 @@ describe('createCommand', () => {
         message: 'What is the path for your project?',
         default: './my-vue-project',
         validate: expect.any(Function),
-      }));
+      }), expect.anything());
     });
 
     it('should validate project path input correctly', async () => {
@@ -408,7 +414,7 @@ describe('createCommand', () => {
       expect(createSpace).toHaveBeenCalledWith({
         name: 'My Project',
         domain: templates.REACT.location,
-      });
+      }, {});
 
       // Verify .env file creation
       expect(handleEnvFileCreation).toHaveBeenCalledWith(expect.any(String), 'space-token-123', 'eu', 'react');
@@ -566,7 +572,7 @@ describe('createCommand', () => {
       expect(createSpace).toHaveBeenCalledWith({
         name: 'My Project',
         domain: templates[templateKey as keyof typeof templates].location,
-      });
+      }, {});
     });
   });
 
@@ -654,10 +660,10 @@ describe('createCommand', () => {
       // Verify interactive prompts still work
       expect(select).toHaveBeenCalledWith(expect.objectContaining({
         message: 'Please select the technology you would like to use:',
-      }));
+      }), expect.anything());
       expect(input).toHaveBeenCalledWith(expect.objectContaining({
         message: 'What is the path for your project?',
-      }));
+      }), expect.anything());
 
       // Verify project generation happens
       expect(generateProject).toHaveBeenCalled();
@@ -730,7 +736,7 @@ describe('createCommand', () => {
       // Should NOT prompt for space creation location
       expect(select).not.toHaveBeenCalledWith(expect.objectContaining({
         message: 'Where would you like to create this space?',
-      }));
+      }), expect.anything());
     });
   });
 
@@ -763,7 +769,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-        });
+        }, {});
       });
 
       it('should show organization choice for users with org in EU region', async () => {
@@ -795,13 +801,13 @@ describe('createCommand', () => {
             { name: 'My personal account', value: 'personal' },
             { name: 'Organization (Test Organization)', value: 'org' },
           ],
-        }));
+        }), expect.anything());
 
         // Should create space with org flags
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-          org: mockUser.org,
+        }, {
           in_org: true,
         });
       });
@@ -834,12 +840,13 @@ describe('createCommand', () => {
             { name: 'My personal account', value: 'personal' },
             { name: 'Partner Portal', value: 'partner' },
           ],
-        }));
+        }), expect.anything());
 
         // Should create space with partner flag
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
+        }, {
           assign_partner: true,
         });
       });
@@ -874,13 +881,13 @@ describe('createCommand', () => {
             { name: 'Organization (Test Organization)', value: 'org' },
             { name: 'Partner Portal', value: 'partner' },
           ],
-        }));
+        }), expect.anything());
 
         // Should create space with personal account (no special flags)
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-        });
+        }, {});
       });
     });
 
@@ -914,7 +921,7 @@ describe('createCommand', () => {
         expect(createSpace).toHaveBeenCalledWith({
           name: 'My Project',
           domain: templates.REACT.location,
-          org: mockUser.org,
+        }, {
           in_org: true,
         });
       });

@@ -1,5 +1,5 @@
 import type { CommandOptions } from '../../../types';
-import type { StoryContent } from '../../stories/constants';
+import type { BlokContent } from '../../stories/constants';
 
 export interface MigrationsRunOptions extends CommandOptions {
   dryRun?: boolean;
@@ -33,7 +33,7 @@ export interface SuccessfulMigration {
   storyId: number;
   name: string | undefined;
   migrationNames: string[];
-  content: StoryContent;
+  content: BlokContent;
 }
 
 export interface FailedMigration {

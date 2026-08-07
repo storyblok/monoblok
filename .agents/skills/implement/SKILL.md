@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute an approved implementation plan. Use when asked to implement, build, or code a planned change.
+description: Use when asked to implement, build, or code a change that has an approved plan
 model: opus
 effort: high
 ---

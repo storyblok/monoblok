@@ -5,9 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "build:demo": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@storyblok/react": "workspace:*"

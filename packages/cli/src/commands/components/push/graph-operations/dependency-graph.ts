@@ -6,6 +6,7 @@ import type {
 } from '../../constants';
 import type { DependencyGraph, GraphBuildingContext, NodeData, NodeType, ProcessingLevel, SchemaDependencies, TargetResourceInfo, UnifiedNode } from './types';
 import { upsertComponent, upsertComponentGroup, upsertComponentInternalTag, upsertComponentPreset } from '../actions';
+import { getLogger } from '../../../../lib/logger/logger';
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -79,7 +80,7 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     const sourceComponent = componentMap.get(preset.component_id);
     if (!sourceComponent) {
       // Skip presets whose parent components are not available in local data
-      console.warn(`Warning: Preset "${preset.name}" (ID: ${preset.id}) references component ID ${preset.component_id} which is not available in local data. Skipping preset.`);
+      getLogger().warn(`Preset "${preset.name}" (ID: ${preset.id}) references component ID ${preset.component_id} which is not available in local data. Skipping preset.`);
       return;
     }
 
@@ -495,21 +496,23 @@ export function determineProcessingOrder(graph: DependencyGraph): ProcessingLeve
  * Validates the dependency graph and throws errors for critical issues.
  */
 export function validateGraph(graph: DependencyGraph): void {
-  console.log(`📊 Built dependency graph with ${graph.nodes.size} nodes`);
+  const logger = getLogger();
+
+  logger.info(`Built dependency graph with ${graph.nodes.size} nodes`);
 
   // Check for problematic cycles
   const problematicCycles = detectProblematicCycles(graph);
   if (problematicCycles.length > 0) {
-    throw new Error(`❌ Problematic cycles detected:\n${problematicCycles.join('\n')}`);
+    throw new Error(`Problematic cycles detected:\n${problematicCycles.join('\n')}`);
   }
 
   // Report circular whitelists (informational)
   const circularWhitelists = detectCircularWhitelists(graph);
   if (circularWhitelists.length > 0) {
-    console.log(`ℹ️  Circular component whitelists detected (allowed): ${circularWhitelists.join(', ')}`);
+    logger.info(`Circular component whitelists detected (allowed): ${circularWhitelists.join(', ')}`);
   }
 
-  console.log(`✅ Graph validation passed`);
+  logger.info(`Graph validation passed`);
 }
 
 // =============================================================================

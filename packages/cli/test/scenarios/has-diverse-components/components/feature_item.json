@@ -1,0 +1,16 @@
+{
+  "id": 203,
+  "name": "feature_item",
+  "display_name": "Feature Item",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "icon": { "type": "asset", "pos": 0, "filetypes": ["images"] },
+    "title": { "type": "text", "pos": 1, "required": true },
+    "description": { "type": "textarea", "pos": 2 },
+    "link": { "type": "multilink", "pos": 3 }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

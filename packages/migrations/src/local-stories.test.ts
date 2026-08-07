@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'pathe';
 import { getLocalStories, updateLocalStory } from './local-stories';
 
@@ -23,8 +24,7 @@ describe('getLocalStories', () => {
   });
 
   it('should return empty array for empty directory', async () => {
-    const emptyDir = new URL('__test__/fixtures/empty-dir', import.meta.url).pathname;
-    await mkdir(emptyDir, { recursive: true });
+    const emptyDir = await mkdtemp(join(tmpdir(), 'sb-stories-empty-'));
     const stories = await getLocalStories(emptyDir);
     expect(stories).toEqual([]);
     await rm(emptyDir, { recursive: true });
@@ -41,10 +41,10 @@ describe('getLocalStories', () => {
 });
 
 describe('updateLocalStory', () => {
-  const TEST_DIR = new URL('__test__/fixtures/test-write', import.meta.url).pathname;
+  let TEST_DIR: string;
 
   beforeEach(async () => {
-    await mkdir(TEST_DIR, { recursive: true });
+    TEST_DIR = await mkdtemp(join(tmpdir(), 'sb-stories-write-'));
   });
 
   afterEach(async () => {

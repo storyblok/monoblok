@@ -1,68 +1,68 @@
-import * as componentFoldersApi from '../generated/component_folders/sdk.gen';
+import * as mapi from '../generated/mapi/sdk.gen';
 import type {
-  CreateData,
-  CreateResponses,
-  GetResponses,
-  ListData,
-  ListResponses,
-  UpdateData,
-  UpdateResponses,
-} from '../generated/component_folders/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+  CreateComponentGroupData,
+  CreateComponentGroupResponses,
+  GetComponentGroupResponses,
+  ListComponentGroupsData,
+  ListComponentGroupsResponses,
+  UpdateComponentGroupData,
+  UpdateComponentGroupResponses,
+} from '../generated/mapi/types.gen';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
-export function createComponentFoldersResource(deps: MapiResourceDeps) {
+export function createComponentFoldersResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListComponentGroupsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListComponentGroupsResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ListResponses[200], ThrowOnError>(() =>
-        componentFoldersApi.list({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListComponentGroupsResponses[200], ThrowOnError>(() =>
+        mapi.listComponentGroups({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    get<ThrowOnError extends boolean = false>(componentGroupId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = DefaultThrowOnError>(componentGroupId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetComponentGroupResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetResponses[200], ThrowOnError>(() =>
-        componentFoldersApi.get({
+      return wrapRequest<GetComponentGroupResponses[200], ThrowOnError>(() =>
+        mapi.getComponentGroup({
           client,
-          path: { space_id: resolvedSpaceId, component_group_id: componentGroupId },
+          path: { space_id: resolvedSpaceId, id: componentGroupId },
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    create<ThrowOnError extends boolean = false>(options: { body: CreateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: CreateComponentGroupData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateComponentGroupResponses[201], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CreateResponses[201], ThrowOnError>(() =>
-        componentFoldersApi.create({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CreateComponentGroupResponses[201], ThrowOnError>(() =>
+        mapi.createComponentGroup({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    update<ThrowOnError extends boolean = false>(
-      componentGroupId: number | string,
-      options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
+    update<ThrowOnError extends boolean = DefaultThrowOnError>(
+      componentGroupId: number,
+      options: { body: UpdateComponentGroupData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<UpdateComponentGroupResponses[200], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
-        componentFoldersApi.update({
+      return wrapRequest<UpdateComponentGroupResponses[200], ThrowOnError>(() =>
+        mapi.updateComponentGroup({
           client,
-          path: { space_id: resolvedSpaceId, component_group_id: componentGroupId },
+          path: { space_id: resolvedSpaceId, id: componentGroupId },
           body,
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    delete<ThrowOnError extends boolean = false>(componentGroupId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = DefaultThrowOnError>(componentGroupId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
       return wrapRequest<void, ThrowOnError>(() =>
-        componentFoldersApi.delete_({
+        mapi.deleteComponentGroup({
           client,
-          path: { space_id: resolvedSpaceId, component_group_id: componentGroupId },
+          path: { space_id: resolvedSpaceId, id: componentGroupId },
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),

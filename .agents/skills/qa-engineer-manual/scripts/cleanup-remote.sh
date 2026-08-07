@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deletes stories, components, assets, and asset folders in a Storyblok space.
+# Deletes stories, components, assets, asset folders, component folders, and datasources in a Storyblok space.
 #
 # Usage:
-#   bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --space <spaceId>
+#   bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh --space <spaceId>
 #
 # Shared (org-level) asset libraries are global, so a full wipe is unsafe.
 # --shared cleans every shared resource that belongs to ONE library, scoped by
@@ -14,7 +14,7 @@ set -euo pipefail
 # would not. It never deletes the library root folder (org context only) or any
 # resource outside the given library.
 #
-#   bash .claude/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
+#   bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 
 # shellcheck source=_common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
@@ -243,6 +243,8 @@ cleanup_resource "components" "page"
 cleanup_resource "assets"
 cleanup_resource "asset_folders"
 cleanup_resource "internal_tags"
+cleanup_resource "component_groups"
+cleanup_resource "datasources"
 
 if [ "${found_total}" -eq 0 ]; then
   printf "clean\n"

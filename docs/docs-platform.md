@@ -1,14 +1,6 @@
 # Storyblok Docs Platform
 
-**Repo:** storyblok-docs-platform (via `additionalDirectories`)
-
-Astro + Starlight docs site. MDX files for API/package reference, Storyblok CMS for guides/manuals. Look here when updating package documentation or adding new library docs.
-
-## When to explore docs-platform
-
-- Writing or updating package reference docs after SDK changes
-- Adding versioned docs for a major release
-- Updating navigation for new packages
+Astro + Starlight docs site. MDX files for API/package reference, Storyblok CMS for guides/manuals.
 
 ## Key conventions
 

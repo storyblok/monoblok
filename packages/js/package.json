@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/js",
   "type": "module",
-  "version": "6.2.0",
+  "version": "6.3.1",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
   "license": "MIT",
@@ -17,12 +17,17 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/storyblok-js.mjs",
-      "require": "./dist/storyblok-js.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/storyblok-js.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/storyblok-js.cjs"
+      }
     }
   },
-  "main": "./dist/storyblok-js.js",
+  "main": "./dist/storyblok-js.cjs",
   "module": "./dist/storyblok-js.mjs",
   "types": "./dist/index.d.ts",
   "files": [
@@ -40,10 +45,12 @@
     "cy:playground": "pnpm --filter='./playground/vanilla' dev",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "publint": "publint .",
     "cy:run": "cypress run",
     "cy:open": "cypress open"
   },
   "dependencies": {
+    "@storyblok/preview-bridge": "^2.1.6",
     "@storyblok/richtext": "workspace:*",
     "storyblok-js-client": "workspace:*"
   },
@@ -58,9 +65,10 @@
     "jsdom": "^26.0.0",
     "kolorist": "^1.8.0",
     "pathe": "^2.0.3",
+    "publint": "^0.3.22",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",
-    "vite": "^6.3.5",
+    "vite": "^6.4.3",
     "vite-plugin-banner": "^0.8.0",
     "vite-plugin-dts": "^4.5.3",
     "vite-plugin-qrcode": "^0.2.4",

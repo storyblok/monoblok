@@ -9,7 +9,8 @@ Tests:
 describe("@storyblok/astro", () => {
   it("is loaded", () => {
     cy.visit("http://localhost:4321/");
-    cy.get("#storyblok-javascript-bridge").should("exist");
+    cy.window().its("storyblokRegisterEvent").should("be.a", "function");
+    cy.window().its("StoryblokBridge").should("be.a", "function");
   });
   it("storyblokEditable adds correct attributes", () => {
     cy.visit("http://localhost:4321/");

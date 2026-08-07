@@ -46,7 +46,7 @@ export const fetchStory = async (
   try {
     const client = getMapiClient();
 
-    const { data } = await client.stories.get(storyId, {
+    const { data } = await client.stories.get(Number(storyId), {
       path: {
         space_id: Number(spaceId),
       },
@@ -123,8 +123,10 @@ export const updateStory = async (
           // StoryUpdate2 expects `parent_id?: number`; normalize null → undefined.
           parent_id: payload.story.parent_id ?? undefined,
         },
-        force_update: payload.force_update === '1' ? '1' : '0',
-        ...(payload.publish ? { publish: payload.publish } : {}),
+      },
+      query: {
+        force_update: payload.force_update === '1',
+        ...(payload.publish ? { publish: Boolean(payload.publish) } : {}),
       },
       throwOnError: true,
     });

@@ -131,13 +131,13 @@ export const stringify = (
     if (typeof value === 'object') {
       pair = stringify(
         value,
-        prefix ? prefix + encodeURIComponent(`[${enkey}]`) : enkey,
+        prefix ? `${prefix}[${enkey}]` : enkey,
         Array.isArray(value),
       );
     }
     else {
       pair = `${
-        prefix ? prefix + encodeURIComponent(`[${enkey}]`) : enkey
+        prefix ? `${prefix}[${enkey}]` : enkey
       }=${encodeURIComponent(value)}`;
     }
     pairs.push(pair);

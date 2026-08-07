@@ -1,43 +1,53 @@
+import type StoryblokBridge from '@storyblok/preview-bridge';
+
 let loaded = false;
+let loadPromise: Promise<void> | undefined;
 const callbacks: Array<() => void> = [];
 
-export const loadBridge = (src: string) => {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') {
-      reject(new Error('Cannot load Storyblok bridge: window is undefined (server-side environment)'));
+export const loadBridge = (): Promise<void> => {
+  if (typeof window === 'undefined') {
+    return Promise.reject(
+      new Error('Cannot load Storyblok bridge: window is undefined (server-side environment)'),
+    );
+  }
+
+  // Set up the callback queue synchronously so useStoryblokBridge can register
+  // callbacks immediately after loadBridge() is called, before the async
+  // import has settled. Matches the original CDN script behaviour.
+  window.storyblokRegisterEvent = (cb: () => void) => {
+    if (!window.location.search.includes('_storyblok')) {
+      console.warn('You are not in Draft Mode or in the Visual Editor.');
       return;
     }
 
-    // Way to make sure all event handlers are called after loading
-    window.storyblokRegisterEvent = (cb: () => void) => {
-      if (!window.location.search.includes('_storyblok')) {
-        console.warn('You are not in Draft Mode or in the Visual Editor.');
-        return;
-      }
-
-      if (!loaded) {
-        callbacks.push(cb);
-      }
-      else { cb(); }
-    };
-
-    if (document.getElementById('storyblok-javascript-bridge')) {
-      resolve(undefined);
-      return;
+    if (!loaded) {
+      callbacks.push(cb);
     }
+    else {
+      cb();
+    }
+  };
 
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = src;
-    script.id = 'storyblok-javascript-bridge';
+  if (loaded) {
+    return Promise.resolve();
+  }
 
-    script.onerror = error => reject(error);
-    script.onload = (ev) => {
+  if (loadPromise) {
+    return loadPromise;
+  }
+
+  loadPromise = import('@storyblok/preview-bridge')
+    .then(({ default: StoryblokBridgeClass }: { default: typeof StoryblokBridge }) => {
+      // Expose the class on window so that code using the legacy pattern
+      // `new window.StoryblokBridge(options)` continues to work.
+      (window as any).StoryblokBridge = StoryblokBridgeClass;
       callbacks.forEach(cb => cb());
       loaded = true;
-      resolve(ev);
-    };
+    })
+    .catch((error) => {
+      loadPromise = undefined;
+      throw error;
+    });
 
-    document.getElementsByTagName('head')[0].appendChild(script);
-  });
+  return loadPromise;
 };

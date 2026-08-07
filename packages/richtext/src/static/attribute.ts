@@ -36,7 +36,6 @@ const STYLE_MAP: StyleMap = {
  * Maps Tiptap attribute names to HTML attribute names.
  */
 const DEFAULT_ATTR_MAP: AttrMap = {
-  fallbackImage: 'src',
   body: 'data-body',
   colspan: 'colSpan',
   rowspan: 'rowSpan',
@@ -48,7 +47,7 @@ const DEFAULT_ATTR_MAP: AttrMap = {
 /**
  * Attributes that should be excluded from the output.
  */
-export const EXCLUDED_ATTRS = new Set(['level', 'linktype', 'uuid', 'anchor', 'meta_data', 'copyright', 'source']);
+export const EXCLUDED_ATTRS = new Set(['level', 'linktype', 'uuid', 'anchor', 'meta_data', 'copyright', 'source', 'fallbackImage']);
 
 /**
  * Attributes that should be excluded when they have their default value of 1.

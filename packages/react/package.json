@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/react",
   "type": "module",
-  "version": "7.2.0",
+  "version": "7.2.4",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using React.",
   "author": "Storyblok",
@@ -17,22 +17,37 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./ssr": {
-      "types": "./dist/ssr.d.ts",
-      "import": "./dist/ssr.mjs",
-      "require": "./dist/ssr.js"
+      "import": {
+        "types": "./dist/ssr.d.ts",
+        "default": "./dist/ssr.mjs"
+      },
+      "require": {
+        "types": "./dist/ssr.d.cts",
+        "default": "./dist/ssr.cjs"
+      }
     },
     "./rsc": {
-      "types": "./dist/rsc.d.ts",
-      "import": "./dist/rsc.mjs",
-      "require": "./dist/rsc.js"
+      "import": {
+        "types": "./dist/rsc.d.ts",
+        "default": "./dist/rsc.mjs"
+      },
+      "require": {
+        "types": "./dist/rsc.d.cts",
+        "default": "./dist/rsc.cjs"
+      }
     }
   },
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "files": [
@@ -55,7 +70,8 @@
     "playground:next-latest": "pnpm run --filter ./playground/next-latest dev",
     "playground:next-13": "pnpm run --filter ./playground/next-13-app-router dev",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "publint": "publint ."
   },
   "peerDependencies": {
     "next": "^13 || ^14 || ^15 || ^16",
@@ -81,7 +97,7 @@
     "@testing-library/react": "^16.3.0",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^24.11.0",
-    "@types/react": "19.1.4",
+    "@types/react": "catalog:",
     "@vitejs/plugin-react": "^4.4.1",
     "babel-jest": "^29.7.0",
     "cypress": "^14.3.3",
@@ -89,12 +105,13 @@
     "eslint-plugin-cypress": "^4.3.0",
     "eslint-plugin-jest": "^28.11.0",
     "jsdom": "^26.1.0",
+    "publint": "^0.3.22",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rollup-plugin-preserve-directives": "^0.4.0",
     "start-server-and-test": "^2.0.11",
     "typescript": "5.8.3",
-    "vite": "^6.3.5",
+    "vite": "^6.4.3",
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^3.1.3"
   },

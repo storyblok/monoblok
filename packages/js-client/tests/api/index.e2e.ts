@@ -57,4 +57,44 @@ describe.skipIf(!process.env.VITE_ACCESS_TOKEN)('StoryblokClient (smoke tests)',
     const result = await client.getAll('cdn/stories', {});
     expect(result.length).toBeGreaterThan(0);
   });
+
+  it('filter_query with nested params uses raw brackets in the request URL', async () => {
+    const { data: seed } = await client.get('cdn/stories', { per_page: 1 });
+    const componentName = seed.stories[0].content.component as string;
+
+    const { data } = await client.get('cdn/stories', {
+      filter_query: { component: { in: componentName } },
+    });
+
+    expect(data.stories.length).toBeGreaterThan(0);
+  });
+
+  it('filter_query with lt_date operator sends raw brackets and returns filtered stories', async () => {
+    // Reproduces issue #32: nested filter_query brackets must not be percent-encoded.
+    // Uses filter_query[component][in] — same two-level nesting as the reported
+    // filter_query[enddate][lt_date] — to verify the wire format against real content.
+    // Seeds from whatever exists in the space so the test is content-agnostic.
+    // Note: cache is disabled on the capturing client so the custom fetch interceptor
+    // is always invoked (the module-level memory cache is shared across instances).
+    const { data: seed } = await client.get('cdn/stories', { per_page: 1 });
+    const componentName = seed.stories[0].content.component as string;
+
+    let capturedUrl = '';
+    const capturingClient = new StoryblokClient({
+      accessToken: process.env.VITE_ACCESS_TOKEN,
+      cache: { type: 'none' },
+      fetch: (input, init) => {
+        capturedUrl = String(input);
+        return fetch(input, init);
+      },
+    });
+
+    const { data } = await capturingClient.get('cdn/stories', {
+      filter_query: { component: { in: componentName } },
+    });
+
+    expect(capturedUrl).toContain('filter_query[component][in]=');
+    expect(capturedUrl).not.toContain('filter_query%5Bcomponent%5D');
+    expect(data.stories.length).toBeGreaterThan(0);
+  });
 });

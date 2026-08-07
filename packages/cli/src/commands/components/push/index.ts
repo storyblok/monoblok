@@ -12,7 +12,7 @@ import chalk from 'chalk';
 import { getMapiClient } from '../../../api';
 import { fetchComponentGroups, fetchComponentInternalTags, fetchComponentPresets, fetchComponents } from '../actions';
 import type { Component, ComponentFolder, InternalTag, Preset, SpaceComponentsData, SpaceComponentsDataState } from '../constants';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
 const pushCmd = componentsCommand
@@ -177,8 +177,6 @@ pushCmd
         }
       }
 
-      // Use optimized graph-based dependency resolution with colocated target data
-      ui.info('Using graph-based dependency resolution');
       const graphResults = await pushWithDependencyGraph(space, spaceState);
       results.successful.push(...graphResults.successful);
       results.failed.push(...graphResults.failed);
@@ -211,7 +209,7 @@ pushCmd
           });
         }
       }
-      console.log(`${requestCount} requests made`);
+      ui.log(`${requestCount} requests made`);
 
       // Check if components reference datasources and inform user
       const referencedDatasources = new Set<string>();

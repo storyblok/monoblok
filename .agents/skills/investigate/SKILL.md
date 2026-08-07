@@ -1,6 +1,6 @@
 ---
 name: investigate
-description: Deep investigation of GitHub issues with root cause analysis and proposed solutions. Use when asked to investigate, analyze, or dig into an issue.
+description: Use when asked to investigate, analyze, or dig into a GitHub issue or reported bug
 model: opus
 context: fork
 agent: investigator

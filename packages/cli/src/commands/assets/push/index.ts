@@ -2,7 +2,7 @@ import { basename, join } from 'pathe';
 import { Option } from 'commander';
 import { colorPalette, commands, directories } from '../../../constants';
 import { assetsCommand } from '../command';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter, type Report } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';
@@ -31,7 +31,7 @@ import {
 } from '../streams';
 import { createAssetInternalTag, fetchAssetInternalTagsByName } from '../actions';
 import type { Asset, AssetFolder, AssetFolderCreate, AssetFolderUpdate, AssetMap, AssetMapped, AssetUpload, UnmappedAssetInternalTag } from '../types';
-import { collectAssetInternalTagNames, ensureAssetInternalTags, internalTagNamesFromAssets, isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData } from '../utils';
+import { collectAssetInternalTagNames, ensureAssetInternalTags, internalTagNamesFromAssets, isRemoteSource, loadAssetFolderMap, loadAssetMap, loadSidecarAssetData, parseAssetData, toAssetUpload } from '../utils';
 import { findComponentSchemas } from '../../stories/utils';
 import { mapAssetReferencesInStoriesPipeline, upsertAssetFoldersPipeline, upsertAssetsPipeline } from '../pipelines';
 import type { Story } from '../../stories/constants';
@@ -109,12 +109,10 @@ pushCmd
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
-      process.exitCode = 2;
       return;
     }
     if (!targetSpace) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -135,17 +133,14 @@ pushCmd
         // A single asset has exactly one destination; `auto` would silently
         // fall back to space-only, so require an explicit target instead.
         handleError(new CommandError('Pushing a single asset requires --target=space or --target=shared, not --target=auto.'), verbose);
-        process.exitCode = 2;
         return;
       }
       if (target === 'shared' && !libraryId) {
         handleError(new CommandError('Pushing a single asset to a library requires --library YOUR_LIBRARY_ID.'), verbose);
-        process.exitCode = 2;
         return;
       }
       if (target === 'space' && libraryId) {
         handleError(new CommandError('--library cannot be combined with --target=space.'), verbose);
-        process.exitCode = 2;
         return;
       }
     }
@@ -179,7 +174,6 @@ pushCmd
     }
     catch (maybeError) {
       handleError(toError(maybeError), verbose);
-      process.exitCode = 2;
       return;
     }
 
@@ -201,11 +195,8 @@ pushCmd
         : basename(assetBinaryPath);
       const shortFilename = options.shortFilename || assetDataPartial.short_filename || sourceBasename;
       const folderId = options.folder ? Number(options.folder) : undefined;
-      assetData = {
-        ...assetDataPartial,
-        short_filename: shortFilename,
-        asset_folder_id: folderId,
-      } satisfies AssetUpload;
+      // `--folder` overrides any folder stored in the sidecar/`--data`.
+      assetData = { ...toAssetUpload(assetDataPartial, shortFilename), asset_folder_id: folderId };
     }
 
     try {
@@ -425,6 +416,8 @@ pushCmd
         }
         return total + entry.failed;
       }, 0);
-      process.exitCode = fatalError ? 2 : failedTotal > 0 ? 1 : 0;
+      if (!fatalError) {
+        process.exitCode = failedTotal > 0 ? 1 : 0;
+      }
     }
   });

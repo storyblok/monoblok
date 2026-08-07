@@ -1,6 +1,6 @@
 ---
 name: blitz
-description: Drive multiple GitHub issues through the full pipeline (triage, investigate, plan, implement) in parallel. Use when asked to blitz, batch-process, or work multiple issues.
+description: Use when asked to blitz, batch-process, or drive multiple GitHub issues end to end in parallel
 model: opus
 disable-model-invocation: true
 effort: high

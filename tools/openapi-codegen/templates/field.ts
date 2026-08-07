@@ -5,14 +5,19 @@ import type {
   Field,
   MultilinkFieldValue,
   PluginFieldValue,
-  RichtextFieldValue,
+  RichTextFieldValue,
   TableFieldValue,
 } from './_sources';
 import type { Prettify } from './_utils';
-import type { Block } from './block';
+import type { Block, BlockFields } from './block';
 
 export type { Field };
-export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichtextFieldValue, TableFieldValue };
+export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichTextFieldValue, TableFieldValue };
+
+/**
+ * @deprecated Use {@link RichTextFieldValue} instead. Will be removed in a future major version.
+ */
+export type RichtextFieldValue = RichTextFieldValue;
 
 /**
  * Registry of all blocks in the space, used to resolve nested `bloks` fields.
@@ -24,47 +29,56 @@ type NoBlocks = false;
 /** True when `T` is the un-narrowed base `Block` (i.e. no specific block was supplied). */
 type IsBaseBlock<T> = [Block] extends [T] ? true : false;
 
-type RequiredFieldKeys<T> = {
-  [K in keyof T]: T[K] extends { required: true } ? K : never
-}[keyof T];
+/**
+ * Maps a block's ordered `fields` array to its read content object, splitting
+ * required (`required: true`) from optional fields. Each `F` is a member of the
+ * field union, so it provably satisfies `FieldValue`'s `Field` constraint.
+ */
+type ContentFields<TFields extends BlockFields, TBlocks extends Block | NoBlocks, TFieldPlugins = Record<never, never>> = Prettify<
+  { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValue<F, TBlocks, TFieldPlugins> }
+  & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValue<F, TBlocks, TFieldPlugins> | null }
+>;
 
-type OptionalFieldKeys<T> = Exclude<keyof T, RequiredFieldKeys<T>>;
+/** Input (write) variant of {@link ContentFields}, resolving each field via {@link FieldValueInput}. */
+type ContentFieldsInput<TFields extends BlockFields, TBlocks extends Block | NoBlocks, TFieldPlugins = Record<never, never>> = Prettify<
+  { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValueInput<F, TBlocks, TFieldPlugins> }
+  & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValueInput<F, TBlocks, TFieldPlugins> | null }
+>;
 
 /**
  * Content object for a single block instance as returned by the Storyblok
  * Content Delivery API. Without a `TBlock` argument, this is the loose
  * runtime shape (any block, `_editable` optional). With a schema-typed
- * `TBlock`, fields are narrowed per the block's schema.
+ * `TBlock`, fields are narrowed per the block's `fields`.
  */
-export type BlockContent<TBlock extends Block = Block, TBlocks = NoBlocks> =
+export type BlockContent<TBlock extends Block = Block, TBlocks extends Block | NoBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
   IsBaseBlock<TBlock> extends true
     ? BlockContentBase
     // distribute over each member of the `TBlock` union
     : TBlock extends any
       ? Prettify<
         { _uid: string; component: TBlock['name']; _editable?: string }
-        & { [K in RequiredFieldKeys<TBlock['schema']>]: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> }
-        & { [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValue<NonNullable<TBlock['schema'][K]>, TBlocks> | null }
+        & ContentFields<TBlock['fields'], TBlocks, TFieldPlugins>
       >
       : never;
 
 /** Input variant of {@link BlockContent} for write operations (creating/updating stories via the MAPI). `_uid` is optional. */
-export type BlockContentInput<TBlock extends Block = Block, TBlocks = NoBlocks> =
+export type BlockContentInput<TBlock extends Block = Block, TBlocks extends Block | NoBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
   IsBaseBlock<TBlock> extends true
     ? BlockContentInputBase
     // distribute over each member of the `TBlock` union
     : TBlock extends any
       ? Prettify<
         { _uid?: string; component: TBlock['name']; _editable?: string }
-        & { [K in RequiredFieldKeys<TBlock['schema']>]: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> }
-        & { [K in OptionalFieldKeys<TBlock['schema']>]?: FieldValueInput<NonNullable<TBlock['schema'][K]>, TBlocks> | null }
+        & ContentFieldsInput<TBlock['fields'], TBlocks, TFieldPlugins>
       >
       : never;
 
 export type BlocksFieldValue<
   TBlock extends Block = Block,
-  TBlocks = NoBlocks,
-> = BlockContent<TBlock, TBlocks>[];
+  TBlocks extends Block | NoBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
+> = BlockContent<TBlock, TBlocks, TFieldPlugins>[];
 
 /** Union of all valid Storyblok field type discriminants (e.g., `text`, `bloks`). */
 export type FieldType = Field['type'];
@@ -72,9 +86,15 @@ export type FieldType = Field['type'];
 interface FieldTypeValueMap {
   text: string;
   textarea: string;
-  richtext: RichtextFieldValue;
+  richtext: RichTextFieldValue;
   markdown: string;
-  number: number;
+  /**
+   * Stored and delivered as a string, not a JSON number. The Management API
+   * rejects numeric values ("must be a string with numbers and allow '-' and
+   * '.'"), the editor writes `String(value)`, and `default_value` is a string
+   * for the same reason. An unset field is `''`.
+   */
+  number: string;
   datetime: string;
   boolean: boolean;
   option: string;
@@ -94,18 +114,71 @@ type IsNestable<T> =
     : T extends { is_nestable: true } ? true
       : true;
 
-type ApplyWhitelist<TField, TBlocks> = TField extends { component_whitelist: ReadonlyArray<infer TWhitelisted extends string> }
-  // keep only the registry blocks named in the whitelist
-  ? Extract<TBlocks, { name: TWhitelisted }>
-  // no whitelist: distribute over the registry, keeping nestable blocks
+type AllowEntry = string | { folder: string };
+
+/**
+ * Keeps `TBlock` when its `folder` is `TFolder` or any nested subfolder (mirrors
+ * the editor's `isAnywhereInFolder`). This is a best-effort compile-time check,
+ * compared case-insensitively via `Lowercase` so `folder: 'blog'` and a `Blog`
+ * folder ref narrow the same. TypeScript cannot replicate the CLI's full slug at
+ * the type level, so separator/symbol drift (`'My Layout'` vs `'my-layout'`) is
+ * only reconciled at push/validate time — full folder identity is enforced
+ * there, not here. To rely on narrowing, prefer a `defineFolder` ref over a
+ * string path on both the block's `folder` and the field's `allow`: a shared ref
+ * carries the exact path on both sides, so no drift is possible.
+ */
+type MatchesFolder<TBlock, TFolder extends string> =
+  TBlock extends { folder: infer BF extends string }
+    ? Lowercase<BF> extends Lowercase<TFolder> | `${Lowercase<TFolder>}/${string}` ? TBlock : never
+    : never;
+
+type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer TAllowed extends AllowEntry> }
+  ? TAllowed extends string
+    // keep only the registry blocks named in `allow`
+    ? Extract<TBlocks, { name: TAllowed }>
+    : TAllowed extends { folder: infer F extends string }
+      // keep registry blocks in the folder (or any nested folder)
+      ? TBlocks extends any ? MatchesFolder<TBlocks, F> : never
+      : never
+  // no `allow`: distribute over the registry, keeping nestable blocks
   : TBlocks extends any
     ? IsNestable<TBlocks> extends true ? TBlocks : never
     : never;
 
+/**
+ * Removes the registry blocks named in `deny`, the `Exclude` counterpart to
+ * {@link ApplyAllow}. The wire `component_denylist` denies by block name only,
+ * so folder refs are not accepted. A `deny` entry naming no known block is
+ * inert: it removes nothing rather than collapsing the field.
+ */
+type ApplyDeny<TField, TBlocks> = TField extends { deny: ReadonlyArray<infer TDenied extends string> }
+  ? Exclude<TBlocks, { name: TDenied }>
+  : TBlocks;
+
+/**
+ * Resolves the block union a `bloks` field accepts: `allow` narrows the registry
+ * first, then `deny` removes from what is left, so the two compose.
+ */
+type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
+
+/**
+ * Resolves a `custom` field to its registered plugin value. When the field's
+ * `field_type` is a key of `TFieldPlugins`, the validator output is merged with
+ * the plugin envelope (`plugin`, optional `_uid`); otherwise it falls back to
+ * the untyped {@link PluginFieldValue}. Same shape for read and write.
+ */
+type ResolveCustom<TField, TFieldPlugins> =
+  TField extends { field_type: infer F extends string }
+    ? F extends keyof TFieldPlugins
+      ? Prettify<TFieldPlugins[F] & { plugin: string; _uid?: string }>
+      : PluginFieldValue
+    : PluginFieldValue;
+
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
   TField extends Field = Field,
-  TBlocks = NoBlocks,
+  TBlocks extends Block | NoBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
 > = Prettify<
   TField extends { type: 'bloks' }
     // guard `never` first: `[never] extends [Block]` is structurally true, so an
@@ -113,15 +186,18 @@ export type FieldValue<
     ? [TBlocks] extends [never]
         ? BlockContentBase[]
         : [TBlocks] extends [Block]
-            ? BlockContent<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
+            ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
             : BlockContentBase[]
-    : FieldTypeValueMap[TField['type']]
+    : TField extends { type: 'custom' }
+      ? ResolveCustom<TField, TFieldPlugins>
+      : FieldTypeValueMap[TField['type']]
 >;
 
 /** Resolves a field definition to its input value type (write). */
 export type FieldValueInput<
   TField extends Field = Field,
-  TBlocks = NoBlocks,
+  TBlocks extends Block | NoBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
 > = Prettify<
   TField extends { type: 'bloks' }
     // guard `never` first: `[never] extends [Block]` is structurally true, so an
@@ -129,7 +205,9 @@ export type FieldValueInput<
     ? [TBlocks] extends [never]
         ? BlockContentInputBase[]
         : [TBlocks] extends [Block]
-            ? BlockContentInput<ApplyWhitelist<TField, TBlocks>, TBlocks>[]
+            ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
             : BlockContentInputBase[]
-    : FieldTypeValueMap[TField['type']]
+    : TField extends { type: 'custom' }
+      ? ResolveCustom<TField, TFieldPlugins>
+      : FieldTypeValueMap[TField['type']]
 >;

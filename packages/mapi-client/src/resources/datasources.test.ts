@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createManagementApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/datasources.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -21,6 +11,11 @@ afterAll(() => server.close());
 
 describe('datasources.list()', () => {
   it('should successfully retrieve multiple datasources', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasources', () => {
+        return HttpResponse.json({ datasources: [{ id: 1, name: 'Colors', slug: 'colors' }] });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,
@@ -81,6 +76,11 @@ describe('datasources.list()', () => {
 
 describe('datasources.get()', () => {
   it('should successfully retrieve a single datasource', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasources/:datasource_id', () => {
+        return HttpResponse.json({ datasource: { id: 456, name: 'Colors', slug: 'colors' } });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,

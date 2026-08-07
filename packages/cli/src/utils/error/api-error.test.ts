@@ -103,6 +103,36 @@ describe('handleAPIError', () => {
     }
   });
 
+  it('should rewrite 422 name-taken to a component message for component actions', () => {
+    const error = new FetchError('Unprocessable', { status: 422, statusText: 'Unprocessable Entity', data: { name: ['has already been taken'] } });
+    try {
+      handleAPIError('push_component', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('A component with this name already exists');
+    }
+  });
+
+  it('should rewrite 422 name-taken to a folder message for folder create actions', () => {
+    const error = new FetchError('Unprocessable', { status: 422, statusText: 'Unprocessable Entity', data: { name: ['has already been taken'] } });
+    try {
+      handleAPIError('push_component_folder', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).toBe('A component folder with this name already exists');
+    }
+  });
+
+  it('should not rewrite 422 name-taken to a component message for non-component actions', () => {
+    const error = new FetchError('Unprocessable', { status: 422, statusText: 'Unprocessable Entity', data: { name: ['has already been taken'] } });
+    try {
+      handleAPIError('push_datasource', error);
+    }
+    catch (e) {
+      expect((e as APIError).message).not.toBe('A component with this name already exists');
+    }
+  });
+
   it('should handle non-FetchError objects with a response property', () => {
     const error = Object.assign(new Error('API call failed'), {
       response: { status: 422, statusText: 'Unprocessable Entity', data: { slug: ['has already been taken'] } },

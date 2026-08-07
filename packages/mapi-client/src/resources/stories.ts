@@ -1,87 +1,139 @@
-import * as storiesApi from '../generated/stories/sdk.gen';
+import * as mapi from '../generated/mapi/sdk.gen';
 import type {
-  CreateData,
-  CreateResponses,
-  DeleteResponses,
-  DuplicateData,
-  DuplicateResponses,
-  GetData,
-  GetResponses,
-  ListData,
-  ListResponses,
-  PublishData,
-  PublishResponses,
-  UpdateData,
-  UpdateResponses,
-  VersionsData,
-  VersionsResponses,
-} from '../generated/stories/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+  CreateStoryData,
+  CreateStoryResponses,
+  DeleteStoryResponses,
+  DuplicateStoryData,
+  DuplicateStoryResponses,
+  GetStoryByIdData,
+  GetStoryByIdResponses,
+  ListStoriesData,
+  ListStoriesResponses,
+  ListVersionsData,
+  ListVersionsResponses,
+  PublishStoryData,
+  PublishStoryResponses,
+  UpdateStoryData,
+  UpdateStoryRequest,
+  UpdateStoryResponses,
+} from '../generated/mapi/types.gen';
+import type { Block as Component } from '../generated/types/block';
+import type { MapiStory, StoryCreate, StoryUpdate } from '../generated/types/mapi-story';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
-export function createStoriesResource(deps: MapiResourceDeps) {
+export type StoryListQuery = NonNullable<ListStoriesData['query']>;
+
+/**
+ * Resolves to a component-narrowed story type when `TComponents` is a specific
+ * Component union, or falls back to the generated `MapiStory` when no components
+ * are provided (i.e. `TComponents` is the default base `Component` type).
+ */
+type StoryResult<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Component extends TComponents
+    ? MapiStory
+    : MapiStory<TComponents, TFieldPlugins>;
+
+type GetResponse<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Omit<GetStoryByIdResponses[200], 'story'> & { story?: StoryResult<TComponents, TFieldPlugins> };
+
+type ListResponse<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Omit<ListStoriesResponses[200], 'stories'> & { stories?: Array<StoryResult<TComponents, TFieldPlugins>> };
+
+type CreateResponse<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Omit<CreateStoryResponses[201], 'story'> & { story?: StoryResult<TComponents, TFieldPlugins> };
+
+type UpdateResponse<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Omit<UpdateStoryResponses[200], 'story'> & { story?: StoryResult<TComponents, TFieldPlugins> };
+
+type DuplicateResponse<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Omit<DuplicateStoryResponses[200], 'story'> & { story?: StoryResult<TComponents, TFieldPlugins> };
+
+type PublishResponse<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Omit<PublishStoryResponses[200], 'story'> & { story?: StoryResult<TComponents, TFieldPlugins> };
+
+type CreateBody<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Component extends TComponents
+    ? CreateStoryData['body']
+    : Omit<UpdateStoryRequest, 'story'> & {
+      story: StoryCreate<TComponents, TFieldPlugins>;
+    };
+
+type UpdateBody<TComponents extends Component, TFieldPlugins = Record<never, never>> =
+  Component extends TComponents
+    ? UpdateStoryData['body']
+    : Omit<UpdateStoryRequest, 'story'> & {
+      story: StoryUpdate<TComponents, TFieldPlugins>;
+    };
+
+export function createStoriesResource<
+  TComponents extends Component = Component,
+  TFieldPlugins = Record<never, never>,
+  DefaultThrowOnError extends boolean = false,
+>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListStoriesData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponse<TComponents, TFieldPlugins>, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ListResponses[200], ThrowOnError>(() =>
-        storiesApi.list({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListResponse<TComponents, TFieldPlugins>, ThrowOnError>(() =>
+        mapi.listStories({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    get<ThrowOnError extends boolean = false>(storyId: number | string, options: { query?: GetData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = DefaultThrowOnError>(storyId: number, options: { query?: GetStoryByIdData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponse<TComponents, TFieldPlugins>, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetResponses[200], ThrowOnError>(() =>
-        storiesApi.get({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<GetResponse<TComponents, TFieldPlugins>, ThrowOnError>(() =>
+        mapi.getStoryById({ client, path: { space_id: resolvedSpaceId, id: storyId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    create<ThrowOnError extends boolean = false>(options: { body: CreateData['body']; query?: CreateData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: CreateBody<TComponents, TFieldPlugins>; query?: CreateStoryData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateResponse<TComponents, TFieldPlugins>, ThrowOnError>> {
       const { body, query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CreateResponses[201], ThrowOnError>(() =>
-        storiesApi.create({ client, path: { space_id: resolvedSpaceId }, body, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CreateResponse<TComponents, TFieldPlugins>, ThrowOnError>(() =>
+        mapi.createStory({ client, path: { space_id: resolvedSpaceId }, body: body as CreateStoryData['body'], query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    update<ThrowOnError extends boolean = false>(
-      storyId: number | string,
-      options: { body: UpdateData['body']; query?: UpdateData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
+    update<ThrowOnError extends boolean = DefaultThrowOnError>(
+      storyId: number,
+      options: { body: UpdateBody<TComponents, TFieldPlugins>; query?: UpdateStoryData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<UpdateResponse<TComponents, TFieldPlugins>, ThrowOnError>> {
       const { body, query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
-        storiesApi.update({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, body, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<UpdateResponse<TComponents, TFieldPlugins>, ThrowOnError>(() =>
+        mapi.updateStory({ client, path: { space_id: resolvedSpaceId, id: storyId }, body: body as UpdateStoryData['body'], query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    delete<ThrowOnError extends boolean = false>(storyId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = DefaultThrowOnError>(storyId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteStoryResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
-        storiesApi.delete_({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteStoryResponses[200], ThrowOnError>(() =>
+        mapi.deleteStory({ client, path: { space_id: resolvedSpaceId, id: storyId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    duplicate<ThrowOnError extends boolean = false>(
-      storyId: number | string,
-      options: { body: DuplicateData['body']; query?: DuplicateData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<DuplicateResponses[200], ThrowOnError>> {
+    duplicate<ThrowOnError extends boolean = DefaultThrowOnError>(
+      storyId: number,
+      options: { body: DuplicateStoryData['body']; query?: DuplicateStoryData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<DuplicateResponse<TComponents, TFieldPlugins>, ThrowOnError>> {
       const { body, query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<DuplicateResponses[200], ThrowOnError>(() =>
-        storiesApi.duplicate({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, body, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DuplicateResponse<TComponents, TFieldPlugins>, ThrowOnError>(() =>
+        mapi.duplicateStory({ client, path: { space_id: resolvedSpaceId, id: storyId }, body, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    publish<ThrowOnError extends boolean = false>(
-      storyId: number | string,
-      options: { query?: PublishData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
-    ): Promise<ApiResponse<PublishResponses[200], ThrowOnError>> {
+    publish<ThrowOnError extends boolean = DefaultThrowOnError>(
+      storyId: number,
+      options: { query?: PublishStoryData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<PublishResponse<TComponents, TFieldPlugins>, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<PublishResponses[200], ThrowOnError>(() =>
-        storiesApi.publish({ client, path: { space_id: resolvedSpaceId, story_id: storyId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<PublishResponse<TComponents, TFieldPlugins>, ThrowOnError>(() =>
+        mapi.publishStory({ client, path: { space_id: resolvedSpaceId, id: storyId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    versions<ThrowOnError extends boolean = false>(
-      options: { query?: VersionsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
-    ): Promise<ApiResponse<VersionsResponses[200], ThrowOnError>> {
+    versions<ThrowOnError extends boolean = DefaultThrowOnError>(
+      storyId: number,
+      options: { query?: Omit<ListVersionsData['query'], 'model' | 'model_id'>; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<ListVersionsResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<VersionsResponses[200], ThrowOnError>(() =>
-        storiesApi.versions({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListVersionsResponses[200], ThrowOnError>(() =>
+        mapi.listVersions({ client, path: { space_id: resolvedSpaceId }, query: { ...query, model: 'stories', model_id: storyId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
   };
 }

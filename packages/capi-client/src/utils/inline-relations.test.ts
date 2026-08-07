@@ -1,8 +1,8 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import type { StoryCapi } from '../generated/stories';
-import { createClient, createConfig } from '../generated/shared/client';
+import type { Story } from '../generated/types/story';
+import { createClient, createConfig } from '../generated/capi/client';
 import { createThrottleManager } from './rate-limit';
 import {
   buildRelationMap,
@@ -16,9 +16,9 @@ let storyId = 1;
 
 const makeStory = (
   uuid: string,
-  content: StoryCapi['content'],
-  overrides: Partial<StoryCapi> = {},
-): StoryCapi => {
+  content: Story['content'],
+  overrides: Partial<Story> = {},
+): Story => {
   return {
     alternates: [],
     content,

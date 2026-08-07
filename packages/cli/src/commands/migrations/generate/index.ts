@@ -8,7 +8,7 @@ import { session } from '../../../session';
 import { fetchComponent } from '../../../commands/components';
 import { migrationsCommand } from '../command';
 import { generateMigration } from './actions';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 
 const generateCmd = migrationsCommand

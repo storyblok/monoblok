@@ -1,0 +1,39 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'teaser'>;
+}
+
+const { block } = Astro.props;
+const href =
+  block.link?.linktype === 'story'
+    ? `/${block.link.cached_url ?? ''}`
+    : block.link?.url ?? undefined;
+---
+
+<article class="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+  {block.image?.filename && (
+    <div class="aspect-video overflow-hidden">
+      <img
+        src={block.image.filename}
+        alt={block.image.alt ?? ''}
+        class="h-full w-full object-cover"
+        width="600"
+        height="337"
+      />
+    </div>
+  )}
+  <div class="flex flex-1 flex-col p-6">
+    <h3 class="mb-2 text-xl font-semibold text-balance text-gray-900">{block.title}</h3>
+    {block.description && <p class="flex-1 text-gray-600">{block.description}</p>}
+    {href && (
+      <a
+        href={href}
+        class="mt-4 inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800"
+      >
+        Learn more &rarr;
+      </a>
+    )}
+  </div>
+</article>

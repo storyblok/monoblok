@@ -4,7 +4,7 @@ import { SUPPORTED_ASSET_EXTENSIONS } from '../../constants';
 import { toError } from '../../utils/error/error';
 import type { ManifestEntry } from '../../utils/filesystem';
 import { loadManifest, sanitizeFilename } from '../../utils/filesystem';
-import type { Asset, AssetFolder, AssetFolderMap, AssetMap, AssetMapped } from './types';
+import type { Asset, AssetFolder, AssetFolderMap, AssetMap, AssetMapped, AssetUpload } from './types';
 
 export const parseAssetData = (raw?: string) => {
   if (!raw) {
@@ -21,6 +21,35 @@ export const parseAssetData = (raw?: string) => {
   catch (maybeError) {
     throw new Error(`Invalid --data JSON: ${(toError(maybeError)).message}`);
   }
+};
+
+/**
+ * Projects a stored `Partial<Asset>` (sidecar or `--data`) onto the upload
+ * payload shape. Only the keys accepted by `AssetUploadRequest`, plus the local
+ * identity (`id`/`filename`) used for manifest mapping, are kept; other
+ * read-only `Asset` fields (`space_id`, `created_at`, `file`, ...) are dropped
+ * so they never reach the API. The upload spec types every field as
+ * non-nullable, so stored `null` values are omitted (sent as `undefined`).
+ */
+export const toAssetUpload = (partial: Partial<Asset>, shortFilename: string): AssetUpload => {
+  const nullToUndef = <T>(value: T | null | undefined): T | undefined => value ?? undefined;
+  return {
+    id: partial.id,
+    filename: partial.filename,
+    short_filename: shortFilename,
+    asset_folder_id: nullToUndef(partial.asset_folder_id),
+    ext_id: nullToUndef(partial.ext_id),
+    alt: nullToUndef(partial.alt),
+    copyright: nullToUndef(partial.copyright),
+    title: nullToUndef(partial.title),
+    source: nullToUndef(partial.source),
+    expire_at: nullToUndef(partial.expire_at),
+    publish_at: nullToUndef(partial.publish_at),
+    focus: nullToUndef(partial.focus),
+    is_private: nullToUndef(partial.is_private),
+    internal_tag_ids: partial.internal_tag_ids,
+    meta_data: nullToUndef(partial.meta_data),
+  };
 };
 
 export const getSidecarFilename = (assetBinaryPath: string) => {
@@ -60,7 +89,6 @@ export const isRemoteSource = (assetBinaryPath: string) => {
 const isValidManifestEntry = (entry: ManifestEntry) =>
   Boolean(typeof entry.old_id === 'number'
     && typeof entry.new_id === 'number'
-    && entry.old_filename
     && entry.new_filename);
 
 export const loadAssetMap = async (manifestFile: string): Promise<AssetMap> => {

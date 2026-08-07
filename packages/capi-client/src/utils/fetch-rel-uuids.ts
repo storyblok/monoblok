@@ -1,6 +1,6 @@
-import type { Client } from '../generated/shared/client';
-import { list } from '../generated/stories/sdk.gen';
-import type { StoryCapi } from '../generated/stories/types.gen';
+import type { Client } from '../generated/capi/client';
+import { listStories } from '../generated/capi/sdk.gen';
+import type { Story } from '../generated/types/story';
 import type { ThrottleManager } from './rate-limit';
 import { chunkArray } from './array';
 
@@ -38,14 +38,14 @@ export const fetchMissingRelations = async ({
   uuids,
   baseQuery,
   throttleManager,
-}: FetchMissingRelationsOptions): Promise<StoryCapi[]> => {
+}: FetchMissingRelationsOptions): Promise<Story[]> => {
   const queryContext = { ...pickQueryContext(baseQuery), per_page: UUID_CHUNK_SIZE };
   const chunks = chunkArray(uuids, UUID_CHUNK_SIZE);
 
   const results = await Promise.all(
     chunks.map(chunk =>
       throttleManager.execute('/v2/cdn/stories', queryContext, async () => {
-        const response = await list({
+        const response = await listStories({
           client,
           query: {
             ...queryContext,
@@ -64,7 +64,11 @@ export const fetchMissingRelations = async ({
           throw new Error('Failed to fetch missing relations.');
         }
 
-        return response.data.stories;
+        // SDK return shape is the raw `DraftStory | PublishedStory` union; cast
+        // to the wrapper `Story` (public type) so callers don't have to know
+        // about the spec-level discriminated form and get the benefits of the
+        // generic `Story` with schema support.
+        return response.data.stories as unknown as Story[];
       }),
     ),
   );

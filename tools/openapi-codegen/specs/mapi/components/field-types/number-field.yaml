@@ -10,6 +10,9 @@ allOf:
         type: string
         enum: [number]
         description: Field type discriminant
+      default_value:
+        type: string
+        description: Default value for the field
       min_value:
         type: number
         description: Minimum value allowed

@@ -1,6 +1,6 @@
 import type { LogContext } from '../../lib/logger/logger';
 import { getLogger } from '../../lib/logger/logger';
-import { konsola } from '..';
+import { getUI } from '../../lib/ui';
 import type { FetchError } from '../fetch';
 import { APIError } from './api-error';
 import { CommandError } from './command-error';
@@ -47,54 +47,75 @@ export function getResponseStatus(maybeError: unknown): number | undefined {
 }
 
 function handleVerboseError(error: unknown): void {
+  const ui = getUI();
   if (error instanceof CommandError || error instanceof APIError || error instanceof FileSystemError) {
     const errorDetails = 'getInfo' in error ? error.getInfo() : {};
     if (error instanceof CommandError) {
-      konsola.error(`Command Error: ${error.getInfo().message}`, errorDetails);
+      ui.error(`Command Error: ${error.getInfo().message}`, errorDetails);
     }
     else if (error instanceof APIError) {
-      konsola.error(`API Error: ${error.getInfo().cause}`, errorDetails);
+      ui.error(`API Error: ${error.getInfo().cause}`, errorDetails);
     }
     else if (error instanceof FileSystemError) {
-      konsola.error(`File System Error: ${error.getInfo().cause}`, errorDetails);
+      ui.error(`File System Error: ${error.getInfo().cause}`, errorDetails);
     }
     else {
-      konsola.error(`Unexpected Error: ${error}`, errorDetails);
+      ui.error(`Unexpected Error: ${error}`, errorDetails);
     }
   }
   else {
-    konsola.error(`Unexpected Error`, error);
+    ui.error('Unexpected Error', error);
   }
 }
 
+/**
+ * Detect user-initiated prompt cancellation (Ctrl+C or Escape in @inquirer/prompts).
+ * These are not application errors — exit cleanly with code 0.
+ */
+function isPromptCancellation(error: Error): boolean {
+  return error.name === 'ExitPromptError'
+    || error.name === 'AbortPromptError'
+    || error.name === 'CancelPromptError';
+}
+
 export function handleError(error: Error | FetchError, verbose = false, context?: LogContext): void {
+  // Prompt cancellations (Ctrl+C, Escape) are not errors — exit silently with code 0
+  if (isPromptCancellation(error as Error)) {
+    process.exitCode = 0;
+    return;
+  }
+
+  const ui = getUI();
+
   // Print the message stack if it exists
   if (error instanceof APIError || error instanceof FileSystemError) {
     const messageStack = (error).messageStack;
     messageStack.forEach((message: string, index: number) => {
-      konsola.error(message, null, {
-        header: index === 0,
-        margin: false,
-      });
+      if (index === 0) {
+        ui.error(message, undefined, { header: true });
+      }
+      else {
+        ui.error(message);
+      }
     });
   }
   else {
-    konsola.error(error.message, null, {
-      header: true,
-    });
+    ui.error(error.message, undefined, { header: true });
   }
   if (verbose) {
     handleVerboseError(error);
   }
   else {
-    konsola.br();
-    konsola.info('For more information about the error, run the command with the `--verbose` flag');
+    ui.br();
+    ui.info('For more information about the error, run the command with the `--verbose` flag');
   }
 
-  if (!process.env.VITEST) {
-    console.log(''); // Add a line break for readability
-  }
+  ui.br();
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
+
+  if (!process.exitCode) {
+    process.exitCode = error instanceof CommandError ? 2 : 1;
+  }
 }
 
 export function logOnlyError(error: Error | FetchError, context?: LogContext): void {

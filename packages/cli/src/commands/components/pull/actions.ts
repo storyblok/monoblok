@@ -2,27 +2,23 @@ import { join, resolve } from 'pathe';
 import type { Component, ComponentFolder, InternalTag, Preset, SpaceComponentsData } from '../constants';
 import { DEFAULT_COMPONENTS_FILENAME, DEFAULT_GROUPS_FILENAME, DEFAULT_PRESETS_FILENAME, DEFAULT_TAGS_FILENAME } from '../constants';
 import type { SaveComponentsOptions } from './constants';
-import { handleAPIError, handleFileSystemError } from '../../../utils';
+import { fetchAllPages, handleAPIError, handleFileSystemError } from '../../../utils';
 import { resolvePath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import { fetchAllPages } from '../../../utils/pagination';
 import { getMapiClient } from '../../../api';
 
 // Components
+// Note: the MAPI components list endpoint is un-paginated (no `page`/`per_page`
+// in the OpenAPI spec); a single request returns every component for the space.
 export const fetchComponents = async (spaceId: string): Promise<Component[] | undefined> => {
   try {
     const client = getMapiClient();
-    return await fetchAllPages(
-      (page: number) => client.components.list({
-        path: {
-          space_id: Number(spaceId),
-        },
-        query: {
-          page,
-        },
-        throwOnError: true,
-      }),
-      data => data?.components ?? [],
-    );
+    const { data } = await client.components.list({
+      path: {
+        space_id: Number(spaceId),
+      },
+      throwOnError: true,
+    });
+    return data?.components ?? [];
   }
   catch (error) {
     handleAPIError('pull_components', error as Error);
@@ -32,19 +28,16 @@ export const fetchComponents = async (spaceId: string): Promise<Component[] | un
 export const fetchComponent = async (spaceId: string, componentName: string): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
-    const matches = await fetchAllPages(
-      (page: number) => client.components.list({
-        path: {
-          space_id: Number(spaceId),
-        },
-        query: {
-          page,
-          search: componentName,
-        },
-        throwOnError: true,
-      }),
-      data => data?.components ?? [],
-    );
+    const { data } = await client.components.list({
+      path: {
+        space_id: Number(spaceId),
+      },
+      query: {
+        search: componentName,
+      },
+      throwOnError: true,
+    });
+    const matches = data?.components ?? [];
     return matches.find((c: Component) => c.name === componentName);
   }
   catch (error) {

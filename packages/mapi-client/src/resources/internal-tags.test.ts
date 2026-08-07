@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createManagementApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/internal_tags.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -21,6 +11,11 @@ afterAll(() => server.close());
 
 describe('internalTags.list()', () => {
   it('should successfully retrieve multiple internal tags', async () => {
+    server.use(
+      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/internal_tags', () => {
+        return HttpResponse.json({ internal_tags: [] });
+      }),
+    );
     const client = createManagementApiClient({
       personalAccessToken: 'test-token',
       spaceId: 123,
@@ -91,7 +86,7 @@ describe('internalTags.create()', () => {
       rateLimit: false,
     });
 
-    const result = await client.internalTags.create({ body: { name: 'New Tag', object_type: 'asset' } });
+    const result = await client.internalTags.create({ body: { internal_tag: { name: 'New Tag', object_type: 'asset' } } });
 
     expect(result.error).toBeUndefined();
     expect(result.data?.internal_tag).toBeDefined();

@@ -11,7 +11,7 @@ describe('@storyblok/react', () => {
     cy.spy(window.console, 'log').as('log');
     cy.spy(window.console, 'error').as('error');
     delete window.storyblokRegisterEvent;
-    document.getElementById('storyblok-javascript-bridge')?.remove();
+    delete (window as any).StoryblokBridge;
   });
 
   describe('getStoryblokApi', () => {

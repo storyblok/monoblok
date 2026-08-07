@@ -26,14 +26,14 @@ export interface TemplateMeta {
 
 export const TEMPLATES = {
   'block': {
-    provides: ['Block', 'BlockSchema', 'BlockSchemaInput', 'SchemaArrayToRecord', 'RootBlock', 'NestableBlock', 'ComponentCreate', 'ComponentUpdate'],
+    provides: ['Block', 'BlockFields', 'RootBlock', 'NestableBlock'],
     templateDeps: [],
-    sourceLeaves: ['Component', 'ComponentCreate', 'ComponentUpdate', 'Field'],
+    sourceLeaves: ['Component', 'Field'],
   },
   'field': {
-    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
+    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
     templateDeps: ['block'],
-    sourceLeaves: ['AssetFieldValue', 'BlockContentBase', 'BlockContentInputBase', 'Field', 'MultilinkFieldValue', 'PluginFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
+    sourceLeaves: ['AssetFieldValue', 'BlockContentBase', 'BlockContentInputBase', 'Field', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'TableFieldValue'],
   },
   'story': {
     provides: ['Story'],

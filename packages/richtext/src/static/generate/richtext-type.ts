@@ -49,7 +49,7 @@ function nodeShape(schema: Schema, name: string): string {
   else if (type.isBlock || type.spec.content || type.isInline) {
     children = 'content?: SbRichTextNode[];';
   }
-  return `{ type: '${name}'; attrs?: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string; context?: TContext; }`;
+  return `{ type: '${name}'; attrs${name === 'emoji' ? '' : '?'}: TiptapNodeAttributes['${name}']; ${children} marks?: SbRichTextMark[]; ${hasText} _key?: string; context?: TContext; }`;
 }
 
 function markShape(name: string): string {

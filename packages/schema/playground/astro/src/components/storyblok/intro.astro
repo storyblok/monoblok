@@ -1,0 +1,23 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'intro'>;
+}
+
+const { block } = Astro.props;
+---
+
+<section class="px-6 py-20">
+  <div class="mx-auto max-w-3xl text-center">
+    {block.eyebrow && (
+      <p class="mb-4 text-sm font-semibold tracking-widest text-indigo-600 uppercase">
+        {block.eyebrow}
+      </p>
+    )}
+    <h2 class="mb-8 text-4xl font-bold text-balance text-gray-900">{block.headline}</h2>
+    {block.body && (
+      <div class="prose prose-lg mx-auto text-gray-600" set:html={block.body} />
+    )}
+  </div>
+</section>

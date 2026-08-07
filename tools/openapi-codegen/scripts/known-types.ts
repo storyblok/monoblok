@@ -19,7 +19,7 @@ import { resolve } from 'pathe';
 import { parse as parseYaml } from 'yaml';
 import { ALIASES, type SpecSource } from '../src/aliases.ts';
 import { TEMPLATES } from '../src/templates.ts';
-import { CACHE_DIR, TOOL_ROOT } from './lock.ts';
+import { CACHE_DIR, TOOL_ROOT } from '../src/lock.ts';
 
 const KNOWN_TYPES_PATH = resolve(TOOL_ROOT, 'src/known-types.ts');
 const OVERLAY_PATH = resolve(TOOL_ROOT, 'specs/overlay.openapi.yaml');

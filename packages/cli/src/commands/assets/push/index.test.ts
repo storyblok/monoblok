@@ -37,7 +37,6 @@ import { makeMockStory, type MockStory } from '../../stories/__tests__/helpers';
 
 vi.spyOn(console, 'log');
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 vi.spyOn(actions, 'createAsset');
@@ -224,10 +223,11 @@ const preconditions = {
     const spy = vi.fn();
     server.use(
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, async ({ request }) => {
-        const body = await request.json() as { name: string; object_type?: string };
+        const body = await request.json() as { internal_tag: { name: string; object_type?: string } };
         spy(body);
+        const tag = body.internal_tag;
         return HttpResponse.json(
-          { internal_tag: { id: idByName[body.name] ?? getID(), name: body.name, object_type: body.object_type } },
+          { internal_tag: { id: idByName[tag.name] ?? getID(), name: tag.name, object_type: tag.object_type } },
           { status: 201 },
         );
       }),
@@ -260,8 +260,8 @@ const preconditions = {
     server.use(
       // Step 1: get signed response
       http.post(`https://mapi.storyblok.com/v1/spaces/${space}/assets`, async ({ request }) => {
-        const body = await request.json() as { filename?: string };
-        const requestedFilename = body?.filename;
+        const url = new URL(request.url);
+        const requestedFilename = url.searchParams.get('filename');
 
         const match = remoteAssets.find(a => basename(a.filename) === requestedFilename);
         if (!match) {
@@ -312,7 +312,7 @@ const preconditions = {
         return HttpResponse.json({ message: 'Upload finalized' });
       }),
       // Update asset metadata/folder/etc.
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
+      http.patch(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, async ({ params, request }) => {
         const match = remoteAssets.find(asset => String(asset.id) === String(params.assetId));
         if (!match) {
           return HttpResponse.json({ message: 'Asset not found' }, { status: 404 });
@@ -334,7 +334,7 @@ const preconditions = {
   },
   failsToUpdateRemoteAssets({ space = DEFAULT_SPACE }: { space?: string } = {}) {
     server.use(
-      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
+      http.patch(`https://mapi.storyblok.com/v1/spaces/${space}/assets/:assetId`, () => HttpResponse.json(
         { message: 'Update failed' },
         { status: 500 },
       )),
@@ -549,9 +549,9 @@ describe('assets push command', () => {
     expect(logFile).toContain('"assetFolderResults":{"total":1,"succeeded":1,"failed":0}');
     expect(logFile).toContain('"assetResults":{"total":1,"succeeded":1,"failed":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Folders: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -564,7 +564,7 @@ describe('assets push command', () => {
 
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', 'qa-seed', '--space', targetSpace]);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -698,9 +698,9 @@ describe('assets push command', () => {
       },
     });
     // UI
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -843,10 +843,9 @@ describe('assets push command', () => {
     });
     // UI
     expect(storyActions.updateStory).not.toHaveBeenCalled();
-    expect(console.error).not.toHaveBeenCalled();
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
-    expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Assets: 1/1 succeeded, 0 failed.'));
     expect(process.exitCode).toBe(0);
   });
 
@@ -933,7 +932,7 @@ describe('assets push command', () => {
     expect(actions.updateAsset).not.toHaveBeenCalled();
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Unexpected token');
-    expect(process.exitCode).toBe(2);
+    expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when writing to the manifest fails', async () => {
@@ -953,13 +952,13 @@ describe('assets push command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('File System Error: Permission denied');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -997,13 +996,13 @@ describe('assets push command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Invalid sidecar JSON');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1025,7 +1024,7 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1054,7 +1053,7 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1077,20 +1076,22 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
   });
 
   it('should handle errors when updating assets fails', async () => {
-    const localAsset = makeMockAsset();
+    // Carry metadata so the metadata-update PATCH (the call mocked to fail) is
+    // actually issued; with no metadata the client skips it (see hasDefinedFields).
+    const localAsset = makeMockAsset({ alt: 'Updated alt' });
     preconditions.canLoadFolders([]);
     preconditions.canLoadAssets([localAsset]);
     const [remoteAsset] = preconditions.canUpsertRemoteAssets([localAsset]);
@@ -1108,13 +1109,13 @@ describe('assets push command', () => {
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('The server returned an error');
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1135,14 +1136,14 @@ describe('assets push command', () => {
     expect(report?.status).toBe('FAILURE');
     // Logging
     const logFile = getLogFileContents(LOG_PREFIX);
-    expect(logFile).toContain('Error fetching data from the API');
-    expect(console.info).toHaveBeenCalledWith(
+    expect(logFile).toContain('The server returned an error');
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Push results: 1 processed, 1 assets failed'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Folders: 0/0 succeeded, 0 failed.'),
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Assets: 0/1 succeeded, 1 failed.'),
     );
     expect(process.exitCode).toBe(1);
@@ -1391,7 +1392,7 @@ describe('assets push command', () => {
 
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).not.toContain('ENOENT');
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Push results: 1 processed, 0 assets failed'));
   });
 
   it('should push user-defined assets that have short_filename but no filename', async () => {
@@ -1549,7 +1550,7 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(actions.createAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [targetTagId] }),
       expect.anything(),
       expect.anything(),
     );
@@ -1586,11 +1587,11 @@ describe('assets push command', () => {
 
     expect(actions.updateAsset).toHaveBeenCalledWith(
       remoteAsset.id,
-      expect.objectContaining({ internal_tag_ids: [String(targetTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [targetTagId] }),
       expect.anything(),
     );
     expect(updateSpy).toHaveBeenCalledWith(expect.objectContaining({
-      internal_tag_ids: [String(targetTagId)],
+      internal_tag_ids: [targetTagId],
     }));
     expect(process.exitCode).not.toBe(1);
   });
@@ -1630,14 +1631,14 @@ describe('assets push command', () => {
     await assetsCommand.parseAsync(['node', 'test', 'push', '--from', DEFAULT_SPACE, '--space', targetSpace]);
 
     expect(createTagSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }),
+      expect.objectContaining({ internal_tag: expect.objectContaining({ name: 'missing-tag', object_type: 'asset' }) }),
     );
     expect(actions.createAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ internal_tag_ids: [String(createdTagId)] }),
+      expect.objectContaining({ internal_tag_ids: [createdTagId] }),
       expect.anything(),
       expect.anything(),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Created 1 internal asset tag in target space: missing-tag'),
     );
     expect(process.exitCode).not.toBe(1);
@@ -1779,7 +1780,7 @@ describe('assets push command', () => {
       await assetsCommand.parseAsync(['node', 'test', 'push', './hero.png', '--space', DEFAULT_SPACE, '--target', 'shared', '--library', '8']);
 
       expect(actions.createSharedAsset).not.toHaveBeenCalled();
-      expect(process.exitCode).toBe(2);
+      expect(process.exitCode).toBe(1);
       expect(getLogFileContents(LOG_PREFIX)).toMatch(/Locked/);
     });
 
@@ -1906,7 +1907,7 @@ describe('assets push command', () => {
     it('creates missing library tags and remaps internal_tag_ids on push', async () => {
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
-      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      let capturedPut: { asset?: { internal_tag_ids?: number[] } } | undefined;
       server.use(
         http.get('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tags: [] })),
         http.post('https://mapi.storyblok.com/v1/spaces/12345/shared_internal_tags', () => HttpResponse.json({ internal_tag: { id: 500, name: 'hero', object_type: 'asset' } })),
@@ -1923,13 +1924,13 @@ describe('assets push command', () => {
 
       await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
-      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['500']);
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual([500]);
     });
 
     it('paginates shared library tags so a match on a later page is reused, not recreated', async () => {
       preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
       preconditions.canUpsertSharedAssets([makeMockAsset({ short_filename: 'x.png', filename: 'x.png' })], { libraryId: 7 });
-      let capturedPut: { asset?: { internal_tag_ids?: string[] } } | undefined;
+      let capturedPut: { asset?: { internal_tag_ids?: number[] } } | undefined;
       let createCalled = false;
       server.use(
         // Two pages of existing library tags; the match lives on page 2. With one
@@ -1958,7 +1959,7 @@ describe('assets push command', () => {
 
       await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
 
-      expect(capturedPut?.asset?.internal_tag_ids).toEqual(['999']);
+      expect(capturedPut?.asset?.internal_tag_ids).toEqual([999]);
       expect(createCalled).toBe(false);
     });
 

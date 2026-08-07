@@ -2,7 +2,6 @@ import chalk from 'chalk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { userCommand } from './';
 import { getUser } from './actions';
-import { konsola } from '../../utils';
 import { session } from '../../session';
 import { loggedOutSessionState } from '../../../test/setup';
 
@@ -13,8 +12,6 @@ vi.mock('./actions', () => ({
 vi.mock('../../creds', () => ({
   isAuthorized: vi.fn(),
 }));
-
-vi.mock('../../utils/konsola');
 
 const preconditions = {
   loggedOut() {
@@ -28,6 +25,7 @@ describe('userCommand', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('should show the user information', async () => {
@@ -42,9 +40,8 @@ describe('userCommand', () => {
     await userCommand.parseAsync(['node', 'test']);
 
     expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
-    expect(konsola.ok).toHaveBeenCalledWith(
-      `Hi ${chalk.bold('John Doe')}, you are currently logged in with ${chalk.hex('#45bfb9')(mockResponse.email)} on ${chalk.bold('eu')} region`,
-      true,
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(`Hi ${chalk.bold('John Doe')}`),
     );
   });
 
@@ -53,9 +50,7 @@ describe('userCommand', () => {
 
     await userCommand.parseAsync(['node', 'test']);
 
-    expect(konsola.error).toHaveBeenCalledWith('You are currently not logged in. Please run storyblok login to authenticate, or storyblok signup to sign up.', null, {
-      header: true,
-    });
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('You are currently not logged in'));
   });
 
   it('should show an error if the user information cannot be fetched', async () => {
@@ -65,8 +60,6 @@ describe('userCommand', () => {
 
     await userCommand.parseAsync(['node', 'test']);
 
-    expect(konsola.error).toHaveBeenCalledWith(mockError.message, null, {
-      header: true,
-    });
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Network error'));
   });
 });

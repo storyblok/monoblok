@@ -5,19 +5,19 @@ set -euo pipefail
 # All fields are optional — without flags a generic PNG asset meta is produced.
 #
 # Usage:
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-asset.sh
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-asset.sh \
 #     --filename "hero.png" --alt "Hero image" --title "Hero"
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-asset.sh \
 #     --filename "private.png" --is-private --folder-id 1 > scenarios/my-scenario/assets/private.json
 #   # To also copy the template PNG alongside:
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-asset.sh \
 #     --filename "hero.png" --copy-png scenarios/my-scenario/assets/hero.png > scenarios/my-scenario/assets/hero.json
 #
 # For shared (org library) assets, keep the default `qa-` filename prefix so
 # cleanup-remote.sh --shared can find them, and point --folder-id at the
 # library (or a child folder):
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-asset.sh \
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-asset.sh \
 #     --filename "qa-hero.png" --folder-id <libraryId> \
 #     --copy-png .storyblok/assets/shared/<libraryId>/qa-hero.png > .storyblok/assets/shared/<libraryId>/qa-hero.json
 

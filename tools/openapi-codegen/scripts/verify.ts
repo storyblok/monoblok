@@ -8,7 +8,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { CACHE_DIR, hashCache, LOCK_PATH, readLock } from './lock.ts';
+import { CACHE_DIR, hashCache, LOCK_PATH, readLock } from '../src/lock.ts';
 
 const lock = readLock();
 if (!lock) {

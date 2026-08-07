@@ -1,6 +1,6 @@
 ---
 name: document-writer
-description: Use when writing documentation. Provides a writing style guide and content structure patterns.
+description: Use when writing or editing documentation, READMEs, guides, or announcement posts
 ---
 
 # Documentation Writer for Storyblok Ecosystem

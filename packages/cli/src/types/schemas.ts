@@ -1,5 +1,5 @@
 import type { StoryblokPropertyType } from './storyblok';
-import type { ComponentSchemaField } from '.';
+import type { Field } from '.';
 
 export type ComponentPropertySchemaType =
   | StoryblokPropertyType
@@ -22,7 +22,7 @@ export interface ComponentPropertySchemaOption {
   value: string;
 }
 
-export type ComponentPropertySchema = Omit<ComponentSchemaField, 'type' | 'options'> & {
+export type ComponentPropertySchema = Omit<Field, 'type' | 'options'> & {
   key: string;
   type: ComponentPropertySchemaType;
   options?: ComponentPropertySchemaOption[];

@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { type Client, createClient, createConfig } from '../generated/shared/client';
+import { type Client, createClient, createConfig } from '../generated/capi/client';
 import { createThrottleManager } from './rate-limit';
 import { fetchMissingRelations } from './fetch-rel-uuids';
 

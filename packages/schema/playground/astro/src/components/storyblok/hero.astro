@@ -1,0 +1,35 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'hero'>;
+}
+
+const { block } = Astro.props;
+
+// `block.accent_color` is fully typed thanks to the registered color plugin.
+const accentColor = block.accent_color?.color;
+---
+
+<section class="relative flex min-h-[60vh] items-center bg-gray-900 px-6 py-24 text-white">
+  <div class="mx-auto max-w-4xl">
+    {block.eyebrow && (
+      <p
+        class="mb-4 text-sm font-semibold tracking-widest text-indigo-400 uppercase"
+        style={accentColor ? `color: ${accentColor}` : undefined}
+      >
+        {block.eyebrow}
+      </p>
+    )}
+    <h1 class="text-5xl leading-tight font-bold text-balance md:text-6xl">{block.headline}</h1>
+    {block.image?.filename && (
+      <img
+        src={block.image.filename}
+        alt={block.image.alt ?? ''}
+        class="mt-10 rounded-xl object-cover shadow-lg"
+        width="1200"
+        height="630"
+      />
+    )}
+  </div>
+</section>

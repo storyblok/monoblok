@@ -1,13 +1,15 @@
 import { pipeline } from 'node:stream/promises';
 import type { Story } from '../constants';
+import { normalizeStartsWith } from '../constants';
 import { colorPalette, commands, directories } from '../../../constants';
 import { session } from '../../../session';
 import { storiesCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { fetchStoriesStream, fetchStoryStream, makeWriteStoryFSTransport, writeStoryStream } from '../streams';
+import { parseFilterQuery } from '../filter-query';
 import { requireAuthentication } from '../../../utils/auth';
 import { handleError, toError } from '../../../utils/error/error';
 import { CommandError } from '../../../utils/error/command-error';
@@ -17,7 +19,7 @@ const pullCmd = storiesCommand
   .option('-s, --space <space>', 'space ID')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .option('-q, --query <query>', 'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"')
-  .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="/en/blog/"')
+  .option('--starts-with <path>', 'Filter stories by path. Example: --starts-with="en/blog/"')
   .description(`Download your space's stories as separate json files.`);
 
 pullCmd
@@ -58,8 +60,12 @@ pullCmd
         fetchStoriesStream({
           spaceId: space,
           params: {
-            filter_query: options.query,
-            starts_with: options.startsWith,
+            filter_query: options.query ? parseFilterQuery(options.query) : undefined,
+            // A `full_slug` never starts with a slash and MAPI matches the prefix
+            // literally, so `/en/blog/` would pull nothing at all.
+            starts_with: options.startsWith === undefined
+              ? undefined
+              : normalizeStartsWith(options.startsWith) || undefined,
           },
           setTotalPages: (totalPages) => {
             summary.fetchStoryPages.total = totalPages;

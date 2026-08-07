@@ -1,14 +1,14 @@
 import type { Command } from 'commander';
 import { colorPalette, commands } from '../../constants';
-import { CommandError, handleError, isVitest, konsola, requireAuthentication } from '../../utils';
+import { CommandError, handleError, requireAuthentication } from '../../utils';
 import { getProgram } from '../../program';
 import { session } from '../../session';
 import { fetchLanguages, saveLanguagesToFile } from './actions';
 import chalk from 'chalk';
 import type { PullLanguagesOptions } from './constants';
-import { Spinner } from '@topcli/spinner';
 import { isAbsolute, join, relative } from 'pathe';
 import { resolveCommandPath } from '../../utils/filesystem';
+import { getUI } from '../../lib/ui';
 
 const program = getProgram(); // Get the shared singleton instance
 
@@ -26,7 +26,8 @@ const pullCmd = languagesCommand
 
 pullCmd
   .action(async (options: PullLanguagesOptions, command: Command) => {
-    konsola.title(`${commands.LANGUAGES}`, colorPalette.LANGUAGES);
+    const ui = getUI();
+    ui.title(`${commands.LANGUAGES}`, colorPalette.LANGUAGES);
 
     const { space, path, verbose } = command.optsWithGlobals();
     const { filename = 'languages', suffix = options.space } = options;
@@ -41,19 +42,15 @@ pullCmd
       return;
     }
 
-    const spinner = new Spinner({
-      verbose: !isVitest,
-    });
+    const spinner = ui.createSpinner(`Fetching ${chalk.hex(colorPalette.LANGUAGES)('languages')}`);
     try {
-      spinner.start(`Fetching ${chalk.hex(colorPalette.LANGUAGES)('languages')}`);
-
       const internationalization = await fetchLanguages(space);
 
       if (!internationalization || internationalization.languages?.length === 0) {
         spinner.failed();
 
-        konsola.warn(`No languages found in the space ${space}`, true);
-        konsola.br();
+        ui.warn(`No languages found in the space ${space}`, true);
+        ui.br();
         return;
       }
       await saveLanguagesToFile(space, internationalization, {
@@ -67,12 +64,12 @@ pullCmd
       const filePath = join(languagesOutputDir, fileName);
       const displayPath = (path && isAbsolute(path)) ? filePath : relative(process.cwd(), filePath);
       spinner.succeed();
-      konsola.ok(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`, true);
+      ui.ok(`Languages schema downloaded successfully at ${chalk.hex(colorPalette.PRIMARY)(displayPath)}`, true);
     }
     catch (error) {
       spinner.failed();
-      konsola.br();
+      ui.br();
       handleError(error as Error, verbose);
     }
-    konsola.br();
+    ui.br();
   });

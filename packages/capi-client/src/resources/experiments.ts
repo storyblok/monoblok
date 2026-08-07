@@ -1,8 +1,8 @@
-import { list as listExperimentsApi } from '../generated/experiments/sdk.gen';
-import type { ListData as ExperimentsListData, ListResponses as ExperimentsListResponses } from '../generated/experiments/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../types';
+import { listCdnExperimentsV2 } from '../generated/capi/sdk.gen';
+import type { ListCdnExperimentsV2Data, ListCdnExperimentsV2Responses } from '../generated/capi/types.gen';
+import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
 
-export function createExperimentsResource(deps: ResourceDeps) {
+export function createExperimentsResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
@@ -22,14 +22,14 @@ export function createExperimentsResource(deps: ResourceDeps) {
      *
      * See `@storyblok/experiments` for variant assignment and tracking helpers.
      */
-    list: async <ThrowOnError extends boolean = false>(
-      options: { query?: ExperimentsListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<ExperimentsListResponses[200], ThrowOnError>> => {
+    list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
+      options: { query?: ListCdnExperimentsV2Data['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+    ): Promise<ApiResponse<ListCdnExperimentsV2Responses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const requestPath = '/v2/cdn/experiments';
-      return requestWithCache<ExperimentsListResponses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
+      return requestWithCache<ListCdnExperimentsV2Responses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
         return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<ExperimentsListResponses[200], ThrowOnError>(listExperimentsApi({
+          asApiResponse<ListCdnExperimentsV2Responses[200], ThrowOnError>(listCdnExperimentsV2({
             client,
             query: requestQuery,
             signal,

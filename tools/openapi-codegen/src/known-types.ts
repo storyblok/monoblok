@@ -20,6 +20,8 @@ export const UPSTREAM_SCHEMAS = {
   capi: [
     'Alternate',
     'Asset',
+    'CdnExperiment',
+    'CdnExperimentVariant',
     'Datasource',
     'DatasourceEntry',
     'Dimension',
@@ -350,7 +352,9 @@ export const UPSTREAM_SCHEMAS = {
     'ComponentSchemaField',
     'MultilinkFieldValue',
     'PluginFieldValue',
-    'RichtextFieldValue',
+    'RichTextFieldValue',
+    'RichTextMark',
+    'RichTextNode',
     'TableFieldValue',
   ] as const,
 } as const;

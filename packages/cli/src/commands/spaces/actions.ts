@@ -1,10 +1,10 @@
-import type { Space, SpaceCreate, SpaceUpdate } from '../../types';
+import type { Space, SpaceCreate, SpaceCreateQuery, SpaceDetail, SpaceUpdate } from '../../types';
 import { handleAPIError } from '../../utils';
 import { getMapiClient } from '../../api';
 
-export type { Space, SpaceCreate, SpaceUpdate };
+export type { Space, SpaceCreate, SpaceCreateQuery, SpaceDetail, SpaceUpdate };
 
-export const fetchSpace = async (spaceId: string): Promise<Space | undefined> => {
+export const fetchSpace = async (spaceId: string): Promise<SpaceDetail | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -27,16 +27,17 @@ export const fetchSpace = async (spaceId: string): Promise<Space | undefined> =>
  * @param space - The space creation request data
  * @returns Promise<Space> - The created space data
  */
-export const createSpace = async (space: SpaceCreate): Promise<Space | undefined> => {
+export const createSpace = async (
+  space: SpaceCreate,
+  query?: Pick<SpaceCreateQuery, 'in_org' | 'assign_partner' | 'space_type' | 'dup_id'>,
+): Promise<SpaceDetail | undefined> => {
   try {
-    const { in_org, assign_partner, ...spaceData } = space;
     const client = getMapiClient();
     const { data } = await client.spaces.create({
       body: {
-        space: spaceData,
-        ...(in_org && { in_org }),
-        ...(assign_partner && { assign_partner }),
+        space,
       },
+      query,
     });
 
     return data?.space;

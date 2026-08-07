@@ -5,10 +5,10 @@ set -euo pipefail
 # All fields are optional — without flags a generic page story is produced.
 #
 # Usage:
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-story.sh
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-story.sh \
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-story.sh
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-story.sh \
 #     --slug "my-test" --name "My Test" --component page
-#   bash .claude/skills/qa-engineer-manual/scripts/generate-story.sh \
+#   bash .agents/skills/qa-engineer-manual/scripts/generate-story.sh \
 #     --slug "child" --parent-id 3 > scenarios/my-scenario/stories/child_99.json
 
 id="${RANDOM}"

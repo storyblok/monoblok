@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { Reporter } from '../../../lib/reporter/reporter';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { reportsCommand } from '../command';
 import { directories } from '../../../constants';
 

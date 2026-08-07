@@ -1,0 +1,27 @@
+---
+import type { AnyBlock } from '../../schema/schema';
+import Hero from './hero.astro';
+import Intro from './intro.astro';
+import Media from './media.astro';
+import TeaserList from './teaser-list.astro';
+
+interface Props {
+  block: AnyBlock;
+}
+
+const { block } = Astro.props;
+---
+
+{block.component === 'page' && (
+  block.blocks?.map(child => <Astro.self block={child} />)
+)}
+{block.component === 'hero' && <Hero block={block} />}
+{block.component === 'intro' && <Intro block={block} />}
+{block.component === 'media' && <Media block={block} />}
+{block.component === 'teaser_list' && <TeaserList block={block} />}
+{!['page', 'hero', 'intro', 'media', 'teaser_list'].includes(block.component) && import.meta.env.DEV && (
+  <div class="rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+    Unknown component: <code>{block.component}</code>
+    <pre>{JSON.stringify(block, null, 2)}</pre>
+  </div>
+)}

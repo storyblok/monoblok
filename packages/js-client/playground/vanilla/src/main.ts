@@ -80,12 +80,15 @@ const getLinks = async () => {
  * @returns Promise with the created story data
  */
 const createComponent = async () => {
+  // `post()` types its body as story-shaped params (ISbStoriesParams |
+  // ISbContentMangmntAPI); a MAPI component-create body isn't representable,
+  // so cast through the accepted param type.
   return await mapi.post('spaces/295017/components', {
     component: {
       name: 'js-client-mapi-post-test',
       slug: 'js-client-mapi-post-test',
     },
-  })
+  } as unknown as Parameters<typeof mapi.post>[1])
 }
 
 // Check for missing tokens

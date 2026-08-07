@@ -46,6 +46,8 @@
   {/if}
 {:else if node.type === 'table'}
   <RenderTable {node} {options} />
+{:else if node.type === 'emoji'}
+  <ElementTag {node}>{node.attrs.emoji}</ElementTag>
 {:else if getStaticChildren(node)}
   <RenderStaticChildren {node} {options} />
 {:else}

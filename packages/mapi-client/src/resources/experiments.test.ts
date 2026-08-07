@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createManagementApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/mapi/experiments.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -31,6 +21,10 @@ const BASE = 'https://mapi.storyblok.com/v1/spaces/123/experiments';
 
 describe('experiments.list()', () => {
   it('should retrieve experiments', async () => {
+    server.use(
+      http.get(BASE, () => HttpResponse.json({ experiments: [] })),
+    );
+
     const result = await createClient().experiments.list();
 
     expect(result.error).toBeUndefined();

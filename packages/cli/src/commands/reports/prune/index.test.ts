@@ -7,7 +7,7 @@ import { reportsCommand } from '../command';
 import { resolveCommandPath } from '../../../utils/filesystem';
 import { resetLogger } from '../../../lib/logger/logger';
 
-vi.spyOn(console, 'info');
+vi.spyOn(console, 'error');
 
 const REPORTS_FILE_DIR = resolveCommandPath('reports', '12345');
 
@@ -34,7 +34,7 @@ describe('reports prune command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 3 report files'),
     );
     const remainingFiles = Object.keys(vol.toJSON())
@@ -47,7 +47,7 @@ describe('reports prune command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345', '--keep', '2']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 1 report file'),
     );
     const remainingFiles = Object.keys(vol.toJSON())
@@ -60,7 +60,7 @@ describe('reports prune command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345', '--keep', '3']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 0 report files'),
     );
     const remainingFiles = Object.keys(vol.toJSON())
@@ -73,7 +73,7 @@ describe('reports prune command', () => {
 
     await reportsCommand.parseAsync(['node', 'test', 'prune', '--space', '12345', '--keep', '10']);
 
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Deleted 0 report files'),
     );
     const remainingFiles = Object.keys(vol.toJSON())

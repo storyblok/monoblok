@@ -1,5 +1,5 @@
 import type { Component, VNode } from 'vue';
-import { createTextVNode, h } from 'vue';
+import { createTextVNode, h, toRaw } from 'vue';
 import type {
   RenderSpec,
   SbRichTextElement,
@@ -32,7 +32,8 @@ function resolveComponentOverride<K extends SbRichTextElement>(
   type: K,
   components?: SbVueRichTextComponentMap,
 ): Component<SbVueRichTextProps[K]> | undefined {
-  return components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
+  const comp = components?.[type] as Component<SbVueRichTextProps[K]> | undefined;
+  return comp ? toRaw(comp) : undefined;
 }
 
 export interface SbVueRichTextRenderContext {
@@ -165,6 +166,9 @@ function renderNode(node: SbRichTextNode, options: SbVueRichTextRenderContext, k
   }
 
   const children = node.content ? renderChildren(node.content, options) : [];
+  if (node.type === 'emoji') {
+    return h(tag, { key, ...props }, [createTextVNode(node.attrs.emoji)]);
+  }
   return h(tag, { key, ...props }, children);
 }
 

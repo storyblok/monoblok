@@ -4,6 +4,7 @@ import { __dirname, capitalize, handleError, handleFileSystemError, toCamelCase,
 import type { GenerateTypesOptions } from './constants';
 import type { StoryblokPropertyType } from '../../../types/storyblok';
 import { storyblokSchemas } from '../../../utils/storyblok-schemas';
+import { getLogger } from '../../../lib/logger/logger';
 import { join, resolve } from 'pathe';
 import { pathToFileURL } from 'node:url';
 import { resolvePath, saveToFile } from '../../../utils/filesystem';
@@ -16,6 +17,24 @@ import {
   generateComponentImports,
   generateStoryblokImports,
 } from './utils';
+
+// ComponentPropertySchema is derived via Omit from a discriminated union, which
+// drops member-specific optional fields. We re-add the ones used in this file
+// so that casts from the untyped component schema are properly narrowed.
+type FieldSchema = ComponentPropertySchema & {
+  required?: boolean;
+  source?: string;
+  datasource_slug?: string;
+  filter_content_type?: string[];
+  exclude_empty_option?: boolean;
+  restrict_components?: boolean;
+  restrict_type?: string;
+  component_whitelist?: string[];
+  component_group_whitelist?: string[];
+  component_tag_whitelist?: number[];
+  email_link_type?: boolean;
+  asset_link_type?: boolean;
+};
 
 export interface ComponentGroupsAndNamesObject {
   componentGroups: Map<string, Set<string>>;
@@ -32,7 +51,7 @@ const DEFAULT_TYPEDEFS_HEADER = [
 const getDatasourceTypeTitle = (slug: string) =>
   `${toPascalCase(slug)}DataSource`;
 
-const getPropertyTypeAnnotation = (property: ComponentPropertySchema, prefix?: string, suffix?: string) => {
+const getPropertyTypeAnnotation = (property: FieldSchema, prefix?: string, suffix?: string) => {
   // If a property type is one of the ones provided by Storyblok, return that type
   if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
     return { type: property.type };
@@ -184,7 +203,7 @@ const getComponentPropertiesTypeAnnotations = async (
       return acc;
     }
 
-    const schema = value as ComponentPropertySchema;
+    const schema = value as FieldSchema;
     const propertyType = schema.type;
     const propertyTypeAnnotation: JSONSchema = {
       [key]: getPropertyTypeAnnotation(schema, options.typePrefix, options.typeSuffix),
@@ -262,7 +281,7 @@ const getComponentPropertiesTypeAnnotations = async (
             const componentsWithTags = spaceData.components.filter(
               component =>
                 component.internal_tag_ids
-                && component.internal_tag_ids.some(tagId =>
+                && component.internal_tag_ids.some((tagId: string | number) =>
                   schema.component_tag_whitelist!.includes(Number(tagId)),
                 ),
             );
@@ -386,6 +405,9 @@ export const generateTypes = async (
           _uid: {
             type: 'string',
           },
+          _editable: {
+            tsType: 'string | undefined',
+          },
         },
       };
 
@@ -396,9 +418,10 @@ export const generateTypes = async (
     const datasourcesSchema = spaceData.datasources.map(async (datasource) => {
       const allComponentTypes = resolvedComponentsSchema.map(schema => schema.title);
 
-      const enumValues: string[] | undefined = datasource.entries
+      const filtered = datasource.entries
         ?.filter(d => d.value)
         .map(d => d.value!);
+      const enumValues: string[] | undefined = filtered?.length ? filtered : undefined;
 
       // Handle potential null/undefined slug
       if (!datasource.slug) {
@@ -414,7 +437,7 @@ export const generateTypes = async (
         $id: `#/${datasource.slug}`,
         title: type,
         type: 'string',
-        enum: enumValues,
+        ...(enumValues && { enum: enumValues }),
       };
       return datasourceSchema;
     });
@@ -437,16 +460,23 @@ export const generateTypes = async (
       contentTypeSchema,
     ];
 
+    const logger = getLogger();
+
     const result = await Promise.all(schemas.map(async (schema) => {
     // Use the title as the interface name
       const title = schema.title || schema.$id.replace('#/', '');
+      const kind = componentTitles.has(title) ? 'component' : datasourceTitles.has(title) ? 'datasource' : 'type';
+      logger.info(`Compiling ${kind}: ${title}`);
+      const startTime = Date.now();
+      const content = await compile(schema, title, {
+        additionalProperties: !options.strict,
+        bannerComment: '',
+        ...compilerOptions,
+      });
+      logger.info(`Compiled ${kind}: ${title}`, { elapsedMs: Date.now() - startTime });
       return {
         title,
-        content: await compile(schema, title, {
-          additionalProperties: !options.strict,
-          bannerComment: '',
-          ...compilerOptions,
-        }),
+        content,
         isComponent: componentTitles.has(title),
         isDatasource: datasourceTitles.has(title),
       };

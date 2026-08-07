@@ -17,6 +17,8 @@ pnpm --filter @storyblok/openapi-codegen verify
 
 Both `pull` commands require `gh auth status`. Specs live in the private `storyblok/openapi-wdx` repo.
 
+`generate` verifies the cache content hash against `spec.lock` before running and fails fast on a mismatch, so a stale cache left over from a different SHA can never silently produce divergent output. Run `pull` to resync if it reports a mismatch.
+
 After a `pull:update`, regenerate consumers and commit the diff:
 
 ```sh

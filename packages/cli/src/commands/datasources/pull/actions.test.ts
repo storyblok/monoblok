@@ -118,13 +118,73 @@ describe('pull datasources actions', () => {
         id: 99540095392100,
         name: 'Red',
         value: 'red',
-        dimension_value: '',
         datasource_id: 1,
       });
+      // Datasource has no dimensions, so no per-dimension values are stored and
+      // the transient scalar dimension_value is dropped
+      expect(colorsDatasource?.entries?.[0]).not.toHaveProperty('dimension_value');
+      expect(colorsDatasource?.entries?.[0]?.dimension_values).toBeUndefined();
       // Verify some specific entries to ensure all pages were fetched
       const entryNames = colorsDatasource?.entries?.map(e => e.name);
       expect(entryNames).toContain('Red'); // First page
       expect(entryNames).toContain('white'); // Second page (entry 33)
+    });
+
+    it('should fetch per-dimension values for datasources with dimensions', async () => {
+      const datasource = {
+        id: 900,
+        name: 'greetings',
+        slug: 'greetings',
+        dimensions: [
+          { id: 11, name: 'English', entry_value: 'en', datasource_id: 900 },
+          { id: 22, name: 'German', entry_value: 'de', datasource_id: 900 },
+        ],
+        created_at: '2025-01-01T00:00:00.000Z',
+        updated_at: '2025-01-01T00:00:00.000Z',
+      };
+      const baseEntries = [
+        { id: 1, name: 'hello', value: 'hello', datasource_id: 900 },
+        { id: 2, name: 'bye', value: 'bye', datasource_id: 900 },
+        { id: 3, name: 'thanks', value: 'thanks', datasource_id: 900 },
+      ];
+      // Per-dimension values keyed by dimension id, then entry id. Entry 3 has no
+      // value in the "de" dimension, so it must be omitted from dimension_values.
+      const dimensionValues: Record<string, Record<number, string>> = {
+        11: { 1: 'hi', 2: 'cya', 3: 'thx' },
+        22: { 1: 'hallo', 2: 'tschuess' },
+      };
+      const dimensionRequests: string[] = [];
+
+      server.use(
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasources', () =>
+          HttpResponse.json({ datasources: [datasource] }, { headers: { total: '1' } })),
+        http.get('https://mapi.storyblok.com/v1/spaces/12345/datasource_entries', ({ request }) => {
+          const url = new URL(request.url);
+          const dimension = url.searchParams.get('dimension');
+          dimensionRequests.push(dimension ?? 'default');
+          const entries = baseEntries.map(entry => ({
+            ...entry,
+            dimension_value: dimension ? (dimensionValues[dimension]?.[entry.id] ?? '') : '',
+          }));
+          return HttpResponse.json({ datasource_entries: entries }, { headers: { total: String(entries.length) } });
+        }),
+      );
+
+      const resultPromise = fetchDatasources('12345');
+      await vi.advanceTimersByTimeAsync(MAX_RETRY_DURATION);
+      const result = await resultPromise;
+
+      const greetings = result?.find(ds => ds.name === 'greetings');
+      expect(greetings?.entries?.[0]).toMatchObject({
+        name: 'hello',
+        value: 'hello',
+        dimension_values: { en: 'hi', de: 'hallo' },
+      });
+      expect(greetings?.entries?.[1]?.dimension_values).toEqual({ en: 'cya', de: 'tschuess' });
+      // Empty dimension values are omitted, not stored as ''
+      expect(greetings?.entries?.[2]?.dimension_values).toEqual({ en: 'thx' });
+      // One default pass plus one pass per defined dimension
+      expect(dimensionRequests).toEqual(['default', '11', '22']);
     });
 
     it('should handle pagination headers correctly', async () => {

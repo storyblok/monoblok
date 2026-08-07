@@ -26,15 +26,13 @@ describe('@storyblok/js', () => {
     it('Is loaded by default', () => {
       cy.visit(`${TEST_URL}?_storyblok_tk[timestamp]=1677494658`);
       cy.get('.with-bridge').click();
-      cy.get('#storyblok-javascript-bridge')
-        .should('exist')
-        .and('have.attr', 'src')
-        .and('include', 'storyblok-v2-latest.js');
+      cy.window().its('storyblokRegisterEvent').should('be.a', 'function');
+      cy.window().its('StoryblokBridge').should('be.a', 'function');
     });
 
     it('Is not loaded if options.bridge: false and no errors are printed', () => {
       cy.get('.without-bridge').click();
-      cy.get('#storyblok-javascript-bridge').should('not.exist');
+      cy.window().should('not.have.property', 'storyblokRegisterEvent');
       cy.get('@consoleError').should('not.be.called');
     });
   });
@@ -53,8 +51,8 @@ describe('@storyblok/js', () => {
         .should('be.visible')
         .click();
 
-      cy.get('#storyblok-javascript-bridge')
-        .should('exist');
+      cy.window().its('storyblokRegisterEvent').should('be.a', 'function');
+      cy.window().its('StoryblokBridge').should('be.a', 'function');
 
       cy.get('@consoleError')
         .should('not.be.called');

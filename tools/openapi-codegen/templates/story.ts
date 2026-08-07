@@ -11,19 +11,22 @@ type NoBlocks = false;
 
 type CapiStoryWithSchemaContent<
   TBlock extends RootBlock = RootBlock,
-  TBlocks = NoBlocks,
-> = Override<CapiStoryGenerated, { content: BlockContent<TBlock, TBlocks> }>;
+  TBlocks extends Block | NoBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
+> = Override<CapiStoryGenerated, { content: BlockContent<TBlock, TBlocks, TFieldPlugins> }>;
 
 /** A Storyblok CDN (CAPI) story. */
 export type Story<
   TBlockOrBlocks extends RootBlock | Block = RootBlock,
-  TBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
+  TBlocks extends Block | NoBlocks = NoBlocks,
 > = Prettify<
   // caller passed root block(s) directly → use them as the content type
   [TBlockOrBlocks] extends [RootBlock]
-    ? CapiStoryWithSchemaContent<TBlockOrBlocks, TBlocks>
+    ? CapiStoryWithSchemaContent<TBlockOrBlocks, TBlocks, TFieldPlugins>
     // caller passed the full block union → derive root blocks, thread the union as the registry
-    : TBlocks extends NoBlocks
-      ? CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks>
-      : never
+    : [TBlocks] extends [NoBlocks]
+        ? CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks, TFieldPlugins>
+      // caller passed both → honour the explicit registry
+        : CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlocks, TFieldPlugins>
 >;

@@ -1,11 +1,11 @@
-import type { MultilinkField } from './types';
+import type { MultilinkFieldValue } from './types';
 
-export type UrlToLinkOptions = Partial<Omit<MultilinkField, 'fieldtype' | 'id' | 'url' | 'cached_url' | 'linktype'>>;
+export type UrlToLinkOptions = Partial<Omit<MultilinkFieldValue, 'fieldtype' | 'id' | 'url' | 'cached_url' | 'linktype'>>;
 
 export function urlToLink(
   url: string,
   options?: UrlToLinkOptions,
-): MultilinkField {
+): MultilinkFieldValue {
   // Detect mailto: links
   if (url.startsWith('mailto:')) {
     return {

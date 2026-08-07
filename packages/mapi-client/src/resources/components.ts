@@ -1,98 +1,115 @@
-import * as componentsApi from '../generated/components/sdk.gen';
+import * as mapi from '../generated/mapi/sdk.gen';
 import type {
-  CreateData,
-  CreateResponses,
-  DeleteResponses,
-  GetResponses,
-  ListData,
-  ListResponses,
-  RestoreResponses,
+  CreateComponentData,
+  CreateComponentResponses,
+  DeleteComponentResponses,
+  GetComponentResponses,
+  GetComponentVersionData,
+  GetComponentVersionResponses,
+  ListManagementComponentsData,
+  ListManagementComponentsResponses,
+  ListVersionsData,
+  ListVersionsResponses,
+  RestoreComponentResponses,
   RestoreVersionData,
   RestoreVersionResponses,
-  UpdateData,
-  UpdateResponses,
-  VersionData,
-  VersionResponses,
-  VersionsData,
-  VersionsResponses,
-} from '../generated/components/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+  UpdateComponentData,
+  UpdateComponentResponses,
+} from '../generated/mapi/types.gen';
+import type { Component } from '../generated/mapi/types-aliased.gen';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 import { resolveSpaceId, type SpaceIdPathOverride } from './shared';
 
-export function createComponentsResource(deps: MapiResourceDeps) {
+// Component definitions are MAPI wire shapes (a `schema` record), surfaced as the
+// public `Component`. This is distinct from the DSL `fields` blocks used to narrow
+// story content via `.withTypes()` — definitions are not parameterised by the block
+// registry.
+type ListComponentsResult = Omit<ListManagementComponentsResponses[200], 'components'> & { components: Component[] };
+type GetComponentResult = Omit<GetComponentResponses[200], 'component'> & { component: Component };
+type CreateComponentResult = Omit<CreateComponentResponses[201], 'component'> & { component: Component };
+type UpdateComponentResult = Omit<UpdateComponentResponses[200], 'component'> & { component: Component };
+type RestoreComponentResult = Omit<RestoreComponentResponses[200], 'component'> & { component: Component };
+
+export function createComponentsResource<
+  DefaultThrowOnError extends boolean = false,
+>(deps: MapiResourceDeps<DefaultThrowOnError>) {
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = false>(options: { query?: ListData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListResponses[200], ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListManagementComponentsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<ListComponentsResult, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ListResponses[200], ThrowOnError>(() =>
-        componentsApi.list({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListComponentsResult, ThrowOnError>(() =>
+        mapi.listManagementComponents({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    get<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = DefaultThrowOnError>(componentId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetComponentResult, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetResponses[200], ThrowOnError>(() =>
-        componentsApi.get({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<GetComponentResult, ThrowOnError>(() =>
+        mapi.getComponent({ client, path: { space_id: resolvedSpaceId, id: String(componentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    create<ThrowOnError extends boolean = false>(options: { body: CreateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: CreateComponentData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateComponentResult, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CreateResponses[201], ThrowOnError>(() =>
-        componentsApi.create({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<CreateComponentResult, ThrowOnError>(() =>
+        mapi.createComponent({ client, path: { space_id: resolvedSpaceId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    update<ThrowOnError extends boolean = false>(
-      componentId: number | string,
-      options: { body: UpdateData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<UpdateResponses[200], ThrowOnError>> {
+    update<ThrowOnError extends boolean = DefaultThrowOnError>(
+      componentId: number,
+      options: { body: UpdateComponentData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<UpdateComponentResult, ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<UpdateResponses[200], ThrowOnError>(() =>
-        componentsApi.update({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<UpdateComponentResult, ThrowOnError>(() =>
+        mapi.updateComponent({ client, path: { space_id: resolvedSpaceId, id: String(componentId) }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    delete<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteResponses[200], ThrowOnError>> {
+    delete<ThrowOnError extends boolean = DefaultThrowOnError>(componentId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DeleteComponentResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<DeleteResponses[200], ThrowOnError>(() =>
-        componentsApi.delete_({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<DeleteComponentResponses[200], ThrowOnError>(() =>
+        mapi.deleteComponent({ client, path: { space_id: resolvedSpaceId, id: String(componentId) }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    restore<ThrowOnError extends boolean = false>(componentId: number | string, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RestoreResponses[200], ThrowOnError>> {
+    restore<ThrowOnError extends boolean = DefaultThrowOnError>(componentId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<RestoreComponentResult, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RestoreResponses[200], ThrowOnError>(() =>
-        componentsApi.restore({ client, path: { space_id: resolvedSpaceId, component_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<RestoreComponentResult, ThrowOnError>(() =>
+        mapi.restoreComponent({ client, path: { space_id: resolvedSpaceId, id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    versions<ThrowOnError extends boolean = false>(options: { query?: VersionsData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<VersionsResponses[200], ThrowOnError>> {
+    versions<ThrowOnError extends boolean = DefaultThrowOnError>(
+      componentId: number,
+      options: { query?: Omit<ListVersionsData['query'], 'model' | 'model_id'>; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<ListVersionsResponses[200], ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<VersionsResponses[200], ThrowOnError>(() =>
-        componentsApi.versions({ client, path: { space_id: resolvedSpaceId }, query, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<ListVersionsResponses[200], ThrowOnError>(() =>
+        mapi.listVersions({ client, path: { space_id: resolvedSpaceId }, query: { ...query, model: 'components', model_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    version<ThrowOnError extends boolean = false>(
-      componentId: number | string,
-      versionId: VersionData['path']['version_id'],
+    version<ThrowOnError extends boolean = DefaultThrowOnError>(
+      componentId: number,
+      versionId: GetComponentVersionData['path']['id'],
       options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
-    ): Promise<ApiResponse<VersionResponses[200], ThrowOnError>> {
+    ): Promise<ApiResponse<GetComponentVersionResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<VersionResponses[200], ThrowOnError>(() =>
-        componentsApi.version({
+      return wrapRequest<GetComponentVersionResponses[200], ThrowOnError>(() =>
+        mapi.getComponentVersion({
           client,
-          path: { space_id: resolvedSpaceId, component_id: componentId, version_id: versionId },
+          path: { space_id: resolvedSpaceId, component_id: componentId, id: versionId },
           signal,
           ...(throwOnError === undefined ? {} : { throwOnError }),
           ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
         }), throwOnError);
     },
-    restoreVersion<ThrowOnError extends boolean = false>(
-      versionId: RestoreVersionData['path']['version_id'],
-      options: { body: RestoreVersionData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
-    ): Promise<ApiResponse<RestoreVersionResponses[200], ThrowOnError>> {
-      const { body, signal, path, throwOnError, fetchOptions } = options;
+    restoreVersion<ThrowOnError extends boolean = DefaultThrowOnError>(
+      componentId: number,
+      versionId: RestoreVersionData['path']['id'],
+      options: { query?: Omit<RestoreVersionData['query'], 'model' | 'model_id'>; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<RestoreVersionResponses[204], ThrowOnError>> {
+      const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<RestoreVersionResponses[200], ThrowOnError>(() =>
-        componentsApi.restoreVersion({ client, path: { space_id: resolvedSpaceId, version_id: versionId }, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<RestoreVersionResponses[204], ThrowOnError>(() =>
+        mapi.restoreVersion({ client, path: { space_id: resolvedSpaceId, id: versionId }, query: { ...query, model: 'components', model_id: componentId }, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
   };
 }

@@ -6,7 +6,7 @@ import { migrationsCommand } from '../command';
 import { session } from '../../../session';
 import { readRollbackFile } from './actions';
 import { updateStory } from '../../stories/actions';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import chalk from 'chalk';
 
@@ -67,7 +67,6 @@ rollbackCmd
           const payload: { story: StoryUpdate; force_update?: string; publish?: number } = {
             story: {
               content: story.content,
-              id: story.storyId,
               name: story.name,
             },
             force_update: '1',

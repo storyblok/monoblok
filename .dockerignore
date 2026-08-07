@@ -1,0 +1,17 @@
+node_modules/
+**/node_modules/
+tools/
+tasks/
+adr/
+**/.env
+**/*.local
+**/.cache
+**/.mf
+**/.rollup.cache
+**/tsconfig.tsbuildinfo
+# Build outputs — everything is built inside Docker
+packages/**/dist/
+packages/**/server/
+# Test artifacts
+**/test-results/
+**/playwright-report/

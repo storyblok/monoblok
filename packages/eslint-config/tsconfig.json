@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "target": "es2020",
-    "baseUrl": ".",
     "module": "es2020",
     "moduleResolution": "Bundler",
     "strict": true,

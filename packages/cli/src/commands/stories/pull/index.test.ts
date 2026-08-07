@@ -11,7 +11,6 @@ import { getLogFileContents } from '../../__tests__/helpers';
 import { makeMockStory, type MockStory, storyFileExists } from '../__tests__/helpers';
 
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'info');
 vi.spyOn(console, 'warn');
 
 const LOG_PREFIX = 'storyblok-stories-pull-';
@@ -24,8 +23,18 @@ const preconditions = {
         'https://mapi.storyblok.com/v1/spaces/12345/stories',
         ({ request }) => {
           const url = new URL(request.url);
+          const matchesParam = (key: string, value: unknown): boolean => {
+            // Nested objects (e.g. filter_query) serialize to bracket params:
+            // filter_query[field][op]=value.
+            if (value !== null && typeof value === 'object') {
+              return Object.entries(value).every(
+                ([childKey, childValue]) => matchesParam(`${key}[${childKey}]`, childValue),
+              );
+            }
+            return url.searchParams.get(key) === String(value);
+          };
           const matchesAllParams = Object.entries(params).every(
-            ([key, value]) => url.searchParams.get(key) === String(value),
+            ([key, value]) => matchesParam(key, value),
           );
 
           const page = Number(url.searchParams.get('page') ?? 1);
@@ -147,7 +156,7 @@ describe('stories pull command', () => {
     expect(logFile).toContain('"fetchStories":{"total":3,"succeeded":3,"failed":0}');
     expect(logFile).toContain('"save":{"total":3,"succeeded":3,"failed":0}');
     // UI
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 3 stories pulled, 0 stories failed'),
     );
   });
@@ -164,7 +173,7 @@ describe('stories pull command', () => {
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('DRY RUN MODE ENABLED: No changes will be made.'),
     );
-    expect(console.info).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Pull results: 3 stories pulled, 0 stories failed'),
     );
   });
@@ -172,11 +181,24 @@ describe('stories pull command', () => {
   it('should only pull stories matching the given filters', async () => {
     const stories = [makeMockStory(), makeMockStory(), makeMockStory()];
     preconditions.canPullStories([stories], {
-      filter_query: '[highlighted][in]=true',
-      starts_with: '/en/blog/',
+      // `--query` is parsed into the structured filter_query before the request.
+      filter_query: { highlighted: { in: 'true' } },
+      starts_with: 'en/blog/',
     });
 
-    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--query', '[highlighted][in]=true', '--starts-with', '/en/blog/']);
+    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--query', '[highlighted][in]=true', '--starts-with', 'en/blog/']);
+
+    expect(stories.every(storyFileExists)).toBeTruthy();
+  });
+
+  // Regression: a `full_slug` never starts with a slash and MAPI matches the
+  // prefix literally, so the documented `--starts-with="/en/blog/"` form pulled
+  // nothing at all.
+  it('should strip a leading slash from --starts-with', async () => {
+    const stories = [makeMockStory(), makeMockStory()];
+    preconditions.canPullStories([stories], { starts_with: 'en/blog/' });
+
+    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--starts-with', '/en/blog/']);
 
     expect(stories.every(storyFileExists)).toBeTruthy();
   });
@@ -197,7 +219,6 @@ describe('stories pull command', () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Permission denied while accessing the file'),
-      '',
     );
   });
 
@@ -215,7 +236,6 @@ describe('stories pull command', () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('The server returned an error'),
-      '',
     );
   });
 
@@ -234,7 +254,6 @@ describe('stories pull command', () => {
     // UI
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('The server returned an error'),
-      '',
     );
   });
 });

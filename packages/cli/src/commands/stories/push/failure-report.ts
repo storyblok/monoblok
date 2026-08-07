@@ -1,5 +1,5 @@
 import { APIError } from '../../../utils';
-import type { UI } from '../../../utils/ui';
+import type { UI } from '../../../lib/ui';
 
 interface FailedStoryRecord {
   filename?: string;

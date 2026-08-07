@@ -21,8 +21,12 @@ components:
       $ref: ./shared/stories/field-types/multilink-field-value.yaml
     PluginFieldValue:
       $ref: ./shared/stories/field-types/plugin-field-value.yaml
-    RichtextFieldValue:
-      $ref: ./shared/stories/field-types/richtext-field-value.yaml
+    RichTextFieldValue:
+      $ref: ./shared/stories/field-types/rich-text-field-value.yaml
+    RichTextNode:
+      $ref: ./shared/stories/field-types/rich-text-field-value.yaml#/$defs/RichTextNode
+    RichTextMark:
+      $ref: ./shared/stories/field-types/rich-text-field-value.yaml#/$defs/RichTextMark
     TableFieldValue:
       $ref: ./shared/stories/field-types/table-field-value.yaml
     ComponentSchemaField:

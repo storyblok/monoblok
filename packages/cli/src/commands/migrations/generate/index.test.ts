@@ -17,7 +17,6 @@ vi.mock('./actions', () => ({
 }));
 
 vi.spyOn(console, 'error');
-vi.spyOn(console, 'log');
 
 const LOG_PREFIX = 'storyblok-migrations-generate-';
 
@@ -62,7 +61,7 @@ describe('migrations generate command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Migration generation finished');
     expect(logFile).toContain('.storyblok/migrations/12345/component-name.js');
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('You can find the migration file in .storyblok/migrations/12345/component-name.js'),
     );
   });
@@ -79,7 +78,7 @@ describe('migrations generate command', () => {
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain('Migration generation finished');
     expect(logFile).toContain('custom/migrations/12345/component-name.js');
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('You can find the migration file in custom/migrations/12345/component-name.js'),
     );
   });
@@ -91,9 +90,8 @@ describe('migrations generate command', () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('No component found with name "component-name"'),
-      '',
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('For more information about the error'),
     );
     const logFile = getLogFileContents(LOG_PREFIX);
@@ -105,9 +103,8 @@ describe('migrations generate command', () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('Please provide the component name as argument'),
-      '',
     );
-    expect(console.log).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('For more information about the error'),
     );
     const logFile = getLogFileContents(LOG_PREFIX);

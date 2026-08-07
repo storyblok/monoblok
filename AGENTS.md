@@ -1,30 +1,26 @@
-# Storyblok monoblok Agent Guidelines
+# Storyblok monoblok
 
-> **Note:** `AGENTS.md` is the source of truth. `CLAUDE.md` is a symlink to `AGENTS.md`.
-
-## Rules
-
-1. **Be concise** - Drop: filler, pleasantries, hedging.
-2. **Small diffs** - One logical change per commit
-3. **Plan first** - For non-trivial changes, write a plan before coding
-4. **Verify always** - Run lint/typecheck/tests before considering work done
-5. **Deps: prefer none, don't hand-roll** - Write a few-line helper yourself. But don't reimplement error-prone functionality (parsing, crypto, dates, globbing). Use dependencies already in the lockfile; else add a small well-established dep or flag the tradeoff. Never hand-roll silently.
-6. **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
-
-## Monorepo setup
-
-The project uses `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` and `pnpm nx run-many` to build, test, lint, and run parallel CI checks across your projects. E.g., `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
+We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` and `pnpm nx run-many` to build, test, lint, and run parallel CI checks across projects. E.g., `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
 
 - `packages/`: Public packages and integrations.
 - `tools/`: Internal development tools and scripts.
 - Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
 
-## Storyblok REST and Application Reference
+## Rules
 
-- `../storyrails` (Storyblok backend) - Load when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
-- `../storyfront` (headless CMS frontend) - Load when matching UI/app behavior and you need information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+- **Be concise** - Drop: filler, pleasantries, hedging.
+- **Plan first** - For non-trivial changes, write a plan before coding
+- **Verify always** - Run lint/typecheck/tests before considering work done
+- **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the package. Prefer composing over writing new.
+- **Check versions** - Look up the latest version before installing a new npm package.
 
-These sibling repos may not be available; ignore them if absent. Check `../storyrails/monoblok.md` or `../storyfront/monoblok.md` file on how to consult the repo.
+## Sibling repos
+
+- `../storyrails` (Storyblok backend) - Consult when verifying REST/MAPI/CAPI schemas, error shapes, or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
+- `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+- `../storyblok-docs-platform` (docs site) - Consult when publishing or updating package reference docs; see `docs/docs-platform.md` for the monoblok-side conventions. User-facing documentation lives there, not here: package READMEs stay minimal and link to the docs site.
+
+These sibling repos may not be available; ignore them if absent.
 
 ## Conventions
 
@@ -35,7 +31,7 @@ These sibling repos may not be available; ignore them if absent. Check `../story
 
 ## OpenAPI codegen
 
-`tools/openapi-codegen/` owns OpenAPI spec fetching and the shared generator. Specs are git-ignored and pinned by SHA in `spec.lock`. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. CI must not run `generate`. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo. See `tools/openapi-codegen/README.md`.
+`tools/openapi-codegen/` owns OpenAPI spec fetching and the shared generator. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo! Read `tools/openapi-codegen/README.md` when working with OpenAPI specs.
 
 ## Architecture Decision Records
 
@@ -43,7 +39,7 @@ When a significant architectural decision is made, add a concise new ADR in `adr
 
 ## Git
 
-- **IMPORTANT:** Never stage or commit any code yourself unless explicitly told so!
+- **IMPORTANT:** On `main`, only stage or commit when explicitly asked to.
 - **IMPORTANT:** Never use `git push --force`; if a force push is explicitly required, use `git push --force-with-lease` instead.
 - **Branch naming:** `[fix|feat|chore]/DX-XXX-[title]` e.g. `feat/DX-351-type-safe-schema-support`, `fix/DX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
 - **Commits:** If information is available, add `Fixes DX-*` and `Fixes #*` as footer lines at the end of commit messages for Linear and GitHub tracking.
@@ -62,9 +58,8 @@ Worktrees live in `.worktrees/<prefix>-<branch-name>` e.g., `.worktrees/fix-pull
 
 For more context, read relevant files in `docs/`:
 
-- `announcements.md` - SDK announcement article format and tone. Load when drafting a release/announcement post.
-- `cli-architecture.md` - CLI command patterns, UI module, migration checklist. Load when adding or modifying a `storyblok` CLI command.
-- `docs-platform.md` - Docs site conventions, versioning, library doc paths. Load when editing docs site content or library docs.
+- `announcements.md` - announcement article format and tone. Load when drafting a release/announcement post.
+- `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load when changes need reference docs, when versioning docs for a major release, or when adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
 - `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
-- `testing-patterns.md` - Windows compatibility gotchas, session mocking. Load when writing or debugging tests.
+- `testing-patterns.md` - Test stack, file layout, session mocking, and Windows gotchas. Load when writing, debugging, or reviewing tests.

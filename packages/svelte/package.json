@@ -1,7 +1,7 @@
 {
   "name": "@storyblok/svelte",
   "type": "module",
-  "version": "7.2.0",
+  "version": "7.2.4",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using Svelte.",
   "author": "Storyblok",
@@ -22,8 +22,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "svelte": "./dist/index.js",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
     }
   },
   "main": "./dist/index.js",
@@ -81,7 +80,7 @@
     "svelte-check": "^4.1.5",
     "typescript": "5.8.3",
     "typescript-eslint": "^8.28.0",
-    "vite": "^6.3.5",
+    "vite": "^6.4.3",
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^3.1.3"
   },

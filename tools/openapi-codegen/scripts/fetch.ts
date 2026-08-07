@@ -17,7 +17,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'pathe';
 import { generateKnownTypes } from './known-types.ts';
-import { CACHE_DIR, hashCache, readLock, UPSTREAM_REPO, writeLock } from './lock.ts';
+import { CACHE_DIR, hashCache, readLock, UPSTREAM_REPO, writeLock } from '../src/lock.ts';
 
 const SPECS = [
   { surface: 'capi', file: 'cdn-v2.openapi.yaml' },

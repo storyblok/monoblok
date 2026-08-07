@@ -1,18 +1,20 @@
 import { colorPalette, commands } from '../../../constants';
 import { assetsCommand } from '../command';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { getLogger } from '../../../lib/logger/logger';
 import { getReporter } from '../../../lib/reporter/reporter';
 import { session } from '../../../session';
 import { requireAuthentication } from '../../../utils/auth';
 import { CommandError } from '../../../utils/error/command-error';
-import { handleError, logOnlyError } from '../../../utils/error/error';
-import { transferAssets } from '../actions';
+import { handleError, logOnlyError, toError } from '../../../utils/error/error';
+import { fetchAllSpaceAssetIds, transferAssets } from '../actions';
 
 const transferCmd = assetsCommand
-  .command('transfer <asset-id...>')
+  .command('transfer [asset-id...]')
   .option('-s, --space <space>', 'space ID')
   .option('--folder-id <folderId>', 'destination asset folder ID in the shared library')
+  .option('--all', 'Transfer every asset in the space to the shared library')
+  .option('-q, --query <query>', 'Transfer every asset in the space matching a Storyblok filter query. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
   .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
   .description(`Transfer space assets into the organization's shared asset library.`);
 
@@ -34,27 +36,61 @@ transferCmd
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
-      process.exitCode = 2;
       return;
     }
     if (!space) {
       handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
     const folderId = Number(options.folderId);
     if (!options.folderId || !Number.isFinite(folderId) || folderId <= 0) {
       handleError(new CommandError(`Please provide a destination folder with --folder-id YOUR_FOLDER_ID.`), verbose);
-      process.exitCode = 2;
       return;
     }
 
-    const ids = assetIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
-    if (ids.length === 0) {
-      handleError(new CommandError(`Please provide at least one valid asset ID.`), verbose);
-      process.exitCode = 2;
+    // `--all` (the whole space) and `--query` (a filtered subset) both select
+    // the working set from the space itself, so they are mutually exclusive
+    // with each other and with naming explicit asset IDs.
+    if (options.all && options.query) {
+      handleError(new CommandError(`Cannot combine --all with --query. Use --all to transfer every asset, or --query to transfer a filtered subset.`), verbose);
       return;
+    }
+
+    const bulk = Boolean(options.all || options.query);
+
+    if (bulk && assetIds.length > 0) {
+      handleError(new CommandError(`Cannot combine explicit asset IDs with --all or --query.`), verbose);
+      return;
+    }
+
+    let ids: number[];
+    if (bulk) {
+      const params = options.query ? Object.fromEntries(new URLSearchParams(options.query)) : undefined;
+      logger.info('Enumerating space assets', { space, query: options.query });
+      try {
+        ids = await fetchAllSpaceAssetIds(space, params);
+      }
+      catch (maybeError) {
+        handleError(toError(maybeError), verbose);
+        return;
+      }
+      logger.info('Enumerated space assets', { count: ids.length });
+      if (ids.length === 0) {
+        ui.info(options.query
+          ? `No assets in space ${space} match the query. Nothing to transfer.`
+          : `No assets found in space ${space}. Nothing to transfer.`);
+        logger.info('Transferring assets finished (no assets found)');
+        process.exitCode = 0;
+        return;
+      }
+    }
+    else {
+      ids = assetIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
+      if (ids.length === 0) {
+        handleError(new CommandError(`Please provide at least one valid asset ID, or use --all.`), verbose);
+        return;
+      }
     }
 
     if (options.dryRun) {
@@ -70,18 +106,41 @@ transferCmd
 
     // Per-ID errors are captured individually, so unlike push/pull this
     // command needs no outer fatalError try/catch wrapper.
+    const progress = ui.createProgressBar({ title: 'Transferring assets...' });
+    progress.setTotal(ids.length);
+
     const results = await transferAssets(space, ids, folderId, {
       onSuccess: ({ assetId, filename }) => logger.info('Transferred asset', { assetId, filename }),
       onError: (error, assetId) => logOnlyError(error, { assetId }),
+      onProgress: () => progress.increment(),
     });
+
+    ui.stopAllProgressBars();
 
     const succeeded = results.filter(result => result.status === 'transferred').length;
     const summary = { total: results.length, succeeded, failed: results.length - succeeded };
 
-    ui.info(`Transfer results: ${summary.total} processed, ${summary.failed} failed`);
-    ui.list(results.map(result => result.status === 'transferred'
-      ? `${result.assetId}  ✓ transferred -> ${result.filename}`
-      : `${result.assetId}  ✗ failed: ${result.reason}`));
+    ui.info(`Transfer results: ${summary.succeeded} transferred, ${summary.failed} failed (of ${summary.total}).`);
+
+    if (summary.failed > 0) {
+      // Group failures by reason so the output stays a short summary even when
+      // thousands of assets fail with the same cause, instead of printing one
+      // line per failed asset. Per-asset detail is still in the log/report.
+      const countsByReason = new Map<string, number>();
+      for (const result of results) {
+        if (result.status === 'failed') {
+          const reason = result.reason ?? 'Unknown error';
+          countsByReason.set(reason, (countsByReason.get(reason) ?? 0) + 1);
+        }
+      }
+      const byReason = [...countsByReason.entries()].sort((a, b) => b[1] - a[1]);
+      const MAX_REASONS = 10;
+      const lines = byReason.slice(0, MAX_REASONS).map(([reason, count]) => `✗ ${reason} (${count})`);
+      if (byReason.length > MAX_REASONS) {
+        lines.push(`… and ${byReason.length - MAX_REASONS} more failure reason(s)`);
+      }
+      ui.list(lines);
+    }
 
     reporter.addSummary('transferResults', summary);
     reporter.finalize();

@@ -1,0 +1,70 @@
+[
+  {
+    "id": 3001,
+    "name": "Banner Themes",
+    "slug": "banner_themes",
+    "dimensions": [],
+    "created_at": "2026-04-10T11:09:57.828Z",
+    "updated_at": "2026-04-10T11:09:57.828Z",
+    "entries": [
+      {
+        "id": 3101,
+        "name": "Light",
+        "value": "light",
+        "dimension_value": ""
+      },
+      {
+        "id": 3102,
+        "name": "Dark",
+        "value": "dark",
+        "dimension_value": ""
+      },
+      {
+        "id": 3103,
+        "name": "Brand",
+        "value": "brand",
+        "dimension_value": ""
+      },
+      {
+        "id": 3104,
+        "name": "Gradient",
+        "value": "gradient",
+        "dimension_value": ""
+      }
+    ]
+  },
+  {
+    "id": 3002,
+    "name": "FAQ Categories",
+    "slug": "faq_categories",
+    "dimensions": [],
+    "created_at": "2026-04-10T11:09:58.379Z",
+    "updated_at": "2026-04-10T11:09:58.379Z",
+    "entries": [
+      {
+        "id": 3201,
+        "name": "General",
+        "value": "general",
+        "dimension_value": ""
+      },
+      {
+        "id": 3202,
+        "name": "Billing",
+        "value": "billing",
+        "dimension_value": ""
+      },
+      {
+        "id": 3203,
+        "name": "Technical",
+        "value": "technical",
+        "dimension_value": ""
+      },
+      {
+        "id": 3204,
+        "name": "Shipping",
+        "value": "shipping",
+        "dimension_value": ""
+      }
+    ]
+  }
+]

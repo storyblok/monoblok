@@ -20,7 +20,7 @@ vi.mock('./loader', () => ({
   loadConfig: (options: any) => loadConfigMock(options),
 }));
 
-vi.mock('../../utils/ui', () => ({
+vi.mock('../../lib/ui', () => ({
   getUI: () => ({
     info: uiInfoMock,
   }),

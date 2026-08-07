@@ -1,17 +1,16 @@
-import type { Story, StoryContent, StoryListQuery } from '../../types';
+import type { BlokContent, Story, StoryListQuery } from '../../types';
 
-export type { Story, StoryContent };
+export type { BlokContent, Story };
 
 /**
  * Query parameters for retrieving multiple stories from the Management API.
- * Extends the MAPI StoryListQuery with an index signature to allow CLI-specific
- * ad-hoc parameters (e.g. filter_query[...] expansions).
+ *
+ * Matches the MAPI query contract exactly. `filter_query` is the structured
+ * object form; the CLI's `--query` string is parsed into it via
+ * {@link parseFilterQuery} before reaching this type.
  * @see https://www.storyblok.com/docs/api/management/core-resources/stories/retrieve-multiple-stories
  */
-export type StoriesQueryParams = StoryListQuery & {
-  // Allow string indexing for dynamic filter_query parameters
-  [key: string]: string | number | boolean | undefined;
-};
+export type StoriesQueryParams = StoryListQuery;
 
 export interface FetchStoriesResult {
   stories: Story[];
@@ -40,3 +39,13 @@ export interface StoryIndexEntry {
 }
 
 export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '');
+
+/**
+ * Normalizes a `--starts-with` prefix for the MAPI `starts_with` filter.
+ *
+ * A story's `full_slug` never starts with a slash, and MAPI matches the prefix
+ * literally, so `/en/blog/` matches nothing at all. Leading slashes are the way
+ * people write paths (and how the option was documented), so strip them rather
+ * than let the filter silently select an empty set.
+ */
+export const normalizeStartsWith = (prefix: string): string => prefix.replace(/^\/+/, '');

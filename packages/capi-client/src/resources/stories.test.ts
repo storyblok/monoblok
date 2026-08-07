@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/capi/stories.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -49,6 +39,10 @@ const makeStory = (uuid: string, content: Record<string, unknown>) => {
 
 describe('stories.get()', () => {
   it('should successfully retrieve a single story', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/stories/*', () =>
+        HttpResponse.json({ story: makeStory('test-story', { component: 'page', _uid: 'uid-1' }) })),
+    );
     const client = createApiClient({
       accessToken: 'test-token',
     });
@@ -220,7 +214,7 @@ describe('stories.get()', () => {
     );
     const client = createApiClient({ accessToken: 'test-token' });
 
-    await client.stories.get(123);
+    await client.stories.get('123');
 
     expect(new URL(capturedUrl!).searchParams.has('find_by')).toBe(false);
   });
@@ -228,6 +222,7 @@ describe('stories.get()', () => {
 
 describe('stories.list()', () => {
   it('should successfully retrieve multiple stories', async () => {
+    server.use(http.get('https://api.storyblok.com/v2/cdn/stories', () => HttpResponse.json({ stories: [makeStory('s1', { component: 'page', _uid: 'u1' })] })));
     const client = createApiClient({
       accessToken: 'test-token',
     });

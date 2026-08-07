@@ -1,6 +1,6 @@
 import type { Command } from 'commander';
 import { resolveCommandPath } from '../../../utils/filesystem';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { logsCommand } from '../command';
 import { FileTransport } from '../../../lib/logger/logger-transport-file';
 import { directories } from '../../../constants';

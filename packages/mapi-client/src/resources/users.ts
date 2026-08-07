@@ -1,24 +1,24 @@
-import * as usersApi from '../generated/users/sdk.gen';
+import * as mapi from '../generated/mapi/sdk.gen';
 import type {
-  MeResponses,
-  UpdateMeData,
-  UpdateMeResponses,
-} from '../generated/users/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../index';
+  GetCurrentUserResponses,
+  UpdateCurrentUserData,
+  UpdateCurrentUserResponses,
+} from '../generated/mapi/types.gen';
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
 
-export function createUsersResource(deps: Omit<MapiResourceDeps, 'spaceId'>) {
+export function createUsersResource<DefaultThrowOnError extends boolean = false>(deps: Omit<MapiResourceDeps<DefaultThrowOnError>, 'spaceId'>) {
   const { client, wrapRequest } = deps;
 
   return {
-    me<ThrowOnError extends boolean = false>(options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {}): Promise<ApiResponse<MeResponses[200], ThrowOnError>> {
+    me<ThrowOnError extends boolean = DefaultThrowOnError>(options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {}): Promise<ApiResponse<GetCurrentUserResponses[200], ThrowOnError>> {
       const { signal, throwOnError, fetchOptions } = options;
-      return wrapRequest<MeResponses[200], ThrowOnError>(() =>
-        usersApi.me({ client, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<GetCurrentUserResponses[200], ThrowOnError>(() =>
+        mapi.getCurrentUser({ client, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
-    updateMe<ThrowOnError extends boolean = false>(options: { body: UpdateMeData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions }): Promise<ApiResponse<UpdateMeResponses[200], ThrowOnError>> {
+    updateMe<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: UpdateCurrentUserData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions }): Promise<ApiResponse<UpdateCurrentUserResponses[200], ThrowOnError>> {
       const { body, signal, throwOnError, fetchOptions } = options;
-      return wrapRequest<UpdateMeResponses[200], ThrowOnError>(() =>
-        usersApi.updateMe({ client, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
+      return wrapRequest<UpdateCurrentUserResponses[200], ThrowOnError>(() =>
+        mapi.updateCurrentUser({ client, body, signal, ...(throwOnError === undefined ? {} : { throwOnError }), ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }), throwOnError);
     },
   };
 }

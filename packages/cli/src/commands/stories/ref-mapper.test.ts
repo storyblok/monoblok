@@ -52,7 +52,9 @@ describe('storyRefMapper', () => {
     storyMap.set(story.content.richtext.content[0].content[0].marks[0].attrs.uuid, randomUUID());
     storyMap.set(story.content.richtext.content[1].attrs.body[0].link.id, randomUUID());
     // Options
-    story.content.references.forEach(r => storyMap.set(r, randomUUID()));
+    story.content.references.forEach((r) => {
+      storyMap.set(r, randomUUID());
+    });
     // Multilink
     storyMap.set(story.content.link.id, randomUUID());
     // Asset
@@ -234,6 +236,50 @@ describe('storyRefMapper', () => {
 
     // @ts-expect-error Our types are wrong.
     expect(() => storyRefMapper(story, { schemas: componentSchemas, maps })).not.toThrow();
+  });
+
+  it('should handle null asset fields', () => {
+    const story = {
+      name: 'Null Asset Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: 0,
+      is_folder: false,
+      slug: 'null-asset-story',
+      content: {
+        _uid: randomUUID(),
+        component: 'page_with_everything',
+        asset: null,
+      },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.content.asset).toBeNull();
+  });
+
+  it('should handle null multilink fields', () => {
+    const story = {
+      name: 'Null Multilink Story',
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: 0,
+      is_folder: false,
+      slug: 'null-multilink-story',
+      content: {
+        _uid: randomUUID(),
+        component: 'page_with_everything',
+        link: null,
+      },
+    };
+    const maps = { assets: new Map(), stories: new Map() };
+
+    // @ts-expect-error Our types are wrong.
+    const mappedStory = storyRefMapper(story, { schemas: componentSchemas, maps });
+
+    expect(mappedStory.content.link).toBeNull();
   });
 
   it('should throw a helpful error when bloks field has a non-array value', () => {

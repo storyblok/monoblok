@@ -38,7 +38,7 @@
 
 ## Documentation
 
-For complete documentation, please visit [package reference](https://www.storyblok.com/docs/libraries/js/management-api-client)
+For complete documentation, please visit the [package reference](https://www.storyblok.com/docs/libraries/js/management-api-client).
 
 ## Contributing
 

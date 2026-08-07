@@ -22,6 +22,8 @@
     "vue": "^3.5.30"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "vite-plugin-mkcert": "^1.17.10"
   },
   "nx": {

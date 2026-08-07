@@ -30,6 +30,8 @@ export const ALIASES = [
   { source: 'DatasourceEntry', spec: 'capi', emitAs: 'DatasourceEntry' },
   { source: 'Link', spec: 'capi', emitAs: 'Link' },
   { source: 'Tag', spec: 'capi', emitAs: 'Tag' },
+  { source: 'CdnExperiment', spec: 'capi', emitAs: 'Experiment' },
+  { source: 'CdnExperimentVariant', spec: 'capi', emitAs: 'ExperimentVariant' },
 
   // MAPI entities
   { source: 'Component', spec: 'mapi', emitAs: 'Component' },
@@ -62,6 +64,12 @@ export const ALIASES = [
   { source: 'InternalTag', spec: 'mapi', emitAs: 'InternalTag' },
   { source: 'InternalTagRequest', spec: 'mapi', emitAs: 'InternalTagCreate', unwrap: 'internal_tag' },
   { source: 'InternalTagRequest', spec: 'mapi', emitAs: 'InternalTagUpdate', unwrap: 'internal_tag' },
+  // Shared (organization-level) asset library. Shared internal tags are
+  // serialized as plain `InternalTag`s, so only the request shape needs a name.
+  { source: 'SharedAssetFolder', spec: 'mapi', emitAs: 'SharedAssetFolder' },
+  { source: 'CreateSpaceSharedAssetFolderData', spec: 'mapi', emitAs: 'SharedAssetFolderCreate', unwrap: 'body.shared_asset_folder' },
+  { source: 'UpdateSpaceSharedAssetFolderData', spec: 'mapi', emitAs: 'SharedAssetFolderUpdate', unwrap: 'body.shared_asset_folder' },
+  { source: 'SharedInternalTagRequest', spec: 'mapi', emitAs: 'SharedInternalTagCreate', unwrap: 'shared_internal_tag' },
   { source: 'Preset', spec: 'mapi', emitAs: 'Preset' },
   { source: 'CreatePresetRequest', spec: 'mapi', emitAs: 'PresetCreate', unwrap: 'preset' },
   { source: 'UpdatePresetRequest', spec: 'mapi', emitAs: 'PresetUpdate', unwrap: 'preset' },
@@ -77,7 +85,10 @@ export const ALIASES = [
   { source: 'AssetFieldValue', spec: 'overlay', emitAs: 'AssetFieldValue' },
   { source: 'MultilinkFieldValue', spec: 'overlay', emitAs: 'MultilinkFieldValue' },
   { source: 'PluginFieldValue', spec: 'overlay', emitAs: 'PluginFieldValue' },
-  { source: 'RichtextFieldValue', spec: 'overlay', emitAs: 'RichtextFieldValue' },
+  { source: 'RichTextFieldValue', spec: 'overlay', emitAs: 'RichTextFieldValue' },
+  { source: 'RichTextFieldValue', spec: 'overlay', emitAs: 'RichTextDoc' },
+  { source: 'RichTextNode', spec: 'overlay', emitAs: 'RichTextNode' },
+  { source: 'RichTextMark', spec: 'overlay', emitAs: 'RichTextMark' },
   { source: 'TableFieldValue', spec: 'overlay', emitAs: 'TableFieldValue' },
   { source: 'ComponentSchemaField', spec: 'overlay', emitAs: 'Field' },
 ] as const satisfies readonly AliasSpec[];

@@ -130,6 +130,19 @@ describe('utils', () => {
       const result = stringify(null as any);
       expect(result).toBe('');
     });
+
+    it('does not encode brackets for nested filter_query params', () => {
+      const params = {
+        filter_query: {
+          enddate: { lt_date: '2025-05-05 15:41' },
+        },
+      };
+      expect(stringify(params)).toBe('filter_query[enddate][lt_date]=2025-05-05%2015%3A41');
+    });
+
+    it('does not encode brackets for deeply nested params', () => {
+      expect(stringify({ a: { b: { c: 'val' } } })).toBe('a[b][c]=val');
+    });
   });
 
   describe('arrayFrom function', () => {

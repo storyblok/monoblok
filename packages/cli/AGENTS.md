@@ -5,14 +5,22 @@
 | Need | Put it here |
 | --- | --- |
 | Top-level CLI registration | `src/index.ts` import |
+| Module initialization, global `preAction` behavior | `src/program.ts` |
 | Commander command definition | `src/commands/<name>/index.ts` or `command.ts` |
 | API calls, filesystem writes, transformations | `actions.ts` |
 | Option constants | `constants.ts` |
 | Reusable option types | `types.ts` |
+| Utilities shared by sibling subcommands | parent command directory (e.g. `schema/serialize.ts`, not `schema/push/serialize.ts`) — subcommands must not import from each other |
 | Shared CLI utilities | `src/utils/` |
+| User-facing terminal output | `src/lib/ui/` |
 | Config resolution, global option behavior | `src/lib/config/` |
 | Structured logs | `src/lib/logger/` |
 | Machine-readable command reports | `src/lib/reporter/` |
+| Validation issue filtering, grouping, and formatting | `src/lib/validation/` |
+
+## Module initialization
+
+The `preAction` hook in `src/program.ts` initializes everything in order: config → session and API client → logger → UI → reporter → command action. Anything a command action relies on is already resolved by the time it runs, so read config through `command.optsWithGlobals()` and reach for modules through their getters rather than initializing them yourself.
 
 ## Terminal output
 
@@ -21,10 +29,20 @@
 | User-facing text, titles, warnings, blank lines | `const ui = getUI()` |
 | Progress spinners | `ui.createSpinner()` |
 | Progress bars | `ui.createProgressBar()` |
+| Interactive prompts | `await select({...}, stderrPromptContext)` |
 | Operational diagnostics | `const logger = getLogger()` |
 | Command errors | `handleError(new CommandError(...), verbose)` |
 
-Do not add `console.*`, raw `Spinner`, or direct `konsola.*` calls in new or migrated command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics.
+All UI output routes to stderr. Do not add `console.*` or raw `Spinner` calls in command code. Use `getUI()` for user-facing output and `getLogger()` for structured diagnostics. Error handling uses `handleError()` which sets `process.exitCode` (1 for runtime errors, 2 for `CommandError`).
+
+Every `@inquirer/prompts` call (`select`, `confirm`, `input`, `password`) must pass `stderrPromptContext` (from `src/lib/ui/`) as the second argument so prompt rendering goes to stderr, not stdout:
+
+```ts
+import { select } from '@inquirer/prompts';
+import { stderrPromptContext } from '../../lib/ui';
+
+const region = await select({ message: 'Select region:', choices }, stderrPromptContext);
+```
 
 ## Tests
 
@@ -48,20 +66,25 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { vol } from 'memfs';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { join } from 'pathe';
 
 import '../index';
 import { storiesCommand } from '../command';
+import { directories } from '../../constants';
+import { resolveCommandPath } from '../../utils/filesystem';
 
 const server = setupServer();
 
-beforeAll(() => server.listen());
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
+
+const storiesDir = resolveCommandPath(directories.stories, '12345');
 
 const preconditions = {
   hasEmptyStoriesDirectory() {
     vol.fromJSON({
-      '.storyblok/stories/12345/.gitkeep': '',
+      [join(storiesDir, '.gitkeep')]: '',
     });
   },
   canPullStory(story: { id: number; slug: string; uuid: string }) {
@@ -90,6 +113,8 @@ describe('stories pull command', () => {
   });
 });
 ```
+
+Resolve paths with `resolveCommandPath` and the `directories` constants instead of hardcoding `.storyblok/...`, so a layout change does not break every test. Name each precondition after the state it establishes, including the failure ones (`failsToUpdateRemoteStories`), so a test reads as its own setup.
 
 ## Command patterns
 
@@ -137,3 +162,13 @@ Use the logger for non-user-facing runtime details:
 const logger = getLogger();
 logger.info('Pulling components started', { space, componentName });
 ```
+
+## Older commands
+
+Not every command has been migrated. When you touch one that has not, bring it along:
+
+1. Replace raw `Spinner` with `ui.createSpinner()`, which handles test suppression itself
+2. Remove `isVitest`; command code must never import it
+3. Add `getLogger()` for structured logging
+
+`src/commands/datasources/pull/` is the canonical migrated command.

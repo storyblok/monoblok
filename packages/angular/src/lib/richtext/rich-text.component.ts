@@ -333,7 +333,10 @@ export class SbRichTextComponent implements OnDestroy {
           ? this.createStaticScaffold(staticChildren, el, attrs)
           : el;
 
-        if (node.content) {
+        const textContent = node.type === 'emoji' ? node.attrs.emoji : null;
+        if (textContent) {
+          this.renderer.appendChild(contentHost, this.renderer.createText(textContent));
+        } else if (node.content) {
           this.renderChildren(node.content, contentHost, version);
         }
       }

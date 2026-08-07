@@ -1,19 +1,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { fromOpenApi } from '@msw/source/open-api';
-import { readFileSync } from 'node:fs';
-import { join } from 'pathe';
-import { fileURLToPath } from 'node:url';
 import { createApiClient } from '../index';
 
-const openapiSpecPath = join(
-  fileURLToPath(new URL('.', import.meta.url)),
-  '../../node_modules/@storyblok/openapi/dist/capi/tags.yaml',
-);
-const openapiSpec = readFileSync(openapiSpecPath, 'utf-8');
-const handlers = await fromOpenApi(openapiSpec);
-const server = setupServer(...handlers);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
@@ -21,6 +11,13 @@ afterAll(() => server.close());
 
 describe('tags.list()', () => {
   it('should return tags array', async () => {
+    server.use(
+      http.get('https://api.storyblok.com/v2/cdn/tags', () => {
+        return HttpResponse.json({
+          tags: [{ name: 'example-tag', taggings_count: 1 }],
+        });
+      }),
+    );
     const client = createApiClient({
       accessToken: 'test-token',
     });

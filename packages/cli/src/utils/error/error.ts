@@ -121,16 +121,3 @@ export function handleError(error: Error | FetchError, verbose = false, context?
 export function logOnlyError(error: Error | FetchError, context?: LogContext): void {
   getLogger().error(error.message, { error, errorCode: 'code' in error ? String(error.code) : 'UNKNOWN_ERROR', context });
 }
-
-/**
- * Extracts a human-readable message from an error for display in per-item
- * stream failure warnings (e.g. `ui.warn`).
- *
- * For `APIError` instances, `error.message` already reflects the server-provided
- * string (set by the `APIError` constructor from `response.data.error` /
- * `response.data.message`). For all other errors it falls back to `error.message`
- * or `String(error)`.
- */
-export function getApiResponseMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}

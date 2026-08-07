@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { getApiResponseMessage, getResponseStatus, handleError, toError } from './error';
+import { getResponseStatus, handleError, toError } from './error';
 import { CommandError } from './command-error';
 import type { APIError } from './api-error';
 import { handleAPIError } from './api-error';
@@ -103,13 +103,13 @@ describe('getResponseStatus', () => {
   });
 });
 
-describe('getApiResponseMessage', () => {
+describe('toError message extraction', () => {
   it('should return error.message for a plain Error', () => {
-    expect(getApiResponseMessage(new Error('plain error'))).toBe('plain error');
+    expect(toError(new Error('plain error')).message).toBe('plain error');
   });
 
-  it('should return String(error) for non-Error values', () => {
-    expect(getApiResponseMessage('oops')).toBe('oops');
+  it('should wrap a string into an Error', () => {
+    expect(toError('oops').message).toBe('oops');
   });
 
   it('should return APIError.message, which already contains the server-provided string', () => {
@@ -121,8 +121,7 @@ describe('getApiResponseMessage', () => {
     let caught: APIError | undefined;
     try { handleAPIError('pull_story', fetchError); }
     catch (e) { caught = e as APIError; }
-    // The APIError constructor already extracted the server message into error.message,
-    // so getApiResponseMessage simply delegates to it.
-    expect(getApiResponseMessage(caught)).toBe('Story not found in this space');
+    // The APIError constructor already extracted the server message into error.message.
+    expect(toError(caught).message).toBe('Story not found in this space');
   });
 });

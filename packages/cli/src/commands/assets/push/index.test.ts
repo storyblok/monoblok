@@ -1975,5 +1975,19 @@ describe('assets push command', () => {
       const written = Object.keys(vol.toJSON()).map(p => p.replace(/\\/g, '/'));
       expect(written.some(p => p.includes('assets/shared/7/manifest.jsonl'))).toBe(false);
     });
+
+    it('should treat a missing shared-assets directory as empty (no warn, no log error)', async () => {
+      // A library exists but the local shared/<id> directory has never been set up.
+      // ENOENT from readdir is a normal condition — silently treat as empty directory.
+      preconditions.hasLibraries([{ id: 7, name: 'Brand', accessLevel: 'write' }]);
+      // Intentionally no vol.fromJSON for the shared/7 directory — it does not exist.
+
+      await assetsCommand.parseAsync(['node', 'test', 'push', '--space', DEFAULT_SPACE, '--target', 'shared']);
+
+      // No warn and no error banner in the output.
+      const stderrCalls = (console.error as ReturnType<typeof vi.fn>).mock.calls.map(args => args[0]);
+      expect(stderrCalls.some((msg: unknown) => typeof msg === 'string' && msg.includes('⚠'))).toBe(false);
+      expect(stderrCalls.some((msg: unknown) => typeof msg === 'string' && msg.includes('ENOENT'))).toBe(false);
+    });
   });
 });

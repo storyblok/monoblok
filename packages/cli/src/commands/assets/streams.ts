@@ -534,7 +534,8 @@ export const readLocalAssetsStream = ({
 }: {
   directoryPath: string;
   setTotalAssets?: (total: number) => void;
-  onAssetError?: (error: Error) => void;
+  /** Called for per-file read/parse failures; receives the file path that failed. */
+  onAssetError?: (error: Error, filePath: string) => void;
 }) => {
   const iterator = async function* readAssets() {
     try {
@@ -566,12 +567,20 @@ export const readLocalAssetsStream = ({
           } satisfies LocalAssetPayload;
         }
         catch (maybeError) {
-          onAssetError?.(toError(maybeError));
+          onAssetError?.(toError(maybeError), binaryFilePath);
         }
       }
     }
     catch (maybeError) {
-      onAssetError?.(toError(maybeError));
+      // A missing directory is normal (e.g. a shared-library space that has never
+      // pulled assets). Treat it as empty — yield nothing, set total to 0.
+      if ((maybeError as NodeJS.ErrnoException).code === 'ENOENT') {
+        setTotalAssets?.(0);
+        return;
+      }
+      // Any other directory-level failure (EPERM, etc.) is genuinely unexpected;
+      // rethrow so the pipeline rejects and the outer error handler surfaces it.
+      throw maybeError;
     }
   };
   return Readable.from(iterator());

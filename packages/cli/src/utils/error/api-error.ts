@@ -126,22 +126,26 @@ function pushFieldErrors(stack: string[], fields: Record<string, unknown>): void
 }
 
 /**
- * Returns the first raw string value from a field-error map, ignoring the key.
- * Used to set a clean summary message without leaking internal field names like
- * Rails' "base" key or API-specific parameter names.
- * Covers both flat shapes {"slug":["taken"]} and nested {"error":{"base":["…"]}}.
+ * Field-error key prefixes that carry no user-facing meaning and should be
+ * stripped when promoting the first 422 field error to `this.message`.
+ * Add entries here to suppress additional internal keys without touching logic.
+ *
+ * "base" is the Rails convention for model-level errors not tied to any field.
  */
-function firstFieldValue(data: Record<string, unknown>): string | undefined {
-  for (const value of Object.values(data)) {
-    if (Array.isArray(value) && typeof value[0] === 'string' && value[0]) {
-      return value[0];
-    }
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      const nested = firstFieldValue(value as Record<string, unknown>);
-      if (nested) { return nested; }
+const STRIP_FIELD_PREFIXES = ['base: '] as const;
+
+/**
+ * Strips internal field-error key prefixes from a formatted "key: value" entry.
+ * All other field names (e.g. "name:", "slug:") are preserved — they tell the
+ * user which field is invalid.
+ */
+function stripBasePrefix(entry: string): string {
+  for (const prefix of STRIP_FIELD_PREFIXES) {
+    if (entry.startsWith(prefix)) {
+      return entry.slice(prefix.length);
     }
   }
-  return undefined;
+  return entry;
 }
 
 /**
@@ -258,9 +262,11 @@ export class APIError extends Error {
         replaceOrAppend(this.messageStack, API_ERRORS[errorId], serverMessage);
       }
       else if (this.messageStack.length > stackLengthBefore422) {
-        // 422 with field errors — extract the first raw value from the response data
-        // (not from the formatted messageStack strings) so no key prefix leaks through.
-        this.message = firstFieldValue(responseData ?? {}) ?? this.messageStack[stackLengthBefore422];
+        // 422 with field errors — use the first pushed entry as a summary.
+        // Field names are preserved (e.g. "name: can't be blank") so the user
+        // knows which field is invalid. Only "base:" is stripped because it is a
+        // Rails model-level key with no user-facing meaning.
+        this.message = stripBasePrefix(this.messageStack[stackLengthBefore422]);
         this.cause = this.message;
       }
     }

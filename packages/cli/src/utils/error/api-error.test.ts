@@ -388,7 +388,7 @@ describe('aPIError server message extraction', () => {
     }
     catch (e) {
       expect((e as APIError).messageStack).toContain('base: This asset folder is not valid');
-      // message must surface the raw value without the "base:" key prefix
+      // "base" is a Rails model-level key — strip it from the summary message
       expect((e as APIError).message).toBe('This asset folder is not valid');
     }
   });
@@ -407,9 +407,9 @@ describe('aPIError server message extraction', () => {
       expect((e as APIError).messageStack).toContain(
         'internal_tag_ids: Invalid internal_tag, there is at least one internal_tag not found in our database',
       );
-      // message surfaces the raw value without the field key prefix
+      // field name is preserved — it tells the user which parameter is invalid
       expect((e as APIError).message).toBe(
-        'Invalid internal_tag, there is at least one internal_tag not found in our database',
+        'internal_tag_ids: Invalid internal_tag, there is at least one internal_tag not found in our database',
       );
     }
   });

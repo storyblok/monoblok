@@ -61,6 +61,12 @@ export interface SchemaBlockLike {
 /** A datasource definition (`defineDatasource` result). */
 export interface SchemaDatasourceLike {
   slug?: string;
+  /**
+   * The datasource's display name. Carries identity as much as `slug` does:
+   * `schema push` diffs local against remote datasources by `name`, so two
+   * datasources sharing a name collide there even when their slugs differ.
+   */
+  name?: string;
 }
 
 /** A field plugin registration (`defineFieldPlugin` result). */

@@ -151,6 +151,15 @@ const preconditions = {
         HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
     );
   },
+  async hasDuplicateBlockNamesInEntryFile() {
+    // Runs the real classifier so the aborting error is the production one; it
+    // never touches jiti, only the already-loaded module exports below.
+    const { classifyExports } = await vi.importActual<typeof import('./load-schema')>('./load-schema');
+    vi.mocked(loadSchema).mockImplementation(async () => classifyExports({
+      a: { name: 'hero', fields: [{ name: 'headline', type: 'text' }] },
+      b: { name: 'hero', fields: [{ name: 'subline', type: 'text' }] },
+    }));
+  },
   confirmsMigrations() {
     vi.mocked(confirm).mockResolvedValue(true);
   },
@@ -355,6 +364,20 @@ describe('schema push command', () => {
 
     // handleError outputs to console.error
     expect(console.error).toHaveBeenCalled();
+  });
+
+  // Regression: two blocks sharing a name used to produce two `create` diffs for
+  // the same name, both resolving to the first definition — the second was
+  // dropped and the concurrent creates raced, aborting mid-push.
+  it('should abort before any API call when two blocks share a name', async () => {
+    await preconditions.hasDuplicateBlockNamesInEntryFile();
+
+    await schemaCommand.parseAsync(['node', 'test', 'push', 'schema.ts', '--space', DEFAULT_SPACE]);
+
+    expect(process.exitCode).toBe(2);
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Duplicate schema definitions: block name "hero"'));
+    // No remote handlers are registered and msw runs with onUnhandledRequest:
+    // 'error', so any request during this push would fail the test.
   });
 
   it('should warn when entry file has zero exports', async () => {

@@ -1,32 +1,8 @@
 import type { LocalFolder, SchemaData } from '../types';
-import { CommandError } from '../../../utils';
-import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
+import { CommandError, isRecord } from '../../../utils';
+import { collectSchemaExports, loadSchemaModule } from '../../../utils/schema/classify-exports';
 import { expandFolderPath } from '../folders';
-import { isRecord } from '../utils';
-
-/** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
-export function isComponent(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && Array.isArray(value.fields);
-}
-
-/** Returns true if the value looks like a `defineDatasource()` result. */
-export function isDatasource(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && typeof value.slug === 'string'
-    && !Array.isArray(value.fields);
-}
-
-/** Returns true if the value looks like a `defineFolder()` result. */
-export function isFolder(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && typeof value.path === 'string'
-    && !Array.isArray(value.fields)
-    && !('slug' in value);
-}
+import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
 
 /**
  * Builds the deduped, parent-first {@link LocalFolder} list from harvested
@@ -81,35 +57,71 @@ function buildLocalFolders(registered: string[], derived: string[]): LocalFolder
   return folders;
 }
 
-/** Returns true if the value looks like a schema object (e.g. `export const schema = { blocks: {...}, datasources: {...}, folders: {...} }`). */
-export function isSchemaObject(value: unknown): value is Record<string, Record<string, unknown>> {
-  return isRecord(value)
-    && ('blocks' in value || 'datasources' in value || 'folders' in value);
-}
+/**
+ * Fails the load when two different definitions claim the same push identity.
+ *
+ * {@link collectSchemaExports} de-duplicates by object identity, so a name
+ * collision arrives here as two entries. Left alone, the diff emits two `create`
+ * actions for one name, both resolving to the first definition — the second is
+ * dropped, the two concurrent creates race, and the first rejection aborts the
+ * push after other entities were already written. Reporting it up front keeps
+ * the failure deterministic and off the network. `schema validate` reports the
+ * same collision as `duplicate_block_name` / `duplicate_datasource_name` /
+ * `duplicate_datasource_slug`.
+ */
+function assertUniqueIdentities(
+  components: Record<string, unknown>[],
+  datasources: Record<string, unknown>[],
+): void {
+  const collisions: string[] = [];
+  const collect = (label: string, values: unknown[]) => {
+    const seen = new Set<string>();
+    const reported = new Set<string>();
+    for (const value of values) {
+      if (typeof value !== 'string') { continue; }
+      if (seen.has(value) && !reported.has(value)) {
+        reported.add(value);
+        collisions.push(`${label} "${value}"`);
+      }
+      seen.add(value);
+    }
+  };
 
-/** An empty {@link SchemaData}, used as the accumulator base. */
-function emptySchemaData(): SchemaData {
-  return { components: [], folders: [], datasources: [] };
+  // Blocks and datasources are diffed by `name`; a datasource `slug` collision
+  // is rejected by the Management API even when the names differ.
+  collect('block name', components.map(component => component.name));
+  collect('datasource name', datasources.map(datasource => datasource.name));
+  collect('datasource slug', datasources.map(datasource => datasource.slug));
+
+  if (collisions.length > 0) {
+    throw new CommandError(
+      `Duplicate schema definitions: ${collisions.join(', ')}. `
+      + `Each block name, datasource name, and datasource slug must be unique; `
+      + `rename or remove the duplicate before pushing.`,
+    );
+  }
 }
 
 /**
- * Classifies a module's exports into wire components and datasources, mapping
- * the content-shape DSL (`fields`/`allow`/`datasource`) to the MAPI wire shape.
+ * Classifies a module's exports into wire components, datasources, and folders,
+ * mapping the content-shape DSL (`fields`/`allow`/`datasource`/`folder`) to the
+ * MAPI wire shape. Raw classification (including identity-based de-duplication)
+ * is shared with the validate commands via {@link collectSchemaExports}.
  */
 export function classifyExports(moduleExports: Record<string, unknown>): SchemaData {
-  const data = emptySchemaData();
-  const seenComponents = new Set<string>();
-  const seenDatasources = new Set<string>();
-  const registered: string[] = [];
-  const derived: string[] = [];
+  const { components, datasources, folders } = collectSchemaExports(moduleExports);
 
-  // Harvests derived (unregistered) folder display paths from a component's
-  // `folder` field and its `allow` entries. Must run on the raw DSL object,
-  // before `mapBlockToWire` slugifies wire-side keys and loses display names.
-  function harvestComponentPaths(value: Record<string, unknown>) {
-    if (typeof value.folder === 'string') { derived.push(value.folder); }
-    if (Array.isArray(value.fields)) {
-      for (const field of value.fields) {
+  assertUniqueIdentities(components, datasources);
+
+  // Harvest derived (unregistered) folder display paths from each component's
+  // `folder` field and its `allow` entries. Reads the raw DSL objects, before
+  // `mapBlockToWire` slugifies wire-side keys and loses display names.
+  const registered = folders.map(folder => folder.path as string);
+  const derived: string[] = [];
+  for (const component of components) {
+    if (typeof component.folder === 'string') { derived.push(component.folder); }
+    if (Array.isArray(component.fields)) {
+      for (const field of component.fields) {
         if (!isRecord(field) || !Array.isArray(field.allow)) { continue; }
         for (const entry of field.allow) {
           if (isRecord(entry) && typeof entry.folder === 'string') { derived.push(entry.folder); }
@@ -118,42 +130,11 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
     }
   }
 
-  function collect(value: unknown) {
-    if (isComponent(value)) {
-      harvestComponentPaths(value);
-      if (seenComponents.has(value.name as string)) { return; }
-      seenComponents.add(value.name as string);
-      data.components.push(mapBlockToWire(value));
-    }
-    else if (isFolder(value)) {
-      registered.push(value.path as string);
-    }
-    else if (isDatasource(value)) {
-      if (seenDatasources.has(value.name as string)) { return; }
-      seenDatasources.add(value.name as string);
-      data.datasources.push(mapDatasourceToWire(value));
-    }
-  }
-
-  for (const value of Object.values(moduleExports)) {
-    if (isSchemaObject(value)) {
-      // Unwrap schema object: collect from each sub-record (blocks, datasources, folders)
-      for (const group of Object.values(value)) {
-        if (isRecord(group)) {
-          for (const entity of Object.values(group)) {
-            collect(entity);
-          }
-        }
-      }
-    }
-    else {
-      collect(value);
-    }
-  }
-
-  data.folders = buildLocalFolders(registered, derived);
-
-  return data;
+  return {
+    components: components.map(mapBlockToWire),
+    folders: buildLocalFolders(registered, derived),
+    datasources: datasources.map(mapDatasourceToWire),
+  };
 }
 
 /**
@@ -165,12 +146,6 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
  * has no effect. Uses jiti for TypeScript support.
  */
 export async function loadSchema(entryPath: string): Promise<SchemaData> {
-  const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
-  const { resolve } = await import('pathe');
-
-  const entryAbs = resolve(entryPath);
-  const entryMod = await jiti.import(entryAbs) as Record<string, unknown>;
-
+  const entryMod = await loadSchemaModule(entryPath);
   return classifyExports(entryMod);
 }

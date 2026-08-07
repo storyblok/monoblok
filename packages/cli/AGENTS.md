@@ -16,6 +16,7 @@
 | Config resolution, global option behavior | `src/lib/config/` |
 | Structured logs | `src/lib/logger/` |
 | Machine-readable command reports | `src/lib/reporter/` |
+| Validation issue filtering, grouping, and formatting | `src/lib/validation/` |
 
 ## Module initialization
 

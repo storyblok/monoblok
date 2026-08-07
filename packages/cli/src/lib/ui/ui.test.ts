@@ -113,6 +113,42 @@ describe('ui', () => {
     });
   });
 
+  describe('writeMachineOutput', () => {
+    it('should write to stdout even when the UI is disabled', () => {
+      const writeSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+      new UI({ enabled: false }).writeMachineOutput('{"ok":true}');
+      expect(writeSpy).toHaveBeenCalledWith('{"ok":true}\n');
+      expect(logSpy).not.toHaveBeenCalled();
+    });
+
+    // A reader that exits early (`… --format json | head -5`) closes the pipe
+    // mid-write. Unhandled, that EPIPE crashed the process with exit code 1 and
+    // buried the exit code the command had computed.
+    it('should swallow an EPIPE on stdout', () => {
+      vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+      new UI({ enabled: true }).writeMachineOutput('{"ok":true}');
+
+      const epipe: NodeJS.ErrnoException = Object.assign(new Error('write EPIPE'), { code: 'EPIPE' });
+      expect(() => process.stdout.emit('error', epipe)).not.toThrow();
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    // Regression: the guard used to rethrow any non-EPIPE code from inside the
+    // `'error'` listener. A throw in a listener is an uncaught exception, so it
+    // reproduced exactly what the guard exists to prevent — stack trace, exit
+    // code clobbered to 1 — for every code that is not EPIPE.
+    it('should report a non-EPIPE stdout error instead of crashing', () => {
+      vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+      new UI({ enabled: true }).writeMachineOutput('{"ok":true}');
+
+      const other: NodeJS.ErrnoException = Object.assign(new Error('write ENOSPC'), { code: 'ENOSPC' });
+      expect(() => process.stdout.emit('error', other)).not.toThrow();
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('write ENOSPC'));
+      expect(process.exitCode).toBe(1);
+    });
+  });
+
   describe('setEnabled', () => {
     it('should disable decorative output but keep errors on an initially enabled instance', () => {
       const ui = new UI({ enabled: true });

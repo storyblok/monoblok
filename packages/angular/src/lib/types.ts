@@ -9,6 +9,14 @@ export interface SbBlokData {
 
 // Re-export the richtext props type from the feature module
 export type {
+  StoryblokAngularRichTextComponent,
+  StoryblokAngularRichTextComponentMap,
+  StoryblokAngularRichTextProps,
+  StoryblokAngularRichTextRenderContext,
+} from './richtext/richtext.feature';
+
+// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
+export type {
   SbAngularRichTextProps,
   SbAngularRichTextComponent,
   SbAngularRichTextComponentMap,

@@ -39,7 +39,7 @@
     "build": "pnpm package",
     "preview": "vite preview",
     "package": "svelte-kit sync && svelte-package && publint",
-    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:types": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:unit": "vitest run",
     "test:unit:ui": "vitest --ui",

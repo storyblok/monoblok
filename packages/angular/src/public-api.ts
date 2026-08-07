@@ -23,6 +23,14 @@ export { SbBlokDirective } from './lib/blok/sb-blok.directive';
 export { SbRichTextComponent } from './lib/richtext/rich-text.component';
 export { withStoryblokRichtextComponents } from './lib/richtext/richtext.feature';
 export type {
+  StoryblokAngularRichTextComponent,
+  StoryblokAngularRichTextComponentMap,
+  StoryblokAngularRichTextProps,
+  StoryblokAngularRichTextRenderContext,
+} from './lib/richtext/richtext.feature';
+
+// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
+export type {
   SbAngularComponentMap,
   SbAngularRichTextComponentMap,
   SbAngularRichTextComponent,
@@ -37,10 +45,40 @@ export * from './lib/types';
 export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
 
 export type {
+  StoryblokRichTextElement,
+  StoryblokRichTextImageOptions,
+  StoryblokRichTextInput,
+  StoryblokRichTextMark,
+  StoryblokRichTextMarkWithKey,
+  StoryblokRichTextNode,
+  StoryblokRichTextNodeWithKey,
+  StoryblokRichTextProps,
+  StoryblokRichTextRenderContext,
+  StoryblokRichTextRenderSpec,
+  StoryblokRichTextTextNode,
+} from '@storyblok/richtext';
+
+// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
+export type {
+  RenderSpec,
   SbRichTextDoc,
   SbRichTextImageOptions,
   SbRichTextMark,
   SbRichTextNode,
   SbRichTextProps,
   SbRichTextRenderContext,
+} from '@storyblok/richtext';
+
+// Re-exporting helpers from @storyblok/richtext for custom component implementations.
+export {
+  attrsToHtmlString,
+  getInnerMarks,
+  getStaticChildren,
+  groupLinkNodes,
+  hasContent,
+  isSelfClosing,
+  normalizeNodes,
+  processAttrs,
+  resolveTag,
+  styleToString,
 } from '@storyblok/richtext';

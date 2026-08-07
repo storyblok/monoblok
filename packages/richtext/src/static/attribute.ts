@@ -1,9 +1,9 @@
 import { NODE_RENDER_MAP } from './render-map.generated';
 import { isValidStyleValue, stringToStyle } from './style';
-import type { SbRichTextElement } from './types';
+import type { StoryblokRichTextElement } from './types';
 
 type StyleMap = Partial<{
-  [K in SbRichTextElement]: Record<string, string>;
+  [K in StoryblokRichTextElement]: Record<string, string>;
 }>;
 export type AttrMap = Record<string, string>;
 
@@ -47,7 +47,16 @@ const DEFAULT_ATTR_MAP: AttrMap = {
 /**
  * Attributes that should be excluded from the output.
  */
-export const EXCLUDED_ATTRS = new Set(['level', 'linktype', 'uuid', 'anchor', 'meta_data', 'copyright', 'source', 'fallbackImage']);
+export const EXCLUDED_ATTRS = new Set([
+  'level',
+  'linktype',
+  'uuid',
+  'anchor',
+  'meta_data',
+  'copyright',
+  'source',
+  'fallbackImage',
+]);
 
 /**
  * Attributes that should be excluded when they have their default value of 1.
@@ -63,7 +72,9 @@ const DEFAULT_VALUE_ONE_ATTRS = new Set(['colspan', 'rowspan', 'order']);
  * Resolves the href for Storyblok link types (story, email).
  * @returns The resolved href, or undefined if no special handling is needed.
  */
-function resolveStoryblokLinkHref(attrs: Record<string, unknown>): string | undefined {
+function resolveStoryblokLinkHref(
+  attrs: Record<string, unknown>,
+): string | undefined {
   const { linktype, href, anchor } = attrs;
 
   if (linktype === 'story') {
@@ -83,9 +94,10 @@ function resolveStoryblokLinkHref(attrs: Record<string, unknown>): string | unde
 /**
  * Extracts static attributes and styles from the render map for a given element type.
  */
-function getStaticAttrsFromRenderMap(
-  type: SbRichTextElement,
-): { staticAttrs: Record<string, unknown>; staticStyle: Record<string, unknown> } {
+function getStaticAttrsFromRenderMap(type: StoryblokRichTextElement): {
+  staticAttrs: Record<string, unknown>;
+  staticStyle: Record<string, unknown>;
+} {
   const staticStyle: Record<string, unknown> = {};
   let staticAttrs: Record<string, unknown> = {};
 
@@ -99,9 +111,10 @@ function getStaticAttrsFromRenderMap(
   }
 
   const renderAttrs = renderMap.attrs || {};
-  const rawStyle = 'style' in renderAttrs && typeof renderAttrs.style === 'string'
-    ? renderAttrs.style
-    : '';
+  const rawStyle
+    = 'style' in renderAttrs && typeof renderAttrs.style === 'string'
+      ? renderAttrs.style
+      : '';
 
   const { style: _style, ...rest } = renderAttrs as Record<string, unknown>;
   staticAttrs = rest;
@@ -135,7 +148,7 @@ function convertToStyleValue(value: unknown): unknown | undefined {
 function processAttribute(
   key: string,
   value: unknown,
-  type: SbRichTextElement,
+  type: StoryblokRichTextElement,
   styleMap: Record<string, string>,
   attrMap: AttrMap,
   style: Record<string, unknown>,
@@ -163,7 +176,12 @@ function processAttribute(
   const attrName = attrMap[key] ?? key;
 
   // Handle custom attributes for links (spread them as individual attributes)
-  if (attrName === 'custom' && type === 'link' && typeof value === 'object' && value !== null) {
+  if (
+    attrName === 'custom'
+    && type === 'link'
+    && typeof value === 'object'
+    && value !== null
+  ) {
     for (const [customKey, customValue] of Object.entries(value)) {
       rest[customKey] = String(customValue);
     }
@@ -189,13 +207,13 @@ function processAttribute(
  * Applies internal style mappings and allows extending or overriding
  * default attribute mappings via `extendAttrMap`.
  *
- * @param type - {@link SbRichTextElement}
+ * @param type - {@link StoryblokRichTextElement}
  * @param attrs - Attributes from the node/mark
  * @param extendAttrMap - {@link AttrMap} Additional attribute mappings (overrides defaults)
  * @returns Processed attributes with optional `style` object
  */
 export function processAttrs(
-  type: SbRichTextElement,
+  type: StoryblokRichTextElement,
   attrs: Record<string, unknown> = {},
   extendAttrMap: AttrMap = {},
 ): Record<string, unknown> {
@@ -231,11 +249,17 @@ export function processAttrs(
 export const escapeAttr = (value: unknown): string =>
   String(value).replace(/[&"'<>]/g, (char) => {
     switch (char) {
-      case '&': return '&amp;';
-      case '"': return '&quot;';
-      case '\'': return '&#39;';
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      default: return char;
+      case '&':
+        return '&amp;';
+      case '"':
+        return '&quot;';
+      case '\'':
+        return '&#39;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      default:
+        return char;
     }
   });

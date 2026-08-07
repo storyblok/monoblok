@@ -1,17 +1,17 @@
 ---
 import {
-  type SbRichTextTextNode,
-  type SbAstroRichTextRenderContext,
-  type SbRichTextMark,
+  type StoryblokRichTextTextNode,
+  type StoryblokAstroRichTextRenderContext,
+  type StoryblokRichTextMark,
   isValidAstroComponent,
 } from '../../';
 import RenderLinkInner from './RenderLinkInner.astro';
 import ElementTag from './ElementTag.astro';
 
 interface Props {
-  nodes: SbRichTextTextNode[];
-  linkMark: SbRichTextMark & { type: 'link' };
-  options: SbAstroRichTextRenderContext;
+  nodes: StoryblokRichTextTextNode[];
+  linkMark: StoryblokRichTextMark & { type: 'link' };
+  options: StoryblokAstroRichTextRenderContext;
 }
 const { nodes, linkMark, options } = Astro.props;
 const components = options.components;

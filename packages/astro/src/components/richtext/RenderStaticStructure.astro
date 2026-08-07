@@ -1,9 +1,9 @@
 ---
-import { attrsToHtmlString, buildAstroAttrs, isSelfClosing, type RenderSpec, type SbRichTextElement } from '../../';
+import { attrsToHtmlString, buildAstroAttrs, isSelfClosing, type StoryblokRichTextRenderSpec, type StoryblokRichTextElement } from '../../';
 
 interface Props {
-  type: SbRichTextElement;
-  specs: readonly RenderSpec[];
+  type: StoryblokRichTextElement;
+  specs: readonly StoryblokRichTextRenderSpec[];
   parentAttrs?: Record<string, unknown>;
 }
 

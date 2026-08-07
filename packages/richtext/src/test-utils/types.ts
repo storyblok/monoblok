@@ -1,7 +1,7 @@
-import type { SbRichTextNode } from '../static';
+import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
 
 export interface HtmlFixture {
   title: string;
-  input: SbRichTextNode | SbRichTextNode[];
+  input: RichTextDoc | RichTextNode | RichTextNode[];
   expected: string;
-};
+}

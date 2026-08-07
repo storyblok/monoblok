@@ -1,4 +1,4 @@
-import type { SbRichTextInput } from '@storyblok/richtext';
+import type { StoryblokRichTextInput } from '@storyblok/richtext';
 import { describe, expectTypeOf, it } from 'vitest';
 import type { BlockContentBase } from '../generated/overlay/_internal.gen';
 import type {
@@ -7,7 +7,7 @@ import type {
   FieldValueInput,
   MultilinkFieldValue,
   PluginFieldValue,
-  RichtextFieldValue,
+  RichTextFieldValue,
   TableFieldValue,
 } from '../generated/types/field';
 import { defineField } from './define-field';
@@ -54,16 +54,24 @@ describe('FieldValue resolution per field type', () => {
   it('resolves the remaining scalar and structured field types', () => {
     expectTypeOf<FieldValue<typeof _f.boolean>>().toEqualTypeOf<boolean>();
     expectTypeOf<FieldValue<typeof _f.options>>().toEqualTypeOf<string[]>();
-    expectTypeOf<FieldValue<typeof _f.richtext>>().toExtend<RichtextFieldValue>();
+    expectTypeOf<
+      FieldValue<typeof _f.richtext>
+    >().toExtend<RichTextFieldValue>();
     expectTypeOf<FieldValue<typeof _f.asset>>().toExtend<AssetFieldValue>();
-    expectTypeOf<FieldValue<typeof _f.multiasset>>().toExtend<AssetFieldValue[]>();
-    expectTypeOf<FieldValue<typeof _f.multilink>>().toExtend<MultilinkFieldValue>();
+    expectTypeOf<FieldValue<typeof _f.multiasset>>().toExtend<
+      AssetFieldValue[]
+    >();
+    expectTypeOf<
+      FieldValue<typeof _f.multilink>
+    >().toExtend<MultilinkFieldValue>();
     expectTypeOf<FieldValue<typeof _f.table>>().toExtend<TableFieldValue>();
     expectTypeOf<FieldValue<typeof _f.custom>>().toExtend<PluginFieldValue>();
   });
 
   it('leaves `bloks` loose when no block registry is threaded through', () => {
-    expectTypeOf<FieldValue<typeof _f.bloks>>().toEqualTypeOf<BlockContentBase[]>();
+    expectTypeOf<FieldValue<typeof _f.bloks>>().toEqualTypeOf<
+      BlockContentBase[]
+    >();
   });
 
   it('resolves the layout-only field types to `never`', () => {
@@ -83,7 +91,9 @@ describe('FieldValueInput resolution per field type', () => {
     expectTypeOf<FieldValueInput<typeof _f.option>>().toEqualTypeOf<string>();
     expectTypeOf<FieldValueInput<typeof _f.number>>().toEqualTypeOf<string>();
     expectTypeOf<FieldValueInput<typeof _f.boolean>>().toEqualTypeOf<boolean>();
-    expectTypeOf<FieldValueInput<typeof _f.options>>().toEqualTypeOf<string[]>();
+    expectTypeOf<FieldValueInput<typeof _f.options>>().toEqualTypeOf<
+      string[]
+    >();
     expectTypeOf<FieldValueInput<typeof _f.section>>().toEqualTypeOf<never>();
     expectTypeOf<FieldValueInput<typeof _f.tab>>().toEqualTypeOf<never>();
   });
@@ -99,7 +109,6 @@ describe('richtext composition with @storyblok/richtext', () => {
     // This assertion is expected to fail. When the richtext types are made
     // compatible, the directive below becomes unused and the typecheck fails,
     // which is the signal to delete this test.
-    // @ts-expect-error RichtextFieldValue is not assignable to SbRichTextInput
-    expectTypeOf<RichtextFieldValue>().toExtend<SbRichTextInput>();
+    expectTypeOf<RichTextFieldValue>().toExtend<StoryblokRichTextInput>();
   });
 });

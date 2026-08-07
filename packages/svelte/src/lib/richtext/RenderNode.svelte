@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { getStaticChildren, type SbRichTextNode } from '@storyblok/richtext';
-  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
+  import { getStaticChildren, hasContent, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
+  import type { StoryblokSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.svelte';
   import RenderChildren from './RenderChildren.svelte';
   import RenderImage from './RenderImage.svelte';
@@ -8,10 +8,11 @@
   import RenderStaticChildren from './RenderStaticChildren.svelte';
   import ElementTag from './ElementTag.svelte';
   import StoryblokComponent from '../StoryblokComponent.svelte';
+  import type { SbBlokData } from '../types';
 
   type Props = {
-    node: SbRichTextNode;
-    options: SbSvelteRichTextRenderContext;
+    node: StoryblokRichTextNodeWithKey;
+    options: StoryblokSvelteRichTextRenderContext;
   };
 
   const { node, options }: Props = $props();
@@ -30,7 +31,7 @@
 
 {#if CustomComponent}
   <CustomComponent {...node} context={contextForCustom}>
-    {#if node.type !== 'text' && node.content}
+    {#if hasContent(node)}
       <RenderChildren nodes={node.content} {options} />
     {/if}
   </CustomComponent>
@@ -41,7 +42,7 @@
 {:else if node.type === 'blok'}
   {#if Array.isArray(node.attrs?.body)}
     {#each node.attrs.body as blok (blok._uid)}
-      <StoryblokComponent {blok} />
+      <StoryblokComponent blok={blok as SbBlokData} />
     {/each}
   {/if}
 {:else if node.type === 'table'}
@@ -52,7 +53,7 @@
   <RenderStaticChildren {node} {options} />
 {:else}
   <ElementTag {node}>
-    {#if node.content}
+    {#if hasContent(node)}
       <RenderChildren nodes={node.content} {options} />
     {/if}
   </ElementTag>

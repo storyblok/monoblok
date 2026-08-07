@@ -1,5 +1,5 @@
 import { InjectionToken, Type, Injectable, inject, InputSignal } from '@angular/core';
-import type { SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions } from '@storyblok/richtext';
+import type { StoryblokRichTextElement, StoryblokRichTextElementByType, StoryblokRichTextImageOptions } from '@storyblok/richtext';
 
 import { type StoryblokFeature, BaseComponentResolver } from '../components.feature';
 
@@ -12,7 +12,13 @@ import { type StoryblokFeature, BaseComponentResolver } from '../components.feat
  *
  * For marks (link, bold, etc.), use `<ng-content />` since content is projected automatically.
  */
-export type SbAngularRichTextProps<T extends SbRichTextElement> = SbRichTextElementByType[T];
+export type StoryblokAngularRichTextProps<T extends StoryblokRichTextElement> =
+  StoryblokRichTextElementByType<StoryblokAngularRichTextRenderContext>[T];
+
+/**
+ * @deprecated Use {@link StoryblokAngularRichTextProps} instead. Will be removed in the next major version.
+ */
+export type SbAngularRichTextProps<T extends StoryblokRichTextElement> = StoryblokAngularRichTextProps<T>;
 
 /**
  * Context passed to every custom richtext node/mark component alongside its `data` input.
@@ -22,8 +28,8 @@ export type SbAngularRichTextProps<T extends SbRichTextElement> = SbRichTextElem
  * ```typescript
  * \@Component({ template: `{{ context()?.data?.prefix }} {{ data().text }}` })
  * class CustomTextComponent {
- *   readonly data    = input.required<SbAngularRichTextProps<'text'>>();
- *   readonly context = input<SbAngularRichTextRenderContext>();
+ *   readonly data    = input.required<StoryblokAngularRichTextProps<'text'>>();
+ *   readonly context = input<StoryblokAngularRichTextRenderContext>();
  * }
  * ```
  *
@@ -33,27 +39,38 @@ export type SbAngularRichTextProps<T extends SbRichTextElement> = SbRichTextElem
  * <sb-rich-text [sbDocument]="data().content" [sbData]="context()?.data" />
  * ```
  */
-export interface SbAngularRichTextRenderContext {
+export interface StoryblokAngularRichTextRenderContext {
   /** Arbitrary user data passed as `[sbData]` on `<sb-rich-text>`. */
   data?: unknown;
   /** Mirror of the `[sbOptimizeImage]` input on the host `<sb-rich-text>`. */
-  optimizeImage?: boolean | Partial<SbRichTextImageOptions>;
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
 }
+
+/**
+ * @deprecated Use {@link StoryblokAngularRichTextRenderContext} instead. Will be removed in the next major version.
+ */
+export type SbAngularRichTextRenderContext = StoryblokAngularRichTextRenderContext;
 
 /**
  * Angular component type for custom richtext nodes/marks.
  * Declare a `context` input to receive renderer-wide context (sbData, optimizeImage).
  */
-export type SbAngularRichTextComponent<T extends SbRichTextElement> = Type<{
-  data: InputSignal<SbAngularRichTextProps<T>>;
-  context?: InputSignal<SbAngularRichTextRenderContext | undefined>;
+export type StoryblokAngularRichTextComponent<T extends StoryblokRichTextElement> = Type<{
+  data: InputSignal<StoryblokAngularRichTextProps<T>>;
+  context?: InputSignal<StoryblokAngularRichTextRenderContext | undefined>;
 }>;
+
+/**
+ * @deprecated Use {@link StoryblokAngularRichTextComponent} instead. Will be removed in the next major version.
+ */
+export type SbAngularRichTextComponent<T extends StoryblokRichTextElement> =
+  StoryblokAngularRichTextComponent<T>;
 
 /**
  * Lazy loader function for richtext components.
  */
-type SbAngularRichTextComponentLoader<T extends SbRichTextElement> = () => Promise<
-  SbAngularRichTextComponent<T>
+type StoryblokAngularRichTextComponentLoader<T extends StoryblokRichTextElement> = () => Promise<
+  StoryblokAngularRichTextComponent<T>
 >;
 
 /**
@@ -63,35 +80,42 @@ type SbAngularRichTextComponentLoader<T extends SbRichTextElement> = () => Promi
  * @example
  * ```typescript
  * // Eager loading (bundled immediately)
- * const components: SbAngularRichTextComponentMap = {
+ * const components: StoryblokAngularRichTextComponentMap = {
  *   link: CustomLinkComponent,
  *   image: OptimizedImageComponent,
  * };
  *
  * // Lazy loading (loaded on-demand) - recommended
- * const components: SbAngularRichTextComponentMap = {
+ * const components: StoryblokAngularRichTextComponentMap = {
  *   link: () => import('./custom-link').then(m => m.CustomLinkComponent),
  *   image: () => import('./optimized-image').then(m => m.OptimizedImageComponent),
  * };
  * ```
  */
-export type SbAngularRichTextComponentMap = {
-  [K in SbRichTextElement]?: SbAngularRichTextComponent<K> | SbAngularRichTextComponentLoader<K>;
+export type StoryblokAngularRichTextComponentMap = {
+  [K in StoryblokRichTextElement]?:
+    | StoryblokAngularRichTextComponent<K>
+    | StoryblokAngularRichTextComponentLoader<K>;
 };
 
 /**
- * @deprecated Use `SbAngularRichTextComponentMap` instead. This alias exists for backwards compatibility.
+ * @deprecated Use {@link StoryblokAngularRichTextComponentMap} instead. Will be removed in the next major version.
  */
-export type SbAngularComponentMap = SbAngularRichTextComponentMap;
+export type SbAngularRichTextComponentMap = StoryblokAngularRichTextComponentMap;
+
+/**
+ * @deprecated Use `StoryblokAngularRichTextComponentMap` instead. This alias exists for backwards compatibility.
+ */
+export type SbAngularComponentMap = StoryblokAngularRichTextComponentMap;
 
 /**
  * Injection token for richtext component overrides.
  * Defaults to an empty map if not provided.
  */
-export const STORYBLOK_RICHTEXT_COMPONENTS = new InjectionToken<SbAngularRichTextComponentMap>(
-  'STORYBLOK_RICHTEXT_COMPONENTS',
-  { factory: () => ({}) },
-);
+export const STORYBLOK_RICHTEXT_COMPONENTS =
+  new InjectionToken<StoryblokAngularRichTextComponentMap>('STORYBLOK_RICHTEXT_COMPONENTS', {
+    factory: () => ({}),
+  });
 
 /**
  * Injection token for richtext element types that should be skipped when looking up
@@ -110,11 +134,11 @@ export const STORYBLOK_RICHTEXT_EXCLUDED_TYPES = new InjectionToken<ReadonlySet<
  * Caches resolved components to avoid repeated dynamic imports.
  */
 @Injectable({ providedIn: 'root' })
-export class StoryblokRichtextResolver extends BaseComponentResolver<SbRichTextElement> {
+export class StoryblokRichtextResolver extends BaseComponentResolver<StoryblokRichTextElement> {
   protected readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
 
   /** Get all registered segment types (for determining which nodes become component nodes). */
-  getRegisteredTypes(): SbRichTextElement[] {
+  getRegisteredTypes(): StoryblokRichTextElement[] {
     return this.getRegisteredKeys();
   }
 }
@@ -148,7 +172,7 @@ export class StoryblokRichtextResolver extends BaseComponentResolver<SbRichTextE
  * ```
  */
 export function withStoryblokRichtextComponents(
-  components: SbAngularRichTextComponentMap,
+  components: StoryblokAngularRichTextComponentMap,
 ): StoryblokFeature {
   return {
     ɵkind: 'richtext',

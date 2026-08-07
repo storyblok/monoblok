@@ -1,9 +1,8 @@
 <script lang="ts">
   import type { SbSvelteRichTextProps } from '$lib/richtext-helpers';
 
-  const props: SbSvelteRichTextProps<'text'> = $props();
-  const data = props.context?.data as { prefix: string } | undefined;
-  const prefix = data?.prefix ?? '';
+  const { context, text }: SbSvelteRichTextProps<'text'> = $props();
+  const prefix = $derived((context?.data as { prefix: string } | undefined)?.prefix ?? '');
 </script>
 
-{prefix} {props.text.toUpperCase()}
+{prefix} {text.toUpperCase()}

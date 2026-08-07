@@ -1,9 +1,10 @@
 ---
 import {
-  type SbRichTextNode,
-  type SbAstroRichTextRenderContext,
+  type StoryblokRichTextNode,
+  type StoryblokAstroRichTextRenderContext,
   isValidAstroComponent,
   getStaticChildren,
+  hasContent,
 } from '../../';
 import StoryblokComponent from '../StoryblokComponent.astro';
 import RenderChildren from './RenderChildren.astro';
@@ -12,10 +13,11 @@ import RenderImage from './RenderImage.astro';
 import RenderStaticChildren from './RenderStaticChildren.astro';
 import RenderTable from './RenderTable.astro';
 import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
+import type { SbBlokData } from '../../';
 
 interface Props {
-  node: SbRichTextNode;
-  options: SbAstroRichTextRenderContext;
+  node: StoryblokRichTextNode;
+  options: StoryblokAstroRichTextRenderContext;
 }
 const { node, options } = Astro.props;
 const components = options.components;
@@ -31,7 +33,9 @@ const contextForCustom = Custom
 {
   isValidAstroComponent(Custom) ? (
     <Custom {...node} context={contextForCustom}>
-      {node.type !== 'text' && node.content && <RenderChildren nodes={node.content} options={options} />}
+      {hasContent(node) ? (
+        <RenderChildren nodes={node.content} options={options} />
+      ) : null}
     </Custom>
   ) : node.type === 'text' ? (
     <RenderTextNodeWithMarks node={node} marks={node.marks} options={options} />
@@ -40,7 +44,12 @@ const contextForCustom = Custom
   ) : node.type === 'blok' ? (
     <Fragment>
       {Array.isArray(node.attrs?.body) &&
-        node.attrs.body.map((blok, index) => <StoryblokComponent blok={blok} key={blok._uid || index} />)}
+        node.attrs.body.map((blok, index) => (
+          <StoryblokComponent
+            blok={blok as SbBlokData}
+            key={blok._uid || index}
+          />
+        ))}
     </Fragment>
   ) : node.type === 'table' ? (
     <RenderTable node={node} options={options} />
@@ -49,6 +58,10 @@ const contextForCustom = Custom
   ) : getStaticChildren(node) ? (
     <RenderStaticChildren node={node} options={options} />
   ) : (
-    <ElementTag node={node}>{node.content && <RenderChildren nodes={node.content} options={options} />}</ElementTag>
+    <ElementTag node={node}>
+      {hasContent(node) && (
+        <RenderChildren nodes={node.content} options={options} />
+      )}
+    </ElementTag>
   )
 }

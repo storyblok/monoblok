@@ -139,7 +139,8 @@ function renderNode(
   }
 
   if (node.type === 'emoji') {
-    return `<${tag}${htmlAttrs}>${escapeHtml(node.attrs.emoji)}</${tag}>`;
+    const emoji = ('attrs' in node ? node.attrs?.emoji : undefined) as string | undefined;
+    return `<${tag}${htmlAttrs}>${escapeHtml(emoji ?? '')}</${tag}>`;
   }
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
@@ -149,9 +150,10 @@ function renderOptimizedImage(
   node: Extract<RichTextNode, { type: 'image' }>,
   context: StoryblokRichTextRenderContext,
 ): string {
-  const src = node.attrs.src ?? undefined;
+  const attrs = ('attrs' in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
+  const src = attrs?.src as string | undefined;
 
-  let finalAttrs: Record<string, unknown> = { ...node.attrs };
+  let finalAttrs: Record<string, unknown> = { ...attrs };
 
   if (src) {
     const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(

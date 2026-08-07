@@ -151,6 +151,6 @@ export async function loadSchemaModule(entryPath: string): Promise<Record<string
     throw new CommandError(`Schema entry file not found at "${entryPath}".`);
   }
   const { createJiti } = await import('jiti');
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
+  const jiti = createJiti(import.meta.url, { interopDefault: true, tsconfigPaths: true });
   return await jiti.import(entryAbs) as Record<string, unknown>;
 }

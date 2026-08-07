@@ -81,8 +81,8 @@ export function attrsToHtmlString(attrs: Record<string, unknown>): string {
   return result;
 }
 
-export function hasContent(
-  node: RichTextNode,
-): node is RichTextNode & { content: RichTextNode[] } {
+export function hasContent<T extends RichTextNode>(
+  node: T,
+): node is T & { content: RichTextNode[] } {
   return 'content' in node && Array.isArray(node.content);
 }

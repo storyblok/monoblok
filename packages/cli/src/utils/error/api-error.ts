@@ -84,23 +84,15 @@ function getErrorId(status: number): keyof typeof API_ERRORS {
 }
 
 /**
- * Canonical HTTP reason phrases for status codes where MAPI echoes them back
- * as an uninformative `{"error":"..."}` body. HTTP/2 sends an empty statusText,
- * so we can't rely on the response header alone — fall back to the phrase here.
+ * HTTP reason phrases for status codes where MAPI echoes them back verbatim.
+ * HTTP/2 sends empty statusText, so we can't rely on the response header alone.
  */
 const HTTP_REASON_PHRASES: Partial<Record<number, string>> = {
   401: 'Unauthorized',
   403: 'Forbidden',
 };
 
-/**
- * Returns the first non-empty string field from `data` that is not identical
- * to the HTTP statusText or the canonical HTTP reason phrase for the status code.
- * Skipping those prevents echoed reason phrases (e.g. {"error":"Unauthorized"} on 401)
- * from replacing the more informative API_ERRORS constants. HTTP/2 sends an empty
- * statusText, so the canonical phrase is used as a fallback comparison value.
- * Checks `error` before `message` to match MAPI's field priority.
- */
+/** Returns the first data.error / data.message string, unless it just echoes the HTTP reason phrase. */
 function extractServerString(data: Record<string, unknown>, status: number, statusText: string | undefined): string | undefined {
   const boringPhrase = statusText || HTTP_REASON_PHRASES[status] || '';
   for (const field of [data.error, data.message]) {
@@ -111,10 +103,6 @@ function extractServerString(data: Record<string, unknown>, status: number, stat
   return undefined;
 }
 
-/**
- * Pushes `key: value` entries from `fields` into `stack` for every key whose
- * value is a string array. Used for both top-level and nested MAPI 422 shapes.
- */
 function pushFieldErrors(stack: string[], fields: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(fields)) {
     if (Array.isArray(value)) {
@@ -126,19 +114,12 @@ function pushFieldErrors(stack: string[], fields: Record<string, unknown>): void
 }
 
 /**
- * Field-error key prefixes that carry no user-facing meaning and should be
- * stripped when promoting the first 422 field error to `this.message`.
- * Add entries here to suppress additional internal keys without touching logic.
- *
- * "base" is the Rails convention for model-level errors not tied to any field.
+ * Key prefixes to strip when promoting a field error to this.message.
+ * "base" is the Rails convention for model-level errors not tied to a field.
+ * Add entries here to suppress other internal keys without changing any logic.
  */
 const STRIP_FIELD_PREFIXES = ['base: '] as const;
 
-/**
- * Strips internal field-error key prefixes from a formatted "key: value" entry.
- * All other field names (e.g. "name:", "slug:") are preserved — they tell the
- * user which field is invalid.
- */
 function stripBasePrefix(entry: string): string {
   for (const prefix of STRIP_FIELD_PREFIXES) {
     if (entry.startsWith(prefix)) {
@@ -148,10 +129,6 @@ function stripBasePrefix(entry: string): string {
   return entry;
 }
 
-/**
- * Replaces the last entry in `stack` when it equals `target`; otherwise appends.
- * Used to swap the generic API_ERRORS placeholder with a server-provided message.
- */
 function replaceOrAppend(stack: string[], target: string, replacement: string): void {
   const lastIdx = stack.length - 1;
   if (lastIdx >= 0 && stack[lastIdx] === target) {
@@ -168,9 +145,8 @@ export function handleAPIError(action: keyof typeof API_ACTIONS, error: unknown,
     throw new APIError(errorId, action, error, customMessage);
   }
 
-  // Handle non-FetchError objects that have a response property (e.g. mapi-client ClientError).
-  // ClientError itself doesn't carry request context, but some wrappers attach
-  // a `request` field — forward it best-effort so verbose output can show it.
+  // Handle non-FetchError objects with a response property (e.g. mapi-client ClientError).
+  // Forward request context best-effort so --verbose can show it.
   const response = (error as any)?.response;
   if (response?.status) {
     const reqCandidate = (error as any)?.request;
@@ -214,18 +190,12 @@ export class APIError extends Error {
     const responseData = this.response?.data as Record<string, unknown> | undefined;
     const statusText = this.response?.statusText;
 
-    // Extract a server-provided human-readable message early so it is available
-    // both during the 422 block and for the final message override below.
-    // Guards: skip when customMessage was provided; skip when the server string
-    // merely echoes the HTTP reason phrase (e.g. {"error":"Unauthorized"} on 401 —
-    // HTTP/2 sends empty statusText, so we also compare against the canonical phrase).
     const serverMessage = customMessage ? undefined : extractServerString(responseData ?? {}, this.code, statusText);
 
     const stackLengthBefore422 = this.messageStack.length;
 
     if (this.code === 422) {
-      // Scope the "name already taken" rewrite to the action that raised it so a
-      // folder create failure does not claim "component" (and vice versa).
+      // Scope the name-taken rewrite to the action that raised it.
       const nameField = responseData?.name;
       if (Array.isArray(nameField) && nameField[0] === 'has already been taken') {
         if (action === 'push_component_folder') {
@@ -236,10 +206,9 @@ export class APIError extends Error {
         }
       }
 
-      // Push top-level field arrays: {"slug":["taken"]}
       pushFieldErrors(this.messageStack, responseData ?? {});
 
-      // Push one level of nesting: {"error":{"base":["msg"]}} / {"errors":{…}}
+      // One level of nesting: {"error":{"base":["msg"]}} / {"errors":{…}}
       for (const key of ['error', 'errors'] as const) {
         const nested = responseData?.[key];
         if (nested !== null && typeof nested === 'object' && !Array.isArray(nested)) {
@@ -248,13 +217,8 @@ export class APIError extends Error {
       }
     }
 
-    // Replace the generic API_ERRORS placeholder with the most specific message available.
-    // Priority: (1) top-level server string (e.g. {"error":"Your space must be verified…"}),
-    // (2) first raw field value from the 422 response (e.g. "This asset folder is not valid").
-    // The messageStack keeps full key:value entries for verbose display; this.message gets
-    // the raw value so internal field names (Rails "base", param names, etc.) don't leak through.
-    // Skipped when a customMessage was provided or when the 422 name-taken rewrite already
-    // produced a specific message.
+    // Promote the most specific available message; skip when customMessage or
+    // the 422 name-taken rewrite already set a specific one.
     if (!customMessage && this.message === API_ERRORS[errorId]) {
       if (serverMessage) {
         this.message = serverMessage;
@@ -262,10 +226,6 @@ export class APIError extends Error {
         replaceOrAppend(this.messageStack, API_ERRORS[errorId], serverMessage);
       }
       else if (this.messageStack.length > stackLengthBefore422) {
-        // 422 with field errors — use the first pushed entry as a summary.
-        // Field names are preserved (e.g. "name: can't be blank") so the user
-        // knows which field is invalid. Only "base:" is stripped because it is a
-        // Rails model-level key with no user-facing meaning.
         this.message = stripBasePrefix(this.messageStack[stackLengthBefore422]);
         this.cause = this.message;
       }

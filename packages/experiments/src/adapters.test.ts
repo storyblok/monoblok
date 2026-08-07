@@ -132,22 +132,40 @@ describe('fetchAdapter', () => {
 });
 
 describe('beaconAdapter', () => {
-  it('posts the serialized event to the url', () => {
-    const sendBeacon = vi.fn(() => true);
+  it('posts the serialized event to the url', async () => {
+    const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
     beaconAdapter('/api/experiments', { sendBeacon })(event);
 
-    expect(sendBeacon).toHaveBeenCalledWith('/api/experiments', JSON.stringify(event));
+    const [target, body] = sendBeacon.mock.calls[0];
+    expect(target).toBe('/api/experiments');
+    expect(await body.text()).toBe(JSON.stringify(event));
+  });
+
+  it('sends the payload as application/json so a JSON endpoint accepts it', () => {
+    const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
+
+    beaconAdapter('/api/experiments', { sendBeacon })(event);
+
+    expect(sendBeacon.mock.calls[0][1].type).toBe('application/json');
+  });
+
+  it('honors a contentType override, for a cross-origin sink avoiding a preflight', () => {
+    const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
+
+    beaconAdapter('/api/experiments', { sendBeacon, contentType: 'text/plain' })(event);
+
+    expect(sendBeacon.mock.calls[0][1].type).toBe('text/plain');
   });
 
   it('accepts a relative url', () => {
-    const sendBeacon = vi.fn(() => true);
+    const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
     expect(() => beaconAdapter('/api/experiments', { sendBeacon })(event)).not.toThrow();
   });
 
   it('throws when the browser refuses to queue the payload', () => {
-    const sendBeacon = vi.fn(() => false);
+    const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => false);
 
     expect(() => beaconAdapter('/api/experiments', { sendBeacon })(event)).toThrow(/queue/i);
   });
@@ -158,7 +176,7 @@ describe('beaconAdapter', () => {
   });
 
   it('returns nothing so the factory treats delivery as synchronous', () => {
-    const sendBeacon = vi.fn(() => true);
+    const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
     expect(beaconAdapter('/api/experiments', { sendBeacon })(event)).toBeUndefined();
   });

@@ -7,7 +7,9 @@
  *  2. `assignVariant` deterministically buckets visitors into the real variants.
  *  3. `resolveExperiment` maps the original slug to the control's original slug and to a
  *     variant's mapped `variant_slug`, with an exposure event.
- *  4. The `createExperiments` factory delivers exposure and conversion events through an adapter.
+ *  4. The `createExperiments` factory delivers exposure and conversion events through an
+ *     adapter, including a conversion tracked from a separate instance (the SSR case),
+ *     plus the deprecated `track(goal, props)` form for back-compat.
  *  5. The resolved slug points at a story that is actually fetchable via the CAPI.
  *
  * The MAPI client has no dedicated experiments resource yet, so the setup drives the
@@ -319,14 +321,42 @@ describe('@storyblok/experiments CDN round-trip', () => {
   });
 
   describe('createExperiments', () => {
-    it('auto-fires exposure on resolve and attributes a later conversion', () => {
+    it('attributes a conversion tracked from a separate instance to the rendered variant', async () => {
+      // The SSR case, against a real payload: the render and the conversion are
+      // different requests, so they get different factory instances with no
+      // shared state. Bucketing is a deterministic hash of visitorId, so the
+      // second instance has to reach the same variant as the first.
+      const renderEvents: ExperimentEvent[] = [];
+      const conversionEvents: ExperimentEvent[] = [];
+      const visitorId = 'visitor-factory';
+
+      const render = createExperiments({ experiments, adapters: [event => renderEvents.push(event)] });
+      const resolved = render.resolveExperiment({ slug: ORIGINAL_SLUG, visitorId });
+      expect([ORIGINAL_SLUG, variantSlug]).toContain(resolved.slug);
+
+      const conversion = createExperiments({ experiments, adapters: [event => conversionEvents.push(event)] });
+      await conversion.track('signup', visitorId, { props: { plan: 'pro' }, value: 4900 });
+
+      const exposure = renderEvents.find(event => event.type === 'exposure')!;
+      expect(exposure).toBeDefined();
+
+      const tracked = conversionEvents.find(event => event.type === 'conversion' && event.name === 'signup')!;
+      expect(tracked).toBeDefined();
+      expect(tracked.visitorId).toBe(visitorId);
+      expect(tracked.experiment.id).toBe(experiment.id);
+      expect(tracked.variant.public_id).toBe(exposure.variant.public_id);
+    });
+
+    it('still attributes the deprecated track(goal, props) form within one instance', async () => {
+      // Back-compat only: this form has no visitorId and reads assignments
+      // remembered by `resolveExperiment` on this same instance, so it works
+      // solely when both calls happen in one request. Covered here to keep the
+      // 1.x call shape working; new code uses the explicit form above.
       const events: ExperimentEvent[] = [];
       const exp = createExperiments({ experiments, adapters: [event => events.push(event)] });
 
-      const resolved = exp.resolveExperiment({ slug: ORIGINAL_SLUG, visitorId: 'visitor-factory' });
-      expect([ORIGINAL_SLUG, variantSlug]).toContain(resolved.slug);
-
-      exp.track('signup', { plan: 'pro' });
+      exp.resolveExperiment({ slug: ORIGINAL_SLUG, visitorId: 'visitor-factory-deprecated' });
+      await exp.track('signup', { plan: 'pro' });
 
       expect(events.some(event => event.type === 'exposure')).toBe(true);
       expect(events.some(event => event.type === 'conversion' && event.name === 'signup')).toBe(true);

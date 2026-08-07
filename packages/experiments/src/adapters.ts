@@ -16,7 +16,17 @@ export interface FetchAdapterOptions {
 
 export interface BeaconAdapterOptions {
   /** Override `navigator.sendBeacon` (e.g. for testing). */
-  sendBeacon?: (url: string, body: string) => boolean;
+  sendBeacon?: (url: string, body: Blob) => boolean;
+  /**
+   * Content type the beacon is sent with. Defaults to `application/json`, which
+   * matches `fetchAdapter` so one endpoint can parse both.
+   *
+   * `application/json` is not a CORS-safelisted content type, so a cross-origin
+   * beacon is preflighted — and a preflight fired during page unload often does
+   * not complete, which drops the event. For a cross-origin sink, either answer
+   * `OPTIONS` on it or set this to `text/plain` and parse the body accordingly.
+   */
+  contentType?: string;
 }
 
 /**
@@ -94,15 +104,21 @@ export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Ad
  *
  * Delivery is fire-and-forget: the browser reports only whether it accepted the
  * payload for sending, not whether it arrived.
+ *
+ * The event is sent as a `Blob` rather than a string so the request carries
+ * `content-type: application/json`, the same as `fetchAdapter`. A bare string
+ * would be sent as `text/plain`, which a JSON-only endpoint rejects. See
+ * `contentType` for the cross-origin caveat that comes with it.
  */
 export function beaconAdapter(url: string, options: BeaconAdapterOptions = {}): Adapter {
+  const { contentType = 'application/json' } = options;
   return (event: ExperimentEvent): void => {
     const sendBeacon = options.sendBeacon
       ?? globalThis.navigator?.sendBeacon?.bind(globalThis.navigator);
     if (!sendBeacon) {
       throw new Error('beaconAdapter: navigator.sendBeacon is unavailable. Use it in a browser, or pass `fetchAdapter` on the server.');
     }
-    if (!sendBeacon(url, JSON.stringify(event))) {
+    if (!sendBeacon(url, new Blob([JSON.stringify(event)], { type: contentType }))) {
       throw new Error(`beaconAdapter: the browser refused to queue the event for ${url}, most likely because the payload exceeds its beacon size limit.`);
     }
   };

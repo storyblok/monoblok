@@ -67,15 +67,10 @@ export interface StoryblokReactRichTextRenderContext {
  */
 export type SbReactRichTextRenderContext = StoryblokReactRichTextRenderContext;
 
-/** Props for the `<StoryblokRichText>` React component (document-level). */
-export interface StoryblokReactRichTextDocumentProps extends StoryblokReactRichTextRenderContext {
+/** Props for the `<StoryblokRichText>` React component. */
+export interface StoryblokReactRichTextComponentProps extends StoryblokReactRichTextRenderContext {
   document?: StoryblokRichTextInput;
 }
-
-/**
- * @deprecated Use {@link StoryblokReactRichTextDocumentProps} instead. Will be removed in the next major version.
- */
-export type StoryblokRichTextProps = StoryblokReactRichTextDocumentProps;
 
 const extendAttrMap = {
   class: 'className',

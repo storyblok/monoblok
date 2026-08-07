@@ -50,8 +50,8 @@ export type StoryblokVueRichTextComponentMap = {
  */
 export type SbVueRichTextComponentMap = StoryblokVueRichTextComponentMap;
 
-/** Props for the `<StoryblokRichText>` Vue component (document-level). */
-export interface StoryblokVueRichTextDocumentProps extends StoryblokVueRichTextRenderContext {
+/** Props for the `<StoryblokRichText>` Vue component. */
+export interface StoryblokVueRichTextComponentProps extends StoryblokVueRichTextRenderContext {
   document?: StoryblokRichTextInput;
 }
 

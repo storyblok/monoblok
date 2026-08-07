@@ -1,14 +1,14 @@
 import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
 import {
   createRichTextRenderer,
-  type StoryblokReactRichTextDocumentProps,
+  type StoryblokReactRichTextComponentProps,
 } from './richtext';
 import type { SbBlokData } from '@storyblok/js';
 import { createDefaultBlok } from './create-default-blok';
 
 type DivProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'>;
-type WrappedProps = StoryblokReactRichTextDocumentProps & DivProps & { wrapper?: true };
-type UnwrappedProps = StoryblokReactRichTextDocumentProps & { wrapper: false };
+type WrappedProps = StoryblokReactRichTextComponentProps & DivProps & { wrapper?: true };
+type UnwrappedProps = StoryblokReactRichTextComponentProps & { wrapper: false };
 
 export type SbRichTextProps = WrappedProps | UnwrappedProps;
 

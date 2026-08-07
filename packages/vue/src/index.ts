@@ -24,7 +24,7 @@ export { default as StoryblokRichText } from './components/StoryblokRichText.vue
 export { useStoryblokRichText } from './composables/use-storyblok-rich-text';
 export type {
   StoryblokVueRichTextComponentMap,
-  StoryblokVueRichTextDocumentProps,
+  StoryblokVueRichTextComponentProps,
   StoryblokVueRichTextProps,
   StoryblokVueRichTextRenderContext,
 } from './rich-text-renderer';

@@ -1,12 +1,15 @@
 export {
   type StoryblokReactRichTextComponent,
   type StoryblokReactRichTextComponentMap,
-  type StoryblokReactRichTextDocumentProps,
+  type StoryblokReactRichTextComponentProps,
   type StoryblokReactRichTextProps,
   type StoryblokReactRichTextRenderContext,
-  // @deprecated alias — kept for backwards compatibility
-  type StoryblokRichTextProps,
 } from './rich-text-renderer';
+
+/**
+ * @deprecated Use {@link StoryblokReactRichTextComponentProps} instead. Will be removed in the next major version.
+ */
+export type { StoryblokReactRichTextComponentProps as StoryblokRichTextProps } from './rich-text-renderer';
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export {

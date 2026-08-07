@@ -43,7 +43,6 @@ vi.mock('../../utils', async (importOriginal) => {
     requireAuthentication: vi.fn(),
     handleError: vi.fn(),
     toHumanReadable: vi.fn(),
-    isVitest: true,
   };
 });
 

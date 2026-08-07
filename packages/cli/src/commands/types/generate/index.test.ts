@@ -36,14 +36,6 @@ vi.mock('../../components/push/actions', () => ({
   readComponentsFiles: vi.fn(),
 }));
 
-vi.mock('../../../utils', async () => {
-  const actualUtils = await vi.importActual('../../../utils');
-  return {
-    ...actualUtils,
-    isVitestRunning: true,
-  };
-});
-
 describe('types generate', () => {
   beforeEach(() => {
     vi.resetAllMocks();

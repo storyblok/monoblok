@@ -183,10 +183,22 @@ describe('stories pull command', () => {
     preconditions.canPullStories([stories], {
       // `--query` is parsed into the structured filter_query before the request.
       filter_query: { highlighted: { in: 'true' } },
-      starts_with: '/en/blog/',
+      starts_with: 'en/blog/',
     });
 
-    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--query', '[highlighted][in]=true', '--starts-with', '/en/blog/']);
+    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--query', '[highlighted][in]=true', '--starts-with', 'en/blog/']);
+
+    expect(stories.every(storyFileExists)).toBeTruthy();
+  });
+
+  // Regression: a `full_slug` never starts with a slash and MAPI matches the
+  // prefix literally, so the documented `--starts-with="/en/blog/"` form pulled
+  // nothing at all.
+  it('should strip a leading slash from --starts-with', async () => {
+    const stories = [makeMockStory(), makeMockStory()];
+    preconditions.canPullStories([stories], { starts_with: 'en/blog/' });
+
+    await storiesCommand.parseAsync(['node', 'test', 'pull', '--space', '12345', '--starts-with', '/en/blog/']);
 
     expect(stories.every(storyFileExists)).toBeTruthy();
   });

@@ -12,10 +12,11 @@ describe('MultilinkFieldValue', () => {
   it('narrows variant properties by linktype', () => {
     const assertNarrowing = (link: MultilinkFieldValue) => {
       if (link.linktype === 'story') {
-        expectTypeOf(link.anchor).toEqualTypeOf<string | undefined>();
+        // Nullable: the editor stores `anchor: null` once an existing anchor is cleared.
+        expectTypeOf(link.anchor).toEqualTypeOf<string | null | undefined>();
         expectTypeOf(link.rel).toEqualTypeOf<string | undefined>();
         // Storyfront permits arbitrary string-valued custom attributes.
-        expectTypeOf(link.email).toEqualTypeOf<string>();
+        expectTypeOf(link.email).toEqualTypeOf<string | null>();
       }
       else if (link.linktype === 'email') {
         expectTypeOf(link.email).toEqualTypeOf<string | undefined>();
@@ -48,13 +49,16 @@ describe('MultilinkFieldValue', () => {
     expectTypeOf(url.linktype).toEqualTypeOf<'url'>();
   });
 
-  it('rejects nullable target and story anchor values', () => {
-    // @ts-expect-error Storyfront only accepts a non-null target when present.
+  it('rejects a nullable target', () => {
+    // @ts-expect-error Storyfront only writes '_self' or '_blank', never null.
     const _invalidTarget: MultilinkFieldValue = { ...shared, linktype: 'asset', target: null };
-    // @ts-expect-error Storyfront only accepts a non-null story anchor when present.
-    const _invalidAnchor: MultilinkFieldValue = { ...shared, linktype: 'story', anchor: null };
 
     void _invalidTarget;
-    void _invalidAnchor;
+  });
+
+  it('accepts a story anchor cleared to null', () => {
+    const cleared = { ...shared, linktype: 'story', anchor: null } satisfies MultilinkFieldValue;
+
+    expectTypeOf(cleared.anchor).toEqualTypeOf<null>();
   });
 });

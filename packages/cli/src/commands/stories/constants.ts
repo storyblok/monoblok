@@ -39,3 +39,13 @@ export interface StoryIndexEntry {
 }
 
 export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '');
+
+/**
+ * Normalizes a `--starts-with` prefix for the MAPI `starts_with` filter.
+ *
+ * A story's `full_slug` never starts with a slash, and MAPI matches the prefix
+ * literally, so `/en/blog/` matches nothing at all. Leading slashes are the way
+ * people write paths (and how the option was documented), so strip them rather
+ * than let the filter silently select an empty set.
+ */
+export const normalizeStartsWith = (prefix: string): string => prefix.replace(/^\/+/, '');

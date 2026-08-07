@@ -273,7 +273,6 @@ describe('validateStory — multilink values', () => {
 
   it.each([
     ['nullable target', { ...multilinkBase, linktype: 'asset', target: null }],
-    ['nullable story anchor', { ...multilinkBase, linktype: 'story', anchor: null }],
     ['non-string URL attribute', { ...multilinkBase, linktype: 'url', rel: 42 }],
     ['non-string custom story attribute', { ...multilinkBase, linktype: 'story', analytics: 42 }],
   ])('rejects %s', (_label, value) => {
@@ -281,6 +280,16 @@ describe('validateStory — multilink values', () => {
 
     expect(result.ok).toBe(false);
     expect(codesFor(result)).toContain('invalid_value');
+  });
+
+  // This case used to be asserted as a rejection, but the editor produces it:
+  // the anchor modal emits `anchor.value || null`, so clearing an existing
+  // anchor stores `anchor: null`. Rejecting it flagged ordinary edited content.
+  it('accepts a story anchor cleared to null', () => {
+    const result = validateMultilink({ ...multilinkBase, linktype: 'story', anchor: null });
+
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
   });
 });
 
@@ -379,6 +388,16 @@ describe('validateStory — constraints', () => {
     expect(disallowed).toBeDefined();
     expect(disallowed?.path).toEqual(['content', 'items', 0, 'component']);
   });
+
+  // A component missing from the schema is one mistake, not two: reporting both
+  // `unknown_component` and `disallowed_component` double-counted it and buried
+  // the real cause.
+  it('reports only unknown_component for a component the schema does not define', () => {
+    const result = validate({ items: [{ component: 'nope' }] });
+    const codes = result.issues.map(issue => issue.code);
+    expect(codes).toContain('unknown_component');
+    expect(codes).not.toContain('disallowed_component');
+  });
 });
 
 describe('validateStory — number wire format', () => {
@@ -401,6 +420,14 @@ describe('validateStory — number wire format', () => {
 
   it('rejects a JSON number, which the API refuses to store', () => {
     expect(check(7).issues.some(i => i.code === 'invalid_value')).toBe(true);
+  });
+
+  // `Expected string, received number.` reads like a validator bug on a field
+  // that looks numeric; the message has to name the wire format.
+  it('explains that the wire form of a number field is a string', () => {
+    expect(check(7).issues[0].message).toBe(
+      'Expected a numeric string (number fields are stored as strings), received number.',
+    );
   });
 
   it('rejects strings that are not numeric', () => {
@@ -521,5 +548,408 @@ describe('validateStory — richtext allow entries', () => {
     expect(disallowed?.message).toBe(
       'Component "teaser" is not allowed in field "body"; allowed: folder:Layout.',
     );
+  });
+});
+
+// Removing or renaming an option in the schema is exactly the change that
+// orphans existing content, so a stored value outside the declared list must be
+// reported rather than passing as "some string".
+describe('validateStory — declared options', () => {
+  const article = defineBlock({
+    name: 'article',
+    is_root: true,
+    fields: [
+      defineField('tier', { type: 'option', options: [{ name: 'Gold', value: 'gold' }, { name: 'Silver', value: 'silver' }] }),
+      defineField('tags', { type: 'options', options: [{ name: 'A', value: 'a' }, { name: 'B', value: 'b' }] }),
+    ],
+  });
+  const s = { blocks: { article } };
+  const check = (content: Record<string, unknown>) =>
+    validateStory({ content: { component: 'article', ...content } }, s);
+
+  it('accepts a declared option value', () => {
+    expect(check({ tier: 'gold', tags: ['a', 'b'] }).ok).toBe(true);
+  });
+
+  it('rejects an option value that is not declared', () => {
+    const issue = check({ tier: 'bronze' }).issues.find(i => i.code === 'unknown_option');
+    expect(issue?.path).toEqual(['content', 'tier']);
+    expect(issue?.message).toBe('Value "bronze" is not one of the options declared for field "tier": "gold", "silver".');
+  });
+
+  it('rejects an undeclared entry of a multi-option value and points at its index', () => {
+    const issue = check({ tags: ['a', 'zz'] }).issues.find(i => i.code === 'unknown_option');
+    expect(issue?.path).toEqual(['content', 'tags', 1]);
+  });
+
+  it('accepts an empty string, which is how an unset option field is stored', () => {
+    expect(check({ tier: '' }).ok).toBe(true);
+  });
+
+  it('skips fields whose options are resolved in the space', () => {
+    // A datasource-backed field carries no entries in the schema (entries are
+    // content), so its accepted values are not knowable offline.
+    const themed = defineBlock({
+      name: 'themed',
+      is_root: true,
+      fields: [defineField('theme', { type: 'option', source: 'internal', datasource: 'colors' })],
+    });
+    const result = validateStory({ content: { component: 'themed', theme: 'anything' } }, { blocks: { themed } });
+    expect(result.ok).toBe(true);
+  });
+
+  it('skips a field that declares no options', () => {
+    const free = defineBlock({
+      name: 'free',
+      is_root: true,
+      fields: [defineField('tier', { type: 'option' })],
+    });
+    expect(validateStory({ content: { component: 'free', tier: 'whatever' } }, { blocks: { free } }).ok).toBe(true);
+  });
+});
+
+// Zod reports a bare `Invalid input` for a failed union, which told the user
+// nothing about what a valid multilink/asset/richtext value looks like.
+describe('validateStory — value messages', () => {
+  const linked = defineBlock({
+    name: 'linked',
+    is_root: true,
+    fields: [
+      defineField('link', { type: 'multilink' }),
+      defineField('cover', { type: 'asset' }),
+      defineField('body', { type: 'richtext' }),
+    ],
+  });
+  const s = { blocks: { linked } };
+  const messageFor = (content: Record<string, unknown>) =>
+    validateStory({ content: { component: 'linked', ...content } }, s).issues[0]?.message;
+
+  it('describes the accepted shape when a multilink union fails', () => {
+    expect(messageFor({ link: { linktype: 'nonsense' } })).toBe(
+      'Expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }.',
+    );
+  });
+
+  it('describes the accepted shape when an asset value is not an object', () => {
+    expect(messageFor({ cover: 'https://a.storyblok.com/f/1/x.png' })).toBe(
+      'Expected an asset object: { fieldtype: "asset", id, alt, filename }.',
+    );
+  });
+
+  it('describes the accepted shape when a richtext value is not a document', () => {
+    expect(messageFor({ body: 'plain text' })).toBe(
+      'Expected a richtext document: { type: "doc", content: [...] }.',
+    );
+  });
+
+  it('keeps the validator message for a failure inside the value, which names the key', () => {
+    const message = messageFor({ cover: { fieldtype: 'asset', id: 1, alt: null } });
+    expect(message).toContain('expected string');
+    expect(message?.endsWith('.')).toBe(true);
+  });
+});
+
+// Regression: table content authored before `_uid`/`component` were introduced
+// carries only `value`, and the API still serves it. Requiring those keys made
+// every legacy table report three errors naming keys the author never wrote.
+describe('validateStory — legacy table content', () => {
+  const spec = defineBlock({
+    name: 'spec',
+    is_root: true,
+    fields: [defineField('data', { type: 'table' })],
+  });
+  const s = { blocks: { spec } };
+  const validate = (data: unknown) => validateStory({ content: { component: 'spec', data } }, s);
+
+  it('accepts a table whose cells carry only a value', () => {
+    const result = validate({
+      thead: [{ value: 'Header' }],
+      tbody: [{ body: [{ value: 'Cell' }] }],
+    });
+    expect(result.issues).toEqual([]);
+  });
+
+  it('accepts a table carrying the component keys', () => {
+    const result = validate({
+      fieldtype: 'table',
+      thead: [{ _uid: 'a', component: '_table_head', value: 'Header' }],
+      tbody: [{ _uid: 'b', component: '_table_row', body: [{ _uid: 'c', component: '_table_col', value: 'Cell' }] }],
+    });
+    expect(result.issues).toEqual([]);
+  });
+
+  it('still rejects a component key naming the wrong type', () => {
+    const result = validate({
+      thead: [{ component: '_table_row', value: 'Header' }],
+      tbody: [],
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it('still rejects a table missing thead or tbody', () => {
+    expect(validate({ thead: [] }).ok).toBe(false);
+  });
+});
+
+// Field-level translations are stored as `<field>__i18n__<locale>` siblings of
+// the default value. Treating them as separate keys made every translated field
+// warn as unknown *and* left its value unchecked, so a wrong type in any locale
+// but the default passed silently.
+describe('validateStory — field-level translations', () => {
+  const page = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [
+      defineField('headline', { type: 'text', required: true }),
+      defineField('cover', { type: 'asset' }),
+      defineField('body', { type: 'bloks', allow: [teaser] }),
+    ],
+  });
+  const s = { blocks: { page, teaser } };
+
+  it('accepts a translated value without reporting it as an unknown field', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', headline__i18n__de: 'Hallo' },
+    }, s);
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('validates a translated value against its field definition', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', headline__i18n__de: 12345 },
+    }, s);
+    expect(result.ok).toBe(false);
+    const issue = result.issues.find(i => i.code === 'invalid_value');
+    expect(issue?.path).toEqual(['content', 'headline__i18n__de']);
+    expect(issue?.message).toBe('Expected string, received number.');
+  });
+
+  it('recurses into bloks nested under a translated field', () => {
+    const result = validateStory({
+      content: {
+        component: 'page',
+        headline: 'Hello',
+        body__i18n__de: [{ _uid: 'uid-1', component: 'ghost' }],
+      },
+    }, s);
+    expect(codesFor(result)).toContain('unknown_component');
+    expect(result.issues[0]?.path).toEqual(['content', 'body__i18n__de', 0, 'component']);
+  });
+
+  it('reports every locale of a field independently', () => {
+    const result = validateStory({
+      content: {
+        component: 'page',
+        headline: 'Hello',
+        headline__i18n__de: 1,
+        headline__i18n__fr: 2,
+      },
+    }, s);
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'headline__i18n__de'],
+      ['content', 'headline__i18n__fr'],
+    ]);
+  });
+
+  it('keeps required scoped to the default value, so an untranslated locale is not a missing value', () => {
+    // Only `de` is translated. `fr` being absent is normal content, not drift.
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', headline__i18n__de: 'Hallo' },
+    }, s);
+    expect(codesFor(result)).not.toContain('missing_required_field');
+  });
+
+  it('still reports a required field left unset even when a locale carries a value', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: '', headline__i18n__de: 'Hallo' },
+    }, s);
+    expect(codesFor(result)).toContain('missing_required_field');
+  });
+
+  it('warns on a translated key whose base field the block does not define', () => {
+    const result = validateStory({
+      content: { component: 'page', headline: 'Hello', ghost__i18n__de: 'x' },
+    }, s);
+    const issue = result.issues.find(i => i.code === 'unknown_field');
+    expect(issue?.severity).toBe('warning');
+    expect(issue?.message).toBe('Unknown field "ghost__i18n__de" on component "page".');
+  });
+});
+
+// A validator that fails on a union deep inside a value reports a bare
+// `Invalid input`, which names nothing. When a more specific issue already
+// covers the same value, the vague one is noise.
+// One representation of "no value" should read the same on every field type.
+// `''` used to pass for `number` and `datetime`, whose unset wire form it is, and
+// fail as a type error for `boolean`, `asset`, and `multilink`.
+describe('validateStory — the empty string counts as unset', () => {
+  const every = defineBlock({
+    name: 'every',
+    is_root: true,
+    fields: [
+      defineField('num', { type: 'number' }),
+      defineField('when', { type: 'datetime' }),
+      defineField('flag', { type: 'boolean' }),
+      defineField('cover', { type: 'asset' }),
+      defineField('link', { type: 'multilink' }),
+      defineField('body', { type: 'richtext' }),
+    ],
+  });
+  const s = { blocks: { every } };
+
+  it.each(['num', 'when', 'flag', 'cover', 'link', 'body'])('accepts an optional %s left as ""', (name) => {
+    const result = validateStory({ content: { component: 'every', [name]: '' } }, s);
+    expect(result.issues).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('still reports a required field left as ""', () => {
+    const required = defineBlock({
+      name: 'required',
+      is_root: true,
+      fields: [defineField('cover', { type: 'asset', required: true })],
+    });
+    const result = validateStory({ content: { component: 'required', cover: '' } }, { blocks: { required } });
+    expect(codesFor(result)).toEqual(['missing_required_field']);
+  });
+
+  it('still validates a non-empty value of the same field', () => {
+    const result = validateStory({ content: { component: 'every', flag: 'yes' } }, s);
+    expect(codesFor(result)).toEqual(['invalid_value']);
+  });
+});
+
+// A number field stores its value as a string, so a JSON number is drift worth
+// surfacing. It is not a broken value, though: the backend neither coerces nor
+// rejects it, so API-authored and migrated content carries it and still reads.
+describe('validateStory — a JSON number in a number field', () => {
+  const counted = defineBlock({
+    name: 'counted',
+    is_root: true,
+    fields: [defineField('count', { type: 'number' })],
+  });
+  const s = { blocks: { counted } };
+
+  it('warns rather than errors, and keeps the run ok', () => {
+    const result = validateStory({ content: { component: 'counted', count: 42 } }, s);
+    expect(result.ok).toBe(true);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]).toMatchObject({ severity: 'warning', code: 'invalid_value' });
+    expect(result.issues[0]?.message).toBe(
+      'Expected a numeric string (number fields are stored as strings), received number.',
+    );
+  });
+
+  it('still errors on a string that is not numeric', () => {
+    const result = validateStory({ content: { component: 'counted', count: 'abc' } }, s);
+    expect(result.ok).toBe(false);
+  });
+});
+
+// An empty object fails several keys of one value at once, and the keys that
+// carry no message of their own are pure noise next to the ones that do.
+describe('validateStory — an empty object in an object-shaped field', () => {
+  const shaped = defineBlock({
+    name: 'shaped',
+    is_root: true,
+    fields: [defineField('cover', { type: 'asset' })],
+  });
+  const s = { blocks: { shaped } };
+
+  it('reports only the keys that name what is wrong', () => {
+    const result = validateStory({ content: { component: 'shaped', cover: {} } }, s);
+
+    expect(result.ok).toBe(false);
+    for (const issue of result.issues) {
+      expect(issue.message).not.toBe('Invalid input.');
+      expect(issue.message).not.toBe('Value does not match any shape this field accepts.');
+    }
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'cover', 'fieldtype'],
+      ['content', 'cover', 'filename'],
+    ]);
+  });
+});
+
+describe('validateStory — subsumed issues', () => {
+  const page = defineBlock({
+    name: 'page',
+    is_root: true,
+    fields: [defineField('body', { type: 'richtext' })],
+  });
+  const s = { blocks: { page, teaser } };
+
+  it('drops the bare union message when a deeper issue explains the same node', () => {
+    // `attrs.id` is missing, so the node fails the richtext union; the blok walk
+    // separately finds the unknown component underneath it.
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: { type: 'doc', content: [{ type: 'blok', attrs: { body: [{ _uid: 'u', component: 'ghost' }] } }] },
+      },
+    }, s);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]?.code).toBe('unknown_component');
+    expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0, 'attrs', 'body', 0, 'component']);
+  });
+
+  it('keeps the vague message when nothing deeper explains it', () => {
+    // Same malformed node, but the embedded blok itself is valid, so the vague
+    // issue is the only signal the node is wrong. It says so in words a reader can
+    // act on rather than passing Zod's bare `Invalid input` through, and it stays
+    // at the node's own path: the field's expected shape describes a whole
+    // richtext document, not one node inside it.
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: { type: 'doc', content: [{ type: 'blok', attrs: { body: [{ _uid: 'u', component: 'teaser', text: 'hi' }] } }] },
+      },
+    }, s);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]?.message).toBe('Value does not match any shape this field accepts.');
+    expect(result.issues[0]?.path).toEqual(['content', 'body', 'content', 0]);
+  });
+
+  it('does not let an issue on a sibling node suppress an unrelated vague issue', () => {
+    // Two malformed nodes in one richtext field. The second names its problem;
+    // the first has only the vague union failure to go on. Suppressing the first
+    // because the second is explained would hide a whole broken node, so both
+    // are reported.
+    const result = validateStory({
+      content: {
+        component: 'page',
+        body: { type: 'doc', content: [
+          { type: 'blok', attrs: { body: [{ _uid: 'u1', component: 'teaser', text: 'hi' }] } },
+          { type: 'blok', attrs: { body: [{ _uid: 'u2', component: 'ghost' }] } },
+        ] },
+      },
+    }, s);
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'body', 'content', 0],
+      ['content', 'body', 'content', 1, 'attrs', 'body', 0, 'component'],
+    ]);
+    expect(result.issues[0]?.message).toBe('Value does not match any shape this field accepts.');
+    expect(result.issues[1]?.code).toBe('unknown_component');
+  });
+
+  it('does not let an issue on a sibling field suppress an unrelated vague issue', () => {
+    const twoFields = defineBlock({
+      name: 'two',
+      is_root: true,
+      fields: [defineField('a', { type: 'richtext' }), defineField('b', { type: 'text' })],
+    });
+    const result = validateStory({
+      content: {
+        component: 'two',
+        a: { type: 'doc', content: [{ type: 'blok', attrs: { body: [{ _uid: 'u', component: 'teaser', text: 'hi' }] } }] },
+        b: 42,
+      },
+    }, { blocks: { two: twoFields, teaser } });
+    expect(result.issues).toHaveLength(2);
+    expect(result.issues.map(i => i.path)).toEqual([
+      ['content', 'a', 'content', 0],
+      ['content', 'b'],
+    ]);
   });
 });

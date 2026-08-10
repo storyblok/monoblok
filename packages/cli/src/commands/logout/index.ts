@@ -36,7 +36,7 @@ export const logoutCommand = program
         const tokenToRevoke = tokens?.refresh_token ?? tokens?.access_token;
         if (tokenToRevoke) {
           try {
-            const client = await resolveOAuthClient(state.region);
+            const client = resolveOAuthClient();
             await revokeToken(state.region, tokenToRevoke, client);
           } catch (error) {
             ui.warn(`Could not revoke the OAuth session server-side: ${(error as Error).message}`);

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { vol } from 'memfs';
-import { DEFAULT_LOGIN_SCOPES } from './constants';
+import { OAUTH_LOGIN_SCOPES } from './constants';
 import { buildAuthorizeUrl, performOAuthLogin } from './login-flow';
 import { getOAuthActiveRegion, getOAuthEntry } from './store';
 
@@ -8,7 +8,7 @@ vi.mock('node:fs');
 vi.mock('node:fs/promises');
 vi.mock('../../lib/ui', () => ({ getUI: () => ({ info: vi.fn(), warn: vi.fn() }) }));
 vi.mock('./client', () => ({
-  resolveOAuthClient: vi.fn(async () => ({ client_id: 'cid', client_secret: 'sec', scopes: ['stories:read'] })),
+  resolveOAuthClient: vi.fn(() => ({ client_id: 'cid', client_secret: 'sec' })),
 }));
 vi.mock('./pkce', () => ({
   generatePkce: () => ({ verifier: 'verifier', challenge: 'challenge' }),
@@ -24,7 +24,6 @@ vi.mock('./grant', () => ({ introspectGrant: vi.fn() }));
 
 const { introspectGrant } = await import('./grant');
 const { resolveOAuthClient } = await import('./client');
-const { updateOAuthEntry } = await import('./store');
 
 describe('buildAuthorizeUrl', () => {
   it('should build an /oauth/init URL with PKCE and space-safe params', () => {
@@ -70,20 +69,16 @@ describe('performOAuthLogin', () => {
     expect(await getOAuthActiveRegion()).toBe('us');
   });
 
-  it('should request scopes from the resolved client, not a stored client with different credentials', async () => {
-    // Env-var client (no scope catalog) resolves, while a stored client for the
-    // same region carries broader scopes. The request must use the resolved
-    // client's default scopes, not the mismatched stored ones.
-    vi.mocked(resolveOAuthClient).mockResolvedValueOnce({ client_id: 'env-cid', client_secret: 'env-sec' });
-    await updateOAuthEntry('eu', { client: { client_id: 'stored-cid', client_secret: 'stored-sec', scopes: ['spaces:read'] } });
+  it('should authorize with the resolved client id and the full CLI scope set', async () => {
+    vi.mocked(resolveOAuthClient).mockReturnValueOnce({ client_id: 'env-cid', client_secret: 'env-sec' });
     vi.mocked(introspectGrant).mockResolvedValueOnce({ scopes: [], spaces: [] });
 
     let authorizeUrl = '';
     await performOAuthLogin({ region: 'eu', openBrowser: async (url) => { authorizeUrl = url; } });
 
-    const scope = new URL(authorizeUrl).searchParams.get('scope');
-    expect(scope).toBe(DEFAULT_LOGIN_SCOPES.join(' '));
-    expect(scope).not.toContain('spaces:read');
+    const params = new URL(authorizeUrl).searchParams;
+    expect(params.get('client_id')).toBe('env-cid');
+    expect(params.get('scope')).toBe(OAUTH_LOGIN_SCOPES.join(' '));
   });
 
   it('should not persist tokens when introspection fails', async () => {

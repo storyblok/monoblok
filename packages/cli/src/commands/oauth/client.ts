@@ -1,24 +1,23 @@
-import type { RegionCode } from '../../constants';
 import { CommandError } from '../../utils';
+import { OAUTH_CLIENT_ID, OAUTH_CLIENT_PLACEHOLDER_PREFIX, OAUTH_CLIENT_SECRET } from './constants';
 import type { OAuthClientCredentials } from './store';
-import { getOAuthClientFromEnv, getOAuthEntry } from './store';
+import { getOAuthClientFromEnv } from './store';
 
-// Resolution order: env vars, then stored client (from `oauth setup`).
-// A baked-in first-party client is a planned follow-up and would slot in as the next fallback here.
-export const resolveOAuthClient = async (region: RegionCode): Promise<OAuthClientCredentials> => {
+// Resolution order: env vars first (for development against another app or a self-hosted
+// instance), then the first-party client baked into the CLI. Users never configure anything.
+export const resolveOAuthClient = (): OAuthClientCredentials => {
   const fromEnv = getOAuthClientFromEnv();
   if (fromEnv) {
     return fromEnv;
   }
 
-  const stored = (await getOAuthEntry(region)).client;
-  if (stored) {
-    return stored;
+  if (OAUTH_CLIENT_ID.startsWith(OAUTH_CLIENT_PLACEHOLDER_PREFIX)) {
+    throw new CommandError(
+      `This build of the CLI ships without OAuth client credentials, so \`--oauth\` cannot be used yet.\n`
+      + `Log in with a Personal Access Token (\`storyblok login --token <token>\`), or set the `
+      + `STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET environment variables to use your own OAuth app.`,
+    );
   }
 
-  throw new CommandError(
-    `No OAuth client credentials found for region "${region}".\n`
-    + `Run \`storyblok oauth setup\` to provision a client, or set the `
-    + `STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET environment variables.`,
-  );
+  return { client_id: OAUTH_CLIENT_ID, client_secret: OAUTH_CLIENT_SECRET };
 };

@@ -51,7 +51,7 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "generate": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
+    "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
     "test": "vitest run",
     "test:e2e": "vitest run -c vitest.config.e2e.ts",
     "lint": "eslint .",
@@ -61,9 +61,10 @@
   },
   "nx": {
     "targets": {
-      "generate": {
+      "generate:openapi": {
         "inputs": [
           "{projectRoot}/scripts/generate.ts",
+          "{projectRoot}/package.json",
           "openapiCodegen"
         ],
         "outputs": [

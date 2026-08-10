@@ -30,7 +30,7 @@ const findCmd = storiesCommand
       .default('all'),
   )
   .option('--starts-with <path>', 'scope to story subtree')
-  .option('--root-block <name>', 'filter by root block type (server-side)')
+  .option('--container-block <name>', 'filter by container block type (server-side)')
   .option('--contains-block <name>', 'block presence at any depth (server-side, comma-separated)')
   .option('-q, --query <query>', 'filter by root-level content attributes (server-side, MAPI filter_query)')
   .option('--where <jsonpath>', 'client-side JSONPath (RFC 9535) filter (repeatable)', collectValues, [])

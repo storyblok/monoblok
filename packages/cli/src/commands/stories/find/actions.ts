@@ -20,11 +20,11 @@ export function buildQueryParams(text: string | undefined, options: FindOptions)
     params.starts_with = options.startsWith;
   }
 
-  // Filter query and root block (both contribute to filter_query)
-  if (options.query || options.rootBlock) {
+  // Filter query and container block (both contribute to filter_query)
+  if (options.query || options.containerBlock) {
     params.filter_query = {
       ...options.query ? parseFilterQuery(options.query) : {},
-      ...options.rootBlock ? { component: { in: options.rootBlock } } : {},
+      ...options.containerBlock ? { component: { in: options.containerBlock } } : {},
     };
   }
 

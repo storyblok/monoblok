@@ -23,6 +23,7 @@ export const API_ACTIONS = {
   update_component_preset: "Failed to update component preset",
   delete_component_preset: "Failed to delete component preset",
   delete_component: "Failed to delete component",
+  find_stories: "Failed to find stories",
   pull_stories: "Failed to pull stories",
   pull_story: "Failed to pull story",
   create_story: "Failed to create story",

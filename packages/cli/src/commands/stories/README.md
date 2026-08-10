@@ -4,6 +4,7 @@ The `stories` module provides tools to manage Storyblok stories and their conten
 
 ## Subcommands
 
+- [`find`](./find/README.md): Find stories matching filters (outputs JSONL to stdout).
 - [`pull`](./pull/README.md): Download stories from your Storyblok space.
 - [`push`](./push/README.md): Upload stories to your Storyblok space.
 - `validate`: Check every story's content against a local code-defined schema.

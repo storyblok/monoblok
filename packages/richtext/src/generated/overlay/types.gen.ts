@@ -415,38 +415,9 @@ export interface AssetFieldValueRoot {
 }
 
 /**
- * Multilink field type - link to internal stories, external URLs, emails, etc.
+ * Multilink field type - link to internal stories, external URLs, emails, or assets.
  */
-export interface MultilinkFieldValueRoot {
-  /**
-   * Identifies this as a multilink field
-   */
-  fieldtype: 'multilink';
-  /**
-   * UUID of the linked story (for internal links)
-   */
-  id: string;
-  /**
-   * URL for external links or email addresses
-   */
-  url: string;
-  /**
-   * Type of link
-   */
-  linktype: 'story' | 'url' | 'email' | 'asset';
-  /**
-   * Cached URL path for the linked story
-   */
-  cached_url: string;
-  /**
-   * Anchor/fragment identifier for the link
-   */
-  anchor?: string | null;
-  /**
-   * Link target attribute
-   */
-  target?: '_self' | '_blank' | null;
-}
+export type MultilinkFieldValueRoot = MultilinkFieldValueStoryLink | MultilinkFieldValueUrlLink | MultilinkFieldValueEmailLink | MultilinkFieldValueAssetLink;
 
 /**
  * Table field type - structured table data
@@ -456,8 +427,8 @@ export interface TableFieldValueRoot {
    * Table header cells
    */
   thead: Array<{
-    _uid: string;
-    component: '_table_head';
+    _uid?: string;
+    component?: '_table_head';
     /**
      * Header cell content
      */
@@ -467,14 +438,14 @@ export interface TableFieldValueRoot {
    * Table body rows
    */
   tbody: Array<{
-    _uid: string;
-    component: '_table_row';
+    _uid?: string;
+    component?: '_table_row';
     /**
      * Cells in this row
      */
     body?: Array<{
-      _uid: string;
-      component: '_table_col';
+      _uid?: string;
+      component?: '_table_col';
       /**
        * Cell content
        */
@@ -496,4 +467,87 @@ export interface PluginFieldValueRoot {
    */
   _uid?: string;
   [key: string]: unknown | string | undefined;
+}
+
+/**
+ * Link to an internal Storyblok story.
+ */
+export type MultilinkFieldValueStoryLink = MultilinkFieldValueSharedLink & {
+  linktype: 'story';
+  /**
+   * Anchor/fragment identifier for the story link
+   */
+  anchor?: string | null;
+  /**
+   * Link relationship attribute
+   */
+  rel?: string;
+  /**
+   * Link title attribute
+   */
+  title?: string;
+} & {
+  [key: string]: string | null;
+};
+
+/**
+ * Link to an external URL.
+ */
+export type MultilinkFieldValueUrlLink = MultilinkFieldValueSharedLink & {
+  linktype: 'url';
+  /**
+   * Link relationship attribute
+   */
+  rel?: string;
+  /**
+   * Link title attribute
+   */
+  title?: string;
+} & {
+  [key: string]: string;
+};
+
+/**
+ * Link to an email address.
+ */
+export type MultilinkFieldValueEmailLink = MultilinkFieldValueSharedLink & {
+  linktype: 'email';
+  /**
+   * Email address
+   */
+  email?: string;
+};
+
+/**
+ * Link to a Storyblok asset.
+ */
+export type MultilinkFieldValueAssetLink = MultilinkFieldValueSharedLink & {
+  linktype: 'asset';
+};
+
+export interface MultilinkFieldValueSharedLink {
+  /**
+   * Identifies this as a multilink field
+   */
+  fieldtype: 'multilink';
+  /**
+   * Type of link
+   */
+  linktype: string;
+  /**
+   * UUID of the linked story for internal links
+   */
+  id: string;
+  /**
+   * URL for external links
+   */
+  url: string;
+  /**
+   * Cached URL path for the linked story
+   */
+  cached_url: string;
+  /**
+   * Link target attribute
+   */
+  target?: '_self' | '_blank';
 }

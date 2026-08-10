@@ -162,6 +162,7 @@
       "generate:openapi": {
         "inputs": [
           "{projectRoot}/scripts/generate.ts",
+          "{projectRoot}/package.json",
           "openapiCodegen"
         ],
         "outputs": [

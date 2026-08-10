@@ -173,13 +173,7 @@ export function buildTextStyleExtension(
       if (color) {
         styles.push(`color: ${color};`);
       }
-      return [
-        'span',
-        {
-          ...(styles.length > 0 ? { style: styles.join(' ') } : {}),
-        },
-        0,
-      ];
+      return ['span', styles.length > 0 ? { style: styles.join(' ') } : {}, 0];
     },
   });
 }

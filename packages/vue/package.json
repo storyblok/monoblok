@@ -8,7 +8,7 @@
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/vue#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/monoblok.git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/vue"
   },
   "bugs": {
@@ -33,20 +33,22 @@
     "dist"
   ],
   "scripts": {
-    "dev": "vite build --watch",
+    "dev": "vp build --watch",
     "playground": "pnpm run --filter ./playground/vue dev",
     "test": "pnpm run test:unit && pnpm run test:e2e",
-    "test:unit": "vitest run",
-    "test:unit:ui": "vitest --ui",
+    "test:unit": "vp test run",
     "test:e2e": "pnpm run cy:components",
-    "build": "vite build",
+    "build": "vp build",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
     "publint": "publint .",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
-    "cy:components": "cypress run --component"
+    "cy:components": "cypress run --component",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:coverage": "vp test run --coverage"
   },
   "peerDependencies": {
     "vue": ">=3.4"
@@ -57,23 +59,21 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@types/node": "^24.11.0",
-    "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.10",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
-    "eslint-plugin-vue": "^9.32.0",
     "kolorist": "^1.8.0",
+    "oxlint": "1.76.0",
     "pathe": "^2.0.3",
     "publint": "^0.3.22",
     "typescript": "5.8.3",
     "vite": "^6.4.3",
     "vite-plugin-banner": "^0.8.0",
     "vite-plugin-dts": "^4.5.3",
-    "vitest": "^3.1.3",
-    "vue": "^3.5.13",
+    "vitest": "^4.1.10",
+    "vue": "^3.5.41",
     "vue-router": "^4.5.0",
     "vue-tsc": "^2.2.0"
   },

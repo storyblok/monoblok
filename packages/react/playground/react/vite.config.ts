@@ -13,7 +13,7 @@ export default defineConfig({
   ] as PluginOption[],
   resolve: {
     alias: {
-      '@storyblok/react': resolve(__dirname, '../../src/index.ts'),
+      '@storyblok/react': resolve(import.meta.dirname, '../../src/index.ts'),
     },
   },
 });

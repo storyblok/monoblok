@@ -1,6 +1,6 @@
 // THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
 
-import type { RichTextFieldValueAnchorMark, RichTextFieldValueBlockNode, RichTextFieldValueBlockquoteNode, RichTextFieldValueCodeBlockNode, RichTextFieldValueEmojiNode, RichTextFieldValueHeadingNode, RichTextFieldValueHighlightMark, RichTextFieldValueImageNode, RichTextFieldValueLinkMark, RichTextFieldValueListItemNode, RichTextFieldValueOrderedListNode, RichTextFieldValueParagraphNode, RichTextFieldValueStyledMark, RichTextFieldValueTableCellNode, RichTextFieldValueTableHeaderNode, RichTextFieldValueTextStyleMark, RichTextMark, RichTextNode } from '../generated/overlay/types.gen';
+import type { RichTextMark, RichTextNode, RichTextFieldValueAnchorMark, RichTextFieldValueBlockNode, RichTextFieldValueBlockquoteNode, RichTextFieldValueCodeBlockNode, RichTextFieldValueEmojiNode, RichTextFieldValueHeadingNode, RichTextFieldValueHighlightMark, RichTextFieldValueImageNode, RichTextFieldValueLinkMark, RichTextFieldValueListItemNode, RichTextFieldValueOrderedListNode, RichTextFieldValueParagraphNode, RichTextFieldValueStyledMark, RichTextFieldValueTableCellNode, RichTextFieldValueTableHeaderNode, RichTextFieldValueTextStyleMark } from '../generated/overlay/types.gen';
 
 export interface StoryblokRichTextElementByType<TContext = unknown> {
   doc: {

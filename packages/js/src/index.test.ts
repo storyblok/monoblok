@@ -189,8 +189,12 @@ describe('@storyblok/js', () => {
       mockOn.mockClear();
       MockStoryblokBridge.mockClear();
       // Make the constructor return an object with .on() so useStoryblokBridge
-      // doesn't throw when it calls sbBridge.on(...)
-      MockStoryblokBridge.mockImplementation(() => ({ on: mockOn }));
+      // doesn't throw when it calls sbBridge.on(...). Must be a function
+      // expression, not an arrow: Vitest 4 invokes this with `new`, and arrow
+      // functions are not constructors.
+      MockStoryblokBridge.mockImplementation(function () {
+        return { on: mockOn };
+      });
 
       // Simulate bridge already loaded: storyblokRegisterEvent executes
       // callbacks immediately and window.StoryblokBridge is available.

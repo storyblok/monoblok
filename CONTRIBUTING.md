@@ -17,6 +17,7 @@ Thank you for your interest in contributing to Storyblok SDKs! This document pro
 - Git
 - Node.js
 - pnpm
+- [Vite+](https://viteplus.dev/guide/) (`vp` CLI) — pin the version from `.viteplus-version`
 
 ### Setup
 
@@ -26,28 +27,43 @@ Thank you for your interest in contributing to Storyblok SDKs! This document pro
 pnpm install
 ```
 
-3. (Optional) Build the monoblok CLI tool:
+3. Install Vite+ (`vp`) following the [official Vite+ install guide](https://viteplus.dev/guide/). Pin the version listed in `.viteplus-version` to match CI, then verify with `vp --version`.
+
+4. (Optional) Rebuild the internal monoblok CLI tool. It is built on `pnpm install` automatically; rebuild manually only when changing it:
+
 ```bash
-pnpm build:tools
+pnpm --filter monoblok-cli build
 ```
 
 ### Development Commands
 
 ```bash
 # Build all packages
-pnpm nx run-many --target=build --all
+pnpm nx run-many --target=build
 
 # Build a specific package
 pnpm nx build @storyblok/react
 
-# Run tests
-pnpm nx run-many --target=test --all
+# Run all tests
+pnpm test
 
-# Run linting
-pnpm nx run-many --target=lint --all
+# Type-check every TypeScript package
+pnpm test:types
 
-# Run type checking
-pnpm nx run-many --target=type-check --all
+# Lint everything (root + all packages)
+pnpm lint
+
+# Auto-fix lint issues
+pnpm lint:fix
+
+# Format with Oxfmt
+pnpm format
+
+# Watch-build a single package while developing
+pnpm --filter @storyblok/react dev
+
+# Re-run a package's tests on change
+pnpm --filter @storyblok/migrations test:watch
 ```
 
 ## Pull Request Process

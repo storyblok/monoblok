@@ -4,10 +4,11 @@ Internal CLI tool for managing the Storyblok monorepo.
 
 ## Setup
 
-Build the CLI tool:
+The CLI is built automatically on `pnpm install` (via its `postinstall` hook). To rebuild it
+manually:
 
 ```bash
-pnpm build:tools
+pnpm --filter monoblok-cli build
 ```
 
 ## Commands

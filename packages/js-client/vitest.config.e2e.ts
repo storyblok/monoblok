@@ -7,7 +7,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'storyblok-js-client': path.resolve(__dirname, 'dist'),
+      'storyblok-js-client': path.resolve(import.meta.dirname, 'dist'),
     },
   },
 });

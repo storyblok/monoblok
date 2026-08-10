@@ -21,11 +21,15 @@
     "pull": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts",
     "pull:update": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts --update",
     "verify": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/verify.ts",
-    "build": "tsdown",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "vitest run",
-    "test:types": "tsc --noEmit --skipLibCheck"
+    "build": "vp pack",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test": "vp test run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "dev": "vp pack --watch",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:coverage": "vp test run --coverage"
   },
   "nx": {
     "targets": {
@@ -37,9 +41,11 @@
           "{projectRoot}/specs/**",
           "{projectRoot}/templates/**",
           "{projectRoot}/.openapi-cache/**",
-          "{projectRoot}/tsdown.config.ts"
+          "{projectRoot}/vite.config.ts"
         ],
-        "outputs": ["{projectRoot}/dist"],
+        "outputs": [
+          "{projectRoot}/dist"
+        ],
         "cache": true,
         "dependsOn": []
       }
@@ -52,10 +58,9 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@types/node": "^24.11.0",
-    "eslint": "^9.39.2",
-    "tsdown": "^0.20.3",
-    "vitest": "^4.0.18"
+    "oxlint": "1.76.0",
+    "vitest": "^4.1.10"
   }
 }

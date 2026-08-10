@@ -16,9 +16,9 @@
     "url": "https://github.com/storyblok/monoblok/issues"
   },
   "keywords": [
-    "storyblok",
+    "ab-testing",
     "experiments",
-    "ab-testing"
+    "storyblok"
   ],
   "sideEffects": false,
   "exports": {
@@ -49,15 +49,18 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
     "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
-    "test": "vitest run",
-    "test:e2e": "vitest run -c vitest.config.e2e.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "test": "vp test run",
+    "test:e2e": "vp test run -c vitest.config.e2e.ts",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "pnpm run build",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:coverage": "vp test run --coverage"
   },
   "nx": {
     "targets": {
@@ -79,15 +82,14 @@
   },
   "devDependencies": {
     "@storyblok/api-client": "workspace:*",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
     "@types/node": "^24.11.0",
     "dotenv": "^17.3.1",
-    "eslint": "^9.39.2",
     "msw": "^2.12.9",
-    "tsdown": "^0.20.3",
+    "oxlint": "1.76.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.10"
   }
 }

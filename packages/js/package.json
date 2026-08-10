@@ -8,7 +8,7 @@
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/monoblok.git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/js"
   },
   "bugs": {
@@ -34,20 +34,22 @@
     "dist"
   ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vp build --watch",
+    "build": "vp build",
     "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit && pnpm run test:e2e",
-    "test:unit": "vitest run",
-    "test:unit:ui": "vitest --ui",
+    "test:unit": "vp test run",
     "test:e2e": "start-server-and-test cy:playground http://localhost:5173/ cy:run",
-    "test:e2e-watch": "start-server-and-test cy:playground http://localhost:5173/ cy:open",
     "cy:playground": "pnpm --filter='./playground/vanilla' dev",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
     "publint": "publint .",
     "cy:run": "cypress run",
-    "cy:open": "cypress open"
+    "cy:open": "cypress open",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:e2e:watch": "start-server-and-test cy:playground http://localhost:5173/ cy:open",
+    "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
     "@storyblok/preview-bridge": "^2.1.6",
@@ -55,15 +57,14 @@
     "storyblok-js-client": "workspace:*"
   },
   "devDependencies": {
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^24.11.0",
-    "@vitest/ui": "^3.1.3",
+    "@vitest/ui": "^4.1.10",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
-    "eslint-plugin-cypress": "^4.3.0",
     "jsdom": "^26.0.0",
     "kolorist": "^1.8.0",
+    "oxlint": "1.76.0",
     "pathe": "^2.0.3",
     "publint": "^0.3.22",
     "start-server-and-test": "^2.0.11",
@@ -72,7 +73,7 @@
     "vite-plugin-banner": "^0.8.0",
     "vite-plugin-dts": "^4.5.3",
     "vite-plugin-qrcode": "^0.2.4",
-    "vitest": "^3.1.3"
+    "vitest": "^4.1.10"
   },
   "release": {
     "branches": [

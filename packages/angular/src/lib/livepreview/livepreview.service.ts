@@ -65,8 +65,8 @@ export class LivePreviewService {
     }
 
     const mergedConfig: BridgeParams = {
-      ...(this.baseConfig ?? {}),
-      ...(options ?? {}),
+      ...this.baseConfig,
+      ...options,
     };
 
     return onStoryblokEditorEvent((story) => {

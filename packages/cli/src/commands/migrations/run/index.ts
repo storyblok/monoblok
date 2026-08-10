@@ -69,7 +69,7 @@ runCmd
         ? migrationFiles.filter((file) => {
           // Match any migration file that starts with the component name and is followed by either
           // the end of the filename or a dot
-            return file.name.match(new RegExp(`^${componentName}(\\..*)?\.js$`));
+            return file.name.match(new RegExp(`^${componentName}(\\..*)?.js$`));
           })
         : migrationFiles;
 

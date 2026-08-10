@@ -9,7 +9,7 @@
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/live-preview#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/monoblok.git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/live-preview"
   },
   "bugs": {
@@ -36,14 +36,17 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
+    "build": "vp pack",
+    "dev": "vp pack --watch",
     "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
-    "test": "vitest run",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm run build"
+    "test": "vp test run",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "prepublishOnly": "pnpm run build",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:coverage": "vp test run --coverage"
   },
   "nx": {
     "targets": {
@@ -67,13 +70,13 @@
     "@storyblok/preview-bridge": "^2.1.6"
   },
   "devDependencies": {
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
     "@types/node": "^24.11.0",
     "bumpp": "^10.4.1",
-    "eslint": "^9.39.2",
-    "tsdown": "^0.20.3",
+    "jsdom": "^25.0.0",
+    "oxlint": "1.76.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.10"
   }
 }

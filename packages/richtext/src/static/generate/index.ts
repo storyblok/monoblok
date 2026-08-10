@@ -14,12 +14,12 @@ const TYPES_GEN_PATH = path.join(__dirname, '../../generated/overlay/types.gen.t
 
 const renderMaps = generateRenderMap();
 fs.writeFileSync(RENDER_MAP_PATH, renderMaps, 'utf-8');
-execSync(`pnpm eslint ${RENDER_MAP_PATH} --fix`, {
+execSync(`pnpm exec oxfmt ${RENDER_MAP_PATH}`, {
   stdio: 'inherit',
 });
 
 const elementTypes = generateElementTypes(TYPES_GEN_PATH);
 fs.writeFileSync(ELEMENT_TYPES_PATH, elementTypes, 'utf-8');
-execSync(`pnpm eslint ${ELEMENT_TYPES_PATH} --fix`, {
+execSync(`pnpm exec oxfmt ${ELEMENT_TYPES_PATH}`, {
   stdio: 'inherit',
 });

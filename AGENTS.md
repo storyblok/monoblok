@@ -5,6 +5,7 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 - `packages/`: Public packages and integrations.
 - `tools/`: Internal development tools and scripts.
 - Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client` → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` → `storyblok`, `js-client` → `storyblok-js-client`.
+- Packages use [Vite+](https://viteplus.dev) (`vp` CLI) as the unified toolchain: `vp pack`/`vp build` for bundling (tsdown / Vite under the hood), `vp test` for testing (Vitest), `vp lint` for linting (Oxlint via `@storyblok/lint-config`), and `vp fmt` for formatting (Oxfmt). Formatting is run from the repo root (`pnpm format`), not per package.
 
 ## Rules
 

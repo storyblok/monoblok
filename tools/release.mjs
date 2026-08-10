@@ -54,7 +54,7 @@ function fetchFromRemote() {
   try {
     execCommand('git fetch origin --tags --force');
     return true;
-  } catch (error) {
+  } catch {
     log('⚠️  Warning: Failed to fetch from remote', YELLOW);
     return false;
   }
@@ -71,7 +71,7 @@ function isUpToDateWithRemote(branch) {
     }
 
     return localCommit === remoteCommit;
-  } catch (error) {
+  } catch {
     log('⚠️  Warning: Could not verify if branch is up to date with remote', YELLOW);
     return true; // Assume up to date if we can't verify
   }
@@ -141,7 +141,7 @@ async function main() {
   // Check 1: Are we in a git repository?
   try {
     execCommand('git rev-parse --git-dir', { silent: true });
-  } catch (error) {
+  } catch {
     log('❌ Error: Not a git repository', RED);
     exit(1);
   }
@@ -199,7 +199,7 @@ async function main() {
 
   if (excluded.length > 0) {
     log(`\n⏭️  Skipping packages not configured to release from ${currentBranch}:`, YELLOW);
-    for (const name of excluded) log(`   - ${name}`, YELLOW);
+    for (const name of excluded) {log(`   - ${name}`, YELLOW);}
   }
 
   // Snapshot the on-disk `version` of each excluded package so we can detect
@@ -241,12 +241,12 @@ async function main() {
   try {
     // Build release command with correct version position
     let releaseCommand = 'pnpm nx release';
-    if (versionArg) releaseCommand += ` ${versionArg}`;
+    if (versionArg) {releaseCommand += ` ${versionArg}`;}
     releaseCommand += ' --skip-publish';
-    if (isPrerelease) releaseCommand += ` --preid=${currentBranch}`;
+    if (isPrerelease) {releaseCommand += ` --preid=${currentBranch}`;}
     releaseCommand += ` --projects=${effectiveProjects}`;
-    if (firstRelease) releaseCommand += ' --first-release';
-    if (isDryRun) releaseCommand += ' --dry-run';
+    if (firstRelease) {releaseCommand += ' --first-release';}
+    if (isDryRun) {releaseCommand += ' --dry-run';}
 
     log(`Running: ${releaseCommand}\n`, BLUE);
     execCommand(releaseCommand);
@@ -281,7 +281,7 @@ async function main() {
       log(`  3. Click "Run workflow" and select the ${YELLOW}${currentBranch}${RESET} branch`);
       log(`  4. Click "Run workflow" to publish to npm${isPrerelease ? ` with the ${YELLOW}${currentBranch}${RESET} tag` : ''}\n`);
     }
-  } catch (error) {
+  } catch {
     log('\n━'.repeat(50), BLUE);
     log('\n❌ Release command failed', RED);
     log('Check the error message above for details\n', YELLOW);
@@ -296,17 +296,17 @@ async function main() {
  * elsewhere in the workspace, which this guard does not try to cover).
  */
 function snapshotPackageVersions(names, packagesDir = 'packages') {
-  if (!names || names.length === 0) return new Map();
+  if (!names || names.length === 0) {return new Map();}
   const wanted = new Set(names);
   const snapshot = new Map();
   for (const entry of readdirSync(packagesDir)) {
     const pkgPath = join(packagesDir, entry, 'package.json');
     let stat;
     try { stat = statSync(pkgPath); } catch { continue; }
-    if (!stat.isFile()) continue;
+    if (!stat.isFile()) {continue;}
     let pkg;
     try { pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')); } catch { continue; }
-    if (!pkg.name || !wanted.has(pkg.name)) continue;
+    if (!pkg.name || !wanted.has(pkg.name)) {continue;}
     snapshot.set(pkg.name, { path: pkgPath, version: pkg.version });
   }
   return snapshot;

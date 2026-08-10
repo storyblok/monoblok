@@ -8,7 +8,7 @@ const packagesDir = join(dirname(fileURLToPath(import.meta.url)), 'packages');
 const packageScopes = readdirSync(packagesDir, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
-  .sort();
+  .toSorted();
 
 // Scopes for changes that don't belong to a single package (root config,
 // tooling, CI, docs, agent skills, automated releases). These are intentionally

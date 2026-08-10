@@ -14,7 +14,7 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
   const eligible = [];
   const excluded = [];
 
-  for (const entry of readdirSync(packagesDir).sort()) {
+  for (const entry of readdirSync(packagesDir).toSorted()) {
     const pkgPath = join(packagesDir, entry, 'package.json');
 
     let stat;
@@ -23,7 +23,7 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
     } catch {
       continue;
     }
-    if (!stat.isFile()) continue;
+    if (!stat.isFile()) {continue;}
 
     let pkg;
     try {
@@ -33,7 +33,7 @@ export function getBranchEligiblePackages(branch, packagesDir = 'packages') {
       continue;
     }
 
-    if (!pkg.name) continue;
+    if (!pkg.name) {continue;}
 
     const branches = pkg.release?.branches;
     if (!Array.isArray(branches)) {

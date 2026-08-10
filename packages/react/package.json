@@ -9,7 +9,7 @@
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/react#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/storyblok/monoblok.git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/react"
   },
   "bugs": {
@@ -54,24 +54,26 @@
     "dist"
   ],
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build",
+    "dev": "vp build --watch",
+    "build": "vp build",
     "test:types": "tsc --noEmit --skipLibCheck",
-    "test": "pnpm run test:unit && pnpm run test:e2e-next-13 && pnpm run test:e2e-next-latest",
-    "test:unit": "vitest run",
-    "test:unit:ui": "vitest --ui",
-    "test:e2e-next-13": "start-server-and-test playground:next-13 http://localhost:3000/ cy:run",
-    "test:e2e-next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ cy:run",
-    "test:e2e-watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ cy:open",
+    "test": "pnpm run test:unit && pnpm run test:e2e:next-13 && pnpm run test:e2e:next-latest",
+    "test:unit": "vp test run",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
     "test:comp": "cypress run --component",
     "playground": "pnpm run --filter ./playground/react dev",
     "playground:next-latest": "pnpm run --filter ./playground/next-latest dev",
     "playground:next-13": "pnpm run --filter ./playground/next-13-app-router dev",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "publint": "publint ."
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "publint": "publint .",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:e2e:next-13": "start-server-and-test playground:next-13 http://localhost:3000/ cy:run",
+    "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ cy:run",
+    "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ cy:open",
+    "test:coverage": "vp test run --coverage"
   },
   "peerDependencies": {
     "next": "^13 || ^14 || ^15 || ^16",
@@ -92,7 +94,7 @@
     "@babel/preset-env": "^7.27.2",
     "@cypress/react": "^9.0.1",
     "@cypress/vite-dev-server": "^6.0.3",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@tsconfig/recommended": "^1.0.8",
@@ -101,10 +103,8 @@
     "@vitejs/plugin-react": "^4.4.1",
     "babel-jest": "^29.7.0",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
-    "eslint-plugin-cypress": "^4.3.0",
-    "eslint-plugin-jest": "^28.11.0",
     "jsdom": "^26.1.0",
+    "oxlint": "1.76.0",
     "publint": "^0.3.22",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -113,7 +113,7 @@
     "typescript": "5.8.3",
     "vite": "^6.4.3",
     "vite-plugin-dts": "^4.5.3",
-    "vitest": "^3.1.3"
+    "vitest": "^4.1.10"
   },
   "babel": {
     "presets": [

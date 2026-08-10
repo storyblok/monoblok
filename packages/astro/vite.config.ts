@@ -7,7 +7,7 @@ import fs from 'node:fs';
 export default defineConfig({
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src/index.ts'),
+      entry: path.resolve(import.meta.dirname, 'src/index.ts'),
       formats: ['es'],
       fileName: () => 'index.js',
     },
@@ -18,7 +18,7 @@ export default defineConfig({
   plugins: [
     dts({
       afterBuild: () => {
-        const indexDtsPath = path.resolve(__dirname, 'dist/index.d.ts');
+        const indexDtsPath = path.resolve(import.meta.dirname, 'dist/index.d.ts');
 
         if (fs.existsSync(indexDtsPath)) {
           const currentContent = fs.readFileSync(indexDtsPath, 'utf-8');

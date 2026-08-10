@@ -11,7 +11,6 @@ Apply these rules when writing any Storyblok documentation, README, or prose con
 ## Core rules
 
 - Do not use em dashes or en dashes. Use commas, colons, or periods instead. Hyphens `-` are fine in bullet lists and compound phrases.
-- Never hard-wrap lines in markdown files, PR descriptions, or any written prose. Write full sentences/paragraphs as single long lines and let the reader's editor handle wrapping.
 
 ## Voice and perspective
 

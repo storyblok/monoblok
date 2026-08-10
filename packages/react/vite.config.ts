@@ -23,15 +23,15 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': resolve(import.meta.dirname, './src'),
     },
   },
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
-        ssr: resolve(__dirname, 'src/ssr/index.ts'),
-        rsc: resolve(__dirname, 'src/rsc/index.ts'),
+        index: resolve(import.meta.dirname, 'src/index.ts'),
+        ssr: resolve(import.meta.dirname, 'src/ssr/index.ts'),
+        rsc: resolve(import.meta.dirname, 'src/rsc/index.ts'),
       },
       name: 'storyblokReact',
       fileName: (format, entry) => {

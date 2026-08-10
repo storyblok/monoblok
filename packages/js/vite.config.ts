@@ -28,7 +28,7 @@ export default defineConfig({
   ] as Plugin[],
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src', 'index.ts'),
+      entry: path.resolve(import.meta.dirname, 'src', 'index.ts'),
       name: 'storyblok',
       fileName: (format) => {
         const name = 'storyblok-js';

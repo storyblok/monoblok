@@ -82,7 +82,7 @@ pnpm run test:ui
 You can also check the coverage with:
 
 ```bash
-pnpm run coverage
+pnpm run test:coverage
 ```
 
 ### Debugging

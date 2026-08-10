@@ -13,7 +13,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@storyblok/vue': resolve(__dirname, '../../src/index.ts'),
+      '@storyblok/vue': resolve(import.meta.dirname, '../../src/index.ts'),
     },
   },
 });

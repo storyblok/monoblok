@@ -17,10 +17,10 @@
       "cache": true
     },
     "test": {
-      "dependsOn": ["build"]
+      "dependsOn": ["^build", "build"]
     },
     "test:types": {
-      "dependsOn": ["build"]
+      "dependsOn": ["^build", "build"]
     },
     "lint": {
       "dependsOn": ["^build"],
@@ -29,6 +29,19 @@
     "dev": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "test:watch": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:ui": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:coverage": {
+      "dependsOn": ["^build", "build"],
+      "outputs": ["{projectRoot}/coverage"],
+      "cache": true
     }
   },
   "tui": {

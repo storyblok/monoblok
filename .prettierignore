@@ -1,0 +1,25 @@
+pnpm-lock.yaml
+
+# Committed OpenAPI codegen output. Ignored for the same reason every
+# `oxlint.config.ts` ignores it: the generators own these files, and formatting
+# them would drift on the next regeneration.
+**/src/generated/
+
+# Vendored OpenAPI specs, mirrored from storyblok/openapi-wdx and pinned by
+# spec.lock. Reformatting them would diverge from upstream and be undone by the
+# next `pnpm --filter @storyblok/openapi-codegen pull`.
+tools/openapi-codegen/specs/
+
+# Tool-generated output. Mirrors the root oxlint.config.ts ignorePatterns: some
+# of these are committed (coverage reports, .svelte-kit), and reformatting them
+# only churns the next time the tool regenerates them.
+**/dist/
+**/coverage/
+**/.nx/
+**/.angular/
+**/.svelte-kit/
+**/.nuxt/
+**/.output/
+**/.next/
+**/.astro/
+**/.cache/

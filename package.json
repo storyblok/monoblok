@@ -10,9 +10,14 @@
     "prepare": "husky",
     "release": "node tools/release.mjs",
     "build": "pnpm nx run-many --target=build",
-    "lint": "nx run-many --target=lint",
-    "lint:fix": "nx run-many --target=lint --fix",
-    "lint:affected": "nx affected:lint"
+    "lint": "oxlint --disable-nested-config && nx run-many --target=lint",
+    "lint:fix": "oxlint --disable-nested-config --fix && nx run-many --target=lint --fix",
+    "lint:affected": "nx affected:lint",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "test": "nx run-many --target=test",
+    "test:types": "nx run-many --target=test:types",
+    "test:coverage": "nx run-many --target=test:coverage"
   },
   "workspaces": [
     "packages/*",
@@ -22,10 +27,14 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@nx/js": "21.3.11",
+    "@storyblok/lint-config": "workspace:*",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "nx": "21.3.11",
-    "typescript": "5.8.3"
+    "oxfmt": "0.61.0",
+    "oxlint": "1.76.0",
+    "typescript": "5.8.3",
+    "vite-plus": "0.2.8"
   },
   "resolutions": {
     "cypress": "^14.3.3",

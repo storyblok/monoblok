@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [sveltekit(), basicSsl()] as PluginOption[],
 	resolve: {
 		alias: {
-		  '@storyblok/svelte': resolve(__dirname, '../../src/lib/index.ts'),
+		  '@storyblok/svelte': resolve(import.meta.dirname, '../../src/lib/index.ts'),
 		},
 	},
 });

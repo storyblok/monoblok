@@ -1,3 +1,4 @@
 agent-local-memory
 settings.local.json
 agent-memory-local/
+scheduled_tasks.lock

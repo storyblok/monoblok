@@ -41,17 +41,19 @@
     "package": "svelte-kit sync && svelte-package && publint",
     "test:types": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "pnpm run test:unit && pnpm run test:e2e",
-    "test:unit": "vitest run",
-    "test:unit:ui": "vitest --ui",
+    "test:unit": "vp test run",
     "playground": "pnpm run --filter ./playground/sveltekit dev",
     "test:e2e": "START_SERVER_AND_TEST_INSECURE=1 start-server-and-test playground https://localhost:5173/ cy:run",
-    "test:e2e-watch": "START_SERVER_AND_TEST_INSECURE=1 start-server-and-test playground https://localhost:5173/ cy:open",
     "cy:run": "cypress run",
     "cy:open": "cypress open",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:e2e:watch": "START_SERVER_AND_TEST_INSECURE=1 start-server-and-test playground https://localhost:5173/ cy:open",
+    "test:coverage": "vp test run --coverage"
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
@@ -62,27 +64,24 @@
   },
   "devDependencies": {
     "@cypress/svelte": "^3.0.0",
-    "@eslint/compat": "^1.2.7",
     "@rollup/plugin-typescript": "^12.1.2",
-    "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
     "@sveltejs/adapter-auto": "^5.0.0",
     "@sveltejs/kit": "^2.20.2",
     "@sveltejs/package": "^2.3.10",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "cypress": "^14.3.3",
-    "eslint": "^9.26.0",
-    "eslint-plugin-svelte": "^3.3.3",
     "jsdom": "^26.0.0",
+    "oxlint": "1.76.0",
     "pathe": "^2.0.3",
     "publint": "^0.3.9",
     "start-server-and-test": "^2.0.11",
     "svelte": "^5.55.0",
     "svelte-check": "^4.1.5",
     "typescript": "5.8.3",
-    "typescript-eslint": "^8.28.0",
     "vite": "^6.4.3",
     "vite-plugin-dts": "^4.5.3",
-    "vitest": "^3.1.3"
+    "vitest": "^4.1.10"
   },
   "release": {
     "branches": [

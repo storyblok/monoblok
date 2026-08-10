@@ -13,7 +13,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      'storyblok-js-client': resolve(__dirname, '../../src/index.ts'),
+      'storyblok-js-client': resolve(import.meta.dirname, '../../src/index.ts'),
     },
   },
 })

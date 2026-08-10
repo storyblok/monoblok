@@ -1,7 +1,7 @@
-import type { Experiment } from './types';
-import { describe, expect, it } from 'vitest';
-import { assignVariant } from './assign-variant';
-import { homepageExperiment } from './fixtures';
+import type { Experiment } from "./types";
+import { describe, expect, it } from "vitest";
+import { assignVariant } from "./assign-variant";
+import { homepageExperiment } from "./fixtures";
 
 const withWeights = (controlWeight: number, variantWeight: number): Experiment => ({
   ...homepageExperiment,
@@ -11,56 +11,59 @@ const withWeights = (controlWeight: number, variantWeight: number): Experiment =
   ],
 });
 
-describe('assignVariant', () => {
-  it('is sticky: same visitorId always lands on the same variant', () => {
-    const first = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-42' });
+describe("assignVariant", () => {
+  it("is sticky: same visitorId always lands on the same variant", () => {
+    const first = assignVariant({ experiment: homepageExperiment, visitorId: "visitor-42" });
     for (let i = 0; i < 50; i++) {
-      const again = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-42' });
+      const again = assignVariant({ experiment: homepageExperiment, visitorId: "visitor-42" });
       expect(again?.variant.public_id).toBe(first?.variant.public_id);
     }
   });
 
-  it('returns the experiment identity with the assignment', () => {
+  it("returns the experiment identity with the assignment", () => {
     // The identity, not only the id: it is what makes an assignment enough on
     // its own to build a conversion event, with no lookup back into the payload.
-    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
-    expect(assignment?.experiment).toEqual({ id: 123, name: 'homepage_hero' });
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: "visitor-1" });
+    expect(assignment?.experiment).toEqual({ id: 123, name: "homepage_hero" });
   });
 
-  it('still fills the deprecated experimentId', () => {
-    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
+  it("still fills the deprecated experimentId", () => {
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: "visitor-1" });
     expect(assignment?.experimentId).toBe(123);
   });
 
-  it('returns the visitorId with the assignment', () => {
+  it("returns the visitorId with the assignment", () => {
     // An assignment is visitor-specific, so it has to carry the visitor: it is
     // what lets a downstream exposure or conversion event identify the visitor
     // without the caller re-threading it.
-    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: 'visitor-1' });
-    expect(assignment?.visitorId).toBe('visitor-1');
+    const assignment = assignVariant({ experiment: homepageExperiment, visitorId: "visitor-1" });
+    expect(assignment?.visitorId).toBe("visitor-1");
   });
 
-  it('honors weights: 100/0 always assigns control', () => {
+  it("honors weights: 100/0 always assigns control", () => {
     const experiment = withWeights(100, 0);
     for (let i = 0; i < 200; i++) {
       const assignment = assignVariant({ experiment, visitorId: `visitor-${i}` });
-      expect(assignment?.variant.public_id).toBe('var_control');
+      expect(assignment?.variant.public_id).toBe("var_control");
     }
   });
 
-  it('honors weights: 0/100 always assigns the variant', () => {
+  it("honors weights: 0/100 always assigns the variant", () => {
     const experiment = withWeights(0, 100);
     for (let i = 0; i < 200; i++) {
       const assignment = assignVariant({ experiment, visitorId: `visitor-${i}` });
-      expect(assignment?.variant.public_id).toBe('var_b');
+      expect(assignment?.variant.public_id).toBe("var_b");
     }
   });
 
-  it('splits roughly evenly for a 50/50 experiment', () => {
+  it("splits roughly evenly for a 50/50 experiment", () => {
     let control = 0;
     const total = 2000;
     for (let i = 0; i < total; i++) {
-      const assignment = assignVariant({ experiment: homepageExperiment, visitorId: `visitor-${i}` });
+      const assignment = assignVariant({
+        experiment: homepageExperiment,
+        visitorId: `visitor-${i}`,
+      });
       if (assignment?.variant.is_control) {
         control++;
       }
@@ -70,14 +73,14 @@ describe('assignVariant', () => {
     expect(ratio).toBeLessThan(0.6);
   });
 
-  it('falls back to control when no variant has positive weight', () => {
+  it("falls back to control when no variant has positive weight", () => {
     const experiment = withWeights(0, 0);
-    const assignment = assignVariant({ experiment, visitorId: 'visitor-1' });
+    const assignment = assignVariant({ experiment, visitorId: "visitor-1" });
     expect(assignment?.variant.is_control).toBe(true);
   });
 
-  it('returns undefined for an experiment with no variants', () => {
+  it("returns undefined for an experiment with no variants", () => {
     const experiment: Experiment = { ...homepageExperiment, variants: [] };
-    expect(assignVariant({ experiment, visitorId: 'visitor-1' })).toBeUndefined();
+    expect(assignVariant({ experiment, visitorId: "visitor-1" })).toBeUndefined();
   });
 });

@@ -19,12 +19,14 @@ Generate a spec for: $ARGUMENTS
    - For descriptions -> slugify the first few words (e.g., "CLI login flow" -> `cli-login-flow`)
 
 2. Create the output directory if it doesn't exist:
+
    ```bash
    mkdir -p claude-output
    ```
 
 3. Determine the spec type based on scope:
-   - **Project spec** (multi-day, cross-cutting, new package/major feature): write to `claude-output/spec-<identifier>.md`
+   - **Project spec** (multi-day, cross-cutting, new package/major feature): write to
+     `claude-output/spec-<identifier>.md`
    - **Ticket spec** (single deliverable, 1-3 days): write to `claude-output/ticket-<identifier>.md`
 
 4. After writing, confirm the output path to the user.
@@ -34,8 +36,10 @@ Generate a spec for: $ARGUMENTS
 ## Instructions
 
 1. **Understand the problem** - What pain point does this solve? Who asked for it?
-2. **Determine scope** - Is this a project (multi-day, cross-cutting) or a ticket (single deliverable, 1-3 days)?
-3. **Research** - Read relevant code and context files, check storyrails for API contracts, look at existing patterns
+2. **Determine scope** - Is this a project (multi-day, cross-cutting) or a ticket (single
+   deliverable, 1-3 days)?
+3. **Research** - Read relevant code and context files, check storyrails for API contracts, look at
+   existing patterns
 4. **Write the spec** - Use the appropriate template
 
 ## What to include vs. leave to the developer
@@ -43,6 +47,7 @@ Generate a spec for: $ARGUMENTS
 Specs define the **user-facing contract**, not internal architecture.
 
 **INCLUDE:**
+
 - Capabilities that must exist
 - Target versions and platforms
 - DX principles and patterns to follow
@@ -51,6 +56,7 @@ Specs define the **user-facing contract**, not internal architecture.
 - Command syntax, config formats, file structures, output examples (these ARE the DX spec)
 
 **DO NOT INCLUDE:**
+
 - Internal function, method, or class names
 - Internal file/folder structure or module organization
 - Implementation approach (algorithms, data structures, internal flow)
@@ -81,10 +87,12 @@ Use `templates/ticket.md` as the base. Adapt to complexity:
 See `guide.md` for principles and `examples/` for real project specs of different shapes and sizes.
 
 ## Rules
+
 - Scale structure to complexity
 - No redundancy between sections
 - Surface open questions prominently
-- For CLI projects: include command syntax, file format examples, and note usage of logger/UI/config systems
+- For CLI projects: include command syntax, file format examples, and note usage of logger/UI/config
+  systems
 - Keep ticket scope small (1-3 day effort max)
 - All acceptance criteria must be checkboxes
 - **Never create GitHub issues** - Write to `claude-output/` as markdown for Linear

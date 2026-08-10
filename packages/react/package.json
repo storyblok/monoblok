@@ -1,20 +1,26 @@
 {
   "name": "@storyblok/react",
-  "type": "module",
   "version": "7.2.4",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using React.",
-  "author": "Storyblok",
-  "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/react#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/react"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -47,12 +53,9 @@
       }
     }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vp build --watch",
     "build": "vp build",
@@ -74,16 +77,6 @@
     "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ cy:run",
     "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ cy:open",
     "test:coverage": "vp test run --coverage"
-  },
-  "peerDependencies": {
-    "next": "^13 || ^14 || ^15 || ^16",
-    "react": "^17 || ^18 || ^19",
-    "react-dom": "^17 || ^18 || ^19"
-  },
-  "peerDependenciesMeta": {
-    "next": {
-      "optional": true
-    }
   },
   "dependencies": {
     "@storyblok/js": "workspace:*",
@@ -115,6 +108,16 @@
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^4.1.10"
   },
+  "peerDependencies": {
+    "next": "^13 || ^14 || ^15 || ^16",
+    "react": "^17 || ^18 || ^19",
+    "react-dom": "^17 || ^18 || ^19"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
   "babel": {
     "presets": [
       [
@@ -131,9 +134,6 @@
     "branches": [
       "main"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

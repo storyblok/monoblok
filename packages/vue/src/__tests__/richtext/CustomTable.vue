@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { SbVueRichTextProps } from '../../index.ts';
-import { splitTableRows, StoryblokRichText } from '../../index.ts';
+import type { SbVueRichTextProps } from "../../index.ts";
+import { splitTableRows, StoryblokRichText } from "../../index.ts";
 
-const props = defineProps<SbVueRichTextProps['table']>();
+const props = defineProps<SbVueRichTextProps["table"]>();
 const { headerRows, bodyRows } = splitTableRows(props.content);
 </script>
 

@@ -89,16 +89,15 @@ Analyze the code changes for:
 
 ### [Critical/Major/Minor]: Issue title
 
-**File:** `path/to/file.ts:123`
-**Problem:** Description.
-**Suggestion:** How to fix.
+**File:** `path/to/file.ts:123` **Problem:** Description. **Suggestion:** How to fix.
 ```
 
 ## Phase 2: QA review
 
 ### Test case structure
 
-Refer to the [Test Plan Template](./templates/test-plan.md) and the [Test Plan Example](./examples/assets-test-plan.md) for test plan structure guidance.
+Refer to the [Test Plan Template](./templates/test-plan.md) and the
+[Test Plan Example](./examples/assets-test-plan.md) for test plan structure guidance.
 
 ### Coverage requirements
 

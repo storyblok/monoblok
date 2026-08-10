@@ -31,21 +31,26 @@
 
 - **Content Converters**: Convert HTML and Markdown to Storyblok rich text format.
 - **Link and Asset Helpers**: Transform URLs into Storyblok link and asset objects.
-- **Local File Workflows**: Read and update locally pulled stories, assets, components, and datasources.
+- **Local File Workflows**: Read and update locally pulled stories, assets, components, and
+  datasources.
 - **Reference Mapping**: Remap story and asset references when migrating between spaces.
 - **Schema Cleanup**: Remove out-of-schema fields and rename datasource values.
 
 ## Documentation
 
-For complete documentation, please visit the [package reference](https://www.storyblok.com/docs/libraries/js/migrations).
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/migrations).
 
 ## Contributing
 
-If you're interested in contributing, please read our [contributing docs](https://github.com/storyblok/.github/blob/main/contributing.md) before submitting a pull request.
+If you're interested in contributing, please read our
+[contributing docs](https://github.com/storyblok/.github/blob/main/contributing.md) before
+submitting a pull request.
 
 ## Community
 
-For help, discussion about best practices, or any other conversation that would benefit from being searchable:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
 - [Discuss Storyblok on Github Discussions](https://github.com/storyblok/monoblok/discussions)
 
@@ -55,18 +60,25 @@ For community support, chatting with other users, please visit:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+For bugs or feature requests, please
+[submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-> [!IMPORTANT]
-> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a Github Repo lease make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a Github Repo lease make sure you include a README
+file with the instructions to build and run the project, important not to include any access token,
+password or personal information of any kind.
 
 ### Feedback
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

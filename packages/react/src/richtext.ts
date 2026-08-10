@@ -1,7 +1,7 @@
-import { createRichTextRenderer } from './core/richtext';
-import type { StoryblokReactRichTextRenderContext } from './core/richtext';
-import StoryblokComponent from './core/storyblok-component';
-import { createDefaultBlok } from './core/create-default-blok';
+import { createRichTextRenderer } from "./core/richtext";
+import type { StoryblokReactRichTextRenderContext } from "./core/richtext";
+import StoryblokComponent from "./core/storyblok-component";
+import { createDefaultBlok } from "./core/create-default-blok";
 
 export const useStoryblokRichText = (props: StoryblokReactRichTextRenderContext = {}) => {
   return createRichTextRenderer({

@@ -1,10 +1,9 @@
-import type { CommandOptions } from '../../../types';
+import type { CommandOptions } from "../../../types";
 
 /**
  * Interface representing the options for the `datasources pull` command.
  */
 export interface PullDatasourcesOptions extends CommandOptions {
-
   /**
    * The filename to save the file as.
    * Defaults to `DEFAULT_DATASOURCES_FILENAME`. The file will be saved as `<filename>.<space>.json`.
@@ -41,5 +40,4 @@ export interface SaveDatasourcesOptions extends PullDatasourcesOptions {
    * @default false
    */
   separateFiles?: boolean;
-
 }

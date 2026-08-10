@@ -1,6 +1,7 @@
 # Logout Command
 
-The `logout` command allows you to securely log out from your Storyblok account and remove stored credentials.
+The `logout` command allows you to securely log out from your Storyblok account and remove stored
+credentials.
 
 ## Basic Usage
 
@@ -9,6 +10,7 @@ storyblok logout
 ```
 
 This command will:
+
 - Remove your stored credentials from `~/.storyblok/credentials.json`
 - Clear your current session
 - Show a success message when completed
@@ -23,6 +25,7 @@ This command will:
 ## Examples
 
 1. Basic logout:
+
 ```bash
 storyblok logout
 ```

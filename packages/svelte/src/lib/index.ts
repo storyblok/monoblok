@@ -2,30 +2,23 @@ export {
   type StoryblokSvelteRichTextComponentMap,
   type StoryblokSvelteRichTextProps,
   type StoryblokSvelteRichTextRenderContext,
-} from './richtext-helpers';
+} from "./richtext-helpers";
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export {
   type SbSvelteRichTextComponentMap,
   type SbSvelteRichTextProps,
   type SbSvelteRichTextRenderContext,
-} from './richtext-helpers';
+} from "./richtext-helpers";
 
-export * from './storyblok';
-export { default as StoryblokComponent } from './StoryblokComponent.svelte';
-export { default as StoryblokRichText } from './StoryblokRichText.svelte';
-export * from './types';
+export * from "./storyblok";
+export { default as StoryblokComponent } from "./StoryblokComponent.svelte";
+export { default as StoryblokRichText } from "./StoryblokRichText.svelte";
+export * from "./types";
 
-export {
-  apiPlugin,
-  useStoryblokBridge,
-} from '@storyblok/js';
+export { apiPlugin, useStoryblokBridge } from "@storyblok/js";
 
-export {
-  buildStoryblokImage,
-  renderRichText,
-  splitTableRows,
-} from '@storyblok/richtext';
+export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 
 export type {
   StoryblokRichTextElement,
@@ -39,7 +32,7 @@ export type {
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export type {
@@ -53,7 +46,7 @@ export type {
   SbRichTextProps,
   SbRichTextRenderContext,
   SbRichTextTextNode,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 
 // Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.svelte component.
 export {
@@ -67,4 +60,4 @@ export {
   processAttrs,
   resolveTag,
   styleToString,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";

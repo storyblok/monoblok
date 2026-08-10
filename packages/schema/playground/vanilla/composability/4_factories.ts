@@ -1,7 +1,7 @@
-import { defineBlock, defineField } from '@storyblok/schema';
-import { bodyField, headlineField, imageField } from './1_fields';
-import { ctaFields } from './2_field-groups';
-import type { Field } from '@storyblok/schema';
+import { defineBlock, defineField } from "@storyblok/schema";
+import { bodyField, headlineField, imageField } from "./1_fields";
+import { ctaFields } from "./2_field-groups";
+import type { Field } from "@storyblok/schema";
 
 type NamedField = Field & { name: string };
 
@@ -24,19 +24,16 @@ export function createSectionBlock(config: {
   });
 }
 
-export function createCardBlock(config: {
-  name: string;
-  extraFields?: readonly NamedField[];
-}) {
+export function createCardBlock(config: { name: string; extraFields?: readonly NamedField[] }) {
   return defineBlock({
     name: config.name,
     is_nestable: true,
-    preview_field: 'title',
+    preview_field: "title",
     fields: [
-      defineField('title', { type: 'text', max_length: 80, required: true }),
-      defineField('description', { type: 'textarea', max_length: 300 }),
+      defineField("title", { type: "text", max_length: 80, required: true }),
+      defineField("description", { type: "textarea", max_length: 300 }),
       imageField,
-      defineField('link', { type: 'multilink' }),
+      defineField("link", { type: "multilink" }),
       ...(config.extraFields ?? []),
     ],
   });

@@ -1,5 +1,5 @@
-import './command';
-import './push';
-import './init';
-import './rollback';
-import './validate';
+import "./command";
+import "./push";
+import "./init";
+import "./rollback";
+import "./validate";

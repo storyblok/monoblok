@@ -1,12 +1,12 @@
 <script setup lang="ts">
-const { story, error } = await useAsyncStoryblok('vue', {
+const { story, error } = await useAsyncStoryblok("vue", {
   api: {
-    version: 'draft',
-    language: 'en',
-    resolve_relations: 'popular-articles.articles',
+    version: "draft",
+    language: "en",
+    resolve_relations: "popular-articles.articles",
   },
   bridge: {
-    resolveRelations: 'popular-articles.articles',
+    resolveRelations: "popular-articles.articles",
   },
 });
 

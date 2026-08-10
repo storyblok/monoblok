@@ -1,20 +1,20 @@
-import type { StoryblokPropertyType } from './storyblok';
-import type { Field } from '.';
+import type { StoryblokPropertyType } from "./storyblok";
+import type { Field } from ".";
 
 export type ComponentPropertySchemaType =
   | StoryblokPropertyType
-  | 'array'
-  | 'bloks'
-  | 'boolean'
-  | 'custom'
-  | 'datetime'
-  | 'image'
-  | 'markdown'
-  | 'number'
-  | 'option'
-  | 'options'
-  | 'text'
-  | 'textarea';
+  | "array"
+  | "bloks"
+  | "boolean"
+  | "custom"
+  | "datetime"
+  | "image"
+  | "markdown"
+  | "number"
+  | "option"
+  | "options"
+  | "text"
+  | "textarea";
 
 export interface ComponentPropertySchemaOption {
   _uid: string;
@@ -22,7 +22,7 @@ export interface ComponentPropertySchemaOption {
   value: string;
 }
 
-export type ComponentPropertySchema = Omit<Field, 'type' | 'options'> & {
+export type ComponentPropertySchema = Omit<Field, "type" | "options"> & {
   key: string;
   type: ComponentPropertySchemaType;
   options?: ComponentPropertySchemaOption[];

@@ -1,15 +1,15 @@
-import { CommandError } from '../../utils/error';
-import type { ValidationIssue } from './adapter';
+import { CommandError } from "../../utils/error";
+import type { ValidationIssue } from "./adapter";
 
 /** Display filter (threshold). Never affects exit codes or summary totals. */
-export type LevelOption = 'error' | 'warning';
+export type LevelOption = "error" | "warning";
 
-export const LEVEL_OPTIONS = ['error', 'warning'] as const satisfies readonly LevelOption[];
+export const LEVEL_OPTIONS = ["error", "warning"] as const satisfies readonly LevelOption[];
 
 /** Output format. `json` emits a single machine-readable object on stdout. */
-export type FormatOption = 'pretty' | 'json';
+export type FormatOption = "pretty" | "json";
 
-export const FORMAT_OPTIONS = ['pretty', 'json'] as const satisfies readonly FormatOption[];
+export const FORMAT_OPTIONS = ["pretty", "json"] as const satisfies readonly FormatOption[];
 
 /**
  * Machine-readable identity of a {@link ValidationGroup}. `header` is a rendered
@@ -18,7 +18,7 @@ export const FORMAT_OPTIONS = ['pretty', 'json'] as const satisfies readonly For
  */
 export interface ValidationGroupRef {
   /** What the group stands for. */
-  kind: 'story' | 'block' | 'datasource' | 'schema';
+  kind: "story" | "block" | "datasource" | "schema";
   /** Story ID (`kind: 'story'`). */
   id?: number;
   /** Story `full_slug` (`kind: 'story'`). */
@@ -90,7 +90,9 @@ export interface ValidationRunResult {
  */
 export function parseLevel(value: string): LevelOption {
   if (!LEVEL_OPTIONS.includes(value as LevelOption)) {
-    throw new CommandError(`Invalid --level "${value}". Expected one of: ${LEVEL_OPTIONS.join(', ')}.`);
+    throw new CommandError(
+      `Invalid --level "${value}". Expected one of: ${LEVEL_OPTIONS.join(", ")}.`,
+    );
   }
   return value as LevelOption;
 }
@@ -98,7 +100,9 @@ export function parseLevel(value: string): LevelOption {
 /** Parses the `--format` value. Throws a {@link CommandError} — see {@link parseLevel}. */
 export function parseFormat(value: string): FormatOption {
   if (!FORMAT_OPTIONS.includes(value as FormatOption)) {
-    throw new CommandError(`Invalid --format "${value}". Expected one of: ${FORMAT_OPTIONS.join(', ')}.`);
+    throw new CommandError(
+      `Invalid --format "${value}". Expected one of: ${FORMAT_OPTIONS.join(", ")}.`,
+    );
   }
   return value as FormatOption;
 }

@@ -1,37 +1,31 @@
-import type { CommanderCommand, PlainObject, ResolvedCliConfig } from './types';
-import { createDefaultResolvedConfig } from './defaults';
-import {
-  applyCliOverrides,
-  collectGlobalDefaults,
-  collectLocalDefaults,
-} from './commander';
-import {
-  extractDirectValues,
-  getCommandAncestry,
-  loadConfigLayers,
-} from './helpers';
-import { isPlainObject, mergeDeep } from '../../utils/object';
+import type { CommanderCommand, PlainObject, ResolvedCliConfig } from "./types";
+import { createDefaultResolvedConfig } from "./defaults";
+import { applyCliOverrides, collectGlobalDefaults, collectLocalDefaults } from "./commander";
+import { extractDirectValues, getCommandAncestry, loadConfigLayers } from "./helpers";
+import { isPlainObject, mergeDeep } from "../../utils/object";
 
 // Modules are root subcommands that have their own subcommands (e.g. "components" has "pull"/"push").
 // Leaf root commands like "login" or "logout" are not modules.
 function getModuleNames(root: CommanderCommand): Set<string> {
-  return new Set(
-    root.commands
-      .filter(cmd => cmd.commands.length > 0)
-      .map(cmd => cmd.name()),
-  );
+  return new Set(root.commands.filter((cmd) => cmd.commands.length > 0).map((cmd) => cmd.name()));
 }
 
 function warnUnknownModuleKeys(modules: Record<string, any>, knownKeys: Set<string>): void {
   for (const key of Object.keys(modules)) {
     if (!knownKeys.has(key)) {
-      console.warn(`[storyblok] Unknown module "${key}" in config file. Known modules: ${[...knownKeys].join(', ')}`);
+      console.warn(
+        `[storyblok] Unknown module "${key}" in config file. Known modules: ${[...knownKeys].join(", ")}`,
+      );
     }
   }
 }
 
 // Walks the command chain (excluding root) and applies module-specific overrides at each level.
-function mergeModuleConfig(target: PlainObject, modulesConfig: Record<string, any>, commands: CommanderCommand[]): void {
+function mergeModuleConfig(
+  target: PlainObject,
+  modulesConfig: Record<string, any>,
+  commands: CommanderCommand[],
+): void {
   let currentLevel: any = modulesConfig;
   for (const command of commands) {
     if (!isPlainObject(currentLevel)) {
@@ -44,8 +38,7 @@ function mergeModuleConfig(target: PlainObject, modulesConfig: Record<string, an
     if (isPlainObject(segment)) {
       Object.assign(target, extractDirectValues(segment));
       currentLevel = segment;
-    }
-    else {
+    } else {
       Object.assign(target, { [command.name()]: segment });
       return;
     }
@@ -60,11 +53,9 @@ export async function resolveConfig(
   let commandChain: CommanderCommand[];
   if (Array.isArray(ancestry)) {
     commandChain = ancestry;
-  }
-  else if (ancestry) {
+  } else if (ancestry) {
     commandChain = getCommandAncestry(ancestry);
-  }
-  else {
+  } else {
     commandChain = getCommandAncestry(thisCommand);
   }
   const [root, ...rest] = commandChain;
@@ -81,7 +72,9 @@ export async function resolveConfig(
     // @todo(next-major): Remove deprecated api.maxConcurrency support from config files.
     // Handle deprecated api.maxConcurrency from config files
     if (globalLayer.api?.maxConcurrency !== undefined) {
-      console.warn('[storyblok] Config option `api.maxConcurrency` is deprecated. Use `api.rateLimit` instead.');
+      console.warn(
+        "[storyblok] Config option `api.maxConcurrency` is deprecated. Use `api.rateLimit` instead.",
+      );
       globalLayer.api.rateLimit = globalLayer.api.maxConcurrency;
       delete globalLayer.api.maxConcurrency;
     }
@@ -99,7 +92,9 @@ export async function resolveConfig(
   // Handle deprecated --api-max-concurrency CLI flag
   const globalResolvedApi = globalResolved.api;
   if (globalResolvedApi?.maxConcurrency !== undefined) {
-    console.warn('[storyblok] CLI flag `--api-max-concurrency` is deprecated. Use `--api-rate-limit` instead.');
+    console.warn(
+      "[storyblok] CLI flag `--api-max-concurrency` is deprecated. Use `--api-rate-limit` instead.",
+    );
     globalResolvedApi.rateLimit = globalResolvedApi.maxConcurrency;
     delete globalResolvedApi.maxConcurrency;
   }

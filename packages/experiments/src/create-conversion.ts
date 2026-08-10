@@ -1,5 +1,5 @@
-import type { ConversionGoal } from './define-goal';
-import type { Assignment, Conversion } from './types';
+import type { ConversionGoal } from "./define-goal";
+import type { Assignment, Conversion } from "./types";
 
 export interface CreateConversionOptions {
   /** The assignment to attribute the conversion to. */
@@ -21,13 +21,18 @@ export interface CreateConversionOptions {
  * with `assignVariant` to attribute a goal without the factory, or use the
  * factory's `createEvent`, which is this function with the adapters bound.
  */
-export function createConversion({ assignment, goal, value, props }: CreateConversionOptions): Conversion {
-  const resolvedGoal = typeof goal === 'string' ? { name: goal } : goal;
+export function createConversion({
+  assignment,
+  goal,
+  value,
+  props,
+}: CreateConversionOptions): Conversion {
+  const resolvedGoal = typeof goal === "string" ? { name: goal } : goal;
   const resolvedValue = value ?? resolvedGoal.value;
   const resolvedProps = props ?? resolvedGoal.props;
 
   return {
-    type: 'conversion',
+    type: "conversion",
     experiment: { ...assignment.experiment },
     variant: { name: assignment.variant.name, public_id: assignment.variant.public_id },
     visitorId: assignment.visitorId,

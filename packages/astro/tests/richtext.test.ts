@@ -1,48 +1,58 @@
-import { describe, expect, it } from 'vitest';
-import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
-import { experimental_AstroContainer as AstroContainer } from 'astro/container';
-import StoryblokRichText from '../src/components/StoryblokRichText.astro';
-import Heading from './richtext/Heading.astro';
-import HeadingWithRichText from './richtext/HeadingWithRichText.astro';
-import Bold from './richtext/Bold.astro';
-import CustomLink from './richtext/CustomLink.astro';
-import CodeBlock from './richtext/CodeBlock.astro';
-import CustomTable from './richtext/CustomTable.astro';
-import CustomText from './richtext/CustomText.astro';
+import { describe, expect, it } from "vitest";
+import {
+  customRendererFixture,
+  integrationFixtures,
+  linkFixtures,
+  markFixtures,
+  nodeFixtures,
+  tableFixtures,
+} from "@storyblok/richtext/test-utils";
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
+import StoryblokRichText from "../src/components/StoryblokRichText.astro";
+import Heading from "./richtext/Heading.astro";
+import HeadingWithRichText from "./richtext/HeadingWithRichText.astro";
+import Bold from "./richtext/Bold.astro";
+import CustomLink from "./richtext/CustomLink.astro";
+import CodeBlock from "./richtext/CodeBlock.astro";
+import CustomTable from "./richtext/CustomTable.astro";
+import CustomText from "./richtext/CustomText.astro";
 // Removes source file and location attributes that Astro adds for hydration
-const clean = (result: string) => result.replace(/ data-astro-source-file="[^"]*"/g, '').replace(/ data-astro-source-loc="[^"]*"/g, '');
+const clean = (result: string) =>
+  result
+    .replace(/ data-astro-source-file="[^"]*"/g, "")
+    .replace(/ data-astro-source-loc="[^"]*"/g, "");
 
-describe('storyblok Richtext', async () => {
-  describe('input handling', async () => {
-    it('returns empty string for null input', async () => {
+describe("storyblok Richtext", async () => {
+  describe("input handling", async () => {
+    it("returns empty string for null input", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
           document: null,
         },
       });
-      expect(clean(result)).toBe('');
+      expect(clean(result)).toBe("");
     });
-    it('returns empty string for undefined input', async () => {
+    it("returns empty string for undefined input", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
           document: undefined,
         },
       });
-      expect(result).toBe('');
+      expect(result).toBe("");
     });
-    it('returns empty string for empty array', async () => {
+    it("returns empty string for empty array", async () => {
       const container = await AstroContainer.create();
       const result = await container.renderToString(StoryblokRichText, {
         props: {
           document: [],
         },
       });
-      expect(result).toBe('');
+      expect(result).toBe("");
     });
   });
-  describe('nodes', async () => {
+  describe("nodes", async () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, async () => {
         const container = await AstroContainer.create();
@@ -55,7 +65,7 @@ describe('storyblok Richtext', async () => {
       });
     });
   });
-  describe('tables', async () => {
+  describe("tables", async () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, async () => {
         const container = await AstroContainer.create();
@@ -69,7 +79,7 @@ describe('storyblok Richtext', async () => {
       });
     });
   });
-  describe('marks', async () => {
+  describe("marks", async () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, async () => {
         const container = await AstroContainer.create();
@@ -84,7 +94,7 @@ describe('storyblok Richtext', async () => {
     });
   });
 
-  describe('links', async () => {
+  describe("links", async () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, async () => {
         const container = await AstroContainer.create();
@@ -98,7 +108,7 @@ describe('storyblok Richtext', async () => {
       });
     });
   });
-  describe('integration', async () => {
+  describe("integration", async () => {
     integrationFixtures.forEach(({ title, input, expected }) => {
       it(title, async () => {
         const container = await AstroContainer.create();
@@ -111,7 +121,7 @@ describe('storyblok Richtext', async () => {
       });
     });
   });
-  describe('custom renderers', async () => {
+  describe("custom renderers", async () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, async () => {
       const container = await AstroContainer.create();
@@ -176,7 +186,7 @@ describe('storyblok Richtext', async () => {
       const result = await container.renderToString(StoryblokRichText, {
         props: {
           document: text_node.input,
-          data: { prefix: '[prefix]' },
+          data: { prefix: "[prefix]" },
           components: {
             text: CustomText,
           },

@@ -1,5 +1,5 @@
-import { isBrowser } from './isBrowser';
-import { isInEditor } from './isInEditor';
+import { isBrowser } from "./isBrowser";
+import { isInEditor } from "./isInEditor";
 
 export function canUseStoryblokBridge(): boolean {
   if (!isBrowser()) {

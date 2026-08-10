@@ -1,4 +1,4 @@
-import type { BlokContent, Story, StoryListQuery } from '../../types';
+import type { BlokContent, Story, StoryListQuery } from "../../types";
 
 export type { BlokContent, Story };
 
@@ -17,7 +17,7 @@ export interface FetchStoriesResult {
   headers: Headers;
 }
 
-export type TargetStoryRef = Pick<Story, 'id' | 'uuid' | 'is_folder'>;
+export type TargetStoryRef = Pick<Story, "id" | "uuid" | "is_folder">;
 
 export interface ExistingTargetStories {
   // folders and start_page can have the same slug, we need TargetStoryRef[]
@@ -38,7 +38,7 @@ export interface StoryIndexEntry {
   component?: string;
 }
 
-export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '');
+export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, "");
 
 /**
  * Normalizes a `--starts-with` prefix for the MAPI `starts_with` filter.
@@ -48,4 +48,4 @@ export const normalizeFullSlug = (slug: string): string => slug.replace(/\/$/, '
  * people write paths (and how the option was documented), so strip them rather
  * than let the filter silently select an empty set.
  */
-export const normalizeStartsWith = (prefix: string): string => prefix.replace(/^\/+/, '');
+export const normalizeStartsWith = (prefix: string): string => prefix.replace(/^\/+/, "");

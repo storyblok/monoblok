@@ -4,5 +4,5 @@
  * validator; import individually so unused plugins tree-shake away.
  */
 
-export { storyblokColorField } from './storyblok-color-field';
-export type { StoryblokColorFieldValue } from './storyblok-color-field';
+export { storyblokColorField } from "./storyblok-color-field";
+export type { StoryblokColorFieldValue } from "./storyblok-color-field";

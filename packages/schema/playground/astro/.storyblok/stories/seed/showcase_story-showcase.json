@@ -22,15 +22,54 @@
               "content": [
                 { "text": "Defining your content model in ", "type": "text" },
                 { "text": "TypeScript", "type": "text", "marks": [{ "type": "bold" }] },
-                { "text": " means your schema and application code stay perfectly in sync. Rename a field and the compiler tells you every place that needs updating.", "type": "text" }
+                {
+                  "text": " means your schema and application code stay perfectly in sync. Rename a field and the compiler tells you every place that needs updating.",
+                  "type": "text"
+                }
               ]
             },
             {
               "type": "bullet_list",
               "content": [
-                { "type": "list_item", "content": [{ "type": "paragraph", "content": [{ "text": "Full type safety from schema to frontend", "type": "text" }] }] },
-                { "type": "list_item", "content": [{ "type": "paragraph", "content": [{ "text": "No runtime surprises — catch errors at build time", "type": "text" }] }] },
-                { "type": "list_item", "content": [{ "type": "paragraph", "content": [{ "text": "Version-controlled content model alongside your code", "type": "text" }] }] }
+                {
+                  "type": "list_item",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        { "text": "Full type safety from schema to frontend", "type": "text" }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "list_item",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "text": "No runtime surprises — catch errors at build time",
+                          "type": "text"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "list_item",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "text": "Version-controlled content model alongside your code",
+                          "type": "text"
+                        }
+                      ]
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -76,19 +115,66 @@
         "items": [
           {
             "_uid": "9191d13c-ca19-4aab-b9cb-fcd17eb750af",
-            "answer": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "text": "It is a TypeScript-first library for defining Storyblok component schemas in code. It provides ", "type": "text" }, { "text": "full type safety", "type": "text", "marks": [{ "type": "bold" }] }, { "text": " from schema definition to content delivery.", "type": "text" }] }] },
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "It is a TypeScript-first library for defining Storyblok component schemas in code. It provides ",
+                      "type": "text"
+                    },
+                    { "text": "full type safety", "type": "text", "marks": [{ "type": "bold" }] },
+                    { "text": " from schema definition to content delivery.", "type": "text" }
+                  ]
+                }
+              ]
+            },
             "question": "What is @storyblok/schema?",
             "component": "faq_item"
           },
           {
             "_uid": "fbfd9396-c239-42bf-b14d-ece4f7386ff0",
-            "answer": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "text": "Use the Storyblok CLI command ", "type": "text" }, { "text": "storyblok schema push", "type": "text", "marks": [{ "type": "code" }] }, { "text": " to push your TypeScript schema definitions to your Storyblok space.", "type": "text" }] }] },
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    { "text": "Use the Storyblok CLI command ", "type": "text" },
+                    {
+                      "text": "storyblok schema push",
+                      "type": "text",
+                      "marks": [{ "type": "code" }]
+                    },
+                    {
+                      "text": " to push your TypeScript schema definitions to your Storyblok space.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
             "question": "How do I push my schema to Storyblok?",
             "component": "faq_item"
           },
           {
             "_uid": "b3098e81-7d69-4f3d-b80b-aacc373c9e57",
-            "answer": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "text": "Yes! The schema package is framework-agnostic. This playground uses Qwik, but the same schema definitions work with React, Vue, Svelte, Astro, or any other framework.", "type": "text" }] }] },
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Yes! The schema package is framework-agnostic. This playground uses Qwik, but the same schema definitions work with React, Vue, Svelte, Astro, or any other framework.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
             "question": "Can I use this with any framework?",
             "component": "faq_item"
           }
@@ -100,10 +186,38 @@
       {
         "_uid": "0e87d5ee-bc93-4d0c-85e6-871927b8d21a",
         "items": [
-          { "_uid": "3047e784-5749-4b08-8d26-2e7667ad5b3a", "label": "Customers", "value": "5000", "prefix": "", "suffix": "+", "component": "stat_item" },
-          { "_uid": "10fd1ad3-ce19-4e02-8e26-82cd549847ee", "label": "Uptime", "value": "99.9", "prefix": "", "suffix": "%", "component": "stat_item" },
-          { "_uid": "96b7ef79-32a5-49bd-be7f-8ce85b6ffd8f", "label": "Revenue", "value": "2.4", "prefix": "$", "suffix": "M", "component": "stat_item" },
-          { "_uid": "f92d8081-6aea-4520-a349-05db866a077a", "label": "Support", "value": "24", "prefix": "", "suffix": "/7", "component": "stat_item" }
+          {
+            "_uid": "3047e784-5749-4b08-8d26-2e7667ad5b3a",
+            "label": "Customers",
+            "value": "5000",
+            "prefix": "",
+            "suffix": "+",
+            "component": "stat_item"
+          },
+          {
+            "_uid": "10fd1ad3-ce19-4e02-8e26-82cd549847ee",
+            "label": "Uptime",
+            "value": "99.9",
+            "prefix": "",
+            "suffix": "%",
+            "component": "stat_item"
+          },
+          {
+            "_uid": "96b7ef79-32a5-49bd-be7f-8ce85b6ffd8f",
+            "label": "Revenue",
+            "value": "2.4",
+            "prefix": "$",
+            "suffix": "M",
+            "component": "stat_item"
+          },
+          {
+            "_uid": "f92d8081-6aea-4520-a349-05db866a077a",
+            "label": "Support",
+            "value": "24",
+            "prefix": "",
+            "suffix": "/7",
+            "component": "stat_item"
+          }
         ],
         "headline": "By the Numbers",
         "component": "stats",
@@ -113,10 +227,46 @@
         "_uid": "916a603a-30b3-46f9-925e-1a9795bfe1ba",
         "table": {
           "tbody": [
-            { "_uid": "tr-1", "body": [{ "_uid": "td-1-1", "value": "Spaces", "component": "_table_col" }, { "_uid": "td-1-2", "value": "1", "component": "_table_col" }, { "_uid": "td-1-3", "value": "5", "component": "_table_col" }, { "_uid": "td-1-4", "value": "Unlimited", "component": "_table_col" }], "component": "_table_row" },
-            { "_uid": "tr-2", "body": [{ "_uid": "td-2-1", "value": "API Calls", "component": "_table_col" }, { "_uid": "td-2-2", "value": "100K/mo", "component": "_table_col" }, { "_uid": "td-2-3", "value": "1M/mo", "component": "_table_col" }, { "_uid": "td-2-4", "value": "Custom", "component": "_table_col" }], "component": "_table_row" },
-            { "_uid": "tr-3", "body": [{ "_uid": "td-3-1", "value": "Users", "component": "_table_col" }, { "_uid": "td-3-2", "value": "3", "component": "_table_col" }, { "_uid": "td-3-3", "value": "25", "component": "_table_col" }, { "_uid": "td-3-4", "value": "Unlimited", "component": "_table_col" }], "component": "_table_row" },
-            { "_uid": "tr-4", "body": [{ "_uid": "td-4-1", "value": "Support", "component": "_table_col" }, { "_uid": "td-4-2", "value": "Email", "component": "_table_col" }, { "_uid": "td-4-3", "value": "Priority", "component": "_table_col" }, { "_uid": "td-4-4", "value": "24/7 Dedicated", "component": "_table_col" }], "component": "_table_row" }
+            {
+              "_uid": "tr-1",
+              "body": [
+                { "_uid": "td-1-1", "value": "Spaces", "component": "_table_col" },
+                { "_uid": "td-1-2", "value": "1", "component": "_table_col" },
+                { "_uid": "td-1-3", "value": "5", "component": "_table_col" },
+                { "_uid": "td-1-4", "value": "Unlimited", "component": "_table_col" }
+              ],
+              "component": "_table_row"
+            },
+            {
+              "_uid": "tr-2",
+              "body": [
+                { "_uid": "td-2-1", "value": "API Calls", "component": "_table_col" },
+                { "_uid": "td-2-2", "value": "100K/mo", "component": "_table_col" },
+                { "_uid": "td-2-3", "value": "1M/mo", "component": "_table_col" },
+                { "_uid": "td-2-4", "value": "Custom", "component": "_table_col" }
+              ],
+              "component": "_table_row"
+            },
+            {
+              "_uid": "tr-3",
+              "body": [
+                { "_uid": "td-3-1", "value": "Users", "component": "_table_col" },
+                { "_uid": "td-3-2", "value": "3", "component": "_table_col" },
+                { "_uid": "td-3-3", "value": "25", "component": "_table_col" },
+                { "_uid": "td-3-4", "value": "Unlimited", "component": "_table_col" }
+              ],
+              "component": "_table_row"
+            },
+            {
+              "_uid": "tr-4",
+              "body": [
+                { "_uid": "td-4-1", "value": "Support", "component": "_table_col" },
+                { "_uid": "td-4-2", "value": "Email", "component": "_table_col" },
+                { "_uid": "td-4-3", "value": "Priority", "component": "_table_col" },
+                { "_uid": "td-4-4", "value": "24/7 Dedicated", "component": "_table_col" }
+              ],
+              "component": "_table_row"
+            }
           ],
           "thead": [
             { "_uid": "th-1", "value": "Feature", "component": "_table_head" },

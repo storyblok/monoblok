@@ -1,7 +1,7 @@
-import type { Component } from '../components/constants';
-import type { Story } from './constants';
-import { loadComponents } from '../components/loader';
-import { FileSystemError } from '../../utils/error/filesystem-error';
+import type { Component } from "../components/constants";
+import type { Story } from "./constants";
+import { loadComponents } from "../components/loader";
+import { FileSystemError } from "../../utils/error/filesystem-error";
 
 /**
  * @method isStoryPublishedWithoutChanges
@@ -24,14 +24,13 @@ export const isStoryWithUnpublishedChanges = (story: Partial<Story>) => {
 export const findComponentSchemas = async (directoryPath: string) => {
   try {
     const { components } = await loadComponents(directoryPath);
-    const schemas: Record<Component['name'], Component['schema']> = {};
+    const schemas: Record<Component["name"], Component["schema"]> = {};
     for (const component of components) {
       schemas[component.name] = component.schema;
     }
     return schemas;
-  }
-  catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return {};
     }
     if (error instanceof FileSystemError) {
@@ -47,6 +46,6 @@ export const findComponentSchemas = async (directoryPath: string) => {
  * @param  {object} story - Story object with slug and uuid
  * @return {string} Filename in the format {slug}_{uuid}.json
  */
-export const getStoryFilename = (story: Pick<Story, 'slug' | 'uuid'>) => {
+export const getStoryFilename = (story: Pick<Story, "slug" | "uuid">) => {
   return `${story.slug}_${story.uuid}.json`;
 };

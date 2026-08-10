@@ -9,9 +9,11 @@ Published at `storyblok.com/mp/<slug>` to communicate new SDK features and break
 
 ## Structure
 
-**Hook → What Changed → Why It Matters → How to Use It → How to Migrate → Reference → Related Content**
+**Hook → What Changed → Why It Matters → How to Use It → How to Migrate → Reference → Related
+Content**
 
-1. **Title** — Feature releases: `[Feature]: [Package Name]`. Major versions: `Introducing [Package Name] v[X]`
+1. **Title** — Feature releases: `[Feature]: [Package Name]`. Major versions:
+   `Introducing [Package Name] v[X]`
 2. **Introduction** — 2-3 sentences: what shipped, which package/version, why developers should care
 3. **Table of Contents** — Only if 3+ sections
 4. **Feature Sections** — One h2 per feature. Each follows: problem → solution → code example

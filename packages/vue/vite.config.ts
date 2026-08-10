@@ -1,15 +1,15 @@
-import vue from '@vitejs/plugin-vue';
-import { defineConfig, type Plugin } from 'vitest/config';
-import path from 'node:path';
-import { copyFileSync } from 'node:fs';
-import { lightGreen } from 'kolorist';
-import banner from 'vite-plugin-banner';
-import dts from 'vite-plugin-dts';
+import vue from "@vitejs/plugin-vue";
+import { defineConfig, type Plugin } from "vitest/config";
+import path from "node:path";
+import { copyFileSync } from "node:fs";
+import { lightGreen } from "kolorist";
+import banner from "vite-plugin-banner";
+import dts from "vite-plugin-dts";
 
-import pkg from './package.json' with { type: 'json' };
+import pkg from "./package.json" with { type: "json" };
 
 // eslint-disable-next-line no-console
-console.log(`${lightGreen('Storyblok Vue')} v${pkg.version}`);
+console.log(`${lightGreen("Storyblok Vue")} v${pkg.version}`);
 
 export default defineConfig({
   plugins: [
@@ -17,8 +17,8 @@ export default defineConfig({
       insertTypesEntry: true,
       afterBuild(emittedFiles) {
         for (const filePath of emittedFiles.keys()) {
-          if (filePath.endsWith('.d.ts')) {
-            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, '.d.cts'));
+          if (filePath.endsWith(".d.ts")) {
+            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, ".d.cts"));
           }
         }
       },
@@ -31,33 +31,33 @@ export default defineConfig({
 
   build: {
     lib: {
-      entry: path.resolve(import.meta.dirname, 'src', 'index.ts'),
-      name: 'storyblokVue',
+      entry: path.resolve(import.meta.dirname, "src", "index.ts"),
+      name: "storyblokVue",
       fileName: (format) => {
-        const name = 'storyblok-vue';
-        return format === 'es' ? `${name}.mjs` : `${name}.cjs`;
+        const name = "storyblok-vue";
+        return format === "es" ? `${name}.mjs` : `${name}.cjs`;
       },
     },
     rollupOptions: {
       output: {
         globals: {
-          vue: 'Vue',
+          vue: "Vue",
         },
       },
-      external: ['vue'],
+      external: ["vue"],
     },
   },
   optimizeDeps: {
-    exclude: ['vue'],
+    exclude: ["vue"],
   },
 
   test: {
     globals: true,
-    include: ['./src/__tests__/**/*'],
+    include: ["./src/__tests__/**/*"],
     exclude: [
-      './src/__tests__/cypress',
-      './src/__tests__/testing-components',
-      './src/__tests__/richtext',
+      "./src/__tests__/cypress",
+      "./src/__tests__/testing-components",
+      "./src/__tests__/richtext",
     ],
   },
 });

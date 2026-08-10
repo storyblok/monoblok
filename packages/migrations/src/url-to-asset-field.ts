@@ -1,17 +1,16 @@
-import type { AssetFieldValue } from './types';
+import type { AssetFieldValue } from "./types";
 
-export type UrlToAssetFieldOptions = Partial<Omit<AssetFieldValue, 'fieldtype' | 'filename' | 'id'>>;
+export type UrlToAssetFieldOptions = Partial<
+  Omit<AssetFieldValue, "fieldtype" | "filename" | "id">
+>;
 
-export function urlToAssetField(
-  url: string,
-  options?: UrlToAssetFieldOptions,
-): AssetFieldValue {
+export function urlToAssetField(url: string, options?: UrlToAssetFieldOptions): AssetFieldValue {
   // Derive name from last path segment
-  const pathSegments = url.split('/');
+  const pathSegments = url.split("/");
   const name = pathSegments.at(-1) || url;
 
   return {
-    fieldtype: 'asset',
+    fieldtype: "asset",
     // `id` must be truthy: the CLI's `assets push` pipeline gates the
     // local→remote asset map on `if (localAssetResult.id)` (see
     // packages/cli/src/commands/assets/pipelines.ts), so an `id: 0` entry

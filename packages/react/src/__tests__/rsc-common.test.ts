@@ -1,14 +1,21 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiPlugin } from '@storyblok/js';
-import type { SbReactSDKOptions } from '../types';
-import { getComponent, getCustomFallbackComponent, getEnableFallbackComponent, getStoryblokApi, setComponents, storyblokInit } from '../core/init';
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiPlugin } from "@storyblok/js";
+import type { SbReactSDKOptions } from "../types";
+import {
+  getComponent,
+  getCustomFallbackComponent,
+  getEnableFallbackComponent,
+  getStoryblokApi,
+  setComponents,
+  storyblokInit,
+} from "../core/init";
 
-describe('storyblokInit', () => {
+describe("storyblokInit", () => {
   let pluginOptions: SbReactSDKOptions;
 
   beforeEach(() => {
     pluginOptions = {
-      accessToken: 'test-token',
+      accessToken: "test-token",
       use: [apiPlugin],
       components: { testComponent: () => null },
       enableFallbackComponent: true,
@@ -20,51 +27,51 @@ describe('storyblokInit', () => {
     vi.restoreAllMocks();
   });
 
-  it('should initialize storyblokApiInstance', () => {
+  it("should initialize storyblokApiInstance", () => {
     storyblokInit(pluginOptions);
     const storyblokApi = getStoryblokApi();
     expect(storyblokApi).toBeDefined();
   });
 
-  it('should set componentsMap', () => {
+  it("should set componentsMap", () => {
     storyblokInit(pluginOptions);
-    expect(pluginOptions.components).toHaveProperty('testComponent');
+    expect(pluginOptions.components).toHaveProperty("testComponent");
   });
 
-  it('should set enableFallbackComponent', () => {
+  it("should set enableFallbackComponent", () => {
     storyblokInit(pluginOptions);
     expect(getEnableFallbackComponent()).toBe(true);
   });
 
-  it('should set customFallbackComponent', () => {
+  it("should set customFallbackComponent", () => {
     storyblokInit(pluginOptions);
     expect(getCustomFallbackComponent()).toBeDefined();
   });
 });
 
-describe('setComponents', () => {
-  it('should set components map', () => {
+describe("setComponents", () => {
+  it("should set components map", () => {
     const components = { testComponent: () => null };
     setComponents(components);
-    expect(getComponent('testComponent')).toBe(components.testComponent);
+    expect(getComponent("testComponent")).toBe(components.testComponent);
   });
 });
 
-describe('getComponent', () => {
-  it('should return the component if it exists', () => {
+describe("getComponent", () => {
+  it("should return the component if it exists", () => {
     const components = { testComponent: () => null };
     setComponents(components);
-    expect(getComponent('testComponent')).toBe(components.testComponent);
+    expect(getComponent("testComponent")).toBe(components.testComponent);
   });
 
-  it('should return false if the component does not exist', () => {
-    expect(getComponent('nonExistentComponent')).toBe(false);
+  it("should return false if the component does not exist", () => {
+    expect(getComponent("nonExistentComponent")).toBe(false);
   });
 
-  it('should return false if the component does not exist and log a message', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(getComponent('nonExistentComponent')).toBe(false);
-    expect(consoleSpy).toHaveBeenCalledWith('Component nonExistentComponent doesn\'t exist.');
+  it("should return false if the component does not exist and log a message", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(getComponent("nonExistentComponent")).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledWith("Component nonExistentComponent doesn't exist.");
     consoleSpy.mockRestore();
   });
 });

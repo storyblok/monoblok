@@ -1,4 +1,4 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 /**
  * Binds a Storyblok custom field `field_type` to a
@@ -27,9 +27,9 @@ export interface FieldPlugin<
  *   value: z.object({ color: z.string(), alpha: z.number() }),
  * });
  */
-export function defineFieldPlugin<
-  const F extends string,
-  S extends StandardSchemaV1,
->(config: { fieldType: F; value: S }): FieldPlugin<F, S> {
+export function defineFieldPlugin<const F extends string, S extends StandardSchemaV1>(config: {
+  fieldType: F;
+  value: S;
+}): FieldPlugin<F, S> {
   return config;
 }

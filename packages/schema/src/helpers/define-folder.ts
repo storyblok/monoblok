@@ -1,4 +1,4 @@
-import type { Prettify } from '../utils/prettify';
+import type { Prettify } from "../utils/prettify";
 
 /**
  * A block folder (Storyblok component group) content-shape definition. Identity
@@ -11,12 +11,16 @@ export interface BlockFolder {
   path: string;
 }
 
-type FolderPath<TName extends string, TParent extends BlockFolder | undefined>
-  = TParent extends { path: infer P extends string } ? `${P}/${TName}` : TName;
+type FolderPath<TName extends string, TParent extends BlockFolder | undefined> = TParent extends {
+  path: infer P extends string;
+}
+  ? `${P}/${TName}`
+  : TName;
 
 type DefinedFolder<TName extends string, TParent extends BlockFolder | undefined> = Prettify<
-  { name: TName; path: FolderPath<TName, TParent> }
-  & (TParent extends BlockFolder ? { parent: TParent } : unknown)
+  { name: TName; path: FolderPath<TName, TParent> } & (TParent extends BlockFolder
+    ? { parent: TParent }
+    : unknown)
 >;
 
 /**
@@ -34,10 +38,10 @@ export function defineFolder<
   const TParent extends BlockFolder | undefined = undefined,
 >(input: { name: TName; parent?: TParent }): DefinedFolder<TName, TParent>;
 export function defineFolder(input: { name: string; parent?: BlockFolder }): BlockFolder {
-  if (input.name.trim() === '') {
+  if (input.name.trim() === "") {
     throw new Error(`defineFolder: folder name must not be empty`);
   }
-  if (input.name.includes('/')) {
+  if (input.name.includes("/")) {
     throw new Error(`defineFolder: folder name "${input.name}" must not contain "/"`);
   }
   const path = input.parent ? `${input.parent.path}/${input.name}` : input.name;

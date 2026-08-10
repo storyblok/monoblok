@@ -1,7 +1,6 @@
 # [Ticket Title]
 
-**Type:** feature | improvement | bugfix | refactor | spike
-**Package:** @storyblok/[package-name]
+**Type:** feature | improvement | bugfix | refactor | spike **Package:** @storyblok/[package-name]
 
 ## Context
 
@@ -9,7 +8,8 @@
 
 ## What to do
 
-[Describe the change. For simple tasks, a sentence or two is enough. For complex ones, use a bullet list. Include out of scope items if there's ambiguity about boundaries.]
+[Describe the change. For simple tasks, a sentence or two is enough. For complex ones, use a bullet
+list. Include out of scope items if there's ambiguity about boundaries.]
 
 ## Acceptance criteria
 

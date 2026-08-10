@@ -13,11 +13,11 @@ export type {
   StoryblokAngularRichTextComponentMap,
   StoryblokAngularRichTextProps,
   StoryblokAngularRichTextRenderContext,
-} from './richtext/richtext.feature';
+} from "./richtext/richtext.feature";
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export type {
   SbAngularRichTextProps,
   SbAngularRichTextComponent,
   SbAngularRichTextComponentMap,
-} from './richtext/richtext.feature';
+} from "./richtext/richtext.feature";

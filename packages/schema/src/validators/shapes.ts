@@ -1,7 +1,7 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { FieldType } from '../generated/types/field';
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import type { FieldType } from "../generated/types/field";
 
-export { isRecord } from '../utils/is-record';
+export { isRecord } from "../utils/is-record";
 
 /**
  * Loose structural views of the content-shape definitions, used internally by

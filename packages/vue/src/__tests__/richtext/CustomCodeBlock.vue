@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { SbVueRichTextProps } from '../../index.ts';
+import type { SbVueRichTextProps } from "../../index.ts";
 
-const props = defineProps<SbVueRichTextProps['code_block']>();
+const props = defineProps<SbVueRichTextProps["code_block"]>();
 
-const lang = props?.attrs?.class ?? '';
+const lang = props?.attrs?.class ?? "";
 </script>
 
 <template>

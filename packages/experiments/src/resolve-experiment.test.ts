@@ -1,76 +1,80 @@
-import type { Experiment } from './types';
-import { describe, expect, it } from 'vitest';
-import { assignmentFor, homepageExperiment } from './fixtures';
-import { resolveExperiment } from './resolve-experiment';
+import type { Experiment } from "./types";
+import { describe, expect, it } from "vitest";
+import { assignmentFor, homepageExperiment } from "./fixtures";
+import { resolveExperiment } from "./resolve-experiment";
 
 const controlAssignment = assignmentFor(homepageExperiment, 0);
 const variantAssignment = assignmentFor(homepageExperiment, 1);
 
-describe('resolveExperiment', () => {
-  it('renders the original slug for control, with an exposure', () => {
+describe("resolveExperiment", () => {
+  it("renders the original slug for control, with an exposure", () => {
     const result = resolveExperiment({
       experiments: [homepageExperiment],
-      slug: 'home',
+      slug: "home",
       assignment: controlAssignment,
     });
-    expect(result.slug).toBe('home');
-    expect(result.variant?.public_id).toBe('var_control');
+    expect(result.slug).toBe("home");
+    expect(result.variant?.public_id).toBe("var_control");
     expect(result.exposure).toEqual({
-      type: 'exposure',
-      experiment: { id: 123, name: 'homepage_hero' },
-      variant: { name: 'control', public_id: 'var_control' },
-      visitorId: 'visitor-1',
+      type: "exposure",
+      experiment: { id: 123, name: "homepage_hero" },
+      variant: { name: "control", public_id: "var_control" },
+      visitorId: "visitor-1",
     });
   });
 
-  it('carries the assignment visitorId onto the exposure', () => {
+  it("carries the assignment visitorId onto the exposure", () => {
     const result = resolveExperiment({
       experiments: [homepageExperiment],
-      slug: 'home',
-      assignment: { ...variantAssignment, visitorId: 'visitor-99' },
+      slug: "home",
+      assignment: { ...variantAssignment, visitorId: "visitor-99" },
     });
-    expect(result.exposure?.visitorId).toBe('visitor-99');
+    expect(result.exposure?.visitorId).toBe("visitor-99");
   });
 
-  it('renders the mapped variant slug for a non-control variant', () => {
+  it("renders the mapped variant slug for a non-control variant", () => {
     const result = resolveExperiment({
       experiments: [homepageExperiment],
-      slug: 'home',
+      slug: "home",
       assignment: variantAssignment,
     });
-    expect(result.slug).toBe('home-b');
-    expect(result.variant?.public_id).toBe('var_b');
-    expect(result.exposure?.variant.public_id).toBe('var_b');
+    expect(result.slug).toBe("home-b");
+    expect(result.variant?.public_id).toBe("var_b");
+    expect(result.exposure?.variant.public_id).toBe("var_b");
   });
 
-  it('passes through an unmatched slug with no exposure', () => {
+  it("passes through an unmatched slug with no exposure", () => {
     const result = resolveExperiment({
       experiments: [homepageExperiment],
-      slug: 'about',
+      slug: "about",
       assignment: variantAssignment,
     });
-    expect(result.slug).toBe('about');
+    expect(result.slug).toBe("about");
     expect(result.variant).toBeUndefined();
     expect(result.exposure).toBeUndefined();
   });
 
-  it('passes through when the assignment is missing', () => {
-    const result = resolveExperiment({ experiments: [homepageExperiment], slug: 'home' });
-    expect(result.slug).toBe('home');
+  it("passes through when the assignment is missing", () => {
+    const result = resolveExperiment({ experiments: [homepageExperiment], slug: "home" });
+    expect(result.slug).toBe("home");
     expect(result.exposure).toBeUndefined();
   });
 
-  it('passes through when the assignment is for a different experiment', () => {
+  it("passes through when the assignment is for a different experiment", () => {
     const result = resolveExperiment({
       experiments: [homepageExperiment],
-      slug: 'home',
-      assignment: { ...variantAssignment, experiment: { id: 999, name: 'other' }, experimentId: 999 },
+      slug: "home",
+      assignment: {
+        ...variantAssignment,
+        experiment: { id: 999, name: "other" },
+        experimentId: 999,
+      },
     });
-    expect(result.slug).toBe('home');
+    expect(result.slug).toBe("home");
     expect(result.exposure).toBeUndefined();
   });
 
-  it('resolves folder-nested full slugs when the payload carries them', () => {
+  it("resolves folder-nested full slugs when the payload carries them", () => {
     // Guards the SDK's half of the nested-story case: once the backend serializes
     // `original_slug` as a full slug (see PR notes), matching and mapping must work
     // for a folder path just as they do for a root slug.
@@ -80,27 +84,37 @@ describe('resolveExperiment', () => {
         {
           ...homepageExperiment.variants[0],
           story_mappings: [
-            { original_story_id: 1, original_slug: 'pages/home', variant_story_id: 1, variant_slug: 'pages/home' },
+            {
+              original_story_id: 1,
+              original_slug: "pages/home",
+              variant_story_id: 1,
+              variant_slug: "pages/home",
+            },
           ],
         },
         {
           ...homepageExperiment.variants[1],
           story_mappings: [
-            { original_story_id: 1, original_slug: 'pages/home', variant_story_id: 2, variant_slug: 'pages/home-b' },
+            {
+              original_story_id: 1,
+              original_slug: "pages/home",
+              variant_story_id: 2,
+              variant_slug: "pages/home-b",
+            },
           ],
         },
       ],
     };
     const result = resolveExperiment({
       experiments: [nested],
-      slug: 'pages/home',
+      slug: "pages/home",
       assignment: assignmentFor(nested, 1),
     });
-    expect(result.slug).toBe('pages/home-b');
-    expect(result.exposure?.variant.public_id).toBe('var_b');
+    expect(result.slug).toBe("pages/home-b");
+    expect(result.exposure?.variant.public_id).toBe("var_b");
   });
 
-  it('resolves the assigned experiment when two running experiments share the same slug', () => {
+  it("resolves the assigned experiment when two running experiments share the same slug", () => {
     // A story can belong to more than one running experiment (the backend enforces
     // no cross-experiment exclusivity), so both experiments map `original_slug: home`.
     // The assignment is for the second one; selecting by slug-first would pick the
@@ -109,29 +123,34 @@ describe('resolveExperiment', () => {
     const second: Experiment = {
       ...homepageExperiment,
       id: 456,
-      name: 'homepage_hero_2',
+      name: "homepage_hero_2",
       variants: [
         homepageExperiment.variants[0],
         {
           ...homepageExperiment.variants[1],
-          public_id: 'var_b2',
+          public_id: "var_b2",
           story_mappings: [
-            { original_story_id: 1, original_slug: 'home', variant_story_id: 3, variant_slug: 'home-c' },
+            {
+              original_story_id: 1,
+              original_slug: "home",
+              variant_story_id: 3,
+              variant_slug: "home-c",
+            },
           ],
         },
       ],
     };
     const result = resolveExperiment({
       experiments: [first, second],
-      slug: 'home',
+      slug: "home",
       assignment: assignmentFor(second, 1),
     });
-    expect(result.slug).toBe('home-c');
-    expect(result.variant?.public_id).toBe('var_b2');
+    expect(result.slug).toBe("home-c");
+    expect(result.variant?.public_id).toBe("var_b2");
     expect(result.exposure?.experiment.id).toBe(456);
   });
 
-  it('falls back to the original slug when the variant mapping has a null variant_slug', () => {
+  it("falls back to the original slug when the variant mapping has a null variant_slug", () => {
     const nullSlug: Experiment = {
       ...homepageExperiment,
       variants: [
@@ -139,17 +158,22 @@ describe('resolveExperiment', () => {
         {
           ...homepageExperiment.variants[1],
           story_mappings: [
-            { original_story_id: 1, original_slug: 'home', variant_story_id: null, variant_slug: null },
+            {
+              original_story_id: 1,
+              original_slug: "home",
+              variant_story_id: null,
+              variant_slug: null,
+            },
           ],
         },
       ],
     };
     const result = resolveExperiment({
       experiments: [nullSlug],
-      slug: 'home',
+      slug: "home",
       assignment: assignmentFor(nullSlug, 1),
     });
-    expect(result.slug).toBe('home');
-    expect(result.variant?.public_id).toBe('var_b');
+    expect(result.slug).toBe("home");
+    expect(result.variant?.public_id).toBe("var_b");
   });
 });

@@ -6,17 +6,17 @@ import {
   OnInit,
   linkedSignal,
   input,
-} from '@angular/core';
+} from "@angular/core";
 import {
   type Story,
   type SbBlokData,
   LivePreviewService,
   type BridgeParams,
   StoryblokComponent,
-} from '@storyblok/angular';
+} from "@storyblok/angular";
 
 @Component({
-  selector: 'app-catch-all',
+  selector: "app-catch-all",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [StoryblokComponent],
   template: `
@@ -36,7 +36,7 @@ export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
 
   /** SSR source of truth */
-  readonly storyInput = input<Story | null>(null, { alias: 'story' });
+  readonly storyInput = input<Story | null>(null, { alias: "story" });
 
   /** Writable signal linked to input - allows bridge updates */
   readonly story = linkedSignal(() => this.storyInput());
@@ -44,7 +44,7 @@ export class CatchAllComponent implements OnInit {
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
   readonly bridgeConfig: BridgeParams = {
-    resolveRelations: ['featured-articles.articles'],
+    resolveRelations: ["featured-articles.articles"],
   };
   ngOnInit(): void {
     // Enable live preview for real-time editing in the Visual Editor

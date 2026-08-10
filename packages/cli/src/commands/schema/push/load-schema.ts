@@ -1,8 +1,8 @@
-import type { LocalFolder, SchemaData } from '../types';
-import { CommandError, isRecord } from '../../../utils';
-import { collectSchemaExports, loadSchemaModule } from '../../../utils/schema/classify-exports';
-import { expandFolderPath } from '../folders';
-import { mapBlockToWire, mapDatasourceToWire } from '../map-to-wire';
+import type { LocalFolder, SchemaData } from "../types";
+import { CommandError, isRecord } from "../../../utils";
+import { collectSchemaExports, loadSchemaModule } from "../../../utils/schema/classify-exports";
+import { expandFolderPath } from "../folders";
+import { mapBlockToWire, mapDatasourceToWire } from "../map-to-wire";
 
 /**
  * Builds the deduped, parent-first {@link LocalFolder} list from harvested
@@ -25,30 +25,38 @@ function buildLocalFolders(registered: string[], derived: string[]): LocalFolder
         return;
       }
       if (isRegisteredEntry && existing.isRegistered && existing.folder.name !== entry.name) {
-        throw new CommandError(`Conflicting folder names for path "${entry.path}": "${existing.folder.name}" vs "${entry.name}"`);
+        throw new CommandError(
+          `Conflicting folder names for path "${entry.path}": "${existing.folder.name}" vs "${entry.name}"`,
+        );
       }
       if (isRegisteredEntry && !existing.isRegistered) {
         byPath.set(entry.path, { folder: entry, isRegistered: true });
       }
     });
   };
-  for (const path of registered) { add(path, true); }
-  for (const path of derived) { add(path, false); }
+  for (const path of registered) {
+    add(path, true);
+  }
+  for (const path of derived) {
+    add(path, false);
+  }
   const folders = [...byPath.values()]
-    .map(v => v.folder)
-    .sort((a, b) => a.path.split('/').length - b.path.split('/').length || a.path.localeCompare(b.path));
+    .map((v) => v.folder)
+    .sort(
+      (a, b) => a.path.split("/").length - b.path.split("/").length || a.path.localeCompare(b.path),
+    );
 
   // Storyblok component group names are unique per SPACE (not per parent), so
   // reject duplicate slugified leaf names across the whole set. Without this
   // guard duplicates pass load/diff and 422 mid-push with a misleading message.
   const leafToPath = new Map<string, string>();
   for (const folder of folders) {
-    const leaf = folder.path.split('/').pop() ?? folder.path;
+    const leaf = folder.path.split("/").pop() ?? folder.path;
     const existing = leafToPath.get(leaf);
     if (existing !== undefined && existing !== folder.path) {
       throw new CommandError(
-        `Duplicate folder name "${leaf}" (folders "${existing}" and "${folder.path}"): `
-        + `Storyblok group names must be unique per space, even under different parents.`,
+        `Duplicate folder name "${leaf}" (folders "${existing}" and "${folder.path}"): ` +
+          `Storyblok group names must be unique per space, even under different parents.`,
       );
     }
     leafToPath.set(leaf, folder.path);
@@ -78,7 +86,9 @@ function assertUniqueIdentities(
     const seen = new Set<string>();
     const reported = new Set<string>();
     for (const value of values) {
-      if (typeof value !== 'string') { continue; }
+      if (typeof value !== "string") {
+        continue;
+      }
       if (seen.has(value) && !reported.has(value)) {
         reported.add(value);
         collisions.push(`${label} "${value}"`);
@@ -89,15 +99,24 @@ function assertUniqueIdentities(
 
   // Blocks and datasources are diffed by `name`; a datasource `slug` collision
   // is rejected by the Management API even when the names differ.
-  collect('block name', components.map(component => component.name));
-  collect('datasource name', datasources.map(datasource => datasource.name));
-  collect('datasource slug', datasources.map(datasource => datasource.slug));
+  collect(
+    "block name",
+    components.map((component) => component.name),
+  );
+  collect(
+    "datasource name",
+    datasources.map((datasource) => datasource.name),
+  );
+  collect(
+    "datasource slug",
+    datasources.map((datasource) => datasource.slug),
+  );
 
   if (collisions.length > 0) {
     throw new CommandError(
-      `Duplicate schema definitions: ${collisions.join(', ')}. `
-      + `Each block name, datasource name, and datasource slug must be unique; `
-      + `rename or remove the duplicate before pushing.`,
+      `Duplicate schema definitions: ${collisions.join(", ")}. ` +
+        `Each block name, datasource name, and datasource slug must be unique; ` +
+        `rename or remove the duplicate before pushing.`,
     );
   }
 }
@@ -116,15 +135,21 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
   // Harvest derived (unregistered) folder display paths from each component's
   // `folder` field and its `allow` entries. Reads the raw DSL objects, before
   // `mapBlockToWire` slugifies wire-side keys and loses display names.
-  const registered = folders.map(folder => folder.path as string);
+  const registered = folders.map((folder) => folder.path as string);
   const derived: string[] = [];
   for (const component of components) {
-    if (typeof component.folder === 'string') { derived.push(component.folder); }
+    if (typeof component.folder === "string") {
+      derived.push(component.folder);
+    }
     if (Array.isArray(component.fields)) {
       for (const field of component.fields) {
-        if (!isRecord(field) || !Array.isArray(field.allow)) { continue; }
+        if (!isRecord(field) || !Array.isArray(field.allow)) {
+          continue;
+        }
         for (const entry of field.allow) {
-          if (isRecord(entry) && typeof entry.folder === 'string') { derived.push(entry.folder); }
+          if (isRecord(entry) && typeof entry.folder === "string") {
+            derived.push(entry.folder);
+          }
         }
       }
     }

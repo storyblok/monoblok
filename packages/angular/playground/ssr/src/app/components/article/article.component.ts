@@ -1,5 +1,5 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { SbRichTextComponent, type SbRichTextDoc } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { SbRichTextComponent, type SbRichTextDoc } from "@storyblok/angular";
 
 export interface ArticleBlok {
   title?: string;
@@ -7,7 +7,7 @@ export interface ArticleBlok {
 }
 
 @Component({
-  selector: 'app-article',
+  selector: "app-article",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbRichTextComponent],
   template: `

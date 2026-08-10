@@ -2,10 +2,10 @@ import type {
   MapiStory as MapiStoryGenerated,
   StoryCreate as StoryCreateGenerated,
   StoryUpdate as StoryUpdateGenerated,
-} from './_sources';
-import type { Override, Prettify } from './_utils';
-import type { Block, RootBlock } from './block';
-import type { BlockContent, BlockContentInput } from './field';
+} from "./_sources";
+import type { Override, Prettify } from "./_utils";
+import type { Block, RootBlock } from "./block";
+import type { BlockContent, BlockContentInput } from "./field";
 
 /**
  * Registry of all blocks, threaded through to resolve nested `bloks` fields.
@@ -25,11 +25,14 @@ type MapiStoryWithSchemaContent<
   TFieldPlugins = Record<never, never>,
 > = RootBlock extends TBlock
   ? TStory
-  : Override<TStory, {
-    content: TStory extends StoryCreateGenerated | StoryUpdateGenerated
-      ? BlockContentInput<TBlock, TBlocks, TFieldPlugins>
-      : BlockContent<TBlock, TBlocks, TFieldPlugins>;
-  }>;
+  : Override<
+      TStory,
+      {
+        content: TStory extends StoryCreateGenerated | StoryUpdateGenerated
+          ? BlockContentInput<TBlock, TBlocks, TFieldPlugins>
+          : BlockContent<TBlock, TBlocks, TFieldPlugins>;
+      }
+    >;
 
 type MakeMapiStory<
   TStory extends MapiStoryGenerated | StoryCreateGenerated | StoryUpdateGenerated,
@@ -40,11 +43,21 @@ type MakeMapiStory<
   // caller passed root block(s) directly → use them as the content type
   [TBlockOrBlocks] extends [RootBlock]
     ? MapiStoryWithSchemaContent<TStory, TBlockOrBlocks, TBlocks, TFieldPlugins>
-    // caller passed the full block union → derive root blocks, thread the union as the registry
-    : [TBlocks] extends [NoBlocks]
-        ? MapiStoryWithSchemaContent<TStory, Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks, TFieldPlugins>
-      // caller passed both → honour the explicit registry
-        : MapiStoryWithSchemaContent<TStory, Extract<TBlockOrBlocks, RootBlock>, TBlocks, TFieldPlugins>
+    : // caller passed the full block union → derive root blocks, thread the union as the registry
+      [TBlocks] extends [NoBlocks]
+      ? MapiStoryWithSchemaContent<
+          TStory,
+          Extract<TBlockOrBlocks, RootBlock>,
+          TBlockOrBlocks,
+          TFieldPlugins
+        >
+      : // caller passed both → honour the explicit registry
+        MapiStoryWithSchemaContent<
+          TStory,
+          Extract<TBlockOrBlocks, RootBlock>,
+          TBlocks,
+          TFieldPlugins
+        >
 >;
 
 /** A Storyblok MAPI story. */

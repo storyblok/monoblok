@@ -1,27 +1,27 @@
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
-import path from 'node:path';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
-import fs from 'node:fs';
+import { defineConfig } from "vite";
+import dts from "vite-plugin-dts";
+import path from "node:path";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+import fs from "node:fs";
 
 export default defineConfig({
   build: {
     lib: {
-      entry: path.resolve(import.meta.dirname, 'src/index.ts'),
-      formats: ['es'],
-      fileName: () => 'index.js',
+      entry: path.resolve(import.meta.dirname, "src/index.ts"),
+      formats: ["es"],
+      fileName: () => "index.js",
     },
     rollupOptions: {
-      external: ['astro'],
+      external: ["astro"],
     },
   },
   plugins: [
     dts({
       afterBuild: () => {
-        const indexDtsPath = path.resolve(import.meta.dirname, 'dist/index.d.ts');
+        const indexDtsPath = path.resolve(import.meta.dirname, "dist/index.d.ts");
 
         if (fs.existsSync(indexDtsPath)) {
-          const currentContent = fs.readFileSync(indexDtsPath, 'utf-8');
+          const currentContent = fs.readFileSync(indexDtsPath, "utf-8");
           const referenceLine = `/// <reference path="./public.d.ts" />`;
 
           if (!currentContent.includes(referenceLine)) {
@@ -33,17 +33,21 @@ export default defineConfig({
     }),
     viteStaticCopy({
       targets: [
-        { src: 'src/live-preview/middleware.ts', dest: 'live-preview', rename: { stripBase: true } },
-        { src: 'src/dev-toolbar/toolbarApp.ts', dest: 'dev-toolbar', rename: { stripBase: true } },
         {
-          src: ['src/lib/client.ts'],
-          dest: 'lib',
+          src: "src/live-preview/middleware.ts",
+          dest: "live-preview",
           rename: { stripBase: true },
         },
-        { src: 'src/public.d.ts', dest: '.', rename: { stripBase: true } },
+        { src: "src/dev-toolbar/toolbarApp.ts", dest: "dev-toolbar", rename: { stripBase: true } },
         {
-          src: ['src/components/**/*.astro'],
-          dest: 'components',
+          src: ["src/lib/client.ts"],
+          dest: "lib",
+          rename: { stripBase: true },
+        },
+        { src: "src/public.d.ts", dest: ".", rename: { stripBase: true } },
+        {
+          src: ["src/components/**/*.astro"],
+          dest: "components",
           rename: { stripBase: 2 }, // strip the `src/components` prefix, preserve any nesting below it
         },
       ],

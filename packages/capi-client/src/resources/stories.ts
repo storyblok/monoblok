@@ -1,5 +1,10 @@
-import { getStoryById, listStories } from '../generated/capi/sdk.gen';
-import type { GetStoryByIdData, GetStoryByIdResponses, ListStoriesData, ListStoriesResponses } from '../generated/capi/types.gen';
+import { getStoryById, listStories } from "../generated/capi/sdk.gen";
+import type {
+  GetStoryByIdData,
+  GetStoryByIdResponses,
+  ListStoriesData,
+  ListStoriesResponses,
+} from "../generated/capi/types.gen";
 import type {
   AssetFieldValue,
   BlockContent as BlokContent,
@@ -7,11 +12,15 @@ import type {
   PluginFieldValue,
   RichTextFieldValue,
   TableFieldValue,
-} from '../generated/types/field';
-import { inlineStoriesContent, inlineStoryContent, resolveRelationMap } from '../utils/inline-relations';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
-import type { Block as Component, RootBlock as RootComponents } from '../generated/types/block';
-import type { Story } from '../generated/types/story';
+} from "../generated/types/field";
+import {
+  inlineStoriesContent,
+  inlineStoryContent,
+  resolveRelationMap,
+} from "../utils/inline-relations";
+import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import type { Block as Component, RootBlock as RootComponents } from "../generated/types/block";
+import type { Story } from "../generated/types/story";
 
 type InlinedStoryContentField =
   | string
@@ -33,25 +42,27 @@ interface InlinedStoryContent {
   [key: string]: InlinedStoryContentField;
 }
 
-export type StoryWithInlinedRelations = Omit<Story, 'content'> & {
+export type StoryWithInlinedRelations = Omit<Story, "content"> & {
   content: InlinedStoryContent;
 };
 
 /** Splits `"comp.field,comp2.field2"` into a union of `{ component, field }`. */
-type ParseRelations<T extends string> =
-  T extends `${infer Comp}.${infer Field},${infer Rest}`
-    ? { component: Comp; field: Field } | ParseRelations<Rest>
-    : T extends `${infer Comp}.${infer Field}`
-      ? { component: Comp; field: Field }
-      : never;
+type ParseRelations<T extends string> = T extends `${infer Comp}.${infer Field},${infer Rest}`
+  ? { component: Comp; field: Field } | ParseRelations<Rest>
+  : T extends `${infer Comp}.${infer Field}`
+    ? { component: Comp; field: Field }
+    : never;
 
 /** Extracts resolved field names for a given component name. */
-type ResolvedFieldsFor<R extends string, ComponentName extends string> =
-  Extract<ParseRelations<R>, { component: ComponentName }>['field'];
+type ResolvedFieldsFor<R extends string, ComponentName extends string> = Extract<
+  ParseRelations<R>,
+  { component: ComponentName }
+>["field"];
 
 /** A resolved relation: a full story typed to the component union. */
-type ResolvedRelation<TComponents extends Component, TFieldPlugins = Record<never, never>> =
-  { [K in TComponents as K['name']]: Story<K, TFieldPlugins, TComponents> }[TComponents['name']];
+type ResolvedRelation<TComponents extends Component, TFieldPlugins = Record<never, never>> = {
+  [K in TComponents as K["name"]]: Story<K, TFieldPlugins, TComponents>;
+}[TComponents["name"]];
 
 /**
  * Given a story type and a set of resolved field names, replaces
@@ -62,11 +73,12 @@ type WithResolvedRelations<
   TComponents extends Component,
   Fields extends string,
   TFieldPlugins = Record<never, never>,
-> = TStory extends { content: infer C } ? Omit<TStory, 'content'> & {
-  content: {
-    [K in keyof C]: K extends Fields ? ResolvedRelation<TComponents, TFieldPlugins> : C[K]
-  };
-}
+> = TStory extends { content: infer C }
+  ? Omit<TStory, "content"> & {
+      content: {
+        [K in keyof C]: K extends Fields ? ResolvedRelation<TComponents, TFieldPlugins> : C[K];
+      };
+    }
   : TStory;
 
 /**
@@ -94,26 +106,27 @@ type StoryResult<
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
   TFieldPlugins = Record<never, never>,
-> =
-  Component extends TComponents
-    ? InlineRelations extends true ? StoryWithInlinedRelations : Story // fallback
-    : ResolveRelationsRaw extends string
-      ? {
-          [K in RootComponents<TComponents> as K['name']]: WithResolvedRelations<
-            Story<K, TFieldPlugins, TComponents>,
-            TComponents,
-            ResolvedFieldsFor<ResolveRelationsRaw, K['name']>,
-            TFieldPlugins
-          >
-        }[RootComponents<TComponents>['name']]
-      : Story<TComponents, TFieldPlugins>;
+> = Component extends TComponents
+  ? InlineRelations extends true
+    ? StoryWithInlinedRelations
+    : Story // fallback
+  : ResolveRelationsRaw extends string
+    ? {
+        [K in RootComponents<TComponents> as K["name"]]: WithResolvedRelations<
+          Story<K, TFieldPlugins, TComponents>,
+          TComponents,
+          ResolvedFieldsFor<ResolveRelationsRaw, K["name"]>,
+          TFieldPlugins
+        >;
+      }[RootComponents<TComponents>["name"]]
+    : Story<TComponents, TFieldPlugins>;
 
 type GetResponse<
   TComponents extends Component,
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
   TFieldPlugins = Record<never, never>,
-> = Omit<GetStoryByIdResponses[200], 'story'> & {
+> = Omit<GetStoryByIdResponses[200], "story"> & {
   story: StoryResult<TComponents, InlineRelations, ResolveRelationsRaw, TFieldPlugins>;
 };
 type ListResponse<
@@ -121,7 +134,7 @@ type ListResponse<
   InlineRelations extends boolean,
   ResolveRelationsRaw extends string | undefined = undefined,
   TFieldPlugins = Record<never, never>,
-> = Omit<ListStoriesResponses[200], 'stories'> & {
+> = Omit<ListStoriesResponses[200], "stories"> & {
   stories: Array<StoryResult<TComponents, InlineRelations, ResolveRelationsRaw, TFieldPlugins>>;
 };
 
@@ -146,11 +159,13 @@ interface StoriesData extends StoryRelationData {
 }
 
 /** The story identifier path param (full slug, numeric ID, or UUID), derived from the generated request type. */
-type StoryIdentifier = GetStoryByIdData['path']['id'];
+type StoryIdentifier = GetStoryByIdData["path"]["id"];
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export interface StoriesResourceDeps<DefaultThrowOnError extends boolean = false> extends ResourceDeps<DefaultThrowOnError> {
+export interface StoriesResourceDeps<
+  DefaultThrowOnError extends boolean = false,
+> extends ResourceDeps<DefaultThrowOnError> {
   inlineRelations: boolean;
 }
 
@@ -159,9 +174,7 @@ export function createStoriesResource<
   TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   DefaultThrowOnError extends boolean = false,
->(
-  deps: StoriesResourceDeps<DefaultThrowOnError>,
-) {
+>(deps: StoriesResourceDeps<DefaultThrowOnError>) {
   const { client, requestWithCache, asApiResponse, inlineRelations, throttleManager } = deps;
 
   return {
@@ -170,86 +183,153 @@ export function createStoriesResource<
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
       identifier: StoryIdentifier,
-      options: { query?: Omit<NonNullable<GetStoryByIdData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>> => {
-      const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<GetStoryByIdData['query']>;
-      const resolvedQuery = typeof identifier === 'string' && UUID_RE.test(identifier) && !typedQuery.find_by
-        ? { ...typedQuery, find_by: 'uuid' }
-        : typedQuery;
-      const requestPath = `/v2/cdn/stories/${identifier}`;
-      return requestWithCache('GET', requestPath, resolvedQuery, async (requestQuery: Record<string, unknown>) => {
-        const response = await throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse(getStoryById({
-            client,
-            path: { id: identifier },
-            query: requestQuery,
-            signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
-          }))) satisfies ApiResponse<GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>;
-
-        if (!inlineRelations || response.data === undefined) {
-          return response;
-        }
-
-        // Narrow to the internal relation shape to read the API's sidecar
-        // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
-        const storyData = response.data as unknown as StoryData;
-        const resolved = await resolveRelationMap(storyData, requestQuery, { client, throttleManager });
-        if (!resolved) {
-          return response;
-        }
-
-        return {
-          ...response,
-          data: {
-            ...response.data,
-            story: inlineStoryContent(storyData.story, resolved.relationPaths, resolved.relationMap),
-          },
+      options: {
+        query?: Omit<NonNullable<GetStoryByIdData["query"]>, "resolve_relations"> & {
+          resolve_relations?: ResolveRelationsStr;
         };
-      }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } = {},
+    ): Promise<
+      ApiResponse<
+        GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+        ThrowOnError
+      >
+    > => {
+      const { query = {}, signal, throwOnError, fetchOptions } = options;
+      const typedQuery = (query ?? {}) as NonNullable<GetStoryByIdData["query"]>;
+      const resolvedQuery =
+        typeof identifier === "string" && UUID_RE.test(identifier) && !typedQuery.find_by
+          ? { ...typedQuery, find_by: "uuid" }
+          : typedQuery;
+      const requestPath = `/v2/cdn/stories/${identifier}`;
+      return requestWithCache(
+        "GET",
+        requestPath,
+        resolvedQuery,
+        async (requestQuery: Record<string, unknown>) => {
+          const response = (await throttleManager.execute(requestPath, requestQuery, () =>
+            asApiResponse(
+              getStoryById({
+                client,
+                path: { id: identifier },
+                query: requestQuery,
+                signal,
+                ...(throwOnError === undefined ? {} : { throwOnError }),
+                ...(fetchOptions
+                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+                  : {}),
+              }),
+            ),
+          )) satisfies ApiResponse<
+            GetResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+            ThrowOnError
+          >;
+
+          if (!inlineRelations || response.data === undefined) {
+            return response;
+          }
+
+          // Narrow to the internal relation shape to read the API's sidecar
+          // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+          const storyData = response.data as unknown as StoryData;
+          const resolved = await resolveRelationMap(storyData, requestQuery, {
+            client,
+            throttleManager,
+          });
+          if (!resolved) {
+            return response;
+          }
+
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              story: inlineStoryContent(
+                storyData.story,
+                resolved.relationPaths,
+                resolved.relationMap,
+              ),
+            },
+          };
+        },
+        inlineRelations ? { cacheKeyPrefix: "inline" } : undefined,
+      );
     },
 
     list: async <
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
-      options: { query?: Omit<NonNullable<ListStoriesData['query']>, 'resolve_relations'> & { resolve_relations?: ResolveRelationsStr }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
-    ): Promise<ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>> => {
-      const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<ListStoriesData['query']>;
-      const requestPath = '/v2/cdn/stories';
-      return requestWithCache('GET', requestPath, typedQuery, async (requestQuery: Record<string, unknown>) => {
-        const response = await throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse(listStories({
-            client,
-            query: requestQuery,
-            signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
-          }))) satisfies ApiResponse<ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>, ThrowOnError>;
-
-        if (!inlineRelations || response.data === undefined) {
-          return response;
-        }
-
-        // Narrow to the internal relation shape to read the API's sidecar
-        // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
-        const storiesData = response.data as unknown as StoriesData;
-        const resolved = await resolveRelationMap(storiesData, requestQuery, { client, throttleManager });
-        if (!resolved) {
-          return response;
-        }
-
-        return {
-          ...response,
-          data: {
-            ...response.data,
-            stories: inlineStoriesContent(storiesData.stories, resolved.relationPaths, resolved.relationMap),
-          },
+      options: {
+        query?: Omit<NonNullable<ListStoriesData["query"]>, "resolve_relations"> & {
+          resolve_relations?: ResolveRelationsStr;
         };
-      }, inlineRelations ? { cacheKeyPrefix: 'inline' } : undefined);
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } = {},
+    ): Promise<
+      ApiResponse<
+        ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+        ThrowOnError
+      >
+    > => {
+      const { query = {}, signal, throwOnError, fetchOptions } = options;
+      const typedQuery = (query ?? {}) as NonNullable<ListStoriesData["query"]>;
+      const requestPath = "/v2/cdn/stories";
+      return requestWithCache(
+        "GET",
+        requestPath,
+        typedQuery,
+        async (requestQuery: Record<string, unknown>) => {
+          const response = (await throttleManager.execute(requestPath, requestQuery, () =>
+            asApiResponse(
+              listStories({
+                client,
+                query: requestQuery,
+                signal,
+                ...(throwOnError === undefined ? {} : { throwOnError }),
+                ...(fetchOptions
+                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+                  : {}),
+              }),
+            ),
+          )) satisfies ApiResponse<
+            ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+            ThrowOnError
+          >;
+
+          if (!inlineRelations || response.data === undefined) {
+            return response;
+          }
+
+          // Narrow to the internal relation shape to read the API's sidecar
+          // `rels`/`rel_uuids`; consumers keep seeing the generic `Story`.
+          const storiesData = response.data as unknown as StoriesData;
+          const resolved = await resolveRelationMap(storiesData, requestQuery, {
+            client,
+            throttleManager,
+          });
+          if (!resolved) {
+            return response;
+          }
+
+          return {
+            ...response,
+            data: {
+              ...response.data,
+              stories: inlineStoriesContent(
+                storiesData.stories,
+                resolved.relationPaths,
+                resolved.relationMap,
+              ),
+            },
+          };
+        },
+        inlineRelations ? { cacheKeyPrefix: "inline" } : undefined,
+      );
     },
   };
 }

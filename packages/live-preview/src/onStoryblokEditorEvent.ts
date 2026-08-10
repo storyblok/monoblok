@@ -1,9 +1,9 @@
-import type { BridgeParams } from '@storyblok/preview-bridge';
-import type { Prettify } from './generated/types/_utils';
-import type { Story } from './generated/types/story';
+import type { BridgeParams } from "@storyblok/preview-bridge";
+import type { Prettify } from "./generated/types/_utils";
+import type { Story } from "./generated/types/story";
 
-import { loadStoryblokBridge } from './loadStoryblokBridge';
-import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
+import { loadStoryblokBridge } from "./loadStoryblokBridge";
+import { canUseStoryblokBridge } from "./utils/canUseStoryblokBridge";
 
 /**
  * The story payload delivered by the Visual Editor `input` event.
@@ -17,11 +17,10 @@ import { canUseStoryblokBridge } from './utils/canUseStoryblokBridge';
  * @typeParam TStory - The schema-aware {@link Story} to source field types from.
  */
 export type LivePreviewStory<TStory extends Story = Story> = Prettify<
-  Pick<TStory, 'id'>
-  & Partial<Pick<TStory, 'uuid' | 'content'>>
-  & {
-    [key: string]: unknown;
-  }
+  Pick<TStory, "id"> &
+    Partial<Pick<TStory, "uuid" | "content">> & {
+      [key: string]: unknown;
+    }
 >;
 
 /**
@@ -61,19 +60,19 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
   bridgeInitPromise = (async () => {
     const bridge = await loadStoryblokBridge(bridgeOptions);
 
-    bridge.on(['input', 'change', 'published'], (event) => {
+    bridge.on(["input", "change", "published"], (event) => {
       if (!event) {
         return;
       }
 
-      if (event.action === 'input' && event.story) {
+      if (event.action === "input" && event.story) {
         for (const listener of inputListeners) {
           listener(event.story as LivePreviewStory);
         }
         return;
       }
 
-      if (event.action === 'change' || event.action === 'published') {
+      if (event.action === "change" || event.action === "published") {
         window.location.reload();
       }
     });

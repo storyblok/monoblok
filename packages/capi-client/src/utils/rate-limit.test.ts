@@ -1,110 +1,112 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from './rate-limit';
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from "./rate-limit";
 
-describe('determineTier()', () => {
-  it('should return SINGLE_OR_SMALL for a single story path', () => {
-    expect(determineTier('/v2/cdn/stories/my-story', {})).toBe('SINGLE_OR_SMALL');
+describe("determineTier()", () => {
+  it("should return SINGLE_OR_SMALL for a single story path", () => {
+    expect(determineTier("/v2/cdn/stories/my-story", {})).toBe("SINGLE_OR_SMALL");
     // Nested slugs — per_page > 25 is supplied to confirm it's the regex, not the per_page default.
-    expect(determineTier('/v2/cdn/stories/folder/nested-story', { per_page: 100 })).toBe('SINGLE_OR_SMALL');
+    expect(determineTier("/v2/cdn/stories/folder/nested-story", { per_page: 100 })).toBe(
+      "SINGLE_OR_SMALL",
+    );
   });
 
-  it('should return SINGLE_OR_SMALL when per_page is absent (default 25)', () => {
-    expect(determineTier('/v2/cdn/stories', {})).toBe('SINGLE_OR_SMALL');
+  it("should return SINGLE_OR_SMALL when per_page is absent (default 25)", () => {
+    expect(determineTier("/v2/cdn/stories", {})).toBe("SINGLE_OR_SMALL");
   });
 
-  it('should return SINGLE_OR_SMALL for per_page ≤ 25', () => {
-    expect(determineTier('/v2/cdn/stories', { per_page: 1 })).toBe('SINGLE_OR_SMALL');
-    expect(determineTier('/v2/cdn/stories', { per_page: 25 })).toBe('SINGLE_OR_SMALL');
+  it("should return SINGLE_OR_SMALL for per_page ≤ 25", () => {
+    expect(determineTier("/v2/cdn/stories", { per_page: 1 })).toBe("SINGLE_OR_SMALL");
+    expect(determineTier("/v2/cdn/stories", { per_page: 25 })).toBe("SINGLE_OR_SMALL");
   });
 
-  it('should return MEDIUM for per_page 26–50', () => {
-    expect(determineTier('/v2/cdn/stories', { per_page: 26 })).toBe('MEDIUM');
-    expect(determineTier('/v2/cdn/stories', { per_page: 50 })).toBe('MEDIUM');
+  it("should return MEDIUM for per_page 26–50", () => {
+    expect(determineTier("/v2/cdn/stories", { per_page: 26 })).toBe("MEDIUM");
+    expect(determineTier("/v2/cdn/stories", { per_page: 50 })).toBe("MEDIUM");
   });
 
-  it('should return LARGE for per_page 51–75', () => {
-    expect(determineTier('/v2/cdn/stories', { per_page: 51 })).toBe('LARGE');
-    expect(determineTier('/v2/cdn/stories', { per_page: 75 })).toBe('LARGE');
+  it("should return LARGE for per_page 51–75", () => {
+    expect(determineTier("/v2/cdn/stories", { per_page: 51 })).toBe("LARGE");
+    expect(determineTier("/v2/cdn/stories", { per_page: 75 })).toBe("LARGE");
   });
 
-  it('should return VERY_LARGE for per_page > 75', () => {
-    expect(determineTier('/v2/cdn/stories', { per_page: 76 })).toBe('VERY_LARGE');
-    expect(determineTier('/v2/cdn/stories', { per_page: 100 })).toBe('VERY_LARGE');
+  it("should return VERY_LARGE for per_page > 75", () => {
+    expect(determineTier("/v2/cdn/stories", { per_page: 76 })).toBe("VERY_LARGE");
+    expect(determineTier("/v2/cdn/stories", { per_page: 100 })).toBe("VERY_LARGE");
   });
 
-  it('should parse per_page when provided as a string', () => {
-    expect(determineTier('/v2/cdn/stories', { per_page: '26' })).toBe('MEDIUM');
+  it("should parse per_page when provided as a string", () => {
+    expect(determineTier("/v2/cdn/stories", { per_page: "26" })).toBe("MEDIUM");
   });
 
-  it('should fall back to SINGLE_OR_SMALL for an unparseable per_page string', () => {
-    expect(determineTier('/v2/cdn/stories', { per_page: 'invalid' })).toBe('SINGLE_OR_SMALL');
+  it("should fall back to SINGLE_OR_SMALL for an unparseable per_page string", () => {
+    expect(determineTier("/v2/cdn/stories", { per_page: "invalid" })).toBe("SINGLE_OR_SMALL");
   });
 
-  it('should not treat /v2/cdn/stories (no trailing identifier) as single story', () => {
-    expect(determineTier('/v2/cdn/stories', {})).toBe('SINGLE_OR_SMALL');
+  it("should not treat /v2/cdn/stories (no trailing identifier) as single story", () => {
+    expect(determineTier("/v2/cdn/stories", {})).toBe("SINGLE_OR_SMALL");
     // Still SINGLE_OR_SMALL here because per_page defaults to 25, but it's
     // because of per_page, not single-story detection.
-    expect(determineTier('/v2/cdn/stories', { per_page: 50 })).toBe('MEDIUM');
+    expect(determineTier("/v2/cdn/stories", { per_page: 50 })).toBe("MEDIUM");
   });
 
-  it('should work for non-story paths (links, tags, etc.)', () => {
-    expect(determineTier('/v2/cdn/links', { per_page: 100 })).toBe('VERY_LARGE');
-    expect(determineTier('/v2/cdn/tags', {})).toBe('SINGLE_OR_SMALL');
+  it("should work for non-story paths (links, tags, etc.)", () => {
+    expect(determineTier("/v2/cdn/links", { per_page: 100 })).toBe("VERY_LARGE");
+    expect(determineTier("/v2/cdn/tags", {})).toBe("SINGLE_OR_SMALL");
   });
 });
 
-describe('parseRateLimitPolicyHeader()', () => {
+describe("parseRateLimitPolicyHeader()", () => {
   const makeResponse = (headerValue: string | null) =>
     new Response(null, {
-      headers: headerValue ? { 'x-ratelimit-policy': headerValue } : {},
+      headers: headerValue ? { "x-ratelimit-policy": headerValue } : {},
     });
 
-  it('should ignore concurrent-requests policies', () => {
+  it("should ignore concurrent-requests policies", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=30'))).toBeUndefined();
   });
 
-  it('should parse the q= value from a rate-limit policy', () => {
+  it("should parse the q= value from a rate-limit policy", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=50'))).toBe(50);
   });
 
-  it('should return undefined when the header is absent', () => {
+  it("should return undefined when the header is absent", () => {
     expect(parseRateLimitPolicyHeader(makeResponse(null))).toBeUndefined();
   });
 
-  it('should return undefined when the header has no q= value', () => {
+  it("should return undefined when the header has no q= value", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";r=5'))).toBeUndefined();
   });
 
-  it('should cap the parsed value at 1000', () => {
+  it("should cap the parsed value at 1000", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=9999'))).toBe(1000);
   });
 });
 
-describe('createThrottleManager(false)', () => {
-  it('should execute the function immediately without queuing', async () => {
+describe("createThrottleManager(false)", () => {
+  it("should execute the function immediately without queuing", async () => {
     const manager = createThrottleManager(false);
-    const fn = vi.fn().mockResolvedValue('result');
-    const result = await manager.execute('/v2/cdn/stories', {}, fn);
-    expect(result).toBe('result');
+    const fn = vi.fn().mockResolvedValue("result");
+    const result = await manager.execute("/v2/cdn/stories", {}, fn);
+    expect(result).toBe("result");
     expect(fn).toHaveBeenCalledOnce();
   });
 
-  it('should treat adaptToResponse as a no-op', () => {
+  it("should treat adaptToResponse as a no-op", () => {
     const manager = createThrottleManager(false);
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });
 });
 
-describe('createThrottleManager(number)', () => {
+describe("createThrottleManager(number)", () => {
   afterEach(() => vi.useRealTimers());
 
-  it('should rate-limit calls to the configured number per second', async () => {
+  it("should rate-limit calls to the configured number per second", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(2);
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
 
     for (let i = 0; i < 5; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     await vi.advanceTimersByTimeAsync(0);
@@ -117,16 +119,16 @@ describe('createThrottleManager(number)', () => {
     expect(fn).toHaveBeenCalledTimes(5);
   });
 
-  it('should ignore concurrent-requests headers (not a rate limit)', async () => {
+  it("should ignore concurrent-requests headers (not a rate limit)", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
     manager.adaptToResponse(
-      new Response(null, { headers: { 'x-ratelimit-policy': '"concurrent-requests";q=5' } }),
+      new Response(null, { headers: { "x-ratelimit-policy": '"concurrent-requests";q=5' } }),
     );
 
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
     for (let i = 0; i < 50; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     // The concurrent-requests header is ignored, so the full 50 req/s is available.
@@ -134,16 +136,16 @@ describe('createThrottleManager(number)', () => {
     expect(fn).toHaveBeenCalledTimes(50);
   });
 
-  it('should adapt the limit from rate-limit server headers, respecting the user ceiling', async () => {
+  it("should adapt the limit from rate-limit server headers, respecting the user ceiling", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
     manager.adaptToResponse(
-      new Response(null, { headers: { 'x-ratelimit-policy': '"rate-limit";q=5' } }),
+      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=5' } }),
     );
 
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
     for (let i = 0; i < 10; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     // Server said 5, user ceiling is 50, so the effective limit is min(50, 5) = 5.
@@ -154,16 +156,16 @@ describe('createThrottleManager(number)', () => {
     expect(fn).toHaveBeenCalledTimes(10);
   });
 
-  it('should not exceed the user ceiling even if the server reports higher', async () => {
+  it("should not exceed the user ceiling even if the server reports higher", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(3);
     manager.adaptToResponse(
-      new Response(null, { headers: { 'x-ratelimit-policy': '"rate-limit";q=100' } }),
+      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=100' } }),
     );
 
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
     for (let i = 0; i < 9; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     // Server said 100, user ceiling is 3, so the effective limit is min(3, 100) = 3.
@@ -178,16 +180,16 @@ describe('createThrottleManager(number)', () => {
   });
 });
 
-describe('createThrottleManager({ requestsPerSecond })', () => {
+describe("createThrottleManager({ requestsPerSecond })", () => {
   afterEach(() => vi.useRealTimers());
 
-  it('should rate-limit to requestsPerSecond', async () => {
+  it("should rate-limit to requestsPerSecond", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ requestsPerSecond: 2 });
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
 
     for (let i = 0; i < 5; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     await vi.advanceTimersByTimeAsync(0);
@@ -197,13 +199,13 @@ describe('createThrottleManager({ requestsPerSecond })', () => {
     expect(fn).toHaveBeenCalledTimes(4);
   });
 
-  it('should honor the deprecated maxConcurrency alias', async () => {
+  it("should honor the deprecated maxConcurrency alias", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ maxConcurrency: 2 });
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
 
     for (let i = 0; i < 5; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     await vi.advanceTimersByTimeAsync(0);
@@ -213,13 +215,13 @@ describe('createThrottleManager({ requestsPerSecond })', () => {
     expect(fn).toHaveBeenCalledTimes(4);
   });
 
-  it('should prefer requestsPerSecond over maxConcurrency when both are set', async () => {
+  it("should prefer requestsPerSecond over maxConcurrency when both are set", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ requestsPerSecond: 2, maxConcurrency: 50 });
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
 
     for (let i = 0; i < 5; i++) {
-      manager.execute('/v2/cdn/stories', {}, fn);
+      manager.execute("/v2/cdn/stories", {}, fn);
     }
 
     await vi.advanceTimersByTimeAsync(0);
@@ -227,30 +229,30 @@ describe('createThrottleManager({ requestsPerSecond })', () => {
   });
 });
 
-describe('createThrottleManager({})', () => {
+describe("createThrottleManager({})", () => {
   afterEach(() => vi.useRealTimers());
 
-  it('should route single-story paths to the SINGLE_OR_SMALL tier (50 req/s)', async () => {
+  it("should route single-story paths to the SINGLE_OR_SMALL tier (50 req/s)", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
 
     // 50 calls fit in the first one-second window for this tier.
     for (let i = 0; i < 50; i++) {
-      manager.execute('/v2/cdn/stories/my-story', {}, fn);
+      manager.execute("/v2/cdn/stories/my-story", {}, fn);
     }
 
     await vi.advanceTimersByTimeAsync(0);
     expect(fn).toHaveBeenCalledTimes(50);
   });
 
-  it('should route large per_page to the VERY_LARGE tier (6 req/s)', async () => {
+  it("should route large per_page to the VERY_LARGE tier (6 req/s)", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
 
     for (let i = 0; i < 12; i++) {
-      manager.execute('/v2/cdn/stories', { per_page: 100 }, fn);
+      manager.execute("/v2/cdn/stories", { per_page: 100 }, fn);
     }
 
     await vi.advanceTimersByTimeAsync(0);
@@ -260,16 +262,16 @@ describe('createThrottleManager({})', () => {
     expect(fn).toHaveBeenCalledTimes(12);
   });
 
-  it('should ignore concurrent-requests headers in auto-detect mode', async () => {
+  it("should ignore concurrent-requests headers in auto-detect mode", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
     manager.adaptToResponse(
-      new Response(null, { headers: { 'x-ratelimit-policy': '"concurrent-requests";q=10' } }),
+      new Response(null, { headers: { "x-ratelimit-policy": '"concurrent-requests";q=10' } }),
     );
 
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
     for (let i = 0; i < 50; i++) {
-      manager.execute('/v2/cdn/stories/my-story', {}, fn);
+      manager.execute("/v2/cdn/stories/my-story", {}, fn);
     }
 
     // The concurrent-requests header is ignored, so the full SINGLE_OR_SMALL limit of 50 is available.
@@ -277,16 +279,16 @@ describe('createThrottleManager({})', () => {
     expect(fn).toHaveBeenCalledTimes(50);
   });
 
-  it('should adapt the SINGLE_OR_SMALL tier from rate-limit server headers', async () => {
+  it("should adapt the SINGLE_OR_SMALL tier from rate-limit server headers", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
     manager.adaptToResponse(
-      new Response(null, { headers: { 'x-ratelimit-policy': '"rate-limit";q=10' } }),
+      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=10' } }),
     );
 
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
     for (let i = 0; i < 20; i++) {
-      manager.execute('/v2/cdn/stories/my-story', {}, fn);
+      manager.execute("/v2/cdn/stories/my-story", {}, fn);
     }
 
     // Default is 50, server said 10, so the effective limit is min(50, 10) = 10.
@@ -297,16 +299,16 @@ describe('createThrottleManager({})', () => {
     expect(fn).toHaveBeenCalledTimes(20);
   });
 
-  it('should ignore server headers when adaptToServerHeaders is false', async () => {
+  it("should ignore server headers when adaptToServerHeaders is false", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ adaptToServerHeaders: false });
     manager.adaptToResponse(
-      new Response(null, { headers: { 'x-ratelimit-policy': '"rate-limit";q=1' } }),
+      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=1' } }),
     );
 
-    const fn = vi.fn(async () => 'done');
+    const fn = vi.fn(async () => "done");
     for (let i = 0; i < 50; i++) {
-      manager.execute('/v2/cdn/stories/my-story', {}, fn);
+      manager.execute("/v2/cdn/stories/my-story", {}, fn);
     }
 
     // The header is ignored, so the default 50 req/s remains available.
@@ -314,15 +316,15 @@ describe('createThrottleManager({})', () => {
     expect(fn).toHaveBeenCalledTimes(50);
   });
 
-  it('should propagate errors from the wrapped function', async () => {
+  it("should propagate errors from the wrapped function", async () => {
     const manager = createThrottleManager({});
-    const error = new Error('boom');
+    const error = new Error("boom");
     await expect(
-      manager.execute('/v2/cdn/stories', {}, () => Promise.reject(error)),
-    ).rejects.toThrow('boom');
+      manager.execute("/v2/cdn/stories", {}, () => Promise.reject(error)),
+    ).rejects.toThrow("boom");
   });
 
-  it('should treat adaptToResponse as a no-op when response is undefined', () => {
+  it("should treat adaptToResponse as a no-op when response is undefined", () => {
     const manager = createThrottleManager({});
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
   });

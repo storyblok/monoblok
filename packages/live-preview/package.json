@@ -1,24 +1,30 @@
 {
   "name": "@storyblok/live-preview",
-  "type": "module",
   "version": "0.5.0",
   "private": false,
   "description": "Official Live Preview integration for the Storyblok Headless CMS",
-  "author": "Storyblok",
-  "license": "MIT",
+  "keywords": [
+    "live-preview",
+    "storyblok"
+  ],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/live-preview#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/live-preview"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [
-    "live-preview",
-    "storyblok"
+  "files": [
+    "dist"
   ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -26,12 +32,6 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public"
   },
@@ -47,6 +47,19 @@
     "test:ui": "vp test --ui",
     "test:types": "tsc --noEmit --skipLibCheck",
     "test:coverage": "vp test run --coverage"
+  },
+  "dependencies": {
+    "@storyblok/preview-bridge": "^2.1.6"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
+    "@types/node": "^24.11.0",
+    "bumpp": "^10.4.1",
+    "jsdom": "^25.0.0",
+    "oxlint": "1.76.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "nx": {
     "targets": {
@@ -65,18 +78,5 @@
         ]
       }
     }
-  },
-  "dependencies": {
-    "@storyblok/preview-bridge": "^2.1.6"
-  },
-  "devDependencies": {
-    "@storyblok/lint-config": "workspace:*",
-    "@storyblok/openapi-codegen": "workspace:*",
-    "@types/node": "^24.11.0",
-    "bumpp": "^10.4.1",
-    "jsdom": "^25.0.0",
-    "oxlint": "1.76.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
   }
 }

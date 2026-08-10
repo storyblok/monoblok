@@ -13,19 +13,19 @@
  * loud rather than emitting a stale catalog.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { resolve } from 'pathe';
-import { parse as parseYaml } from 'yaml';
-import { ALIASES, type SpecSource } from '../src/aliases.ts';
-import { TEMPLATES } from '../src/templates.ts';
-import { CACHE_DIR, TOOL_ROOT } from '../src/lock.ts';
+import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { resolve } from "pathe";
+import { parse as parseYaml } from "yaml";
+import { ALIASES, type SpecSource } from "../src/aliases.ts";
+import { TEMPLATES } from "../src/templates.ts";
+import { CACHE_DIR, TOOL_ROOT } from "../src/lock.ts";
 
-const KNOWN_TYPES_PATH = resolve(TOOL_ROOT, 'src/known-types.ts');
-const OVERLAY_PATH = resolve(TOOL_ROOT, 'specs/overlay.openapi.yaml');
+const KNOWN_TYPES_PATH = resolve(TOOL_ROOT, "src/known-types.ts");
+const OVERLAY_PATH = resolve(TOOL_ROOT, "specs/overlay.openapi.yaml");
 const SPEC_PATHS: Record<SpecSource, string> = {
-  capi: resolve(CACHE_DIR, 'capi/cdn-v2.openapi.yaml'),
-  mapi: resolve(CACHE_DIR, 'mapi/management-v1.openapi.yaml'),
+  capi: resolve(CACHE_DIR, "capi/cdn-v2.openapi.yaml"),
+  mapi: resolve(CACHE_DIR, "mapi/management-v1.openapi.yaml"),
   overlay: OVERLAY_PATH,
 };
 
@@ -36,7 +36,7 @@ interface OpenApiDoc {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -48,7 +48,7 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
  * malformed or missing collapses to empty records, so callers can index freely.
  */
 function loadSpec(yamlPath: string): OpenApiDoc {
-  const root = asRecord(parseYaml(readFileSync(yamlPath, 'utf8'))) ?? {};
+  const root = asRecord(parseYaml(readFileSync(yamlPath, "utf8"))) ?? {};
   const components = asRecord(root.components);
   return {
     components: { schemas: asRecord(components?.schemas) },
@@ -86,7 +86,7 @@ export function listOperationDataNames(yamlPath: string): string[] {
       continue;
     }
     for (const operation of Object.values(pathItem)) {
-      if (isRecord(operation) && typeof operation.operationId === 'string') {
+      if (isRecord(operation) && typeof operation.operationId === "string") {
         names.add(`${toPascalCase(operation.operationId)}Data`);
       }
     }
@@ -98,13 +98,13 @@ function validate(schemasBySpec: Record<SpecSource, ReadonlySet<string>>): void 
   for (const alias of ALIASES) {
     if (!schemasBySpec[alias.spec].has(alias.source)) {
       throw new Error(
-        `ALIASES entry { source: '${alias.source}', spec: '${alias.spec}', emitAs: '${alias.emitAs}' } `
-        + `does not exist in the ${alias.spec} spec. Either rename the source or remove the alias.`,
+        `ALIASES entry { source: '${alias.source}', spec: '${alias.spec}', emitAs: '${alias.emitAs}' } ` +
+          `does not exist in the ${alias.spec} spec. Either rename the source or remove the alias.`,
       );
     }
   }
 
-  const emitNames = new Set(ALIASES.map(a => a.emitAs));
+  const emitNames = new Set(ALIASES.map((a) => a.emitAs));
   for (const [file, meta] of Object.entries(TEMPLATES)) {
     for (const leaf of meta.sourceLeaves) {
       if (!emitNames.has(leaf)) {
@@ -118,9 +118,9 @@ function validate(schemasBySpec: Record<SpecSource, ReadonlySet<string>>): void 
 
 function renderArray(names: readonly string[]): string {
   if (names.length === 0) {
-    return '[]';
+    return "[]";
   }
-  return `[\n${names.map(n => `    '${n}',`).join('\n')}\n  ]`;
+  return `[\n${names.map((n) => `    '${n}',`).join("\n")}\n  ]`;
 }
 
 function renderFile(schemasBySpec: Record<SpecSource, readonly string[]>): string {
@@ -165,7 +165,7 @@ export function generateKnownTypes(): void {
 
   validate(validSourcesBySpec);
 
-  writeFileSync(KNOWN_TYPES_PATH, renderFile(schemasBySpec), 'utf8');
+  writeFileSync(KNOWN_TYPES_PATH, renderFile(schemasBySpec), "utf8");
 }
 
 const isDirectInvocation = process.argv[1] === fileURLToPath(import.meta.url);

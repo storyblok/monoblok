@@ -1,8 +1,8 @@
-import type { StoryblokRichTextElementByType } from './richtext-element-types.generated';
-import type { StoryblokRichTextMark, StoryblokRichTextNode } from './types';
+import type { StoryblokRichTextElementByType } from "./richtext-element-types.generated";
+import type { StoryblokRichTextMark, StoryblokRichTextNode } from "./types";
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-export { processAttrs } from './attribute';
+export { processAttrs } from "./attribute";
 export {
   areLinkMarksEqual,
   getInnerMarks,
@@ -10,11 +10,11 @@ export {
   groupLinkNodes,
   isTableHeaderRow,
   splitTableRows,
-} from './node-helpers';
-export { normalizeNodes } from './normalize-nodes';
-export type { StoryblokRichTextElementByType } from './richtext-element-types.generated';
+} from "./node-helpers";
+export { normalizeNodes } from "./normalize-nodes";
+export type { StoryblokRichTextElementByType } from "./richtext-element-types.generated";
 
-export { stringToStyle, styleToString } from './style';
+export { stringToStyle, styleToString } from "./style";
 
 // ── Types (current public API) ────────────────────────────────────────────────
 export type {
@@ -31,7 +31,7 @@ export type {
   StoryblokRichTextRendererMap,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from './types';
+} from "./types";
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export type {
@@ -43,7 +43,7 @@ export type {
   SbRichTextRenderContext,
   SbRichTextRendererMap,
   SbRichTextTextNode,
-} from './types';
+} from "./types";
 
 /** @deprecated Use {@link StoryblokRichTextMark} instead. Will be removed in the next major version. */
 export type SbRichTextMark = StoryblokRichTextMark;
@@ -58,4 +58,4 @@ export {
   hasContent,
   isSelfClosing,
   resolveTag,
-} from './util';
+} from "./util";

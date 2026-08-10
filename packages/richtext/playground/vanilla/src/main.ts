@@ -1,9 +1,9 @@
-import { renderRichText } from '@storyblok/richtext';
-import { markdownToStoryblokRichtext } from '@storyblok/richtext/markdown-parser';
-import { htmlToStoryblokRichtext } from '@storyblok/richtext/html-parser';
-import type { SbRichTextRenderContext } from '@storyblok/richtext';
-import test from '/test.md?url&raw';
-import testHTML from '/test.html?url&raw';
+import { renderRichText } from "@storyblok/richtext";
+import { markdownToStoryblokRichtext } from "@storyblok/richtext/markdown-parser";
+import { htmlToStoryblokRichtext } from "@storyblok/richtext/html-parser";
+import type { SbRichTextRenderContext } from "@storyblok/richtext";
+import test from "/test.md?url&raw";
+import testHTML from "/test.html?url&raw";
 
 const richtextFromMarkdown = markdownToStoryblokRichtext(
   test /*  {
@@ -37,7 +37,7 @@ const options: SbRichTextRenderContext = {
 const htmlFromRichtextMarkdown = renderRichText(richtextFromMarkdown, options);
 const htmlFromRichtextHtml = renderRichText(richtextFromHTML, options);
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <style>
     .comparison-grid {
       display: grid;

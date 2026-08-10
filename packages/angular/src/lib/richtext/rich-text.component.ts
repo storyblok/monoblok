@@ -13,7 +13,7 @@ import {
   EnvironmentInjector,
   untracked,
   createEnvironmentInjector,
-} from '@angular/core';
+} from "@angular/core";
 import {
   buildStoryblokImage,
   getInnerMarks,
@@ -24,7 +24,7 @@ import {
   processAttrs,
   resolveTag,
   splitTableRows,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 import type {
   StoryblokRichTextNodeWithKey,
   StoryblokRichTextMark,
@@ -32,21 +32,21 @@ import type {
   StoryblokRichTextElement,
   StoryblokRichTextInput,
   StoryblokRichTextImageOptions,
-} from '@storyblok/richtext';
-import { StoryblokComponent } from '../blok/sb-component.component';
+} from "@storyblok/richtext";
+import { StoryblokComponent } from "../blok/sb-component.component";
 import {
   StoryblokRichtextResolver,
   STORYBLOK_RICHTEXT_EXCLUDED_TYPES,
   type StoryblokAngularRichTextRenderContext,
-} from './richtext.feature';
+} from "./richtext.feature";
 
 @Component({
-  selector: 'sb-rich-text',
+  selector: "sb-rich-text",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   template: ``,
-  host: { style: 'display: contents' },
+  host: { style: "display: contents" },
 })
 export class SbRichTextComponent implements OnDestroy {
   /** Input richtext document or array of documents */
@@ -182,7 +182,7 @@ export class SbRichTextComponent implements OnDestroy {
       // since we can't easily project multiple nodes into ng-content
       for (const node of nodes) {
         this.renderTextNode(
-          node as StoryblokRichTextNodeWithKey & { type: 'text' },
+          node as StoryblokRichTextNodeWithKey & { type: "text" },
           parent,
           version,
         );
@@ -194,7 +194,7 @@ export class SbRichTextComponent implements OnDestroy {
     if (!tag) {
       for (const node of nodes) {
         this.renderTextNode(
-          node as StoryblokRichTextNodeWithKey & { type: 'text' },
+          node as StoryblokRichTextNodeWithKey & { type: "text" },
           parent,
           version,
         );
@@ -203,16 +203,16 @@ export class SbRichTextComponent implements OnDestroy {
     }
 
     const linkEl = this.renderer.createElement(tag);
-    const linkAttrs = ('attrs' in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
+    const linkAttrs = ("attrs" in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
     this.applyAttributes(linkEl, processAttrs(linkMark.type, linkAttrs));
 
     // Render each text node with only its inner marks (excluding the link mark)
     for (const node of nodes) {
-      if (node.type !== 'text') continue;
+      if (node.type !== "text") continue;
 
       const innerMarks = getInnerMarks(node);
       let current: Node = this.renderer.createText(
-        (node as StoryblokRichTextNodeWithKey & { type: 'text' }).text || '',
+        (node as StoryblokRichTextNodeWithKey & { type: "text" }).text || "",
       );
 
       for (const mark of innerMarks) {
@@ -224,9 +224,9 @@ export class SbRichTextComponent implements OnDestroy {
             projectableNodes: [[current]],
           });
 
-          ref.setInput('data', mark);
+          ref.setInput("data", mark);
           try {
-            ref.setInput('context', this.getContext());
+            ref.setInput("context", this.getContext());
           } catch {
             /* context input not declared */
           }
@@ -241,7 +241,7 @@ export class SbRichTextComponent implements OnDestroy {
         if (!markTag) continue;
 
         const el = this.renderer.createElement(markTag);
-        const markAttrs = ('attrs' in mark ? mark.attrs : {}) as Record<string, unknown>;
+        const markAttrs = ("attrs" in mark ? mark.attrs : {}) as Record<string, unknown>;
         this.applyAttributes(el, processAttrs(mark.type, markAttrs));
         this.renderer.appendChild(el, current);
         current = el;
@@ -263,31 +263,27 @@ export class SbRichTextComponent implements OnDestroy {
   ): void {
     if (this.shouldAbort(version)) return;
 
-    if (node.type === 'text') {
+    if (node.type === "text") {
       // Check for a custom text component before falling back to native rendering.
       // Skip if this type is excluded (loop prevention).
-      if (!this.excludedTypes.has('text')) {
-        const syncTextComponent = this.resolver.getSync('text');
+      if (!this.excludedTypes.has("text")) {
+        const syncTextComponent = this.resolver.getSync("text");
         if (syncTextComponent) {
-          const anchor = this.renderer.createComment('sb-node');
+          const anchor = this.renderer.createComment("sb-node");
           this.renderer.appendChild(parent, anchor);
-          this.mountComponent(syncTextComponent, { data: node }, parent, anchor, 'text');
+          this.mountComponent(syncTextComponent, { data: node }, parent, anchor, "text");
           return;
         }
 
-        if (this.resolver.has('text')) {
-          const anchor = this.renderer.createComment('sb-node');
+        if (this.resolver.has("text")) {
+          const anchor = this.renderer.createComment("sb-node");
           this.renderer.appendChild(parent, anchor);
           this.resolveAndMount(node, parent, anchor, version);
           return;
         }
       }
 
-      this.renderTextNode(
-        node as StoryblokRichTextNodeWithKey & { type: 'text' },
-        parent,
-        version,
-      );
+      this.renderTextNode(node as StoryblokRichTextNodeWithKey & { type: "text" }, parent, version);
       return;
     }
 
@@ -298,7 +294,7 @@ export class SbRichTextComponent implements OnDestroy {
       : null;
 
     if (syncComponent) {
-      const anchor = this.renderer.createComment('sb-node');
+      const anchor = this.renderer.createComment("sb-node");
       this.renderer.appendChild(parent, anchor);
       this.mountComponent(syncComponent, { data: node }, parent, anchor, node.type);
       return;
@@ -306,7 +302,7 @@ export class SbRichTextComponent implements OnDestroy {
 
     // Check if this type has an async loader registered (and is not excluded)
     if (!this.excludedTypes.has(node.type) && this.resolver.has(node.type)) {
-      const anchor = this.renderer.createComment('sb-node');
+      const anchor = this.renderer.createComment("sb-node");
       this.renderer.appendChild(parent, anchor);
       this.resolveAndMount(node, parent, anchor, version);
       return;
@@ -315,12 +311,12 @@ export class SbRichTextComponent implements OnDestroy {
     // -------------------------
     // Blok fallback
     // -------------------------
-    if (node.type === 'blok') {
-      const blokNode = node as Extract<StoryblokRichTextNodeWithKey, { type: 'blok' }>;
+    if (node.type === "blok") {
+      const blokNode = node as Extract<StoryblokRichTextNodeWithKey, { type: "blok" }>;
       const blokList = blokNode.attrs?.body;
       if (!blokList?.length) return;
 
-      const anchor = this.renderer.createComment('sb-node');
+      const anchor = this.renderer.createComment("sb-node");
       this.renderer.appendChild(parent, anchor);
       this.mountComponent(StoryblokComponent, { sbBlok: blokList }, parent, anchor);
       return;
@@ -340,13 +336,13 @@ export class SbRichTextComponent implements OnDestroy {
     }
 
     // Handle image optimization
-    if (node.type === 'image' && this.sbOptimizeImage()) {
+    if (node.type === "image" && this.sbOptimizeImage()) {
       this.renderOptimizedImage(node, parent);
       return;
     }
 
     const el = this.renderer.createElement(tag);
-    const nodeAttrs = ('attrs' in node ? node.attrs : {}) as Record<string, unknown>;
+    const nodeAttrs = ("attrs" in node ? node.attrs : {}) as Record<string, unknown>;
     const attrs = processAttrs(node.type, nodeAttrs);
 
     const staticChildren = getStaticChildren(node);
@@ -356,15 +352,15 @@ export class SbRichTextComponent implements OnDestroy {
     }
 
     if (!isSelfClosing(tag)) {
-      if (node.type === 'table' && node.content) {
+      if (node.type === "table" && node.content) {
         this.renderTableContent(node.content, el, version);
       } else {
         const contentHost = staticChildren
           ? this.createStaticScaffold(staticChildren, el, attrs)
           : el;
 
-        if (node.type === 'emoji') {
-          const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: 'emoji' }>;
+        if (node.type === "emoji") {
+          const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: "emoji" }>;
           this.renderer.appendChild(contentHost, this.renderer.createText(emojiNode.attrs.emoji));
         } else if (node.content) {
           this.renderChildren(node.content, contentHost, version);
@@ -379,22 +375,25 @@ export class SbRichTextComponent implements OnDestroy {
    * Renders an image node with Storyblok image optimization applied.
    */
   private renderOptimizedImage(node: StoryblokRichTextNodeWithKey, parent: HTMLElement): void {
-    const attrs = ('attrs' in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
-    const src = attrs?.['src'] as string | undefined;
+    const attrs = ("attrs" in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
+    const src = attrs?.["src"] as string | undefined;
 
     if (!src) {
       return;
     }
 
-    const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, this.sbOptimizeImage());
+    const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(
+      src,
+      this.sbOptimizeImage(),
+    );
 
-    const finalAttrs = processAttrs('image', {
+    const finalAttrs = processAttrs("image", {
       ...attrs,
       src: optimizedSrc,
       ...extraAttrs,
     });
 
-    const el = this.renderer.createElement('img');
+    const el = this.renderer.createElement("img");
     this.applyAttributes(el, finalAttrs);
     this.renderer.appendChild(parent, el);
   }
@@ -412,7 +411,7 @@ export class SbRichTextComponent implements OnDestroy {
     const { headerRows, bodyRows } = splitTableRows(rows);
 
     if (headerRows.length > 0) {
-      const thead = this.renderer.createElement('thead');
+      const thead = this.renderer.createElement("thead");
       for (const row of headerRows) {
         this.renderNode(row, thead, version);
       }
@@ -420,7 +419,7 @@ export class SbRichTextComponent implements OnDestroy {
     }
 
     if (bodyRows.length > 0) {
-      const tbody = this.renderer.createElement('tbody');
+      const tbody = this.renderer.createElement("tbody");
       for (const row of bodyRows) {
         this.renderNode(row, tbody, version);
       }
@@ -452,7 +451,7 @@ export class SbRichTextComponent implements OnDestroy {
   // Text renderer (marks) - synchronous
   // --------------------------------------------------
   private renderTextNode(
-    node: StoryblokRichTextNodeWithKey & { type: 'text' },
+    node: StoryblokRichTextNodeWithKey & { type: "text" },
     parent: HTMLElement,
     version: number,
   ): void {
@@ -465,14 +464,14 @@ export class SbRichTextComponent implements OnDestroy {
 
     if (hasAsyncMarks) {
       // Create placeholder anchor to preserve position in parent
-      const anchor = this.renderer.createComment('sb-text');
+      const anchor = this.renderer.createComment("sb-text");
       this.renderer.appendChild(parent, anchor);
       this.renderTextNodeAsync(node, parent, anchor, version);
       return;
     }
 
     // Synchronous rendering for native marks and cached custom marks
-    let current: Node = this.renderer.createText(node.text || '');
+    let current: Node = this.renderer.createText(node.text || "");
 
     for (const mark of marks) {
       const CustomMark = this.resolver.getSync(mark.type);
@@ -483,9 +482,9 @@ export class SbRichTextComponent implements OnDestroy {
           projectableNodes: [[current]],
         });
 
-        ref.setInput('data', mark);
+        ref.setInput("data", mark);
         try {
-          ref.setInput('context', this.getContext());
+          ref.setInput("context", this.getContext());
         } catch {
           /* context input not declared */
         }
@@ -501,7 +500,7 @@ export class SbRichTextComponent implements OnDestroy {
       if (!tag) continue;
 
       const el = this.renderer.createElement(tag);
-      const markAttrs = ('attrs' in mark ? mark.attrs : {}) as Record<string, unknown>;
+      const markAttrs = ("attrs" in mark ? mark.attrs : {}) as Record<string, unknown>;
       this.applyAttributes(el, processAttrs(mark.type, markAttrs));
 
       this.renderer.appendChild(el, current);
@@ -513,12 +512,12 @@ export class SbRichTextComponent implements OnDestroy {
 
   /** Async text node rendering for lazy-loaded mark components */
   private async renderTextNodeAsync(
-    node: StoryblokRichTextNodeWithKey & { type: 'text' },
+    node: StoryblokRichTextNodeWithKey & { type: "text" },
     parent: HTMLElement,
     anchor: Node,
     version: number,
   ): Promise<void> {
-    let current: Node = this.renderer.createText(node.text || '');
+    let current: Node = this.renderer.createText(node.text || "");
 
     for (const mark of node.marks ?? []) {
       const CustomMark = await this.resolveCached(mark.type);
@@ -530,9 +529,9 @@ export class SbRichTextComponent implements OnDestroy {
           projectableNodes: [[current]],
         });
 
-        ref.setInput('data', mark);
+        ref.setInput("data", mark);
         try {
-          ref.setInput('context', this.getContext());
+          ref.setInput("context", this.getContext());
         } catch {
           /* context input not declared */
         }
@@ -548,7 +547,7 @@ export class SbRichTextComponent implements OnDestroy {
       if (!tag) continue;
 
       const el = this.renderer.createElement(tag);
-      const markAttrs = ('attrs' in mark ? mark.attrs : {}) as Record<string, unknown>;
+      const markAttrs = ("attrs" in mark ? mark.attrs : {}) as Record<string, unknown>;
       this.applyAttributes(el, processAttrs(mark.type, markAttrs));
 
       this.renderer.appendChild(el, current);
@@ -634,7 +633,7 @@ export class SbRichTextComponent implements OnDestroy {
     // Forward render context (sbData, optimizeImage) if the component declares a context input.
     // setInput throws for undeclared inputs, so we catch and ignore it silently.
     try {
-      ref.setInput('context', this.getContext());
+      ref.setInput("context", this.getContext());
     } catch {
       // Component does not declare a context input — skip.
     }
@@ -654,7 +653,7 @@ export class SbRichTextComponent implements OnDestroy {
     for (const [k, v] of Object.entries(attrs)) {
       if (v == null) continue;
 
-      if (k === 'style' && typeof v === 'object') {
+      if (k === "style" && typeof v === "object") {
         for (const [sk, sv] of Object.entries(v)) {
           this.renderer.setStyle(el, sk, String(sv));
         }

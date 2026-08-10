@@ -16,51 +16,52 @@
  *   STORYBLOK_SPACE_ID=<numeric-space-id>
  */
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createManagementApiClient } from '@storyblok/management-api-client';
-import type { StoryCreate, StoryUpdate } from '@storyblok/management-api-client';
-import {
-  defineBlock,
-  defineField,
-} from '@storyblok/schema';
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createManagementApiClient } from "@storyblok/management-api-client";
+import type { StoryCreate, StoryUpdate } from "@storyblok/management-api-client";
+import { defineBlock, defineField } from "@storyblok/schema";
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);
 
-const PREFIX = 'e2e_schema_';
-const STORY_SLUG_PREFIX = 'e2e-schema-';
+const PREFIX = "e2e_schema_";
+const STORY_SLUG_PREFIX = "e2e-schema-";
 
-const DATASOURCE_SLUG = 'e2e-schema-categories';
+const DATASOURCE_SLUG = "e2e-schema-categories";
 const DATASOURCE_NAME = `${PREFIX}categories`;
-const STORY_NAME = 'E2E Schema Test Page';
+const STORY_NAME = "E2E Schema Test Page";
 const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
   fields: [
-    defineField('title', { type: 'text', required: true }),
-    defineField('image', { type: 'asset' }),
+    defineField("title", { type: "text", required: true }),
+    defineField("image", { type: "asset" }),
   ],
 });
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
   fields: [
-    defineField('title', { type: 'text' }),
-    defineField('items', { type: 'bloks', allow: [teaserComponent.name], required: true }),
+    defineField("title", { type: "text" }),
+    defineField("items", { type: "bloks", allow: [teaserComponent.name], required: true }),
   ],
 });
 const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
   fields: [
-    defineField('headline', { type: 'text', required: true }),
-    defineField('rating', { type: 'number' }),
-    defineField('is_featured', { type: 'boolean' }),
-    defineField('description', { type: 'richtext' }),
-    defineField('body', { type: 'bloks', allow: [teaserComponent.name, sectionComponent.name], required: true }),
-    defineField('category', { type: 'option', source: 'internal', datasource: DATASOURCE_SLUG }),
-    defineField('any_blocks', { type: 'bloks', required: true }),
+    defineField("headline", { type: "text", required: true }),
+    defineField("rating", { type: "number" }),
+    defineField("is_featured", { type: "boolean" }),
+    defineField("description", { type: "richtext" }),
+    defineField("body", {
+      type: "bloks",
+      allow: [teaserComponent.name, sectionComponent.name],
+      required: true,
+    }),
+    defineField("category", { type: "option", source: "internal", datasource: DATASOURCE_SLUG }),
+    defineField("any_blocks", { type: "bloks", required: true }),
   ],
 });
 
@@ -68,7 +69,7 @@ interface StoryblokTypes {
   components: typeof pageComponent | typeof teaserComponent | typeof sectionComponent;
 }
 
-type Blocks = StoryblokTypes['components'];
+type Blocks = StoryblokTypes["components"];
 
 const client = createManagementApiClient({
   personalAccessToken: token,
@@ -134,7 +135,7 @@ async function cleanup() {
   }
 }
 
-describe('schema + mapi-client MAPI round-trip', () => {
+describe("schema + mapi-client MAPI round-trip", () => {
   let pageComponentId: number;
   let teaserComponentId: number;
   let sectionComponentId: number;
@@ -150,75 +151,108 @@ describe('schema + mapi-client MAPI round-trip', () => {
     // 1. Datasource + entries first — the page component schema references the datasource slug,
     //    and the MAPI validates that the datasource exists at component creation time.
     // Create payloads are plain MAPI wire objects validated by the typed client.
-    const dsRes = await client.datasources.create({ body: { datasource: {
-      name: DATASOURCE_NAME,
-      slug: DATASOURCE_SLUG,
-    } } });
+    const dsRes = await client.datasources.create({
+      body: {
+        datasource: {
+          name: DATASOURCE_NAME,
+          slug: DATASOURCE_SLUG,
+        },
+      },
+    });
     datasourceId = dsRes.data!.datasource!.id!;
 
     for (const entry of [
-      { name: 'Technology', value: 'tech', datasource_id: datasourceId },
-      { name: 'Design', value: 'design', datasource_id: datasourceId },
-      { name: 'Business', value: 'business', datasource_id: datasourceId },
+      { name: "Technology", value: "tech", datasource_id: datasourceId },
+      { name: "Design", value: "design", datasource_id: datasourceId },
+      { name: "Business", value: "business", datasource_id: datasourceId },
     ]) {
       await client.datasourceEntries.create({ body: { datasource_entry: entry } });
     }
 
     // 2. Component folder
-    const folderRes = await client.componentFolders.create({ body: { component_group: { name: `${PREFIX}folder` } } });
+    const folderRes = await client.componentFolders.create({
+      body: { component_group: { name: `${PREFIX}folder` } },
+    });
     componentFolderId = folderRes.data!.component_group!.id!;
     const folderUuid = folderRes.data!.component_group!.uuid;
 
     // 3. Teaser component (innermost — whitelisted by section)
-    const teaserRes = await client.components.create({ body: { component: {
-      name: teaserComponent.name,
-      schema: {
-        title: { type: 'text', required: true, pos: 0 },
-        image: { type: 'asset', pos: 1 },
+    const teaserRes = await client.components.create({
+      body: {
+        component: {
+          name: teaserComponent.name,
+          schema: {
+            title: { type: "text", required: true, pos: 0 },
+            image: { type: "asset", pos: 1 },
+          },
+          component_group_uuid: folderUuid,
+        },
       },
-      component_group_uuid: folderUuid,
-    } } });
+    });
     teaserComponentId = teaserRes.data!.component!.id!;
 
     // 4. Section component (level 2 — whitelists teaser, whitelisted by page)
-    const sectionRes = await client.components.create({ body: { component: {
-      name: sectionComponent.name,
-      schema: {
-        title: { type: 'text', pos: 0 },
-        items: { type: 'bloks', component_whitelist: [teaserComponent.name], pos: 1 },
+    const sectionRes = await client.components.create({
+      body: {
+        component: {
+          name: sectionComponent.name,
+          schema: {
+            title: { type: "text", pos: 0 },
+            items: { type: "bloks", component_whitelist: [teaserComponent.name], pos: 1 },
+          },
+          component_group_uuid: folderUuid,
+        },
       },
-      component_group_uuid: folderUuid,
-    } } });
+    });
     sectionComponentId = sectionRes.data!.component!.id!;
 
     // 5. Page component (level 1 — whitelists both teaser and section in body)
-    const pageRes = await client.components.create({ body: { component: {
-      name: pageComponent.name,
-      schema: {
-        headline: { type: 'text', required: true, pos: 0 },
-        rating: { type: 'number', pos: 1 },
-        is_featured: { type: 'boolean', pos: 2 },
-        description: { type: 'richtext', pos: 3 },
-        body: { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], pos: 4 },
-        category: { type: 'option', source: 'internal', datasource_slug: DATASOURCE_SLUG, pos: 5 },
-        any_blocks: { type: 'bloks', pos: 6 },
+    const pageRes = await client.components.create({
+      body: {
+        component: {
+          name: pageComponent.name,
+          schema: {
+            headline: { type: "text", required: true, pos: 0 },
+            rating: { type: "number", pos: 1 },
+            is_featured: { type: "boolean", pos: 2 },
+            description: { type: "richtext", pos: 3 },
+            body: {
+              type: "bloks",
+              component_whitelist: [teaserComponent.name, sectionComponent.name],
+              pos: 4,
+            },
+            category: {
+              type: "option",
+              source: "internal",
+              datasource_slug: DATASOURCE_SLUG,
+              pos: 5,
+            },
+            any_blocks: { type: "bloks", pos: 6 },
+          },
+          component_group_uuid: folderUuid,
+          is_root: true,
+        },
       },
-      component_group_uuid: folderUuid,
-      is_root: true,
-    } } });
+    });
     pageComponentId = pageRes.data!.component!.id!;
 
     // 5. Internal tag
-    const tagRes = await client.internalTags.create({ body: { internal_tag: { name: `${PREFIX}tag`, object_type: 'component' } } });
+    const tagRes = await client.internalTags.create({
+      body: { internal_tag: { name: `${PREFIX}tag`, object_type: "component" } },
+    });
     internalTagId = tagRes.data!.internal_tag!.id!;
 
     // 6. Preset for page component
-    const presetRes = await client.presets.create({ body: { preset: {
-      name: `${PREFIX}default_page`,
-      component_id: pageComponentId,
-      preset: { headline: 'Default Headline', rating: 0, is_featured: false },
-      description: `Default preset for ${pageComponent.name}`,
-    } } });
+    const presetRes = await client.presets.create({
+      body: {
+        preset: {
+          name: `${PREFIX}default_page`,
+          component_id: pageComponentId,
+          preset: { headline: "Default Headline", rating: 0, is_featured: false },
+          description: `Default preset for ${pageComponent.name}`,
+        },
+      },
+    });
     presetId = presetRes.data!.preset!.id!;
 
     // 8. Story: body[0]=teaser (level 2), body[1]=section{items:[teaser]} (levels 2+3)
@@ -227,34 +261,34 @@ describe('schema + mapi-client MAPI round-trip', () => {
       slug: STORY_SLUG,
       content: {
         component: pageComponent.name,
-        headline: 'Hello from e2e',
-        rating: '42',
+        headline: "Hello from e2e",
+        rating: "42",
         is_featured: true,
         description: {
-          type: 'doc',
-          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Rich text body.' }] }],
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text: "Rich text body." }] }],
         },
         body: [
           {
             component: teaserComponent.name,
-            title: 'Teaser Title',
+            title: "Teaser Title",
           },
           {
             component: sectionComponent.name,
-            title: 'Section Title',
+            title: "Section Title",
             items: [
               {
                 component: teaserComponent.name,
-                title: 'Nested Teaser Title',
+                title: "Nested Teaser Title",
               },
             ],
           },
         ],
-        category: 'tech',
+        category: "tech",
         any_blocks: [
           {
             component: teaserComponent.name,
-            title: 'Any Block Teaser',
+            title: "Any Block Teaser",
           },
         ],
       },
@@ -265,47 +299,50 @@ describe('schema + mapi-client MAPI round-trip', () => {
 
   afterAll(cleanup);
 
-  describe('components', () => {
-    it('should create page component with the correct name and schema keys', async () => {
+  describe("components", () => {
+    it("should create page component with the correct name and schema keys", async () => {
       const res = await client.components.get(pageComponentId);
       const comp = res.data?.component;
 
       expect(comp).toBeDefined();
       expect(comp?.name).toBe(pageComponent.name);
       expect(comp?.schema).toMatchObject({
-        headline: expect.objectContaining({ type: 'text' }),
-        rating: expect.objectContaining({ type: 'number' }),
-        is_featured: expect.objectContaining({ type: 'boolean' }),
-        description: expect.objectContaining({ type: 'richtext' }),
-        body: expect.objectContaining({ type: 'bloks' }),
-        category: expect.objectContaining({ type: 'option' }),
+        headline: expect.objectContaining({ type: "text" }),
+        rating: expect.objectContaining({ type: "number" }),
+        is_featured: expect.objectContaining({ type: "boolean" }),
+        description: expect.objectContaining({ type: "richtext" }),
+        body: expect.objectContaining({ type: "bloks" }),
+        category: expect.objectContaining({ type: "option" }),
       });
       expect(comp?.name).toBe(pageComponent.name);
     });
 
-    it('should create teaser component with the correct schema', async () => {
+    it("should create teaser component with the correct schema", async () => {
       const res = await client.components.get(teaserComponentId);
       const comp = res.data?.component;
 
       expect(comp?.name).toBe(teaserComponent.name);
       expect(comp?.schema).toMatchObject({
-        title: expect.objectContaining({ type: 'text', required: true }),
-        image: expect.objectContaining({ type: 'asset' }),
+        title: expect.objectContaining({ type: "text", required: true }),
+        image: expect.objectContaining({ type: "asset" }),
       });
     });
 
-    it('should create section component with the correct schema', async () => {
+    it("should create section component with the correct schema", async () => {
       const res = await client.components.get(sectionComponentId);
       const comp = res.data?.component;
 
       expect(comp?.name).toBe(sectionComponent.name);
       expect(comp?.schema).toMatchObject({
-        title: expect.objectContaining({ type: 'text' }),
-        items: expect.objectContaining({ type: 'bloks', component_whitelist: [teaserComponent.name] }),
+        title: expect.objectContaining({ type: "text" }),
+        items: expect.objectContaining({
+          type: "bloks",
+          component_whitelist: [teaserComponent.name],
+        }),
       });
     });
 
-    it('should assign components to the correct component folder', async () => {
+    it("should assign components to the correct component folder", async () => {
       const folderRes = await client.componentFolders.get(componentFolderId);
       const folder = folderRes.data?.component_group;
 
@@ -317,42 +354,42 @@ describe('schema + mapi-client MAPI round-trip', () => {
     });
   });
 
-  describe('datasources', () => {
-    it('should create datasource with the correct name and slug', async () => {
+  describe("datasources", () => {
+    it("should create datasource with the correct name and slug", async () => {
       const res = await client.datasources.list();
-      const ds = res.data?.datasources?.find(d => d.id === datasourceId);
+      const ds = res.data?.datasources?.find((d) => d.id === datasourceId);
 
       expect(ds).toBeDefined();
       expect(ds?.name).toBe(DATASOURCE_NAME);
       expect(ds?.slug).toBe(DATASOURCE_SLUG);
     });
 
-    it('should create datasource entries with the correct names and values', async () => {
+    it("should create datasource entries with the correct names and values", async () => {
       const res = await client.datasourceEntries.list({
         query: { datasource_id: datasourceId, per_page: 100 },
       });
       const entries = res.data?.datasource_entries ?? [];
 
       expect(entries.length).toBeGreaterThanOrEqual(3);
-      expect(entries.find(e => e.value === 'tech')?.name).toBe('Technology');
-      expect(entries.find(e => e.value === 'design')?.name).toBe('Design');
-      expect(entries.find(e => e.value === 'business')?.name).toBe('Business');
+      expect(entries.find((e) => e.value === "tech")?.name).toBe("Technology");
+      expect(entries.find((e) => e.value === "design")?.name).toBe("Design");
+      expect(entries.find((e) => e.value === "business")?.name).toBe("Business");
     });
   });
 
-  describe('internalTags', () => {
-    it('should create and retrieve internal tag', async () => {
+  describe("internalTags", () => {
+    it("should create and retrieve internal tag", async () => {
       const res = await client.internalTags.list();
-      const tag = res.data?.internal_tags?.find(t => t.id === internalTagId);
+      const tag = res.data?.internal_tags?.find((t) => t.id === internalTagId);
 
       expect(tag).toBeDefined();
       expect(tag?.name).toBe(`${PREFIX}tag`);
-      expect(tag?.object_type).toBe('component');
+      expect(tag?.object_type).toBe("component");
     });
   });
 
-  describe('presets', () => {
-    it('should create preset with the correct component_id and default values', async () => {
+  describe("presets", () => {
+    it("should create preset with the correct component_id and default values", async () => {
       const res = await client.presets.get(presetId);
       const preset = res.data?.preset;
 
@@ -360,15 +397,15 @@ describe('schema + mapi-client MAPI round-trip', () => {
       expect(preset?.name).toBe(`${PREFIX}default_page`);
       expect(preset?.component_id).toBe(pageComponentId);
       expect(preset?.preset).toMatchObject({
-        headline: 'Default Headline',
+        headline: "Default Headline",
         rating: 0,
         is_featured: false,
       });
     });
   });
 
-  describe('stories', () => {
-    it('should match defined schema field types at runtime for story content', async () => {
+  describe("stories", () => {
+    it("should match defined schema field types at runtime for story content", async () => {
       const res = await client.stories.get(storyId);
       const story = res.data?.story;
 
@@ -380,83 +417,84 @@ describe('schema + mapi-client MAPI round-trip', () => {
       // Accessing story.content.headline etc. only compiles when the component guard passes,
       // so this block validates both runtime correctness and compile-time type narrowing.
       if (story?.content?.component === pageComponent.name) {
-        expect(typeof story.content.headline).toBe('string');
-        expect(story.content.headline).toBe('Hello from e2e');
+        expect(typeof story.content.headline).toBe("string");
+        expect(story.content.headline).toBe("Hello from e2e");
 
-        expect(typeof story.content.rating).toBe('number');
+        expect(typeof story.content.rating).toBe("number");
         expect(story.content.rating).toBe(42);
 
-        expect(typeof story.content.is_featured).toBe('boolean');
+        expect(typeof story.content.is_featured).toBe("boolean");
         expect(story.content.is_featured).toBe(true);
 
-        expect(story.content.description).toMatchObject({ type: 'doc' });
+        expect(story.content.description).toMatchObject({ type: "doc" });
 
         expect(Array.isArray(story.content.body)).toBe(true);
         expect(story.content.body.length).toBeGreaterThan(0);
 
-        expect(typeof story.content.category).toBe('string');
-        expect(story.content.category).toBe('tech');
-      }
-      else {
+        expect(typeof story.content.category).toBe("string");
+        expect(story.content.category).toBe("tech");
+      } else {
         throw new Error(
           `Expected story.content.component to be '${pageComponent.name}', got '${story?.content?.component}'`,
         );
       }
     });
 
-    it('should have correct structure for nested teaser blok (two levels: page → teaser)', async () => {
+    it("should have correct structure for nested teaser blok (two levels: page → teaser)", async () => {
       const res = await client.stories.get(storyId);
       const story = res.data?.story;
 
       if (story?.content?.component !== pageComponent.name) {
-        throw new Error('Unexpected component discriminant');
+        throw new Error("Unexpected component discriminant");
       }
 
       const teaser = story.content.body[0];
 
       expect(teaser).toBeDefined();
       expect(teaser?.component).toBe(teaserComponent.name);
-      expect(typeof teaser?.title).toBe('string');
-      expect(teaser?.title).toBe('Teaser Title');
+      expect(typeof teaser?.title).toBe("string");
+      expect(teaser?.title).toBe("Teaser Title");
     });
 
-    it('should resolve correct types for three-level nested blok (page → section → teaser)', async () => {
+    it("should resolve correct types for three-level nested blok (page → section → teaser)", async () => {
       const res = await client.stories.get(storyId);
       const story = res.data?.story;
 
       if (story?.content?.component !== pageComponent.name) {
-        throw new Error('Unexpected component discriminant at level 1');
+        throw new Error("Unexpected component discriminant at level 1");
       }
 
       // Level 2: narrow body[1] to section
       const section = story.content.body[1];
       if (section?.component === sectionComponent.name) {
-        expect(typeof section.title).toBe('string');
-        expect(section.title).toBe('Section Title');
+        expect(typeof section.title).toBe("string");
+        expect(section.title).toBe("Section Title");
         expect(Array.isArray(section.items)).toBe(true);
         expect(section.items.length).toBeGreaterThan(0);
 
         // Level 3: section.items[0] is a typed teaser — not `never`
         const nestedTeaser = section.items[0];
         if (nestedTeaser?.component === teaserComponent.name) {
-          expect(typeof nestedTeaser.title).toBe('string');
-          expect(nestedTeaser.title).toBe('Nested Teaser Title');
+          expect(typeof nestedTeaser.title).toBe("string");
+          expect(nestedTeaser.title).toBe("Nested Teaser Title");
+        } else {
+          throw new Error(
+            `Expected items[0].component to be '${teaserComponent.name}', got '${nestedTeaser?.component}'`,
+          );
         }
-        else {
-          throw new Error(`Expected items[0].component to be '${teaserComponent.name}', got '${nestedTeaser?.component}'`);
-        }
-      }
-      else {
-        throw new Error(`Expected body[1].component to be '${sectionComponent.name}', got '${section?.component}'`);
+      } else {
+        throw new Error(
+          `Expected body[1].component to be '${sectionComponent.name}', got '${section?.component}'`,
+        );
       }
     });
 
-    it('should resolve all schema component types for bloks field without whitelist', async () => {
+    it("should resolve all schema component types for bloks field without whitelist", async () => {
       const res = await client.stories.get(storyId);
       const story = res.data?.story;
 
       if (story?.content?.component !== pageComponent.name) {
-        throw new Error('Unexpected component discriminant');
+        throw new Error("Unexpected component discriminant");
       }
 
       // any_blocks has no component_whitelist — TypeScript resolves items to the full
@@ -465,29 +503,30 @@ describe('schema + mapi-client MAPI round-trip', () => {
       // teaser discriminant proves the discriminated union is correctly typed.
       const blok = story.content.any_blocks[0];
       if (blok?.component === teaserComponent.name) {
-        expect(typeof blok.title).toBe('string');
-        expect(blok.title).toBe('Any Block Teaser');
-      }
-      else {
-        throw new Error(`Expected any_blocks[0].component to be '${teaserComponent.name}', got '${blok?.component}'`);
+        expect(typeof blok.title).toBe("string");
+        expect(blok.title).toBe("Any Block Teaser");
+      } else {
+        throw new Error(
+          `Expected any_blocks[0].component to be '${teaserComponent.name}', got '${blok?.component}'`,
+        );
       }
     });
 
-    it('should round-trip story update correctly', async () => {
+    it("should round-trip story update correctly", async () => {
       const updatedPayload: StoryUpdate<Blocks> = {
         name: `${STORY_NAME} (Updated)`,
         slug: STORY_SLUG,
         content: {
           component: pageComponent.name,
-          headline: 'Updated headline',
-          rating: '100',
+          headline: "Updated headline",
+          rating: "100",
           is_featured: false,
           description: {
-            type: 'doc',
-            content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Updated.' }] }],
+            type: "doc",
+            content: [{ type: "paragraph", content: [{ type: "text", text: "Updated." }] }],
           },
           body: [],
-          category: 'design',
+          category: "design",
           any_blocks: [],
         },
       };
@@ -498,13 +537,13 @@ describe('schema + mapi-client MAPI round-trip', () => {
       const story = res.data?.story;
 
       if (story?.content?.component !== pageComponent.name) {
-        throw new Error('Unexpected component discriminant after update');
+        throw new Error("Unexpected component discriminant after update");
       }
 
-      expect(story.content.headline).toBe('Updated headline');
+      expect(story.content.headline).toBe("Updated headline");
       expect(story.content.rating).toBe(100);
       expect(story.content.is_featured).toBe(false);
-      expect(story.content.category).toBe('design');
+      expect(story.content.category).toBe("design");
     });
   });
 });

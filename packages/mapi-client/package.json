@@ -1,21 +1,24 @@
 {
   "name": "@storyblok/management-api-client",
-  "type": "module",
   "version": "0.7.0",
   "private": false,
   "description": "Storyblok Management API Client",
-  "author": "",
-  "license": "MIT",
+  "keywords": [],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/mapi-client#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/mapi-client"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -23,9 +26,6 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
   "publishConfig": {
     "access": "public"
   },

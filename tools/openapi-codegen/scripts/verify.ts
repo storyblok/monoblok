@@ -7,28 +7,30 @@
  * before importing it.
  */
 
-import { existsSync } from 'node:fs';
-import { CACHE_DIR, hashCache, LOCK_PATH, readLock } from '../src/lock.ts';
+import { existsSync } from "node:fs";
+import { CACHE_DIR, hashCache, LOCK_PATH, readLock } from "../src/lock.ts";
 
 const lock = readLock();
 if (!lock) {
   console.error(`spec.lock not found at ${LOCK_PATH}.`);
-  console.error('Run `pnpm --filter @storyblok/openapi-codegen pull:update` to bootstrap.');
+  console.error("Run `pnpm --filter @storyblok/openapi-codegen pull:update` to bootstrap.");
   process.exit(1);
 }
 
 if (!existsSync(CACHE_DIR)) {
   console.error(`OpenAPI cache not found at ${CACHE_DIR}.`);
-  console.error('Run `pnpm --filter @storyblok/openapi-codegen pull` to populate it.');
+  console.error("Run `pnpm --filter @storyblok/openapi-codegen pull` to populate it.");
   process.exit(1);
 }
 
 const computed = hashCache();
 if (computed !== lock.hash) {
-  console.error('Spec cache hash mismatch:');
+  console.error("Spec cache hash mismatch:");
   console.error(`  expected (spec.lock): ${lock.hash}`);
   console.error(`  computed:             ${computed}`);
-  console.error('Cache is out of sync with spec.lock. Run `pnpm --filter @storyblok/openapi-codegen pull`.');
+  console.error(
+    "Cache is out of sync with spec.lock. Run `pnpm --filter @storyblok/openapi-codegen pull`.",
+  );
   process.exit(1);
 }
 

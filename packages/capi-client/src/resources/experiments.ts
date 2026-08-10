@@ -1,8 +1,13 @@
-import { listCdnExperimentsV2 } from '../generated/capi/sdk.gen';
-import type { ListCdnExperimentsV2Data, ListCdnExperimentsV2Responses } from '../generated/capi/types.gen';
-import type { ApiResponse, FetchOptions, ResourceDeps } from '../client';
+import { listCdnExperimentsV2 } from "../generated/capi/sdk.gen";
+import type {
+  ListCdnExperimentsV2Data,
+  ListCdnExperimentsV2Responses,
+} from "../generated/capi/types.gen";
+import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
 
-export function createExperimentsResource<DefaultThrowOnError extends boolean = false>(deps: ResourceDeps<DefaultThrowOnError>) {
+export function createExperimentsResource<DefaultThrowOnError extends boolean = false>(
+  deps: ResourceDeps<DefaultThrowOnError>,
+) {
   const { client, requestWithCache, asApiResponse, throttleManager } = deps;
 
   return {
@@ -23,20 +28,35 @@ export function createExperimentsResource<DefaultThrowOnError extends boolean = 
      * See `@storyblok/experiments` for variant assignment and tracking helpers.
      */
     list: async <ThrowOnError extends boolean = DefaultThrowOnError>(
-      options: { query?: ListCdnExperimentsV2Data['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } = {},
+      options: {
+        query?: ListCdnExperimentsV2Data["query"];
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } = {},
     ): Promise<ApiResponse<ListCdnExperimentsV2Responses[200], ThrowOnError>> => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const requestPath = '/v2/cdn/experiments';
-      return requestWithCache<ListCdnExperimentsV2Responses[200], ThrowOnError>('GET', requestPath, query, (requestQuery: Record<string, unknown>) => {
-        return throttleManager.execute(requestPath, requestQuery, () =>
-          asApiResponse<ListCdnExperimentsV2Responses[200], ThrowOnError>(listCdnExperimentsV2({
-            client,
-            query: requestQuery,
-            signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}),
-          })));
-      });
+      const requestPath = "/v2/cdn/experiments";
+      return requestWithCache<ListCdnExperimentsV2Responses[200], ThrowOnError>(
+        "GET",
+        requestPath,
+        query,
+        (requestQuery: Record<string, unknown>) => {
+          return throttleManager.execute(requestPath, requestQuery, () =>
+            asApiResponse<ListCdnExperimentsV2Responses[200], ThrowOnError>(
+              listCdnExperimentsV2({
+                client,
+                query: requestQuery,
+                signal,
+                ...(throwOnError === undefined ? {} : { throwOnError }),
+                ...(fetchOptions
+                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+                  : {}),
+              }),
+            ),
+          );
+        },
+      );
     },
   };
 }

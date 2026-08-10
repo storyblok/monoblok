@@ -15,10 +15,10 @@
 import {
   createThrottle as createThrottleInternal,
   parseRateLimitPolicyHeader as parseRateLimitPolicyHeaderInternal,
-} from './utils/rate-limit';
-import type { RateLimitConfig as RateLimitConfigInternal } from './utils/rate-limit';
+} from "./utils/rate-limit";
+import type { RateLimitConfig as RateLimitConfigInternal } from "./utils/rate-limit";
 
-export { createApiClient } from './client';
+export { createApiClient } from "./client";
 export type {
   ApiResponse,
   CacheConfig,
@@ -29,14 +29,14 @@ export type {
   HttpRequestOptions,
   RequestWithCacheOptions,
   ResourceDeps,
-} from './client';
+} from "./client";
 
 // Error
-export { ClientError } from './error';
-export type { ApiErrorBody } from './error';
+export { ClientError } from "./error";
+export type { ApiErrorBody } from "./error";
 
 // Generated client utilities
-export type { Middleware } from './generated/capi/client/utils.gen';
+export type { Middleware } from "./generated/capi/client/utils.gen";
 
 export type {
   Datasource,
@@ -44,21 +44,17 @@ export type {
   Link,
   StoryAlternate,
   Tag,
-} from './generated/capi/types-aliased.gen';
+} from "./generated/capi/types-aliased.gen";
 
-export type {
-  Space,
-  StoryLocalizedPath,
-  StoryTranslatedSlug,
-} from './generated/mapi/types.gen';
+export type { Space, StoryLocalizedPath, StoryTranslatedSlug } from "./generated/mapi/types.gen";
 
 // Domain types
-export type { Block as Component } from './generated/types/block';
-export type { Story } from './generated/types/story';
+export type { Block as Component } from "./generated/types/block";
+export type { Story } from "./generated/types/story";
 // Resource types
-export type { StoryWithInlinedRelations } from './resources/stories';
+export type { StoryWithInlinedRelations } from "./resources/stories";
 // Cache types
-export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from './utils/cache';
+export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
 
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
 export const createThrottle = createThrottleInternal;

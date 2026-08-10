@@ -1,16 +1,13 @@
 /* eslint-disable no-console */
-import type {
-  SbRichTextDoc,
-  SbRichTextRenderContext,
-} from '@storyblok/js';
+import type { SbRichTextDoc, SbRichTextRenderContext } from "@storyblok/js";
 import {
   apiPlugin,
   loadStoryblokBridge,
   renderRichText,
   storyblokInit,
   useStoryblokBridge,
-} from '@storyblok/js';
-import richTextFixture from '../../src/fixtures/richTextObject.json';
+} from "@storyblok/js";
+import richTextFixture from "../../src/fixtures/richTextObject.json";
 
 declare global {
   interface Window {
@@ -23,23 +20,23 @@ declare global {
 
 window.initWithBridge = async () => {
   const { storyblokApi } = storyblokInit({
-    accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
+    accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
     use: [apiPlugin],
   });
 
-  const { data } = await storyblokApi!.get('cdn/stories/js', {
-    version: 'draft',
+  const { data } = await storyblokApi!.get("cdn/stories/js", {
+    version: "draft",
   });
 
   useStoryblokBridge(data.story.id, (newStory) => {
-    console.log('-- PLAYGROUND --');
+    console.log("-- PLAYGROUND --");
     console.log(newStory);
   });
 };
 
 window.initWithoutBridge = () => {
   storyblokInit({
-    accessToken: 'OurklwV5XsDJTIE1NJaD2wtt',
+    accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
     bridge: false,
   });
 
@@ -54,15 +51,14 @@ window.loadStoryblokBridgeScript = () => {
 window.renderRichText = () => {
   const options: SbRichTextRenderContext = {
     renderers: {
-      blok: ({ attrs }) => `<span data-blok="${JSON.stringify(attrs?.body?.[0]).replace(/"/g, '&quot;')}" style="display: none"></span>`,
+      blok: ({ attrs }) =>
+        `<span data-blok="${JSON.stringify(attrs?.body?.[0]).replace(/"/g, "&quot;")}" style="display: none"></span>`,
       link: ({ children, attrs }) => `<button href="${attrs?.href}">${children}</button>`,
     },
   };
   const html = renderRichText(richTextFixture as SbRichTextDoc, options);
 
-  const richTextContainer = document.getElementById(
-    'rich-text-container',
-  ) as HTMLDivElement;
+  const richTextContainer = document.getElementById("rich-text-container") as HTMLDivElement;
 
   richTextContainer.innerHTML = html;
 };

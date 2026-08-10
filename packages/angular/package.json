@@ -3,36 +3,36 @@
   "version": "1.2.2",
   "private": false,
   "description": "Official Angular integration for the Storyblok Headless CMS",
-  "author": "Storyblok",
-  "license": "MIT",
-  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/angular#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/storyblok/monoblok.git",
-    "directory": "packages/angular"
-  },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
   "keywords": [
     "angular",
     "angular-sdk",
     "storyblok"
   ],
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/angular#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
+    "directory": "packages/angular"
+  },
+  "files": [
+    "dist/fesm2022",
+    "dist/types"
+  ],
   "type": "module",
   "sideEffects": false,
+  "module": "./dist/fesm2022/storyblok-angular.mjs",
+  "typings": "./dist/types/storyblok-angular.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/storyblok-angular.d.ts",
       "default": "./dist/fesm2022/storyblok-angular.mjs"
     }
   },
-  "module": "./dist/fesm2022/storyblok-angular.mjs",
-  "typings": "./dist/types/storyblok-angular.d.ts",
-  "files": [
-    "dist/fesm2022",
-    "dist/types"
-  ],
   "scripts": {
     "ng": "ng",
     "playground:ssr:start": "ng serve ssr-playground --ssl",
@@ -45,10 +45,6 @@
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
     "test:types": "tsc --noEmit --skipLibCheck"
-  },
-  "peerDependencies": {
-    "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
-    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0"
   },
   "dependencies": {
     "@storyblok/api-client": "workspace:*",
@@ -78,5 +74,9 @@
     "rxjs": "~7.8.0",
     "typescript": "~6.0.3",
     "vitest": "^4.0.8"
+  },
+  "peerDependencies": {
+    "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",
+    "@angular/core": "^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0"
   }
 }

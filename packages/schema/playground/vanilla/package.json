@@ -1,8 +1,8 @@
 {
   "name": "@storyblok/playground-cli-schema",
-  "type": "module",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "validate": "tsx app/validate.ts",
     "schema:init": "storyblok schema init -s $STORYBLOK_SPACE_ID",

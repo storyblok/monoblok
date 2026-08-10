@@ -33,7 +33,8 @@
 - Connect frontend components with the Visual Editor via StoryblokBridge
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Nuxt 3 module with automatic setup and configuration
-- Auto-imported composables: `useAsyncStoryblok`, `useStoryblok`, `useStoryblokApi`, `useStoryblokBridge`
+- Auto-imported composables: `useAsyncStoryblok`, `useStoryblok`, `useStoryblokApi`,
+  `useStoryblokBridge`
 - Auto-imported components: `StoryblokComponent`, `StoryblokRichText`
 - Auto-imported utilities: `renderRichText`, `useStoryblokRichText`
 - Built-in TypeScript support with auto-generated types
@@ -42,7 +43,8 @@
 
 ## Documentation
 
-For complete documentation, please visit [package reference](https://www.storyblok.com/docs/packages/storyblok-nuxt)
+For complete documentation, please visit
+[package reference](https://www.storyblok.com/docs/packages/storyblok-nuxt)
 
 ## Contributing
 
@@ -50,7 +52,8 @@ If you'd like to contribute, please refer to the [contributing guidelines](CONTR
 
 ## Community
 
-For help, discussion about best practices, or any other conversation that would benefit from being searchable:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
 - [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
 
@@ -60,19 +63,25 @@ For community support, chatting with other users, please visit:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+For bugs or feature requests, please
+[submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-> [!IMPORTANT]
-> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
 
 ### Feedback
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
-
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

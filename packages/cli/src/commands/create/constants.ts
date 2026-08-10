@@ -1,4 +1,4 @@
-import type { RegionCode } from '../../constants';
+import type { RegionCode } from "../../constants";
 
 export interface CreateOptions {
   template?: string;
@@ -7,7 +7,15 @@ export interface CreateOptions {
   token?: string; // Access token for Storyblok
   region?: RegionCode;
 }
-type TemplateTechnology = 'REACT' | 'VUE' | 'SVELTE' | 'ASTRO' | 'NUXT' | 'NEXTJS' | 'ELEVENTY' | 'ANGULAR';
+type TemplateTechnology =
+  | "REACT"
+  | "VUE"
+  | "SVELTE"
+  | "ASTRO"
+  | "NUXT"
+  | "NEXTJS"
+  | "ELEVENTY"
+  | "ANGULAR";
 
 export interface Template {
   name: string;
@@ -20,51 +28,51 @@ export interface Template {
 }
 export const templates: Record<TemplateTechnology, Template> = {
   REACT: {
-    name: 'React',
-    value: 'react',
-    template: 'https://github.com/storyblok/blueprint-core-react',
-    location: 'https://localhost:5173/',
+    name: "React",
+    value: "react",
+    template: "https://github.com/storyblok/blueprint-core-react",
+    location: "https://localhost:5173/",
   },
   VUE: {
-    name: 'Vue',
-    value: 'vue',
-    template: 'https://github.com/storyblok/blueprint-core-vue',
-    location: 'https://localhost:5173/',
+    name: "Vue",
+    value: "vue",
+    template: "https://github.com/storyblok/blueprint-core-vue",
+    location: "https://localhost:5173/",
   },
   SVELTE: {
-    name: 'Svelte',
-    value: 'svelte',
-    template: 'https://github.com/storyblok/blueprint-core-svelte',
-    location: 'https://localhost:5173/',
+    name: "Svelte",
+    value: "svelte",
+    template: "https://github.com/storyblok/blueprint-core-svelte",
+    location: "https://localhost:5173/",
   },
   ASTRO: {
-    name: 'Astro',
-    value: 'astro',
-    template: 'https://github.com/storyblok/blueprint-core-astro',
-    location: 'https://localhost:4321/',
+    name: "Astro",
+    value: "astro",
+    template: "https://github.com/storyblok/blueprint-core-astro",
+    location: "https://localhost:4321/",
   },
   NUXT: {
-    name: 'Nuxt',
-    value: 'nuxt',
-    template: 'https://github.com/storyblok/blueprint-core-nuxt',
-    location: 'https://localhost:3000/',
+    name: "Nuxt",
+    value: "nuxt",
+    template: "https://github.com/storyblok/blueprint-core-nuxt",
+    location: "https://localhost:3000/",
   },
   NEXTJS: {
-    name: 'Next.js',
-    value: 'nextjs',
-    template: 'https://github.com/storyblok/blueprint-core-nextjs',
-    location: 'https://localhost:3000/',
+    name: "Next.js",
+    value: "nextjs",
+    template: "https://github.com/storyblok/blueprint-core-nextjs",
+    location: "https://localhost:3000/",
   },
   ELEVENTY: {
-    name: 'Eleventy',
-    value: 'eleventy',
-    template: 'https://github.com/storyblok/blueprint-core-eleventy',
-    location: 'https://localhost:8080/',
+    name: "Eleventy",
+    value: "eleventy",
+    template: "https://github.com/storyblok/blueprint-core-eleventy",
+    location: "https://localhost:8080/",
   },
   ANGULAR: {
-    name: 'Angular',
-    value: 'angular',
-    template: 'https://github.com/storyblok/blueprint-core-angular',
-    location: 'https://localhost:4200/',
+    name: "Angular",
+    value: "angular",
+    template: "https://github.com/storyblok/blueprint-core-angular",
+    location: "https://localhost:4200/",
   },
 } as const;

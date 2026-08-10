@@ -1,5 +1,5 @@
-import throttledQueue from './throttlePromise';
-import type { ISbThrottle, ISbThrottledRequest } from './interfaces';
+import throttledQueue from "./throttlePromise";
+import type { ISbThrottle, ISbThrottledRequest } from "./interfaces";
 
 /**
  * Manages multiple throttle queues, each with different rate limits.
@@ -26,11 +26,7 @@ export class ThrottleQueueManager {
     let queue = this.queues.get(rateLimit);
 
     if (!queue) {
-      queue = throttledQueue(
-        this.throttledRequestFn,
-        rateLimit,
-        this.interval,
-      );
+      queue = throttledQueue(this.throttledRequestFn, rateLimit, this.interval);
       this.queues.set(rateLimit, queue);
     }
 
@@ -40,10 +36,7 @@ export class ThrottleQueueManager {
   /**
    * Executes a request through the appropriate throttle queue based on rate limit
    */
-  public execute(
-    rateLimit: number,
-    ...args: Parameters<ISbThrottledRequest>
-  ): Promise<unknown> {
+  public execute(rateLimit: number, ...args: Parameters<ISbThrottledRequest>): Promise<unknown> {
     const queue = this.getQueue(rateLimit);
     return queue(...args);
   }

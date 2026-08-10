@@ -16,34 +16,34 @@
  * code; all data assets come from the canonical source.
  */
 
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'pathe';
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "pathe";
 
 function findSourceToolRoot(): string {
   const moduleDir = dirname(fileURLToPath(import.meta.url));
   let dir = moduleDir;
-  while (!existsSync(resolve(dir, 'pnpm-workspace.yaml'))) {
+  while (!existsSync(resolve(dir, "pnpm-workspace.yaml"))) {
     const parent = dirname(dir);
     if (parent === dir) {
       // Reached the filesystem root without finding a workspace. Fallback for
       // running the package in isolation: assume this module lives under the
       // package's `src/` or bundled `dist/`.
-      return resolve(moduleDir, '..');
+      return resolve(moduleDir, "..");
     }
     dir = parent;
   }
-  return resolve(dir, 'tools/openapi-codegen');
+  return resolve(dir, "tools/openapi-codegen");
 }
 
 export const TOOL_ROOT = findSourceToolRoot();
-export const CACHE_DIR = resolve(TOOL_ROOT, '.openapi-cache');
-export const OVERLAY_PATH = resolve(TOOL_ROOT, 'specs/overlay.openapi.yaml');
-export const TEMPLATES_DIR = resolve(TOOL_ROOT, 'templates');
-export const LOCK_PATH = resolve(TOOL_ROOT, 'spec.lock');
+export const CACHE_DIR = resolve(TOOL_ROOT, ".openapi-cache");
+export const OVERLAY_PATH = resolve(TOOL_ROOT, "specs/overlay.openapi.yaml");
+export const TEMPLATES_DIR = resolve(TOOL_ROOT, "templates");
+export const LOCK_PATH = resolve(TOOL_ROOT, "spec.lock");
 
 export const SPEC_PATHS = {
-  capi: resolve(CACHE_DIR, 'capi/cdn-v2.openapi.yaml'),
-  mapi: resolve(CACHE_DIR, 'mapi/management-v1.openapi.yaml'),
+  capi: resolve(CACHE_DIR, "capi/cdn-v2.openapi.yaml"),
+  mapi: resolve(CACHE_DIR, "mapi/management-v1.openapi.yaml"),
   overlay: OVERLAY_PATH,
 } as const;

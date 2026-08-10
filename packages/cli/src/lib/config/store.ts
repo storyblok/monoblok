@@ -1,5 +1,5 @@
-import type { ResolvedCliConfig } from './types';
-import { createDefaultResolvedConfig } from './defaults';
+import type { ResolvedCliConfig } from "./types";
+import { createDefaultResolvedConfig } from "./defaults";
 
 // Singleton snapshot that exposes the last resolved config
 let activeConfig: ResolvedCliConfig = createDefaultResolvedConfig();

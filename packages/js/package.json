@@ -1,20 +1,26 @@
 {
   "name": "@storyblok/js",
-  "type": "module",
   "version": "6.3.1",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
-  "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/js"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
   "sideEffects": false,
+  "main": "./dist/storyblok-js.cjs",
+  "module": "./dist/storyblok-js.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -27,12 +33,6 @@
       }
     }
   },
-  "main": "./dist/storyblok-js.cjs",
-  "module": "./dist/storyblok-js.mjs",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "dev": "vp build --watch",
     "build": "vp build",

@@ -9,4 +9,4 @@ export type {
   RichtextFieldValue,
   Story,
   TableFieldValue,
-} from '@storyblok/management-api-client';
+} from "@storyblok/management-api-client";

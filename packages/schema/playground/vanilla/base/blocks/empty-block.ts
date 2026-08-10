@@ -1,3 +1,3 @@
-import { defineBlock } from '@storyblok/schema';
+import { defineBlock } from "@storyblok/schema";
 
-export const emptyBlock = defineBlock({ name: 'empty_block', is_nestable: true, fields: [] });
+export const emptyBlock = defineBlock({ name: "empty_block", is_nestable: true, fields: [] });

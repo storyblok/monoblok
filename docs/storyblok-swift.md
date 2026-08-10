@@ -1,6 +1,7 @@
 # Storyblok Swift Repository
 
-URLSession extension for Storyblok APIs. Supports macOS 13+, iOS 16+, tvOS 16+, watchOS 9+. Single-file implementation.
+URLSession extension for Storyblok APIs. Supports macOS 13+, iOS 16+, tvOS 16+, watchOS 9+.
+Single-file implementation.
 
 ## When to explore storyblok-swift
 

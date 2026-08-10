@@ -1,4 +1,4 @@
-import * as mapi from '../generated/mapi/sdk.gen';
+import * as mapi from "../generated/mapi/sdk.gen";
 import type {
   CreateDatasourceEntryData,
   CreateDatasourceEntryResponses,
@@ -9,39 +9,83 @@ import type {
   PartialUpdateDatasourceEntryResponses,
   ReplaceDatasourceEntryData,
   ReplaceDatasourceEntryResponses,
-} from '../generated/mapi/types.gen';
-import type { ApiResponse, FetchOptions, MapiResourceDeps } from '../client';
-import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from './shared';
+} from "../generated/mapi/types.gen";
+import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
-export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(deps: MapiResourceDeps<DefaultThrowOnError>) {
+export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(
+  deps: MapiResourceDeps<DefaultThrowOnError>,
+) {
   const { client, spaceId, wrapRequest } = deps;
-  const getSpaceId = (path?: SpaceIdPathOverride['path']) => resolveSpaceId(spaceId, path);
+  const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
 
   return {
-    list<ThrowOnError extends boolean = DefaultThrowOnError>(options: { query?: ListDatasourceEntriesData['query']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<DatasourceEntriesIndexResponse, ThrowOnError>> {
+    list<ThrowOnError extends boolean = DefaultThrowOnError>(
+      options: {
+        query?: ListDatasourceEntriesData["query"];
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<DatasourceEntriesIndexResponse, ThrowOnError>> {
       const { query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<DatasourceEntriesIndexResponse, ThrowOnError>(() =>
-        mapi.listDatasourceEntries({ client, path: { space_id: resolvedSpaceId }, query, signal, ...buildCallOptions(client, throwOnError, fetchOptions) }), throwOnError);
+      return wrapRequest<DatasourceEntriesIndexResponse, ThrowOnError>(
+        () =>
+          mapi.listDatasourceEntries({
+            client,
+            path: { space_id: resolvedSpaceId },
+            query,
+            signal,
+            ...buildCallOptions(client, throwOnError, fetchOptions),
+          }),
+        throwOnError,
+      );
     },
 
-    get<ThrowOnError extends boolean = DefaultThrowOnError>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<GetDatasourceEntryResponses[200], ThrowOnError>> {
+    get<ThrowOnError extends boolean = DefaultThrowOnError>(
+      datasourceEntryId: number,
+      options: {
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<GetDatasourceEntryResponses[200], ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<GetDatasourceEntryResponses[200], ThrowOnError>(() =>
-        mapi.getDatasourceEntry({
-          client,
-          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
-          signal,
-          ...buildCallOptions(client, throwOnError, fetchOptions),
-        }), throwOnError);
+      return wrapRequest<GetDatasourceEntryResponses[200], ThrowOnError>(
+        () =>
+          mapi.getDatasourceEntry({
+            client,
+            path: { space_id: resolvedSpaceId, id: datasourceEntryId },
+            signal,
+            ...buildCallOptions(client, throwOnError, fetchOptions),
+          }),
+        throwOnError,
+      );
     },
 
-    create<ThrowOnError extends boolean = DefaultThrowOnError>(options: { body: CreateDatasourceEntryData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride): Promise<ApiResponse<CreateDatasourceEntryResponses[201], ThrowOnError>> {
+    create<ThrowOnError extends boolean = DefaultThrowOnError>(
+      options: {
+        body: CreateDatasourceEntryData["body"];
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride,
+    ): Promise<ApiResponse<CreateDatasourceEntryResponses[201], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<CreateDatasourceEntryResponses[201], ThrowOnError>(() =>
-        mapi.createDatasourceEntry({ client, path: { space_id: resolvedSpaceId }, body, signal, ...buildCallOptions(client, throwOnError, fetchOptions) }), throwOnError);
+      return wrapRequest<CreateDatasourceEntryResponses[201], ThrowOnError>(
+        () =>
+          mapi.createDatasourceEntry({
+            client,
+            path: { space_id: resolvedSpaceId },
+            body,
+            signal,
+            ...buildCallOptions(client, throwOnError, fetchOptions),
+          }),
+        throwOnError,
+      );
     },
 
     /**
@@ -49,53 +93,80 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
      */
     update<ThrowOnError extends boolean = DefaultThrowOnError>(
       datasourceEntryId: number,
-      options: { body: PartialUpdateDatasourceEntryData['body']; query?: { dimension_id?: number }; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+      options: {
+        body: PartialUpdateDatasourceEntryData["body"];
+        query?: { dimension_id?: number };
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride,
     ): Promise<ApiResponse<PartialUpdateDatasourceEntryResponses[204], ThrowOnError>> {
       const { body, query, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<PartialUpdateDatasourceEntryResponses[204], ThrowOnError>(() =>
-        mapi.partialUpdateDatasourceEntry({
-          client,
-          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
-          body,
-          // The update endpoint accepts a `dimension_id` query param to write a
-          // per-dimension child value, but it is not modeled in the OpenAPI spec
-          // yet (generated `PartialUpdateDatasourceEntryData['query']` is
-          // `never`). The generated SDK
-          // forwards `query` verbatim, so pass it through with a localized cast.
-          ...(query ? { query } as { query: never } : {}),
-          signal,
-          ...buildCallOptions(client, throwOnError, fetchOptions),
-        }), throwOnError);
+      return wrapRequest<PartialUpdateDatasourceEntryResponses[204], ThrowOnError>(
+        () =>
+          mapi.partialUpdateDatasourceEntry({
+            client,
+            path: { space_id: resolvedSpaceId, id: datasourceEntryId },
+            body,
+            // The update endpoint accepts a `dimension_id` query param to write a
+            // per-dimension child value, but it is not modeled in the OpenAPI spec
+            // yet (generated `PartialUpdateDatasourceEntryData['query']` is
+            // `never`). The generated SDK
+            // forwards `query` verbatim, so pass it through with a localized cast.
+            ...(query ? ({ query } as { query: never }) : {}),
+            signal,
+            ...buildCallOptions(client, throwOnError, fetchOptions),
+          }),
+        throwOnError,
+      );
     },
     /**
      * PUT /datasource_entries/{id}: full replace.
      */
     replace<ThrowOnError extends boolean = DefaultThrowOnError>(
       datasourceEntryId: number,
-      options: { body: ReplaceDatasourceEntryData['body']; signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride,
+      options: {
+        body: ReplaceDatasourceEntryData["body"];
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride,
     ): Promise<ApiResponse<ReplaceDatasourceEntryResponses[204], ThrowOnError>> {
       const { body, signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<ReplaceDatasourceEntryResponses[204], ThrowOnError>(() =>
-        mapi.replaceDatasourceEntry({
-          client,
-          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
-          body,
-          signal,
-          ...buildCallOptions(client, throwOnError, fetchOptions),
-        }), throwOnError);
+      return wrapRequest<ReplaceDatasourceEntryResponses[204], ThrowOnError>(
+        () =>
+          mapi.replaceDatasourceEntry({
+            client,
+            path: { space_id: resolvedSpaceId, id: datasourceEntryId },
+            body,
+            signal,
+            ...buildCallOptions(client, throwOnError, fetchOptions),
+          }),
+        throwOnError,
+      );
     },
-    delete<ThrowOnError extends boolean = DefaultThrowOnError>(datasourceEntryId: number, options: { signal?: AbortSignal; throwOnError?: ThrowOnError; fetchOptions?: FetchOptions } & SpaceIdPathOverride = {}): Promise<ApiResponse<void, ThrowOnError>> {
+    delete<ThrowOnError extends boolean = DefaultThrowOnError>(
+      datasourceEntryId: number,
+      options: {
+        signal?: AbortSignal;
+        throwOnError?: ThrowOnError;
+        fetchOptions?: FetchOptions;
+      } & SpaceIdPathOverride = {},
+    ): Promise<ApiResponse<void, ThrowOnError>> {
       const { signal, path, throwOnError, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      return wrapRequest<void, ThrowOnError>(() =>
-        mapi.deleteDatasourceEntry({
-          client,
-          path: { space_id: resolvedSpaceId, id: datasourceEntryId },
-          signal,
-          ...buildCallOptions(client, throwOnError, fetchOptions),
-        }), throwOnError);
+      return wrapRequest<void, ThrowOnError>(
+        () =>
+          mapi.deleteDatasourceEntry({
+            client,
+            path: { space_id: resolvedSpaceId, id: datasourceEntryId },
+            signal,
+            ...buildCallOptions(client, throwOnError, fetchOptions),
+          }),
+        throwOnError,
+      );
     },
   };
 }

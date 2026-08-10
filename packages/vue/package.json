@@ -1,19 +1,25 @@
 {
   "name": "@storyblok/vue",
-  "type": "module",
   "version": "11.2.4",
   "description": "SDK to integrate Storyblok into your project using Vue.",
-  "author": "Storyblok",
-  "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/vue#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/vue"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/storyblok-vue.cjs",
+  "module": "./dist/storyblok-vue.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
@@ -26,12 +32,9 @@
       }
     }
   },
-  "main": "./dist/storyblok-vue.cjs",
-  "module": "./dist/storyblok-vue.mjs",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vp build --watch",
     "playground": "pnpm run --filter ./playground/vue dev",
@@ -49,9 +52,6 @@
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
     "test:coverage": "vp test run --coverage"
-  },
-  "peerDependencies": {
-    "vue": ">=3.4"
   },
   "dependencies": {
     "@storyblok/js": "workspace:*",
@@ -77,13 +77,13 @@
     "vue-router": "^4.5.0",
     "vue-tsc": "^2.2.0"
   },
+  "peerDependencies": {
+    "vue": ">=3.4"
+  },
   "release": {
     "branches": [
       "main"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

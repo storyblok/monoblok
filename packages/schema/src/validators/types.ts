@@ -1,5 +1,5 @@
 /** Severity of a {@link ValidationIssue}. `error` fails validation; `warning` does not. */
-export type ValidationSeverity = 'error' | 'warning';
+export type ValidationSeverity = "error" | "warning";
 
 /** A single problem found by a validator. */
 export interface ValidationIssue {

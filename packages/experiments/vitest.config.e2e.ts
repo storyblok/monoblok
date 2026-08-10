@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 /**
  * Vitest config for end-to-end tests that hit the real Storyblok APIs.
@@ -14,8 +14,8 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    include: ['./test/specs/**/*.spec.e2e.ts'],
-    setupFiles: ['./test/setup.e2e.ts'],
+    include: ["./test/specs/**/*.spec.e2e.ts"],
+    setupFiles: ["./test/setup.e2e.ts"],
     globals: true,
     testTimeout: 60_000,
     hookTimeout: 120_000,

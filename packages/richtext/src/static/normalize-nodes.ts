@@ -1,6 +1,10 @@
-import { createKeyGenerator } from '../utils';
-import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
-import type { StoryblokRichTextInput, StoryblokRichTextMarkWithKey, StoryblokRichTextNodeWithKey } from './types';
+import { createKeyGenerator } from "../utils";
+import type { RichTextDoc, RichTextNode } from "../generated/overlay/types.gen";
+import type {
+  StoryblokRichTextInput,
+  StoryblokRichTextMarkWithKey,
+  StoryblokRichTextNodeWithKey,
+} from "./types";
 
 /**
  * Normalizes a Storyblok Richtext input into an array of nodes.
@@ -17,10 +21,7 @@ export function normalizeNodes(
   input: StoryblokRichTextInput,
   includeKeys: true,
 ): StoryblokRichTextNodeWithKey[];
-export function normalizeNodes(
-  input: StoryblokRichTextInput,
-  includeKeys?: false,
-): RichTextNode[];
+export function normalizeNodes(input: StoryblokRichTextInput, includeKeys?: false): RichTextNode[];
 export function normalizeNodes(
   input: StoryblokRichTextInput,
   includeKeys = false,
@@ -36,10 +37,8 @@ export function normalizeNodes(
     return addKeys(input, keyGen);
   }
 
-  const nodes: RichTextNode[]
-    = input.type === 'doc'
-      ? (input as RichTextDoc).content || []
-      : [input as RichTextNode];
+  const nodes: RichTextNode[] =
+    input.type === "doc" ? (input as RichTextDoc).content || [] : [input as RichTextNode];
 
   if (!includeKeys) {
     return nodes;
@@ -59,15 +58,17 @@ function addKeys(
     } as unknown as StoryblokRichTextNodeWithKey;
 
     // Only spread marks when the node type carries them at runtime
-    if ('marks' in node && Array.isArray(node.marks)) {
-      (withKey as unknown as Record<string, unknown>).marks = node.marks.map((mark): StoryblokRichTextMarkWithKey => ({
-        ...mark,
-        _key: generateKey(mark.type),
-      }));
+    if ("marks" in node && Array.isArray(node.marks)) {
+      (withKey as unknown as Record<string, unknown>).marks = node.marks.map(
+        (mark): StoryblokRichTextMarkWithKey => ({
+          ...mark,
+          _key: generateKey(mark.type),
+        }),
+      );
     }
 
     // Recurse into content only when it exists at runtime
-    if ('content' in node && Array.isArray(node.content)) {
+    if ("content" in node && Array.isArray(node.content)) {
       (withKey as unknown as Record<string, unknown>).content = addKeys(
         node.content as RichTextNode[],
         generateKey,

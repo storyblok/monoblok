@@ -1,17 +1,31 @@
-import Storyblok from 'storyblok-js-client';
-import { getMapiClient } from '../../api';
-import { createPipelineBackpressureLock } from '../../utils/backpressure-lock';
-import { handleAPIError } from '../../utils/error/api-error';
-import { getResponseStatus, toError } from '../../utils/error/error';
-import { FetchError } from '../../utils/fetch';
-import { fetchAllPages } from '../../utils/pagination';
-import type { RegionCode } from '../../constants';
-import type { Asset, AssetFolderCreate, AssetFolderUpdate, AssetInternalTagsByName, AssetListQuery, AssetUpdate, AssetUpload, SharedAssetFolderCreate, SharedAssetFolderUpdate, SharedInternalTagCreate } from './types';
+import Storyblok from "storyblok-js-client";
+import { getMapiClient } from "../../api";
+import { createPipelineBackpressureLock } from "../../utils/backpressure-lock";
+import { handleAPIError } from "../../utils/error/api-error";
+import { getResponseStatus, toError } from "../../utils/error/error";
+import { FetchError } from "../../utils/fetch";
+import { fetchAllPages } from "../../utils/pagination";
+import type { RegionCode } from "../../constants";
+import type {
+  Asset,
+  AssetFolderCreate,
+  AssetFolderUpdate,
+  AssetInternalTagsByName,
+  AssetListQuery,
+  AssetUpdate,
+  AssetUpload,
+  SharedAssetFolderCreate,
+  SharedAssetFolderUpdate,
+  SharedInternalTagCreate,
+} from "./types";
 
 /**
  * Fetches a single page of assets from Storyblok Management API.
  */
-export const fetchAssets = async ({ spaceId, params }: {
+export const fetchAssets = async ({
+  spaceId,
+  params,
+}: {
   spaceId: string;
   params?: AssetListQuery;
 }) => {
@@ -28,16 +42,16 @@ export const fetchAssets = async ({ spaceId, params }: {
       },
       throwOnError: true,
     });
-    const assets = (data?.assets || [])
-      .filter((asset): asset is Asset => Boolean(asset?.id && asset?.filename));
+    const assets = (data?.assets || []).filter((asset): asset is Asset =>
+      Boolean(asset?.id && asset?.filename),
+    );
 
     return {
       assets,
       headers: response.headers,
     };
-  }
-  catch (maybeError) {
-    handleAPIError('pull_assets', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_assets", toError(maybeError));
   }
 };
 
@@ -47,26 +61,29 @@ export const fetchAssets = async ({ spaceId, params }: {
  * to resolve the full working set before transferring. Mirrors the
  * pagination in `fetchAssetInternalTagsByName`.
  */
-export const fetchAllSpaceAssetIds = async (spaceId: string, params?: AssetListQuery): Promise<number[]> => {
+export const fetchAllSpaceAssetIds = async (
+  spaceId: string,
+  params?: AssetListQuery,
+): Promise<number[]> => {
   try {
     const client = getMapiClient();
     const assets = await fetchAllPages(
-      (page: number) => client.assets.list({
-        path: { space_id: Number(spaceId) },
-        query: { ...params, page, per_page: 100 },
-        throwOnError: true,
-      }),
-      data => data?.assets ?? [],
+      (page: number) =>
+        client.assets.list({
+          path: { space_id: Number(spaceId) },
+          query: { ...params, page, per_page: 100 },
+          throwOnError: true,
+        }),
+      (data) => data?.assets ?? [],
     );
     return assets.reduce<number[]>((ids, asset) => {
-      if (typeof asset?.id === 'number') {
+      if (typeof asset?.id === "number") {
         ids.push(asset.id);
       }
       return ids;
     }, []);
-  }
-  catch (maybeError) {
-    handleAPIError('transfer_enumerate_assets', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("transfer_enumerate_assets", toError(maybeError));
   }
 };
 
@@ -76,25 +93,27 @@ export const fetchAllSpaceAssetIds = async (spaceId: string, params?: AssetListQ
  * Used by `assets push` to translate source-space tag names carried in pulled
  * sidecars into the target space's tag IDs.
  */
-export const fetchAssetInternalTagsByName = async (spaceId: string): Promise<AssetInternalTagsByName> => {
+export const fetchAssetInternalTagsByName = async (
+  spaceId: string,
+): Promise<AssetInternalTagsByName> => {
   try {
     const client = getMapiClient();
     const tags = await fetchAllPages(
-      (page: number) => client.internalTags.list({
-        path: { space_id: Number(spaceId) },
-        query: { page, by_object_type: 'asset' },
-        throwOnError: true,
-      }),
-      data => data?.internal_tags ?? [],
+      (page: number) =>
+        client.internalTags.list({
+          path: { space_id: Number(spaceId) },
+          query: { page, by_object_type: "asset" },
+          throwOnError: true,
+        }),
+      (data) => data?.internal_tags ?? [],
     );
     return new Map(
       tags
-        .filter(tag => typeof tag?.id === 'number' && typeof tag?.name === 'string')
-        .map(tag => [tag.name, tag.id] as const),
+        .filter((tag) => typeof tag?.id === "number" && typeof tag?.name === "string")
+        .map((tag) => [tag.name, tag.id] as const),
     );
-  }
-  catch (maybeError) {
-    handleAPIError('pull_asset_internal_tags', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_asset_internal_tags", toError(maybeError));
   }
 };
 
@@ -113,17 +132,20 @@ export const createAssetInternalTag = async (
     const client = getMapiClient();
     const { data } = await client.internalTags.create({
       path: { space_id: Number(spaceId) },
-      body: { internal_tag: { name, object_type: 'asset' } },
+      body: { internal_tag: { name, object_type: "asset" } },
       throwOnError: true,
     });
     const tag = data?.internal_tag;
-    if (typeof tag?.id !== 'number' || typeof tag?.name !== 'string') {
-      throw new TypeError('Created internal tag is missing an id or name');
+    if (typeof tag?.id !== "number" || typeof tag?.name !== "string") {
+      throw new TypeError("Created internal tag is missing an id or name");
     }
     return { id: tag.id, name: tag.name };
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_internal_tag', toError(maybeError), `Failed to create internal asset tag "${name}"`);
+  } catch (maybeError) {
+    handleAPIError(
+      "push_asset_internal_tag",
+      toError(maybeError),
+      `Failed to create internal asset tag "${name}"`,
+    );
   }
 };
 
@@ -139,30 +161,27 @@ export const downloadFile = async (filename: string) => {
  * Fetches a signed URL for a private asset from the Content Delivery API.
  */
 export const getSignedAssetUrl = async (
-  filename: Asset['filename'],
+  filename: Asset["filename"],
   assetToken: string,
   region?: RegionCode,
 ): Promise<string> => {
   try {
     const client = new Storyblok({
       accessToken: assetToken,
-      region: region || 'eu',
+      region: region || "eu",
     });
 
-    const response = await client.get('cdn/assets/me', {
+    const response = await client.get("cdn/assets/me", {
       filename,
     });
 
     return response.data.asset.signed_url;
-  }
-  catch (maybeError) {
-    handleAPIError('pull_asset', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_asset", toError(maybeError));
   }
 };
 
-export const fetchAssetFolders = async ({ spaceId }: {
-  spaceId: string;
-}) => {
+export const fetchAssetFolders = async ({ spaceId }: { spaceId: string }) => {
   try {
     const client = getMapiClient();
     const { data, response } = await client.assetFolders.list({
@@ -176,17 +195,19 @@ export const fetchAssetFolders = async ({ spaceId }: {
       asset_folders: data.asset_folders || [],
       headers: response.headers,
     };
-  }
-  catch (maybeError) {
-    handleAPIError('pull_asset_folders', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_asset_folders", toError(maybeError));
   }
 };
 
-export const createAssetFolder = async (folder: AssetFolderCreate, {
-  spaceId,
-}: {
-  spaceId: string;
-}) => {
+export const createAssetFolder = async (
+  folder: AssetFolderCreate,
+  {
+    spaceId,
+  }: {
+    spaceId: string;
+  },
+) => {
   try {
     const client = getMapiClient();
     const { data } = await client.assetFolders.create({
@@ -198,21 +219,24 @@ export const createAssetFolder = async (folder: AssetFolderCreate, {
     });
     const { asset_folder } = data;
     if (!asset_folder) {
-      throw new Error('Failed to create asset folder');
+      throw new Error("Failed to create asset folder");
     }
 
     return asset_folder;
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_folder', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_folder", toError(maybeError));
   }
 };
 
-export const updateAssetFolder = async (id: number, folder: AssetFolderUpdate, {
-  spaceId,
-}: {
-  spaceId: string;
-}) => {
+export const updateAssetFolder = async (
+  id: number,
+  folder: AssetFolderUpdate,
+  {
+    spaceId,
+  }: {
+    spaceId: string;
+  },
+) => {
   try {
     const client = getMapiClient();
     await client.assetFolders.update(id, {
@@ -224,9 +248,8 @@ export const updateAssetFolder = async (id: number, folder: AssetFolderUpdate, {
     });
 
     return folder;
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_folder', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_folder", toError(maybeError));
   }
 };
 
@@ -239,7 +262,9 @@ export const downloadAssetFile = async (
 
   if (asset.is_private) {
     if (!options.assetToken) {
-      throw new Error(`Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`);
+      throw new Error(
+        `Asset ${asset.filename} is private but no asset token was provided. Use --asset-token to provide a token.`,
+      );
     }
     url = await getSignedAssetUrl(asset.filename, options.assetToken, options.region);
   }
@@ -267,23 +292,21 @@ export const updateAsset = async (
 
     if (fileBuffer !== undefined) {
       if (!short_filename) {
-        throw new Error('short_filename is required when replacing an asset file');
+        throw new Error("short_filename is required when replacing an asset file");
       }
       await client.assets.update(id, {
         path: { space_id: Number(spaceId) },
         body: { asset: metadata, short_filename },
         file: fileBuffer,
       });
-    }
-    else {
+    } else {
       await client.assets.update(id, {
         path: { space_id: Number(spaceId) },
         body: { asset: metadata },
       });
     }
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_update', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_update", toError(maybeError));
   }
 };
 
@@ -308,9 +331,8 @@ export const createAsset = async (
       file: fileBuffer,
       path: { space_id: Number(spaceId) },
     });
-  }
-  catch (maybeError) {
-    handleAPIError('push_asset_create', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_asset_create", toError(maybeError));
   }
 };
 
@@ -338,12 +360,11 @@ export const transferAsset = async (
       throwOnError: true,
     });
     return data;
-  }
-  catch (maybeError) {
+  } catch (maybeError) {
     const error = toError(maybeError);
     const status = getResponseStatus(maybeError);
     handleAPIError(
-      'transfer_asset',
+      "transfer_asset",
       error,
       status === 403
         ? `Not authorized to transfer into folder ${folderId}. Make sure it exists in the shared asset library and that this space has write access to it.`
@@ -354,7 +375,7 @@ export const transferAsset = async (
 
 export interface TransferResult {
   assetId: number;
-  status: 'transferred' | 'failed';
+  status: "transferred" | "failed";
   filename?: string;
   reason?: string;
 }
@@ -391,24 +412,24 @@ export const transferAssets = async (
 
   for (let start = 0; start < assetIds.length; start += TRANSFER_CHUNK_SIZE) {
     const chunk = assetIds.slice(start, start + TRANSFER_CHUNK_SIZE);
-    const chunkResults = await Promise.all(chunk.map(async (assetId): Promise<TransferResult> => {
-      await lock.acquire();
-      try {
-        const asset = await transferAsset(spaceId, assetId, folderId);
-        callbacks.onSuccess?.({ assetId, filename: asset.filename });
-        return { assetId, status: 'transferred', filename: asset.filename };
-      }
-      catch (maybeError) {
-        const error = toError(maybeError);
-        callbacks.onError?.(error, assetId);
-        return { assetId, status: 'failed', reason: error.message };
-      }
-      finally {
-        lock.release();
-        completed += 1;
-        callbacks.onProgress?.(completed, assetIds.length);
-      }
-    }));
+    const chunkResults = await Promise.all(
+      chunk.map(async (assetId): Promise<TransferResult> => {
+        await lock.acquire();
+        try {
+          const asset = await transferAsset(spaceId, assetId, folderId);
+          callbacks.onSuccess?.({ assetId, filename: asset.filename });
+          return { assetId, status: "transferred", filename: asset.filename };
+        } catch (maybeError) {
+          const error = toError(maybeError);
+          callbacks.onError?.(error, assetId);
+          return { assetId, status: "failed", reason: error.message };
+        } finally {
+          lock.release();
+          completed += 1;
+          callbacks.onProgress?.(completed, assetIds.length);
+        }
+      }),
+    );
     results.push(...chunkResults);
   }
 
@@ -419,7 +440,11 @@ export const transferAssets = async (
  * Fetches a page of shared (library) assets. `libraryId` is passed as the
  * `in_folder` filter so only assets in that library are returned.
  */
-export const fetchSharedAssets = async ({ spaceId, libraryId, params }: {
+export const fetchSharedAssets = async ({
+  spaceId,
+  libraryId,
+  params,
+}: {
   spaceId: string;
   libraryId: number;
   params?: AssetListQuery;
@@ -428,16 +453,21 @@ export const fetchSharedAssets = async ({ spaceId, libraryId, params }: {
     const client = getMapiClient();
     const { data, response } = await client.sharedAssets.list({
       path: { space_id: Number(spaceId) },
-      query: { ...params, in_folder: libraryId, per_page: params?.per_page || 100, page: params?.page || 1 },
+      query: {
+        ...params,
+        in_folder: libraryId,
+        per_page: params?.per_page || 100,
+        page: params?.page || 1,
+      },
       throwOnError: true,
     });
-    const assets = (data?.assets || [])
-      .filter((asset): asset is Asset => Boolean(asset?.id && asset?.filename));
+    const assets = (data?.assets || []).filter((asset): asset is Asset =>
+      Boolean(asset?.id && asset?.filename),
+    );
 
     return { assets, headers: response.headers };
-  }
-  catch (maybeError) {
-    handleAPIError('pull_shared_assets', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_shared_assets", toError(maybeError));
   }
 };
 
@@ -445,7 +475,10 @@ export const fetchSharedAssets = async ({ spaceId, libraryId, params }: {
  * Fetches the shared asset folders belonging to a library: the library root
  * and all of its descendants.
  */
-export const fetchSharedAssetFolders = async ({ spaceId, libraryId }: {
+export const fetchSharedAssetFolders = async ({
+  spaceId,
+  libraryId,
+}: {
   spaceId: string;
   libraryId: number;
 }) => {
@@ -477,18 +510,20 @@ export const fetchSharedAssetFolders = async ({ spaceId, libraryId }: {
         }
       }
     }
-    return { asset_folders: all.filter(folder => keep.has(folder.id)) };
-  }
-  catch (maybeError) {
-    handleAPIError('pull_shared_asset_folders', toError(maybeError));
+    return { asset_folders: all.filter((folder) => keep.has(folder.id)) };
+  } catch (maybeError) {
+    handleAPIError("pull_shared_asset_folders", toError(maybeError));
   }
 };
 
-export const createSharedAssetFolder = async (folder: SharedAssetFolderCreate, {
-  spaceId,
-}: {
-  spaceId: string;
-}) => {
+export const createSharedAssetFolder = async (
+  folder: SharedAssetFolderCreate,
+  {
+    spaceId,
+  }: {
+    spaceId: string;
+  },
+) => {
   try {
     const client = getMapiClient();
     const { data } = await client.sharedAssetFolders.create({
@@ -497,20 +532,23 @@ export const createSharedAssetFolder = async (folder: SharedAssetFolderCreate, {
       throwOnError: true,
     });
     if (!data?.shared_asset_folder) {
-      throw new Error('Failed to create shared asset folder');
+      throw new Error("Failed to create shared asset folder");
     }
     return data.shared_asset_folder;
-  }
-  catch (maybeError) {
-    handleAPIError('push_shared_asset_folder', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_shared_asset_folder", toError(maybeError));
   }
 };
 
-export const updateSharedAssetFolder = async (id: number, folder: SharedAssetFolderUpdate, {
-  spaceId,
-}: {
-  spaceId: string;
-}) => {
+export const updateSharedAssetFolder = async (
+  id: number,
+  folder: SharedAssetFolderUpdate,
+  {
+    spaceId,
+  }: {
+    spaceId: string;
+  },
+) => {
   try {
     await getMapiClient().sharedAssetFolders.update(id, {
       path: { space_id: Number(spaceId) },
@@ -518,9 +556,8 @@ export const updateSharedAssetFolder = async (id: number, folder: SharedAssetFol
       throwOnError: true,
     });
     return folder;
-  }
-  catch (maybeError) {
-    handleAPIError('push_shared_asset_folder', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_shared_asset_folder", toError(maybeError));
   }
 };
 
@@ -534,7 +571,7 @@ export const getSharedAssetFolder = async (folderId: number, { spaceId }: { spac
     path: { space_id: Number(spaceId) },
   });
   if (!response.ok && response.status !== 404) {
-    handleAPIError('pull_shared_asset_folder', new FetchError(response.statusText, response));
+    handleAPIError("pull_shared_asset_folder", new FetchError(response.statusText, response));
   }
   return data?.shared_asset_folder;
 };
@@ -544,7 +581,7 @@ export const getSharedAsset = async (assetId: number, { spaceId }: { spaceId: st
     path: { space_id: Number(spaceId) },
   });
   if (!response.ok && response.status !== 404) {
-    handleAPIError('pull_shared_asset', new FetchError(response.statusText, response));
+    handleAPIError("pull_shared_asset", new FetchError(response.statusText, response));
   }
   return data;
 };
@@ -564,9 +601,8 @@ export const createSharedAsset = async (
       file: fileBuffer,
       path: { space_id: Number(spaceId) },
     });
-  }
-  catch (maybeError) {
-    handleAPIError('push_shared_asset_create', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_shared_asset_create", toError(maybeError));
   }
 };
 
@@ -580,47 +616,51 @@ export const updateSharedAsset = async (
     const { short_filename, ...metadata } = asset;
     if (fileBuffer !== undefined) {
       if (!short_filename) {
-        throw new Error('short_filename is required when replacing an asset file');
+        throw new Error("short_filename is required when replacing an asset file");
       }
       await client.sharedAssets.update(id, {
         path: { space_id: Number(spaceId) },
         body: { asset: metadata, short_filename },
         file: fileBuffer,
       });
-    }
-    else {
+    } else {
       await client.sharedAssets.update(id, {
         path: { space_id: Number(spaceId) },
         body: { asset: metadata },
       });
     }
-  }
-  catch (maybeError) {
-    handleAPIError('push_shared_asset_update', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_shared_asset_update", toError(maybeError));
   }
 };
 
-export const fetchSharedInternalTags = async ({ spaceId, libraryId }: {
+export const fetchSharedInternalTags = async ({
+  spaceId,
+  libraryId,
+}: {
   spaceId: string;
   libraryId: number;
 }) => {
   try {
     const client = getMapiClient();
     return await fetchAllPages(
-      (page: number) => client.sharedInternalTags.list({
-        path: { space_id: Number(spaceId) },
-        query: { asset_folder_id: libraryId, page },
-        throwOnError: true,
-      }),
-      data => data?.internal_tags ?? [],
+      (page: number) =>
+        client.sharedInternalTags.list({
+          path: { space_id: Number(spaceId) },
+          query: { asset_folder_id: libraryId, page },
+          throwOnError: true,
+        }),
+      (data) => data?.internal_tags ?? [],
     );
-  }
-  catch (maybeError) {
-    handleAPIError('pull_shared_internal_tags', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("pull_shared_internal_tags", toError(maybeError));
   }
 };
 
-export const createSharedInternalTag = async (tag: SharedInternalTagCreate, { spaceId }: { spaceId: string }) => {
+export const createSharedInternalTag = async (
+  tag: SharedInternalTagCreate,
+  { spaceId }: { spaceId: string },
+) => {
   try {
     const { data } = await getMapiClient().sharedInternalTags.create({
       path: { space_id: Number(spaceId) },
@@ -628,8 +668,7 @@ export const createSharedInternalTag = async (tag: SharedInternalTagCreate, { sp
       throwOnError: true,
     });
     return data?.internal_tag;
-  }
-  catch (maybeError) {
-    handleAPIError('push_shared_internal_tag', toError(maybeError));
+  } catch (maybeError) {
+    handleAPIError("push_shared_internal_tag", toError(maybeError));
   }
 };

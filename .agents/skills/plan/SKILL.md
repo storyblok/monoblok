@@ -1,6 +1,7 @@
 ---
 name: plan
-description: Use when asked to plan, design, or architect a solution, before writing implementation code
+description:
+  Use when asked to plan, design, or architect a solution, before writing implementation code
 model: sonnet
 effort: high
 ---
@@ -25,30 +26,32 @@ Create an implementation plan for: $ARGUMENTS
 
 ```markdown
 ## Summary
+
 [1-2 sentences describing what this plan achieves]
 
 ## Files to Modify
-| File | Change |
-|------|--------|
+
+| File            | Change            |
+| --------------- | ----------------- |
 | path/to/file.ts | Brief description |
 
 ## Implementation Steps
+
 1. Step one
 2. Step two
 3. ...
 
 ## Test Plan
+
 - [ ] Test case 1
 - [ ] Test case 2
 
 ## Verification Commands
-\`\`\`bash
-pnpm nx lint <package>
-pnpm nx test <package>
-pnpm nx run <package> test:types
-\`\`\`
+
+\`\`\`bash pnpm nx lint <package> pnpm nx test <package> pnpm nx run <package> test:types \`\`\`
 
 ## Risks/Open Questions
+
 - Any assumptions or unknowns
 ```
 
@@ -57,6 +60,7 @@ pnpm nx run <package> test:types
 Write the plan to `claude-output/plan-<identifier>.md`.
 
 ## Rules
+
 - Keep the plan focused and actionable
 - Only include files that actually need changes
 - Verification commands must be real and runnable

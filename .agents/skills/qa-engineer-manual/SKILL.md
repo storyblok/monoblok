@@ -1,11 +1,15 @@
 ---
 name: qa-engineer-manual
-description: Use when the user requests manual testing, QA, or reproduction of a bug report for a package against a real Storyblok space
+description:
+  Use when the user requests manual testing, QA, or reproduction of a bug report for a package
+  against a real Storyblok space
 ---
 
 # QA Engineer for Manual Testing
 
-Use this skill when the user requests manual testing of features. We try to have good unit test coverage too, so focus on testing features that are heavily dependent on the usage and behavior of the Storyblok API.
+Use this skill when the user requests manual testing of features. We try to have good unit test
+coverage too, so focus on testing features that are heavily dependent on the usage and behavior of
+the Storyblok API.
 
 - Create and execute plans for manually testing and validating the requested feature.
 - Seed Storyblok QA spaces with reproducible test scenarios.
@@ -21,22 +25,31 @@ Use this skill when the user requests manual testing of features. We try to have
    - Test all happy paths.
    - Test error scenarios.
    - Consider possible edge cases.
-3. If the feature holds state, keeps working after it has responded, or ships to more than one runtime, load [Runtime and lifetime checks](./runtime-checklist.md).
+3. If the feature holds state, keeps working after it has responded, or ships to more than one
+   runtime, load [Runtime and lifetime checks](./runtime-checklist.md).
 
 ## Seeding
 
-You seed Storyblok QA spaces with predefined test scenarios. Packages might define scenario data in `./packages/PACKAGE_NAME/test/scenarios/`.
+You seed Storyblok QA spaces with predefined test scenarios. Packages might define scenario data in
+`./packages/PACKAGE_NAME/test/scenarios/`.
 
-- **Every seed wipes the space first.** `seed-scenario.sh` runs `cleanup-remote.sh` before staging unless you pass `--no-clean`, so re-seeding deletes whatever the previous seed created. If data you seeded earlier looks like it vanished, suspect a later re-seed or a failed push, not the space resetting itself.
-- **Trust the seed's exit status, not just its log.** The seed now verifies each staged resource actually landed remotely and exits non-zero with a `Verification FAILED` message when a push reports success but creates nothing, so check the exit status.
+- **Every seed wipes the space first.** `seed-scenario.sh` runs `cleanup-remote.sh` before staging
+  unless you pass `--no-clean`, so re-seeding deletes whatever the previous seed created. If data
+  you seeded earlier looks like it vanished, suspect a later re-seed or a failed push, not the space
+  resetting itself.
+- **Trust the seed's exit status, not just its log.** The seed now verifies each staged resource
+  actually landed remotely and exits non-zero with a `Verification FAILED` message when a push
+  reports success but creates nothing, so check the exit status.
 
 ### Prerequisites
 
 - Storyblok CLI built: `pnpm nx build storyblok`
 - `.env.qa-engineer-manual` file in repo root with `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID`
 
-> [!NOTE]
-> The seed resolves the CLI and the `.storyblok` staging directory from `git rev-parse --show-toplevel`, i.e. the repo of your current working directory. To exercise changes in a worktree, build the CLI in that worktree and run the seed from inside it; otherwise it falls back to the main checkout's `dist`.
+> [!NOTE] The seed resolves the CLI and the `.storyblok` staging directory from
+> `git rev-parse --show-toplevel`, i.e. the repo of your current working directory. To exercise
+> changes in a worktree, build the CLI in that worktree and run the seed from inside it; otherwise
+> it falls back to the main checkout's `dist`.
 
 ```bash
 # .env.qa-engineer-manual
@@ -44,7 +57,9 @@ STORYBLOK_TOKEN=your_personal_access_token
 STORYBLOK_SPACE_ID=your_space_id
 ```
 
-`seed-scenario.sh` logs the CLI in for you. When you drive the CLI **directly** (e.g. running `schema init`/`push` against the space without seeding), log in first with the same token — the CLI reads its session from `storyblok login`, not from the env vars:
+`seed-scenario.sh` logs the CLI in for you. When you drive the CLI **directly** (e.g. running
+`schema init`/`push` against the space without seeding), log in first with the same token — the CLI
+reads its session from `storyblok login`, not from the env vars:
 
 ```bash
 set -a && source ./.env.qa-engineer-manual && set +a
@@ -53,12 +68,12 @@ node ./packages/cli/dist/index.mjs login --token "$STORYBLOK_TOKEN" --region eu
 
 ### Built-in scenarios
 
-| Scenario | Use when | Space state after seed |
-|---|---|---|
-| `has-default-components` | Never manually — pushed automatically as a dependency before every scenario | 4 components (page, blog, hero, cta) |
-| `has-stories` | Testing pull/push with realistic cross-references, asset references, nested blocks | 4 components, 10 stories, 2 assets, 1 datasource |
-| `has-many-stories` | Load/bulk testing with many stories | 4 components, 150 stories |
-| `has-many-assets` | Load/bulk testing with many assets | 4 components, 150 assets |
+| Scenario                 | Use when                                                                           | Space state after seed                           |
+| ------------------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `has-default-components` | Never manually — pushed automatically as a dependency before every scenario        | 4 components (page, blog, hero, cta)             |
+| `has-stories`            | Testing pull/push with realistic cross-references, asset references, nested blocks | 4 components, 10 stories, 2 assets, 1 datasource |
+| `has-many-stories`       | Load/bulk testing with many stories                                                | 4 components, 150 stories                        |
+| `has-many-assets`        | Load/bulk testing with many assets                                                 | 4 components, 150 assets                         |
 
 ### Seed a scenario
 
@@ -67,13 +82,18 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories
 ```
 
-Seeding wipes the space first, then pushes the scenario data (pass `--no-clean` to prevent wiping). The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from `.env.qa-engineer-manual`). You can override it with `--space <id>`.
+Seeding wipes the space first, then pushes the scenario data (pass `--no-clean` to prevent wiping).
+The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from
+`.env.qa-engineer-manual`). You can override it with `--space <id>`.
 
-Packages might define their own scenarios in `./packages/PACKAGE_NAME/test/scenarios`. You can find additional information about these scenarios in `./packages/PACKAGE_NAME/test/scenarios/SCENARIOS.md`.
+Packages might define their own scenarios in `./packages/PACKAGE_NAME/test/scenarios`. You can find
+additional information about these scenarios in
+`./packages/PACKAGE_NAME/test/scenarios/SCENARIOS.md`.
 
 ### Seed an external scenario (`--scenario-dir`)
 
-Use `--scenario-dir` to point at a scenarios directory outside of qa-engineer-manual — for example, scenarios defined by a package in its `./test/scenarios` directory.
+Use `--scenario-dir` to point at a scenarios directory outside of qa-engineer-manual — for example,
+scenarios defined by a package in its `./test/scenarios` directory.
 
 ```bash
 bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
@@ -81,7 +101,9 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario-dir packages/migrations/test/scenarios
 ```
 
-External scenarios follow the same structure as built-in ones. Default components from qa-engineer-manual are always staged first, then scenario-local components (if any) override/extend them.
+External scenarios follow the same structure as built-in ones. Default components from
+qa-engineer-manual are always staged first, then scenario-local components (if any) override/extend
+them.
 
 ### Skip specific resource types
 
@@ -95,7 +117,8 @@ Flags: `--skip-components`, `--skip-datasources`, `--skip-assets`, `--skip-stori
 
 ### Seed without cleaning (`--no-clean`)
 
-By default, seeding wipes the space first. Use `--no-clean` to push additively — useful for layering multiple scenarios or adding data to an existing space.
+By default, seeding wipes the space first. Use `--no-clean` to push additively — useful for layering
+multiple scenarios or adding data to an existing space.
 
 ```bash
 bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
@@ -112,23 +135,40 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh
 ```
 
-Deletes all stories, components (except the default `page` component), assets, asset folders, and internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with `--space <id>`). This runs automatically before every seed, but can also be used standalone.
+Deletes all stories, components (except the default `page` component), assets, asset folders, and
+internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with
+`--space <id>`). This runs automatically before every seed, but can also be used standalone.
 
 ### Shared asset libraries
 
-Shared (org-level) asset libraries are global: they belong to the organization and can be shared across spaces, so a full wipe is destructive. Cleanup is scoped by folder membership, not by name. `--shared --library <libraryId>` deletes every shared asset in the library's folder tree, every internal tag scoped to the library, and every child folder. It never deletes the library root folder or any resource outside the given library. Folder scoping is deliberate: transferred assets keep their original names, so a `qa-` name prefix would miss them.
+Shared (org-level) asset libraries are global: they belong to the organization and can be shared
+across spaces, so a full wipe is destructive. Cleanup is scoped by folder membership, not by name.
+`--shared --library <libraryId>` deletes every shared asset in the library's folder tree, every
+internal tag scoped to the library, and every child folder. It never deletes the library root folder
+or any resource outside the given library. Folder scoping is deliberate: transferred assets keep
+their original names, so a `qa-` name prefix would miss them.
 
-Because this removes all content inside the library regardless of name, only run it against a dedicated QA library, never a shared library that holds real org content.
+Because this removes all content inside the library regardless of name, only run it against a
+dedicated QA library, never a shared library that holds real org content.
 
 ```bash
 bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh --shared --library <libraryId>
 ```
 
-Inspect a library first with `list.sh --resource shared-assets|shared-folders|shared-tags`. Package guides (for example `packages/cli/test/GUIDE.md`) describe the CLI push/pull workflow against libraries.
+Inspect a library first with `list.sh --resource shared-assets|shared-folders|shared-tags`. Package
+guides (for example `packages/cli/test/GUIDE.md`) describe the CLI push/pull workflow against
+libraries.
 
-`list.sh --resource shared-folders` only shows libraries the given `--space` already has access to; an empty result doesn't mean none exists. Check the org endpoint instead: `curl https://mapi.storyblok.com/v1/orgs/<orgId>/shared_asset_folders -H "Authorization: $STORYBLOK_TOKEN"`. To grant your QA space access, `PUT` to that same endpoint with `asset_folder_access` — it replaces the whole list, so include existing entries too or you'll revoke them.
+`list.sh --resource shared-folders` only shows libraries the given `--space` already has access to;
+an empty result doesn't mean none exists. Check the org endpoint instead:
+`curl https://mapi.storyblok.com/v1/orgs/<orgId>/shared_asset_folders -H "Authorization: $STORYBLOK_TOKEN"`.
+To grant your QA space access, `PUT` to that same endpoint with `asset_folder_access` — it replaces
+the whole list, so include existing entries too or you'll revoke them.
 
-Before reusing a library, list its contents (`list.sh --resource shared-assets --library <libraryId>`). If it looks like production data, stop and tell the user instead of writing to or cleaning it. If it looks like test fixtures, it's fine to use.
+Before reusing a library, list its contents
+(`list.sh --resource shared-assets --library <libraryId>`). If it looks like production data, stop
+and tell the user instead of writing to or cleaning it. If it looks like test fixtures, it's fine to
+use.
 
 ### Scenario structure
 
@@ -148,48 +188,71 @@ scenarios/
     generate.sh         # Optional: dynamic generator (replaces static files)
 ```
 
-- **Components**: Always merged with qa-engineer-manual's `has-default-components` (page, blog, hero, cta). Scenario-local components override defaults with the same filename.
-- **generate.sh**: If present, runs instead of copying static files. Receives `staging_dir` and `fake_id` as arguments.
-- **All component JSON files** must include `"component_group_uuid": null` to satisfy the CLI's `findComponentSchemas` check.
+- **Components**: Always merged with qa-engineer-manual's `has-default-components` (page, blog,
+  hero, cta). Scenario-local components override defaults with the same filename.
+- **generate.sh**: If present, runs instead of copying static files. Receives `staging_dir` and
+  `fake_id` as arguments.
+- **All component JSON files** must include `"component_group_uuid": null` to satisfy the CLI's
+  `findComponentSchemas` check.
 
 ## Perform tests
 
-**Tests MUST run sequentially, one at a time.** Many tests depend on a specific scenario being seeded in the QA space. Running tests in parallel causes race conditions where one test re-seeds the space while another is mid-flight, leading to false failures. Execute each test group fully before moving to the next.
+**Tests MUST run sequentially, one at a time.** Many tests depend on a specific scenario being
+seeded in the QA space. Running tests in parallel causes race conditions where one test re-seeds the
+space while another is mid-flight, leading to false failures. Execute each test group fully before
+moving to the next.
 
-- Clean up local artifacts with `./scripts/cleanup-local.sh`. Don't hesitate to clean up between tests to start with a clean slate.
-- Place test scripts in `./.claude/tmp/`. Import from the built package: `../../packages/PACKAGE_NAME/dist/index.mjs`.
-- Export env vars before running: `set -a && source ./.env.qa-engineer-manual && set +a && node ./.claude/tmp/test-name.mjs`.
-- The stories `cdn/links` endpoint does NOT return `content` — `story.content?.component` will be `undefined` in `cdn/links` responses. Fetch individual stories for full content.
-- When using two spaces (for example, mapping references between source and target), use `STORYBLOK_SPACE_ID_TARGET` for the target (loaded via `.env.qa-engineer-manual`).
+- Clean up local artifacts with `./scripts/cleanup-local.sh`. Don't hesitate to clean up between
+  tests to start with a clean slate.
+- Place test scripts in `./.claude/tmp/`. Import from the built package:
+  `../../packages/PACKAGE_NAME/dist/index.mjs`.
+- Export env vars before running:
+  `set -a && source ./.env.qa-engineer-manual && set +a && node ./.claude/tmp/test-name.mjs`.
+- The stories `cdn/links` endpoint does NOT return `content` — `story.content?.component` will be
+  `undefined` in `cdn/links` responses. Fetch individual stories for full content.
+- When using two spaces (for example, mapping references between source and target), use
+  `STORYBLOK_SPACE_ID_TARGET` for the target (loaded via `.env.qa-engineer-manual`).
 
 ## Helper scripts
 
-These scripts provide inspection and cleanup during manual tests. Each script loads `.env.qa-engineer-manual` automatically.
-Paths are relative to this `SKILL.md`.
+These scripts provide inspection and cleanup during manual tests. Each script loads
+`.env.qa-engineer-manual` automatically. Paths are relative to this `SKILL.md`.
 
-| Script | Purpose |
-| --- | --- |
-| `./scripts/cleanup-local.sh` | Deletes local QA artifacts in `.storyblok/`. |
+| Script                        | Purpose                                                                                                                                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./scripts/cleanup-local.sh`  | Deletes local QA artifacts in `.storyblok/`.                                                                                                                                                                                                                                                      |
 | `./scripts/cleanup-remote.sh` | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. Add `--shared --library <id>` to instead delete all shared resources in the given org library's folder tree, never the root (see "Shared asset libraries" below). |
-| `./scripts/list.sh` | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. For org libraries: `--resource shared-assets\|shared-tags --library <id>` or `--resource shared-folders`. |
-| `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`. |
-| `./scripts/generate-asset.sh` | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path. |
+| `./scripts/list.sh`           | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. For org libraries: `--resource shared-assets\|shared-tags --library <id>` or `--resource shared-folders`.                                                              |
+| `./scripts/generate-story.sh` | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`.                                                                                                                                     |
+| `./scripts/generate-asset.sh` | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path.                                                                                                             |
 
 ## Troubleshooting
 
-- Load the `STORYBLOK_SPACE_ID`, `STORYBLOK_SPACE_ID_TARGET`, `STORYBLOK_ASSET_TOKEN`, `STORYBLOK_ASSET_TOKEN_TARGET`, `STORYBLOK_TOKEN`, `STORYBLOK_PREVIEW_TOKEN`, and `STORYBLOK_PREVIEW_TOKEN_TARGET` environment variables by running `source ./.env.qa-engineer-manual` (do not attempt to read this file).
-- When running `.mjs` test files, env vars must be **exported** (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to `node` subprocesses.
+- Load the `STORYBLOK_SPACE_ID`, `STORYBLOK_SPACE_ID_TARGET`, `STORYBLOK_ASSET_TOKEN`,
+  `STORYBLOK_ASSET_TOKEN_TARGET`, `STORYBLOK_TOKEN`, `STORYBLOK_PREVIEW_TOKEN`, and
+  `STORYBLOK_PREVIEW_TOKEN_TARGET` environment variables by running
+  `source ./.env.qa-engineer-manual` (do not attempt to read this file).
+- When running `.mjs` test files, env vars must be **exported**
+  (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to
+  `node` subprocesses.
 
 **MAPI:**
-- **Auth uses `personalAccessToken`** — The MAPI client config property is `personalAccessToken` (or `oauthToken` for OAuth).
+
+- **Auth uses `personalAccessToken`** — The MAPI client config property is `personalAccessToken` (or
+  `oauthToken` for OAuth).
   ```js
-  createManagementApiClient({ personalAccessToken: process.env.STORYBLOK_TOKEN, spaceId })
+  createManagementApiClient({ personalAccessToken: process.env.STORYBLOK_TOKEN, spaceId });
   ```
-- **Assets list does NOT support `sort_by`** — passing `sort_by: 'id:asc'` returns HTTP 422 and `data: undefined`.
-- **Story `content.body` is not always an array** — `body` can be a string or other type depending on the component schema. Never spread it directly (e.g., `...content.body`). Use `Array.isArray(content.body)` or walk content recursively to find nested blocks.
+- **Assets list does NOT support `sort_by`** — passing `sort_by: 'id:asc'` returns HTTP 422 and
+  `data: undefined`.
+- **Story `content.body` is not always an array** — `body` can be a string or other type depending
+  on the component schema. Never spread it directly (e.g., `...content.body`). Use
+  `Array.isArray(content.body)` or walk content recursively to find nested blocks.
 
 **CLI:**
-- **`--asset-token` requires an `asset`-type API key** — Only a token with access type `asset` works. Use `STORYBLOK_ASSET_TOKEN` or `STORYBLOK_ASSET_TOKEN_TARGET` environment variables.
+
+- **`--asset-token` requires an `asset`-type API key** — Only a token with access type `asset`
+  works. Use `STORYBLOK_ASSET_TOKEN` or `STORYBLOK_ASSET_TOKEN_TARGET` environment variables.
 
 ## Output
 

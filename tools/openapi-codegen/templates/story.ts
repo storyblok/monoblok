@@ -1,7 +1,7 @@
-import type { CapiStory as CapiStoryGenerated } from './_sources';
-import type { Override, Prettify } from './_utils';
-import type { Block, RootBlock } from './block';
-import type { BlockContent } from './field';
+import type { CapiStory as CapiStoryGenerated } from "./_sources";
+import type { Override, Prettify } from "./_utils";
+import type { Block, RootBlock } from "./block";
+import type { BlockContent } from "./field";
 
 /**
  * Registry of all blocks, threaded through to resolve nested `bloks` fields.
@@ -24,9 +24,13 @@ export type Story<
   // caller passed root block(s) directly → use them as the content type
   [TBlockOrBlocks] extends [RootBlock]
     ? CapiStoryWithSchemaContent<TBlockOrBlocks, TBlocks, TFieldPlugins>
-    // caller passed the full block union → derive root blocks, thread the union as the registry
-    : [TBlocks] extends [NoBlocks]
-        ? CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlockOrBlocks, TFieldPlugins>
-      // caller passed both → honour the explicit registry
-        : CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlocks, TFieldPlugins>
+    : // caller passed the full block union → derive root blocks, thread the union as the registry
+      [TBlocks] extends [NoBlocks]
+      ? CapiStoryWithSchemaContent<
+          Extract<TBlockOrBlocks, RootBlock>,
+          TBlockOrBlocks,
+          TFieldPlugins
+        >
+      : // caller passed both → honour the explicit registry
+        CapiStoryWithSchemaContent<Extract<TBlockOrBlocks, RootBlock>, TBlocks, TFieldPlugins>
 >;

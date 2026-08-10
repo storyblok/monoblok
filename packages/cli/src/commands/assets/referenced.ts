@@ -1,5 +1,5 @@
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'pathe';
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "pathe";
 
 interface AssetLike {
   fieldtype?: string;
@@ -11,16 +11,17 @@ interface AssetLike {
  * the parsed objects. Returns an empty array when the directory does not exist.
  * Unparseable files are skipped.
  */
-export async function readLocalStoryContents(directoryPath: string): Promise<{ content?: unknown }[]> {
+export async function readLocalStoryContents(
+  directoryPath: string,
+): Promise<{ content?: unknown }[]> {
   const stories: { content?: unknown }[] = [];
 
   const walk = async (dir: string): Promise<void> => {
     let entries;
     try {
       entries = await readdir(dir, { withFileTypes: true });
-    }
-    catch (maybeError) {
-      if ((maybeError as NodeJS.ErrnoException).code === 'ENOENT') {
+    } catch (maybeError) {
+      if ((maybeError as NodeJS.ErrnoException).code === "ENOENT") {
         return;
       }
       throw maybeError;
@@ -29,12 +30,10 @@ export async function readLocalStoryContents(directoryPath: string): Promise<{ c
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
-      }
-      else if (entry.name.endsWith('.json')) {
+      } else if (entry.name.endsWith(".json")) {
         try {
-          stories.push(JSON.parse(await readFile(full, 'utf-8')) as { content?: unknown });
-        }
-        catch {
+          stories.push(JSON.parse(await readFile(full, "utf-8")) as { content?: unknown });
+        } catch {
           // Skip files that are not valid story JSON.
         }
       }
@@ -67,11 +66,11 @@ export function collectReferencedAssetIds(stories: { content?: unknown }[]): Set
       node.forEach(visit);
       return;
     }
-    if (!node || typeof node !== 'object') {
+    if (!node || typeof node !== "object") {
       return;
     }
     const obj = node as AssetLike & Record<string, unknown>;
-    if (obj.fieldtype === 'asset' && typeof obj.id === 'number') {
+    if (obj.fieldtype === "asset" && typeof obj.id === "number") {
       ids.add(obj.id);
     }
     for (const value of Object.values(obj)) {

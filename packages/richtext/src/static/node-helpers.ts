@@ -1,11 +1,11 @@
-import type { RichTextMark, RichTextNode } from '../generated/overlay/types.gen';
-import { deepEqual } from '../utils';
+import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
+import { deepEqual } from "../utils";
 
 // ============================================================================
 // Link Mark Helpers
 // ============================================================================
 
-export type LinkMark = Extract<RichTextMark, { type: 'link' }>;
+export type LinkMark = Extract<RichTextMark, { type: "link" }>;
 
 /**
  * Gets the link mark from a text node, or null if not present.
@@ -13,14 +13,14 @@ export type LinkMark = Extract<RichTextMark, { type: 'link' }>;
  * @returns The link mark if found, null otherwise
  */
 export function getTextNodeLinkMark(node: RichTextNode): LinkMark | null {
-  if (node.type !== 'text') {
+  if (node.type !== "text") {
     return null;
   }
   if (!node.marks) {
     return null;
   }
   for (const mark of node.marks) {
-    if (mark.type === 'link') {
+    if (mark.type === "link") {
       return mark as LinkMark;
     }
   }
@@ -49,10 +49,10 @@ export function areLinkMarksEqual(markA: LinkMark | null, markB: LinkMark | null
  * @returns Array of marks excluding the link mark
  */
 export function getInnerMarks(node: RichTextNode): RichTextMark[] {
-  if (node.type !== 'text') {
+  if (node.type !== "text") {
     return [];
   }
-  return node.marks?.filter(m => m.type !== 'link') ?? [];
+  return node.marks?.filter((m) => m.type !== "link") ?? [];
 }
 
 /**
@@ -64,7 +64,9 @@ export function getInnerMarks(node: RichTextNode): RichTextMark[] {
  * @param children - Array of child nodes to group
  * @returns Array of node groups for rendering
  */
-export function groupLinkNodes<T extends RichTextNode>(children: T[]): Array<{
+export function groupLinkNodes<T extends RichTextNode>(
+  children: T[],
+): Array<{
   nodes: T[];
   linkMark: LinkMark | null;
   _key: string;
@@ -89,8 +91,7 @@ export function groupLinkNodes<T extends RichTextNode>(children: T[]): Array<{
 
       groups.push({ nodes: groupNodes, linkMark, _key: `group-link-${i}` });
       i = end;
-    }
-    else {
+    } else {
       groups.push({ nodes: [node], linkMark: null, _key: `group-node-${i}` });
       i++;
     }
@@ -110,7 +111,7 @@ export function groupLinkNodes<T extends RichTextNode>(children: T[]): Array<{
  * @returns True if all cells are tableHeader type
  */
 export function isTableHeaderRow(row: RichTextNode): boolean {
-  if (row.type !== 'tableRow') {
+  if (row.type !== "tableRow") {
     return false;
   }
   const cells = row.content;
@@ -119,7 +120,7 @@ export function isTableHeaderRow(row: RichTextNode): boolean {
   }
 
   for (const cell of cells) {
-    if (cell.type !== 'tableHeader') {
+    if (cell.type !== "tableHeader") {
       return false;
     }
   }
@@ -132,7 +133,9 @@ export function isTableHeaderRow(row: RichTextNode): boolean {
  * @param rows - Array of table row nodes
  * @returns Object with headerRows and bodyRows arrays
  */
-export function splitTableRows<T extends RichTextNode>(rows: T[] | undefined): {
+export function splitTableRows<T extends RichTextNode>(
+  rows: T[] | undefined,
+): {
   headerRows: T[];
   bodyRows: T[];
 } {

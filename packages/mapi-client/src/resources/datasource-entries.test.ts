@@ -1,7 +1,7 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
-import { createManagementApiClient } from '../index';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
+import { createManagementApiClient } from "../index";
 
 const server = setupServer();
 
@@ -9,17 +9,17 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('datasourceEntries.list()', () => {
-  it('should successfully retrieve datasource entries', async () => {
+describe("datasourceEntries.list()", () => {
+  it("should successfully retrieve datasource entries", async () => {
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries', () => {
+      http.get("https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries", () => {
         return HttpResponse.json({ datasource_entries: [] });
       }),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
+      personalAccessToken: "test-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
@@ -29,19 +29,16 @@ describe('datasourceEntries.list()', () => {
     expect(Array.isArray(result.data?.datasource_entries)).toBe(true);
   });
 
-  it('should return error on 401', async () => {
+  it("should return error on 401", async () => {
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries', () => {
-        return HttpResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 },
-        );
+      http.get("https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries", () => {
+        return HttpResponse.json({ error: "Unauthorized" }, { status: 401 });
       }),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'invalid-token',
+      personalAccessToken: "invalid-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
@@ -52,67 +49,76 @@ describe('datasourceEntries.list()', () => {
     expect(result.response.status).toBe(401);
   });
 
-  it('should allow overriding space_id via path option', async () => {
+  it("should allow overriding space_id via path option", async () => {
     let resolvedSpaceId: string | undefined;
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries', ({ params }) => {
-        resolvedSpaceId = String(params.space_id);
-        return HttpResponse.json({ datasource_entries: [] });
-      }),
+      http.get(
+        "https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries",
+        ({ params }) => {
+          resolvedSpaceId = String(params.space_id);
+          return HttpResponse.json({ datasource_entries: [] });
+        },
+      ),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
-      region: 'eu',
+      personalAccessToken: "test-token",
+      region: "eu",
       rateLimit: false,
     });
 
     const result = await client.datasourceEntries.list({ path: { space_id: 999 } });
 
     expect(result.error).toBeUndefined();
-    expect(resolvedSpaceId).toBe('999');
+    expect(resolvedSpaceId).toBe("999");
   });
 });
 
-describe('datasourceEntries.get()', () => {
-  it('should successfully retrieve a single datasource entry', async () => {
+describe("datasourceEntries.get()", () => {
+  it("should successfully retrieve a single datasource entry", async () => {
     server.use(
-      http.get('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id', () => {
-        return HttpResponse.json({ datasource_entry: { id: 456, name: 'Entry', value: 'val' } });
-      }),
+      http.get(
+        "https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id",
+        () => {
+          return HttpResponse.json({ datasource_entry: { id: 456, name: "Entry", value: "val" } });
+        },
+      ),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
+      personalAccessToken: "test-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
     const result = await client.datasourceEntries.get(456);
 
     expect(result.error).toBeUndefined();
-    expect(typeof result.data?.datasource_entry).toBe('object');
+    expect(typeof result.data?.datasource_entry).toBe("object");
   });
 });
 
-describe('datasourceEntries.update()', () => {
-  it('should update a datasource entry', async () => {
+describe("datasourceEntries.update()", () => {
+  it("should update a datasource entry", async () => {
     server.use(
-      http.patch('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id', () => {
-        return new HttpResponse(null, { status: 204 });
-      }),
+      http.patch(
+        "https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id",
+        () => {
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
+      personalAccessToken: "test-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
     const result = await client.datasourceEntries.update(456, {
       body: {
         datasource_entry: {
-          name: 'Updated Entry',
-          value: 'updated-value',
+          name: "Updated Entry",
+          value: "updated-value",
           datasource_id: 789,
         },
       },
@@ -122,18 +128,21 @@ describe('datasourceEntries.update()', () => {
     expect(result.data).toBeNull();
   });
 
-  it('should forward the dimension_id query param', async () => {
+  it("should forward the dimension_id query param", async () => {
     let requestUrl: string | undefined;
     server.use(
-      http.patch('https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id', ({ request }) => {
-        requestUrl = request.url;
-        return new HttpResponse(null, { status: 204 });
-      }),
+      http.patch(
+        "https://mapi.storyblok.com/v1/spaces/:space_id/datasource_entries/:datasource_entry_id",
+        ({ request }) => {
+          requestUrl = request.url;
+          return new HttpResponse(null, { status: 204 });
+        },
+      ),
     );
     const client = createManagementApiClient({
-      personalAccessToken: 'test-token',
+      personalAccessToken: "test-token",
       spaceId: 123,
-      region: 'eu',
+      region: "eu",
       rateLimit: false,
     });
 
@@ -141,13 +150,13 @@ describe('datasourceEntries.update()', () => {
       query: { dimension_id: 42 },
       body: {
         datasource_entry: {
-          name: 'Updated Entry',
-          value: 'updated-value',
+          name: "Updated Entry",
+          value: "updated-value",
           datasource_id: 789,
         },
       },
     });
 
-    expect(new URL(requestUrl!).searchParams.get('dimension_id')).toBe('42');
+    expect(new URL(requestUrl!).searchParams.get("dimension_id")).toBe("42");
   });
 });

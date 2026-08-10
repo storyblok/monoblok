@@ -1,21 +1,24 @@
-import { defineComponent, h } from 'vue';
-import type { PropType } from 'vue';
+import { defineComponent, h } from "vue";
+import type { PropType } from "vue";
 
-import StoryblokComponent from './StoryblokComponent.vue';
-import type { SbBlokData } from '../types.ts';
-import type { StoryblokRichTextMark, StoryblokRichTextNode } from '@storyblok/richtext';
-import type { StoryblokVueRichTextProps, StoryblokVueRichTextRenderContext } from '@/rich-text-renderer.ts';
+import StoryblokComponent from "./StoryblokComponent.vue";
+import type { SbBlokData } from "../types.ts";
+import type { StoryblokRichTextMark, StoryblokRichTextNode } from "@storyblok/richtext";
+import type {
+  StoryblokVueRichTextProps,
+  StoryblokVueRichTextRenderContext,
+} from "@/rich-text-renderer.ts";
 
 const BlokRenderer = defineComponent({
-  name: 'StoryblokBlokRenderer',
+  name: "StoryblokBlokRenderer",
 
   props: {
     type: {
-      type: String as PropType<'blok'>,
+      type: String as PropType<"blok">,
       required: true,
     },
     attrs: {
-      type: Object as PropType<StoryblokVueRichTextProps['blok']['attrs']>,
+      type: Object as PropType<StoryblokVueRichTextProps["blok"]["attrs"]>,
       required: true,
     },
     content: {

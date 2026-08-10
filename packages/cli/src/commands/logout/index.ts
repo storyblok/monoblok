@@ -1,15 +1,15 @@
-import { removeAllCredentials } from '../../creds';
-import { colorPalette, commands } from '../../constants';
-import { getProgram } from '../../program';
-import { handleError } from '../../utils';
-import { session } from '../../session';
-import { getUI } from '../../lib/ui';
+import { removeAllCredentials } from "../../creds";
+import { colorPalette, commands } from "../../constants";
+import { getProgram } from "../../program";
+import { handleError } from "../../utils";
+import { session } from "../../session";
+import { getUI } from "../../lib/ui";
 
 const program = getProgram(); // Get the shared singleton instance
 
 export const logoutCommand = program
   .command(commands.LOGOUT)
-  .description('Logout from the Storyblok CLI')
+  .description("Logout from the Storyblok CLI")
   .action(async () => {
     const ui = getUI();
     ui.title(`${commands.LOGOUT}`, colorPalette.LOGOUT);
@@ -26,8 +26,7 @@ export const logoutCommand = program
 
       ui.ok(`Successfully logged out.`, true);
       ui.br();
-    }
-    catch (error) {
+    } catch (error) {
       handleError(error as Error, verbose);
     }
     ui.br();

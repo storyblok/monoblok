@@ -1,9 +1,12 @@
 # Migrations Rollback Command
 
-The `migrations rollback` command allows you to revert migrations that were previously applied to stories in your Storyblok space.
+The `migrations rollback` command allows you to revert migrations that were previously applied to
+stories in your Storyblok space.
 
-> [!NOTE]
-> Before rolling back migrations, you need to have run migrations first using the `migrations run` command. This ensures that rollback snapshots are available in the `.storyblok/migrations/{spaceId}/rollbacks` directory. See [migrations run](./run/README.md) for more details.
+> [!NOTE] Before rolling back migrations, you need to have run migrations first using the
+> `migrations run` command. This ensures that rollback snapshots are available in the
+> `.storyblok/migrations/{spaceId}/rollbacks` directory. See [migrations run](./run/README.md) for
+> more details.
 
 ## Basic Usage
 
@@ -12,6 +15,7 @@ storyblok migrations rollback MIGRATION_FILE --space YOUR_SPACE_ID
 ```
 
 This will rollback the specified migration file:
+
 ```
 .storyblok/
 └── migrations/
@@ -22,14 +26,15 @@ This will rollback the specified migration file:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to rollback migrations in | - |
-| `-p, --path <path>` | Custom path to read migration files from | `.storyblok/migrations` |
+| Option                | Description                                              | Default                 |
+| --------------------- | -------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>` | (Required) The ID of the space to rollback migrations in | -                       |
+| `-p, --path <path>`   | Custom path to read migration files from                 | `.storyblok/migrations` |
 
 ## Examples
 
 1. Rollback a specific migration:
+
 ```bash
 storyblok migrations rollback migration-component.1746452866186.json --space 12345
 ```
@@ -37,6 +42,7 @@ storyblok migrations rollback migration-component.1746452866186.json --space 123
 ## File Structure
 
 The command reads from the following file structure:
+
 ```
 {path}/
 └── migrations/
@@ -46,6 +52,7 @@ The command reads from the following file structure:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{migrationFile}` is the name of the migration file to rollback

@@ -1,5 +1,5 @@
-import type { ValidationIssue } from './adapter';
-import type { ValidationGroup, ValidationGroupRef } from './types';
+import type { ValidationIssue } from "./adapter";
+import type { ValidationGroup, ValidationGroupRef } from "./types";
 
 /**
  * Turns an `entity` identifier into a display header:
@@ -12,13 +12,13 @@ import type { ValidationGroup, ValidationGroupRef } from './types';
  * source.
  */
 export function entityToHeader(entity: string): string {
-  const separator = entity.indexOf(':');
+  const separator = entity.indexOf(":");
   if (separator === -1) {
     return entity;
   }
   const type = entity.slice(0, separator);
   const name = entity.slice(separator + 1);
-  if (name === '') {
+  if (name === "") {
     return `<unnamed ${type}>`;
   }
   return `${name} (${type})`;
@@ -31,13 +31,13 @@ export function entityToHeader(entity: string): string {
  * added later) reports as `kind: 'schema'` rather than guessing a type.
  */
 export function entityToRef(entity: string): ValidationGroupRef {
-  const separator = entity.indexOf(':');
+  const separator = entity.indexOf(":");
   const type = separator === -1 ? entity : entity.slice(0, separator);
   const name = separator === -1 ? undefined : entity.slice(separator + 1);
-  if (type === 'block' || type === 'datasource') {
+  if (type === "block" || type === "datasource") {
     return { kind: type, ...(name ? { name } : {}) };
   }
-  return { kind: 'schema' };
+  return { kind: "schema" };
 }
 
 /** Groups issues by their `entity`, preserving first-seen order. */
@@ -47,8 +47,7 @@ export function groupIssuesByEntity(issues: readonly ValidationIssue[]): Validat
     const existing = byEntity.get(issue.entity);
     if (existing) {
       existing.push(issue);
-    }
-    else {
+    } else {
       byEntity.set(issue.entity, [issue]);
     }
   }

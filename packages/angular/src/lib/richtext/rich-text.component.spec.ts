@@ -1,10 +1,10 @@
-import { Component, input, Type } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { SbRichTextComponent } from './rich-text.component';
-import { StoryblokRichtextResolver } from './richtext.feature';
-import type { SbAngularRichTextRenderContext } from './richtext.feature';
-import type { SbRichTextDoc, SbRichTextNode } from '@storyblok/richtext';
-import type { SbAngularRichTextProps } from '../types';
+import { Component, input, Type } from "@angular/core";
+import { ComponentFixture, TestBed } from "@angular/core/testing";
+import { SbRichTextComponent } from "./rich-text.component";
+import { StoryblokRichtextResolver } from "./richtext.feature";
+import type { SbAngularRichTextRenderContext } from "./richtext.feature";
+import type { SbRichTextDoc, SbRichTextNode } from "@storyblok/richtext";
+import type { SbAngularRichTextProps } from "../types";
 import {
   text,
   linkMark,
@@ -12,13 +12,13 @@ import {
   markFixtures,
   tableFixtures,
   linkFixtures,
-} from '@storyblok/richtext/test-utils';
+} from "@storyblok/richtext/test-utils";
 
 /**
  * Mock custom node component
  */
 @Component({
-  selector: 'app-custom-paragraph',
+  selector: "app-custom-paragraph",
   standalone: true,
   imports: [SbRichTextComponent],
   template: `<div class="custom-node">
@@ -26,31 +26,31 @@ import {
   </div>`,
 })
 class MockCustomParagraphComponent {
-  readonly data = input.required<SbAngularRichTextProps<'paragraph'>>();
+  readonly data = input.required<SbAngularRichTextProps<"paragraph">>();
 }
 
 /**
  * Mock custom mark component
  */
 @Component({
-  selector: 'app-custom-link',
+  selector: "app-custom-link",
   standalone: true,
   template: `<span class="custom-link"><ng-content /></span>`,
 })
 class MockCustomMarkComponent {
-  readonly data = input.required<SbAngularRichTextProps<'link'>>();
+  readonly data = input.required<SbAngularRichTextProps<"link">>();
 }
 
 /**
  * Mock custom text component — uppercases the text content.
  */
 @Component({
-  selector: 'app-custom-text',
+  selector: "app-custom-text",
   standalone: true,
   template: `<span class="custom-text">{{ data().text.toUpperCase() }}</span>`,
 })
 class MockCustomTextComponent {
-  readonly data = input.required<SbAngularRichTextProps<'text'>>();
+  readonly data = input.required<SbAngularRichTextProps<"text">>();
 }
 
 /**
@@ -58,13 +58,13 @@ class MockCustomTextComponent {
  * Without loop prevention this causes infinite recursion.
  */
 @Component({
-  selector: 'app-recursive-text',
+  selector: "app-recursive-text",
   standalone: true,
   imports: [SbRichTextComponent],
   template: `<sb-rich-text [sbDocument]="data()" />`,
 })
 class RecursiveTextComponent {
-  readonly data = input.required<SbAngularRichTextProps<'text'>>();
+  readonly data = input.required<SbAngularRichTextProps<"text">>();
 }
 
 /**
@@ -106,7 +106,7 @@ function createMockResolver(componentMap: Record<string, Type<unknown>> = {}) {
 // Tests: Input Handling
 // ============================================================================
 
-describe('SbRichTextComponent', () => {
+describe("SbRichTextComponent", () => {
   let fixture: ComponentFixture<SbRichTextComponent>;
   let resolver: ReturnType<typeof createMockResolver>;
 
@@ -125,71 +125,71 @@ describe('SbRichTextComponent', () => {
 
     fixture = TestBed.createComponent(SbRichTextComponent);
   });
-  describe('input handling', () => {
-    it('returns empty string for null input', async () => {
-      fixture.componentRef.setInput('sbDocument', null);
+  describe("input handling", () => {
+    it("returns empty string for null input", async () => {
+      fixture.componentRef.setInput("sbDocument", null);
       fixture.detectChanges();
       const textContent = fixture.nativeElement.textContent.trim();
-      expect(textContent).toBe('');
+      expect(textContent).toBe("");
     });
 
-    it('returns empty string for undefined input', async () => {
-      fixture.componentRef.setInput('sbDocument', undefined);
+    it("returns empty string for undefined input", async () => {
+      fixture.componentRef.setInput("sbDocument", undefined);
       fixture.detectChanges();
       const textContent = fixture.nativeElement.textContent.trim();
-      expect(textContent).toBe('');
+      expect(textContent).toBe("");
     });
 
-    it('returns empty string for empty array', async () => {
-      fixture.componentRef.setInput('sbDocument', []);
+    it("returns empty string for empty array", async () => {
+      fixture.componentRef.setInput("sbDocument", []);
       fixture.detectChanges();
       const textContent = fixture.nativeElement.textContent.trim();
-      expect(textContent).toBe('');
+      expect(textContent).toBe("");
     });
   });
-  describe('nodes', () => {
+  describe("nodes", () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
-        fixture.componentRef.setInput('sbDocument', input);
+        fixture.componentRef.setInput("sbDocument", input);
         fixture.detectChanges();
         const html = fixture.nativeElement.innerHTML.trim();
         expect(html).toBe(expected);
       });
     });
   });
-  describe('marks', () => {
+  describe("marks", () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
-        fixture.componentRef.setInput('sbDocument', input);
+        fixture.componentRef.setInput("sbDocument", input);
         fixture.detectChanges();
         const html = fixture.nativeElement.innerHTML.trim();
         expect(html).toBe(expected);
       });
     });
   });
-  describe('links', () => {
+  describe("links", () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
-        fixture.componentRef.setInput('sbDocument', input);
+        fixture.componentRef.setInput("sbDocument", input);
         fixture.detectChanges();
         const html = fixture.nativeElement.innerHTML.trim();
         expect(html).toBe(expected);
       });
     });
   });
-  describe('tables', () => {
+  describe("tables", () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
-        fixture.componentRef.setInput('sbDocument', input);
+        fixture.componentRef.setInput("sbDocument", input);
         fixture.detectChanges();
         const html = fixture.nativeElement.innerHTML.trim();
         expect(html).toBe(expected);
       });
     });
   });
-  describe('custom renderers', () => {
-    it('overrides node rendering with custom component', async () => {
-      const node: SbRichTextNode = { type: 'paragraph', content: [text('Hello')] };
+  describe("custom renderers", () => {
+    it("overrides node rendering with custom component", async () => {
+      const node: SbRichTextNode = { type: "paragraph", content: [text("Hello")] };
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [SbRichTextComponent],
@@ -202,15 +202,15 @@ describe('SbRichTextComponent', () => {
       }).compileComponents();
       fixture = TestBed.createComponent(SbRichTextComponent);
 
-      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput("sbDocument", node);
       fixture.detectChanges();
-      const customNode = fixture.nativeElement.querySelector('.custom-node');
+      const customNode = fixture.nativeElement.querySelector(".custom-node");
 
       expect(customNode).toBeTruthy();
-      expect(customNode.textContent.trim()).toBe('Hello');
+      expect(customNode.textContent.trim()).toBe("Hello");
     });
 
-    it('overrides mark rendering with custom component', async () => {
+    it("overrides mark rendering with custom component", async () => {
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [SbRichTextComponent],
@@ -224,21 +224,21 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const node: SbRichTextNode = {
-        type: 'paragraph',
-        content: [text('Bold Link', [{ type: 'bold' }, linkMark('https://example.com')])],
+        type: "paragraph",
+        content: [text("Bold Link", [{ type: "bold" }, linkMark("https://example.com")])],
       };
-      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput("sbDocument", node);
       fixture.detectChanges();
 
-      const customMark = fixture.nativeElement.querySelector('.custom-link');
+      const customMark = fixture.nativeElement.querySelector(".custom-link");
 
       expect(customMark).toBeTruthy();
-      expect(customMark.textContent.trim()).toContain('Bold Link');
+      expect(customMark.textContent.trim()).toContain("Bold Link");
     });
 
-    it('allows custom code_block component to control attribute placement', async () => {
+    it("allows custom code_block component to control attribute placement", async () => {
       @Component({
-        selector: 'app-custom-code-block',
+        selector: "app-custom-code-block",
         standalone: true,
         imports: [SbRichTextComponent],
         template: `
@@ -250,8 +250,8 @@ describe('SbRichTextComponent', () => {
         `,
       })
       class MockCustomCodeBlockComponent {
-        readonly data = input.required<SbAngularRichTextProps<'code_block'>>();
-        lang = () => (this.data()?.attrs?.['class'] as string) || '';
+        readonly data = input.required<SbAngularRichTextProps<"code_block">>();
+        lang = () => (this.data()?.attrs?.["class"] as string) || "";
       }
 
       TestBed.resetTestingModule();
@@ -267,29 +267,30 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const codeBlock: SbRichTextNode = {
-        type: 'code_block',
-        attrs: { class: 'js' },
-        content: [text('const x: number = 1;')],
+        type: "code_block",
+        attrs: { class: "js" },
+        content: [text("const x: number = 1;")],
       };
-      fixture.componentRef.setInput('sbDocument', codeBlock);
+      fixture.componentRef.setInput("sbDocument", codeBlock);
       fixture.detectChanges();
 
-      const pre = fixture.nativeElement.querySelector('pre');
-      const code = fixture.nativeElement.querySelector('code');
-      expect(pre?.className).toBe('language-js');
-      expect(code?.getAttribute('data-lang')).toBe('js');
+      const pre = fixture.nativeElement.querySelector("pre");
+      const code = fixture.nativeElement.querySelector("code");
+      expect(pre?.className).toBe("language-js");
+      expect(code?.getAttribute("data-lang")).toBe("js");
     });
 
-    it('passes sbData to custom components via context input', async () => {
+    it("passes sbData to custom components via context input", async () => {
       @Component({
-        selector: 'app-ctx-text',
+        selector: "app-ctx-text",
         standalone: true,
         template: `<span class="ctx-text">{{ prefix() }}{{ data().text }}</span>`,
       })
       class ContextTextComponent {
-        readonly data    = input.required<SbAngularRichTextProps<'text'>>();
+        readonly data = input.required<SbAngularRichTextProps<"text">>();
         readonly context = input<SbAngularRichTextRenderContext>();
-        readonly prefix  = () => (this.context()?.data as { prefix?: string } | undefined)?.prefix ?? '';
+        readonly prefix = () =>
+          (this.context()?.data as { prefix?: string } | undefined)?.prefix ?? "";
       }
 
       TestBed.resetTestingModule();
@@ -305,20 +306,20 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const node: SbRichTextNode = {
-        type: 'paragraph',
-        content: [text('world')],
+        type: "paragraph",
+        content: [text("world")],
       };
-      fixture.componentRef.setInput('sbDocument', node);
-      fixture.componentRef.setInput('sbData', { prefix: 'hello ' });
+      fixture.componentRef.setInput("sbDocument", node);
+      fixture.componentRef.setInput("sbData", { prefix: "hello " });
       fixture.detectChanges();
 
-      const span = fixture.nativeElement.querySelector('.ctx-text');
-      expect(span?.textContent).toBe('hello world');
+      const span = fixture.nativeElement.querySelector(".ctx-text");
+      expect(span?.textContent).toBe("hello world");
     });
 
-    it('does not throw when a custom component does not declare a context input', async () => {
+    it("does not throw when a custom component does not declare a context input", async () => {
       // MockCustomParagraphComponent has no context input — setInput should be caught silently.
-      const node: SbRichTextNode = { type: 'paragraph', content: [text('Hello')] };
+      const node: SbRichTextNode = { type: "paragraph", content: [text("Hello")] };
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [SbRichTextComponent],
@@ -331,23 +332,24 @@ describe('SbRichTextComponent', () => {
       }).compileComponents();
       fixture = TestBed.createComponent(SbRichTextComponent);
 
-      fixture.componentRef.setInput('sbDocument', node);
-      fixture.componentRef.setInput('sbData', { foo: 'bar' });
+      fixture.componentRef.setInput("sbDocument", node);
+      fixture.componentRef.setInput("sbData", { foo: "bar" });
 
       expect(() => fixture.detectChanges()).not.toThrow();
-      expect(fixture.nativeElement.querySelector('.custom-node')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector(".custom-node")).toBeTruthy();
     });
 
-    it('passes sbData to custom mark components via context input', async () => {
+    it("passes sbData to custom mark components via context input", async () => {
       @Component({
-        selector: 'app-ctx-bold',
+        selector: "app-ctx-bold",
         standalone: true,
         template: `<b class="ctx-bold" [attr.data-prefix]="prefix()"><ng-content /></b>`,
       })
       class ContextBoldComponent {
-        readonly data    = input.required<SbAngularRichTextProps<'bold'>>();
+        readonly data = input.required<SbAngularRichTextProps<"bold">>();
         readonly context = input<SbAngularRichTextRenderContext>();
-        readonly prefix  = () => (this.context()?.data as { prefix?: string } | undefined)?.prefix ?? '';
+        readonly prefix = () =>
+          (this.context()?.data as { prefix?: string } | undefined)?.prefix ?? "";
       }
 
       TestBed.resetTestingModule();
@@ -363,19 +365,19 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const node: SbRichTextNode = {
-        type: 'paragraph',
-        content: [text('hello', [{ type: 'bold' }])],
+        type: "paragraph",
+        content: [text("hello", [{ type: "bold" }])],
       };
-      fixture.componentRef.setInput('sbDocument', node);
-      fixture.componentRef.setInput('sbData', { prefix: 'test' });
+      fixture.componentRef.setInput("sbDocument", node);
+      fixture.componentRef.setInput("sbData", { prefix: "test" });
       fixture.detectChanges();
 
-      const bold = fixture.nativeElement.querySelector('.ctx-bold');
+      const bold = fixture.nativeElement.querySelector(".ctx-bold");
       expect(bold).toBeTruthy();
-      expect(bold.getAttribute('data-prefix')).toBe('test');
+      expect(bold.getAttribute("data-prefix")).toBe("test");
     });
 
-    it('renders custom text component when text type is registered', async () => {
+    it("renders custom text component when text type is registered", async () => {
       TestBed.resetTestingModule();
       await TestBed.configureTestingModule({
         imports: [SbRichTextComponent],
@@ -389,19 +391,19 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const node: SbRichTextNode = {
-        type: 'paragraph',
-        content: [text('hello'), text('world')],
+        type: "paragraph",
+        content: [text("hello"), text("world")],
       };
-      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput("sbDocument", node);
       fixture.detectChanges();
 
-      const spans = fixture.nativeElement.querySelectorAll('.custom-text');
+      const spans = fixture.nativeElement.querySelectorAll(".custom-text");
       expect(spans.length).toBe(2);
-      expect(spans[0].textContent.trim()).toBe('HELLO');
-      expect(spans[1].textContent.trim()).toBe('WORLD');
+      expect(spans[0].textContent.trim()).toBe("HELLO");
+      expect(spans[1].textContent.trim()).toBe("WORLD");
     });
 
-    it('prevents infinite loop when a custom text component uses sb-rich-text internally', async () => {
+    it("prevents infinite loop when a custom text component uses sb-rich-text internally", async () => {
       // RecursiveTextComponent feeds the same text node back into <sb-rich-text>.
       // Without prevention this blows the call stack.
       // With prevention: a child EnvironmentInjector is created with 'text' excluded,
@@ -419,16 +421,16 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const node: SbRichTextNode = {
-        type: 'paragraph',
-        content: [text('hello')],
+        type: "paragraph",
+        content: [text("hello")],
       };
-      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput("sbDocument", node);
 
       expect(() => fixture.detectChanges()).not.toThrow();
-      expect(fixture.nativeElement.textContent).toContain('hello');
+      expect(fixture.nativeElement.textContent).toContain("hello");
     });
 
-    it('preserves all ancestor excluded types across multiple nesting levels', async () => {
+    it("preserves all ancestor excluded types across multiple nesting levels", async () => {
       // Scenario: both `paragraph` and `text` have custom components that each
       // re-render their node via <sb-rich-text>.
       //
@@ -441,13 +443,13 @@ describe('SbRichTextComponent', () => {
       // so both types fall back to native rendering at the deepest level.
 
       @Component({
-        selector: 'app-recursive-paragraph',
+        selector: "app-recursive-paragraph",
         standalone: true,
         imports: [SbRichTextComponent],
         template: `<sb-rich-text [sbDocument]="data()" />`,
       })
       class RecursiveParagraphComponent {
-        readonly data = input.required<SbAngularRichTextProps<'paragraph'>>();
+        readonly data = input.required<SbAngularRichTextProps<"paragraph">>();
       }
 
       TestBed.resetTestingModule();
@@ -466,13 +468,13 @@ describe('SbRichTextComponent', () => {
       fixture = TestBed.createComponent(SbRichTextComponent);
 
       const node: SbRichTextNode = {
-        type: 'paragraph',
-        content: [text('hello')],
+        type: "paragraph",
+        content: [text("hello")],
       };
-      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput("sbDocument", node);
 
       expect(() => fixture.detectChanges()).not.toThrow();
-      expect(fixture.nativeElement.textContent).toContain('hello');
+      expect(fixture.nativeElement.textContent).toContain("hello");
     });
   });
 
@@ -480,76 +482,76 @@ describe('SbRichTextComponent', () => {
   // Tests: Blok Nodes
   // ============================================================================
 
-  describe('blok nodes', () => {
-    it('renders blok via StoryblokComponent when body has items', async () => {
+  describe("blok nodes", () => {
+    it("renders blok via StoryblokComponent when body has items", async () => {
       const blokDoc: SbRichTextDoc = {
-        type: 'doc',
+        type: "doc",
         content: [
           {
-            type: 'blok',
+            type: "blok",
             attrs: {
-              id: 'blok-123',
+              id: "blok-123",
               body: [
-                { _uid: '1', component: 'button', title: 'Click Me' },
-                { _uid: '2', component: 'button', title: 'Submit' },
+                { _uid: "1", component: "button", title: "Click Me" },
+                { _uid: "2", component: "button", title: "Submit" },
               ],
             },
           },
         ],
       };
-      fixture.componentRef.setInput('sbDocument', blokDoc);
+      fixture.componentRef.setInput("sbDocument", blokDoc);
       fixture.detectChanges();
 
       const html = fixture.nativeElement.innerHTML.trim();
 
       // Angular renders bloks via StoryblokComponent
-      expect(html).toContain('sb-component');
+      expect(html).toContain("sb-component");
     });
 
-    it('renders nothing for empty body', async () => {
+    it("renders nothing for empty body", async () => {
       const emptyBlok: SbRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'blok', attrs: { id: 'x', body: [] } }],
+        type: "doc",
+        content: [{ type: "blok", attrs: { id: "x", body: [] } }],
       };
-      fixture.componentRef.setInput('sbDocument', emptyBlok);
+      fixture.componentRef.setInput("sbDocument", emptyBlok);
       fixture.detectChanges();
 
       const html = fixture.nativeElement.innerHTML.trim();
 
-      expect(html).toBe('');
+      expect(html).toBe("");
     });
 
-    it('renders nothing for null body', async () => {
+    it("renders nothing for null body", async () => {
       const nullBlok: SbRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'blok', attrs: { id: 'x', body: null } }],
+        type: "doc",
+        content: [{ type: "blok", attrs: { id: "x", body: null } }],
       };
-      fixture.componentRef.setInput('sbDocument', nullBlok);
+      fixture.componentRef.setInput("sbDocument", nullBlok);
       fixture.detectChanges();
 
       const html = fixture.nativeElement.innerHTML.trim();
 
-      expect(html).toBe('');
+      expect(html).toBe("");
     });
 
-    it('renders other content alongside blok', async () => {
+    it("renders other content alongside blok", async () => {
       const content: SbRichTextDoc = {
-        type: 'doc',
+        type: "doc",
         content: [
-          { type: 'paragraph', content: [text('Before')] },
-          { type: 'blok', attrs: { id: 'x', body: [{ _uid: '1', component: 'test' }] } },
-          { type: 'paragraph', content: [text('After')] },
+          { type: "paragraph", content: [text("Before")] },
+          { type: "blok", attrs: { id: "x", body: [{ _uid: "1", component: "test" }] } },
+          { type: "paragraph", content: [text("After")] },
         ],
       };
-      fixture.componentRef.setInput('sbDocument', content);
+      fixture.componentRef.setInput("sbDocument", content);
       fixture.detectChanges();
 
       const html = fixture.nativeElement.innerHTML.trim();
 
       // Both paragraphs render, with blok component in between
-      expect(html).toContain('<p>Before</p>');
-      expect(html).toContain('<p>After</p>');
-      expect(html).toContain('sb-component');
+      expect(html).toContain("<p>Before</p>");
+      expect(html).toContain("<p>After</p>");
+      expect(html).toContain("sb-component");
     });
   });
 
@@ -557,19 +559,19 @@ describe('SbRichTextComponent', () => {
   // Tests: XSS Prevention
   // ============================================================================
 
-  describe('xSS prevention', () => {
-    it('escapes HTML in text content', async () => {
+  describe("xSS prevention", () => {
+    it("escapes HTML in text content", async () => {
       const node = text('<script>alert("xss")</script>');
-      fixture.componentRef.setInput('sbDocument', node);
+      fixture.componentRef.setInput("sbDocument", node);
       fixture.detectChanges();
 
       const html = fixture.nativeElement.innerHTML.trim();
       expect(html).toBe('&lt;script&gt;alert("xss")&lt;/script&gt;');
     });
 
-    it('escapes HTML in attributes', async () => {
-      const node = text('Link', [linkMark('javascript:alert("xss")')]);
-      fixture.componentRef.setInput('sbDocument', node);
+    it("escapes HTML in attributes", async () => {
+      const node = text("Link", [linkMark('javascript:alert("xss")')]);
+      fixture.componentRef.setInput("sbDocument", node);
       fixture.detectChanges();
 
       const html = fixture.nativeElement.innerHTML.trim();
@@ -582,89 +584,89 @@ describe('SbRichTextComponent', () => {
   // Tests: Image Optimization
   // ============================================================================
 
-  describe('image optimization', () => {
+  describe("image optimization", () => {
     // Use type assertion to allow partial image attrs for testing
     const imageNode = {
-      type: 'image',
+      type: "image",
       attrs: {
-        src: 'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg',
-        alt: 'Test image',
+        src: "https://a.storyblok.com/f/12345/800x600/abc123/image.jpg",
+        alt: "Test image",
       },
     } as SbRichTextNode;
 
-    it('renders image without optimization when sbOptimizeImage is false', async () => {
-      fixture.componentRef.setInput('sbDocument', imageNode);
-      fixture.componentRef.setInput('sbOptimizeImage', false);
+    it("renders image without optimization when sbOptimizeImage is false", async () => {
+      fixture.componentRef.setInput("sbDocument", imageNode);
+      fixture.componentRef.setInput("sbOptimizeImage", false);
       fixture.detectChanges();
 
-      const img = fixture.nativeElement.querySelector('img');
+      const img = fixture.nativeElement.querySelector("img");
       expect(img).toBeTruthy();
-      expect(img.getAttribute('src')).toBe(
-        'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg',
+      expect(img.getAttribute("src")).toBe(
+        "https://a.storyblok.com/f/12345/800x600/abc123/image.jpg",
       );
     });
 
-    it('renders optimized image when sbOptimizeImage is true', async () => {
-      fixture.componentRef.setInput('sbDocument', imageNode);
-      fixture.componentRef.setInput('sbOptimizeImage', true);
+    it("renders optimized image when sbOptimizeImage is true", async () => {
+      fixture.componentRef.setInput("sbDocument", imageNode);
+      fixture.componentRef.setInput("sbOptimizeImage", true);
       fixture.detectChanges();
 
-      const img = fixture.nativeElement.querySelector('img');
+      const img = fixture.nativeElement.querySelector("img");
       expect(img).toBeTruthy();
       // When true, buildStoryblokImage adds /m/ to the URL
-      expect(img.getAttribute('src')).toBe(
-        'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg/m/',
+      expect(img.getAttribute("src")).toBe(
+        "https://a.storyblok.com/f/12345/800x600/abc123/image.jpg/m/",
       );
     });
 
-    it('applies custom optimization options', async () => {
-      fixture.componentRef.setInput('sbDocument', imageNode);
-      fixture.componentRef.setInput('sbOptimizeImage', {
+    it("applies custom optimization options", async () => {
+      fixture.componentRef.setInput("sbDocument", imageNode);
+      fixture.componentRef.setInput("sbOptimizeImage", {
         width: 400,
         height: 300,
-        loading: 'lazy',
+        loading: "lazy",
       });
       fixture.detectChanges();
 
-      const img = fixture.nativeElement.querySelector('img');
+      const img = fixture.nativeElement.querySelector("img");
       expect(img).toBeTruthy();
-      expect(img.getAttribute('src')).toBe(
-        'https://a.storyblok.com/f/12345/800x600/abc123/image.jpg/m/400x300/',
+      expect(img.getAttribute("src")).toBe(
+        "https://a.storyblok.com/f/12345/800x600/abc123/image.jpg/m/400x300/",
       );
-      expect(img.getAttribute('width')).toBe('400');
-      expect(img.getAttribute('height')).toBe('300');
-      expect(img.getAttribute('loading')).toBe('lazy');
+      expect(img.getAttribute("width")).toBe("400");
+      expect(img.getAttribute("height")).toBe("300");
+      expect(img.getAttribute("loading")).toBe("lazy");
     });
 
-    it('handles image without src gracefully', async () => {
+    it("handles image without src gracefully", async () => {
       const noSrcImage = {
-        type: 'image',
-        attrs: { alt: 'No source' },
+        type: "image",
+        attrs: { alt: "No source" },
       } as SbRichTextNode;
-      fixture.componentRef.setInput('sbDocument', noSrcImage);
-      fixture.componentRef.setInput('sbOptimizeImage', true);
+      fixture.componentRef.setInput("sbDocument", noSrcImage);
+      fixture.componentRef.setInput("sbOptimizeImage", true);
       fixture.detectChanges();
 
-      const img = fixture.nativeElement.querySelector('img');
+      const img = fixture.nativeElement.querySelector("img");
       expect(img).toBeFalsy();
     });
 
-    it('renders nested images with optimization', async () => {
+    it("renders nested images with optimization", async () => {
       const doc: SbRichTextDoc = {
-        type: 'doc',
+        type: "doc",
         content: [
-          { type: 'paragraph', content: [text('Before image')] },
+          { type: "paragraph", content: [text("Before image")] },
           imageNode,
-          { type: 'paragraph', content: [text('After image')] },
+          { type: "paragraph", content: [text("After image")] },
         ],
       };
-      fixture.componentRef.setInput('sbDocument', doc);
-      fixture.componentRef.setInput('sbOptimizeImage', { width: 200 });
+      fixture.componentRef.setInput("sbDocument", doc);
+      fixture.componentRef.setInput("sbOptimizeImage", { width: 200 });
       fixture.detectChanges();
 
-      const img = fixture.nativeElement.querySelector('img');
+      const img = fixture.nativeElement.querySelector("img");
       expect(img).toBeTruthy();
-      expect(img.getAttribute('src')).toContain('/m/200x0/');
+      expect(img.getAttribute("src")).toContain("/m/200x0/");
     });
   });
 });

@@ -1,5 +1,5 @@
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 
 const execAsync = promisify(exec);
 
@@ -7,12 +7,12 @@ const execAsync = promisify(exec);
  * Build the signup URL with UTM parameters
  */
 export function buildSignupUrl(): string {
-  const baseUrl = 'https://app.storyblok.com';
+  const baseUrl = "https://app.storyblok.com";
 
   const utmParams = new URLSearchParams({
-    utm_source: 'storyblok-cli',
-    utm_medium: 'cli',
-    utm_campaign: 'signup',
+    utm_source: "storyblok-cli",
+    utm_medium: "cli",
+    utm_campaign: "signup",
   });
 
   return `${baseUrl}/#/signup?${utmParams.toString()}`;
@@ -25,10 +25,10 @@ export async function openSignupInBrowser(url: string): Promise<void> {
   let command: string;
 
   switch (process.platform) {
-    case 'darwin':
+    case "darwin":
       command = `open "${url}"`;
       break;
-    case 'win32':
+    case "win32":
       command = `start "" "${url}"`;
       break;
     default:
@@ -38,8 +38,7 @@ export async function openSignupInBrowser(url: string): Promise<void> {
 
   try {
     await execAsync(command);
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(`Failed to open browser: ${error}`);
   }
 }

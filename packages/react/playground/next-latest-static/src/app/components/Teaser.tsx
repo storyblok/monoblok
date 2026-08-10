@@ -1,5 +1,5 @@
-import { storyblokEditable } from '@storyblok/react/ssr';
-import type { SbBlokData } from '@storyblok/react';
+import { storyblokEditable } from "@storyblok/react/ssr";
+import type { SbBlokData } from "@storyblok/react";
 // import { headers } from 'next/headers';
 
 interface TeaserProps {

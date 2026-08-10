@@ -1,15 +1,23 @@
-import type { ComponentCreate, ComponentUpdate, Datasource, DatasourceCreate, Field } from '../../types';
-import { isRecord } from './utils';
+import type {
+  ComponentCreate,
+  ComponentUpdate,
+  Datasource,
+  DatasourceCreate,
+  Field,
+} from "../../types";
+import { isRecord } from "./utils";
 
 function isSchemaField(value: unknown): value is Field {
-  return isRecord(value) && 'type' in value;
+  return isRecord(value) && "type" in value;
 }
 
 /** Converts a Component's schema (which includes _uid/component sentinels) to a clean record. */
 function toSchemaRecord(schema: Record<string, unknown>): Record<string, Field> {
   const result: Record<string, Field> = {};
   for (const [key, value] of Object.entries(schema)) {
-    if (key === '_uid' || key === 'component' || !isSchemaField(value)) { continue; }
+    if (key === "_uid" || key === "component" || !isSchemaField(value)) {
+      continue;
+    }
     result[key] = value;
   }
   return result;
@@ -17,29 +25,32 @@ function toSchemaRecord(schema: Record<string, unknown>): Record<string, Field> 
 
 /** Builds the shared component payload fields used for both create and update. */
 function buildComponentPayload(input: unknown) {
-  if (!isRecord(input)) { return { name: '' }; }
+  if (!isRecord(input)) {
+    return { name: "" };
+  }
 
   return {
-    name: typeof input.name === 'string' ? input.name : '',
+    name: typeof input.name === "string" ? input.name : "",
     // Fields in COMPONENT_DEFAULTS are always sent with their reset value so that
     // removing a field from the local schema actually clears it on the API.
     // (Root-level fields are additive on MAPI update — omitting preserves the old value.)
-    display_name: typeof input.display_name === 'string' ? input.display_name : '',
-    description: typeof input.description === 'string' ? input.description : '',
-    color: typeof input.color === 'string' ? input.color : '',
-    icon: typeof input.icon === 'string' ? input.icon : '',
-    preview_field: typeof input.preview_field === 'string' ? input.preview_field : '',
+    display_name: typeof input.display_name === "string" ? input.display_name : "",
+    description: typeof input.description === "string" ? input.description : "",
+    color: typeof input.color === "string" ? input.color : "",
+    icon: typeof input.icon === "string" ? input.icon : "",
+    preview_field: typeof input.preview_field === "string" ? input.preview_field : "",
     internal_tag_ids: Array.isArray(input.internal_tag_ids) ? input.internal_tag_ids : [],
     // Conditionally sent: only included when explicitly set in local schema
     ...(isRecord(input.schema) && { schema: toSchemaRecord(input.schema) }),
-    ...(typeof input.is_root === 'boolean' && { is_root: input.is_root }),
-    ...(typeof input.is_nestable === 'boolean' && { is_nestable: input.is_nestable }),
+    ...(typeof input.is_root === "boolean" && { is_root: input.is_root }),
+    ...(typeof input.is_nestable === "boolean" && { is_nestable: input.is_nestable }),
     // Forward the group membership only when the key is present on input: a
     // string sets the group, an explicit `null` clears it. Unmanaged components
     // (key absent) omit it so their remote group is left untouched.
-    ...('component_group_uuid' in input
-      && (typeof input.component_group_uuid === 'string' || input.component_group_uuid === null)
-      && { component_group_uuid: input.component_group_uuid }),
+    ...("component_group_uuid" in input &&
+      (typeof input.component_group_uuid === "string" || input.component_group_uuid === null) && {
+        component_group_uuid: input.component_group_uuid,
+      }),
   };
 }
 
@@ -59,16 +70,21 @@ export function toComponentUpdate(input: unknown): ComponentUpdate {
 
 /** Converts an unknown input to a DatasourceCreate-compatible payload. */
 export function toDatasourceCreate(input: unknown): DatasourceCreate {
-  if (!isRecord(input)) { return { name: '', slug: '' }; }
+  if (!isRecord(input)) {
+    return { name: "", slug: "" };
+  }
 
   const result: DatasourceCreate = {
-    name: typeof input.name === 'string' ? input.name : '',
-    slug: typeof input.slug === 'string' ? input.slug : '',
+    name: typeof input.name === "string" ? input.name : "",
+    slug: typeof input.slug === "string" ? input.slug : "",
   };
 
   if (Array.isArray(input.dimensions)) {
     result.dimensions_attributes = input.dimensions
-      .filter((d: unknown) => isRecord(d) && typeof d.name === 'string' && typeof d.entry_value === 'string')
+      .filter(
+        (d: unknown) =>
+          isRecord(d) && typeof d.name === "string" && typeof d.entry_value === "string",
+      )
       .map((d: Record<string, unknown>) => ({
         name: d.name as string,
         entry_value: d.entry_value as string,
@@ -88,12 +104,14 @@ export function toDatasourceUpdate(input: unknown, remote: Datasource): Record<s
   const localDims = base.dimensions_attributes ?? [];
   const remoteDims = remote.dimensions ?? [];
 
-  if (remoteDims.length === 0) { return base; }
+  if (remoteDims.length === 0) {
+    return base;
+  }
 
-  const localKeys = new Set(localDims.map(d => `${d.name}::${d.entry_value}`));
+  const localKeys = new Set(localDims.map((d) => `${d.name}::${d.entry_value}`));
   const destroyEntries = remoteDims
-    .filter(rd => rd.id != null && !localKeys.has(`${rd.name}::${rd.entry_value}`))
-    .map(rd => ({ id: rd.id, _destroy: true }));
+    .filter((rd) => rd.id != null && !localKeys.has(`${rd.name}::${rd.entry_value}`))
+    .map((rd) => ({ id: rd.id, _destroy: true }));
 
   if (destroyEntries.length > 0) {
     return {

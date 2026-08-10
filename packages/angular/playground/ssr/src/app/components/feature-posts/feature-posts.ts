@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { type SbBlokData } from '@storyblok/angular';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
+import { RouterLink } from "@angular/router";
+import { type SbBlokData } from "@storyblok/angular";
 
 export interface FeaturePostsBlok {
   title?: string;
@@ -8,7 +8,7 @@ export interface FeaturePostsBlok {
 }
 
 @Component({
-  selector: 'app-feature-posts',
+  selector: "app-feature-posts",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
 
@@ -16,10 +16,10 @@ export interface FeaturePostsBlok {
     <div class="p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
       <h3 class="text-xl font-semibold text-slate-800">{{ blok().title }}</h3>
       <ul class="mt-4 space-y-2">
-        @for (article of blok().articles; track article['id']) {
+        @for (article of blok().articles; track article["id"]) {
           <li class="p-4 bg-slate-50 border border-slate-200 rounded">
             <a [routerLink]="'/' + article['full_slug']">
-              <h4 class="text-lg font-medium text-slate-700">{{ article['name'] }}</h4>
+              <h4 class="text-lg font-medium text-slate-700">{{ article["name"] }}</h4>
             </a>
           </li>
         }

@@ -1,9 +1,9 @@
-import type { ISbThrottle } from './interfaces';
+import type { ISbThrottle } from "./interfaces";
 
 class AbortError extends Error {
   constructor(msg: string) {
     super(msg);
-    this.name = 'AbortError';
+    this.name = "AbortError";
   }
 }
 
@@ -32,9 +32,8 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
   limit: number,
   interval: number,
 ): ISbThrottle<T> {
-  const isUnlimited
-    = !Number.isFinite(limit) || limit <= 0
-      || !Number.isFinite(interval) || interval <= 0;
+  const isUnlimited =
+    !Number.isFinite(limit) || limit <= 0 || !Number.isFinite(interval) || interval <= 0;
 
   // Start timestamps of the calls currently inside the rolling window.
   const starts: number[] = [];
@@ -50,7 +49,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
     return new Promise<void>((resolve, reject) => {
       const attempt = () => {
         if (isAborted) {
-          reject(new AbortError('Throttle function aborted'));
+          reject(new AbortError("Throttle function aborted"));
           return;
         }
 
@@ -69,10 +68,13 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
         // resolves the promise the caller awaits, so it is never orphaned.
         const wait = starts[0] + interval - now;
         let reject_: (reason: unknown) => void;
-        const id = setTimeout(() => {
-          pending.delete(reject_);
-          attempt();
-        }, wait > 0 ? wait : 0);
+        const id = setTimeout(
+          () => {
+            pending.delete(reject_);
+            attempt();
+          },
+          wait > 0 ? wait : 0,
+        );
         reject_ = (reason: unknown) => {
           clearTimeout(id);
           reject(reason);
@@ -87,9 +89,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
   const throttled: ISbThrottle<T> = (...args) => {
     if (isAborted) {
       return Promise.reject(
-        new Error(
-          'Throttled function is already aborted and not accepting new promises',
-        ),
+        new Error("Throttled function is already aborted and not accepting new promises"),
       );
     }
 
@@ -98,9 +98,7 @@ function throttledQueue<T extends (...args: Parameters<T>) => ReturnType<T>>(
 
   throttled.abort = () => {
     isAborted = true;
-    pending.forEach(reject_ =>
-      reject_(new AbortError('Throttle function aborted')),
-    );
+    pending.forEach((reject_) => reject_(new AbortError("Throttle function aborted")));
     pending.clear();
   };
 

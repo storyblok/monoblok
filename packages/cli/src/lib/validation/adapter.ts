@@ -4,9 +4,14 @@
  * the coupling to the schema package lives in one file.
  */
 
-import type { SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity } from '@storyblok/schema';
-import { CommandError } from '../../utils/error';
-import { collectSchemaExports, loadSchemaModule } from '../../utils/schema/classify-exports';
+import type {
+  SchemaLike,
+  ValidationIssue,
+  ValidationResult,
+  ValidationSeverity,
+} from "@storyblok/schema";
+import { CommandError } from "../../utils/error";
+import { collectSchemaExports, loadSchemaModule } from "../../utils/schema/classify-exports";
 
 export type { SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity };
 
@@ -16,13 +21,13 @@ export type { SchemaLike, ValidationIssue, ValidationResult, ValidationSeverity 
 
 /** Validates a code-defined schema. Loads `@storyblok/schema` on first use. */
 export async function validateSchema(schema: SchemaLike): Promise<ValidationResult> {
-  const schemaPkg = await import('@storyblok/schema');
+  const schemaPkg = await import("@storyblok/schema");
   return schemaPkg.validateSchema(schema);
 }
 
 /** Validates a story's content against a schema. Loads `@storyblok/schema` on first use. */
 export async function validateStory(story: unknown, schema: SchemaLike): Promise<ValidationResult> {
-  const schemaPkg = await import('@storyblok/schema');
+  const schemaPkg = await import("@storyblok/schema");
   return schemaPkg.validateStory(story, schema);
 }
 
@@ -68,12 +73,12 @@ export async function loadSchemaEntry(
 
   if (components.length === 0 && datasources.length === 0) {
     throw new CommandError(
-      'No blocks or datasources found in the schema entry file. Verify the file exports schema definitions.',
+      "No blocks or datasources found in the schema entry file. Verify the file exports schema definitions.",
     );
   }
   if (options.requireBlocks && components.length === 0) {
     throw new CommandError(
-      'No blocks found in the schema entry file. Story content cannot be validated against a schema that defines no blocks.',
+      "No blocks found in the schema entry file. Story content cannot be validated against a schema that defines no blocks.",
     );
   }
 

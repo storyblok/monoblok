@@ -11,7 +11,7 @@ export function deepEqual(a: any, b: any): boolean {
   if (typeof a !== typeof b) {
     return false;
   }
-  if (typeof a !== 'object') {
+  if (typeof a !== "object") {
     return false;
   }
   if (Array.isArray(a) !== Array.isArray(b)) {
@@ -28,33 +28,33 @@ export function deepEqual(a: any, b: any): boolean {
   if (aKeys.length !== bKeys.length) {
     return false;
   }
-  return aKeys.every(k => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
+  return aKeys.every((k) => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
 }
 
 export const SELF_CLOSING_TAGS = [
-  'area',
-  'base',
-  'br',
-  'col',
-  'embed',
-  'hr',
-  'img',
-  'input',
-  'link',
-  'meta',
-  'param',
-  'source',
-  'track',
-  'wbr',
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
 ];
 
 export function escapeHtml(unsafeText: string): string {
   return unsafeText
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 export function createKeyGenerator() {
   const counters = new Map<string, number>();

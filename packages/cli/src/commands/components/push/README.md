@@ -1,8 +1,10 @@
 # Components Push Command
 
-The `components push` command allows you to upload components and their dependencies to your Storyblok space.
+The `components push` command allows you to upload components and their dependencies to your
+Storyblok space.
 
 This command will automatically handle the following:
+
 - Upload components
 - Upload component groups
 - Upload component presets
@@ -10,14 +12,19 @@ This command will automatically handle the following:
 - Upload component whitelists
 - Upload datasources (excluding datasource entries)
 
-> [!NOTE]
-> To completly update datasources and their entries, please pull the datasources first from the origin space and push them to the target space. Check the [datasources pull](../datasources/pull/README.md) and [datasources push](../datasources/push/README.md) commands for more information.
+> [!NOTE] To completly update datasources and their entries, please pull the datasources first from
+> the origin space and push them to the target space. Check the
+> [datasources pull](../datasources/pull/README.md) and
+> [datasources push](../datasources/push/README.md) commands for more information.
 
 ## Prerequisites
 
 - You must have previously used the `components pull` command to download those components.
-- If you have components with fields that depend on datasources, you must pull the datasources first from the origin space and push them to the target space using the `datasources pull` and `datasources push` commands. .
-- If you used any flags during the pull (like `--suffix` or `--separate-files`), you must apply them with the same values when pushing to ensure files are found correctly.
+- If you have components with fields that depend on datasources, you must pull the datasources first
+  from the origin space and push them to the target space using the `datasources pull` and
+  `datasources push` commands. .
+- If you used any flags during the pull (like `--suffix` or `--separate-files`), you must apply them
+  with the same values when pushing to ensure files are found correctly.
 
 ## Basic Usage
 
@@ -26,6 +33,7 @@ storyblok components push --space YOUR_SPACE_ID
 ```
 
 This will upload all components and their dependencies from:
+
 ```
 .storyblok/
 └── components/
@@ -40,6 +48,7 @@ storyblok components push COMPONENT_NAME --space YOUR_SPACE_ID
 ```
 
 This will upload a single component and its dependencies from:
+
 ```
 .storyblok/
 └── components/
@@ -49,24 +58,27 @@ This will upload a single component and its dependencies from:
 
 ## Options
 
-| Option                    | Description                                                                                                    | Default                 |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>`     | (Required) The ID of the space to push components to                                                           | -                       |
-| `-f, --from <from>`       | Source space ID to read components from                                                                        | Target space ID         |
-| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero") | -                       |
+| Option                    | Description                                                                                                                                                             | Default                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to push components to                                                                                                                    | -                       |
+| `-f, --from <from>`       | Source space ID to read components from                                                                                                                                 | Target space ID         |
+| `--fi, --filter <filter>` | Glob pattern to filter components by their name (e.g., "hero*" will match all components starting with "hero")                                                          | -                       |
 | `--gr, --group <name>`    | Component group to select by name, or by a slash-separated path of nested group names (e.g. `Checkout/Payment`) to disambiguate. Repeatable, includes descendant groups | -                       |
-| `--tg, --tag <name>`      | Component tag name to select. Repeatable and comma-separated                                                   | -                       |
-| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                         | `false`                 |
-| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                               | -                       |
-| `-p, --path <path>`       | Custom path to read the files from                                                                             | `.storyblok/components` |
+| `--tg, --tag <name>`      | Component tag name to select. Repeatable and comma-separated                                                                                                            | -                       |
+| `--sf, --separate-files`  | Read from separate files instead of consolidated files                                                                                                                  | `false`                 |
+| `--su, --suffix <suffix>` | Suffix to add to the files names                                                                                                                                        | -                       |
+| `-p, --path <path>`       | Custom path to read the files from                                                                                                                                      | `.storyblok/components` |
 
 ## Examples
 
 1. Push all components with default settings:
+
 ```bash
 storyblok components push --space 12345
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -75,10 +87,13 @@ Reads from:
 ```
 
 2. Push a single component:
+
 ```bash
 storyblok components push hero --space 12345
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -87,10 +102,13 @@ Reads from:
 ```
 
 3. Push components with filter:
+
 ```bash
 storyblok components push --space 12345 --filter "hero*"
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -99,10 +117,13 @@ Reads from:
 ```
 
 4. Push components from a different space:
+
 ```bash
 storyblok components push --space 12345 --from 67890
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -111,10 +132,13 @@ Reads from:
 ```
 
 5. Push components from separate files:
+
 ```bash
 storyblok components push --space 12345 --separate-files
 ```
+
 Reads from:
+
 ```
 .storyblok/
 └── components/
@@ -127,10 +151,13 @@ Reads from:
 ```
 
 6. Push components from a custom path:
+
 ```bash
 storyblok components push --space 12345 --path ./backup
 ```
+
 Reads from:
+
 ```
 backup/
 └── components/
@@ -141,6 +168,7 @@ backup/
 ## File Structure
 
 The command reads from the following file structure:
+
 ```
 {path}/
 └── components/
@@ -149,6 +177,7 @@ The command reads from the following file structure:
 ```
 
 When using `--separate-files`:
+
 ```
 {path}/
 └── components/
@@ -161,6 +190,7 @@ When using `--separate-files`:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{suffix}` is the suffix in the file name if provided
@@ -170,7 +200,8 @@ Where:
 
 - The target space ID is required
 - The command will read from the specified path
-- When using `--separate-files` or single component, presets are read from separate files named `{componentName}.presets.json`
+- When using `--separate-files` or single component, presets are read from separate files named
+  `{componentName}.presets.json`
 - The command uploads:
   - Components
   - Component groups

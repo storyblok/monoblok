@@ -1,7 +1,7 @@
 export type PlainObject = Record<string, any>;
 
 export function isPlainObject(value: unknown): value is PlainObject {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 /**
@@ -10,7 +10,7 @@ export function isPlainObject(value: unknown): value is PlainObject {
  * stay `unknown` instead of `any`, so they still have to be checked.
  */
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export function mergeDeep<T extends PlainObject>(target: T, source?: PlainObject): T {
@@ -25,8 +25,7 @@ export function mergeDeep<T extends PlainObject>(target: T, source?: PlainObject
       const existing = targetRecord[key];
       const base = isPlainObject(existing) ? existing : {};
       targetRecord[key] = mergeDeep(base, value);
-    }
-    else {
+    } else {
       targetRecord[key] = value;
     }
   }

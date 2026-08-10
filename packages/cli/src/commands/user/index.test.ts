@@ -1,15 +1,15 @@
-import chalk from 'chalk';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { userCommand } from './';
-import { getUser } from './actions';
-import { session } from '../../session';
-import { loggedOutSessionState } from '../../../test/setup';
+import chalk from "chalk";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { userCommand } from "./";
+import { getUser } from "./actions";
+import { session } from "../../session";
+import { loggedOutSessionState } from "../../../test/setup";
 
-vi.mock('./actions', () => ({
+vi.mock("./actions", () => ({
   getUser: vi.fn(),
 }));
 
-vi.mock('../../creds', () => ({
+vi.mock("../../creds", () => ({
   isAuthorized: vi.fn(),
 }));
 
@@ -21,45 +21,47 @@ const preconditions = {
   },
 };
 
-describe('userCommand', () => {
+describe("userCommand", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  it('should show the user information', async () => {
+  it("should show the user information", async () => {
     const mockResponse = {
       id: 1,
-      friendly_name: 'John Doe',
-      email: 'john.doe@storyblok.com',
-      created_at: '2024-01-01T00:00:00Z',
-      updated_at: '2024-01-01T00:00:00Z',
+      friendly_name: "John Doe",
+      email: "john.doe@storyblok.com",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
     };
     vi.mocked(getUser).mockResolvedValue(mockResponse);
-    await userCommand.parseAsync(['node', 'test']);
+    await userCommand.parseAsync(["node", "test"]);
 
-    expect(getUser).toHaveBeenCalledWith('valid-token', 'eu');
+    expect(getUser).toHaveBeenCalledWith("valid-token", "eu");
     expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining(`Hi ${chalk.bold('John Doe')}`),
+      expect.stringContaining(`Hi ${chalk.bold("John Doe")}`),
     );
   });
 
-  it('should show an error if the user is not logged in', async () => {
+  it("should show an error if the user is not logged in", async () => {
     preconditions.loggedOut();
 
-    await userCommand.parseAsync(['node', 'test']);
+    await userCommand.parseAsync(["node", "test"]);
 
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('You are currently not logged in'));
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("You are currently not logged in"),
+    );
   });
 
-  it('should show an error if the user information cannot be fetched', async () => {
-    const mockError = new Error('Network error');
+  it("should show an error if the user information cannot be fetched", async () => {
+    const mockError = new Error("Network error");
 
     vi.mocked(getUser).mockRejectedValue(mockError);
 
-    await userCommand.parseAsync(['node', 'test']);
+    await userCommand.parseAsync(["node", "test"]);
 
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Network error'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Network error"));
   });
 });

@@ -1,15 +1,30 @@
-import chalk from 'chalk';
+import chalk from "chalk";
 
-import type { Component } from '../../../types';
-import type { ChangesetEntry, DiffResult, EntityDiff, LocalFolder, RemoteSchemaData, SchemaData } from '../types';
-import { getMapiClient } from '../../../api';
-import { CommandError, handleAPIError } from '../../../utils';
-import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
-import { buildGroupPathByUuid } from '../folders';
-import { isRecord } from '../utils';
+import type { Component } from "../../../types";
+import type {
+  ChangesetEntry,
+  DiffResult,
+  EntityDiff,
+  LocalFolder,
+  RemoteSchemaData,
+  SchemaData,
+} from "../types";
+import { getMapiClient } from "../../../api";
+import { CommandError, handleAPIError } from "../../../utils";
+import {
+  toComponentCreate,
+  toComponentUpdate,
+  toDatasourceCreate,
+  toDatasourceUpdate,
+} from "../transform";
+import { buildGroupPathByUuid } from "../folders";
+import { isRecord } from "../utils";
 
 /** A resolved component group reference: its numeric id and server uuid. */
-interface GroupRef { id: number; uuid: string }
+interface GroupRef {
+  id: number;
+  uuid: string;
+}
 
 /**
  * Resolves a local block's transient path-space group keys to server uuids and
@@ -25,17 +40,16 @@ function resolveGroupRefs(comp: Component, groupByPath: Map<string, GroupRef>): 
   const { folder, ...rest } = comp as Record<string, unknown>;
   const resolved: Record<string, unknown> = { ...rest };
 
-  if (typeof folder === 'string') {
+  if (typeof folder === "string") {
     const group = groupByPath.get(folder);
     if (!group) {
       throw new CommandError(
-        `Unknown folder path "${folder}" for component "${comp.name}": no matching component group exists. `
-        + `Folder creation runs before component push, so this indicates an internal inconsistency.`,
+        `Unknown folder path "${folder}" for component "${comp.name}": no matching component group exists. ` +
+          `Folder creation runs before component push, so this indicates an internal inconsistency.`,
       );
     }
     resolved.component_group_uuid = group.uuid;
-  }
-  else if (folder === null) {
+  } else if (folder === null) {
     resolved.component_group_uuid = null;
   }
 
@@ -45,11 +59,11 @@ function resolveGroupRefs(comp: Component, groupByPath: Map<string, GroupRef>): 
       if (isRecord(field) && Array.isArray(field.component_group_whitelist)) {
         schema[key] = {
           ...field,
-          component_group_whitelist: field.component_group_whitelist.map(path =>
-            (typeof path === 'string' ? groupByPath.get(path)?.uuid ?? path : path)),
+          component_group_whitelist: field.component_group_whitelist.map((path) =>
+            typeof path === "string" ? (groupByPath.get(path)?.uuid ?? path) : path,
+          ),
         };
-      }
-      else {
+      } else {
         schema[key] = field;
       }
     }
@@ -67,7 +81,7 @@ function buildGroupByPath(remote: RemoteSchemaData): Map<string, GroupRef> {
   for (const folder of remoteFolders) {
     const segments = groupPathByUuid.get(folder.uuid);
     if (segments?.length) {
-      groupByPath.set(segments.join('/'), { id: folder.id, uuid: folder.uuid });
+      groupByPath.set(segments.join("/"), { id: folder.id, uuid: folder.uuid });
     }
   }
   return groupByPath;
@@ -89,52 +103,55 @@ export function formatDiffOutput(result: DiffResult, options?: { delete?: boolea
 
   const willDelete = options?.delete ?? false;
   const icons: Record<string, string> = {
-    create: chalk.green('+'),
-    update: chalk.yellow('~'),
-    unchanged: chalk.dim('='),
-    stale: chalk.red('-'),
+    create: chalk.green("+"),
+    update: chalk.yellow("~"),
+    unchanged: chalk.dim("="),
+    stale: chalk.red("-"),
   };
 
   const sections: [string, EntityDiff[]][] = [
-    ['Folders', byType.folder],
-    ['Components', byType.component],
-    ['Datasources', byType.datasource],
+    ["Folders", byType.folder],
+    ["Components", byType.component],
+    ["Datasources", byType.datasource],
   ];
 
   for (const [label, diffs] of sections) {
-    if (diffs.length === 0) { continue; }
+    if (diffs.length === 0) {
+      continue;
+    }
 
     lines.push(chalk.bold(label));
     for (const diff of diffs) {
-      const icon = icons[diff.action] ?? ' ';
-      const name = diff.action === 'stale' ? chalk.red(diff.name) : diff.name;
-      const actionLabel = diff.action === 'stale' && willDelete ? 'delete' : diff.action;
+      const icon = icons[diff.action] ?? " ";
+      const name = diff.action === "stale" ? chalk.red(diff.name) : diff.name;
+      const actionLabel = diff.action === "stale" && willDelete ? "delete" : diff.action;
       lines.push(`  ${icon} ${name} ${chalk.dim(`(${actionLabel})`)}`);
 
       if (diff.diff) {
-        for (const line of diff.diff.split('\n')) {
-          if (line.startsWith('+') && !line.startsWith('+++')) {
+        for (const line of diff.diff.split("\n")) {
+          if (line.startsWith("+") && !line.startsWith("+++")) {
             lines.push(`    ${chalk.green(line)}`);
-          }
-          else if (line.startsWith('-') && !line.startsWith('---')) {
+          } else if (line.startsWith("-") && !line.startsWith("---")) {
             lines.push(`    ${chalk.red(line)}`);
           }
         }
       }
     }
-    lines.push('');
+    lines.push("");
   }
 
   const summary = [
     result.creates > 0 ? chalk.green(`${result.creates} to create`) : null,
     result.updates > 0 ? chalk.yellow(`${result.updates} to update`) : null,
     result.unchanged > 0 ? chalk.dim(`${result.unchanged} unchanged`) : null,
-    result.stale > 0 ? chalk.red(`${result.stale} ${willDelete ? 'to delete' : 'stale'}`) : null,
-  ].filter(Boolean).join(', ');
+    result.stale > 0 ? chalk.red(`${result.stale} ${willDelete ? "to delete" : "stale"}`) : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   lines.push(`Summary: ${summary}`);
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 /** Pushes local schema changes to the remote space. */
@@ -155,14 +172,16 @@ export async function executePush(
   //    `slug path → { id, uuid }` map from the remote groups plus the ones we
   //    create. Creation is sequential on purpose: a child needs its parent's id.
   const groupByPath = buildGroupByPath(remote);
-  const foldersByPath = new Map<string, LocalFolder>(local.folders.map(f => [f.path, f]));
+  const foldersByPath = new Map<string, LocalFolder>(local.folders.map((f) => [f.path, f]));
   const folderCreates = diffResult.diffs
-    .filter(d => d.type === 'folder' && d.action === 'create')
+    .filter((d) => d.type === "folder" && d.action === "create")
     // Parent-first: shallower paths (fewer segments) are created before deeper ones.
-    .sort((a, b) => a.name.split('/').length - b.name.split('/').length);
+    .sort((a, b) => a.name.split("/").length - b.name.split("/").length);
   for (const diff of folderCreates) {
     const localFolder = foldersByPath.get(diff.name);
-    if (!localFolder) { continue; }
+    if (!localFolder) {
+      continue;
+    }
     const parent = localFolder.parentPath ? groupByPath.get(localFolder.parentPath) : undefined;
     let createdGroup: { id?: number | null; uuid?: string | null } | undefined;
     try {
@@ -172,18 +191,17 @@ export async function executePush(
         throwOnError: true,
       });
       createdGroup = res.data?.component_group;
-    }
-    catch (error) {
+    } catch (error) {
       // `handleAPIError` always throws, so the response check below only runs on success.
-      handleAPIError('push_component_folder', error, `Failed to create folder ${localFolder.name}`);
+      handleAPIError("push_component_folder", error, `Failed to create folder ${localFolder.name}`);
     }
     // A 2xx with a body missing id/uuid would otherwise leave the group
     // unregistered while the push proceeds; fail loudly instead, since blocks
     // that reference this folder can no longer be resolved.
     if (createdGroup?.id == null || !createdGroup.uuid) {
       throw new CommandError(
-        `Folder "${localFolder.name}" was created but the Management API response did not include an id and uuid; `
-        + `blocks that reference this folder cannot be resolved.`,
+        `Folder "${localFolder.name}" was created but the Management API response did not include an id and uuid; ` +
+          `blocks that reference this folder cannot be resolved.`,
       );
     }
     groupByPath.set(localFolder.path, { id: createdGroup.id, uuid: createdGroup.uuid });
@@ -194,28 +212,32 @@ export async function executePush(
   //    transient `folder`/whitelist slug paths to server uuids just before the
   //    payload is built (`resolveGroupRefs`); the `folder` key never reaches the
   //    Management API. Blocks without a `folder` key stay unmanaged.
-  const componentDiffs = diffResult.diffs.filter(d => d.type === 'component');
+  const componentDiffs = diffResult.diffs.filter((d) => d.type === "component");
   // Resolve group refs synchronously up front so an unknown folder path surfaces
   // as a clear `CommandError` here, rather than being wrapped as a per-component
   // API error inside the settled-results loop below.
   const resolvedComponents = new Map<string, Component>();
   for (const diff of componentDiffs) {
-    if (diff.action !== 'create' && diff.action !== 'update') { continue; }
-    const localComp = local.components.find(c => c.name === diff.name);
-    if (localComp) { resolvedComponents.set(diff.name, resolveGroupRefs(localComp, groupByPath)); }
+    if (diff.action !== "create" && diff.action !== "update") {
+      continue;
+    }
+    const localComp = local.components.find((c) => c.name === diff.name);
+    if (localComp) {
+      resolvedComponents.set(diff.name, resolveGroupRefs(localComp, groupByPath));
+    }
   }
   const componentResults = await Promise.allSettled(
     componentDiffs.map(async (diff) => {
       const resolvedComp = resolvedComponents.get(diff.name);
-      if (diff.action === 'create' && resolvedComp) {
+      if (diff.action === "create" && resolvedComp) {
         await client.components.create({
           path: { space_id: spaceIdNum },
           body: { component: toComponentCreate(resolvedComp) },
           throwOnError: true,
         });
-        return 'created' as const;
+        return "created" as const;
       }
-      if (diff.action === 'update' && resolvedComp) {
+      if (diff.action === "update" && resolvedComp) {
         const existing = remote.components.get(diff.name);
         if (existing?.id) {
           await client.components.update(existing.id, {
@@ -223,7 +245,7 @@ export async function executePush(
             body: { component: toComponentUpdate(resolvedComp) },
             throwOnError: true,
           });
-          return 'updated' as const;
+          return "updated" as const;
         }
       }
     }),
@@ -231,30 +253,32 @@ export async function executePush(
   for (let i = 0; i < componentResults.length; i++) {
     const result = componentResults[i];
     const diff = componentDiffs[i];
-    if (result.status === 'fulfilled') {
-      if (result.value === 'created') { created++; }
-      else if (result.value === 'updated') { updated++; }
-    }
-    else {
-      const eventId = diff.action === 'create' ? 'push_component' : 'update_component';
+    if (result.status === "fulfilled") {
+      if (result.value === "created") {
+        created++;
+      } else if (result.value === "updated") {
+        updated++;
+      }
+    } else {
+      const eventId = diff.action === "create" ? "push_component" : "update_component";
       handleAPIError(eventId, result.reason, `Failed to ${diff.action} component ${diff.name}`);
     }
   }
 
   // 3. Upsert datasources
-  const datasourceDiffs = diffResult.diffs.filter(d => d.type === 'datasource');
+  const datasourceDiffs = diffResult.diffs.filter((d) => d.type === "datasource");
   const datasourceResults = await Promise.allSettled(
     datasourceDiffs.map(async (diff) => {
-      const localDs = local.datasources.find(d => d.name === diff.name);
-      if (diff.action === 'create' && localDs) {
+      const localDs = local.datasources.find((d) => d.name === diff.name);
+      if (diff.action === "create" && localDs) {
         await client.datasources.create({
           path: { space_id: spaceIdNum },
           body: { datasource: toDatasourceCreate(localDs) },
           throwOnError: true,
         });
-        return 'created' as const;
+        return "created" as const;
       }
-      if (diff.action === 'update' && localDs) {
+      if (diff.action === "update" && localDs) {
         const existing = remote.datasources.get(diff.name);
         if (existing?.id) {
           await client.datasources.update(existing.id, {
@@ -262,7 +286,7 @@ export async function executePush(
             body: { datasource: toDatasourceUpdate(localDs, existing) },
             throwOnError: true,
           });
-          return 'updated' as const;
+          return "updated" as const;
         }
       }
     }),
@@ -270,12 +294,14 @@ export async function executePush(
   for (let i = 0; i < datasourceResults.length; i++) {
     const result = datasourceResults[i];
     const diff = datasourceDiffs[i];
-    if (result.status === 'fulfilled') {
-      if (result.value === 'created') { created++; }
-      else if (result.value === 'updated') { updated++; }
-    }
-    else {
-      const eventId = diff.action === 'create' ? 'push_datasource' : 'update_datasource';
+    if (result.status === "fulfilled") {
+      if (result.value === "created") {
+        created++;
+      } else if (result.value === "updated") {
+        updated++;
+      }
+    } else {
+      const eventId = diff.action === "create" ? "push_datasource" : "update_datasource";
       handleAPIError(eventId, result.reason, `Failed to ${diff.action} datasource ${diff.name}`);
     }
   }
@@ -288,10 +314,16 @@ export async function executePush(
   // content type, which the API rejects with a 422) must not abort the push
   // before stale folders are cleaned up, or those groups are left orphaned.
   if (options.delete) {
-    const deleteErrors: { action: 'delete_component' | 'delete_datasource' | 'delete_component_folder'; reason: unknown; message: string }[] = [];
+    const deleteErrors: {
+      action: "delete_component" | "delete_datasource" | "delete_component_folder";
+      reason: unknown;
+      message: string;
+    }[] = [];
 
     // Delete stale components
-    const staleComponents = diffResult.diffs.filter(d => d.type === 'component' && d.action === 'stale');
+    const staleComponents = diffResult.diffs.filter(
+      (d) => d.type === "component" && d.action === "stale",
+    );
     const deleteComponentResults = await Promise.allSettled(
       staleComponents.map(async (diff) => {
         const existing = remote.components.get(diff.name);
@@ -306,14 +338,23 @@ export async function executePush(
     );
     for (let i = 0; i < deleteComponentResults.length; i++) {
       const result = deleteComponentResults[i];
-      if (result.status === 'fulfilled') {
-        if (result.value) { deleted++; }
+      if (result.status === "fulfilled") {
+        if (result.value) {
+          deleted++;
+        }
+      } else {
+        deleteErrors.push({
+          action: "delete_component",
+          reason: result.reason,
+          message: `Failed to delete component ${staleComponents[i].name}`,
+        });
       }
-      else { deleteErrors.push({ action: 'delete_component', reason: result.reason, message: `Failed to delete component ${staleComponents[i].name}` }); }
     }
 
     // Delete stale datasources
-    const staleDatasources = diffResult.diffs.filter(d => d.type === 'datasource' && d.action === 'stale');
+    const staleDatasources = diffResult.diffs.filter(
+      (d) => d.type === "datasource" && d.action === "stale",
+    );
     const deleteDatasourceResults = await Promise.allSettled(
       staleDatasources.map(async (diff) => {
         const existing = remote.datasources.get(diff.name);
@@ -328,17 +369,24 @@ export async function executePush(
     );
     for (let i = 0; i < deleteDatasourceResults.length; i++) {
       const result = deleteDatasourceResults[i];
-      if (result.status === 'fulfilled') {
-        if (result.value) { deleted++; }
+      if (result.status === "fulfilled") {
+        if (result.value) {
+          deleted++;
+        }
+      } else {
+        deleteErrors.push({
+          action: "delete_datasource",
+          reason: result.reason,
+          message: `Failed to delete datasource ${staleDatasources[i].name}`,
+        });
       }
-      else { deleteErrors.push({ action: 'delete_datasource', reason: result.reason, message: `Failed to delete datasource ${staleDatasources[i].name}` }); }
     }
 
     // Delete stale folders children-first (deeper slug paths before their
     // parents), after stale components so no block references a removed group.
     const staleFolders = diffResult.diffs
-      .filter(d => d.type === 'folder' && d.action === 'stale')
-      .sort((a, b) => b.name.split('/').length - a.name.split('/').length);
+      .filter((d) => d.type === "folder" && d.action === "stale")
+      .sort((a, b) => b.name.split("/").length - a.name.split("/").length);
     for (const diff of staleFolders) {
       const group = groupByPath.get(diff.name);
       if (!group) {
@@ -347,7 +395,7 @@ export async function executePush(
         // doesn't, surface it as a delete error rather than silently leaving the
         // group in place after reporting it as "to delete".
         deleteErrors.push({
-          action: 'delete_component_folder',
+          action: "delete_component_folder",
           reason: new Error(`No component group resolved for stale folder path "${diff.name}".`),
           message: `Failed to delete folder ${diff.name}`,
         });
@@ -359,9 +407,12 @@ export async function executePush(
           throwOnError: true,
         });
         deleted++;
-      }
-      catch (error) {
-        deleteErrors.push({ action: 'delete_component_folder', reason: error, message: `Failed to delete folder ${diff.name}` });
+      } catch (error) {
+        deleteErrors.push({
+          action: "delete_component_folder",
+          reason: error,
+          message: `Failed to delete folder ${diff.name}`,
+        });
       }
     }
 
@@ -370,7 +421,8 @@ export async function executePush(
     // silently swallowed.
     if (deleteErrors.length > 0) {
       const first = deleteErrors[0];
-      const suffix = deleteErrors.length > 1 ? ` (and ${deleteErrors.length - 1} more delete error(s))` : '';
+      const suffix =
+        deleteErrors.length > 1 ? ` (and ${deleteErrors.length - 1} more delete error(s))` : "";
       handleAPIError(first.action, first.reason, `${first.message}${suffix}`);
     }
   }
@@ -394,29 +446,35 @@ export function buildChangesetEntries(
   const remoteFolderByPath = new Map<string, Record<string, unknown>>();
   for (const folder of remoteFolders) {
     const segments = folderPathByUuid.get(folder.uuid);
-    if (segments?.length) { remoteFolderByPath.set(segments.join('/'), folder as unknown as Record<string, unknown>); }
+    if (segments?.length) {
+      remoteFolderByPath.set(segments.join("/"), folder as unknown as Record<string, unknown>);
+    }
   }
 
   for (const diff of diffResult.diffs) {
-    if (diff.action === 'unchanged') { continue; }
-    if (diff.action === 'stale' && !options.delete) { continue; }
+    if (diff.action === "unchanged") {
+      continue;
+    }
+    if (diff.action === "stale" && !options.delete) {
+      continue;
+    }
 
-    const action = diff.action === 'stale' ? 'delete' : diff.action;
+    const action = diff.action === "stale" ? "delete" : diff.action;
 
     let remoteSrc: Record<string, unknown> | undefined;
     let localSrc: Record<string, unknown> | undefined;
 
-    if (diff.type === 'component') {
+    if (diff.type === "component") {
       remoteSrc = remote.components.get(diff.name);
-      localSrc = local.components.find(c => c.name === diff.name);
-    }
-    else if (diff.type === 'datasource') {
+      localSrc = local.components.find((c) => c.name === diff.name);
+    } else if (diff.type === "datasource") {
       remoteSrc = remote.datasources.get(diff.name);
-      localSrc = local.datasources.find(d => d.name === diff.name);
-    }
-    else if (diff.type === 'folder') {
+      localSrc = local.datasources.find((d) => d.name === diff.name);
+    } else if (diff.type === "folder") {
       remoteSrc = remoteFolderByPath.get(diff.name);
-      localSrc = local.folders.find(f => f.path === diff.name) as unknown as Record<string, unknown> | undefined;
+      localSrc = local.folders.find((f) => f.path === diff.name) as unknown as
+        | Record<string, unknown>
+        | undefined;
     }
 
     changes.push({

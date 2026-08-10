@@ -9,9 +9,9 @@ export {
   zPluginFieldValue,
   zRichTextFieldValue,
   zTableFieldValue,
-} from '../generated/overlay/zod.gen';
+} from "../generated/overlay/zod.gen";
 
 /**
  * @deprecated Use {@link zRichTextFieldValue} instead. Will be removed in a future major version.
  */
-export { zRichTextFieldValue as zRichtextFieldValue } from '../generated/overlay/zod.gen';
+export { zRichTextFieldValue as zRichtextFieldValue } from "../generated/overlay/zod.gen";

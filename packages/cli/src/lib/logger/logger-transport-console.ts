@@ -1,5 +1,5 @@
-import { APIError } from '../../utils/error';
-import type { LogContext, LogLevel, LogRecord, LogTransport } from './logger';
+import { APIError } from "../../utils/error";
+import type { LogContext, LogLevel, LogRecord, LogTransport } from "./logger";
 
 export interface ConsoleTransportOptions {
   level?: LogLevel;
@@ -9,7 +9,7 @@ export class ConsoleTransport implements LogTransport {
   public level: LogLevel;
 
   constructor(options?: ConsoleTransportOptions) {
-    this.level = options?.level ?? 'info';
+    this.level = options?.level ?? "info";
   }
 
   public log(record: LogRecord): void {
@@ -23,13 +23,13 @@ export class ConsoleTransport implements LogTransport {
 
   private levelRank(level: LogLevel): number {
     switch (level) {
-      case 'error':
+      case "error":
         return 0;
-      case 'warn':
+      case "warn":
         return 1;
-      case 'info':
+      case "info":
         return 2;
-      case 'debug':
+      case "debug":
         return 3;
       default:
         return 3;
@@ -42,15 +42,15 @@ export class ConsoleTransport implements LogTransport {
 
   private format(record: LogRecord): string {
     const timestamp = this.formatTimestamp(record.timestamp ?? new Date());
-    const level = record.level.toUpperCase().padEnd(5, ' ');
-    const message = record.message.replaceAll('\n', '\\n');
-    const context = record.context ? this.formatContext(record.context) : '';
+    const level = record.level.toUpperCase().padEnd(5, " ");
+    const message = record.message.replaceAll("\n", "\\n");
+    const context = record.context ? this.formatContext(record.context) : "";
     return `[${timestamp}]  ${level}  ${message}${context}`;
   }
 
   private formatTimestamp(date: Date): string {
-    const pad2 = (n: number) => String(n).padStart(2, '0');
-    const pad3 = (n: number) => String(n).padStart(3, '0');
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const pad3 = (n: number) => String(n).padStart(3, "0");
     const h = pad2(date.getHours());
     const m = pad2(date.getMinutes());
     const s = pad2(date.getSeconds());
@@ -60,9 +60,11 @@ export class ConsoleTransport implements LogTransport {
 
   private formatContext(context: LogContext): string {
     const entries = Object.entries(context);
-    if (entries.length === 0) { return ''; }
+    if (entries.length === 0) {
+      return "";
+    }
     const parts = entries.map(([k, v]) => `${k}: ${this.stringify(v)}`);
-    return `  (${parts.join(', ')})`;
+    return `  (${parts.join(", ")})`;
   }
 
   private stringify(value: unknown): string {
@@ -83,14 +85,13 @@ export class ConsoleTransport implements LogTransport {
           stack: value.stack,
         });
       }
-      if (value && typeof value === 'object') {
+      if (value && typeof value === "object") {
         return JSON.stringify(value);
       }
 
       return String(value);
-    }
-    catch {
-      return '[unserializable]';
+    } catch {
+      return "[unserializable]";
     }
   }
 }

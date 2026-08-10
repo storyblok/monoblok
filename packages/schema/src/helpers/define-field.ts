@@ -12,10 +12,10 @@ import type {
   RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
-} from '../generated/types/field';
-import type { BlockFolder } from './define-folder';
-import type { Prettify } from '../utils/prettify';
-import { isRecord } from '../utils/is-record';
+} from "../generated/types/field";
+import type { BlockFolder } from "./define-folder";
+import type { Prettify } from "../utils/prettify";
+import { isRecord } from "../utils/is-record";
 
 export type {
   AssetFieldValue,
@@ -58,7 +58,7 @@ type NormalizeDeny<T> = T extends readonly any[]
 
 /** Type guard for a defined folder ref: has `path`, and never `fields` (defined block) or `slug` (datasource). */
 const isFolderRef = (ref: unknown): ref is BlockFolder =>
-  isRecord(ref) && typeof ref.path === 'string' && !Array.isArray(ref.fields) && !('slug' in ref);
+  isRecord(ref) && typeof ref.path === "string" && !Array.isArray(ref.fields) && !("slug" in ref);
 
 /**
  * Field config accepted by {@link defineField}: the content-shape field plus the
@@ -84,11 +84,13 @@ export type FieldInput = Field & {
 
 /** Result of {@link defineField}: the field stamped with `name`, with refs normalized to strings. */
 export type DefinedField<TName extends string, TField extends FieldInput> = Prettify<
-  Omit<TField, 'allow' | 'deny' | 'datasource' | 'name'>
-  & { name: TName }
-  & (TField extends { allow: infer A } ? { allow: NormalizeAllow<A> } : unknown)
-  & (TField extends { deny: infer D } ? { deny: NormalizeDeny<D> } : unknown)
-  & (TField extends { datasource: infer D } ? { datasource: SlugOf<D> } : unknown)
+  Omit<TField, "allow" | "deny" | "datasource" | "name"> & { name: TName } & (TField extends {
+      allow: infer A;
+    }
+      ? { allow: NormalizeAllow<A> }
+      : unknown) &
+    (TField extends { deny: infer D } ? { deny: NormalizeDeny<D> } : unknown) &
+    (TField extends { datasource: infer D } ? { datasource: SlugOf<D> } : unknown)
 >;
 
 /**
@@ -105,10 +107,10 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
  * defineField('body', { type: 'bloks', deny: ['banner'] });
  * defineField('theme', { type: 'option', source: 'internal', datasource: colors });
  */
-export function defineField<
-  const TName extends string,
-  const TField extends FieldInput,
->(name: TName, field: TField): DefinedField<TName, TField>;
+export function defineField<const TName extends string, const TField extends FieldInput>(
+  name: TName,
+  field: TField,
+): DefinedField<TName, TField>;
 export function defineField(name: string, field: Record<string, unknown>): Record<string, unknown> {
   const { allow, deny, datasource, ...rest } = field;
   const normalized: Record<string, unknown> = { ...rest, name };
@@ -116,23 +118,38 @@ export function defineField(name: string, field: Record<string, unknown>): Recor
     const refs = Array.isArray(allow) ? allow : [allow];
     const folderRefs = refs.filter(isFolderRef);
     if (folderRefs.length > 0 && folderRefs.length < refs.length) {
-      throw new Error(`defineField: "allow" on field "${name}" mixes block and folder references; the editor restricts by either blocks or folders, not both`);
+      throw new Error(
+        `defineField: "allow" on field "${name}" mixes block and folder references; the editor restricts by either blocks or folders, not both`,
+      );
     }
-    normalized.allow = refs.map(ref =>
+    normalized.allow = refs.map((ref) =>
       isFolderRef(ref)
         ? { folder: ref.path }
-        : (typeof ref === 'string' ? ref : isRecord(ref) ? ref.name : undefined),
+        : typeof ref === "string"
+          ? ref
+          : isRecord(ref)
+            ? ref.name
+            : undefined,
     );
   }
   if (deny !== undefined) {
     const refs = Array.isArray(deny) ? deny : [deny];
     if (refs.some(isFolderRef)) {
-      throw new Error(`defineField: "deny" on field "${name}" does not accept folder references; the editor denies by block name only`);
+      throw new Error(
+        `defineField: "deny" on field "${name}" does not accept folder references; the editor denies by block name only`,
+      );
     }
-    normalized.deny = refs.map(ref => (typeof ref === 'string' ? ref : isRecord(ref) ? ref.name : undefined));
+    normalized.deny = refs.map((ref) =>
+      typeof ref === "string" ? ref : isRecord(ref) ? ref.name : undefined,
+    );
   }
   if (datasource !== undefined) {
-    normalized.datasource = typeof datasource === 'string' ? datasource : isRecord(datasource) ? datasource.slug : undefined;
+    normalized.datasource =
+      typeof datasource === "string"
+        ? datasource
+        : isRecord(datasource)
+          ? datasource.slug
+          : undefined;
   }
   return normalized;
 }

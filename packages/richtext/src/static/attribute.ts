@@ -1,6 +1,6 @@
-import { NODE_RENDER_MAP } from './render-map.generated';
-import { isValidStyleValue, stringToStyle } from './style';
-import type { StoryblokRichTextElement } from './types';
+import { NODE_RENDER_MAP } from "./render-map.generated";
+import { isValidStyleValue, stringToStyle } from "./style";
+import type { StoryblokRichTextElement } from "./types";
 
 type StyleMap = Partial<{
   [K in StoryblokRichTextElement]: Record<string, string>;
@@ -12,23 +12,23 @@ export type AttrMap = Record<string, string>;
  */
 const STYLE_MAP: StyleMap = {
   highlight: {
-    color: 'backgroundColor',
+    color: "backgroundColor",
   },
   textStyle: {
-    color: 'color',
+    color: "color",
   },
   paragraph: {
-    textAlign: 'textAlign',
+    textAlign: "textAlign",
   },
   heading: {
-    textAlign: 'textAlign',
+    textAlign: "textAlign",
   },
   tableCell: {
-    backgroundColor: 'backgroundColor',
-    colwidth: 'width',
+    backgroundColor: "backgroundColor",
+    colwidth: "width",
   },
   tableHeader: {
-    colwidth: 'width',
+    colwidth: "width",
   },
 };
 
@@ -36,33 +36,33 @@ const STYLE_MAP: StyleMap = {
  * Maps Tiptap attribute names to HTML attribute names.
  */
 const DEFAULT_ATTR_MAP: AttrMap = {
-  body: 'data-body',
-  colspan: 'colSpan',
-  rowspan: 'rowSpan',
-  name: 'data-name',
-  emoji: 'data-emoji',
-  order: 'start',
+  body: "data-body",
+  colspan: "colSpan",
+  rowspan: "rowSpan",
+  name: "data-name",
+  emoji: "data-emoji",
+  order: "start",
 };
 
 /**
  * Attributes that should be excluded from the output.
  */
 export const EXCLUDED_ATTRS = new Set([
-  'level',
-  'linktype',
-  'uuid',
-  'anchor',
-  'meta_data',
-  'copyright',
-  'source',
-  'fallbackImage',
+  "level",
+  "linktype",
+  "uuid",
+  "anchor",
+  "meta_data",
+  "copyright",
+  "source",
+  "fallbackImage",
 ]);
 
 /**
  * Attributes that should be excluded when they have their default value of 1.
  * These are HTML defaults and including them adds unnecessary markup.
  */
-const DEFAULT_VALUE_ONE_ATTRS = new Set(['colspan', 'rowspan', 'order']);
+const DEFAULT_VALUE_ONE_ATTRS = new Set(["colspan", "rowspan", "order"]);
 
 // ============================================================================
 // Helper Functions
@@ -72,19 +72,17 @@ const DEFAULT_VALUE_ONE_ATTRS = new Set(['colspan', 'rowspan', 'order']);
  * Resolves the href for Storyblok link types (story, email).
  * @returns The resolved href, or undefined if no special handling is needed.
  */
-function resolveStoryblokLinkHref(
-  attrs: Record<string, unknown>,
-): string | undefined {
+function resolveStoryblokLinkHref(attrs: Record<string, unknown>): string | undefined {
   const { linktype, href, anchor } = attrs;
 
-  if (linktype === 'story') {
-    const base = typeof href === 'string' ? href : '';
-    const hash = typeof anchor === 'string' && anchor ? `#${anchor}` : '';
+  if (linktype === "story") {
+    const base = typeof href === "string" ? href : "";
+    const hash = typeof anchor === "string" && anchor ? `#${anchor}` : "";
     return `${base}${hash}`;
   }
 
-  if (linktype === 'email' && typeof href === 'string') {
-    const email = href.replace(/^mailto:/, '');
+  if (linktype === "email" && typeof href === "string") {
+    const email = href.replace(/^mailto:/, "");
     return `mailto:${email}`;
   }
 
@@ -106,15 +104,13 @@ function getStaticAttrsFromRenderMap(type: StoryblokRichTextElement): {
   }
 
   const renderMap = NODE_RENDER_MAP[type as keyof typeof NODE_RENDER_MAP];
-  if (!renderMap || !('attrs' in renderMap)) {
+  if (!renderMap || !("attrs" in renderMap)) {
     return { staticAttrs, staticStyle };
   }
 
   const renderAttrs = renderMap.attrs || {};
-  const rawStyle
-    = 'style' in renderAttrs && typeof renderAttrs.style === 'string'
-      ? renderAttrs.style
-      : '';
+  const rawStyle =
+    "style" in renderAttrs && typeof renderAttrs.style === "string" ? renderAttrs.style : "";
 
   const { style: _style, ...rest } = renderAttrs as Record<string, unknown>;
   staticAttrs = rest;
@@ -135,7 +131,7 @@ function convertToStyleValue(value: unknown): unknown | undefined {
     return value[0] != null ? `${value[0]}px` : undefined;
   }
 
-  if (typeof value === 'number' || typeof value === 'string') {
+  if (typeof value === "number" || typeof value === "string") {
     return value;
   }
 
@@ -176,12 +172,7 @@ function processAttribute(
   const attrName = attrMap[key] ?? key;
 
   // Handle custom attributes for links (spread them as individual attributes)
-  if (
-    attrName === 'custom'
-    && type === 'link'
-    && typeof value === 'object'
-    && value !== null
-  ) {
+  if (attrName === "custom" && type === "link" && typeof value === "object" && value !== null) {
     for (const [customKey, customValue] of Object.entries(value)) {
       rest[customKey] = String(customValue);
     }
@@ -189,7 +180,7 @@ function processAttribute(
   }
 
   // Handle other object values (stringify them)
-  if (typeof value === 'object' && value !== null) {
+  if (typeof value === "object" && value !== null) {
     rest[attrName] = JSON.stringify(value);
     return;
   }
@@ -230,7 +221,7 @@ export function processAttrs(
   }
 
   // Special handling for Storyblok links
-  if (type === 'link') {
+  if (type === "link") {
     const linkHref = resolveStoryblokLinkHref(attrs);
     if (linkHref !== undefined) {
       rest.href = linkHref;
@@ -249,16 +240,16 @@ export function processAttrs(
 export const escapeAttr = (value: unknown): string =>
   String(value).replace(/[&"'<>]/g, (char) => {
     switch (char) {
-      case '&':
-        return '&amp;';
+      case "&":
+        return "&amp;";
       case '"':
-        return '&quot;';
-      case '\'':
-        return '&#39;';
-      case '<':
-        return '&lt;';
-      case '>':
-        return '&gt;';
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
       default:
         return char;
     }

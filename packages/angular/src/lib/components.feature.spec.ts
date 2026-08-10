@@ -1,5 +1,5 @@
-import { Component, Type } from '@angular/core';
-import { describe, it, expect } from 'vitest';
+import { Component, Type } from "@angular/core";
+import { describe, it, expect } from "vitest";
 import {
   isComponentLoader,
   withStoryblokComponents,
@@ -7,32 +7,32 @@ import {
   BaseComponentResolver,
   StoryblokComponentLoader,
   ComponentRegistry,
-} from './components.feature';
+} from "./components.feature";
 
-@Component({ selector: 'test-comp', template: '', standalone: true })
+@Component({ selector: "test-comp", template: "", standalone: true })
 class TestComponent {}
 
-@Component({ selector: 'test-comp-2', template: '', standalone: true })
+@Component({ selector: "test-comp-2", template: "", standalone: true })
 class TestComponent2 {}
 
-describe('isComponentLoader', () => {
-  it('should return true for arrow function loaders', () => {
+describe("isComponentLoader", () => {
+  it("should return true for arrow function loaders", () => {
     const loader: StoryblokComponentLoader = () => Promise.resolve(TestComponent);
 
     expect(isComponentLoader(loader)).toBe(true);
   });
 
-  it('should return true for async function loaders', () => {
+  it("should return true for async function loaders", () => {
     const loader: StoryblokComponentLoader = async () => TestComponent;
 
     expect(isComponentLoader(loader)).toBe(true);
   });
 
-  it('should return false for component classes', () => {
+  it("should return false for component classes", () => {
     expect(isComponentLoader(TestComponent)).toBe(false);
   });
 
-  it('should return false for classes with prototype', () => {
+  it("should return false for classes with prototype", () => {
     class SomeClass {
       method() {}
     }
@@ -41,16 +41,16 @@ describe('isComponentLoader', () => {
   });
 });
 
-describe('withStoryblokComponents', () => {
+describe("withStoryblokComponents", () => {
   it('should return a feature with kind "components"', () => {
     const feature = withStoryblokComponents({
       teaser: TestComponent,
     });
 
-    expect(feature.ɵkind).toBe('components');
+    expect(feature.ɵkind).toBe("components");
   });
 
-  it('should provide STORYBLOK_COMPONENTS token with the components map', () => {
+  it("should provide STORYBLOK_COMPONENTS token with the components map", () => {
     const components = {
       teaser: TestComponent,
       grid: () => Promise.resolve(TestComponent2),
@@ -65,10 +65,10 @@ describe('withStoryblokComponents', () => {
     });
   });
 
-  it('should handle empty components map', () => {
+  it("should handle empty components map", () => {
     const feature = withStoryblokComponents({});
 
-    expect(feature.ɵkind).toBe('components');
+    expect(feature.ɵkind).toBe("components");
     expect(feature.ɵproviders[0]).toEqual({
       provide: STORYBLOK_COMPONENTS,
       useValue: {},
@@ -76,7 +76,7 @@ describe('withStoryblokComponents', () => {
   });
 });
 
-describe('BaseComponentResolver', () => {
+describe("BaseComponentResolver", () => {
   function createResolver(registry: ComponentRegistry | null) {
     class TestResolver extends BaseComponentResolver {
       protected readonly registry = registry;
@@ -84,117 +84,117 @@ describe('BaseComponentResolver', () => {
     return new TestResolver();
   }
 
-  describe('has', () => {
-    it('should return true when component is registered', () => {
+  describe("has", () => {
+    it("should return true when component is registered", () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      expect(resolver.has('teaser')).toBe(true);
+      expect(resolver.has("teaser")).toBe(true);
     });
 
-    it('should return false when component is not registered', () => {
+    it("should return false when component is not registered", () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      expect(resolver.has('grid')).toBe(false);
+      expect(resolver.has("grid")).toBe(false);
     });
 
-    it('should return false when registry is null', () => {
+    it("should return false when registry is null", () => {
       const resolver = createResolver(null);
 
-      expect(resolver.has('teaser')).toBe(false);
+      expect(resolver.has("teaser")).toBe(false);
     });
 
-    it('should return true for lazy loader entries', () => {
+    it("should return true for lazy loader entries", () => {
       const resolver = createResolver({
         teaser: () => Promise.resolve(TestComponent),
       });
 
-      expect(resolver.has('teaser')).toBe(true);
+      expect(resolver.has("teaser")).toBe(true);
     });
   });
 
-  describe('getSync', () => {
-    it('should return eager component directly', () => {
+  describe("getSync", () => {
+    it("should return eager component directly", () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      expect(resolver.getSync('teaser')).toBe(TestComponent);
+      expect(resolver.getSync("teaser")).toBe(TestComponent);
     });
 
-    it('should return null for lazy loader (not yet resolved)', () => {
+    it("should return null for lazy loader (not yet resolved)", () => {
       const resolver = createResolver({
         teaser: () => Promise.resolve(TestComponent),
       });
 
-      expect(resolver.getSync('teaser')).toBeNull();
+      expect(resolver.getSync("teaser")).toBeNull();
     });
 
-    it('should return cached component after async resolve', async () => {
+    it("should return cached component after async resolve", async () => {
       const resolver = createResolver({
         teaser: () => Promise.resolve(TestComponent),
       });
 
-      await resolver.resolve('teaser');
+      await resolver.resolve("teaser");
 
-      expect(resolver.getSync('teaser')).toBe(TestComponent);
+      expect(resolver.getSync("teaser")).toBe(TestComponent);
     });
 
-    it('should return null for unregistered component', () => {
+    it("should return null for unregistered component", () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      expect(resolver.getSync('grid')).toBeNull();
+      expect(resolver.getSync("grid")).toBeNull();
     });
 
-    it('should return null when registry is null', () => {
+    it("should return null when registry is null", () => {
       const resolver = createResolver(null);
 
-      expect(resolver.getSync('teaser')).toBeNull();
+      expect(resolver.getSync("teaser")).toBeNull();
     });
 
-    it('should cache eager components after first getSync call', () => {
+    it("should cache eager components after first getSync call", () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      resolver.getSync('teaser');
-      const secondCall = resolver.getSync('teaser');
+      resolver.getSync("teaser");
+      const secondCall = resolver.getSync("teaser");
 
       expect(secondCall).toBe(TestComponent);
     });
   });
 
-  describe('resolve', () => {
-    it('should resolve eager component', async () => {
+  describe("resolve", () => {
+    it("should resolve eager component", async () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      const result = await resolver.resolve('teaser');
+      const result = await resolver.resolve("teaser");
 
       expect(result).toBe(TestComponent);
     });
 
-    it('should resolve lazy component', async () => {
+    it("should resolve lazy component", async () => {
       const resolver = createResolver({
         teaser: () => Promise.resolve(TestComponent),
       });
 
-      const result = await resolver.resolve('teaser');
+      const result = await resolver.resolve("teaser");
 
       expect(result).toBe(TestComponent);
     });
 
-    it('should return null for unregistered component', async () => {
+    it("should return null for unregistered component", async () => {
       const resolver = createResolver({ teaser: TestComponent });
 
-      const result = await resolver.resolve('grid');
+      const result = await resolver.resolve("grid");
 
       expect(result).toBeNull();
     });
 
-    it('should return null when registry is null', async () => {
+    it("should return null when registry is null", async () => {
       const resolver = createResolver(null);
 
-      const result = await resolver.resolve('teaser');
+      const result = await resolver.resolve("teaser");
 
       expect(result).toBeNull();
     });
 
-    it('should cache resolved lazy components', async () => {
+    it("should cache resolved lazy components", async () => {
       let loadCount = 0;
       const resolver = createResolver({
         teaser: () => {
@@ -203,26 +203,26 @@ describe('BaseComponentResolver', () => {
         },
       });
 
-      await resolver.resolve('teaser');
-      await resolver.resolve('teaser');
+      await resolver.resolve("teaser");
+      await resolver.resolve("teaser");
 
       expect(loadCount).toBe(1);
     });
 
-    it('should return cached component on subsequent calls', async () => {
+    it("should return cached component on subsequent calls", async () => {
       const resolver = createResolver({
         teaser: () => Promise.resolve(TestComponent),
       });
 
-      const first = await resolver.resolve('teaser');
-      const second = await resolver.resolve('teaser');
+      const first = await resolver.resolve("teaser");
+      const second = await resolver.resolve("teaser");
 
       expect(first).toBe(second);
     });
   });
 
-  describe('getRegisteredKeys', () => {
-    it('should return all registered keys', () => {
+  describe("getRegisteredKeys", () => {
+    it("should return all registered keys", () => {
       const resolver = createResolver({
         teaser: TestComponent,
         grid: TestComponent2,
@@ -230,18 +230,18 @@ describe('BaseComponentResolver', () => {
 
       const keys = resolver.getRegisteredKeys();
 
-      expect(keys).toContain('teaser');
-      expect(keys).toContain('grid');
+      expect(keys).toContain("teaser");
+      expect(keys).toContain("grid");
       expect(keys).toHaveLength(2);
     });
 
-    it('should return empty array when registry is null', () => {
+    it("should return empty array when registry is null", () => {
       const resolver = createResolver(null);
 
       expect(resolver.getRegisteredKeys()).toEqual([]);
     });
 
-    it('should return empty array for empty registry', () => {
+    it("should return empty array for empty registry", () => {
       const resolver = createResolver({});
 
       expect(resolver.getRegisteredKeys()).toEqual([]);

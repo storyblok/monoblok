@@ -1,5 +1,5 @@
-import type { Assignment, Experiment, ExperimentVariant, Exposure } from './types';
-import { mapsSlug } from './find-experiment-by-slug';
+import type { Assignment, Experiment, ExperimentVariant, Exposure } from "./types";
+import { mapsSlug } from "./find-experiment-by-slug";
 
 export interface ResolveExperimentOptions {
   experiments: Experiment[];
@@ -27,7 +27,11 @@ export interface ResolvedExperiment {
  * exposure when no experiment matches, the assignment is missing, or it belongs
  * to a different experiment.
  */
-export function resolveExperiment({ experiments, slug, assignment }: ResolveExperimentOptions): ResolvedExperiment {
+export function resolveExperiment({
+  experiments,
+  slug,
+  assignment,
+}: ResolveExperimentOptions): ResolvedExperiment {
   if (!assignment) {
     return { slug };
   }
@@ -36,7 +40,7 @@ export function resolveExperiment({ experiments, slug, assignment }: ResolveExpe
   // can belong to multiple running experiments, so a slug-first lookup could pick
   // a different experiment than the one the visitor was bucketed into and drop the
   // assignment (no exposure, no remap).
-  const experiment = experiments.find(candidate => candidate.id === assignment.experiment.id);
+  const experiment = experiments.find((candidate) => candidate.id === assignment.experiment.id);
   if (!experiment) {
     return { slug };
   }
@@ -46,13 +50,15 @@ export function resolveExperiment({ experiments, slug, assignment }: ResolveExpe
     return { slug };
   }
 
-  const variant = experiment.variants.find(candidate => candidate.public_id === assignment.variant.public_id);
+  const variant = experiment.variants.find(
+    (candidate) => candidate.public_id === assignment.variant.public_id,
+  );
   if (!variant) {
     return { slug };
   }
 
   const exposure: Exposure = {
-    type: 'exposure',
+    type: "exposure",
     experiment: { id: experiment.id, name: experiment.name },
     variant: { name: variant.name, public_id: variant.public_id },
     visitorId: assignment.visitorId,
@@ -63,6 +69,6 @@ export function resolveExperiment({ experiments, slug, assignment }: ResolveExpe
     return { slug, variant, exposure };
   }
 
-  const mapping = variant.story_mappings.find(candidate => candidate.original_slug === slug);
+  const mapping = variant.story_mappings.find((candidate) => candidate.original_slug === slug);
   return { slug: mapping?.variant_slug ?? slug, variant, exposure };
 }

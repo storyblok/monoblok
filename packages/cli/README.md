@@ -27,33 +27,42 @@
 
 ## Features
 
-- 🛡️ **Type Safety** - Generate TypeScript type definitions for your Storyblok components, ensuring type safety in your frontend applications
+- 🛡️ **Type Safety** - Generate TypeScript type definitions for your Storyblok components, ensuring
+  type safety in your frontend applications
 - 🔐 **Authentication** - Secure login system with support for different regions and CI environments
-- 🧩 **Component Management** - Pull and push component schemas, groups, presets, and internal tags between spaces
-- 🔄 **Migration System** - Generate and run migrations to transform or update field values across your Storyblok content
+- 🧩 **Component Management** - Pull and push component schemas, groups, presets, and internal tags
+  between spaces
+- 🔄 **Migration System** - Generate and run migrations to transform or update field values across
+  your Storyblok content
 - 🌐 **Language Management** - Pull and manage languages for your Storyblok space
 - 📁 **File Organization** - Organized file structure with the `.storyblok` directory as default
 - 🛠️ **Customizable Paths** - Flexible path configuration for all generated files
 - 📝 **Naming Conventions** - Consistent file naming with customizable suffixes and prefixes
-- 📂 **Separate Files Support** - Option to work with individual component files or consolidated files
+- 📂 **Separate Files Support** - Option to work with individual component files or consolidated
+  files
 - 👀 **Dry Run Mode** - Preview migrations changes before applying them to your Storyblok space
-- 🔍 **Filtering Capabilities** - Filter components and stories using glob patterns and Storyblok query syntax
-- 📊 **Verbose Logging** - Improved error handling and detailed logging options for debugging and monitoring
+- 🔍 **Filtering Capabilities** - Filter components and stories using glob patterns and Storyblok
+  query syntax
+- 📊 **Verbose Logging** - Improved error handling and detailed logging options for debugging and
+  monitoring
 
 ## Pre-requisites
 
 - [Node.js >= 18.0.0](https://nodejs.org/en/download/)
-- Storyblok account (sign up [here](https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-cli))
-- Personal access token from Storyblok (get it [here](https://app.storyblok.com/#/me/account?tab=token))
+- Storyblok account (sign up
+  [here](https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-cli))
+- Personal access token from Storyblok (get it
+  [here](https://app.storyblok.com/#/me/account?tab=token))
 
 ## Documentation
 
-> [!WARNING]
-> Official documentation for this package v4 is still in development. In the meantime, please refer to the internal documentation for the [v4 beta](src/README.md).
+> [!WARNING] Official documentation for this package v4 is still in development. In the meantime,
+> please refer to the internal documentation for the [v4 beta](src/README.md).
 
 ## Setup
 
-This package relies on [pnpm](https://pnpm.io/) to manage dependencies. For instructions on how to install pnpm, please visit [pnpm.io](https://pnpm.io/installation).
+This package relies on [pnpm](https://pnpm.io/) to manage dependencies. For instructions on how to
+install pnpm, please visit [pnpm.io](https://pnpm.io/installation).
 
 ```bash
 pnpm install
@@ -73,7 +82,8 @@ To run the tests you can use the following command:
 pnpm run test
 ```
 
-If you prefer a more visual experience while writing tests you can use this command powered by [vitest/ui](https://vitest.dev/guide/ui):
+If you prefer a more visual experience while writing tests you can use this command powered by
+[vitest/ui](https://vitest.dev/guide/ui):
 
 ```bash
 pnpm run test:ui
@@ -87,17 +97,20 @@ pnpm run test:coverage
 
 ### Debugging
 
-To debug the CLI you can use the `launch.json` configuration in the `.vscode` folder. You can run any command with the debugger attached.
+To debug the CLI you can use the `launch.json` configuration in the `.vscode` folder. You can run
+any command with the debugger attached.
 
 ![A screenshot of the Visual Studio Code debugger](/.github/assets/debug-vscode.png)
 
-Then you can set breakpoints directly to the typescript files and the debugger will handle the rest with sourcempaps.
+Then you can set breakpoints directly to the typescript files and the debugger will handle the rest
+with sourcempaps.
 
 ![A screenshot of a breakpoint set in the Visual Studio Code debugger](/.github/assets/breakpoints.png)
 
 ## Community
 
-For help, discussion about best practices, or any other conversation that would benefit from being searchable:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
 - [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/storyblok/discussions)
 
@@ -107,22 +120,30 @@ For community support, chatting with other users, please visit:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/storyblok-cli/issues/new/choose).
+For bugs or feature requests, please
+[submit an issue](https://github.com/storyblok/storyblok-cli/issues/new/choose).
 
-> [!IMPORTANT]
-> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
 
 ### I only have a question
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## Contributing
 
-If you're interested in contributing to Storyblok CLI, please read our [contributing docs](../../CONTRIBUTING.md) before submitting a pull request.
+If you're interested in contributing to Storyblok CLI, please read our
+[contributing docs](../../CONTRIBUTING.md) before submitting a pull request.
 
 ## License
 

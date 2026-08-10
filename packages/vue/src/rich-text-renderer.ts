@@ -1,5 +1,5 @@
-import type { Component, VNode } from 'vue';
-import { createTextVNode, h, toRaw } from 'vue';
+import type { Component, VNode } from "vue";
+import { createTextVNode, h, toRaw } from "vue";
 import type {
   StoryblokRichTextElement,
   StoryblokRichTextElementByType,
@@ -9,7 +9,7 @@ import type {
   StoryblokRichTextNodeWithKey,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 import {
   buildStoryblokImage,
   getInnerMarks,
@@ -21,7 +21,7 @@ import {
   processAttrs,
   resolveTag,
   splitTableRows,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 
 export interface StoryblokVueRichTextRenderContext {
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
@@ -34,7 +34,8 @@ export interface StoryblokVueRichTextRenderContext {
  */
 export type SbVueRichTextRenderContext = StoryblokVueRichTextRenderContext;
 
-export type StoryblokVueRichTextProps = StoryblokRichTextElementByType<StoryblokVueRichTextRenderContext>;
+export type StoryblokVueRichTextProps =
+  StoryblokRichTextElementByType<StoryblokVueRichTextRenderContext>;
 
 /**
  * @deprecated Use {@link StoryblokVueRichTextProps} instead. Will be removed in the next major version.
@@ -92,14 +93,16 @@ export function createRichTextRenderer(options: StoryblokVueRichTextRenderContex
  * This produces cleaner output: <a href="...">text <strong>bold</strong> more</a>
  * instead of: <a>text</a><a><strong>bold</strong></a><a>more</a>
  */
-function renderChildren(nodes: StoryblokRichTextNodeWithKey[], options: StoryblokVueRichTextRenderContext): VNode[] {
+function renderChildren(
+  nodes: StoryblokRichTextNodeWithKey[],
+  options: StoryblokVueRichTextRenderContext,
+): VNode[] {
   const groups = groupLinkNodes(nodes);
 
   return groups.map((group, groupIndex) => {
     if (group.linkMark) {
       return renderLinkGroup(group.nodes, group.linkMark, options, group._key || groupIndex);
-    }
-    else {
+    } else {
       return renderNode(group.nodes[0], options, group._key || groupIndex);
     }
   });
@@ -121,20 +124,28 @@ function renderLinkGroup(
   });
   const Custom = resolveComponentOverride(linkMark.type, options.components);
   if (Custom) {
-    return h(Custom, { key, ...linkMark, context: options }, {
-      default: () => inner,
-    });
+    return h(
+      Custom,
+      { key, ...linkMark, context: options },
+      {
+        default: () => inner,
+      },
+    );
   }
 
   const tag = resolveTag(linkMark);
   if (!tag) {
-    return inner.length > 0 ? inner[0] : createTextVNode('');
+    return inner.length > 0 ? inner[0] : createTextVNode("");
   }
-  const attrs = ('attrs' in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
+  const attrs = ("attrs" in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
   return h(tag, { key, ...processAttrs(linkMark.type, attrs) }, inner);
 }
 
-function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokVueRichTextRenderContext, key: number | string): VNode {
+function renderNode(
+  node: StoryblokRichTextNodeWithKey,
+  options: StoryblokVueRichTextRenderContext,
+  key: number | string,
+): VNode {
   const content = hasContent(node) ? renderChildren(node.content, options) : [];
 
   // Custom renderer takes full control
@@ -146,14 +157,18 @@ function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokVueRic
     const contextForCustom = options.components?.[node.type]
       ? { ...options, components: { ...options.components, [node.type]: undefined } }
       : options;
-    return h(Custom, { key, ...node, context: contextForCustom }, content.length
-      ? {
-          default: () => content,
-        }
-      : undefined);
+    return h(
+      Custom,
+      { key, ...node, context: contextForCustom },
+      content.length
+        ? {
+            default: () => content,
+          }
+        : undefined,
+    );
   }
 
-  if (node.type === 'text') {
+  if (node.type === "text") {
     return renderTextNode(node as StoryblokRichTextTextNode, options, key);
   }
 
@@ -164,19 +179,19 @@ function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokVueRic
   if (!tag) {
     const children = hasContent(node) ? renderChildren(node.content, options) : [];
     if (children.length === 0) {
-      return createTextVNode('');
+      return createTextVNode("");
     }
-    return children.length === 1 ? children[0] : h('div', { key }, children);
+    return children.length === 1 ? children[0] : h("div", { key }, children);
   }
-  if (node.type === 'image' && options.optimizeImage) {
+  if (node.type === "image" && options.optimizeImage) {
     return renderOptimizedImage(node, options, key);
   }
-  const nodeAttrs = ('attrs' in node ? node.attrs : {}) as Record<string, unknown>;
+  const nodeAttrs = ("attrs" in node ? node.attrs : {}) as Record<string, unknown>;
   const props = processAttrs(node.type, nodeAttrs);
   if (isSelfClosing(tag)) {
     return h(tag, { key, ...props });
   }
-  if (node.type === 'table') {
+  if (node.type === "table") {
     return renderTable(node, options, key, tag, props);
   }
   const staticChildren = getStaticChildren(node);
@@ -187,8 +202,8 @@ function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokVueRic
   }
 
   const children = hasContent(node) ? renderChildren(node.content, options) : [];
-  if (node.type === 'emoji') {
-    const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: 'emoji' }>;
+  if (node.type === "emoji") {
+    const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: "emoji" }>;
     return h(tag, { key, ...props }, [createTextVNode(emojiNode.attrs.emoji)]);
   }
   return h(tag, { key, ...props }, children);
@@ -202,22 +217,22 @@ function renderOptimizedImage(
   options: StoryblokVueRichTextRenderContext,
   key: number | string,
 ): VNode {
-  const attrs = ('attrs' in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
+  const attrs = ("attrs" in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
 
   if (!src) {
-    return createTextVNode('');
+    return createTextVNode("");
   }
 
   const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, options.optimizeImage);
 
-  const finalProps = processAttrs('image', {
+  const finalProps = processAttrs("image", {
     ...attrs,
     src: optimizedSrc,
     ...extraAttrs,
   });
 
-  return h('img', { key, ...finalProps });
+  return h("img", { key, ...finalProps });
 }
 
 /**
@@ -236,13 +251,21 @@ function renderTable(
 
   if (headerRows.length > 0) {
     tableContent.push(
-      h('thead', { key: 'thead' }, headerRows.map((row, index) => renderNode(row, options, row._key || index))),
+      h(
+        "thead",
+        { key: "thead" },
+        headerRows.map((row, index) => renderNode(row, options, row._key || index)),
+      ),
     );
   }
 
   if (bodyRows.length > 0) {
     tableContent.push(
-      h('tbody', { key: 'tbody' }, bodyRows.map((row, index) => renderNode(row, options, row._key || index))),
+      h(
+        "tbody",
+        { key: "tbody" },
+        bodyRows.map((row, index) => renderNode(row, options, row._key || index)),
+      ),
     );
   }
 
@@ -267,15 +290,17 @@ function renderStaticStructure(
       return h(tag, { key: index, ...props });
     }
 
-    const inner = children
-      ? renderStaticStructure(type, children, parentAttrs, content)
-      : content;
+    const inner = children ? renderStaticStructure(type, children, parentAttrs, content) : content;
 
     return h(tag, { key: index, ...props }, inner);
   });
 }
 
-function renderTextNode(node: StoryblokRichTextTextNode, options: StoryblokVueRichTextRenderContext, key?: number | string): VNode {
+function renderTextNode(
+  node: StoryblokRichTextTextNode,
+  options: StoryblokVueRichTextRenderContext,
+  key?: number | string,
+): VNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
@@ -293,26 +318,38 @@ function renderTextNodeWithMarks(
     }
   }
 
-  if (typeof content === 'string') {
+  if (typeof content === "string") {
     return createTextVNode(content);
   }
 
   return content;
 }
 
-function wrapMark(children: VNode | string, mark: StoryblokRichTextMark, options: StoryblokVueRichTextRenderContext): VNode {
+function wrapMark(
+  children: VNode | string,
+  mark: StoryblokRichTextMark,
+  options: StoryblokVueRichTextRenderContext,
+): VNode {
   const Custom = resolveComponentOverride(mark.type, options.components);
   if (Custom) {
-    const childContent = typeof children === 'string' ? createTextVNode(children) : children;
-    return h(Custom, { ...mark, context: options }, {
-      default: () => [childContent],
-    });
+    const childContent = typeof children === "string" ? createTextVNode(children) : children;
+    return h(
+      Custom,
+      { ...mark, context: options },
+      {
+        default: () => [childContent],
+      },
+    );
   }
 
   const tag = resolveTag(mark);
   if (!tag) {
-    return typeof children === 'string' ? createTextVNode(children) : children;
+    return typeof children === "string" ? createTextVNode(children) : children;
   }
-  const attrs = ('attrs' in mark ? mark.attrs : {}) as Record<string, unknown>;
-  return h(tag, processAttrs(mark.type, attrs), typeof children === 'string' ? children : [children]);
+  const attrs = ("attrs" in mark ? mark.attrs : {}) as Record<string, unknown>;
+  return h(
+    tag,
+    processAttrs(mark.type, attrs),
+    typeof children === "string" ? children : [children],
+  );
 }

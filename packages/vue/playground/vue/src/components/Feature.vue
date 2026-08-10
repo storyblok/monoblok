@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { SbBlokData } from '@storyblok/vue';
+import type { SbBlokData } from "@storyblok/vue";
 
 defineProps<{ blok: SbBlokData & { name?: string } }>();
 
 function featureMethod() {
   // eslint-disable-next-line no-console
-  console.log('Hi from Feature.vue');
+  console.log("Hi from Feature.vue");
 }
 
 defineExpose({

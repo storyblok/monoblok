@@ -7,7 +7,7 @@
  */
 
 // Client
-export { createManagementApiClient } from './client';
+export { createManagementApiClient } from "./client";
 export type {
   ApiResponse,
   FetchOptions,
@@ -16,16 +16,16 @@ export type {
   ManagementApiClientConfig,
   MapiResourceDeps,
   RequestConfigOverrides,
-} from './client';
-export { ClientError } from './error';
-export type { ApiErrorBody } from './error';
+} from "./client";
+export { ClientError } from "./error";
+export type { ApiErrorBody } from "./error";
 
 // MAPI-only endpoint-specific types (raw SDK types).
 export type {
   AssetUpdateRequest,
   CreateAsset as SignedResponseObject,
   SpaceDetail,
-} from './generated/mapi/types.gen';
+} from "./generated/mapi/types.gen";
 export type {
   Asset,
   AssetCreate,
@@ -60,15 +60,13 @@ export type {
   StoryTranslatedSlug,
   User,
   UserUpdate,
-} from './generated/mapi/types-aliased.gen';
+} from "./generated/mapi/types-aliased.gen";
 
 // Domain types — sourced from the codegen tool's aliased + wrapper outputs.
 // `Component` is the wire-shaped component *definition* (see the aliased export
 // above); `RootComponents` is the DSL root-block helper used for story content.
-export type {
-  RootBlock as RootComponents,
-} from './generated/types/block';
-export type { Field } from './generated/types/field';
+export type { RootBlock as RootComponents } from "./generated/types/block";
+export type { Field } from "./generated/types/field";
 
 export type {
   AssetFieldValue,
@@ -80,20 +78,21 @@ export type {
   RichTextFieldValue,
   RichtextFieldValue,
   TableFieldValue,
-} from './generated/types/field';
+} from "./generated/types/field";
 
-export type {
-  MapiStory as Story,
-  StoryCreate,
-  StoryUpdate,
-} from './generated/types/mapi-story';
+export type { MapiStory as Story, StoryCreate, StoryUpdate } from "./generated/types/mapi-story";
 
 // Resource-defined helpers
-export type { AssetCreate as AssetUploadRequest, AssetListQuery } from './resources/assets';
-export type { SharedAssetCreate, SharedAssetListQuery, SharedAssetListResponse, SharedAssetUploadRequest } from './resources/shared-assets';
-export type { SpaceCreateQuery } from './resources/spaces';
-export type { StoryListQuery } from './resources/stories';
+export type { AssetCreate as AssetUploadRequest, AssetListQuery } from "./resources/assets";
+export type {
+  SharedAssetCreate,
+  SharedAssetListQuery,
+  SharedAssetListResponse,
+  SharedAssetUploadRequest,
+} from "./resources/shared-assets";
+export type { SpaceCreateQuery } from "./resources/spaces";
+export type { StoryListQuery } from "./resources/stories";
 // Utilities
-export { normalizeAssetUrl } from './utils/normalize-asset-url';
+export { normalizeAssetUrl } from "./utils/normalize-asset-url";
 // Rate limit config
-export type { RateLimitConfig } from './utils/rate-limit';
+export type { RateLimitConfig } from "./utils/rate-limit";

@@ -1,4 +1,4 @@
-import { createThrottle } from './throttle';
+import { createThrottle } from "./throttle";
 
 const DEFAULT_REQUESTS_PER_SECOND = 6;
 const MAX_RATE_LIMIT = 1_000;
@@ -30,15 +30,16 @@ export interface ThrottleManager {
  */
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
   if (config === false) {
-    return { execute: fn => fn() };
+    return { execute: (fn) => fn() };
   }
 
-  const resolvedConfig: RateLimitConfig = typeof config === 'number' ? { requestsPerSecond: config } : config;
+  const resolvedConfig: RateLimitConfig =
+    typeof config === "number" ? { requestsPerSecond: config } : config;
   const { requestsPerSecond, maxConcurrency } = resolvedConfig;
   const rps = requestsPerSecond ?? maxConcurrency ?? DEFAULT_REQUESTS_PER_SECOND;
   const throttle = createThrottle(Math.min(rps, MAX_RATE_LIMIT));
 
   return {
-    execute: fn => throttle.execute(fn),
+    execute: (fn) => throttle.execute(fn),
   };
 }

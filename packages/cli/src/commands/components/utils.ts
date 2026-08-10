@@ -1,7 +1,7 @@
-import type { Component, ComponentFolder, InternalTag, SpaceComponentsData } from './constants';
-import { minimatch } from 'minimatch';
-import { CommandError } from '../../utils';
-import { collectWhitelistDependencies } from './push/graph-operations/dependency-graph';
+import type { Component, ComponentFolder, InternalTag, SpaceComponentsData } from "./constants";
+import { minimatch } from "minimatch";
+import { CommandError } from "../../utils";
+import { collectWhitelistDependencies } from "./push/graph-operations/dependency-graph";
 
 /**
  * Collects the dependencies required to make a set of matched components independently
@@ -21,14 +21,18 @@ export function collectAllDependencies(
   const requiredGroupUuids = new Set<string>();
   const requiredTagIds = new Set<number>();
 
-  components.forEach(component => requiredComponents.add(component.name));
+  components.forEach((component) => requiredComponents.add(component.name));
 
   function collectComponentDeps(componentName: string, visited = new Set<string>()) {
-    if (visited.has(componentName)) { return; }
+    if (visited.has(componentName)) {
+      return;
+    }
     visited.add(componentName);
 
-    const component = allComponents.find(c => c.name === componentName);
-    if (!component) { return; }
+    const component = allComponents.find((c) => c.name === componentName);
+    if (!component) {
+      return;
+    }
 
     if (component.component_group_uuid) {
       requiredGroupUuids.add(component.component_group_uuid);
@@ -36,7 +40,7 @@ export function collectAllDependencies(
 
     if (component.internal_tag_ids && component.internal_tag_ids.length > 0) {
       component.internal_tag_ids.forEach((tagId) => {
-        const numericTagId = typeof tagId === 'string' ? Number.parseInt(tagId, 10) : tagId;
+        const numericTagId = typeof tagId === "string" ? Number.parseInt(tagId, 10) : tagId;
         if (!Number.isNaN(numericTagId)) {
           requiredTagIds.add(numericTagId);
         }
@@ -47,20 +51,22 @@ export function collectAllDependencies(
       const schemaDeps = collectWhitelistDependencies(component.schema);
       // Whitelisted groups/tags are referenced by id/uuid, which differ per space and can't
       // self-heal, so they must travel with the component for the push to remap them.
-      schemaDeps.groupUuids.forEach(groupUuid => requiredGroupUuids.add(groupUuid));
-      schemaDeps.tagIds.forEach(tagId => requiredTagIds.add(tagId));
+      schemaDeps.groupUuids.forEach((groupUuid) => requiredGroupUuids.add(groupUuid));
+      schemaDeps.tagIds.forEach((tagId) => requiredTagIds.add(tagId));
       // Intentionally skip schemaDeps.componentNames: `component_whitelist` is name-based,
       // needs no id remapping, and self-heals once a component of that name exists in the target.
     }
   }
 
-  components.forEach(component => collectComponentDeps(component.name));
+  components.forEach((component) => collectComponentDeps(component.name));
 
   function collectParentGroups(groupUuid: string, visited = new Set<string>()) {
-    if (visited.has(groupUuid)) { return; }
+    if (visited.has(groupUuid)) {
+      return;
+    }
     visited.add(groupUuid);
 
-    const group = allGroups.find(g => g.uuid === groupUuid);
+    const group = allGroups.find((g) => g.uuid === groupUuid);
     if (group && group.parent_uuid) {
       requiredGroupUuids.add(group.parent_uuid);
       collectParentGroups(group.parent_uuid, visited);
@@ -68,11 +74,15 @@ export function collectAllDependencies(
   }
 
   const initialGroupUuids = Array.from(requiredGroupUuids);
-  initialGroupUuids.forEach(groupUuid => collectParentGroups(groupUuid));
+  initialGroupUuids.forEach((groupUuid) => collectParentGroups(groupUuid));
 
-  const filteredComponents = allComponents.filter(component => requiredComponents.has(component.name));
-  const filteredGroups = allGroups.filter(group => group.uuid !== undefined && requiredGroupUuids.has(group.uuid));
-  const filteredTags = allTags.filter(tag => tag.id !== undefined && requiredTagIds.has(tag.id));
+  const filteredComponents = allComponents.filter((component) =>
+    requiredComponents.has(component.name),
+  );
+  const filteredGroups = allGroups.filter(
+    (group) => group.uuid !== undefined && requiredGroupUuids.has(group.uuid),
+  );
+  const filteredTags = allTags.filter((tag) => tag.id !== undefined && requiredTagIds.has(tag.id));
 
   return { filteredComponents, filteredGroups, filteredTags };
 }
@@ -84,8 +94,13 @@ function emptySpaceData(): SpaceComponentsData {
 /**
  * Filters space data to only include a specific component (exact name) and its dependencies.
  */
-export function filterSpaceDataByComponent(spaceData: SpaceComponentsData, componentName: string): SpaceComponentsData {
-  const targetComponent = spaceData.components.find(component => component.name === componentName);
+export function filterSpaceDataByComponent(
+  spaceData: SpaceComponentsData,
+  componentName: string,
+): SpaceComponentsData {
+  const targetComponent = spaceData.components.find(
+    (component) => component.name === componentName,
+  );
   if (!targetComponent) {
     return emptySpaceData();
   }
@@ -97,8 +112,10 @@ export function filterSpaceDataByComponent(spaceData: SpaceComponentsData, compo
     spaceData.internalTags,
   );
 
-  const componentIds = filteredComponents.map(component => component.id);
-  const filteredPresets = spaceData.presets.filter(preset => componentIds.includes(preset.component_id));
+  const componentIds = filteredComponents.map((component) => component.id);
+  const filteredPresets = spaceData.presets.filter((preset) =>
+    componentIds.includes(preset.component_id),
+  );
 
   return {
     components: filteredComponents,
@@ -121,15 +138,27 @@ export interface ComponentSelectors {
  * on intersection (OR within the tag set). Matched components are expanded to their
  * dependencies via `collectAllDependencies`.
  */
-export function filterSpaceData(spaceData: SpaceComponentsData, selectors: ComponentSelectors): SpaceComponentsData {
+export function filterSpaceData(
+  spaceData: SpaceComponentsData,
+  selectors: ComponentSelectors,
+): SpaceComponentsData {
   const { filter, groupUuids, tagIds } = selectors;
 
   const base = spaceData.components.filter((component) => {
-    if (filter && !minimatch(component.name, filter)) { return false; }
-    if (groupUuids && !(component.component_group_uuid != null && groupUuids.has(component.component_group_uuid))) { return false; }
+    if (filter && !minimatch(component.name, filter)) {
+      return false;
+    }
+    if (
+      groupUuids &&
+      !(component.component_group_uuid != null && groupUuids.has(component.component_group_uuid))
+    ) {
+      return false;
+    }
     if (tagIds) {
-      const ids = (component.internal_tag_ids ?? []).map(id => Number(id));
-      if (!ids.some(id => tagIds.has(id))) { return false; }
+      const ids = (component.internal_tag_ids ?? []).map((id) => Number(id));
+      if (!ids.some((id) => tagIds.has(id))) {
+        return false;
+      }
     }
     return true;
   });
@@ -145,8 +174,10 @@ export function filterSpaceData(spaceData: SpaceComponentsData, selectors: Compo
     spaceData.internalTags,
   );
 
-  const componentIds = filteredComponents.map(component => component.id);
-  const filteredPresets = spaceData.presets.filter(preset => componentIds.includes(preset.component_id));
+  const componentIds = filteredComponents.map((component) => component.id);
+  const filteredPresets = spaceData.presets.filter((preset) =>
+    componentIds.includes(preset.component_id),
+  );
 
   return {
     components: filteredComponents,
@@ -162,19 +193,24 @@ export function filterSpaceData(spaceData: SpaceComponentsData, selectors: Compo
  * the matched group and all of its descendants. Throws when the name is ambiguous or missing.
  */
 export function resolveGroupSelector(groups: ComponentFolder[], selector: string): Set<string> {
-  const byUuid = new Map(groups.filter(g => g.uuid).map(g => [g.uuid as string, g]));
+  const byUuid = new Map(groups.filter((g) => g.uuid).map((g) => [g.uuid as string, g]));
   const nameOf = (uuid?: string) => (uuid ? byUuid.get(uuid)?.name : undefined);
 
   let matched: ComponentFolder | undefined;
 
-  if (selector.includes('/')) {
-    const segments = selector.split('/').map(s => s.trim()).filter(Boolean);
+  if (selector.includes("/")) {
+    const segments = selector
+      .split("/")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (segments.length === 0) {
       throw new CommandError(`No component group found for path "${selector}".`);
     }
     let parentUuid: string | undefined;
     for (const segment of segments) {
-      const candidates = groups.filter(g => g.name === segment && (g.parent_uuid ?? undefined) === parentUuid);
+      const candidates = groups.filter(
+        (g) => g.name === segment && (g.parent_uuid ?? undefined) === parentUuid,
+      );
       if (candidates.length === 0) {
         throw new CommandError(`No component group found for path "${selector}".`);
       }
@@ -184,9 +220,8 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
       matched = candidates[0];
       parentUuid = matched.uuid;
     }
-  }
-  else {
-    const candidates = groups.filter(g => g.name === selector);
+  } else {
+    const candidates = groups.filter((g) => g.name === selector);
     if (candidates.length === 0) {
       throw new CommandError(`No component group found named "${selector}".`);
     }
@@ -200,9 +235,11 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
           parts.unshift(nameOf(p) ?? p);
           p = byUuid.get(p)?.parent_uuid ?? null;
         }
-        return parts.join('/');
+        return parts.join("/");
       });
-      throw new CommandError(`The component group name "${selector}" is ambiguous. Use a path: ${paths.join(', ')}.`);
+      throw new CommandError(
+        `The component group name "${selector}" is ambiguous. Use a path: ${paths.join(", ")}.`,
+      );
     }
     matched = candidates[0];
   }
@@ -211,7 +248,9 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
   const queue: string[] = matched?.uuid ? [matched.uuid] : [];
   while (queue.length > 0) {
     const uuid = queue.shift() as string;
-    if (result.has(uuid)) { continue; }
+    if (result.has(uuid)) {
+      continue;
+    }
     result.add(uuid);
     for (const child of groups) {
       if (child.parent_uuid === uuid && child.uuid) {
@@ -226,20 +265,21 @@ export function resolveGroupSelector(groups: ComponentFolder[], selector: string
  * Resolves tag names to their numeric ids. Throws when any name is missing.
  */
 export function resolveTagSelector(tags: InternalTag[], names: string[]): Set<number> {
-  const byName = new Map(tags.filter(t => t.id !== undefined).map(t => [t.name, t.id as number]));
+  const byName = new Map(
+    tags.filter((t) => t.id !== undefined).map((t) => [t.name, t.id as number]),
+  );
   const result = new Set<number>();
   const missing: string[] = [];
   for (const name of names) {
     const id = byName.get(name);
     if (id === undefined) {
       missing.push(name);
-    }
-    else {
+    } else {
       result.add(id);
     }
   }
   if (missing.length > 0) {
-    throw new CommandError(`No component tag found named: ${missing.join(', ')}.`);
+    throw new CommandError(`No component tag found named: ${missing.join(", ")}.`);
   }
   return result;
 }

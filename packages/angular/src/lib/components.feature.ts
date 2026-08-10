@@ -1,4 +1,4 @@
-import { InjectionToken, Type, Provider, Directive } from '@angular/core';
+import { InjectionToken, Type, Provider, Directive } from "@angular/core";
 
 /**
  * Lazy component loader function type.
@@ -36,7 +36,7 @@ export type StoryblokComponentsMap = Record<string, Type<any> | StoryblokCompone
  * Used internally by the `SbBlokDirective` to resolve components.
  */
 export const STORYBLOK_COMPONENTS = new InjectionToken<StoryblokComponentsMap>(
-  'STORYBLOK_COMPONENTS',
+  "STORYBLOK_COMPONENTS",
 );
 
 /**
@@ -48,9 +48,9 @@ export const STORYBLOK_COMPONENTS = new InjectionToken<StoryblokComponentsMap>(
  */
 
 export type StoryblokFeature =
-  | { ɵkind: 'components'; ɵproviders: Provider[] }
-  | { ɵkind: 'livePreview'; ɵproviders: Provider[] }
-  | { ɵkind: 'richtext'; ɵproviders: Provider[] };
+  | { ɵkind: "components"; ɵproviders: Provider[] }
+  | { ɵkind: "livePreview"; ɵproviders: Provider[] }
+  | { ɵkind: "richtext"; ɵproviders: Provider[] };
 
 /**
  * Registers Storyblok components for dynamic rendering.
@@ -87,7 +87,7 @@ export type StoryblokFeature =
  */
 export function withStoryblokComponents(components: StoryblokComponentsMap): StoryblokFeature {
   return {
-    ɵkind: 'components',
+    ɵkind: "components",
     ɵproviders: [{ provide: STORYBLOK_COMPONENTS, useValue: components }],
   };
 }
@@ -101,7 +101,7 @@ export function withStoryblokComponents(components: StoryblokComponentsMap): Sto
 export function isComponentLoader(
   component: Type<any> | StoryblokComponentLoader,
 ): component is StoryblokComponentLoader {
-  return typeof component === 'function' && component.length === 0 && !component.prototype;
+  return typeof component === "function" && component.length === 0 && !component.prototype;
 }
 
 /**

@@ -1,8 +1,11 @@
 // NOTE: This file is intentionally identical to packages/mapi-client/src/utils/query-serializer.ts
 // except for the import paths (capi vs mapi generated core). Keep them in sync.
 
-import type { QuerySerializer } from '../generated/capi/core/bodySerializer.gen';
-import { serializeArrayParam, serializePrimitiveParam } from '../generated/capi/core/pathSerializer.gen';
+import type { QuerySerializer } from "../generated/capi/core/bodySerializer.gen";
+import {
+  serializeArrayParam,
+  serializePrimitiveParam,
+} from "../generated/capi/core/pathSerializer.gen";
 
 /**
  * Query serializer for the Content Delivery API client.
@@ -28,21 +31,21 @@ function serialize(name: string, value: unknown, parts: string[]): void {
 
   if (Array.isArray(value)) {
     // Arrays containing objects need per-item bracket recursion.
-    if (value.some(item => item !== null && typeof item === 'object')) {
+    if (value.some((item) => item !== null && typeof item === "object")) {
       for (const item of value) {
         serialize(`${name}[]`, item, parts);
       }
       return;
     }
     // Primitive arrays keep the generated default form (`name=a&name=b`).
-    const serialized = serializeArrayParam({ explode: true, name, style: 'form', value });
+    const serialized = serializeArrayParam({ explode: true, name, style: "form", value });
     if (serialized) {
       parts.push(serialized);
     }
     return;
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     for (const [key, child] of Object.entries(value)) {
       serialize(`${name}[${key}]`, child, parts);
     }
@@ -60,5 +63,5 @@ export const querySerializer: QuerySerializer = (query) => {
   for (const [name, value] of Object.entries(query)) {
     serialize(name, value, parts);
   }
-  return parts.join('&');
+  return parts.join("&");
 };

@@ -1,7 +1,7 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { SchemaBlockLike, SchemaLike } from './shapes';
-import { isRecord } from './shapes';
-import { validateStory } from './validate-story';
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import type { SchemaBlockLike, SchemaLike } from "./shapes";
+import { isRecord } from "./shapes";
+import { validateStory } from "./validate-story";
 
 /**
  * Wraps {@link validateStory} as a [Standard Schema](https://standardschema.dev)
@@ -18,21 +18,21 @@ export function createStoryValidator(
   schema: SchemaLike,
 ): StandardSchemaV1<unknown, unknown> {
   return {
-    '~standard': {
+    "~standard": {
       version: 1,
-      vendor: 'storyblok-schema',
+      vendor: "storyblok-schema",
       validate(value) {
         const result = validateStory(value, schema);
         const issues = result.issues
-          .filter(issue => issue.severity === 'error')
-          .map(issue => ({ message: issue.message, path: issue.path }));
+          .filter((issue) => issue.severity === "error")
+          .map((issue) => ({ message: issue.message, path: issue.path }));
 
         const content = isRecord(value) ? value.content : undefined;
         const component = isRecord(content) ? content.component : undefined;
         if (component !== undefined && component !== rootBlock.name) {
           issues.push({
             message: `Expected root component "${rootBlock.name}", received "${String(component)}".`,
-            path: ['content', 'component'],
+            path: ["content", "component"],
           });
         }
 

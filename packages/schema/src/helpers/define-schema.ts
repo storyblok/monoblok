@@ -1,7 +1,7 @@
-import type { Block } from './define-block';
-import type { Datasource } from './define-datasource';
-import type { BlockFolder } from './define-folder';
-import type { FieldPlugin } from './define-field-plugin';
+import type { Block } from "./define-block";
+import type { Datasource } from "./define-datasource";
+import type { BlockFolder } from "./define-folder";
+import type { FieldPlugin } from "./define-field-plugin";
 
 /** Minimal shape accepted by {@link defineSchema}; extra keys pass through unchanged. */
 export interface SchemaConfig {

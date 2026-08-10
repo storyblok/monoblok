@@ -1,9 +1,9 @@
-import type { ExperimentVariant } from './generated/capi/types.gen';
+import type { ExperimentVariant } from "./generated/capi/types.gen";
 
-export type { Experiment, ExperimentVariant } from './generated/capi/types.gen';
+export type { Experiment, ExperimentVariant } from "./generated/capi/types.gen";
 
 /** One `original_slug` → `variant_slug` mapping on a variant. */
-export type StoryMapping = ExperimentVariant['story_mappings'][number];
+export type StoryMapping = ExperimentVariant["story_mappings"][number];
 
 /**
  * The experiment as carried on an event: just enough to identify it in a sink,
@@ -41,7 +41,7 @@ export interface Assignment {
 
 /** An exposure or conversion event handed to an adapter. */
 export interface ExperimentEvent {
-  type: 'exposure' | 'conversion';
+  type: "exposure" | "conversion";
   experiment: EventExperiment;
   variant: EventVariant;
   /**
@@ -58,10 +58,10 @@ export interface ExperimentEvent {
 }
 
 /** The event fired when a visitor is exposed to an experiment. */
-export type Exposure = ExperimentEvent & { type: 'exposure' };
+export type Exposure = ExperimentEvent & { type: "exposure" };
 
 /** The event fired when a visitor reaches a goal. */
-export type Conversion = ExperimentEvent & { type: 'conversion' };
+export type Conversion = ExperimentEvent & { type: "conversion" };
 
 /**
  * A sink for experiment events. Bring your own, or use `fetchAdapter`.

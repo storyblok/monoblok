@@ -1,6 +1,6 @@
-import type { Adapter, ExperimentEvent } from './types';
+import type { Adapter, ExperimentEvent } from "./types";
 
-export type { Adapter } from './types';
+export type { Adapter } from "./types";
 
 export interface FetchAdapterOptions {
   /** Override the `fetch` implementation (e.g. for testing or a custom client). */
@@ -41,8 +41,7 @@ function resolveTarget(url: string, baseUrl?: string): string {
   const base = baseUrl ?? globalThis.location?.href;
   try {
     return new URL(url, base).toString();
-  }
-  catch {
+  } catch {
     throw new Error(
       `fetchAdapter: cannot resolve "${url}". Server-side fetch has no origin to resolve a relative path against — pass an absolute url, or set \`baseUrl\` to the incoming request url.`,
     );
@@ -86,12 +85,14 @@ export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Ad
   const target = resolveTarget(url, baseUrl);
   return async (event: ExperimentEvent) => {
     const response = await fetch(target, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...headers },
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify(event),
     });
     if (!response.ok) {
-      throw new Error(`fetchAdapter: POST ${target} failed with ${response.status} ${response.statusText}`);
+      throw new Error(
+        `fetchAdapter: POST ${target} failed with ${response.status} ${response.statusText}`,
+      );
     }
     return response;
   };
@@ -111,15 +112,19 @@ export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Ad
  * `contentType` for the cross-origin caveat that comes with it.
  */
 export function beaconAdapter(url: string, options: BeaconAdapterOptions = {}): Adapter {
-  const { contentType = 'application/json' } = options;
+  const { contentType = "application/json" } = options;
   return (event: ExperimentEvent): void => {
-    const sendBeacon = options.sendBeacon
-      ?? globalThis.navigator?.sendBeacon?.bind(globalThis.navigator);
+    const sendBeacon =
+      options.sendBeacon ?? globalThis.navigator?.sendBeacon?.bind(globalThis.navigator);
     if (!sendBeacon) {
-      throw new Error('beaconAdapter: navigator.sendBeacon is unavailable. Use it in a browser, or pass `fetchAdapter` on the server.');
+      throw new Error(
+        "beaconAdapter: navigator.sendBeacon is unavailable. Use it in a browser, or pass `fetchAdapter` on the server.",
+      );
     }
     if (!sendBeacon(url, new Blob([JSON.stringify(event)], { type: contentType }))) {
-      throw new Error(`beaconAdapter: the browser refused to queue the event for ${url}, most likely because the payload exceeds its beacon size limit.`);
+      throw new Error(
+        `beaconAdapter: the browser refused to queue the event for ${url}, most likely because the payload exceeds its beacon size limit.`,
+      );
     }
   };
 }

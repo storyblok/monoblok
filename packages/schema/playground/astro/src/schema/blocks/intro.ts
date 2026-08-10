@@ -1,13 +1,9 @@
-import { defineBlock } from '@storyblok/schema';
+import { defineBlock } from "@storyblok/schema";
 
-import { eyebrowField, headlineField, markdownField } from '../fields';
+import { eyebrowField, headlineField, markdownField } from "../fields";
 
 export const introBlock = defineBlock({
-  name: 'intro',
+  name: "intro",
   is_nestable: true,
-  fields: [
-    eyebrowField,
-    { ...headlineField, required: true },
-    markdownField,
-  ],
+  fields: [eyebrowField, { ...headlineField, required: true }, markdownField],
 });

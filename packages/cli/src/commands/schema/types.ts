@@ -1,4 +1,4 @@
-import type { Component, ComponentFolder, Datasource } from '../../types';
+import type { Component, ComponentFolder, Datasource } from "../../types";
 
 /**
  * Local schema loaded from the user's TypeScript entry file: blocks, datasource
@@ -28,10 +28,10 @@ export interface RemoteSchemaData {
   datasources: Map<string, Datasource>;
 }
 
-export type DiffAction = 'create' | 'update' | 'unchanged' | 'stale';
+export type DiffAction = "create" | "update" | "unchanged" | "stale";
 
 export interface EntityDiff {
-  type: 'component' | 'datasource' | 'folder';
+  type: "component" | "datasource" | "folder";
   name: string;
   action: DiffAction;
   diff: string | null;
@@ -49,15 +49,15 @@ export interface DiffResult {
 
 export interface FieldChange {
   field: string;
-  change: 'added' | 'removed' | 'modified';
+  change: "added" | "removed" | "modified";
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
 }
 
 export interface ChangesetEntry {
-  type: 'component' | 'datasource' | 'folder';
+  type: "component" | "datasource" | "folder";
   name: string;
-  action: 'create' | 'update' | 'delete';
+  action: "create" | "update" | "delete";
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
   fieldChanges?: FieldChange[];

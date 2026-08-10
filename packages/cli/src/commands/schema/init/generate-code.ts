@@ -1,6 +1,6 @@
-import type { Component, ComponentFolder, Datasource } from '../../../types';
-import { slugify } from '../../../utils/format';
-import { buildGroupPathByUuid } from '../folders';
+import type { Component, ComponentFolder, Datasource } from "../../../types";
+import { slugify } from "../../../utils/format";
+import { buildGroupPathByUuid } from "../folders";
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
@@ -10,10 +10,10 @@ import {
   quoteString,
   RawCode,
   stripKeys,
-} from '../utils';
+} from "../utils";
 
 /** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
-const FIELD_STRIP_KEYS = new Set(['id', 'pos']);
+const FIELD_STRIP_KEYS = new Set(["id", "pos"]);
 
 /**
  * Converts an arbitrary name into a valid camelCase JS identifier.
@@ -23,9 +23,11 @@ const FIELD_STRIP_KEYS = new Set(['id', 'pos']);
  */
 function toCamelCaseIdentifier(str: string): string {
   const camel = slugify(str)
-    .replace(/^[_-]+/, '')
+    .replace(/^[_-]+/, "")
     .replace(/[_-]+(.)/g, (_, char: string) => char.toUpperCase());
-  if (!camel) { return '_'; }
+  if (!camel) {
+    return "_";
+  }
   return /^\d/.test(camel) ? `_${camel}` : camel;
 }
 
@@ -36,12 +38,12 @@ function toCamelCaseIdentifier(str: string): string {
  */
 function toKebabCase(str: string): string {
   return str
-    .replace(/[\s_]+/g, '-')
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/[\s_]+/g, "-")
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
     .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /** Returns the variable name for a component. e.g. `'teaser_list'` -> `'teaserListBlock'` */
@@ -65,13 +67,18 @@ export function folderVarName(name: string): string {
  * generated `export const`s and schema-object keys never collide. Index-aligned
  * to `rawNames`.
  */
-export function resolveVarNames(rawNames: string[], baseVarName: (name: string) => string): string[] {
+export function resolveVarNames(
+  rawNames: string[],
+  baseVarName: (name: string) => string,
+): string[] {
   const used = new Set<string>();
   return rawNames.map((raw) => {
     const base = baseVarName(raw);
     let candidate = base;
     let n = 2;
-    while (used.has(candidate)) { candidate = `${base}${n++}`; }
+    while (used.has(candidate)) {
+      candidate = `${base}${n++}`;
+    }
     used.add(candidate);
     return candidate;
   });
@@ -93,12 +100,17 @@ export function resolveVarNames(rawNames: string[], baseVarName: (name: string) 
 export function resolveFileNames(baseNames: string[], dirKeys?: string[]): string[] {
   const usedByDir = new Map<string, Set<string>>();
   return baseNames.map((base, i) => {
-    const dir = dirKeys?.[i] ?? '';
+    const dir = dirKeys?.[i] ?? "";
     let used = usedByDir.get(dir);
-    if (!used) { used = new Set<string>(); usedByDir.set(dir, used); }
+    if (!used) {
+      used = new Set<string>();
+      usedByDir.set(dir, used);
+    }
     let candidate = base;
     let n = 2;
-    while (used.has(candidate)) { candidate = `${base}-${n++}`; }
+    while (used.has(candidate)) {
+      candidate = `${base}-${n++}`;
+    }
     used.add(candidate);
     return candidate;
   });
@@ -110,7 +122,9 @@ export function componentFileName(name: string): string {
 }
 
 /** Returns the file name (without extension) for a datasource, using slug if available. */
-export function datasourceFileName(datasource: Pick<Datasource, 'name'> & { slug?: string }): string {
+export function datasourceFileName(
+  datasource: Pick<Datasource, "name"> & { slug?: string },
+): string {
   return toKebabCase(datasource.slug || datasource.name);
 }
 
@@ -140,11 +154,17 @@ export interface ResolvedDatasource {
  * (index-aligned to `components`); file-name uniqueness is scoped to that
  * directory, so identically-named blocks in different groups keep their name.
  */
-export function resolveComponents(components: Component[], segmentsByIndex: string[][]): ResolvedComponent[] {
-  const varNames = resolveVarNames(components.map(c => c.name), componentVarName);
+export function resolveComponents(
+  components: Component[],
+  segmentsByIndex: string[][],
+): ResolvedComponent[] {
+  const varNames = resolveVarNames(
+    components.map((c) => c.name),
+    componentVarName,
+  );
   const fileNames = resolveFileNames(
-    components.map(c => componentFileName(c.name)),
-    segmentsByIndex.map(segments => segments.join('/')),
+    components.map((c) => componentFileName(c.name)),
+    segmentsByIndex.map((segments) => segments.join("/")),
   );
   return components.map((component, i) => ({
     component,
@@ -156,8 +176,11 @@ export function resolveComponents(components: Component[], segmentsByIndex: stri
 
 /** Resolves each datasource to its unique variable and file names (flat layout). */
 export function resolveDatasources(datasources: Datasource[]): ResolvedDatasource[] {
-  const varNames = resolveVarNames(datasources.map(d => d.name), datasourceVarName);
-  const fileNames = resolveFileNames(datasources.map(d => datasourceFileName(d)));
+  const varNames = resolveVarNames(
+    datasources.map((d) => d.name),
+    datasourceVarName,
+  );
+  const fileNames = resolveFileNames(datasources.map((d) => datasourceFileName(d)));
   return datasources.map((datasource, i) => ({
     datasource,
     varName: varNames[i],
@@ -183,9 +206,13 @@ export interface ResolvedFolder {
  */
 export function resolveFolders(folders: ComponentFolder[]): ResolvedFolder[] {
   const pathByUuid = buildGroupPathByUuid(folders);
-  const ordered = [...folders].sort((a, b) =>
-    (pathByUuid.get(a.uuid)?.length ?? 0) - (pathByUuid.get(b.uuid)?.length ?? 0));
-  const varNames = resolveVarNames(ordered.map(f => f.name), folderVarName);
+  const ordered = [...folders].sort(
+    (a, b) => (pathByUuid.get(a.uuid)?.length ?? 0) - (pathByUuid.get(b.uuid)?.length ?? 0),
+  );
+  const varNames = resolveVarNames(
+    ordered.map((f) => f.name),
+    folderVarName,
+  );
   return ordered.map((folder, i) => ({
     folder,
     varName: varNames[i],
@@ -204,10 +231,16 @@ function resolveGroupWhitelistRefs(
   whitelist: unknown,
   folderVarByUuid?: Map<string, string>,
 ): RawCode[] | undefined {
-  if (!folderVarByUuid || !Array.isArray(whitelist) || whitelist.length === 0) { return undefined; }
-  const vars = whitelist.map(uuid => (typeof uuid === 'string' ? folderVarByUuid.get(uuid) : undefined));
-  if (!vars.every((v): v is string => typeof v === 'string')) { return undefined; }
-  return vars.map(v => new RawCode(v));
+  if (!folderVarByUuid || !Array.isArray(whitelist) || whitelist.length === 0) {
+    return undefined;
+  }
+  const vars = whitelist.map((uuid) =>
+    typeof uuid === "string" ? folderVarByUuid.get(uuid) : undefined,
+  );
+  if (!vars.every((v): v is string => typeof v === "string")) {
+    return undefined;
+  }
+  return vars.map((v) => new RawCode(v));
 }
 
 /**
@@ -234,33 +267,51 @@ function resolveGroupWhitelistRefs(
  * losslessly, at the cost of discarding a list that is not in force anyway. An
  * absent `restrict_components` counts as active, matching backend enforcement.
  */
-function toDslField(field: Record<string, unknown>, folderVarByUuid?: Map<string, string>): Record<string, unknown> {
-  const { component_whitelist, component_group_whitelist, datasource_slug, restrict_components, restrict_type, ...rest } = field;
+function toDslField(
+  field: Record<string, unknown>,
+  folderVarByUuid?: Map<string, string>,
+): Record<string, unknown> {
+  const {
+    component_whitelist,
+    component_group_whitelist,
+    datasource_slug,
+    restrict_components,
+    restrict_type,
+    ...rest
+  } = field;
   const out: Record<string, unknown> = { ...rest };
   const restrictionDisabled = restrict_components === false;
-  const groupRefs = restrictionDisabled ? undefined : resolveGroupWhitelistRefs(component_group_whitelist, folderVarByUuid);
-  const hasBlockNames = !restrictionDisabled && Array.isArray(component_whitelist) && component_whitelist.length > 0;
+  const groupRefs = restrictionDisabled
+    ? undefined
+    : resolveGroupWhitelistRefs(component_group_whitelist, folderVarByUuid);
+  const hasBlockNames =
+    !restrictionDisabled && Array.isArray(component_whitelist) && component_whitelist.length > 0;
   if (restrictionDisabled) {
     out.restrict_components = false;
-    if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
-  }
-  else if (hasBlockNames) {
+    if (restrict_type !== undefined) {
+      out.restrict_type = restrict_type;
+    }
+  } else if (hasBlockNames) {
     out.allow = component_whitelist;
-  }
-  else if (groupRefs) {
+  } else if (groupRefs) {
     out.allow = groupRefs;
-  }
-  else if (component_group_whitelist !== undefined) {
+  } else if (component_group_whitelist !== undefined) {
     // A group whitelist we could not resolve to folder refs: keep the raw wire
     // form (whitelist + restrict flags) so it still round-trips on push.
     out.component_group_whitelist = component_group_whitelist;
-    if (restrict_components !== undefined) { out.restrict_components = restrict_components; }
-    if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
+    if (restrict_components !== undefined) {
+      out.restrict_components = restrict_components;
+    }
+    if (restrict_type !== undefined) {
+      out.restrict_type = restrict_type;
+    }
   }
   // Otherwise there is no allow list (name whitelist absent or empty, no groups);
   // `restrict_components`/`restrict_type` are byproducts `allow` re-derives on
   // push, so they are dropped rather than emitted as orphaned DSL state.
-  if (datasource_slug !== undefined) { out.datasource = datasource_slug; }
+  if (datasource_slug !== undefined) {
+    out.datasource = datasource_slug;
+  }
   return out;
 }
 
@@ -273,7 +324,9 @@ function toDslField(field: Record<string, unknown>, folderVarByUuid?: Map<string
 function omitEmptyArrays(obj: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (Array.isArray(value) && value.length === 0) { continue; }
+    if (Array.isArray(value) && value.length === 0) {
+      continue;
+    }
     out[key] = value;
   }
   return out;
@@ -289,7 +342,9 @@ function generateFieldCode(
   depth: number,
   folderVarByUuid?: Map<string, string>,
 ): string {
-  const clean = omitEmptyArrays(toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid));
+  const clean = omitEmptyArrays(
+    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid),
+  );
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
 
@@ -304,40 +359,50 @@ function collectWhitelistFolderVars(
 ): string[] {
   const vars = new Set<string>();
   for (const field of Object.values(schema)) {
-    if (!isRecord(field)) { continue; }
+    if (!isRecord(field)) {
+      continue;
+    }
     // Mirrors `toDslField`: a disabled restriction emits no `allow`, so its
     // folders must not be imported either.
-    if (field.restrict_components === false) { continue; }
+    if (field.restrict_components === false) {
+      continue;
+    }
     const refs = resolveGroupWhitelistRefs(field.component_group_whitelist, folderVarByUuid);
-    if (refs) { refs.forEach(ref => vars.add(ref.code)); }
+    if (refs) {
+      refs.forEach((ref) => vars.add(ref.code));
+    }
   }
   return [...vars].sort();
 }
 
 /** Sorts schema fields by `pos` for stable ordering. */
-function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [string, Record<string, unknown>][] {
+function sortSchemaByPos(
+  schema: Record<string, Record<string, unknown>>,
+): [string, Record<string, unknown>][] {
   return Object.entries(schema)
-    .filter(([key]) => key !== '_uid' && key !== 'component')
+    .filter(([key]) => key !== "_uid" && key !== "component")
     .sort(([, a], [, b]) => {
-      const posA = typeof a.pos === 'number' ? a.pos : Infinity;
-      const posB = typeof b.pos === 'number' ? b.pos : Infinity;
+      const posA = typeof a.pos === "number" ? a.pos : Infinity;
+      const posB = typeof b.pos === "number" ? b.pos : Infinity;
       return posA - posB;
     });
 }
 
 /** Generates `folders.ts`: one `defineFolder` const per remote group, parents first. */
 export function generateFoldersFile(resolved: ResolvedFolder[]): string {
-  const varByUuid = new Map(resolved.map(r => [r.folder.uuid, r.varName]));
-  const lines: string[] = ['import { defineFolder } from \'@storyblok/schema\';', ''];
+  const varByUuid = new Map(resolved.map((r) => [r.folder.uuid, r.varName]));
+  const lines: string[] = ["import { defineFolder } from '@storyblok/schema';", ""];
   for (const { folder, varName } of resolved) {
     const parentVar = folder.parent_uuid ? varByUuid.get(folder.parent_uuid) : undefined;
     lines.push(`export const ${varName} = defineFolder({`);
     lines.push(`${INDENT}name: ${quoteString(folder.name)},`);
-    if (parentVar) { lines.push(`${INDENT}parent: ${parentVar},`); }
-    lines.push('});');
-    lines.push('');
+    if (parentVar) {
+      lines.push(`${INDENT}parent: ${parentVar},`);
+    }
+    lines.push("});");
+    lines.push("");
   }
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 /**
@@ -362,45 +427,59 @@ export function generateComponentFile(
 ): string {
   const lines: string[] = [];
 
-  lines.push('import {');
-  lines.push('  defineBlock,');
-  lines.push('  defineField,');
-  lines.push('} from \'@storyblok/schema\';');
-  lines.push('');
+  lines.push("import {");
+  lines.push("  defineBlock,");
+  lines.push("  defineField,");
+  lines.push("} from '@storyblok/schema';");
+  lines.push("");
 
   // A block sits at `blocks/<...group segments>/<name>.ts`; every folder var it
   // references lives in the root `folders.ts`, so all imports share one relative
   // path derived from the block's own group depth (0 when ungrouped).
   const blockDepth = folderRef?.segments.length ?? 0;
-  const schema = isRecord(component.schema) ? component.schema as Record<string, Record<string, unknown>> : {};
-  const folderVars = [...new Set([
-    ...(folderRef ? [folderRef.varName] : []),
-    ...collectWhitelistFolderVars(schema, folderVarByUuid),
-  ])].sort();
+  const schema = isRecord(component.schema)
+    ? (component.schema as Record<string, Record<string, unknown>>)
+    : {};
+  const folderVars = [
+    ...new Set([
+      ...(folderRef ? [folderRef.varName] : []),
+      ...collectWhitelistFolderVars(schema, folderVarByUuid),
+    ]),
+  ].sort();
   if (folderVars.length > 0) {
-    const rel = '../'.repeat(blockDepth + 1);
-    lines.push(`import { ${folderVars.join(', ')} } from '${rel}folders';`);
-    lines.push('');
+    const rel = "../".repeat(blockDepth + 1);
+    lines.push(`import { ${folderVars.join(", ")} } from '${rel}folders';`);
+    lines.push("");
   }
 
   const resolvedVarName = varName ?? componentVarName(component.name);
   lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
-  const clean = omitEmptyArrays(stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS));
+  const clean = omitEmptyArrays(
+    stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
+  );
 
   // The group is encoded by the directory layout / folder ref, never emitted on the block.
   delete clean.component_group_uuid;
 
   // Enforce property order: name, display_name, is_root, is_nestable, folder, then rest, fields last
   const orderedKeys: string[] = [];
-  if (clean.name !== undefined) { orderedKeys.push('name'); }
-  if (clean.display_name !== undefined) { orderedKeys.push('display_name'); }
-  if (clean.is_root !== undefined) { orderedKeys.push('is_root'); }
-  if (clean.is_nestable !== undefined) { orderedKeys.push('is_nestable'); }
+  if (clean.name !== undefined) {
+    orderedKeys.push("name");
+  }
+  if (clean.display_name !== undefined) {
+    orderedKeys.push("display_name");
+  }
+  if (clean.is_root !== undefined) {
+    orderedKeys.push("is_root");
+  }
+  if (clean.is_nestable !== undefined) {
+    orderedKeys.push("is_nestable");
+  }
 
   const prefixKeyCount = orderedKeys.length;
 
-  const handled = new Set(['name', 'display_name', 'is_root', 'is_nestable', 'schema']);
+  const handled = new Set(["name", "display_name", "is_root", "is_nestable", "schema"]);
   for (const key of Object.keys(clean).sort()) {
     if (!handled.has(key)) {
       orderedKeys.push(key);
@@ -421,7 +500,7 @@ export function generateComponentFile(
   }
 
   // Schema fields — emitted as an ordered `fields:` array of `defineField('name', {...})` calls.
-  if (clean.schema && typeof clean.schema === 'object') {
+  if (clean.schema && typeof clean.schema === "object") {
     const schema = clean.schema as Record<string, Record<string, unknown>>;
     const sortedFields = sortSchemaByPos(schema);
 
@@ -432,16 +511,15 @@ export function generateComponentFile(
         lines.push(`${INDENT}${INDENT}${fieldCode},`);
       }
       lines.push(`${INDENT}],`);
-    }
-    else {
+    } else {
       lines.push(`${INDENT}fields: [],`);
     }
   }
 
-  lines.push('});');
-  lines.push('');
+  lines.push("});");
+  lines.push("");
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 /**
@@ -453,13 +531,15 @@ export function generateComponentFile(
 export function generateDatasourceFile(datasource: Datasource, varName?: string): string {
   const lines: string[] = [];
 
-  lines.push('import { defineDatasource } from \'@storyblok/schema\';');
-  lines.push('');
+  lines.push("import { defineDatasource } from '@storyblok/schema';");
+  lines.push("");
 
   const resolvedVarName = varName ?? datasourceVarName(datasource.name);
   lines.push(`export const ${resolvedVarName} = defineDatasource({`);
 
-  const clean = omitEmptyArrays(stripKeys(datasource as unknown as Record<string, unknown>, DATASOURCE_STRIP_KEYS));
+  const clean = omitEmptyArrays(
+    stripKeys(datasource as unknown as Record<string, unknown>, DATASOURCE_STRIP_KEYS),
+  );
 
   // Enforce property order: name, slug, then rest
   if (clean.name !== undefined) {
@@ -469,17 +549,17 @@ export function generateDatasourceFile(datasource: Datasource, varName?: string)
     lines.push(`${INDENT}slug: ${formatValue(clean.slug, 1)},`);
   }
 
-  const handled = new Set(['name', 'slug']);
+  const handled = new Set(["name", "slug"]);
   for (const [key, value] of Object.entries(clean).sort(([a], [b]) => a.localeCompare(b))) {
     if (!handled.has(key)) {
       lines.push(`${INDENT}${key}: ${formatValue(value, 1)},`);
     }
   }
 
-  lines.push('});');
-  lines.push('');
+  lines.push("});");
+  lines.push("");
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 /**
@@ -496,19 +576,23 @@ export function generateSchemaFile(
   const lines: string[] = [];
 
   // Import the defineSchema helper and the Schema/Story type helpers
-  lines.push('import { defineSchema } from \'@storyblok/schema\';');
-  lines.push('import type { Schema as InferSchema, Story as InferStory } from \'@storyblok/schema\';');
+  lines.push("import { defineSchema } from '@storyblok/schema';");
+  lines.push(
+    "import type { Schema as InferSchema, Story as InferStory } from '@storyblok/schema';",
+  );
   // `BlockContent` only backs the block helpers below, which a space with no
   // components does not get. Importing it regardless trips `noUnusedLocals`.
-  lines.push(components.length > 0
-    ? 'import type { BlockContent, MapiStory as InferStoryMapi } from \'@storyblok/schema\';'
-    : 'import type { MapiStory as InferStoryMapi } from \'@storyblok/schema\';');
-  lines.push('');
+  lines.push(
+    components.length > 0
+      ? "import type { BlockContent, MapiStory as InferStoryMapi } from '@storyblok/schema';"
+      : "import type { MapiStory as InferStoryMapi } from '@storyblok/schema';",
+  );
+  lines.push("");
 
   // Import blocks from their (slugified) group subdirectory — local
   // organization that mirrors the remote groups; `schema push` ignores it.
   for (const { varName, fileName, segments } of components) {
-    const subPath = segments.length > 0 ? `${segments.join('/')}/` : '';
+    const subPath = segments.length > 0 ? `${segments.join("/")}/` : "";
     lines.push(`import { ${varName} } from './blocks/${subPath}${fileName}';`);
   }
 
@@ -519,65 +603,65 @@ export function generateSchemaFile(
 
   // Import folders (only when the space has remote groups)
   if (folders.length > 0) {
-    lines.push(`import { ${folders.map(f => f.varName).join(', ')} } from './folders';`);
+    lines.push(`import { ${folders.map((f) => f.varName).join(", ")} } from './folders';`);
   }
 
-  lines.push('');
+  lines.push("");
 
   // Export schema object
-  lines.push('export const schema = defineSchema({');
+  lines.push("export const schema = defineSchema({");
 
   if (components.length > 0) {
-    lines.push('  blocks: {');
+    lines.push("  blocks: {");
     for (const { varName } of components) {
       lines.push(`    ${varName},`);
     }
-    lines.push('  },');
+    lines.push("  },");
   }
 
   if (datasources.length > 0) {
-    lines.push('  datasources: {');
+    lines.push("  datasources: {");
     for (const { varName } of datasources) {
       lines.push(`    ${varName},`);
     }
-    lines.push('  },');
+    lines.push("  },");
   }
 
   if (folders.length > 0) {
-    lines.push('  folders: {');
+    lines.push("  folders: {");
     for (const { varName } of folders) {
       lines.push(`    ${varName},`);
     }
-    lines.push('  },');
+    lines.push("  },");
   }
 
-  lines.push('});');
-  lines.push('');
+  lines.push("});");
+  lines.push("");
 
   // Schema and Blocks types derived via Schema helper. `FieldPlugins` is
   // threaded through the story types so registering a field plugin later is a
   // one-line change; with none registered it resolves to an empty map and costs
   // nothing.
-  lines.push('export type Schema = InferSchema<typeof schema>;');
-  lines.push('export type Blocks = Schema[\'blocks\'];');
-  lines.push('export type FieldPlugins = Schema[\'fieldPlugins\'];');
-  lines.push('export type Story = InferStory<Blocks, FieldPlugins>;');
-  lines.push('export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;');
+  lines.push("export type Schema = InferSchema<typeof schema>;");
+  lines.push("export type Blocks = Schema['blocks'];");
+  lines.push("export type FieldPlugins = Schema['fieldPlugins'];");
+  lines.push("export type Story = InferStory<Blocks, FieldPlugins>;");
+  lines.push("export type StoryMapi = InferStoryMapi<Blocks, FieldPlugins>;");
 
   if (components.length > 0) {
-    lines.push('');
+    lines.push("");
     lines.push('// Type a component\'s props by block name: `Block<"hero">`.');
-    lines.push('export type Block<TName extends Blocks[\'name\']> = BlockContent<');
-    lines.push('  Extract<Blocks, { name: TName }>,');
-    lines.push('  Blocks,');
-    lines.push('  FieldPlugins');
-    lines.push('>;');
-    lines.push('');
-    lines.push('// Loose union of every block\'s content, for a dynamic component dispatcher.');
-    lines.push('export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;');
+    lines.push("export type Block<TName extends Blocks['name']> = BlockContent<");
+    lines.push("  Extract<Blocks, { name: TName }>,");
+    lines.push("  Blocks,");
+    lines.push("  FieldPlugins");
+    lines.push(">;");
+    lines.push("");
+    lines.push("// Loose union of every block's content, for a dynamic component dispatcher.");
+    lines.push("export type AnyBlock = BlockContent<Blocks, Blocks, FieldPlugins>;");
   }
 
-  lines.push('');
+  lines.push("");
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

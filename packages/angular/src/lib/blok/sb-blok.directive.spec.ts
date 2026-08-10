@@ -1,22 +1,22 @@
-import { Component, input, signal, Type } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { SbBlokDirective } from './sb-blok.directive';
-import { StoryblokComponentResolver } from './sb-blok.feature';
-import { SbBlokData } from '../types';
-import { vi } from 'vitest';
+import { Component, input, signal, Type } from "@angular/core";
+import { ComponentFixture, TestBed } from "@angular/core/testing";
+import { SbBlokDirective } from "./sb-blok.directive";
+import { StoryblokComponentResolver } from "./sb-blok.feature";
+import { SbBlokData } from "../types";
+import { vi } from "vitest";
 
 type TeaserBlok = SbBlokData & {
-  component: 'teaser';
+  component: "teaser";
   headline: string;
 };
 
 type GridBlok = SbBlokData & {
-  component: 'grid';
+  component: "grid";
   columns: string[];
 };
 
 @Component({
-  selector: 'sb-teaser',
+  selector: "sb-teaser",
   template: `<h1>{{ blok()?.headline }}</h1>`,
   standalone: true,
 })
@@ -25,7 +25,7 @@ class TeaserComponent {
 }
 
 @Component({
-  selector: 'sb-grid',
+  selector: "sb-grid",
   template: `
     <div class="columns">
       @for (col of blok()?.columns; track col) {
@@ -54,14 +54,14 @@ class MockResolver {
   async resolve(name: string): Promise<Type<any> | null> {
     this.resolveCalls.push(name);
 
-    if (name === 'teaser') return TeaserComponent;
-    if (name === 'grid') return GridComponent;
+    if (name === "teaser") return TeaserComponent;
+    if (name === "grid") return GridComponent;
 
     return null;
   }
 }
 
-describe('SbBlokDirective', () => {
+describe("SbBlokDirective", () => {
   let fixture: ComponentFixture<HostComponent>;
   let resolver: MockResolver;
 
@@ -89,48 +89,48 @@ describe('SbBlokDirective', () => {
     fixture.detectChanges();
   }
 
-  it('renders the correct component for blok type (teaser)', async () => {
+  it("renders the correct component for blok type (teaser)", async () => {
     fixture.componentInstance.blok.set({
-      _uid: '1',
-      component: 'teaser',
-      headline: 'Hello world!',
+      _uid: "1",
+      component: "teaser",
+      headline: "Hello world!",
     });
 
     await waitForRender();
 
-    const h1 = fixture.nativeElement.querySelector('h1');
-    expect(h1.textContent).toBe('Hello world!');
+    const h1 = fixture.nativeElement.querySelector("h1");
+    expect(h1.textContent).toBe("Hello world!");
   });
 
-  it('destroys and creates component when blok type changes', async () => {
+  it("destroys and creates component when blok type changes", async () => {
     fixture.componentInstance.blok.set({
-      _uid: '1',
-      component: 'teaser',
-      headline: 'Hello world!',
+      _uid: "1",
+      component: "teaser",
+      headline: "Hello world!",
     });
 
     await waitForRender();
 
-    expect(fixture.nativeElement.querySelector('h1').textContent).toBe('Hello world!');
+    expect(fixture.nativeElement.querySelector("h1").textContent).toBe("Hello world!");
 
     fixture.componentInstance.blok.set({
-      _uid: '2',
-      component: 'grid',
-      columns: ['Alpha', 'Beta'],
+      _uid: "2",
+      component: "grid",
+      columns: ["Alpha", "Beta"],
     });
 
     await waitForRender();
 
-    const cols = fixture.nativeElement.querySelectorAll('.columns > div');
+    const cols = fixture.nativeElement.querySelectorAll(".columns > div");
 
     expect(cols.length).toBe(2);
-    expect(cols[0].textContent.trim()).toBe('Alpha');
-    expect(cols[1].textContent.trim()).toBe('Beta');
+    expect(cols[0].textContent.trim()).toBe("Alpha");
+    expect(cols[1].textContent.trim()).toBe("Beta");
   });
 
-  it('only latest async resolve result is used (no race)', async () => {
-    const slowResolve = vi.spyOn(resolver, 'resolve').mockImplementation(async (name: string) => {
-      if (name === 'teaser') {
+  it("only latest async resolve result is used (no race)", async () => {
+    const slowResolve = vi.spyOn(resolver, "resolve").mockImplementation(async (name: string) => {
+      if (name === "teaser") {
         await new Promise((r) => setTimeout(r, 50));
         return TeaserComponent;
       }
@@ -139,44 +139,44 @@ describe('SbBlokDirective', () => {
     });
 
     fixture.componentInstance.blok.set({
-      _uid: '1',
-      component: 'teaser',
-      headline: 'Slow',
+      _uid: "1",
+      component: "teaser",
+      headline: "Slow",
     });
 
     fixture.componentInstance.blok.set({
-      _uid: '2',
-      component: 'grid',
-      columns: ['Fast'],
+      _uid: "2",
+      component: "grid",
+      columns: ["Fast"],
     });
 
     await waitForRender();
 
-    const cols = fixture.nativeElement.querySelectorAll('.columns > div');
+    const cols = fixture.nativeElement.querySelectorAll(".columns > div");
 
     expect(cols.length).toBe(1);
-    expect(cols[0].textContent.trim()).toBe('Fast');
+    expect(cols[0].textContent.trim()).toBe("Fast");
 
     slowResolve.mockRestore();
   });
 
-  it('SSR safety: does not throw if host lacks setAttribute', async () => {
+  it("SSR safety: does not throw if host lacks setAttribute", async () => {
     fixture.componentInstance.blok.set({
-      _uid: '1',
-      component: 'teaser',
-      headline: 'SSR',
+      _uid: "1",
+      component: "teaser",
+      headline: "SSR",
     });
 
     await waitForRender();
 
-    expect(fixture.nativeElement.querySelector('h1').textContent).toBe('SSR');
+    expect(fixture.nativeElement.querySelector("h1").textContent).toBe("SSR");
   });
 
-  it('cleans up dynamic component on destroy', async () => {
+  it("cleans up dynamic component on destroy", async () => {
     fixture.componentInstance.blok.set({
-      _uid: '1',
-      component: 'teaser',
-      headline: 'Cleanup',
+      _uid: "1",
+      component: "teaser",
+      headline: "Cleanup",
     });
 
     await waitForRender();

@@ -1,8 +1,5 @@
-import type {
-  Component as ComponentGenerated,
-  Field,
-} from './_sources';
-import type { Override } from './_utils';
+import type { Component as ComponentGenerated, Field } from "./_sources";
+import type { Override } from "./_utils";
 
 /**
  * Ordered array of named fields — the content-shape DSL form `defineBlock`
@@ -20,42 +17,46 @@ export type Block<
   TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = boolean,
   TIsNestable extends boolean = boolean,
-> = Override<Omit<ComponentGenerated, 'schema' | 'component_group_uuid'>, {
-  name: TName;
-  fields: TFields;
-  is_root?: TIsRoot;
-  is_nestable?: TIsNestable;
-  /**
-   * Escape hatch for pinning this block to a Storyblok UI-managed component
-   * group by UUID. Component groups are normally maintained in code via the
-   * schema directory layout; set this only if you intentionally manage groups
-   * in the Storyblok UI, and fill in the group UUID yourself. When set,
-   * `schema push` diffs it and sends it to the Management API; when omitted,
-   * the block's remote group is left untouched.
-   *
-   * @deprecated Prefer maintaining component groups in code through the
-   * directory layout.
-   */
-  component_group_uuid?: string | null;
-  /**
-   * Folder membership as a display name path (e.g. `'Layout/Heros'`); `null` =
-   * explicitly ungrouped (push clears the group). Absent = unmanaged (push
-   * leaves the remote group untouched).
-   */
-  folder?: string | null;
-}>;
+> = Override<
+  Omit<ComponentGenerated, "schema" | "component_group_uuid">,
+  {
+    name: TName;
+    fields: TFields;
+    is_root?: TIsRoot;
+    is_nestable?: TIsNestable;
+    /**
+     * Escape hatch for pinning this block to a Storyblok UI-managed component
+     * group by UUID. Component groups are normally maintained in code via the
+     * schema directory layout; set this only if you intentionally manage groups
+     * in the Storyblok UI, and fill in the group UUID yourself. When set,
+     * `schema push` diffs it and sends it to the Management API; when omitted,
+     * the block's remote group is left untouched.
+     *
+     * @deprecated Prefer maintaining component groups in code through the
+     * directory layout.
+     */
+    component_group_uuid?: string | null;
+    /**
+     * Folder membership as a display name path (e.g. `'Layout/Heros'`); `null` =
+     * explicitly ungrouped (push clears the group). Absent = unmanaged (push
+     * leaves the remote group untouched).
+     */
+    folder?: string | null;
+  }
+>;
 
 /**
  * A root {@link Block} (`is_root: true`). Given a union of blocks, narrows to
  * its root members; with no argument it is the generic root-block type.
  */
-export type RootBlock<T extends Block = Block & { is_root: true }> =
-  Extract<T, { is_root: true }>;
+export type RootBlock<T extends Block = Block & { is_root: true }> = Extract<T, { is_root: true }>;
 
 /**
  * A nestable {@link Block} (`is_nestable: true`). Given a union of blocks,
  * narrows to its nestable members; with no argument it is the generic
  * nestable-block type.
  */
-export type NestableBlock<T extends Block = Block & { is_nestable: true }> =
-  Extract<T, { is_nestable: true }>;
+export type NestableBlock<T extends Block = Block & { is_nestable: true }> = Extract<
+  T,
+  { is_nestable: true }
+>;

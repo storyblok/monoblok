@@ -1,5 +1,5 @@
-import { defineField } from '@storyblok/schema';
-import type { Field } from '@storyblok/schema';
+import { defineField } from "@storyblok/schema";
+import type { Field } from "@storyblok/schema";
 
 type NamedField = Field & { name: string };
 
@@ -7,10 +7,10 @@ type NamedField = Field & { name: string };
 export function withTracking<const T extends readonly NamedField[]>(fields: T) {
   return [
     ...fields,
-    defineField('tracking_id', {
-      type: 'text',
+    defineField("tracking_id", {
+      type: "text",
       max_length: 50,
-      description: 'Analytics tracking identifier',
+      description: "Analytics tracking identifier",
     }),
   ];
 }
@@ -21,8 +21,8 @@ export function withSection<const T extends readonly NamedField[]>(
   config: { title: string; keys: string[] },
 ) {
   return [
-    defineField('section', {
-      type: 'section',
+    defineField("section", {
+      type: "section",
       keys: config.keys,
       fieldset: { title: config.title, collapsible: true, collapsed: false },
     }),

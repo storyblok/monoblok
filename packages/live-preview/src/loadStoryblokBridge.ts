@@ -1,9 +1,12 @@
-import type StoryblokBridge from '@storyblok/preview-bridge';
-import type { BridgeParams } from '@storyblok/preview-bridge';
+import type StoryblokBridge from "@storyblok/preview-bridge";
+import type { BridgeParams } from "@storyblok/preview-bridge";
 
 let bridgePromise: Promise<StoryblokBridge> | undefined;
 let storedConfig: BridgeParams | undefined;
-function configsAreEqual(config1: BridgeParams | undefined, config2: BridgeParams | undefined): boolean {
+function configsAreEqual(
+  config1: BridgeParams | undefined,
+  config2: BridgeParams | undefined,
+): boolean {
   return JSON.stringify(config1) === JSON.stringify(config2);
 }
 
@@ -17,8 +20,8 @@ export function loadStoryblokBridge(config?: BridgeParams) {
   if (bridgePromise) {
     if (config && !configsAreEqual(config, storedConfig)) {
       throw new Error(
-        '[Storyblok] Preview Bridge already initialized with a different configuration. '
-        + 'The bridge can only be created once per page and does not support runtime reconfiguration.',
+        "[Storyblok] Preview Bridge already initialized with a different configuration. " +
+          "The bridge can only be created once per page and does not support runtime reconfiguration.",
       );
     }
     return bridgePromise;
@@ -26,7 +29,7 @@ export function loadStoryblokBridge(config?: BridgeParams) {
 
   storedConfig = config;
 
-  bridgePromise = import('@storyblok/preview-bridge')
+  bridgePromise = import("@storyblok/preview-bridge")
     .then(({ default: StoryblokBridge }) => new StoryblokBridge(config))
     .catch((error) => {
       bridgePromise = undefined;

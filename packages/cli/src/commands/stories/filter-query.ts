@@ -11,7 +11,7 @@ export type FilterQuery = NonNullable<StoryListQuery["filter_query"]>;
  *   joined with `&` (e.g. `[highlighted][in]=true&[component][in]=hero`).
  * - A JSON object string (e.g. `{"component":{"in":"hero"}}`).
  *
- * The returned object is serialized by the SDK as `filter_query[field][op]=value`
+ * The returned object is serialized as `filter_query[field][op]=value`
  * (deepObject style) — the wire format MAPI actually filters on. Passing the raw
  * string straight through instead yields a malformed `filter_query=<string>`
  * param that the API silently ignores.

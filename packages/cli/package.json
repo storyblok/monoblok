@@ -67,6 +67,7 @@
     "filenamify": "^6.0.0",
     "jiti": "^2.6.1",
     "json-schema-to-typescript": "^15.0.4",
+    "jsonpath-plus": "10.4.0",
     "minimatch": "^10.0.3",
     "octokit": "^5.0.3",
     "ohash": "^2.0.11",

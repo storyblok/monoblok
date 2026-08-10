@@ -1,5 +1,5 @@
 import type { Story } from '../constants';
-import type { PublishStatus, TranslationStatus } from './filters';
+import type { PublishStatus } from './filters';
 
 export type EntryType = 'all' | 'story' | 'folder';
 
@@ -13,8 +13,6 @@ export interface FindOptions {
   query?: string;
   where?: string[];
   publishStatus?: PublishStatus;
-  translationStatus?: TranslationStatus;
-  language?: string;
 }
 
 export type ClientFilter = (story: Story) => boolean;

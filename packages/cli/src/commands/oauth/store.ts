@@ -7,8 +7,6 @@ import { getStoryblokGlobalPath, saveToFile } from '../../utils/filesystem';
 export interface OAuthClientCredentials {
   client_id: string;
   client_secret: string;
-  // Allowed scopes captured at setup time (PAT path); used as the default login scope set.
-  scopes?: string[];
 }
 
 export interface OAuthTokens {
@@ -24,7 +22,6 @@ export interface OAuthGrantSpace {
 }
 
 export interface OAuthRegionEntry {
-  client?: OAuthClientCredentials;
   tokens?: OAuthTokens;
   spaces?: OAuthGrantSpace[];
 }
@@ -79,21 +76,14 @@ export const updateOAuthEntry = async (region: RegionCode, patch: OAuthRegionEnt
   await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
 };
 
-// Clears the session (tokens and granted spaces) while preserving the provisioned client
-// credentials, so logout does not force users to re-run `oauth setup` before the next login.
+// Clears the session (tokens and granted spaces) for one region.
 export const clearOAuthTokens = async (region: RegionCode): Promise<void> => {
   const all = await readAll();
   const oauth = (all.oauth ?? {}) as OAuthStore;
-  const entry = oauth[region];
-  if (!entry) {
+  if (!oauth[region]) {
     return;
   }
-  if (entry.client) {
-    oauth[region] = { client: entry.client };
-  }
-  else {
-    delete oauth[region];
-  }
+  delete oauth[region];
   // Drop the pointer when the region it references is logged out, so the next
   // session falls back to whatever other region still has tokens.
   if (oauth.activeRegion === region) {

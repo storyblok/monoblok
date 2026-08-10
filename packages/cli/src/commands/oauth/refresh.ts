@@ -20,7 +20,7 @@ const doRefresh = async (region: RegionCode): Promise<OAuthTokens> => {
     throw new CommandError('No OAuth refresh token stored. Run `storyblok login` to authenticate.');
   }
 
-  const client = await resolveOAuthClient(region);
+  const client = resolveOAuthClient();
 
   let response;
   try {

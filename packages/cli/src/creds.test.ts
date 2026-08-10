@@ -97,7 +97,13 @@ describe("creds", async () => {
               region: "eu",
             },
             oauth: {
-              eu: { client: { client_id: "abc", client_secret: "shh" } },
+              eu: {
+                tokens: {
+                  auth_type: "oauth",
+                  access_token: "sb_oat_x",
+                  expires_at: "2026-07-20T12:00:00.000Z",
+                },
+              },
               activeRegion: "eu",
             },
           }),
@@ -110,7 +116,13 @@ describe("creds", async () => {
       const content = JSON.parse(vol.readFileSync("/temp/test/credentials.json", "utf8") as string);
       expect(content["api.storyblok.com"]).toBeUndefined();
       expect(content.oauth).toEqual({
-        eu: { client: { client_id: "abc", client_secret: "shh" } },
+        eu: {
+          tokens: {
+            auth_type: "oauth",
+            access_token: "sb_oat_x",
+            expires_at: "2026-07-20T12:00:00.000Z",
+          },
+        },
         activeRegion: "eu",
       });
     });

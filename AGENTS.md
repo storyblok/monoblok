@@ -31,7 +31,10 @@ These sibling repos may not be available; ignore them if absent.
 
 ## OpenAPI codegen
 
-`tools/openapi-codegen/` owns OpenAPI spec fetching and the shared generator. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo! Read `tools/openapi-codegen/README.md` when working with OpenAPI specs.
+`tools/openapi-codegen/` owns OpenAPI spec fetching, the committed overlay specs in `tools/openapi-codegen/specs/`, and the shared generator. Consumer packages commit their `src/generated/` output so external contributors can build without spec access and so type-relevant spec changes surface as reviewable diffs. The commit-generated-code rule applies to OpenAPI codegen output specifically, not all generated code in the repo! Read `tools/openapi-codegen/README.md` when working with OpenAPI specs.
+
+- **IMPORTANT:** After changing anything under `tools/openapi-codegen/`, including the committed specs in `specs/`, regenerate **every** consumer with `pnpm nx run-many -t generate:openapi` and commit the resulting `packages/*/src/generated/` diff. Never regenerate only the package you are working on: the consumers export the same public types, so a partial regeneration makes them disagree, and nothing in CI catches it.
+- Editing `specs/` does not move `spec.lock`, so there is no lock diff to hint that regeneration is due.
 
 ## Architecture Decision Records
 

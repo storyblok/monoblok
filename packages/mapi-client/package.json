@@ -30,7 +30,7 @@
     "access": "public"
   },
   "scripts": {
-    "generate": "tsx scripts/generate.ts",
+    "generate:openapi": "tsx scripts/generate.ts",
     "build": "tsdown",
     "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck",
@@ -55,14 +55,14 @@
   },
   "nx": {
     "targets": {
-      "generate": {
+      "generate:openapi": {
         "inputs": [
           "{projectRoot}/scripts/generate.ts",
           "{projectRoot}/package.json",
           "openapiCodegen"
         ],
         "outputs": [
-          "{projectRoot}/src/generated/**"
+          "{projectRoot}/src/generated"
         ],
         "cache": true,
         "dependsOn": [

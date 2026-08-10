@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { CommandError } from '../../utils';
+import { describePortConflict } from './port';
 
 const page = (heading: string, message: string): string =>
   `<!doctype html><html><body style="font-family: sans-serif; text-align: center; padding-top: 4rem;">
@@ -55,6 +56,10 @@ export const waitForCallback = (port: number, path: string, timeoutMs = 300_000)
 
     server.on('error', (err) => {
       clearTimeout(timer);
+      if ((err as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+        describePortConflict(port).then(message => reject(new CommandError(message)), () => reject(err));
+        return;
+      }
       reject(err);
     });
     // Bind to loopback only so the authorization code is never accepted from other hosts.

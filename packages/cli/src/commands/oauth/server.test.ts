@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { describe, expect, it } from 'vitest';
 import { waitForCallback } from './server';
 
@@ -21,6 +22,22 @@ describe('waitForCallback', () => {
 
     expect(response.status).toBe(400);
     await rejected;
+  });
+
+  it('should explain which process blocks the callback port when it is already in use', async () => {
+    const blocker = createServer();
+    await new Promise<void>(resolve => blocker.listen(4920, '127.0.0.1', resolve));
+
+    try {
+      // The holder lookup shells out to lsof/netstat, which may be unavailable in CI, so the
+      // assertion covers the always-present parts: the port, the cause, and the way out.
+      await expect(waitForCallback(4920, PATH)).rejects.toThrow(
+        /Port 4920 is already in use .*run `storyblok login --oauth` again/s,
+      );
+    }
+    finally {
+      await new Promise<void>(resolve => blocker.close(() => resolve()));
+    }
   });
 
   it('should serve a non-200 page and reject when code or state is missing', async () => {

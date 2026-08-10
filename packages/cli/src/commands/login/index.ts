@@ -54,7 +54,7 @@ export const loginCommand = program
     if (options.oauth) {
       const userRegion = region || regions.EU;
       await performOAuthLoginStrategy({ region: userRegion, verbose });
-      konsola.br();
+      ui.br();
       return;
     }
 

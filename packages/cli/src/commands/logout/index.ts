@@ -39,9 +39,7 @@ export const logoutCommand = program
             const client = await resolveOAuthClient(state.region);
             await revokeToken(state.region, tokenToRevoke, client);
           } catch (error) {
-            konsola.warn(
-              `Could not revoke the OAuth session server-side: ${(error as Error).message}`,
-            );
+            ui.warn(`Could not revoke the OAuth session server-side: ${(error as Error).message}`);
           }
         }
         await clearOAuthSession(state.region);

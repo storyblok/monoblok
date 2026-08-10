@@ -2,7 +2,7 @@ import open from 'open';
 import type { RegionCode } from '../../constants';
 import { managementApiRegions } from '../../constants';
 import { CommandError } from '../../utils';
-import { getUI } from '../../utils/ui';
+import { getUI } from '../../lib/ui';
 import { resolveOAuthClient } from './client';
 import { DEFAULT_LOGIN_SCOPES, OAUTH_CALLBACK_PATH, OAUTH_CALLBACK_PORT, OAUTH_REDIRECT_URI } from './constants';
 import { introspectGrant } from './grant';

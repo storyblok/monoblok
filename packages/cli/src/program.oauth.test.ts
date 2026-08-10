@@ -97,9 +97,9 @@ describe('program preAction OAuth refresh', () => {
     );
 
     // Import the module fresh (post vi.resetModules()) so the spy targets the same
-    // `konsola` instance the freshly-loaded program.ts module resolves to.
-    const { konsola } = await import('./utils');
-    const warnSpy = vi.spyOn(konsola, 'warn').mockImplementation(() => {});
+    // UI instance the freshly-loaded program.ts module resolves to.
+    const { getUI } = await import('./lib/ui');
+    const warnSpy = vi.spyOn(getUI(), 'warn').mockImplementation(() => {});
 
     const { getProgram } = await import('./program');
     const program = getProgram();

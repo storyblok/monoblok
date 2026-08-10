@@ -3,7 +3,7 @@ import type { RegionCode } from '../../../constants';
 import { colorPalette, regionNames, regions } from '../../../constants';
 import { getProgram } from '../../../program';
 import { CommandError, handleError, isRegion } from '../../../utils';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 import { oauthCommand } from '../command';
 import { findOrCreateCliClient } from '../actions';
 import { updateOAuthEntry } from '../store';

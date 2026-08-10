@@ -38,11 +38,7 @@ const findCmd = storiesCommand
     new Option('--publish-status <status>', 'filter by publish status')
       .choices(['published', 'changed', 'draft']),
   )
-  .addOption(
-    new Option('--translation-status <status>', 'filter by translation status')
-      .choices(['missing', 'stale', 'unpublished', 'complete']),
-  )
-  .option('--language <code>', 'scope by specific language(s) (comma-separated)');
+;
 
 findCmd.action(async (text: string | undefined, options: FindOptions, command) => {
   const ui = getUI();
@@ -64,12 +60,6 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
 
   // Build server-side query params
   const params = buildQueryParams(text, options);
-
-  // Determine if we need translation data
-  const needsTranslationData = Boolean(options.translationStatus);
-  if (needsTranslationData) {
-    params.with_translated_stories = true;
-  }
 
   // Determine client-side filters
   const clientFilters = buildClientFilters(options);

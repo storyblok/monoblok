@@ -4,7 +4,6 @@ import { parseFilterQuery } from '../filter-query';
 import type { ClientFilter, FindOptions } from './types';
 import {
   matchesPublishStatus,
-  matchesTranslationStatus,
   publishStatusToQueryParams,
 } from './filters';
 
@@ -56,29 +55,6 @@ export function buildClientFilters(options: FindOptions): ClientFilter[] {
   // Publish status client-side filter (for 'published' and 'changed')
   if (options.publishStatus && options.publishStatus !== 'draft') {
     filters.push(story => matchesPublishStatus(story, options.publishStatus!));
-  }
-
-  // Translation status
-  if (options.translationStatus) {
-    const languages = options.language
-      ? options.language.split(',').map(l => l.trim())
-      : [];
-
-    if (languages.length === 0) {
-      // Check across all available translations
-      filters.push((story) => {
-        const translations = (story as Story & { translated_stories?: Array<{ lang: string }> }).translated_stories ?? [];
-        const allLangs = translations.map(t => t.lang);
-        if (allLangs.length === 0) {
-          // No translations at all — 'missing' should match, 'complete' should not
-          return options.translationStatus === 'missing';
-        }
-        return matchesTranslationStatus(story, options.translationStatus!, allLangs);
-      });
-    }
-    else {
-      filters.push(story => matchesTranslationStatus(story, options.translationStatus!, languages));
-    }
   }
 
   // JSONPath --where filters

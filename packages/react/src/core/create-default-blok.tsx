@@ -1,11 +1,11 @@
 import type { ComponentType } from 'react';
-import type { SbReactRichTextProps } from './richtext';
+import type { StoryblokReactRichTextProps } from './richtext';
 import type { SbBlokData } from '@storyblok/js';
 
 export function createDefaultBlok(
   StoryblokComponent: ComponentType<{ blok: SbBlokData }>,
 ) {
-  return function DefaultBlok({ attrs }: SbReactRichTextProps<'blok'>) {
+  return function DefaultBlok({ attrs }: StoryblokReactRichTextProps<'blok'>) {
     if (!Array.isArray(attrs?.body)) {
       return null;
     }

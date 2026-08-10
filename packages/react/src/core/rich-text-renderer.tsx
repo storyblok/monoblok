@@ -1,49 +1,90 @@
-import type { RenderSpec, SbRichTextElement, SbRichTextElementByType, SbRichTextImageOptions, SbRichTextInput, SbRichTextMark, SbRichTextNode, SbRichTextTextNode } from '@storyblok/richtext';
-import { buildStoryblokImage, getInnerMarks, getStaticChildren, groupLinkNodes, isSelfClosing, normalizeNodes, processAttrs, resolveTag, splitTableRows } from '@storyblok/richtext';
+import type {
+  StoryblokRichTextProps as StoryblokRichTextCoreProps,
+  StoryblokRichTextElement,
+  StoryblokRichTextImageOptions,
+  StoryblokRichTextInput,
+  StoryblokRichTextMark,
+  StoryblokRichTextNodeWithKey,
+  StoryblokRichTextRenderSpec,
+  StoryblokRichTextTextNode,
+} from '@storyblok/richtext';
+import {
+  buildStoryblokImage,
+  getInnerMarks,
+  getStaticChildren,
+  groupLinkNodes,
+  isSelfClosing,
+  normalizeNodes,
+  processAttrs,
+  resolveTag,
+  splitTableRows,
+} from '@storyblok/richtext';
 import React, { type ComponentType, type ReactNode } from 'react';
 
 /**
  * Props type for React richtext node/mark components.
- * Similar to SbRichTextProps but uses ReactNode for children instead of string.
+ * Extends the OpenAPI-sourced StoryblokRichTextCoreProps<T> with a React-specific
+ * context and ReactNode children (instead of the static renderer's string children).
  */
-export type SbReactRichTextProps<
-  T extends SbRichTextElement,
-> =
-  SbRichTextElementByType<SbReactRichTextRenderContext>[T]
-  & {
+export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> =
+  Omit<StoryblokRichTextCoreProps<T>, 'context' | 'children'> & {
+    context?: StoryblokReactRichTextRenderContext;
     children?: ReactNode;
   };
 
-export type SbReactRichTextComponent<
-  T extends SbRichTextElement,
-> = ComponentType<SbReactRichTextProps<T>>;
+/**
+ * @deprecated Use {@link StoryblokReactRichTextProps} instead. Will be removed in the next major version.
+ */
+export type SbReactRichTextProps<T extends StoryblokRichTextElement> =
+  StoryblokReactRichTextProps<T>;
 
-export type SbReactRichTextComponentMap = {
-  [K in SbRichTextElement]?: SbReactRichTextComponent<K>;
+export type StoryblokReactRichTextComponent<T extends StoryblokRichTextElement> =
+  ComponentType<StoryblokReactRichTextProps<T>>;
+
+/**
+ * @deprecated Use {@link StoryblokReactRichTextComponent} instead. Will be removed in the next major version.
+ */
+export type SbReactRichTextComponent<T extends StoryblokRichTextElement> =
+  StoryblokReactRichTextComponent<T>;
+
+export type StoryblokReactRichTextComponentMap = {
+  [K in StoryblokRichTextElement]?: StoryblokReactRichTextComponent<K>;
 };
 
-export interface SbReactRichTextRenderContext {
-  optimizeImage?: boolean | SbRichTextImageOptions;
-  components?: SbReactRichTextComponentMap;
+/**
+ * @deprecated Use {@link StoryblokReactRichTextComponentMap} instead. Will be removed in the next major version.
+ */
+export type SbReactRichTextComponentMap = StoryblokReactRichTextComponentMap;
+
+export interface StoryblokReactRichTextRenderContext {
+  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  components?: StoryblokReactRichTextComponentMap;
   data?: unknown;
 }
-export interface StoryblokRichTextProps extends SbReactRichTextRenderContext {
-  optimizeImage?: boolean | SbRichTextImageOptions;
-  document?: SbRichTextInput;
+
+/**
+ * @deprecated Use {@link StoryblokReactRichTextRenderContext} instead. Will be removed in the next major version.
+ */
+export type SbReactRichTextRenderContext = StoryblokReactRichTextRenderContext;
+
+/** Props for the `<StoryblokRichText>` React component. */
+export interface StoryblokReactRichTextComponentProps extends StoryblokReactRichTextRenderContext {
+  document?: StoryblokRichTextInput;
 }
 
-function resolveComponent<K extends SbRichTextElement>(
-  type: K,
-  components?: SbReactRichTextComponentMap,
-): ComponentType<SbReactRichTextProps<K>> | undefined {
-  return components?.[type] as ComponentType<SbReactRichTextProps<K>> | undefined;
-}
 const extendAttrMap = {
   class: 'className',
 };
 
-export function createRichTextRenderer(options: SbReactRichTextRenderContext) {
-  return function render(document: SbRichTextInput): ReactNode | null {
+function resolveComponent<K extends StoryblokRichTextElement>(
+  type: K,
+  components?: StoryblokReactRichTextComponentMap,
+): ComponentType<StoryblokReactRichTextProps<K>> | undefined {
+  return components?.[type] as ComponentType<StoryblokReactRichTextProps<K>> | undefined;
+}
+
+export function createRichTextRenderer(options: StoryblokReactRichTextRenderContext) {
+  return function render(document: StoryblokRichTextInput): ReactNode | null {
     const nodes = normalizeNodes(document, true);
     return nodes?.length ? renderChildren(nodes, options) : null;
   };
@@ -54,7 +95,7 @@ export function createRichTextRenderer(options: SbReactRichTextRenderContext) {
  * This produces cleaner output: <a href="...">text <strong>bold</strong> more</a>
  * instead of: <a>text</a><a><strong>bold</strong></a><a>more</a>
  */
-function renderChildren(nodes: SbRichTextNode[], options: SbReactRichTextRenderContext): ReactNode {
+function renderChildren(nodes: StoryblokRichTextNodeWithKey[], options: StoryblokReactRichTextRenderContext): ReactNode {
   const groups = groupLinkNodes(nodes);
   return groups.map((group, groupIndex) => {
     if (group.linkMark) {
@@ -70,13 +111,13 @@ function renderChildren(nodes: SbRichTextNode[], options: SbReactRichTextRenderC
  * Renders consecutive text nodes under a single link tag.
  */
 function renderLinkGroup(
-  nodes: SbRichTextNode[],
-  linkMark: SbRichTextMark,
-  options: SbReactRichTextRenderContext,
+  nodes: StoryblokRichTextNodeWithKey[],
+  linkMark: StoryblokRichTextMark,
+  options: StoryblokReactRichTextRenderContext,
   key: React.Key,
 ): ReactNode {
   const inner = nodes.map((node, index) => {
-    const textNode = node as SbRichTextTextNode;
+    const textNode = node as StoryblokRichTextTextNode;
     const innerMarks = getInnerMarks(node);
     return renderTextNodeWithMarks(textNode, innerMarks, options, node._key || index);
   });
@@ -94,10 +135,11 @@ function renderLinkGroup(
     return <React.Fragment key={key}>{inner}</React.Fragment>;
   }
 
-  return React.createElement(tag, { key, ...processAttrs(linkMark.type, linkMark.attrs, extendAttrMap) }, inner);
+  const markAttrs = ('attrs' in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
+  return React.createElement(tag, { key, ...processAttrs(linkMark.type, markAttrs, extendAttrMap) }, inner);
 }
 
-function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext, key: React.Key): ReactNode {
+function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokReactRichTextRenderContext, key: React.Key): ReactNode {
   const content = node.type !== 'text' && node.content ? renderChildren(node.content, options) : null;
 
   // Custom renderer takes full control
@@ -117,7 +159,7 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
   }
 
   if (node.type === 'text') {
-    return renderTextNode(node as SbRichTextTextNode, options, key);
+    return renderTextNode(node as StoryblokRichTextTextNode, options, key);
   }
   const tag = resolveTag(node);
   if (!tag) {
@@ -127,7 +169,8 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
     return renderOptimizedImage(node, options, key);
   }
 
-  const props = processAttrs(node.type, node.attrs, extendAttrMap);
+  const nodeAttrs = ('attrs' in node ? node.attrs : {}) as Record<string, unknown>;
+  const props = processAttrs(node.type, nodeAttrs, extendAttrMap);
   if (isSelfClosing(tag)) {
     return React.createElement(tag, { key, ...props });
   }
@@ -138,15 +181,20 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
 
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
-    const content = node.content ? renderChildren(node.content, options) : null;
-    const inner = renderStaticStructure(node.type, staticChildren, node.attrs, content);
+    const nodeContent = node.content ? renderChildren(node.content, options) : null;
+    const inner = renderStaticStructure(node.type, staticChildren, nodeAttrs, nodeContent);
     return React.createElement(tag, { key }, inner);
+  }
+
+  if (node.type === 'emoji') {
+    const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: 'emoji' }>;
+    return React.createElement(tag, { key, ...props }, emojiNode.attrs.emoji);
   }
 
   return React.createElement(
     tag,
     { key, ...props },
-    node.type === 'emoji' ? node.attrs.emoji : (node.content ? renderChildren(node.content, options) : null),
+    node.content ? renderChildren(node.content, options) : null,
   );
 }
 
@@ -154,11 +202,11 @@ function renderNode(node: SbRichTextNode, options: SbReactRichTextRenderContext,
  * Renders an image node with optimization applied.
  */
 function renderOptimizedImage(
-  node: SbRichTextNode,
-  options: SbReactRichTextRenderContext,
+  node: StoryblokRichTextNodeWithKey,
+  options: StoryblokReactRichTextRenderContext,
   key: React.Key,
 ): ReactNode {
-  const attrs = node.attrs as Record<string, unknown> | undefined;
+  const attrs = ('attrs' in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
 
   if (!src) {
@@ -180,8 +228,8 @@ function renderOptimizedImage(
  * Renders table with thead/tbody grouping based on cell types.
  */
 function renderTable(
-  node: SbRichTextNode,
-  options: SbReactRichTextRenderContext,
+  node: StoryblokRichTextNodeWithKey,
+  options: StoryblokReactRichTextRenderContext,
   key: React.Key,
   tag: string,
   props: Record<string, unknown>,
@@ -213,8 +261,8 @@ function renderTable(
  * Renders nested static structure defined in render map (e.g., pre > code).
  */
 function renderStaticStructure(
-  type: SbRichTextElement,
-  specs: readonly RenderSpec[],
+  type: StoryblokRichTextElement,
+  specs: readonly StoryblokRichTextRenderSpec[],
   parentAttrs: Record<string, unknown> | undefined,
   content: ReactNode,
 ): ReactNode {
@@ -235,14 +283,14 @@ function renderStaticStructure(
   });
 }
 
-function renderTextNode(node: SbRichTextTextNode, options: SbReactRichTextRenderContext, key?: React.Key): ReactNode {
+function renderTextNode(node: StoryblokRichTextTextNode, options: StoryblokReactRichTextRenderContext, key?: React.Key): ReactNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
 function renderTextNodeWithMarks(
-  node: SbRichTextTextNode,
-  marks: SbRichTextMark[] | undefined,
-  options: SbReactRichTextRenderContext,
+  node: StoryblokRichTextTextNode,
+  marks: StoryblokRichTextMark[] | undefined,
+  options: StoryblokReactRichTextRenderContext,
   key?: React.Key,
 ): ReactNode {
   let content: ReactNode = node.text;
@@ -256,7 +304,7 @@ function renderTextNodeWithMarks(
   return <React.Fragment key={key}>{content}</React.Fragment>;
 }
 
-function wrapMark(children: ReactNode, mark: SbRichTextMark, options: SbReactRichTextRenderContext): ReactNode {
+function wrapMark(children: ReactNode, mark: StoryblokRichTextMark, options: StoryblokReactRichTextRenderContext): ReactNode {
   const Custom = resolveComponent(mark.type, options.components);
   if (Custom) {
     return <Custom {...mark} context={options}>{children}</Custom>;
@@ -267,6 +315,7 @@ function wrapMark(children: ReactNode, mark: SbRichTextMark, options: SbReactRic
     return children;
   }
 
-  const props = processAttrs(mark.type, mark.attrs, extendAttrMap);
+  const markAttrs = ('attrs' in mark ? mark.attrs : {}) as Record<string, unknown>;
+  const props = processAttrs(mark.type, markAttrs, extendAttrMap);
   return React.createElement(tag, props, children);
 }

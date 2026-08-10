@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { groupLinkNodes, type SbRichTextNode } from '@storyblok/richtext';
+  import { groupLinkNodes, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
 
-  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
+  import type { StoryblokSvelteRichTextRenderContext } from '../richtext-helpers';
   import RenderLinkGroup from './RenderLinkGroup.svelte';
   import RenderNode from './RenderNode.svelte';
 
   type Props = {
-    nodes: SbRichTextNode[];
-    options: SbSvelteRichTextRenderContext;
+    nodes: StoryblokRichTextNodeWithKey[];
+    options: StoryblokSvelteRichTextRenderContext;
   };
 
   const { nodes, options }: Props = $props();

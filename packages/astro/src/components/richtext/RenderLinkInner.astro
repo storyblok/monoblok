@@ -1,11 +1,14 @@
 ---
-import type { SbAstroRichTextRenderContext, SbRichTextTextNode } from '../../';
+import type {
+  StoryblokAstroRichTextRenderContext,
+  StoryblokRichTextTextNode,
+} from '../../';
 import { getInnerMarks } from '../../';
 import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
 
 interface Props {
-  nodes: SbRichTextTextNode[];
-  options: SbAstroRichTextRenderContext;
+  nodes: StoryblokRichTextTextNode[];
+  options: StoryblokAstroRichTextRenderContext;
 }
 const { nodes, options } = Astro.props;
 ---
@@ -13,6 +16,12 @@ const { nodes, options } = Astro.props;
 {
   nodes.map((node) => {
     const innermarks = getInnerMarks(node);
-    return <RenderTextNodeWithMarks node={node} marks={innermarks} options={options} />;
+    return (
+      <RenderTextNodeWithMarks
+        node={node}
+        marks={innermarks}
+        options={options}
+      />
+    );
   })
 }

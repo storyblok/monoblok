@@ -7,7 +7,7 @@ import {
   isTableHeaderRow,
   splitTableRows,
 } from './node-helpers';
-import type { SbRichTextNode } from './types.generated';
+import type { RichTextNode } from '../generated/overlay/types.gen';
 import { linkMark, text as textNode } from '../test-utils/helpers';
 
 // ============================================================================
@@ -16,7 +16,7 @@ import { linkMark, text as textNode } from '../test-utils/helpers';
 
 describe('getTextNodeLinkMark', () => {
   it('returns null for non-text nodes', () => {
-    const node: SbRichTextNode = { type: 'paragraph', content: [] };
+    const node: RichTextNode = { type: 'paragraph', content: [] };
     expect(getTextNodeLinkMark(node)).toBeNull();
   });
 
@@ -143,7 +143,7 @@ describe('areLinkMarksEqual', () => {
 
 describe('getInnerMarks', () => {
   it('returns empty array for non-text nodes', () => {
-    const node: SbRichTextNode = { type: 'paragraph', content: [] };
+    const node: RichTextNode = { type: 'paragraph', content: [] };
     expect(getInnerMarks(node)).toEqual([]);
   });
 
@@ -224,9 +224,9 @@ describe('groupLinkNodes', () => {
 
   it('handles non-text nodes', () => {
     const mark = linkMark('/test');
-    const textNodeA: SbRichTextNode = textNode('before', [mark]);
-    const brNode: SbRichTextNode = { type: 'hard_break' };
-    const textNodeB: SbRichTextNode = textNode('after', [mark]);
+    const textNodeA: RichTextNode = textNode('before', [mark]);
+    const brNode: RichTextNode = { type: 'hard_break' };
+    const textNodeB: RichTextNode = textNode('after', [mark]);
     const result = groupLinkNodes([textNodeA, brNode, textNodeB]);
     expect(result).toEqual([
       { _key: 'group-link-0', nodes: [textNodeA], linkMark: mark },
@@ -254,40 +254,40 @@ describe('groupLinkNodes', () => {
 
 describe('isTableHeaderRow', () => {
   it('returns false for row without content', () => {
-    const row: SbRichTextNode = { type: 'tableRow' };
+    const row: RichTextNode = { type: 'tableRow' };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
   it('returns false for row with empty content', () => {
-    const row: SbRichTextNode = { type: 'tableRow', content: [] };
+    const row: RichTextNode = { type: 'tableRow', content: [] };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
   it('returns false for row with tableCell', () => {
-    const row: SbRichTextNode = {
+    const row: RichTextNode = {
       type: 'tableRow',
-      content: [{ type: 'tableCell' }],
+      content: [{ type: 'tableCell', attrs: {} }],
     };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
   it('returns true for row with only tableHeader cells', () => {
-    const row: SbRichTextNode = {
+    const row: RichTextNode = {
       type: 'tableRow',
       content: [
-        { type: 'tableHeader' },
-        { type: 'tableHeader' },
+        { type: 'tableHeader', attrs: {} },
+        { type: 'tableHeader', attrs: {} },
       ],
     };
     expect(isTableHeaderRow(row)).toBe(true);
   });
 
   it('returns false for mixed row', () => {
-    const row: SbRichTextNode = {
+    const row: RichTextNode = {
       type: 'tableRow',
       content: [
-        { type: 'tableHeader' },
-        { type: 'tableCell' },
+        { type: 'tableHeader', attrs: {} },
+        { type: 'tableCell', attrs: {} },
       ],
     };
     expect(isTableHeaderRow(row)).toBe(false);
@@ -308,25 +308,25 @@ describe('splitTableRows', () => {
   });
 
   it('returns all rows as body when no header rows', () => {
-    const rows: SbRichTextNode[] = [
-      { type: 'tableRow', content: [{ type: 'tableCell' }] },
-      { type: 'tableRow', content: [{ type: 'tableCell' }] },
+    const rows: RichTextNode[] = [
+      { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] },
+      { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] },
     ];
     expect(splitTableRows(rows)).toEqual({ headerRows: [], bodyRows: rows });
   });
 
   it('returns all rows as header when all are header rows', () => {
-    const rows: SbRichTextNode[] = [
-      { type: 'tableRow', content: [{ type: 'tableHeader' }] },
-      { type: 'tableRow', content: [{ type: 'tableHeader' }] },
+    const rows: RichTextNode[] = [
+      { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] },
+      { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] },
     ];
     expect(splitTableRows(rows)).toEqual({ headerRows: rows, bodyRows: [] });
   });
 
   it('splits header and body rows correctly', () => {
-    const headerRow: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
-    const bodyRow1: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableCell' }] };
-    const bodyRow2: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableCell' }] };
+    const headerRow: RichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] };
+    const bodyRow1: RichTextNode = { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] };
+    const bodyRow2: RichTextNode = { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] };
     const rows = [headerRow, bodyRow1, bodyRow2];
     expect(splitTableRows(rows)).toEqual({
       headerRows: [headerRow],
@@ -335,9 +335,9 @@ describe('splitTableRows', () => {
   });
 
   it('only considers contiguous header rows at start', () => {
-    const headerRow1: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
-    const bodyRow: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableCell' }] };
-    const headerRow2: SbRichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader' }] };
+    const headerRow1: RichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] };
+    const bodyRow: RichTextNode = { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] };
+    const headerRow2: RichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] };
     const rows = [headerRow1, bodyRow, headerRow2];
     expect(splitTableRows(rows)).toEqual({
       headerRows: [headerRow1],

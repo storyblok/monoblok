@@ -1,9 +1,14 @@
-import type { SbRichTextDoc, SbRichTextMark, SbRichTextNode } from '../static';
+import type {
+  RichTextDoc,
+  RichTextFieldValueLinkMark,
+  RichTextMark,
+  RichTextNode,
+} from '../generated/overlay/types.gen';
 
 export const text = (
   content: string,
-  marks?: SbRichTextNode['marks'],
-): SbRichTextNode => ({
+  marks?: RichTextMark[] | undefined,
+): RichTextNode => ({
   type: 'text',
   text: content,
   ...(marks && { marks }),
@@ -18,7 +23,7 @@ export const linkMark = (
     anchor?: string;
     custom?: Record<string, unknown>;
   } = {},
-): NonNullable<SbRichTextMark & { type: 'link' }> => ({
+): RichTextFieldValueLinkMark => ({
   type: 'link',
   attrs: {
     href,
@@ -32,9 +37,14 @@ export const linkMark = (
 
 export const tableCell = (
   content: string,
-  attrs: { colspan?: number; rowspan?: number; colwidth?: number[]; backgroundColor?: string } = {},
-  marks?: SbRichTextNode['marks'],
-): SbRichTextNode => ({
+  attrs: {
+    colspan?: number;
+    rowspan?: number;
+    colwidth?: number[];
+    backgroundColor?: string;
+  } = {},
+  marks?: RichTextMark[] | undefined,
+): RichTextNode => ({
   type: 'tableCell',
   content: [{ type: 'paragraph', content: [text(content, marks)] }],
   attrs: {
@@ -45,22 +55,26 @@ export const tableCell = (
   },
 });
 
-export const tableHeader = (content: string, marks?: SbRichTextNode['marks']): SbRichTextNode => ({
+export const tableHeader = (
+  content: string,
+  marks?: RichTextMark[] | undefined,
+): RichTextNode => ({
   type: 'tableHeader',
   content: [{ type: 'paragraph', content: [text(content, marks)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 
-export const tableRow = (cells: SbRichTextNode[]): SbRichTextNode => ({
+export const tableRow = (cells: RichTextNode[]): RichTextNode => ({
   type: 'tableRow',
   content: cells,
 });
 
-export const table = (rows: SbRichTextNode[]): SbRichTextNode => ({
+export const table = (rows: RichTextNode[]): RichTextNode => ({
   type: 'table',
   content: rows,
 });
-export const doc = (content: SbRichTextNode | SbRichTextNode[]): SbRichTextDoc => ({
+
+export const doc = (content: RichTextNode | RichTextNode[]): RichTextDoc => ({
   type: 'doc',
   content: Array.isArray(content) ? content : [content],
 });

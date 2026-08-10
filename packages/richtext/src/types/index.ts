@@ -1,7 +1,7 @@
 /**
  * Represents the configuration options for optimizing images in rich text content.
  */
-export interface SbRichTextImageOptions {
+export interface StoryblokRichTextImageOptions {
   /**
    * CSS class to be applied to the image.
    */
@@ -28,7 +28,7 @@ export interface SbRichTextImageOptions {
    * @example
    *
    * ```typescript
-   * const filters: Partial<SbRichTextImageOptions['filters']> = {
+   * const filters: Partial<StoryblokRichTextImageOptions['filters']> = {
    *   blur: 5,
    *   brightness: 150,
    *   grayscale: true
@@ -75,3 +75,8 @@ export interface SbRichTextImageOptions {
    */
   sizes: string[];
 }
+
+/**
+ * @deprecated Use {@link StoryblokRichTextImageOptions} instead. Will be removed in the next major version.
+ */
+export type SbRichTextImageOptions = StoryblokRichTextImageOptions;

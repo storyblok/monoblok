@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { type SbRichTextNode, splitTableRows } from '@storyblok/richtext';
-  import type { SbSvelteRichTextRenderContext } from '../richtext-helpers';
+  import { splitTableRows, type StoryblokRichTextNodeWithKey } from '@storyblok/richtext';
+  import type { StoryblokSvelteRichTextRenderContext } from '../richtext-helpers';
   import ElementTag from './ElementTag.svelte';
   import RenderNode from './RenderNode.svelte';
 
   type Props = {
-    node: SbRichTextNode & { type: 'table' };
-    options: SbSvelteRichTextRenderContext;
+    node: StoryblokRichTextNodeWithKey & { type: 'table' };
+    options: StoryblokSvelteRichTextRenderContext;
   };
 
   const { node, options }: Props = $props();

@@ -4,16 +4,18 @@ import {
   buildAstroAttrs,
   resolveTag,
   isSelfClosing,
-  type SbRichTextMark,
-  type SbRichTextNode,
+  type StoryblokRichTextMark,
+  type StoryblokRichTextNode,
 } from '../../';
 interface Props {
-  node: Exclude<SbRichTextNode, { type: 'text' }> | SbRichTextMark;
+  node:
+    Exclude<StoryblokRichTextNode, { type: 'text' }> | StoryblokRichTextMark;
 }
 const { node } = Astro.props;
 
 const Tag = resolveTag(node);
-const processedAttrs = buildAstroAttrs(node.type, node?.attrs ?? {});
+const attrs = 'attrs' in node ? (node.attrs ?? {}) : {};
+const processedAttrs = buildAstroAttrs(node.type, attrs);
 const selfClosing = Tag && isSelfClosing(Tag);
 ---
 

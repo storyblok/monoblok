@@ -1,12 +1,12 @@
 <script lang="ts">
   import { buildSvelteAttrs } from '../richtext-helpers';
-  import { isSelfClosing, type RenderSpec, type SbRichTextElement } from '@storyblok/richtext';
+  import { isSelfClosing, type RenderSpec, type StoryblokRichTextElement } from '@storyblok/richtext';
   import type { Snippet } from 'svelte';
   // eslint-disable-next-line import/no-self-import
   import RenderStaticStructure from './RenderStaticStructure.svelte';
 
   type Props = {
-    type: SbRichTextElement;
+    type: StoryblokRichTextElement;
     specs: readonly RenderSpec[];
     parentAttrs?: Record<string, unknown>;
     children?: Snippet;

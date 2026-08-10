@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeNodes } from './normalize-nodes';
-import type { SbRichTextNode } from './types.generated';
+import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
 import { customRendererFixture } from '../test-utils';
 
 describe('normalizeNodes', () => {
@@ -12,12 +12,12 @@ describe('normalizeNodes', () => {
     expect(normalizeNodes([])).toEqual([]);
   });
   it('wraps single node in array', () => {
-    const node: SbRichTextNode = { type: 'paragraph' };
+    const node: RichTextNode = { type: 'paragraph' };
     expect(normalizeNodes(node)).toEqual([node]);
   });
   it('unwraps doc node to content array', () => {
-    const content: SbRichTextNode[] = [{ type: 'paragraph' }];
-    const docNode: SbRichTextNode = { type: 'doc', content };
+    const content: RichTextNode[] = [{ type: 'paragraph' }];
+    const docNode: RichTextDoc = { type: 'doc', content };
     expect(normalizeNodes(docNode)).toEqual(content);
   });
   const node_and_mark = customRendererFixture.node_and_mark;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderRichText } from './render-richtext';
-import type { SbRichTextDoc, SbRichTextRenderContext } from './static';
+import type { StoryblokRichTextDoc, StoryblokRichTextRenderContext } from './static';
 import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from './test-utils';
 import { attrsToHtmlString, splitTableRows } from './static';
 
@@ -59,7 +59,7 @@ describe('renderRichText', () => {
   describe('custom renderers', () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           heading: ({ content, attrs, context }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, context)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
@@ -71,7 +71,7 @@ describe('renderRichText', () => {
     });
     const recursive = customRendererFixture.recursive;
     it(recursive.title, () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
@@ -81,7 +81,7 @@ describe('renderRichText', () => {
     });
     const code_block = customRendererFixture.code_block;
     it(code_block.title, () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           code_block: ({ attrs, content, context }) => {
             const lang = (attrs?.class as string) || '';
@@ -95,7 +95,7 @@ describe('renderRichText', () => {
     });
     const table = customRendererFixture.table;
     it(table.title, () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           table: ({ content, context }) => {
             const { headerRows, bodyRows } = splitTableRows(content);
@@ -109,7 +109,7 @@ describe('renderRichText', () => {
     });
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         data: { prefix: '[prefix]' },
         renderers: {
           text: ({ text: content, context }) => {
@@ -123,7 +123,7 @@ describe('renderRichText', () => {
     });
     const infinite_loop = customRendererFixture.infinite_loop_prevention;
     it(infinite_loop.title, () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           heading: ({ attrs, content, context }) => {
             // Simulate what a real component would do: call renderRichText internally
@@ -138,7 +138,7 @@ describe('renderRichText', () => {
     });
   });
   describe('blok nodes', () => {
-    const blokDoc: SbRichTextDoc = {
+    const blokDoc: StoryblokRichTextDoc = {
       type: 'doc',
       content: [{
         type: 'blok',
@@ -166,7 +166,7 @@ describe('renderRichText', () => {
     });
 
     it('renders with custom blok renderer', () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           blok: ({ attrs }) => {
             const body = Array.isArray(attrs?.body) ? attrs.body : [];
@@ -180,7 +180,7 @@ describe('renderRichText', () => {
     });
 
     it('handles empty body', () => {
-      const emptyBlok: SbRichTextDoc = {
+      const emptyBlok: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'blok', attrs: { id: 'x', body: [] } }],
       };
@@ -190,7 +190,7 @@ describe('renderRichText', () => {
     });
 
     it('handles null body', () => {
-      const nullBlok: SbRichTextDoc = {
+      const nullBlok: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'blok', attrs: { id: 'x', body: null } }],
       };
@@ -200,16 +200,16 @@ describe('renderRichText', () => {
     });
 
     it('works alongside other content', () => {
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           blok: () => '<widget />',
         },
       };
-      const content: SbRichTextDoc = {
+      const content: StoryblokRichTextDoc = {
         type: 'doc',
         content: [
           { type: 'paragraph', content: [text('Before')] },
-          { type: 'blok', attrs: { id: 'x', body: [{ _uid: '1' }] } },
+          { type: 'blok', attrs: { id: 'x', body: [{ _uid: '1', component: 'widget' }] } },
           { type: 'paragraph', content: [text('After')] },
         ],
       };
@@ -230,11 +230,11 @@ describe('renderRichText', () => {
 
   describe('context data', () => {
     it('passes data to custom node renderers', () => {
-      const doc: SbRichTextDoc = {
+      const doc: StoryblokRichTextDoc = {
         type: 'doc',
-        content: [{ type: 'heading', attrs: { level: 1 }, content: [text('Title')] }],
+        content: [{ type: 'heading', attrs: { level: 1, textAlign: null }, content: [text('Title')] }],
       };
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         data: { theme: 'dark', prefix: 'custom' },
         renderers: {
           heading: ({ attrs, children, context }) => {
@@ -247,11 +247,11 @@ describe('renderRichText', () => {
     });
 
     it('passes data to custom mark renderers', () => {
-      const doc: SbRichTextDoc = {
+      const doc: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('Bold text', [{ type: 'bold' }])] }],
       };
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         data: { className: 'highlight' },
         renderers: {
           bold: ({ children, context }) => {
@@ -264,11 +264,11 @@ describe('renderRichText', () => {
     });
 
     it('passes data to custom link renderers', () => {
-      const doc: SbRichTextDoc = {
+      const doc: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('Click here', [linkMark('https://example.com')])] }],
       };
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         data: { trackingId: 'abc123' },
         renderers: {
           link: ({ attrs, children, context }) => {
@@ -281,11 +281,11 @@ describe('renderRichText', () => {
     });
 
     it('allows custom text node renderer', () => {
-      const doc: SbRichTextDoc = {
+      const doc: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('hello world')] }],
       };
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           text: ({ text: content }) => content.toUpperCase(),
         },
@@ -294,11 +294,11 @@ describe('renderRichText', () => {
     });
 
     it('custom text renderer receives context with data', () => {
-      const doc: SbRichTextDoc = {
+      const doc: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('hello')] }],
       };
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         data: { wrap: '**' },
         renderers: {
           text: ({ text: content, context }) => {
@@ -311,11 +311,11 @@ describe('renderRichText', () => {
     });
 
     it('custom text renderer with marks still applies marks', () => {
-      const doc: SbRichTextDoc = {
+      const doc: StoryblokRichTextDoc = {
         type: 'doc',
         content: [{ type: 'paragraph', content: [text('hello', [{ type: 'bold' }])] }],
       };
-      const options: SbRichTextRenderContext = {
+      const options: StoryblokRichTextRenderContext = {
         renderers: {
           text: ({ text: content }) => content.toUpperCase(),
         },

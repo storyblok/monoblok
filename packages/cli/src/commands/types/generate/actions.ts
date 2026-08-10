@@ -16,6 +16,7 @@ import {
   createDatasourcesFile,
   generateComponentImports,
   generateStoryblokImports,
+  storyblokTypeName,
 } from './utils';
 
 // ComponentPropertySchema is derived via Omit from a discriminated union, which
@@ -239,7 +240,7 @@ const getComponentPropertiesTypeAnnotations = async (
         ...(!schema.email_link_type ? ['{ linktype?: "email" }'] : []),
         ...(!schema.asset_link_type ? ['{ linktype?: "asset" }'] : []),
       ];
-      const componentType = `Storyblok${toPascalCase(propertyType)}`;
+      const componentType = storyblokTypeName(propertyType);
       propertyTypeAnnotation[key].tsType
         = excludedLinktypes.length > 0 ? `Exclude<${componentType}, ${excludedLinktypes.join(' | ')}>` : componentType;
     }

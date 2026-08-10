@@ -8,7 +8,7 @@ const TYPE_NAME_OVERRIDES: Record<string, string> = {
   richtext: 'StoryblokRichTextDoc',
 };
 
-function storyblokTypeName(type: string): string {
+export function storyblokTypeName(type: string): string {
   if (TYPE_NAME_OVERRIDES[type]) {
     return TYPE_NAME_OVERRIDES[type];
   }

@@ -1,3 +1,10 @@
+import type { RichTextDoc } from '../generated/overlay/types.gen.ts';
+
+export type StoryblokRichTextDoc = RichTextDoc;
+
+/** @deprecated Use StoryblokRichTextDoc instead */
+export type StoryblokRichtext = StoryblokRichTextDoc;
+
 export type StoryblokPropertyType = 'asset' | 'multiasset' | 'multilink' | 'table' | 'richtext';
 
 export interface StoryblokAsset {
@@ -123,12 +130,4 @@ export interface StoryblokTable {
       _editable?: string;
     }>;
   }>;
-}
-
-export interface StoryblokRichtext {
-  type: string;
-  content?: StoryblokRichtext[];
-  marks?: StoryblokRichtext[];
-  attrs?: Record<string, any>;
-  text?: string;
 }

@@ -45,7 +45,8 @@
     "test": "vitest run",
     "test:types": "tsc --noEmit --skipLibCheck",
     "test:ui": "vitest --ui",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "generate:openapi": "tsx scripts/generate.ts"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
@@ -75,6 +76,7 @@
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",
     "@storyblok/eslint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
     "@types/cli-progress": "^3.11.6",
     "@types/diff": "^8.0.0",
     "@types/inquirer": "^9.0.8",
@@ -85,10 +87,29 @@
     "memfs": "^4.17.1",
     "msw": "^2.8.2",
     "release-it": "^18.1.2",
+    "tsx": "^4.20.3",
     "typescript": "5.8.3",
     "unbuild": "^3.5.0",
     "uuid": "^11.1.0",
     "vite": "^6.4.3",
     "vitest": "^3.1.3"
+  },
+  "nx": {
+    "targets": {
+      "generate:openapi": {
+        "inputs": [
+          "{projectRoot}/scripts/generate.ts",
+          "{projectRoot}/package.json",
+          "openapiCodegen"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
+        ]
+      }
+    }
   }
 }

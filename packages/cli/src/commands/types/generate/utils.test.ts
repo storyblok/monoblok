@@ -19,7 +19,7 @@ describe('generateStoryblokImports', () => {
 
     expect(imports).toContain('import type { ISbStoryData } from \'@storyblok/js\';');
     expect(imports.some(i => i.includes('StoryblokAsset'))).toBe(true);
-    expect(imports.some(i => i.includes('StoryblokRichtext'))).toBe(true);
+    expect(imports.some(i => i.includes('StoryblokRichTextDoc'))).toBe(true);
   });
 
   it('should generate imports for Storyblok property types', () => {
@@ -29,7 +29,7 @@ describe('generateStoryblokImports', () => {
     const storyblokImport = imports.find(i => i.includes('StoryblokAsset'));
     expect(storyblokImport).toBeDefined();
     expect(storyblokImport).toContain('StoryblokAsset');
-    expect(storyblokImport).toContain('StoryblokRichtext');
+    expect(storyblokImport).toContain('StoryblokRichTextDoc');
     expect(storyblokImport).toContain('StoryblokMultilink');
     expect(storyblokImport).toContain('from \'../storyblok.d.ts\'');
   });
@@ -71,7 +71,7 @@ describe('detectUsedStoryblokTypes', () => {
   });
 
   it('should detect Storyblok property types', () => {
-    const content = 'export interface Page { image: StoryblokAsset; text: StoryblokRichtext; }';
+    const content = 'export interface Page { image: StoryblokAsset; text: StoryblokRichTextDoc; }';
     const storyblokPropertyTypes = new Set(['asset', 'richtext', 'multilink']);
 
     const usedTypes = detectUsedStoryblokTypes(content, storyblokPropertyTypes, STORY_TYPE);

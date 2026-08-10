@@ -29,7 +29,6 @@ const seedExpiringOAuthSession = () => {
     [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
       oauth: {
         eu: {
-          client: { client_id: 'cid', client_secret: 'secret' },
           tokens: {
             auth_type: 'oauth',
             access_token: 'sb_oat_old',
@@ -55,8 +54,16 @@ describe('program preAction OAuth refresh', () => {
     delete process.env.STORYBLOK_LOGIN;
     delete process.env.STORYBLOK_TOKEN;
     delete process.env.STORYBLOK_REGION;
+    // The baked-in client is still a placeholder, so the refresh path resolves its
+    // credentials through the env-var override.
+    process.env.STORYBLOK_OAUTH_CLIENT_ID = 'cid';
+    process.env.STORYBLOK_OAUTH_CLIENT_SECRET = 'secret';
   });
-  afterEach(() => vol.reset());
+  afterEach(() => {
+    vol.reset();
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+  });
 
   it('should refresh an expiring OAuth token and initialize the mapi client with the new access token', async () => {
     seedExpiringOAuthSession();

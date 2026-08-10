@@ -1,33 +1,23 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { vol } from 'memfs';
+import { afterEach, describe, expect, it } from 'vitest';
 import { resolveOAuthClient } from './client';
-import { updateOAuthEntry } from './store';
-
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+import { OAUTH_CLIENT_ID, OAUTH_CLIENT_PLACEHOLDER_PREFIX } from './constants';
 
 describe('resolveOAuthClient', () => {
-  beforeEach(() => vol.reset());
   afterEach(() => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
 
-  it('should prefer env-var client credentials over stored ones', async () => {
-    await updateOAuthEntry('eu', { client: { client_id: 'stored', client_secret: 'stored-secret' } });
+  it('should prefer env-var client credentials over the baked-in client', () => {
     process.env.STORYBLOK_OAUTH_CLIENT_ID = 'env-id';
     process.env.STORYBLOK_OAUTH_CLIENT_SECRET = 'env-secret';
-    const client = await resolveOAuthClient('eu');
-    expect(client.client_id).toBe('env-id');
+    expect(resolveOAuthClient()).toEqual({ client_id: 'env-id', client_secret: 'env-secret' });
   });
 
-  it('should fall back to stored client credentials', async () => {
-    await updateOAuthEntry('eu', { client: { client_id: 'stored', client_secret: 'stored-secret' } });
-    const client = await resolveOAuthClient('eu');
-    expect(client.client_id).toBe('stored');
-  });
-
-  it('should throw a helpful error when no client is configured', async () => {
-    await expect(resolveOAuthClient('eu')).rejects.toThrow(/oauth setup/);
+  // Until the first-party app is registered, the baked-in values are placeholders. Once they
+  // are replaced this expectation flips to returning them, and the guard becomes unreachable.
+  it('should explain that the build ships without credentials while the client is a placeholder', () => {
+    expect(OAUTH_CLIENT_ID.startsWith(OAUTH_CLIENT_PLACEHOLDER_PREFIX)).toBe(true);
+    expect(() => resolveOAuthClient()).toThrow(/ships without OAuth client credentials/);
   });
 });

@@ -22,15 +22,22 @@ describe('computeExpiresAt', () => {
 describe('refreshOAuthTokens', () => {
   beforeEach(async () => {
     vol.reset();
+    // The baked-in client is still a placeholder, so the refresh resolves its
+    // credentials through the env-var override.
+    process.env.STORYBLOK_OAUTH_CLIENT_ID = 'cid';
+    process.env.STORYBLOK_OAUTH_CLIENT_SECRET = 'secret';
     await updateOAuthEntry('eu', {
-      client: { client_id: 'cid', client_secret: 'secret' },
       tokens: { auth_type: 'oauth', access_token: 'old-access', refresh_token: 'old-refresh', expires_at: '2026-07-20T00:00:00.000Z' },
     });
   });
 
+  afterEach(() => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+  });
+
   it('should key single-flight refresh by region so concurrent regions do not share a promise', async () => {
     await updateOAuthEntry('us', {
-      client: { client_id: 'us-cid', client_secret: 'us-secret' },
       tokens: { auth_type: 'oauth', access_token: 'us-old-access', refresh_token: 'us-old-refresh', expires_at: '2026-07-20T00:00:00.000Z' },
     });
 

@@ -20,10 +20,10 @@ describe('oauth store', () => {
   });
 
   it('should merge patches without dropping sibling keys', async () => {
-    await updateOAuthEntry('eu', { client: { client_id: 'id', client_secret: 'secret' } });
+    await updateOAuthEntry('eu', { tokens: { auth_type: 'oauth', access_token: 'a', expires_at: 'x' } });
     await updateOAuthEntry('eu', { spaces: [{ id: 1, region: 'eu' }] });
     const entry = await getOAuthEntry('eu');
-    expect(entry.client?.client_id).toBe('id');
+    expect(entry.tokens?.access_token).toBe('a');
     expect(entry.spaces).toEqual([{ id: 1, region: 'eu' }]);
   });
 
@@ -35,15 +35,13 @@ describe('oauth store', () => {
     expect((await getOAuthEntry('us')).tokens?.access_token).toBe('b');
   });
 
-  it('should preserve provisioned client credentials when clearing tokens', async () => {
+  it('should drop tokens and granted spaces when clearing a region', async () => {
     await updateOAuthEntry('eu', {
-      client: { client_id: 'id', client_secret: 'secret' },
       tokens: { auth_type: 'oauth', access_token: 'a', expires_at: 'x' },
       spaces: [{ id: 1, region: 'eu' }],
     });
     await clearOAuthTokens('eu');
     const entry = await getOAuthEntry('eu');
-    expect(entry.client).toEqual({ client_id: 'id', client_secret: 'secret' });
     expect(entry.tokens).toBeUndefined();
     expect(entry.spaces).toBeUndefined();
   });

@@ -10,33 +10,35 @@
  * `@storyblok/schema` validators.
  */
 
-import { stat } from 'node:fs/promises';
-import { resolve } from 'pathe';
-import { CommandError } from '../error/command-error';
-import { isRecord } from '../object';
+import { stat } from "node:fs/promises";
+import { resolve } from "pathe";
+import { CommandError } from "../error/command-error";
+import { isRecord } from "../object";
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
 export function isComponent(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && Array.isArray(value.fields);
+  return isRecord(value) && typeof value.name === "string" && Array.isArray(value.fields);
 }
 
 /** Returns true if the value looks like a `defineDatasource()` result. */
 export function isDatasource(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && typeof value.slug === 'string'
-    && !Array.isArray(value.fields);
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.slug === "string" &&
+    !Array.isArray(value.fields)
+  );
 }
 
 /** Returns true if the value looks like a `defineFolder()` result. */
 export function isFolder(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && typeof value.path === 'string'
-    && !Array.isArray(value.fields)
-    && !('slug' in value);
+  return (
+    isRecord(value) &&
+    typeof value.name === "string" &&
+    typeof value.path === "string" &&
+    !Array.isArray(value.fields) &&
+    !("slug" in value)
+  );
 }
 
 /**
@@ -45,15 +47,15 @@ export function isFolder(value: unknown): value is Record<string, unknown> {
  * `name`, so they never collide with the block/datasource/folder guards.
  */
 export function isFieldPlugin(value: unknown): value is Record<string, unknown> {
-  return isRecord(value)
-    && typeof value.fieldType === 'string'
-    && 'value' in value;
+  return isRecord(value) && typeof value.fieldType === "string" && "value" in value;
 }
 
 /** Returns true if the value looks like a schema object (e.g. `export const schema = { blocks: {...}, datasources: {...}, folders: {...} }`). */
 export function isSchemaObject(value: unknown): value is Record<string, Record<string, unknown>> {
-  return isRecord(value)
-    && ('blocks' in value || 'datasources' in value || 'folders' in value || 'fieldPlugins' in value);
+  return (
+    isRecord(value) &&
+    ("blocks" in value || "datasources" in value || "folders" in value || "fieldPlugins" in value)
+  );
 }
 
 /** Raw component, datasource, folder, and field-plugin definitions collected from a module's exports. */
@@ -78,7 +80,9 @@ export interface CollectedSchemaExports {
  * `duplicate_datasource_slug`, and `schema push` rejects the entry file before it
  * touches the API (see `classifyExports`).
  */
-export function collectSchemaExports(moduleExports: Record<string, unknown>): CollectedSchemaExports {
+export function collectSchemaExports(
+  moduleExports: Record<string, unknown>,
+): CollectedSchemaExports {
   const components: Record<string, unknown>[] = [];
   const datasources: Record<string, unknown>[] = [];
   const folders: Record<string, unknown>[] = [];
@@ -87,22 +91,27 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
 
   function collect(value: unknown) {
     if (isComponent(value)) {
-      if (seen.has(value)) { return; }
+      if (seen.has(value)) {
+        return;
+      }
       seen.add(value);
       components.push(value);
-    }
-    else if (isFolder(value)) {
-      if (seen.has(value)) { return; }
+    } else if (isFolder(value)) {
+      if (seen.has(value)) {
+        return;
+      }
       seen.add(value);
       folders.push(value);
-    }
-    else if (isDatasource(value)) {
-      if (seen.has(value)) { return; }
+    } else if (isDatasource(value)) {
+      if (seen.has(value)) {
+        return;
+      }
       seen.add(value);
       datasources.push(value);
-    }
-    else if (isFieldPlugin(value)) {
-      if (seen.has(value)) { return; }
+    } else if (isFieldPlugin(value)) {
+      if (seen.has(value)) {
+        return;
+      }
       seen.add(value);
       fieldPlugins.push(value);
     }
@@ -118,8 +127,7 @@ export function collectSchemaExports(moduleExports: Record<string, unknown>): Co
           }
         }
       }
-    }
-    else {
+    } else {
       collect(value);
     }
   }
@@ -146,11 +154,10 @@ export async function loadSchemaModule(entryPath: string): Promise<Record<string
   const entryAbs = resolve(entryPath);
   try {
     await stat(entryAbs);
-  }
-  catch {
+  } catch {
     throw new CommandError(`Schema entry file not found at "${entryPath}".`);
   }
-  const { createJiti } = await import('jiti');
+  const { createJiti } = await import("jiti");
   const jiti = createJiti(import.meta.url, { interopDefault: true });
-  return await jiti.import(entryAbs) as Record<string, unknown>;
+  return (await jiti.import(entryAbs)) as Record<string, unknown>;
 }

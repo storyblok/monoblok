@@ -1,20 +1,22 @@
-import { describe, expect, it } from 'vitest';
-import React from 'react';
-import { convertAttributesInElement } from '../utils';
+import { describe, expect, it } from "vitest";
+import React from "react";
+import { convertAttributesInElement } from "../utils";
 
-describe('utils', () => {
-  describe('convertAttributesInElement', () => {
-    it('should convert HTML various lower case attributes to React camelCase', () => {
+describe("utils", () => {
+  describe("convertAttributesInElement", () => {
+    it("should convert HTML various lower case attributes to React camelCase", () => {
       // The logic is always the same; we test only the most important cases.
       const someAttributes = {
-        class: ['className', 'test-class'],
-        colspan: ['colSpan', '2'],
-        for: ['htmlFor', 'foo'],
-        rowspan: ['rowSpan', '3'],
+        class: ["className", "test-class"],
+        colspan: ["colSpan", "2"],
+        for: ["htmlFor", "foo"],
+        rowspan: ["rowSpan", "3"],
       };
       const input = React.createElement(
-        'div',
-        Object.fromEntries(Object.entries(someAttributes).map(([attr, [_, value]]) => [attr, value])),
+        "div",
+        Object.fromEntries(
+          Object.entries(someAttributes).map(([attr, [_, value]]) => [attr, value]),
+        ),
       );
       const output = convertAttributesInElement(input);
       for (const [original, [transformed, value]] of Object.entries(someAttributes)) {
@@ -23,56 +25,62 @@ describe('utils', () => {
       }
     });
 
-    it('should convert string style attributes to style objects', () => {
-      const input = React.createElement('div', { style: 'color: red; font-size: 12px; margin-top: 10px' });
+    it("should convert string style attributes to style objects", () => {
+      const input = React.createElement("div", {
+        style: "color: red; font-size: 12px; margin-top: 10px",
+      });
       const output = convertAttributesInElement(input);
       expect(output.props.style).toEqual({
-        color: 'red',
-        fontSize: '12px',
-        marginTop: '10px',
+        color: "red",
+        fontSize: "12px",
+        marginTop: "10px",
       });
     });
 
-    it('should handle nested elements', () => {
-      const nestedElement = React.createElement('span', { class: 'nested', style: 'color: blue' }, 'Nested Content');
-      const input = React.createElement('div', { class: 'parent' }, nestedElement);
+    it("should handle nested elements", () => {
+      const nestedElement = React.createElement(
+        "span",
+        { class: "nested", style: "color: blue" },
+        "Nested Content",
+      );
+      const input = React.createElement("div", { class: "parent" }, nestedElement);
       const output = convertAttributesInElement(input);
 
-      expect(output.props).toHaveProperty('className', 'parent');
+      expect(output.props).toHaveProperty("className", "parent");
       // React.Children.map will return an array even for a single child
-      expect(output.props.children[0].props).toHaveProperty('className', 'nested');
-      expect(output.props.children[0].props.style).toEqual({ color: 'blue' });
+      expect(output.props.children[0].props).toHaveProperty("className", "nested");
+      expect(output.props.children[0].props.style).toEqual({ color: "blue" });
     });
 
-    it('should handle arrays of elements', () => {
+    it("should handle arrays of elements", () => {
       const elements = [
-        React.createElement('div', { class: 'first' }, 'First'),
-        React.createElement('div', { class: 'second' }, 'Second'),
+        React.createElement("div", { class: "first" }, "First"),
+        React.createElement("div", { class: "second" }, "Second"),
       ];
       const output = convertAttributesInElement(elements);
       expect(Array.isArray(output)).toBe(true);
-      expect(output[0].props).toHaveProperty('className', 'first');
-      expect(output[1].props).toHaveProperty('className', 'second');
+      expect(output[0].props).toHaveProperty("className", "first");
+      expect(output[1].props).toHaveProperty("className", "second");
     });
 
-    it('should preserve non-mapped attributes', () => {
-      const input = React.createElement('div', { 'id': 'test-id', 'data-testid': 'test' });
+    it("should preserve non-mapped attributes", () => {
+      const input = React.createElement("div", { id: "test-id", "data-testid": "test" });
       const output = convertAttributesInElement(input);
-      expect(output.props).toHaveProperty('id', 'test-id');
-      expect(output.props).toHaveProperty('data-testid', 'test');
+      expect(output.props).toHaveProperty("id", "test-id");
+      expect(output.props).toHaveProperty("data-testid", "test");
     });
 
-    it('should handle string children without modification', () => {
-      const input = React.createElement('div', { class: 'parent' }, 'Text content');
+    it("should handle string children without modification", () => {
+      const input = React.createElement("div", { class: "parent" }, "Text content");
       const output = convertAttributesInElement(input);
       // React.Children.map will return an array of children
-      expect(output.props.children[0]).toBe('Text content');
+      expect(output.props.children[0]).toBe("Text content");
     });
 
-    it('should maintain element type', () => {
-      const input = React.createElement('button', { class: 'btn' });
+    it("should maintain element type", () => {
+      const input = React.createElement("button", { class: "btn" });
       const output = convertAttributesInElement(input);
-      expect(output.type).toBe('button');
+      expect(output.type).toBe("button");
     });
   });
 });

@@ -1,11 +1,11 @@
-import type { Datasource as DatasourceGenerated } from '../generated/capi/types.gen';
-import type { Override } from '../generated/types/_utils';
-import type { Prettify } from '../utils/prettify';
+import type { Datasource as DatasourceGenerated } from "../generated/capi/types.gen";
+import type { Override } from "../generated/types/_utils";
+import type { Prettify } from "../utils/prettify";
 
 const DATASOURCE_DEFAULTS = {
   id: 1,
-  created_at: '',
-  updated_at: '',
+  created_at: "",
+  updated_at: "",
   dimensions: [],
 };
 
@@ -19,7 +19,9 @@ export type Datasource = Override<DatasourceGenerated, { slug: string }>;
 /** Fields that have safe defaults and may be omitted from datasource input. */
 type DatasourceOptional = keyof typeof DATASOURCE_DEFAULTS;
 
-type DatasourceInput = Prettify<Omit<Datasource, DatasourceOptional> & Partial<Pick<Datasource, DatasourceOptional>>>;
+type DatasourceInput = Prettify<
+  Omit<Datasource, DatasourceOptional> & Partial<Pick<Datasource, DatasourceOptional>>
+>;
 
 /**
  * Returns a {@link Datasource} content-shape definition. A thin, strongly-typed

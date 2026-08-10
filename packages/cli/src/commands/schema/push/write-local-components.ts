@@ -1,16 +1,21 @@
-import { unlink } from 'node:fs/promises';
-import { join } from 'pathe';
+import { unlink } from "node:fs/promises";
+import { join } from "pathe";
 
-import type { Logger } from '../../../lib/logger/logger';
-import type { UI } from '../../../lib/ui';
-import { directories } from '../../../constants';
-import { fileExists, resolveCommandPath, sanitizeFilename, saveToFile } from '../../../utils/filesystem';
-import type { Component } from '../../../types';
-import type { DiffResult, SchemaData } from '../types';
-import { displayPath, isRecord } from '../utils';
+import type { Logger } from "../../../lib/logger/logger";
+import type { UI } from "../../../lib/ui";
+import { directories } from "../../../constants";
+import {
+  fileExists,
+  resolveCommandPath,
+  sanitizeFilename,
+  saveToFile,
+} from "../../../utils/filesystem";
+import type { Component } from "../../../types";
+import type { DiffResult, SchemaData } from "../types";
+import { displayPath, isRecord } from "../utils";
 
-const DEFAULT_GROUPS_FILENAME = 'groups.json';
-const CONSOLIDATED_COMPONENTS_FILENAME = 'components.json';
+const DEFAULT_GROUPS_FILENAME = "groups.json";
+const CONSOLIDATED_COMPONENTS_FILENAME = "components.json";
 
 /**
  * Strips transient, push-time-only keys before a component is written to local
@@ -33,14 +38,13 @@ function sanitizeForLocalWrite(component: Component): Record<string, unknown> {
   if (isRecord(rest.schema)) {
     const schema: Record<string, unknown> = {};
     for (const [key, field] of Object.entries(rest.schema)) {
-      if (isRecord(field) && 'component_group_whitelist' in field) {
+      if (isRecord(field) && "component_group_whitelist" in field) {
         const { component_group_whitelist, restrict_components, ...fieldRest } = field;
-        if (fieldRest.restrict_type === 'groups') {
+        if (fieldRest.restrict_type === "groups") {
           delete fieldRest.restrict_type;
         }
         schema[key] = fieldRest;
-      }
-      else {
+      } else {
         schema[key] = field;
       }
     }
@@ -73,14 +77,14 @@ export async function writeLocalComponents({
   const consolidatedPath = join(componentsDir, CONSOLIDATED_COMPONENTS_FILENAME);
   if (await fileExists(consolidatedPath)) {
     ui.warn(
-      `A consolidated ${CONSOLIDATED_COMPONENTS_FILENAME} exists at ${displayPath(componentsDir, basePath)}. `
-      + `Per-component files will still be written, but the consolidated file may shadow them when stories push validates schemas. `
-      + `Delete it or run \`storyblok components pull --separate-files\` to regenerate.`,
+      `A consolidated ${CONSOLIDATED_COMPONENTS_FILENAME} exists at ${displayPath(componentsDir, basePath)}. ` +
+        `Per-component files will still be written, but the consolidated file may shadow them when stories push validates schemas. ` +
+        `Delete it or run \`storyblok components pull --separate-files\` to regenerate.`,
     );
   }
 
   for (const component of resolved.components) {
-    const filePath = join(componentsDir, `${sanitizeFilename(component.name || '')}.json`);
+    const filePath = join(componentsDir, `${sanitizeFilename(component.name || "")}.json`);
     await saveToFile(filePath, JSON.stringify(sanitizeForLocalWrite(component), null, 2));
   }
 
@@ -91,10 +95,9 @@ export async function writeLocalComponents({
   if (await fileExists(groupsPath)) {
     try {
       await unlink(groupsPath);
-      logger.info('Removed stale local groups file', { path: displayPath(groupsPath, basePath) });
-    }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      logger.info("Removed stale local groups file", { path: displayPath(groupsPath, basePath) });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
         throw error;
       }
     }
@@ -102,23 +105,24 @@ export async function writeLocalComponents({
 
   if (deleteRemoved) {
     const staleComponents = diffResult.diffs.filter(
-      d => d.type === 'component' && d.action === 'stale',
+      (d) => d.type === "component" && d.action === "stale",
     );
     for (const stale of staleComponents) {
       const filePath = join(componentsDir, `${sanitizeFilename(stale.name)}.json`);
       try {
         await unlink(filePath);
-        logger.info('Removed stale local component file', { path: displayPath(filePath, basePath) });
-      }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.info("Removed stale local component file", {
+          path: displayPath(filePath, basePath),
+        });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
           throw error;
         }
       }
     }
   }
 
-  logger.info('Wrote local component files', {
+  logger.info("Wrote local component files", {
     space,
     componentsWritten: resolved.components.length,
   });

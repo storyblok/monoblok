@@ -1,5 +1,5 @@
-import { apiPlugin, StoryblokVue } from '@storyblok/vue';
-import { defineNuxtPlugin, useRuntimeConfig } from '#app';
+import { apiPlugin, StoryblokVue } from "@storyblok/vue";
+import { defineNuxtPlugin, useRuntimeConfig } from "#app";
 
 export default defineNuxtPlugin(({ vueApp }) => {
   let { storyblok } = useRuntimeConfig().public;
@@ -7,8 +7,7 @@ export default defineNuxtPlugin(({ vueApp }) => {
 
   if (storyblok.enableServerClient) {
     vueApp.use(StoryblokVue, { ...storyblok });
-  }
-  else {
+  } else {
     vueApp.use(StoryblokVue, { ...storyblok, use: [apiPlugin] });
   }
 });

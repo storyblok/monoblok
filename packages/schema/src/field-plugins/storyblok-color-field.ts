@@ -1,6 +1,6 @@
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import { defineFieldPlugin } from '../helpers/define-field-plugin';
-import { isRecord } from '../utils/is-record';
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { defineFieldPlugin } from "../helpers/define-field-plugin";
+import { isRecord } from "../utils/is-record";
 
 /** Value stored by Storyblok's official Colorpicker field plugin. */
 export interface StoryblokColorFieldValue {
@@ -13,14 +13,14 @@ export interface StoryblokColorFieldValue {
  * so the package stays validator-agnostic and adds no runtime dependency.
  */
 const storyblokColorFieldValue: StandardSchemaV1<StoryblokColorFieldValue> = {
-  '~standard': {
+  "~standard": {
     version: 1,
-    vendor: 'storyblok-schema',
+    vendor: "storyblok-schema",
     validate(value) {
-      if (isRecord(value) && typeof value.color === 'string') {
+      if (isRecord(value) && typeof value.color === "string") {
         return { value: { color: value.color } };
       }
-      return { issues: [{ message: 'Expected a string `color` property.', path: ['color'] }] };
+      return { issues: [{ message: "Expected a string `color` property.", path: ["color"] }] };
     },
   },
 };
@@ -30,6 +30,6 @@ const storyblokColorFieldValue: StandardSchemaV1<StoryblokColorFieldValue> = {
  * Register it in a schema's `fieldPlugins` to type matching custom fields.
  */
 export const storyblokColorField = defineFieldPlugin({
-  fieldType: 'storyblok-colorpicker',
+  fieldType: "storyblok-colorpicker",
   value: storyblokColorFieldValue,
 });

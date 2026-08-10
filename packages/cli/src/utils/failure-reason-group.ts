@@ -1,6 +1,6 @@
 const MAX_REASONS = 10;
 const MAX_EXAMPLES = 3;
-const OVERFLOW_SUFFIX = 'more failure reason(s)';
+const OVERFLOW_SUFFIX = "more failure reason(s)";
 
 /**
  * Accumulates per-item failures keyed by their human-readable reason string
@@ -63,7 +63,7 @@ export class FailureReasonGroup {
    *
    * Pass `verb` to customise the opening word ("push", "read", "transfer", …).
    */
-  toListLines(verb = 'push'): string[] {
+  toListLines(verb = "push"): string[] {
     const all = this.entries();
     const visible = all.slice(0, MAX_REASONS);
 
@@ -71,8 +71,9 @@ export class FailureReasonGroup {
       if (count === 1 && examples.length > 0) {
         return `Failed to ${verb} "${examples[0]}": ${reason}`;
       }
-      const noun = count === 1 ? 'asset' : 'assets';
-      const exampleStr = examples.length > 0 ? ` (e.g. ${examples.map(e => `"${e}"`).join(', ')})` : '';
+      const noun = count === 1 ? "asset" : "assets";
+      const exampleStr =
+        examples.length > 0 ? ` (e.g. ${examples.map((e) => `"${e}"`).join(", ")})` : "";
       return `Failed to ${verb} ${count} ${noun} — ${reason}${exampleStr}`;
     });
 

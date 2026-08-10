@@ -1,9 +1,9 @@
-import chalk from 'chalk';
-import { getResponseStatus, handleAPIError, maskToken, toError } from '../../utils';
-import { createMapiClient } from '../../api';
-import type { RegionCode } from '../../constants';
+import chalk from "chalk";
+import { getResponseStatus, handleAPIError, maskToken, toError } from "../../utils";
+import { createMapiClient } from "../../api";
+import type { RegionCode } from "../../constants";
 
-export type { User } from '../../types';
+export type { User } from "../../types";
 
 export const getUser = async (token: string, region: RegionCode) => {
   try {
@@ -17,14 +17,14 @@ export const getUser = async (token: string, region: RegionCode) => {
     });
 
     return data?.user;
-  }
-  catch (maybeError) {
+  } catch (maybeError) {
     const error = toError(maybeError);
     const status = getResponseStatus(maybeError);
-    const customMessage = status === 401
-      ? `The token provided ${chalk.bold(maskToken(token))} is invalid.
+    const customMessage =
+      status === 401
+        ? `The token provided ${chalk.bold(maskToken(token))} is invalid.
         Please make sure you are using the correct token and try again.`
-      : undefined;
-    handleAPIError('get_user', error, customMessage);
+        : undefined;
+    handleAPIError("get_user", error, customMessage);
   }
 };

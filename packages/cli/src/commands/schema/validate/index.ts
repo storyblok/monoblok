@@ -1,9 +1,9 @@
-import { colorPalette, commands } from '../../../constants';
-import { handleError, toError } from '../../../utils';
-import { getLogger } from '../../../lib/logger/logger';
-import { getReporter } from '../../../lib/reporter/reporter';
-import { getUI } from '../../../lib/ui';
-import type { FormatOption, LevelOption, ValidationRunResult } from '../../../lib/validation';
+import { colorPalette, commands } from "../../../constants";
+import { handleError, toError } from "../../../utils";
+import { getLogger } from "../../../lib/logger/logger";
+import { getReporter } from "../../../lib/reporter/reporter";
+import { getUI } from "../../../lib/ui";
+import type { FormatOption, LevelOption, ValidationRunResult } from "../../../lib/validation";
 import {
   countIssues,
   formatJson,
@@ -14,8 +14,8 @@ import {
   parseLevel,
   validateSchema,
   writeValidationReport,
-} from '../../../lib/validation';
-import { schemaCommand } from '../command';
+} from "../../../lib/validation";
+import { schemaCommand } from "../command";
 
 interface SchemaValidateOptions {
   level: string;
@@ -23,10 +23,12 @@ interface SchemaValidateOptions {
 }
 
 schemaCommand
-  .command('validate <entry-file>')
-  .description('Validate a local TypeScript schema definition. Static and fully offline — no login, no space, no API calls.')
-  .option('--level <level>', 'Display threshold: error|warning', 'warning')
-  .option('--format <format>', 'Output format: pretty|json', 'pretty')
+  .command("validate <entry-file>")
+  .description(
+    "Validate a local TypeScript schema definition. Static and fully offline — no login, no space, no API calls.",
+  )
+  .option("--level <level>", "Display threshold: error|warning", "warning")
+  .option("--format <format>", "Output format: pretty|json", "pretty")
   .action(async (entryFile: string, options: SchemaValidateOptions, command) => {
     const ui = getUI();
     const logger = getLogger();
@@ -42,15 +44,14 @@ schemaCommand
       try {
         level = parseLevel(options.level);
         format = parseFormat(options.format);
-      }
-      catch (maybeError) {
-        reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
+      } catch (maybeError) {
+        reporter.addSummary("validation", { total: 1, succeeded: 0, failed: 1 });
         handleError(toError(maybeError), verbose);
         return;
       }
 
-      const isJson = format === 'json';
-      logger.info('Schema validate started', { entryFile, level, format });
+      const isJson = format === "json";
+      logger.info("Schema validate started", { entryFile, level, format });
 
       // 2. Load the schema entry file. A missing/empty/unresolvable file is fatal.
       //    `handleError` owns the exit code and splits the two cases apart: a
@@ -61,21 +62,20 @@ schemaCommand
       let loaded: Awaited<ReturnType<typeof loadSchemaEntry>>;
       try {
         loaded = await loadSchemaEntry(entryFile);
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         const error = toError(maybeError);
         // Record a failure so the report reflects the aborted run, not SUCCESS.
-        reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
+        reporter.addSummary("validation", { total: 1, succeeded: 0, failed: 1 });
         handleError(error, verbose);
-        logger.error('Schema validate failed to load entry file', { error: error.message });
+        logger.error("Schema validate failed to load entry file", { error: error.message });
         return;
       }
 
       // 3. Validate and group issues by entity.
       const { issues } = await validateSchema(loaded.schema);
       const result: ValidationRunResult = {
-        unitNoun: 'entities',
-        unitNounSingular: 'entity',
+        unitNoun: "entities",
+        unitNounSingular: "entity",
         unitsTotal: loaded.entityCount,
         groups: groupIssuesByEntity(issues),
       };
@@ -83,9 +83,8 @@ schemaCommand
       // 4. Render. JSON goes to stdout as the only output so it stays pipeable.
       if (isJson) {
         ui.writeMachineOutput(formatJson(result, level));
-      }
-      else {
-        ui.title(commands.SCHEMA, colorPalette.SCHEMA, 'Validating schema...');
+      } else {
+        ui.title(commands.SCHEMA, colorPalette.SCHEMA, "Validating schema...");
         ui.log(formatPretty(result, level));
       }
 
@@ -93,10 +92,9 @@ schemaCommand
       writeValidationReport(reporter, result);
 
       const { errors, warnings } = countIssues(result);
-      logger.info('Schema validate finished', { errors, warnings, entities: result.unitsTotal });
+      logger.info("Schema validate finished", { errors, warnings, entities: result.unitsTotal });
       process.exitCode = errors > 0 ? 1 : 0;
-    }
-    finally {
+    } finally {
       // Always write the report artifact, including on the fatal early return.
       reporter.finalize();
     }

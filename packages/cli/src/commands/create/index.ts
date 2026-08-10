@@ -1,17 +1,29 @@
-import { CommandError, handleError, isRegion, requireAuthentication, toHumanReadable } from '../../utils';
-import { colorPalette, commands, type RegionCode, regions } from '../../constants';
-import { performInteractiveLogin } from '../login/helpers';
-import { getProgram } from '../../program';
-import type { CreateOptions } from './constants';
-import { session } from '../../session';
-import { confirm, input, select } from '@inquirer/prompts';
-import { fetchBlueprintRepositories, generateProject, generateSpaceUrl, handleEnvFileCreation, openSpaceInBrowser } from './actions';
-import { basename, dirname, resolve } from 'pathe';
-import chalk from 'chalk';
-import { createSpace, type SpaceCreate, type SpaceCreateQuery } from '../spaces';
-import type { User } from '../user/actions';
-import { getUser } from '../user/actions';
-import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
+import {
+  CommandError,
+  handleError,
+  isRegion,
+  requireAuthentication,
+  toHumanReadable,
+} from "../../utils";
+import { colorPalette, commands, type RegionCode, regions } from "../../constants";
+import { performInteractiveLogin } from "../login/helpers";
+import { getProgram } from "../../program";
+import type { CreateOptions } from "./constants";
+import { session } from "../../session";
+import { confirm, input, select } from "@inquirer/prompts";
+import {
+  fetchBlueprintRepositories,
+  generateProject,
+  generateSpaceUrl,
+  handleEnvFileCreation,
+  openSpaceInBrowser,
+} from "./actions";
+import { basename, dirname, resolve } from "pathe";
+import chalk from "chalk";
+import { createSpace, type SpaceCreate, type SpaceCreateQuery } from "../spaces";
+import type { User } from "../user/actions";
+import { getUser } from "../user/actions";
+import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
 
 // Helper to show next steps and project ready message
 function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
@@ -20,18 +32,25 @@ function showNextSteps(technologyTemplate: string, finalProjectPath: string) {
   ui.ok(`Your ${chalk.hex(colorPalette.PRIMARY)(technologyTemplate)} project is ready 🎉 !`);
   ui.br();
   ui.info(`Next steps:\n  cd ${finalProjectPath}\n  npm install\n  npm run dev\n        `);
-  ui.info(`Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`);
+  ui.info(
+    `Or check the dedicated guide at: ${chalk.hex(colorPalette.PRIMARY)(`https://www.storyblok.com/docs/guides/${technologyTemplate}`)}`,
+  );
 }
 
 // Helper to handle interactive login prompt
-async function promptForLogin(verbose: boolean): Promise<{ token: string; region: RegionCode } | null> {
+async function promptForLogin(
+  verbose: boolean,
+): Promise<{ token: string; region: RegionCode } | null> {
   const ui = getUI();
   try {
     ui.br();
-    const shouldLogin = await confirm({
-      message: 'Would you like to login now?',
-      default: true,
-    }, stderrPromptContext);
+    const shouldLogin = await confirm(
+      {
+        message: "Would you like to login now?",
+        default: true,
+      },
+      stderrPromptContext,
+    );
 
     if (!shouldLogin) {
       ui.warn('Login cancelled. You can login later using the "storyblok login" command.');
@@ -39,8 +58,7 @@ async function promptForLogin(verbose: boolean): Promise<{ token: string; region
     }
 
     return await performInteractiveLogin({ verbose, showWelcomeMessage: true });
-  }
-  catch (error) {
+  } catch (error) {
     ui.br();
     handleError(error as Error, verbose);
     return null;
@@ -52,14 +70,14 @@ const program = getProgram(); // Get the shared singleton instance
 // Create root command
 export const createCommand = program
   .command(`${commands.CREATE} [project-path]`)
-  .alias('c')
+  .alias("c")
   .description(`Scaffold a new project using Storyblok`)
-  .option('-t, --template <template>', 'technology starter template')
-  .option('-b, --blueprint <blueprint>', '[DEPRECATED] use --template instead')
-  .option('--skip-space', 'skip space creation')
-  .option('--token <token>', 'Storyblok access token (skip space creation and use this token)')
+  .option("-t, --template <template>", "technology starter template")
+  .option("-b, --blueprint <blueprint>", "[DEPRECATED] use --template instead")
+  .option("--skip-space", "skip space creation")
+  .option("--token <token>", "Storyblok access token (skip space creation and use this token)")
   .option(
-    '-r, --region <region>',
+    "-r, --region <region>",
     `The region to apply to the generated project template (does not affect space creation).`,
   )
   .action(async (projectPath: string, options: CreateOptions) => {
@@ -71,7 +89,11 @@ export const createCommand = program
     const { template, blueprint, token } = options;
 
     if (options.region && !isRegion(options.region)) {
-      handleError(new CommandError(`The provided region: ${options.region} is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`));
+      handleError(
+        new CommandError(
+          `The provided region: ${options.region} is not valid. Please use one of the following values: ${Object.values(regions).join(" | ")}`,
+        ),
+      );
       return;
     }
     // Handle deprecated blueprint option
@@ -79,9 +101,10 @@ export const createCommand = program
     if (blueprint && !template) {
       ui.warn(`The --blueprint flag is deprecated. Please use --template instead.`);
       selectedTemplate = blueprint;
-    }
-    else if (blueprint && template) {
-      ui.warn(`Both --blueprint and --template provided. Using --template and ignoring --blueprint.`);
+    } else if (blueprint && template) {
+      ui.warn(
+        `Both --blueprint and --template provided. Using --template and ignoring --blueprint.`,
+      );
     }
 
     const { state, initializeSession } = session();
@@ -108,18 +131,27 @@ export const createCommand = program
       }
 
       // After authentication check, password and region are guaranteed to be defined
-      const authenticatedState = state as { isLoggedIn: true; password: string; region: RegionCode; login?: string; envLogin?: boolean };
+      const authenticatedState = state as {
+        isLoggedIn: true;
+        password: string;
+        region: RegionCode;
+        login?: string;
+        envLogin?: boolean;
+      };
       password = authenticatedState.password;
       region = authenticatedState.region;
 
       // Validate that user-provided region matches their account region when creating a space
       // This check happens early before any project scaffolding
       if (options.region && options.region !== region) {
-        handleError(new CommandError(`Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`));
+        handleError(
+          new CommandError(
+            `Cannot create space in region "${options.region}". Your account is configured for region "${region}". Space creation must use your account's region.`,
+          ),
+        );
         return;
       }
-    }
-    else if (state.isLoggedIn && state.password) {
+    } else if (state.isLoggedIn && state.password) {
       // If using --token or --skip-space but user is logged in, still get their credentials for getMapiClient
       password = state.password;
       if (state.region) {
@@ -129,26 +161,28 @@ export const createCommand = program
 
     let activeSpinner: CLISpinner | null = null;
     try {
-      activeSpinner = ui.createSpinner('Fetching starter templates...');
+      activeSpinner = ui.createSpinner("Fetching starter templates...");
       const templates = await fetchBlueprintRepositories();
 
       if (templates.length === 0) {
         activeSpinner.failed();
-        ui.error('No starter templates found. Please contact support@storyblok.com');
+        ui.error("No starter templates found. Please contact support@storyblok.com");
         ui.br();
         return;
       }
 
-      activeSpinner.succeed('Starter templates fetched successfully');
+      activeSpinner.succeed("Starter templates fetched successfully");
 
       // Validate template if provided via flag
       let technologyTemplate = selectedTemplate;
       if (selectedTemplate) {
         const validTemplates = templates;
-        const isValidTemplate = validTemplates.find(bp => bp.value === selectedTemplate);
+        const isValidTemplate = validTemplates.find((bp) => bp.value === selectedTemplate);
         if (!isValidTemplate) {
-          const validOptions = validTemplates.map(bp => bp.value).join(', ');
-          ui.warn(`Invalid template "${chalk.hex(colorPalette.CREATE)(selectedTemplate)}". Valid options are: ${chalk.hex(colorPalette.CREATE)(validOptions)}`);
+          const validOptions = validTemplates.map((bp) => bp.value).join(", ");
+          ui.warn(
+            `Invalid template "${chalk.hex(colorPalette.CREATE)(selectedTemplate)}". Valid options are: ${chalk.hex(colorPalette.CREATE)(validOptions)}`,
+          );
           ui.br();
           // Reset template to show interactive selection
           technologyTemplate = undefined;
@@ -157,33 +191,39 @@ export const createCommand = program
 
       // Select technology template (either not provided or invalid)
       if (!technologyTemplate) {
-        technologyTemplate = await select({
-          message: 'Please select the technology you would like to use:',
-          choices: templates.map(template => ({
-            name: template.name,
-            value: template.value,
-          })),
-        }, stderrPromptContext);
+        technologyTemplate = await select(
+          {
+            message: "Please select the technology you would like to use:",
+            choices: templates.map((template) => ({
+              name: template.name,
+              value: template.value,
+            })),
+          },
+          stderrPromptContext,
+        );
       }
 
       // Get project path and extract name
       let finalProjectPath = projectPath;
       if (!projectPath) {
-        finalProjectPath = await input({
-          message: 'What is the path for your project?',
-          default: `./my-${technologyTemplate}-project`,
-          validate: (value: string) => {
-            if (!value.trim()) {
-              return 'Project path is required';
-            }
-            // Basic validation for valid paths
-            const projectName = basename(value);
-            if (!/^[\w-]+$/.test(projectName)) {
-              return 'Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores';
-            }
-            return true;
+        finalProjectPath = await input(
+          {
+            message: "What is the path for your project?",
+            default: `./my-${technologyTemplate}-project`,
+            validate: (value: string) => {
+              if (!value.trim()) {
+                return "Project path is required";
+              }
+              // Basic validation for valid paths
+              const projectName = basename(value);
+              if (!/^[\w-]+$/.test(projectName)) {
+                return "Project name (last part of the path) can only contain letters, numbers, hyphens, and underscores";
+              }
+              return true;
+            },
           },
-        }, stderrPromptContext);
+          stderrPromptContext,
+        );
       }
 
       // Parse the path to get directory and project name
@@ -192,25 +232,40 @@ export const createCommand = program
       const projectName = basename(resolvedPath);
 
       ui.br();
-      ui.info(`Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyTemplate)} template...`);
+      ui.info(
+        `Scaffolding your project using the ${chalk.hex(colorPalette.CREATE)(technologyTemplate)} template...`,
+      );
 
       // Generate the project from the template
       await generateProject(technologyTemplate!, projectName, targetDirectory);
-      ui.ok(`Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`, true);
+      ui.ok(
+        `Project ${chalk.hex(colorPalette.PRIMARY)(projectName)} created successfully in ${chalk.hex(colorPalette.PRIMARY)(finalProjectPath)}`,
+        true,
+      );
 
       // If token is provided, use it as the access token, skip space creation, and update env
       let createdSpace;
       let userData: User;
-      let whereToCreateSpace = 'personal';
+      let whereToCreateSpace = "personal";
       if (token) {
-        await handleEnvFileCreation(resolvedPath, token, options.region || region, technologyTemplate);
+        await handleEnvFileCreation(
+          resolvedPath,
+          token,
+          options.region || region,
+          technologyTemplate,
+        );
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
       }
       if (options.skipSpace) {
         // Only create .env file if region is available (useful for configuring SDK)
         if (options.region || region) {
-          await handleEnvFileCreation(resolvedPath, undefined, options.region || region, technologyTemplate);
+          await handleEnvFileCreation(
+            resolvedPath,
+            undefined,
+            options.region || region,
+            technologyTemplate,
+          );
         }
         showNextSteps(technologyTemplate!, finalProjectPath);
         return;
@@ -222,12 +277,11 @@ export const createCommand = program
           // 2. Authentication was required and completed
           const user = await getUser(password!, region!);
           if (!user) {
-            throw new Error('User data is undefined');
+            throw new Error("User data is undefined");
           }
           userData = user;
-        }
-        catch {
-          ui.error('Failed to fetch user info. Your session may have expired.');
+        } catch {
+          ui.error("Failed to fetch user info. Your session may have expired.");
           const loginResult = await promptForLogin(verbose);
           if (!loginResult) {
             ui.br();
@@ -239,39 +293,41 @@ export const createCommand = program
           try {
             const user = await getUser(newPassword!, newRegion!);
             if (!user) {
-              throw new Error('User data is undefined');
+              throw new Error("User data is undefined");
             }
             userData = user;
-          }
-          catch (retryError) {
-            ui.error('Failed to fetch user info after login.', retryError);
+          } catch (retryError) {
+            ui.error("Failed to fetch user info after login.", retryError);
             ui.br();
             return;
           }
         }
 
         // Prepare choices for space creation
-        const choices = [
-          { name: 'My personal account', value: 'personal' },
-        ];
+        const choices = [{ name: "My personal account", value: "personal" }];
         if (userData.has_org) {
-          choices.push({ name: `Organization (${userData?.org?.name})`, value: 'org' });
+          choices.push({ name: `Organization (${userData?.org?.name})`, value: "org" });
         }
         if (userData.has_partner) {
-          choices.push({ name: 'Partner Portal', value: 'partner' });
+          choices.push({ name: "Partner Portal", value: "partner" });
         }
 
         if (region === regions.EU && (userData.has_partner || userData.has_org)) {
-          whereToCreateSpace = await select({
-            message: `Where would you like to create this space?`,
-            choices,
-          }, stderrPromptContext);
+          whereToCreateSpace = await select(
+            {
+              message: `Where would you like to create this space?`,
+              choices,
+            },
+            stderrPromptContext,
+          );
         }
         if (region !== regions.EU && userData.has_org) {
-          whereToCreateSpace = 'org';
+          whereToCreateSpace = "org";
         }
         if (region !== regions.EU && !userData.has_org) {
-          ui.warn(`Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`);
+          ui.warn(
+            `Space creation in this region is limited to Enterprise accounts. If you're part of an organization, please ensure you have the required permissions. For more information about Enterprise access, contact our Sales Team.`,
+          );
           ui.br();
           return;
         }
@@ -279,26 +335,35 @@ export const createCommand = program
         activeSpinner = ui.createSpinner(`Creating space "${toHumanReadable(projectName)}"`);
 
         // Find the selected blueprint from the dynamic blueprints array
-        const selectedBlueprint = templates.find(bp => bp.value === technologyTemplate);
-        const blueprintDomain = selectedBlueprint?.location || 'https://localhost:3000/';
+        const selectedBlueprint = templates.find((bp) => bp.value === technologyTemplate);
+        const blueprintDomain = selectedBlueprint?.location || "https://localhost:3000/";
         const spaceToCreate: SpaceCreate = {
           name: toHumanReadable(projectName),
           domain: blueprintDomain,
         };
         // `in_org`/`assign_partner` are create-time query parameters, not body fields.
-        const createSpaceQuery: Pick<SpaceCreateQuery, 'in_org' | 'assign_partner' | 'space_type' | 'dup_id'> = {};
-        if (whereToCreateSpace === 'org') {
+        const createSpaceQuery: Pick<
+          SpaceCreateQuery,
+          "in_org" | "assign_partner" | "space_type" | "dup_id"
+        > = {};
+        if (whereToCreateSpace === "org") {
           createSpaceQuery.in_org = true;
-        }
-        else if (whereToCreateSpace === 'partner') {
+        } else if (whereToCreateSpace === "partner") {
           createSpaceQuery.assign_partner = true;
         }
         createdSpace = await createSpace(spaceToCreate, createSpaceQuery);
-        activeSpinner.succeed(`Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`);
+        activeSpinner.succeed(
+          `Space "${chalk.hex(colorPalette.PRIMARY)(toHumanReadable(projectName))}" created successfully`,
+        );
 
         // Create .env file with the Storyblok token
         if (createdSpace?.first_token) {
-          await handleEnvFileCreation(resolvedPath, createdSpace.first_token, region!, technologyTemplate);
+          await handleEnvFileCreation(
+            resolvedPath,
+            createdSpace.first_token,
+            region!,
+            technologyTemplate,
+          );
         }
 
         // Open the space in the browser
@@ -306,29 +371,33 @@ export const createCommand = program
           try {
             await openSpaceInBrowser(createdSpace.id, region!);
             ui.info(`Opened space in your browser`);
-          }
-          catch (error) {
+          } catch (error) {
             ui.warn(`Failed to open browser: ${(error as Error).message}`);
             const spaceUrl = generateSpaceUrl(createdSpace.id, region!);
-            ui.info(`You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`);
+            ui.info(
+              `You can manually open your space at: ${chalk.hex(colorPalette.PRIMARY)(spaceUrl)}`,
+            );
           }
         }
 
         // Show next steps and space info
         showNextSteps(technologyTemplate!, finalProjectPath);
         if (createdSpace?.first_token) {
-          if (whereToCreateSpace === 'org') {
-            ui.ok(`Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
-          }
-          else if (whereToCreateSpace === 'partner') {
-            ui.ok(`Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
-          }
-          else {
-            ui.ok(`Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`);
+          if (whereToCreateSpace === "org") {
+            ui.ok(
+              `Storyblok space created in organization ${chalk.hex(colorPalette.PRIMARY)(userData?.org?.name)}, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`,
+            );
+          } else if (whereToCreateSpace === "partner") {
+            ui.ok(
+              `Storyblok space created in partner portal, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`,
+            );
+          } else {
+            ui.ok(
+              `Storyblok space created, preview url and .env configured automatically. You can now open your space in the browser at ${chalk.hex(colorPalette.PRIMARY)(generateSpaceUrl(createdSpace.id, region!))}`,
+            );
           }
         }
-      }
-      catch (error) {
+      } catch (error) {
         activeSpinner?.failed();
         ui.br();
         handleError(error as Error, verbose);
@@ -336,8 +405,7 @@ export const createCommand = program
       }
 
       // showNextSteps is already called in each relevant branch above; do not call it again here.
-    }
-    catch (error) {
+    } catch (error) {
       activeSpinner?.failed();
       ui.br();
       handleError(error as Error, verbose);

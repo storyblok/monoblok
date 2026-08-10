@@ -1,8 +1,8 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from "@angular/core/testing";
 
-import { PageComponent } from './page';
+import { PageComponent } from "./page";
 
-describe('PageComponent', () => {
+describe("PageComponent", () => {
   let component: PageComponent;
   let fixture: ComponentFixture<PageComponent>;
 
@@ -13,11 +13,11 @@ describe('PageComponent', () => {
 
     fixture = TestBed.createComponent(PageComponent);
     component = fixture.componentInstance;
-    fixture.componentRef.setInput('blok', { _uid: 'test', component: 'page' });
+    fixture.componentRef.setInput("blok", { _uid: "test", component: "page" });
     await fixture.whenStable();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

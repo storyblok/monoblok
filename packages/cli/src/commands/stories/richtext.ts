@@ -8,17 +8,25 @@
  */
 export const walkRichtextBloks = (node: unknown, onBlok: (blok: unknown) => void): void => {
   if (Array.isArray(node)) {
-    for (const item of node) { walkRichtextBloks(item, onBlok); }
+    for (const item of node) {
+      walkRichtextBloks(item, onBlok);
+    }
     return;
   }
-  if (!node || typeof node !== 'object') { return; }
+  if (!node || typeof node !== "object") {
+    return;
+  }
 
   const obj = node as Record<string, unknown>;
-  if (obj.type === 'blok' && obj.attrs && typeof obj.attrs === 'object') {
+  if (obj.type === "blok" && obj.attrs && typeof obj.attrs === "object") {
     const body = (obj.attrs as Record<string, unknown>).body;
     if (Array.isArray(body)) {
-      for (const blok of body) { onBlok(blok); }
+      for (const blok of body) {
+        onBlok(blok);
+      }
     }
   }
-  for (const value of Object.values(obj)) { walkRichtextBloks(value, onBlok); }
+  for (const value of Object.values(obj)) {
+    walkRichtextBloks(value, onBlok);
+  }
 };

@@ -7,12 +7,18 @@ import type {
   PluginFieldValue,
   RichTextFieldValue,
   TableFieldValue,
-} from './_sources';
-import type { Prettify } from './_utils';
-import type { Block, BlockFields } from './block';
+} from "./_sources";
+import type { Prettify } from "./_utils";
+import type { Block, BlockFields } from "./block";
 
 export type { Field };
-export type { AssetFieldValue, MultilinkFieldValue, PluginFieldValue, RichTextFieldValue, TableFieldValue };
+export type {
+  AssetFieldValue,
+  MultilinkFieldValue,
+  PluginFieldValue,
+  RichTextFieldValue,
+  TableFieldValue,
+};
 
 /**
  * @deprecated Use {@link RichTextFieldValue} instead. Will be removed in a future major version.
@@ -34,15 +40,45 @@ type IsBaseBlock<T> = [Block] extends [T] ? true : false;
  * required (`required: true`) from optional fields. Each `F` is a member of the
  * field union, so it provably satisfies `FieldValue`'s `Field` constraint.
  */
-type ContentFields<TFields extends BlockFields, TBlocks extends Block | NoBlocks, TFieldPlugins = Record<never, never>> = Prettify<
-  { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValue<F, TBlocks, TFieldPlugins> }
-  & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValue<F, TBlocks, TFieldPlugins> | null }
+type ContentFields<
+  TFields extends BlockFields,
+  TBlocks extends Block | NoBlocks,
+  TFieldPlugins = Record<never, never>,
+> = Prettify<
+  {
+    [F in TFields[number] as F extends { required: true } ? F["name"] : never]: FieldValue<
+      F,
+      TBlocks,
+      TFieldPlugins
+    >;
+  } & {
+    [F in TFields[number] as F extends { required: true } ? never : F["name"]]?: FieldValue<
+      F,
+      TBlocks,
+      TFieldPlugins
+    > | null;
+  }
 >;
 
 /** Input (write) variant of {@link ContentFields}, resolving each field via {@link FieldValueInput}. */
-type ContentFieldsInput<TFields extends BlockFields, TBlocks extends Block | NoBlocks, TFieldPlugins = Record<never, never>> = Prettify<
-  { [F in TFields[number] as F extends { required: true } ? F['name'] : never]: FieldValueInput<F, TBlocks, TFieldPlugins> }
-  & { [F in TFields[number] as F extends { required: true } ? never : F['name']]?: FieldValueInput<F, TBlocks, TFieldPlugins> | null }
+type ContentFieldsInput<
+  TFields extends BlockFields,
+  TBlocks extends Block | NoBlocks,
+  TFieldPlugins = Record<never, never>,
+> = Prettify<
+  {
+    [F in TFields[number] as F extends { required: true } ? F["name"] : never]: FieldValueInput<
+      F,
+      TBlocks,
+      TFieldPlugins
+    >;
+  } & {
+    [F in TFields[number] as F extends { required: true } ? never : F["name"]]?: FieldValueInput<
+      F,
+      TBlocks,
+      TFieldPlugins
+    > | null;
+  }
 >;
 
 /**
@@ -51,27 +87,41 @@ type ContentFieldsInput<TFields extends BlockFields, TBlocks extends Block | NoB
  * runtime shape (any block, `_editable` optional). With a schema-typed
  * `TBlock`, fields are narrowed per the block's `fields`.
  */
-export type BlockContent<TBlock extends Block = Block, TBlocks extends Block | NoBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
+export type BlockContent<
+  TBlock extends Block = Block,
+  TBlocks extends Block | NoBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
+> =
   IsBaseBlock<TBlock> extends true
     ? BlockContentBase
-    // distribute over each member of the `TBlock` union
-    : TBlock extends any
+    : // distribute over each member of the `TBlock` union
+      TBlock extends any
       ? Prettify<
-        { _uid: string; component: TBlock['name']; _editable?: string }
-        & ContentFields<TBlock['fields'], TBlocks, TFieldPlugins>
-      >
+          { _uid: string; component: TBlock["name"]; _editable?: string } & ContentFields<
+            TBlock["fields"],
+            TBlocks,
+            TFieldPlugins
+          >
+        >
       : never;
 
 /** Input variant of {@link BlockContent} for write operations (creating/updating stories via the MAPI). `_uid` is optional. */
-export type BlockContentInput<TBlock extends Block = Block, TBlocks extends Block | NoBlocks = NoBlocks, TFieldPlugins = Record<never, never>> =
+export type BlockContentInput<
+  TBlock extends Block = Block,
+  TBlocks extends Block | NoBlocks = NoBlocks,
+  TFieldPlugins = Record<never, never>,
+> =
   IsBaseBlock<TBlock> extends true
     ? BlockContentInputBase
-    // distribute over each member of the `TBlock` union
-    : TBlock extends any
+    : // distribute over each member of the `TBlock` union
+      TBlock extends any
       ? Prettify<
-        { _uid?: string; component: TBlock['name']; _editable?: string }
-        & ContentFieldsInput<TBlock['fields'], TBlocks, TFieldPlugins>
-      >
+          { _uid?: string; component: TBlock["name"]; _editable?: string } & ContentFieldsInput<
+            TBlock["fields"],
+            TBlocks,
+            TFieldPlugins
+          >
+        >
       : never;
 
 export type BlocksFieldValue<
@@ -81,7 +131,7 @@ export type BlocksFieldValue<
 > = BlockContent<TBlock, TBlocks, TFieldPlugins>[];
 
 /** Union of all valid Storyblok field type discriminants (e.g., `text`, `bloks`). */
-export type FieldType = Field['type'];
+export type FieldType = Field["type"];
 
 interface FieldTypeValueMap {
   text: string;
@@ -109,10 +159,11 @@ interface FieldTypeValueMap {
   custom: PluginFieldValue;
 }
 
-type IsNestable<T> =
-  T extends { is_nestable: false } ? false
-    : T extends { is_nestable: true } ? true
-      : true;
+type IsNestable<T> = T extends { is_nestable: false }
+  ? false
+  : T extends { is_nestable: true }
+    ? true
+    : true;
 
 type AllowEntry = string | { folder: string };
 
@@ -127,22 +178,31 @@ type AllowEntry = string | { folder: string };
  * string path on both the block's `folder` and the field's `allow`: a shared ref
  * carries the exact path on both sides, so no drift is possible.
  */
-type MatchesFolder<TBlock, TFolder extends string> =
-  TBlock extends { folder: infer BF extends string }
-    ? Lowercase<BF> extends Lowercase<TFolder> | `${Lowercase<TFolder>}/${string}` ? TBlock : never
-    : never;
+type MatchesFolder<TBlock, TFolder extends string> = TBlock extends {
+  folder: infer BF extends string;
+}
+  ? Lowercase<BF> extends Lowercase<TFolder> | `${Lowercase<TFolder>}/${string}`
+    ? TBlock
+    : never
+  : never;
 
-type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer TAllowed extends AllowEntry> }
+type ApplyAllow<TField, TBlocks> = TField extends {
+  allow: ReadonlyArray<infer TAllowed extends AllowEntry>;
+}
   ? TAllowed extends string
-    // keep only the registry blocks named in `allow`
-    ? Extract<TBlocks, { name: TAllowed }>
+    ? // keep only the registry blocks named in `allow`
+      Extract<TBlocks, { name: TAllowed }>
     : TAllowed extends { folder: infer F extends string }
-      // keep registry blocks in the folder (or any nested folder)
-      ? TBlocks extends any ? MatchesFolder<TBlocks, F> : never
+      ? // keep registry blocks in the folder (or any nested folder)
+        TBlocks extends any
+        ? MatchesFolder<TBlocks, F>
+        : never
       : never
-  // no `allow`: distribute over the registry, keeping nestable blocks
-  : TBlocks extends any
-    ? IsNestable<TBlocks> extends true ? TBlocks : never
+  : // no `allow`: distribute over the registry, keeping nestable blocks
+    TBlocks extends any
+    ? IsNestable<TBlocks> extends true
+      ? TBlocks
+      : never
     : never;
 
 /**
@@ -151,7 +211,9 @@ type ApplyAllow<TField, TBlocks> = TField extends { allow: ReadonlyArray<infer T
  * so folder refs are not accepted. A `deny` entry naming no known block is
  * inert: it removes nothing rather than collapsing the field.
  */
-type ApplyDeny<TField, TBlocks> = TField extends { deny: ReadonlyArray<infer TDenied extends string> }
+type ApplyDeny<TField, TBlocks> = TField extends {
+  deny: ReadonlyArray<infer TDenied extends string>;
+}
   ? Exclude<TBlocks, { name: TDenied }>
   : TBlocks;
 
@@ -167,12 +229,11 @@ type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, T
  * the plugin envelope (`plugin`, optional `_uid`); otherwise it falls back to
  * the untyped {@link PluginFieldValue}. Same shape for read and write.
  */
-type ResolveCustom<TField, TFieldPlugins> =
-  TField extends { field_type: infer F extends string }
-    ? F extends keyof TFieldPlugins
-      ? Prettify<TFieldPlugins[F] & { plugin: string; _uid?: string }>
-      : PluginFieldValue
-    : PluginFieldValue;
+type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F extends string }
+  ? F extends keyof TFieldPlugins
+    ? Prettify<TFieldPlugins[F] & { plugin: string; _uid?: string }>
+    : PluginFieldValue
+  : PluginFieldValue;
 
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
@@ -180,17 +241,17 @@ export type FieldValue<
   TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
 > = Prettify<
-  TField extends { type: 'bloks' }
-    // guard `never` first: `[never] extends [Block]` is structurally true, so an
-    // empty registry would otherwise be mistaken for a populated one
-    ? [TBlocks] extends [never]
-        ? BlockContentBase[]
-        : [TBlocks] extends [Block]
-            ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
-            : BlockContentBase[]
-    : TField extends { type: 'custom' }
+  TField extends { type: "bloks" }
+    ? // guard `never` first: `[never] extends [Block]` is structurally true, so an
+      // empty registry would otherwise be mistaken for a populated one
+      [TBlocks] extends [never]
+      ? BlockContentBase[]
+      : [TBlocks] extends [Block]
+        ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+        : BlockContentBase[]
+    : TField extends { type: "custom" }
       ? ResolveCustom<TField, TFieldPlugins>
-      : FieldTypeValueMap[TField['type']]
+      : FieldTypeValueMap[TField["type"]]
 >;
 
 /** Resolves a field definition to its input value type (write). */
@@ -199,15 +260,15 @@ export type FieldValueInput<
   TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
 > = Prettify<
-  TField extends { type: 'bloks' }
-    // guard `never` first: `[never] extends [Block]` is structurally true, so an
-    // empty registry would otherwise be mistaken for a populated one
-    ? [TBlocks] extends [never]
-        ? BlockContentInputBase[]
-        : [TBlocks] extends [Block]
-            ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
-            : BlockContentInputBase[]
-    : TField extends { type: 'custom' }
+  TField extends { type: "bloks" }
+    ? // guard `never` first: `[never] extends [Block]` is structurally true, so an
+      // empty registry would otherwise be mistaken for a populated one
+      [TBlocks] extends [never]
+      ? BlockContentInputBase[]
+      : [TBlocks] extends [Block]
+        ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+        : BlockContentInputBase[]
+    : TField extends { type: "custom" }
       ? ResolveCustom<TField, TFieldPlugins>
-      : FieldTypeValueMap[TField['type']]
+      : FieldTypeValueMap[TField["type"]]
 >;

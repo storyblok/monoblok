@@ -1,5 +1,5 @@
 /* eslint-disable */
-import type { StoryblokClient , ISbStoryData } from '@storyblok/astro';
+import type { StoryblokClient, ISbStoryData } from "@storyblok/astro";
 
 declare global {
   var storyblokApiInstance: StoryblokClient | undefined;
@@ -9,11 +9,11 @@ declare global {
      * Dispatched when live preview starts updating. Cancelable.
      * Call event.preventDefault() to skip the update.
      */
-    'storyblok-live-preview-updating': CustomEvent<{ story: ISbStoryData }>;
+    "storyblok-live-preview-updating": CustomEvent<{ story: ISbStoryData }>;
     /**
      * Dispatched when live preview finishes updating.
      */
-    'storyblok-live-preview-updated': CustomEvent<{ story: ISbStoryData }>;
+    "storyblok-live-preview-updated": CustomEvent<{ story: ISbStoryData }>;
   }
 }
 export {};

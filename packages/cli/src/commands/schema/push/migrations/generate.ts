@@ -1,37 +1,48 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'pathe';
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "pathe";
 
-import { resolvePath } from '../../../../utils/filesystem';
-import { fileTimestamp } from '../../utils';
-import type { BreakingChange } from './types';
+import { resolvePath } from "../../../../utils/filesystem";
+import { fileTimestamp } from "../../utils";
+import type { BreakingChange } from "./types";
 
 /** Compatible type pairs that don't need a content migration. */
-const COMPATIBLE_TYPES = new Set(['text:textarea', 'textarea:text']);
+const COMPATIBLE_TYPES = new Set(["text:textarea", "textarea:text"]);
 
 /** Returns a safe default literal for a Storyblok field type, or null if no safe default exists. */
 function defaultForType(fieldType: string): string | null {
   switch (fieldType) {
-    case 'text':
-    case 'textarea':
-    case 'markdown': return `''`;
-    case 'number': return '0';
-    case 'boolean': return 'false';
-    default: return null;
+    case "text":
+    case "textarea":
+    case "markdown":
+      return `''`;
+    case "number":
+      return "0";
+    case "boolean":
+      return "false";
+    default:
+      return null;
   }
 }
 
 /** Returns a conversion expression for a type change, or null if compatible. */
 function typeConversion(field: string, oldType: string, newType: string): string | null {
   const key = `${oldType}:${newType}`;
-  if (COMPATIBLE_TYPES.has(key)) { return null; }
+  if (COMPATIBLE_TYPES.has(key)) {
+    return null;
+  }
 
   const accessor = `block.${field}`;
   switch (key) {
-    case 'text:number': return `${accessor} = Number(${accessor}) || 0;`;
-    case 'number:text': return `${accessor} = String(${accessor});`;
-    case 'text:boolean': return `${accessor} = !!${accessor};`;
-    case 'boolean:text': return `${accessor} = String(${accessor});`;
-    default: return `${accessor}; // TODO: convert from ${oldType} to ${newType}`;
+    case "text:number":
+      return `${accessor} = Number(${accessor}) || 0;`;
+    case "number:text":
+      return `${accessor} = String(${accessor});`;
+    case "text:boolean":
+      return `${accessor} = !!${accessor};`;
+    case "boolean:text":
+      return `${accessor} = String(${accessor});`;
+    default:
+      return `${accessor}; // TODO: convert from ${oldType} to ${newType}`;
   }
 }
 
@@ -42,16 +53,16 @@ function typeConversion(field: string, oldType: string, newType: string): string
 export function renderMigrationCode(changes: BreakingChange[]): string {
   const lines: string[] = [];
 
-  lines.push('  // Review this migration before running it against your space.');
-  lines.push('  // Generated migrations are scaffolds and may need manual adjustments.');
-  lines.push('  // Example rename migration:');
-  lines.push('  // block.new_field = block.old_field;');
-  lines.push('  // delete block.old_field;');
-  lines.push('');
+  lines.push("  // Review this migration before running it against your space.");
+  lines.push("  // Generated migrations are scaffolds and may need manual adjustments.");
+  lines.push("  // Example rename migration:");
+  lines.push("  // block.new_field = block.old_field;");
+  lines.push("  // delete block.old_field;");
+  lines.push("");
 
   for (const change of changes) {
     switch (change.kind) {
-      case 'rename':
+      case "rename":
         lines.push(`  // Rename: ${change.oldField} → ${change.field}`);
         lines.push(`  if ('${change.oldField}' in block) {`);
         lines.push(`    block.${change.field} = block.${change.oldField};`);
@@ -59,18 +70,19 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         lines.push(`  }`);
         break;
 
-      case 'removed':
+      case "removed":
         if (change.renameHint) {
-          lines.push(`  // If '${change.field}' was renamed to '${change.renameHint.newField}', uncomment:`);
+          lines.push(
+            `  // If '${change.field}' was renamed to '${change.renameHint.newField}', uncomment:`,
+          );
           lines.push(`  // block.${change.renameHint.newField} = block.${change.field};`);
-        }
-        else {
+        } else {
           lines.push(`  // Removed field: ${change.field}`);
         }
         lines.push(`  delete block.${change.field};`);
         break;
 
-      case 'type_changed': {
+      case "type_changed": {
         const conversion = typeConversion(change.field, change.oldType, change.newType);
         if (conversion) {
           lines.push(`  // Type change: ${change.field} (${change.oldType} → ${change.newType})`);
@@ -79,40 +91,44 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         break;
       }
 
-      case 'required_added': {
+      case "required_added": {
         const defaultValue = defaultForType(change.fieldType);
         lines.push(`  // New required field: ${change.field} (${change.fieldType})`);
         if (defaultValue !== null) {
           lines.push(`  // TODO: provide a meaningful default value`);
           lines.push(`  block.${change.field} = block.${change.field} ?? ${defaultValue};`);
-        }
-        else {
-          lines.push(`  // TODO: provide a default value appropriate for the '${change.fieldType}' type`);
+        } else {
+          lines.push(
+            `  // TODO: provide a default value appropriate for the '${change.fieldType}' type`,
+          );
           lines.push(`  // block.${change.field} = block.${change.field} ?? <default>;`);
         }
         break;
       }
 
-      case 'required_changed': {
+      case "required_changed": {
         const defaultValue = defaultForType(change.fieldType);
         lines.push(`  // Field is now required: ${change.field} (${change.fieldType})`);
-        lines.push(`  // Existing stories may have null/undefined values — provide a default for those.`);
+        lines.push(
+          `  // Existing stories may have null/undefined values — provide a default for those.`,
+        );
         if (defaultValue !== null) {
           lines.push(`  // TODO: provide a meaningful default value`);
           lines.push(`  block.${change.field} = block.${change.field} ?? ${defaultValue};`);
-        }
-        else {
-          lines.push(`  // TODO: provide a default value appropriate for the '${change.fieldType}' type`);
+        } else {
+          lines.push(
+            `  // TODO: provide a default value appropriate for the '${change.fieldType}' type`,
+          );
           lines.push(`  // block.${change.field} = block.${change.field} ?? <default>;`);
         }
         break;
       }
     }
 
-    lines.push('');
+    lines.push("");
   }
 
-  const body = lines.length > 0 ? `\n${lines.join('\n')}` : '\n';
+  const body = lines.length > 0 ? `\n${lines.join("\n")}` : "\n";
 
   return `export default function (block) {${body}  return block;\n}\n`;
 }
@@ -136,6 +152,6 @@ export async function writeMigrationFile(options: WriteMigrationFileOptions): Pr
   await mkdir(dir, { recursive: true });
   const fileName = `${componentName}.${fileTimestamp(timestamp)}.js`;
   const filePath = join(dir, fileName);
-  await writeFile(filePath, code, 'utf-8');
+  await writeFile(filePath, code, "utf-8");
   return filePath;
 }

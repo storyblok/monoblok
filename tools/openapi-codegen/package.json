@@ -1,9 +1,15 @@
 {
   "name": "@storyblok/openapi-codegen",
-  "type": "module",
   "version": "0.0.1",
   "private": true,
   "description": "Internal: owns the OpenAPI spec cache and the shared code generator used by consumer packages. Specs are git-ignored; the upstream commit SHA is pinned in spec.lock. Not published.",
+  "files": [
+    "spec.lock",
+    "src",
+    "templates"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -11,12 +17,6 @@
     },
     "./templates/*": "./templates/*"
   },
-  "main": "./dist/index.mjs",
-  "files": [
-    "spec.lock",
-    "src",
-    "templates"
-  ],
   "scripts": {
     "pull": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts",
     "pull:update": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/fetch.ts --update",
@@ -30,6 +30,18 @@
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
     "test:coverage": "vp test run --coverage"
+  },
+  "dependencies": {
+    "@hey-api/openapi-ts": "^0.92.3",
+    "pathe": "^2.0.3",
+    "typescript": "5.8.3",
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "^24.11.0",
+    "oxlint": "1.76.0",
+    "vitest": "^4.1.10"
   },
   "nx": {
     "targets": {
@@ -50,17 +62,5 @@
         "dependsOn": []
       }
     }
-  },
-  "dependencies": {
-    "@hey-api/openapi-ts": "^0.92.3",
-    "pathe": "^2.0.3",
-    "typescript": "5.8.3",
-    "yaml": "^2.8.2"
-  },
-  "devDependencies": {
-    "@storyblok/lint-config": "workspace:*",
-    "@types/node": "^24.11.0",
-    "oxlint": "1.76.0",
-    "vitest": "^4.1.10"
   }
 }

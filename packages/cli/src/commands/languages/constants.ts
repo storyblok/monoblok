@@ -1,6 +1,6 @@
-import type { CommandOptions } from '../../types';
+import type { CommandOptions } from "../../types";
 
-export const DEFAULT_LANGUAGES_FILENAME = 'languages';
+export const DEFAULT_LANGUAGES_FILENAME = "languages";
 
 /**
  * Interface representing the options for the `pull-languages` command.

@@ -13,7 +13,7 @@
  * declared as `alsoProvides` so the catalog resolves them to the same template.
  */
 
-export type WrapperFile = 'block' | 'field' | 'story' | 'mapi-story';
+export type WrapperFile = "block" | "field" | "story" | "mapi-story";
 
 export interface TemplateMeta {
   /** Names this template exports (the main generic plus any pass-throughs). */
@@ -25,31 +25,54 @@ export interface TemplateMeta {
 }
 
 export const TEMPLATES = {
-  'block': {
-    provides: ['Block', 'BlockFields', 'RootBlock', 'NestableBlock'],
+  block: {
+    provides: ["Block", "BlockFields", "RootBlock", "NestableBlock"],
     templateDeps: [],
-    sourceLeaves: ['Component', 'Field'],
+    sourceLeaves: ["Component", "Field"],
   },
-  'field': {
-    provides: ['BlockContent', 'BlockContentInput', 'BlocksFieldValue', 'FieldType', 'FieldValue', 'FieldValueInput', 'Field', 'AssetFieldValue', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'RichtextFieldValue', 'TableFieldValue'],
-    templateDeps: ['block'],
-    sourceLeaves: ['AssetFieldValue', 'BlockContentBase', 'BlockContentInputBase', 'Field', 'MultilinkFieldValue', 'PluginFieldValue', 'RichTextFieldValue', 'TableFieldValue'],
+  field: {
+    provides: [
+      "BlockContent",
+      "BlockContentInput",
+      "BlocksFieldValue",
+      "FieldType",
+      "FieldValue",
+      "FieldValueInput",
+      "Field",
+      "AssetFieldValue",
+      "MultilinkFieldValue",
+      "PluginFieldValue",
+      "RichTextFieldValue",
+      "RichtextFieldValue",
+      "TableFieldValue",
+    ],
+    templateDeps: ["block"],
+    sourceLeaves: [
+      "AssetFieldValue",
+      "BlockContentBase",
+      "BlockContentInputBase",
+      "Field",
+      "MultilinkFieldValue",
+      "PluginFieldValue",
+      "RichTextFieldValue",
+      "TableFieldValue",
+    ],
   },
-  'story': {
-    provides: ['Story'],
-    templateDeps: ['block', 'field'],
-    sourceLeaves: ['CapiStory'],
+  story: {
+    provides: ["Story"],
+    templateDeps: ["block", "field"],
+    sourceLeaves: ["CapiStory"],
   },
-  'mapi-story': {
-    provides: ['MapiStory', 'StoryCreate', 'StoryUpdate'],
-    templateDeps: ['block', 'field', 'story'],
-    sourceLeaves: ['MapiStory', 'StoryCreate', 'StoryUpdate'],
+  "mapi-story": {
+    provides: ["MapiStory", "StoryCreate", "StoryUpdate"],
+    templateDeps: ["block", "field", "story"],
+    sourceLeaves: ["MapiStory", "StoryCreate", "StoryUpdate"],
   },
 } as const satisfies Record<WrapperFile, TemplateMeta>;
 
 const PROVIDES_INDEX: ReadonlyMap<string, WrapperFile> = new Map(
-  Object.entries(TEMPLATES).flatMap(
-    ([file, meta]) => meta.provides.map(name => [name, file as WrapperFile] as const),
+  Object.entries(TEMPLATES).flatMap(([file, meta]) =>
+    meta.provides.map((name) => [name, file as WrapperFile] as const),
   ),
 );
 

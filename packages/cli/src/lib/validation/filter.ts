@@ -1,5 +1,5 @@
-import type { ValidationIssue } from './adapter';
-import type { LevelOption, ValidationGroup, ValidationRunResult } from './types';
+import type { ValidationIssue } from "./adapter";
+import type { LevelOption, ValidationGroup, ValidationRunResult } from "./types";
 
 /**
  * Applies the `--level` display threshold. `warning` shows everything; `error`
@@ -10,10 +10,10 @@ export function filterIssuesByLevel(
   issues: readonly ValidationIssue[],
   level: LevelOption,
 ): ValidationIssue[] {
-  if (level === 'warning') {
+  if (level === "warning") {
     return [...issues];
   }
-  return issues.filter(issue => issue.severity === 'error');
+  return issues.filter((issue) => issue.severity === "error");
 }
 
 export interface ValidationCounts {
@@ -43,7 +43,7 @@ export interface ValidationCounts {
  * every story that shares it.
  */
 function unitsInGroup(group: ValidationGroup): number {
-  if (group.ref.kind !== 'schema') {
+  if (group.ref.kind !== "schema") {
     return 1;
   }
   const definitions = new Set<string>();
@@ -51,7 +51,7 @@ function unitsInGroup(group: ValidationGroup): number {
     const [collection, index] = issue.path;
     // A schema-level issue naming no definition counts as the schema itself.
     definitions.add(
-      typeof collection === 'string' && index !== undefined ? `${collection}.${index}` : 'schema',
+      typeof collection === "string" && index !== undefined ? `${collection}.${index}` : "schema",
     );
   }
   return definitions.size;
@@ -64,10 +64,9 @@ export function countIssues(result: ValidationRunResult): ValidationCounts {
   let unitsWithIssues = 0;
   for (const group of result.groups) {
     for (const issue of group.issues) {
-      if (issue.severity === 'error') {
+      if (issue.severity === "error") {
         errors += 1;
-      }
-      else {
+      } else {
         warnings += 1;
       }
     }

@@ -1,11 +1,11 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
 
 export interface TeaserBlok {
   headline?: string;
 }
 
 @Component({
-  selector: 'app-teaser',
+  selector: "app-teaser",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: ` <h2>{{ blok().headline }}</h2> `,
 })

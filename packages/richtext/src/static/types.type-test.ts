@@ -10,35 +10,35 @@
  * These assertions are checked by `pnpm typecheck` (`tsc --noEmit`) and are
  * intentionally never executed at runtime.
  */
-import type { StoryblokRichTextDoc, StoryblokRichTextNode } from './index';
+import type { StoryblokRichTextDoc, StoryblokRichTextNode } from "./index";
 
 // A `doc` with a `content` array is valid.
 export const docWithContent: StoryblokRichTextDoc = {
-  type: 'doc',
+  type: "doc",
   content: [],
 };
 
 // The document root must include `content`.
 // @ts-expect-error - `content` is required on the `doc` node.
 export const docWithoutContent: StoryblokRichTextDoc = {
-  type: 'doc',
+  type: "doc",
 };
 
 // Nested nodes may omit `content`. This is the exact case from #16 that the
 // previous type wrongly rejected.
 export const docWithContentlessChildren: StoryblokRichTextDoc = {
-  type: 'doc',
+  type: "doc",
   content: [
-    { type: 'paragraph' },
-    { type: 'horizontal_rule' },
+    { type: "paragraph" },
+    { type: "horizontal_rule" },
     {
-      type: 'bullet_list',
-      content: [{ type: 'list_item' }],
+      type: "bullet_list",
+      content: [{ type: "list_item" }],
     },
   ],
 };
 
 // A bare nested node without `content` is assignable to `StoryblokRichTextNode`.
 export const contentlessNode: StoryblokRichTextNode = {
-  type: 'paragraph',
+  type: "paragraph",
 };

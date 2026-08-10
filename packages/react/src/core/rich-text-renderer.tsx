@@ -7,7 +7,7 @@ import type {
   StoryblokRichTextNodeWithKey,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 import {
   buildStoryblokImage,
   getInnerMarks,
@@ -18,19 +18,21 @@ import {
   processAttrs,
   resolveTag,
   splitTableRows,
-} from '@storyblok/richtext';
-import React, { type ComponentType, type ReactNode } from 'react';
+} from "@storyblok/richtext";
+import React, { type ComponentType, type ReactNode } from "react";
 
 /**
  * Props type for React richtext node/mark components.
  * Extends the OpenAPI-sourced StoryblokRichTextCoreProps<T> with a React-specific
  * context and ReactNode children (instead of the static renderer's string children).
  */
-export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> =
-  Omit<StoryblokRichTextCoreProps<T>, 'context' | 'children'> & {
-    context?: StoryblokReactRichTextRenderContext;
-    children?: ReactNode;
-  };
+export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> = Omit<
+  StoryblokRichTextCoreProps<T>,
+  "context" | "children"
+> & {
+  context?: StoryblokReactRichTextRenderContext;
+  children?: ReactNode;
+};
 
 /**
  * @deprecated Use {@link StoryblokReactRichTextProps} instead. Will be removed in the next major version.
@@ -38,8 +40,9 @@ export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> =
 export type SbReactRichTextProps<T extends StoryblokRichTextElement> =
   StoryblokReactRichTextProps<T>;
 
-export type StoryblokReactRichTextComponent<T extends StoryblokRichTextElement> =
-  ComponentType<StoryblokReactRichTextProps<T>>;
+export type StoryblokReactRichTextComponent<T extends StoryblokRichTextElement> = ComponentType<
+  StoryblokReactRichTextProps<T>
+>;
 
 /**
  * @deprecated Use {@link StoryblokReactRichTextComponent} instead. Will be removed in the next major version.
@@ -73,7 +76,7 @@ export interface StoryblokReactRichTextComponentProps extends StoryblokReactRich
 }
 
 const extendAttrMap = {
-  class: 'className',
+  class: "className",
 };
 
 function resolveComponent<K extends StoryblokRichTextElement>(
@@ -95,13 +98,15 @@ export function createRichTextRenderer(options: StoryblokReactRichTextRenderCont
  * This produces cleaner output: <a href="...">text <strong>bold</strong> more</a>
  * instead of: <a>text</a><a><strong>bold</strong></a><a>more</a>
  */
-function renderChildren(nodes: StoryblokRichTextNodeWithKey[], options: StoryblokReactRichTextRenderContext): ReactNode {
+function renderChildren(
+  nodes: StoryblokRichTextNodeWithKey[],
+  options: StoryblokReactRichTextRenderContext,
+): ReactNode {
   const groups = groupLinkNodes(nodes);
   return groups.map((group, groupIndex) => {
     if (group.linkMark) {
       return renderLinkGroup(group.nodes, group.linkMark, options, group._key || groupIndex);
-    }
-    else {
+    } else {
       return renderNode(group.nodes[0], options, group._key || groupIndex);
     }
   });
@@ -135,12 +140,21 @@ function renderLinkGroup(
     return <React.Fragment key={key}>{inner}</React.Fragment>;
   }
 
-  const markAttrs = ('attrs' in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
-  return React.createElement(tag, { key, ...processAttrs(linkMark.type, markAttrs, extendAttrMap) }, inner);
+  const markAttrs = ("attrs" in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
+  return React.createElement(
+    tag,
+    { key, ...processAttrs(linkMark.type, markAttrs, extendAttrMap) },
+    inner,
+  );
 }
 
-function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokReactRichTextRenderContext, key: React.Key): ReactNode {
-  const content = node.type !== 'text' && node.content ? renderChildren(node.content, options) : null;
+function renderNode(
+  node: StoryblokRichTextNodeWithKey,
+  options: StoryblokReactRichTextRenderContext,
+  key: React.Key,
+): ReactNode {
+  const content =
+    node.type !== "text" && node.content ? renderChildren(node.content, options) : null;
 
   // Custom renderer takes full control
   const Custom = resolveComponent(node.type, options.components);
@@ -158,24 +172,24 @@ function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokReactR
     );
   }
 
-  if (node.type === 'text') {
+  if (node.type === "text") {
     return renderTextNode(node as StoryblokRichTextTextNode, options, key);
   }
   const tag = resolveTag(node);
   if (!tag) {
     return node.content ? renderChildren(node.content, options) : null;
   }
-  if (node.type === 'image' && options.optimizeImage) {
+  if (node.type === "image" && options.optimizeImage) {
     return renderOptimizedImage(node, options, key);
   }
 
-  const nodeAttrs = ('attrs' in node ? node.attrs : {}) as Record<string, unknown>;
+  const nodeAttrs = ("attrs" in node ? node.attrs : {}) as Record<string, unknown>;
   const props = processAttrs(node.type, nodeAttrs, extendAttrMap);
   if (isSelfClosing(tag)) {
     return React.createElement(tag, { key, ...props });
   }
 
-  if (node.type === 'table') {
+  if (node.type === "table") {
     return renderTable(node, options, key, tag, props);
   }
 
@@ -186,8 +200,8 @@ function renderNode(node: StoryblokRichTextNodeWithKey, options: StoryblokReactR
     return React.createElement(tag, { key }, inner);
   }
 
-  if (node.type === 'emoji') {
-    const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: 'emoji' }>;
+  if (node.type === "emoji") {
+    const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: "emoji" }>;
     return React.createElement(tag, { key, ...props }, emojiNode.attrs.emoji);
   }
 
@@ -206,7 +220,7 @@ function renderOptimizedImage(
   options: StoryblokReactRichTextRenderContext,
   key: React.Key,
 ): ReactNode {
-  const attrs = ('attrs' in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
+  const attrs = ("attrs" in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
 
   if (!src) {
@@ -215,11 +229,15 @@ function renderOptimizedImage(
 
   const { src: optimizedSrc, attrs: extraAttrs } = buildStoryblokImage(src, options.optimizeImage);
 
-  const finalProps = processAttrs('image', {
-    ...attrs,
-    src: optimizedSrc,
-    ...extraAttrs,
-  }, extendAttrMap);
+  const finalProps = processAttrs(
+    "image",
+    {
+      ...attrs,
+      src: optimizedSrc,
+      ...extraAttrs,
+    },
+    extendAttrMap,
+  );
 
   return <img key={key} {...finalProps} />;
 }
@@ -275,15 +293,17 @@ function renderStaticStructure(
       return React.createElement(tag, { key: index, ...props });
     }
 
-    const inner = children
-      ? renderStaticStructure(type, children, parentAttrs, content)
-      : content;
+    const inner = children ? renderStaticStructure(type, children, parentAttrs, content) : content;
 
     return React.createElement(tag, { key: index, ...props }, inner);
   });
 }
 
-function renderTextNode(node: StoryblokRichTextTextNode, options: StoryblokReactRichTextRenderContext, key?: React.Key): ReactNode {
+function renderTextNode(
+  node: StoryblokRichTextTextNode,
+  options: StoryblokReactRichTextRenderContext,
+  key?: React.Key,
+): ReactNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
 
@@ -304,10 +324,18 @@ function renderTextNodeWithMarks(
   return <React.Fragment key={key}>{content}</React.Fragment>;
 }
 
-function wrapMark(children: ReactNode, mark: StoryblokRichTextMark, options: StoryblokReactRichTextRenderContext): ReactNode {
+function wrapMark(
+  children: ReactNode,
+  mark: StoryblokRichTextMark,
+  options: StoryblokReactRichTextRenderContext,
+): ReactNode {
   const Custom = resolveComponent(mark.type, options.components);
   if (Custom) {
-    return <Custom {...mark} context={options}>{children}</Custom>;
+    return (
+      <Custom {...mark} context={options}>
+        {children}
+      </Custom>
+    );
   }
 
   const tag = resolveTag(mark);
@@ -315,7 +343,7 @@ function wrapMark(children: ReactNode, mark: StoryblokRichTextMark, options: Sto
     return children;
   }
 
-  const markAttrs = ('attrs' in mark ? mark.attrs : {}) as Record<string, unknown>;
+  const markAttrs = ("attrs" in mark ? mark.attrs : {}) as Record<string, unknown>;
   const props = processAttrs(mark.type, markAttrs, extendAttrMap);
   return React.createElement(tag, props, children);
 }

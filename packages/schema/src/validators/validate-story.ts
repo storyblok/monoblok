@@ -1,21 +1,21 @@
-import { z } from 'zod';
-import type { StandardSchemaV1 } from '@standard-schema/spec';
-import type { SchemaBlockLike, SchemaFieldLike, SchemaLike } from './shapes';
-import type { ValidationIssue, ValidationResult } from './types';
+import { z } from "zod";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
+import type { SchemaBlockLike, SchemaFieldLike, SchemaLike } from "./shapes";
+import type { ValidationIssue, ValidationResult } from "./types";
 import {
   zAssetFieldValue,
   zMultilinkFieldValue,
   zRichTextFieldValue,
   zTableFieldValue,
-} from './internal-schemas';
-import { isRecord, toValues } from './shapes';
-import { slugifyFolderPath } from '../utils/slugify-folder-path';
+} from "./internal-schemas";
+import { isRecord, toValues } from "./shapes";
+import { slugifyFolderPath } from "../utils/slugify-folder-path";
 
 /** Field-content keys that are not user-defined fields. */
-const RESERVED_KEYS = new Set(['_uid', 'component', '_editable']);
+const RESERVED_KEYS = new Set(["_uid", "component", "_editable"]);
 
 /** Separator the CMS puts between a field name and a locale for field-level translations. */
-const I18N_SEPARATOR = '__i18n__';
+const I18N_SEPARATOR = "__i18n__";
 
 /**
  * Strips the field-level translation suffix from a content key, e.g.
@@ -35,7 +35,8 @@ function baseFieldName(key: string): string {
  */
 const EXPECTED_SHAPE = {
   asset: 'expected an asset object: { fieldtype: "asset", id, alt, filename }',
-  multilink: 'expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }',
+  multilink:
+    'expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }',
   richtext: 'expected a richtext document: { type: "doc", content: [...] }',
   table: 'expected a table object: { fieldtype: "table", thead: [...], tbody: [...] }',
   plugin: 'expected a field plugin object carrying a "plugin" key',
@@ -56,7 +57,7 @@ const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string
  * field type and as unset on another.
  */
 function isUnset(value: unknown): boolean {
-  return value === undefined || value === null || value === '';
+  return value === undefined || value === null || value === "";
 }
 
 /** Capitalizes and gives the text exactly one trailing period. */
@@ -66,7 +67,7 @@ function asSentence(text: string): string {
 }
 
 /** Validator messages that name nothing at all, and so are worth rewording. */
-const UNINFORMATIVE_MESSAGES = new Set(['Invalid input.']);
+const UNINFORMATIVE_MESSAGES = new Set(["Invalid input."]);
 
 /**
  * Said in place of a validator message that names nothing. Deliberately does not
@@ -74,7 +75,7 @@ const UNINFORMATIVE_MESSAGES = new Set(['Invalid input.']);
  * wrong thing (a richtext *node* is not a richtext *document*), so it would trade
  * a vague message for a misleading one.
  */
-const VAGUE_MESSAGE = 'Value does not match any shape this field accepts.';
+const VAGUE_MESSAGE = "Value does not match any shape this field accepts.";
 
 /**
  * Maps a vague issue to where it sits, so {@link dropSubsumedIssues} can tell
@@ -82,10 +83,13 @@ const VAGUE_MESSAGE = 'Value does not match any shape this field accepts.';
  * is the depth of the field value it came from, which the scoping must never
  * reach above. Keyed weakly: every issue object is created once, for one call.
  */
-const vagueIssueScopes = new WeakMap<ValidationIssue, {
-  path: (string | number)[];
-  valueDepth: number;
-}>();
+const vagueIssueScopes = new WeakMap<
+  ValidationIssue,
+  {
+    path: (string | number)[];
+    valueDepth: number;
+  }
+>();
 
 /**
  * Rewrites a validator's own message into the style the hand-written messages use.
@@ -120,7 +124,7 @@ function formatValidatorMessage(
  * segment boundary.
  */
 function pathKey(path: (string | number)[]): string {
-  return path.join('\u0000');
+  return path.join("\u0000");
 }
 
 /**
@@ -147,11 +151,11 @@ function pathKey(path: (string | number)[]): string {
  */
 function dropSubsumedIssues(issues: ValidationIssue[]): ValidationIssue[] {
   const explanatoryPaths = issues
-    .filter(issue => !vagueIssueScopes.has(issue))
-    .map(issue => pathKey(issue.path));
+    .filter((issue) => !vagueIssueScopes.has(issue))
+    .map((issue) => pathKey(issue.path));
   const hasIssueUnder = (path: (string | number)[]): boolean => {
     const prefix = `${pathKey(path)}\u0000`;
-    return explanatoryPaths.some(candidate => candidate.startsWith(prefix));
+    return explanatoryPaths.some((candidate) => candidate.startsWith(prefix));
   };
 
   return issues.filter((issue) => {
@@ -163,7 +167,7 @@ function dropSubsumedIssues(issues: ValidationIssue[]): ValidationIssue[] {
       return false;
     }
     const key = scope.path.at(-1);
-    const widens = typeof key === 'string' && scope.path.length > scope.valueDepth;
+    const widens = typeof key === "string" && scope.path.length > scope.valueDepth;
     return widens ? !hasIssueUnder(scope.path.slice(0, -1)) : true;
   });
 }
@@ -181,25 +185,28 @@ function checkValue(
   issues: ValidationIssue[],
   expected?: string,
 ): void {
-  const result = schema['~standard'].validate(value);
+  const result = schema["~standard"].validate(value);
   // `validateStory` is synchronous. The internal Zod schemas never return a
   // thenable, but a registered field plugin may ship an async validator — which
   // cannot be awaited here. Surface it as an error instead of silently passing,
   // which would report a false `ok: true`.
   if (result instanceof Promise) {
     issues.push({
-      severity: 'error',
-      code: 'async_validator_unsupported',
+      severity: "error",
+      code: "async_validator_unsupported",
       path,
       entity,
-      message: 'Field plugin validator is asynchronous; validateStory runs synchronously and cannot await it.',
+      message:
+        "Field plugin validator is asynchronous; validateStory runs synchronously and cannot await it.",
     });
     return;
   }
   if (result.issues) {
     for (const rawIssue of result.issues) {
-      const issuePath = (rawIssue.path ?? []).map(segment =>
-        (typeof segment === 'object' && segment !== null ? String(segment.key) : (segment as string | number)),
+      const issuePath = (rawIssue.path ?? []).map((segment) =>
+        typeof segment === "object" && segment !== null
+          ? String(segment.key)
+          : (segment as string | number),
       );
       const { message, vague } = formatValidatorMessage(
         rawIssue.message,
@@ -207,8 +214,8 @@ function checkValue(
         issuePath.length === 0,
       );
       const issue: ValidationIssue = {
-        severity: 'error',
-        code: 'invalid_value',
+        severity: "error",
+        code: "invalid_value",
         path: [...path, ...issuePath],
         entity,
         message,
@@ -231,28 +238,38 @@ function validateFieldValue(
   issues: ValidationIssue[],
 ): void {
   switch (field.type) {
-    case 'asset':
+    case "asset":
       checkValue(zAssetFieldValue, value, path, entity, issues, EXPECTED_SHAPE.asset);
       break;
-    case 'multiasset':
+    case "multiasset":
       if (!Array.isArray(value)) {
-        pushTypeIssue(value, 'array', path, entity, issues);
+        pushTypeIssue(value, "array", path, entity, issues);
         break;
       }
-      value.forEach((item, index) => checkValue(zAssetFieldValue, item, [...path, index], entity, issues, EXPECTED_SHAPE.asset));
-      checkCount(value.length, field.minimum_entries, field.maximum_entries, 'asset(s)', path, entity, issues);
+      value.forEach((item, index) =>
+        checkValue(zAssetFieldValue, item, [...path, index], entity, issues, EXPECTED_SHAPE.asset),
+      );
+      checkCount(
+        value.length,
+        field.minimum_entries,
+        field.maximum_entries,
+        "asset(s)",
+        path,
+        entity,
+        issues,
+      );
       break;
-    case 'multilink':
+    case "multilink":
       checkValue(zMultilinkFieldValue, value, path, entity, issues, EXPECTED_SHAPE.multilink);
       break;
-    case 'table':
+    case "table":
       checkValue(zTableFieldValue, value, path, entity, issues, EXPECTED_SHAPE.table);
       break;
-    case 'richtext':
+    case "richtext":
       checkValue(zRichTextFieldValue, value, path, entity, issues, EXPECTED_SHAPE.richtext);
       validateRichtextBloks(value, field, blocksByName, fieldPluginsByType, path, entity, issues);
       break;
-    case 'custom': {
+    case "custom": {
       checkValue(zPluginEnvelope, value, path, entity, issues, EXPECTED_SHAPE.plugin);
       const validator = field.field_type ? fieldPluginsByType.get(field.field_type) : undefined;
       if (validator && isRecord(value)) {
@@ -264,48 +281,48 @@ function validateFieldValue(
       }
       break;
     }
-    case 'bloks':
+    case "bloks":
       if (!Array.isArray(value)) {
-        pushTypeIssue(value, 'array', path, entity, issues);
+        pushTypeIssue(value, "array", path, entity, issues);
         break;
       }
-      checkCount(value.length, field.minimum, field.maximum, 'block(s)', path, entity, issues);
+      checkCount(value.length, field.minimum, field.maximum, "block(s)", path, entity, issues);
       value.forEach((item, index) => {
         checkComponentAllowed(field, item, [...path, index], blocksByName, entity, issues);
         validateBlokContent(item, blocksByName, fieldPluginsByType, [...path, index], issues);
       });
       break;
-    case 'text':
-    case 'textarea':
-    case 'markdown':
-      if (typeof value !== 'string') {
-        pushTypeIssue(value, 'string', path, entity, issues);
+    case "text":
+    case "textarea":
+    case "markdown":
+      if (typeof value !== "string") {
+        pushTypeIssue(value, "string", path, entity, issues);
         break;
       }
       checkStringLength(field, value, path, entity, issues);
       break;
-    case 'option':
-      if (typeof value !== 'string') {
-        pushTypeIssue(value, 'string', path, entity, issues);
+    case "option":
+      if (typeof value !== "string") {
+        pushTypeIssue(value, "string", path, entity, issues);
         break;
       }
       checkDeclaredOption(field, value, path, entity, issues);
       break;
-    case 'datetime':
-      if (typeof value !== 'string') {
-        pushTypeIssue(value, 'string', path, entity, issues);
+    case "datetime":
+      if (typeof value !== "string") {
+        pushTypeIssue(value, "string", path, entity, issues);
       }
       break;
-    case 'number': {
-      if (typeof value !== 'string') {
+    case "number": {
+      if (typeof value !== "string") {
         // The wire form of a number field is a string, so a JSON number is not
         // what the editor writes. Reported as a warning rather than an error: the
         // backend neither coerces nor rejects it, so API-authored and migrated
         // content carries it and still reads fine. It is drift worth surfacing,
         // not a broken value worth failing a build over.
         issues.push({
-          severity: 'warning',
-          code: 'invalid_value',
+          severity: "warning",
+          code: "invalid_value",
           path,
           entity,
           message: `Expected a numeric string (number fields are stored as strings), received ${describeType(value)}.`,
@@ -321,22 +338,41 @@ function validateFieldValue(
       const numeric = Number(value);
       // `''`, `'-'` and `'.'` satisfy the pattern but carry no value: an unset
       // number field stores `''`. There is nothing to range-check.
-      if (value === '' || !Number.isFinite(numeric)) {
+      if (value === "" || !Number.isFinite(numeric)) {
         break;
       }
       if (field.min_value != null && numeric < field.min_value) {
-        pushConstraint(`Value ${value} is below the minimum of ${field.min_value}.`, path, entity, issues);
+        pushConstraint(
+          `Value ${value} is below the minimum of ${field.min_value}.`,
+          path,
+          entity,
+          issues,
+        );
       }
       if (field.max_value != null && numeric > field.max_value) {
-        pushConstraint(`Value ${value} exceeds the maximum of ${field.max_value}.`, path, entity, issues);
+        pushConstraint(
+          `Value ${value} exceeds the maximum of ${field.max_value}.`,
+          path,
+          entity,
+          issues,
+        );
       }
       if (field.decimals != null && decimalPlaces(value) > field.decimals) {
-        pushConstraint(`Value ${value} has more than ${field.decimals} decimal place(s).`, path, entity, issues);
+        pushConstraint(
+          `Value ${value} has more than ${field.decimals} decimal place(s).`,
+          path,
+          entity,
+          issues,
+        );
       }
-      if (field.steps != null && field.steps > 0 && !isMultipleOf(numeric, field.steps, field.min_value ?? 0)) {
+      if (
+        field.steps != null &&
+        field.steps > 0 &&
+        !isMultipleOf(numeric, field.steps, field.min_value ?? 0)
+      ) {
         const base = field.min_value ?? 0;
         pushConstraint(
-          `Value ${value} is not a multiple of the step ${field.steps}${base ? ` (offset from ${base})` : ''}.`,
+          `Value ${value} is not a multiple of the step ${field.steps}${base ? ` (offset from ${base})` : ""}.`,
           path,
           entity,
           issues,
@@ -344,21 +380,31 @@ function validateFieldValue(
       }
       break;
     }
-    case 'boolean':
-      if (typeof value !== 'boolean') {
-        pushTypeIssue(value, 'boolean', path, entity, issues);
+    case "boolean":
+      if (typeof value !== "boolean") {
+        pushTypeIssue(value, "boolean", path, entity, issues);
       }
       break;
-    case 'options':
-      if (!Array.isArray(value) || value.some(item => typeof item !== 'string')) {
-        pushTypeIssue(value, 'string[]', path, entity, issues);
+    case "options":
+      if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+        pushTypeIssue(value, "string[]", path, entity, issues);
         break;
       }
-      checkCount(value.length, toCount(field.min_options), toCount(field.max_options), 'option(s)', path, entity, issues);
-      value.forEach((item: string, index) => checkDeclaredOption(field, item, [...path, index], entity, issues));
+      checkCount(
+        value.length,
+        toCount(field.min_options),
+        toCount(field.max_options),
+        "option(s)",
+        path,
+        entity,
+        issues,
+      );
+      value.forEach((item: string, index) =>
+        checkDeclaredOption(field, item, [...path, index], entity, issues),
+      );
       break;
-    case 'section':
-    case 'tab':
+    case "section":
+    case "tab":
       // Layout-only field types carry no content value.
       break;
     default:
@@ -391,7 +437,7 @@ function checkComponentAllowed(
   issues: ValidationIssue[],
 ): void {
   const allowEntries = field.allow ?? [];
-  if (allowEntries.length === 0 || !isRecord(item) || typeof item.component !== 'string') {
+  if (allowEntries.length === 0 || !isRecord(item) || typeof item.component !== "string") {
     return;
   }
   // A component the schema does not define at all is reported once as
@@ -400,28 +446,32 @@ function checkComponentAllowed(
   if (!blocksByName.has(item.component)) {
     return;
   }
-  const blockNamesAllowed = allowEntries.filter((entry): entry is string => typeof entry === 'string');
+  const blockNamesAllowed = allowEntries.filter(
+    (entry): entry is string => typeof entry === "string",
+  );
   const folderPathsAllowed = allowEntries.filter(
     (entry): entry is { folder: string } =>
-      typeof entry === 'object' && entry !== null && typeof entry.folder === 'string',
+      typeof entry === "object" && entry !== null && typeof entry.folder === "string",
   );
   const itemBlock = blocksByName.get(item.component);
   const itemBlockFolder = itemBlock?.folder;
   const allowedByName = blockNamesAllowed.includes(item.component);
-  const itemFolderSlug = typeof itemBlockFolder === 'string' ? slugifyFolderPath(itemBlockFolder) : undefined;
-  const allowedByFolder = itemFolderSlug !== undefined
-    && folderPathsAllowed.some(({ folder }) => {
+  const itemFolderSlug =
+    typeof itemBlockFolder === "string" ? slugifyFolderPath(itemBlockFolder) : undefined;
+  const allowedByFolder =
+    itemFolderSlug !== undefined &&
+    folderPathsAllowed.some(({ folder }) => {
       const allowedSlug = slugifyFolderPath(folder);
       return itemFolderSlug === allowedSlug || itemFolderSlug.startsWith(`${allowedSlug}/`);
     });
   if (!allowedByName && !allowedByFolder) {
     const allowedList = allowEntries
-      .map(entry => (typeof entry === 'string' ? entry : `folder:${entry.folder}`))
-      .join(', ');
+      .map((entry) => (typeof entry === "string" ? entry : `folder:${entry.folder}`))
+      .join(", ");
     issues.push({
-      severity: 'error',
-      code: 'disallowed_component',
-      path: [...itemPath, 'component'],
+      severity: "error",
+      code: "disallowed_component",
+      path: [...itemPath, "component"],
       entity,
       message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${allowedList}.`,
     });
@@ -448,22 +498,25 @@ function checkDeclaredOption(
   entity: string,
   issues: ValidationIssue[],
 ): void {
-  if (value === '' || (field.source !== undefined && field.source !== '')) {
+  if (value === "" || (field.source !== undefined && field.source !== "")) {
     return;
   }
   const declared = (field.options ?? [])
-    .map(option => option.value)
-    .filter((optionValue): optionValue is string => typeof optionValue === 'string' && optionValue !== '');
+    .map((option) => option.value)
+    .filter(
+      (optionValue): optionValue is string => typeof optionValue === "string" && optionValue !== "",
+    );
   if (declared.length === 0 || declared.includes(value)) {
     return;
   }
   issues.push({
-    severity: 'error',
-    code: 'unknown_option',
+    severity: "error",
+    code: "unknown_option",
     path,
     entity,
-    message: `Value "${value}" is not one of the options declared for field "${field.name}": `
-      + `${declared.map(optionValue => `"${optionValue}"`).join(', ')}.`,
+    message:
+      `Value "${value}" is not one of the options declared for field "${field.name}": ` +
+      `${declared.map((optionValue) => `"${optionValue}"`).join(", ")}.`,
   });
 }
 
@@ -474,7 +527,7 @@ function pushConstraint(
   entity: string,
   issues: ValidationIssue[],
 ): void {
-  issues.push({ severity: 'error', code: 'constraint_violation', path, entity, message });
+  issues.push({ severity: "error", code: "constraint_violation", path, entity, message });
 }
 
 /** Checks an array length against optional inclusive `min`/`max` bounds. */
@@ -505,10 +558,20 @@ function checkStringLength(
 ): void {
   const max = field.max_length ?? field.maxlength;
   if (max != null && value.length > max) {
-    pushConstraint(`Text length ${value.length} exceeds the maximum of ${max}.`, path, entity, issues);
+    pushConstraint(
+      `Text length ${value.length} exceeds the maximum of ${max}.`,
+      path,
+      entity,
+      issues,
+    );
   }
   if (field.minlength != null && value.length < field.minlength) {
-    pushConstraint(`Text length ${value.length} is below the minimum of ${field.minlength}.`, path, entity, issues);
+    pushConstraint(
+      `Text length ${value.length} is below the minimum of ${field.minlength}.`,
+      path,
+      entity,
+      issues,
+    );
   }
 }
 
@@ -518,7 +581,7 @@ function checkStringLength(
  * (`'9.90'` → 2, where `Number('9.90')` would report 1).
  */
 function decimalPlaces(value: string): number {
-  const [, fraction] = value.split('.');
+  const [, fraction] = value.split(".");
   return fraction?.length ?? 0;
 }
 
@@ -531,7 +594,7 @@ function isMultipleOf(value: number, step: number, base: number): boolean {
 
 /** Parses a numeric constraint stored as a string (e.g. `min_options`). Empty/non-numeric → undefined. */
 function toCount(value: string | undefined): number | undefined {
-  if (value == null || value === '') {
+  if (value == null || value === "") {
     return undefined;
   }
   const parsed = Number(value);
@@ -540,7 +603,7 @@ function toCount(value: string | undefined): number | undefined {
 
 /** Names a received value's type for a message (`null` is reported as itself). */
 function describeType(value: unknown): string {
-  return value === null ? 'null' : typeof value;
+  return value === null ? "null" : typeof value;
 }
 
 /** Reports an invalid field value with a caller-provided message. */
@@ -550,7 +613,7 @@ function pushInvalidValue(
   entity: string,
   issues: ValidationIssue[],
 ): void {
-  issues.push({ severity: 'error', code: 'invalid_value', path, entity, message });
+  issues.push({ severity: "error", code: "invalid_value", path, entity, message });
 }
 
 function pushTypeIssue(
@@ -585,16 +648,23 @@ function validateRichtextBloks(
     if (!isRecord(node)) {
       return;
     }
-    if (node.type === 'blok' && isRecord(node.attrs) && Array.isArray(node.attrs.body)) {
+    if (node.type === "blok" && isRecord(node.attrs) && Array.isArray(node.attrs.body)) {
       node.attrs.body.forEach((blok, blokIndex) => {
-        const blokPath = [...path, 'content', index, 'attrs', 'body', blokIndex];
+        const blokPath = [...path, "content", index, "attrs", "body", blokIndex];
         checkComponentAllowed(field, blok, blokPath, blocksByName, entity, issues);
         validateBlokContent(blok, blocksByName, fieldPluginsByType, blokPath, issues);
       });
-    }
-    else if (Array.isArray(node.content)) {
+    } else if (Array.isArray(node.content)) {
       // Recurse into nested marks/nodes that may themselves embed bloks.
-      validateRichtextBloks(node, field, blocksByName, fieldPluginsByType, [...path, 'content', index], entity, issues);
+      validateRichtextBloks(
+        node,
+        field,
+        blocksByName,
+        fieldPluginsByType,
+        [...path, "content", index],
+        entity,
+        issues,
+      );
     }
   });
 }
@@ -609,23 +679,23 @@ function validateBlokContent(
 ): void {
   if (!isRecord(content)) {
     issues.push({
-      severity: 'error',
-      code: 'invalid_content',
+      severity: "error",
+      code: "invalid_content",
       path,
-      entity: 'story',
-      message: 'Expected a block content object.',
+      entity: "story",
+      message: "Expected a block content object.",
     });
     return;
   }
 
   const component = content.component;
-  const block = typeof component === 'string' ? blocksByName.get(component) : undefined;
+  const block = typeof component === "string" ? blocksByName.get(component) : undefined;
   if (!block) {
     issues.push({
-      severity: 'error',
-      code: 'unknown_component',
-      path: [...path, 'component'],
-      entity: 'story',
+      severity: "error",
+      code: "unknown_component",
+      path: [...path, "component"],
+      entity: "story",
       message: `Unknown component "${String(component)}".`,
     });
     return;
@@ -633,7 +703,7 @@ function validateBlokContent(
 
   const entity = `block:${block.name}`;
   const fields = block.fields ?? [];
-  const fieldsByName = new Map(fields.map(field => [field.name, field]));
+  const fieldsByName = new Map(fields.map((field) => [field.name, field]));
 
   // Translated keys are grouped under the field they belong to so the value loop
   // below can check each locale against the same field definition.
@@ -646,8 +716,8 @@ function validateBlokContent(
     const fieldName = baseFieldName(key);
     if (!fieldsByName.has(fieldName)) {
       issues.push({
-        severity: 'warning',
-        code: 'unknown_field',
+        severity: "warning",
+        code: "unknown_field",
         path: [...path, key],
         entity,
         message: `Unknown field "${key}" on component "${block.name}".`,
@@ -658,8 +728,7 @@ function validateBlokContent(
       const translated = translatedKeysByField.get(fieldName);
       if (translated) {
         translated.push(key);
-      }
-      else {
+      } else {
         translatedKeysByField.set(fieldName, [key]);
       }
     }
@@ -673,8 +742,8 @@ function validateBlokContent(
     // legitimately skips it, leaving the required check as the only diagnostic.
     if (field.required && isUnset(value)) {
       issues.push({
-        severity: 'error',
-        code: 'missing_required_field',
+        severity: "error",
+        code: "missing_required_field",
         path: [...path, field.name],
         entity,
         message: `Missing required field "${field.name}" on component "${block.name}".`,
@@ -687,7 +756,15 @@ function validateBlokContent(
     // and `multilink`. Nothing is lost by skipping it, since an empty string
     // carries no value to be wrong about.
     else if (!isUnset(value)) {
-      validateFieldValue(field, value, blocksByName, fieldPluginsByType, [...path, field.name], entity, issues);
+      validateFieldValue(
+        field,
+        value,
+        blocksByName,
+        fieldPluginsByType,
+        [...path, field.name],
+        entity,
+        issues,
+      );
     }
 
     // A translated value is the same field in another locale, so it is held to
@@ -698,7 +775,15 @@ function validateBlokContent(
       if (isUnset(translatedValue)) {
         continue;
       }
-      validateFieldValue(field, translatedValue, blocksByName, fieldPluginsByType, [...path, key], entity, issues);
+      validateFieldValue(
+        field,
+        translatedValue,
+        blocksByName,
+        fieldPluginsByType,
+        [...path, key],
+        entity,
+        issues,
+      );
     }
   }
 }
@@ -718,15 +803,15 @@ function validateBlokContent(
  */
 export function validateStory(story: unknown, schema: SchemaLike): ValidationResult {
   const issues: ValidationIssue[] = [];
-  const blocksByName = new Map(toValues(schema.blocks).map(block => [block.name, block]));
+  const blocksByName = new Map(toValues(schema.blocks).map((block) => [block.name, block]));
   const fieldPluginsByType = new Map(
-    toValues(schema.fieldPlugins).map(plugin => [plugin.fieldType, plugin.value]),
+    toValues(schema.fieldPlugins).map((plugin) => [plugin.fieldType, plugin.value]),
   );
   const content = isRecord(story) ? story.content : undefined;
-  validateBlokContent(content, blocksByName, fieldPluginsByType, ['content'], issues);
+  validateBlokContent(content, blocksByName, fieldPluginsByType, ["content"], issues);
   // One mistake should read as one issue. Suppression happens here, over the
   // whole story, because the specific issue often comes from a different walk
   // than the vague one it explains.
   const reported = dropSubsumedIssues(issues);
-  return { ok: reported.every(issue => issue.severity !== 'error'), issues: reported };
+  return { ok: reported.every((issue) => issue.severity !== "error"), issues: reported };
 }

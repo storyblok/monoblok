@@ -1,22 +1,31 @@
-import { describe, expect, it, vi } from 'vitest';
-import { renderRichText } from './render-richtext';
-import type { StoryblokRichTextDoc, StoryblokRichTextRenderContext } from './static';
-import { customRendererFixture, integrationFixtures, linkFixtures, linkMark, markFixtures, nodeFixtures, tableFixtures, text } from './test-utils';
-import { attrsToHtmlString, splitTableRows } from './static';
+import { describe, expect, it, vi } from "vitest";
+import { renderRichText } from "./render-richtext";
+import type { StoryblokRichTextDoc, StoryblokRichTextRenderContext } from "./static";
+import {
+  customRendererFixture,
+  integrationFixtures,
+  linkFixtures,
+  linkMark,
+  markFixtures,
+  nodeFixtures,
+  tableFixtures,
+  text,
+} from "./test-utils";
+import { attrsToHtmlString, splitTableRows } from "./static";
 
-describe('renderRichText', () => {
-  describe('input handling', () => {
-    it('returns empty string for null input', () => {
-      expect(renderRichText(null)).toBe('');
+describe("renderRichText", () => {
+  describe("input handling", () => {
+    it("returns empty string for null input", () => {
+      expect(renderRichText(null)).toBe("");
     });
-    it('returns empty string for undefined input', () => {
-      expect(renderRichText(undefined)).toBe('');
+    it("returns empty string for undefined input", () => {
+      expect(renderRichText(undefined)).toBe("");
     });
-    it('returns empty string for empty array', () => {
-      expect(renderRichText([])).toBe('');
+    it("returns empty string for empty array", () => {
+      expect(renderRichText([])).toBe("");
     });
   });
-  describe('nodes', () => {
+  describe("nodes", () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const result = renderRichText(input);
@@ -24,7 +33,7 @@ describe('renderRichText', () => {
       });
     });
   });
-  describe('tables', () => {
+  describe("tables", () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const result = renderRichText(input);
@@ -32,7 +41,7 @@ describe('renderRichText', () => {
       });
     });
   });
-  describe('marks', () => {
+  describe("marks", () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const result = renderRichText(input);
@@ -40,7 +49,7 @@ describe('renderRichText', () => {
       });
     });
   });
-  describe('links', () => {
+  describe("links", () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const result = renderRichText(input);
@@ -48,7 +57,7 @@ describe('renderRichText', () => {
       });
     });
   });
-  describe('integration', () => {
+  describe("integration", () => {
     integrationFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const result = renderRichText(input);
@@ -56,14 +65,16 @@ describe('renderRichText', () => {
       });
     });
   });
-  describe('custom renderers', () => {
+  describe("custom renderers", () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
       const options: StoryblokRichTextRenderContext = {
         renderers: {
-          heading: ({ content, attrs, context }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, context)}</h${attrs?.level}>`,
+          heading: ({ content, attrs, context }) =>
+            `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, context)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
-          link: ({ children, attrs }) => `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
+          link: ({ children, attrs }) =>
+            `<a data-type="custom-link" href="${attrs?.href}" target="${attrs?.target}"${attrsToHtmlString(attrs?.custom || {})}>${children}</a>`,
         },
       };
       const result = renderRichText(node_and_mark.input, options);
@@ -73,7 +84,8 @@ describe('renderRichText', () => {
     it(recursive.title, () => {
       const options: StoryblokRichTextRenderContext = {
         renderers: {
-          heading: ({ attrs, content }) => `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
+          heading: ({ attrs, content }) =>
+            `<h${attrs?.level} data-type="custom-heading" data-level="${attrs?.level}">${renderRichText(content, options)}</h${attrs?.level}>`,
           bold: ({ children }) => `<b data-type="custom-bold">${children}</b>`,
         },
       };
@@ -84,7 +96,7 @@ describe('renderRichText', () => {
       const options: StoryblokRichTextRenderContext = {
         renderers: {
           code_block: ({ attrs, content, context }) => {
-            const lang = (attrs?.class as string) || '';
+            const lang = (attrs?.class as string) || "";
             // User decides: class on <pre>, data-lang on <code>
             return `<pre class="language-${lang}"><code data-lang="${lang}">${renderRichText(content, context)}</code></pre>`;
           },
@@ -110,7 +122,7 @@ describe('renderRichText', () => {
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
       const options: StoryblokRichTextRenderContext = {
-        data: { prefix: '[prefix]' },
+        data: { prefix: "[prefix]" },
         renderers: {
           text: ({ text: content, context }) => {
             const data = context?.data as { prefix: string };
@@ -137,40 +149,42 @@ describe('renderRichText', () => {
       expect(html).toBe(infinite_loop.expected);
     });
   });
-  describe('blok nodes', () => {
+  describe("blok nodes", () => {
     const blokDoc: StoryblokRichTextDoc = {
-      type: 'doc',
-      content: [{
-        type: 'blok',
-        attrs: {
-          id: 'blok-123',
-          body: [
-            { _uid: '1', component: 'button', title: 'Click Me' },
-            { _uid: '2', component: 'button', title: 'Submit' },
-          ],
+      type: "doc",
+      content: [
+        {
+          type: "blok",
+          attrs: {
+            id: "blok-123",
+            body: [
+              { _uid: "1", component: "button", title: "Click Me" },
+              { _uid: "2", component: "button", title: "Submit" },
+            ],
+          },
         },
-      }],
+      ],
     };
 
-    it('warns when no custom renderer provided', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    it("warns when no custom renderer provided", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       renderRichText(blokDoc);
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('blok'));
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("blok"));
       warnSpy.mockRestore();
     });
 
-    it('returns empty string without custom renderer', () => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(renderRichText(blokDoc)).toBe('');
+    it("returns empty string without custom renderer", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(renderRichText(blokDoc)).toBe("");
       vi.restoreAllMocks();
     });
 
-    it('renders with custom blok renderer', () => {
+    it("renders with custom blok renderer", () => {
       const options: StoryblokRichTextRenderContext = {
         renderers: {
           blok: ({ attrs }) => {
             const body = Array.isArray(attrs?.body) ? attrs.body : [];
-            return body.map(b => `<button data-uid="${b._uid}">${b.title}</button>`).join('');
+            return body.map((b) => `<button data-uid="${b._uid}">${b.title}</button>`).join("");
           },
         },
       };
@@ -179,63 +193,65 @@ describe('renderRichText', () => {
       );
     });
 
-    it('handles empty body', () => {
+    it("handles empty body", () => {
       const emptyBlok: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'blok', attrs: { id: 'x', body: [] } }],
+        type: "doc",
+        content: [{ type: "blok", attrs: { id: "x", body: [] } }],
       };
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(renderRichText(emptyBlok)).toBe('');
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(renderRichText(emptyBlok)).toBe("");
       vi.restoreAllMocks();
     });
 
-    it('handles null body', () => {
+    it("handles null body", () => {
       const nullBlok: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'blok', attrs: { id: 'x', body: null } }],
+        type: "doc",
+        content: [{ type: "blok", attrs: { id: "x", body: null } }],
       };
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
-      expect(renderRichText(nullBlok)).toBe('');
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(renderRichText(nullBlok)).toBe("");
       vi.restoreAllMocks();
     });
 
-    it('works alongside other content', () => {
+    it("works alongside other content", () => {
       const options: StoryblokRichTextRenderContext = {
         renderers: {
-          blok: () => '<widget />',
+          blok: () => "<widget />",
         },
       };
       const content: StoryblokRichTextDoc = {
-        type: 'doc',
+        type: "doc",
         content: [
-          { type: 'paragraph', content: [text('Before')] },
-          { type: 'blok', attrs: { id: 'x', body: [{ _uid: '1', component: 'widget' }] } },
-          { type: 'paragraph', content: [text('After')] },
+          { type: "paragraph", content: [text("Before")] },
+          { type: "blok", attrs: { id: "x", body: [{ _uid: "1", component: "widget" }] } },
+          { type: "paragraph", content: [text("After")] },
         ],
       };
-      expect(renderRichText(content, options)).toBe('<p>Before</p><widget /><p>After</p>');
+      expect(renderRichText(content, options)).toBe("<p>Before</p><widget /><p>After</p>");
     });
   });
-  describe('xSS prevention', () => {
-    it('escapes HTML in text content', () => {
+  describe("xSS prevention", () => {
+    it("escapes HTML in text content", () => {
       const node = text('<script>alert("xss")</script>');
-      expect(renderRichText(node)).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+      expect(renderRichText(node)).toBe("&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;");
     });
 
-    it('escapes HTML in attributes', () => {
-      const node = text('Link', [linkMark('javascript:alert("xss")')]);
+    it("escapes HTML in attributes", () => {
+      const node = text("Link", [linkMark('javascript:alert("xss")')]);
       expect(renderRichText(node)).toContain('href="javascript:alert(&quot;xss&quot;)"');
     });
   });
 
-  describe('context data', () => {
-    it('passes data to custom node renderers', () => {
+  describe("context data", () => {
+    it("passes data to custom node renderers", () => {
       const doc: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'heading', attrs: { level: 1, textAlign: null }, content: [text('Title')] }],
+        type: "doc",
+        content: [
+          { type: "heading", attrs: { level: 1, textAlign: null }, content: [text("Title")] },
+        ],
       };
       const options: StoryblokRichTextRenderContext = {
-        data: { theme: 'dark', prefix: 'custom' },
+        data: { theme: "dark", prefix: "custom" },
         renderers: {
           heading: ({ attrs, children, context }) => {
             const data = context?.data as { theme: string; prefix: string };
@@ -246,13 +262,13 @@ describe('renderRichText', () => {
       expect(renderRichText(doc, options)).toBe('<h1 class="dark" data-prefix="custom">Title</h1>');
     });
 
-    it('passes data to custom mark renderers', () => {
+    it("passes data to custom mark renderers", () => {
       const doc: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [text('Bold text', [{ type: 'bold' }])] }],
+        type: "doc",
+        content: [{ type: "paragraph", content: [text("Bold text", [{ type: "bold" }])] }],
       };
       const options: StoryblokRichTextRenderContext = {
-        data: { className: 'highlight' },
+        data: { className: "highlight" },
         renderers: {
           bold: ({ children, context }) => {
             const data = context?.data as { className: string };
@@ -260,16 +276,20 @@ describe('renderRichText', () => {
           },
         },
       };
-      expect(renderRichText(doc, options)).toBe('<p><strong class="highlight">Bold text</strong></p>');
+      expect(renderRichText(doc, options)).toBe(
+        '<p><strong class="highlight">Bold text</strong></p>',
+      );
     });
 
-    it('passes data to custom link renderers', () => {
+    it("passes data to custom link renderers", () => {
       const doc: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [text('Click here', [linkMark('https://example.com')])] }],
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [text("Click here", [linkMark("https://example.com")])] },
+        ],
       };
       const options: StoryblokRichTextRenderContext = {
-        data: { trackingId: 'abc123' },
+        data: { trackingId: "abc123" },
         renderers: {
           link: ({ attrs, children, context }) => {
             const data = context?.data as { trackingId: string };
@@ -277,29 +297,31 @@ describe('renderRichText', () => {
           },
         },
       };
-      expect(renderRichText(doc, options)).toBe('<p><a href="https://example.com" data-tracking="abc123">Click here</a></p>');
+      expect(renderRichText(doc, options)).toBe(
+        '<p><a href="https://example.com" data-tracking="abc123">Click here</a></p>',
+      );
     });
 
-    it('allows custom text node renderer', () => {
+    it("allows custom text node renderer", () => {
       const doc: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [text('hello world')] }],
+        type: "doc",
+        content: [{ type: "paragraph", content: [text("hello world")] }],
       };
       const options: StoryblokRichTextRenderContext = {
         renderers: {
           text: ({ text: content }) => content.toUpperCase(),
         },
       };
-      expect(renderRichText(doc, options)).toBe('<p>HELLO WORLD</p>');
+      expect(renderRichText(doc, options)).toBe("<p>HELLO WORLD</p>");
     });
 
-    it('custom text renderer receives context with data', () => {
+    it("custom text renderer receives context with data", () => {
       const doc: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [text('hello')] }],
+        type: "doc",
+        content: [{ type: "paragraph", content: [text("hello")] }],
       };
       const options: StoryblokRichTextRenderContext = {
-        data: { wrap: '**' },
+        data: { wrap: "**" },
         renderers: {
           text: ({ text: content, context }) => {
             const data = context?.data as { wrap: string };
@@ -307,13 +329,13 @@ describe('renderRichText', () => {
           },
         },
       };
-      expect(renderRichText(doc, options)).toBe('<p>**hello**</p>');
+      expect(renderRichText(doc, options)).toBe("<p>**hello**</p>");
     });
 
-    it('custom text renderer with marks still applies marks', () => {
+    it("custom text renderer with marks still applies marks", () => {
       const doc: StoryblokRichTextDoc = {
-        type: 'doc',
-        content: [{ type: 'paragraph', content: [text('hello', [{ type: 'bold' }])] }],
+        type: "doc",
+        content: [{ type: "paragraph", content: [text("hello", [{ type: "bold" }])] }],
       };
       const options: StoryblokRichTextRenderContext = {
         renderers: {
@@ -321,7 +343,7 @@ describe('renderRichText', () => {
         },
       };
       // Custom text renderer takes full control, marks are not applied
-      expect(renderRichText(doc, options)).toBe('<p>HELLO</p>');
+      expect(renderRichText(doc, options)).toBe("<p>HELLO</p>");
     });
   });
 });

@@ -1,26 +1,31 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'pathe';
-import chalk from 'chalk';
-import { createTwoFilesPatch } from 'diff';
+import { readFile } from "node:fs/promises";
+import { join } from "pathe";
+import chalk from "chalk";
+import { createTwoFilesPatch } from "diff";
 
-import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from '../types';
-import { applyDefaults, COMPONENT_DEFAULTS, isRecord } from '../utils';
-import { serializeComponent, serializeDatasource } from '../serialize';
-import { getMapiClient } from '../../../api';
-import { handleAPIError } from '../../../utils';
-import { fileExists, readDirectory } from '../../../utils/filesystem';
-import { toComponentCreate, toComponentUpdate, toDatasourceCreate, toDatasourceUpdate } from '../transform';
-import { buildGroupPathByUuid } from '../folders';
+import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from "../types";
+import { applyDefaults, COMPONENT_DEFAULTS, isRecord } from "../utils";
+import { serializeComponent, serializeDatasource } from "../serialize";
+import { getMapiClient } from "../../../api";
+import { handleAPIError } from "../../../utils";
+import { fileExists, readDirectory } from "../../../utils/filesystem";
+import {
+  toComponentCreate,
+  toComponentUpdate,
+  toDatasourceCreate,
+  toDatasourceUpdate,
+} from "../transform";
+import { buildGroupPathByUuid } from "../folders";
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [
-  'id',
-  'created_at',
-  'updated_at',
-  'real_name',
-  'all_presets',
-  'image',
-  'uuid',
+  "id",
+  "created_at",
+  "updated_at",
+  "real_name",
+  "all_presets",
+  "image",
+  "uuid",
 ] as const;
 
 /** Removes API-assigned fields from a raw changeset snapshot before sending as a create payload. */
@@ -34,9 +39,9 @@ function stripApiFields(payload: Record<string, unknown>): Record<string, unknow
 
 /** A single rollback operation derived by inverting a `ChangesetEntry`. */
 export interface RollbackOp {
-  type: 'component' | 'datasource' | 'folder';
+  type: "component" | "datasource" | "folder";
   name: string;
-  action: 'create' | 'update' | 'delete';
+  action: "create" | "update" | "delete";
   payload: Record<string, unknown>;
 }
 
@@ -47,7 +52,7 @@ export interface RollbackOp {
  * @returns Full file paths sorted newest-first. Empty array if the directory does not exist or has no `.json` files.
  */
 export async function listChangesets(basePath: string): Promise<string[]> {
-  const dir = join(basePath, 'schema', 'changesets');
+  const dir = join(basePath, "schema", "changesets");
 
   if (!(await fileExists(dir))) {
     return [];
@@ -55,10 +60,10 @@ export async function listChangesets(basePath: string): Promise<string[]> {
 
   const files = await readDirectory(dir);
   return files
-    .filter(f => f.endsWith('.json'))
+    .filter((f) => f.endsWith(".json"))
     .sort()
     .reverse()
-    .map(f => join(dir, f));
+    .map((f) => join(dir, f));
 }
 
 /**
@@ -69,7 +74,7 @@ export async function listChangesets(basePath: string): Promise<string[]> {
  * @throws If the file does not exist or cannot be parsed as JSON.
  */
 export async function loadChangeset(filePath: string): Promise<ChangesetData> {
-  const content = await readFile(filePath, 'utf-8');
+  const content = await readFile(filePath, "utf-8");
   return JSON.parse(content) as ChangesetData;
 }
 
@@ -89,12 +94,22 @@ export function buildRollbackOps(changeset: ChangesetData): RollbackOp[] {
 
   return changeset.changes.map((entry): RollbackOp => {
     switch (entry.action) {
-      case 'create':
-        return { type: entry.type, name: entry.name, action: 'delete', payload: {} };
-      case 'update':
-        return { type: entry.type, name: entry.name, action: 'update', payload: entry.before ?? {} };
-      case 'delete':
-        return { type: entry.type, name: entry.name, action: 'create', payload: entry.before ?? {} };
+      case "create":
+        return { type: entry.type, name: entry.name, action: "delete", payload: {} };
+      case "update":
+        return {
+          type: entry.type,
+          name: entry.name,
+          action: "update",
+          payload: entry.before ?? {},
+        };
+      case "delete":
+        return {
+          type: entry.type,
+          name: entry.name,
+          action: "create",
+          payload: entry.before ?? {},
+        };
       default:
         return { type: entry.type, name: entry.name, action: entry.action, payload: {} };
     }
@@ -102,11 +117,14 @@ export function buildRollbackOps(changeset: ChangesetData): RollbackOp[] {
 }
 
 /** Maps a changeset action to the rollback action that inverts it. */
-function rollbackAction(original: ChangesetEntry['action']): 'create' | 'update' | 'delete' {
+function rollbackAction(original: ChangesetEntry["action"]): "create" | "update" | "delete" {
   switch (original) {
-    case 'create': return 'delete';
-    case 'update': return 'update';
-    case 'delete': return 'create';
+    case "create":
+      return "delete";
+    case "update":
+      return "update";
+    case "delete":
+      return "create";
   }
 }
 
@@ -125,42 +143,42 @@ export function formatRollbackOutput(changes: ChangesetEntry[]): string {
   }
 
   const icons: Record<string, string> = {
-    create: chalk.green('+'),
-    update: chalk.yellow('~'),
-    delete: chalk.red('-'),
+    create: chalk.green("+"),
+    update: chalk.yellow("~"),
+    delete: chalk.red("-"),
   };
 
   const lines: string[] = [];
   const sections: [string, ChangesetEntry[]][] = [
-    ['Folders', byType.folder],
-    ['Components', byType.component],
-    ['Datasources', byType.datasource],
+    ["Folders", byType.folder],
+    ["Components", byType.component],
+    ["Datasources", byType.datasource],
   ];
 
   for (const [label, entries] of sections) {
-    if (entries.length === 0) { continue; }
+    if (entries.length === 0) {
+      continue;
+    }
     lines.push(chalk.bold(label));
 
     for (const entry of entries) {
       const action = rollbackAction(entry.action);
-      const icon = icons[action] ?? ' ';
-      const name = action === 'delete' ? chalk.red(entry.name) : entry.name;
+      const icon = icons[action] ?? " ";
+      const name = action === "delete" ? chalk.red(entry.name) : entry.name;
       lines.push(`  ${icon} ${name} ${chalk.dim(`(${action})`)}`);
 
       // For updates, diff current state (after) → restored state (before)
-      if (entry.action === 'update' && entry.before && entry.after) {
+      if (entry.action === "update" && entry.before && entry.after) {
         let fromStr: string;
         let toStr: string;
 
-        if (entry.type === 'component') {
+        if (entry.type === "component") {
           fromStr = serializeComponent(applyDefaults(entry.after, COMPONENT_DEFAULTS));
           toStr = serializeComponent(applyDefaults(entry.before, COMPONENT_DEFAULTS));
-        }
-        else if (entry.type === 'datasource') {
+        } else if (entry.type === "datasource") {
           fromStr = serializeDatasource(entry.after);
           toStr = serializeDatasource(entry.before);
-        }
-        else {
+        } else {
           continue;
         }
 
@@ -170,28 +188,30 @@ export function formatRollbackOutput(changes: ChangesetEntry[]): string {
             `restore/${entry.name}`,
             fromStr,
             toStr,
-            'current',
-            'restore',
+            "current",
+            "restore",
           );
-          for (const line of patch.split('\n')) {
-            if (line.startsWith('+') && !line.startsWith('+++')) {
+          for (const line of patch.split("\n")) {
+            if (line.startsWith("+") && !line.startsWith("+++")) {
               lines.push(`    ${chalk.green(line)}`);
-            }
-            else if (line.startsWith('-') && !line.startsWith('---')) {
+            } else if (line.startsWith("-") && !line.startsWith("---")) {
               lines.push(`    ${chalk.red(line)}`);
             }
           }
         }
       }
     }
-    lines.push('');
+    lines.push("");
   }
 
-  return lines.join('\n').trimEnd();
+  return lines.join("\n").trimEnd();
 }
 
 /** A resolved component group: its numeric id and server uuid. */
-interface GroupRef { id: number; uuid: string }
+interface GroupRef {
+  id: number;
+  uuid: string;
+}
 
 /**
  * Builds a `slug path → { id, uuid }` map from the live remote component groups.
@@ -206,15 +226,17 @@ function buildGroupRefByPath(remote: RemoteSchemaData): Map<string, GroupRef> {
   const byPath = new Map<string, GroupRef>();
   for (const folder of folders) {
     const segments = pathByUuid.get(folder.uuid);
-    if (segments?.length) { byPath.set(segments.join('/'), { id: folder.id, uuid: folder.uuid }); }
+    if (segments?.length) {
+      byPath.set(segments.join("/"), { id: folder.id, uuid: folder.uuid });
+    }
   }
   return byPath;
 }
 
 /** The parent slug path of a folder path, or `null` for a root folder. */
 function parentPathOf(path: string): string | null {
-  const segments = path.split('/');
-  return segments.length > 1 ? segments.slice(0, -1).join('/') : null;
+  const segments = path.split("/");
+  return segments.length > 1 ? segments.slice(0, -1).join("/") : null;
 }
 
 /**
@@ -227,11 +249,17 @@ function parentPathOf(path: string): string | null {
  * as folders are recreated; entries not in the map (groups this push never
  * touched) are left as-is.
  */
-function remapGroupUuids(payload: Record<string, unknown>, uuidMap: Map<string, string>): Record<string, unknown> {
-  if (uuidMap.size === 0) { return payload; }
+function remapGroupUuids(
+  payload: Record<string, unknown>,
+  uuidMap: Map<string, string>,
+): Record<string, unknown> {
+  if (uuidMap.size === 0) {
+    return payload;
+  }
   const result = { ...payload };
-  if (typeof result.component_group_uuid === 'string') {
-    result.component_group_uuid = uuidMap.get(result.component_group_uuid) ?? result.component_group_uuid;
+  if (typeof result.component_group_uuid === "string") {
+    result.component_group_uuid =
+      uuidMap.get(result.component_group_uuid) ?? result.component_group_uuid;
   }
   if (isRecord(result.schema)) {
     const schema: Record<string, unknown> = {};
@@ -239,11 +267,11 @@ function remapGroupUuids(payload: Record<string, unknown>, uuidMap: Map<string, 
       if (isRecord(field) && Array.isArray(field.component_group_whitelist)) {
         schema[key] = {
           ...field,
-          component_group_whitelist: field.component_group_whitelist.map(uuid =>
-            (typeof uuid === 'string' ? uuidMap.get(uuid) ?? uuid : uuid)),
+          component_group_whitelist: field.component_group_whitelist.map((uuid) =>
+            typeof uuid === "string" ? (uuidMap.get(uuid) ?? uuid) : uuid,
+          ),
         };
-      }
-      else {
+      } else {
         schema[key] = field;
       }
     }
@@ -278,9 +306,9 @@ export async function executeRollback(
   let updated = 0;
   let deleted = 0;
 
-  const componentOps = ops.filter(op => op.type === 'component');
-  const datasourceOps = ops.filter(op => op.type === 'datasource');
-  const folderOps = ops.filter(op => op.type === 'folder');
+  const componentOps = ops.filter((op) => op.type === "component");
+  const datasourceOps = ops.filter((op) => op.type === "datasource");
+  const folderOps = ops.filter((op) => op.type === "folder");
 
   // Live group state (path → { id, uuid }), grown as folders are recreated, plus
   // an old→new uuid map so restored components point at the recreated groups.
@@ -290,20 +318,23 @@ export async function executeRollback(
   // 1. Folder creates (parent-first): recreate groups the push deleted. Each
   //    gets a fresh server uuid; record old→new so components can be remapped.
   const folderCreates = folderOps
-    .filter(o => o.action === 'create')
-    .sort((a, b) => a.name.split('/').length - b.name.split('/').length);
+    .filter((o) => o.action === "create")
+    .sort((a, b) => a.name.split("/").length - b.name.split("/").length);
   for (const op of folderCreates) {
     const existing = groupRefByPath.get(op.name);
-    const oldUuid = typeof op.payload.uuid === 'string' ? op.payload.uuid : undefined;
+    const oldUuid = typeof op.payload.uuid === "string" ? op.payload.uuid : undefined;
     // Idempotent: if the group already exists (e.g. a re-run), reuse it instead
     // of creating a duplicate — but still record the uuid remap.
     if (existing) {
-      if (oldUuid) { groupUuidMap.set(oldUuid, existing.uuid); }
+      if (oldUuid) {
+        groupUuidMap.set(oldUuid, existing.uuid);
+      }
       continue;
     }
     const parentPath = parentPathOf(op.name);
-    const parentId = parentPath ? groupRefByPath.get(parentPath)?.id ?? null : null;
-    const name = typeof op.payload.name === 'string' ? op.payload.name : op.name.split('/').pop() ?? op.name;
+    const parentId = parentPath ? (groupRefByPath.get(parentPath)?.id ?? null) : null;
+    const name =
+      typeof op.payload.name === "string" ? op.payload.name : (op.name.split("/").pop() ?? op.name);
     try {
       const res = await client.componentFolders.create({
         path: { space_id: spaceIdNum },
@@ -313,18 +344,23 @@ export async function executeRollback(
       const group = res.data?.component_group;
       if (group?.id != null && group.uuid) {
         groupRefByPath.set(op.name, { id: group.id, uuid: group.uuid });
-        if (oldUuid) { groupUuidMap.set(oldUuid, group.uuid); }
+        if (oldUuid) {
+          groupUuidMap.set(oldUuid, group.uuid);
+        }
         created++;
       }
-    }
-    catch (error) {
-      handleAPIError('push_component_folder', error as Error, `Failed to recreate folder ${op.name}`);
+    } catch (error) {
+      handleAPIError(
+        "push_component_folder",
+        error as Error,
+        `Failed to recreate folder ${op.name}`,
+      );
     }
   }
 
   // 2. Component creates/updates
-  for (const op of componentOps.filter(o => o.action !== 'delete')) {
-    if (op.action === 'create') {
+  for (const op of componentOps.filter((o) => o.action !== "delete")) {
+    if (op.action === "create") {
       const payload = toComponentCreate(remapGroupUuids(stripApiFields(op.payload), groupUuidMap));
       try {
         await client.components.create({
@@ -333,15 +369,15 @@ export async function executeRollback(
           throwOnError: true,
         });
         created++;
+      } catch (error) {
+        handleAPIError("push_component", error as Error, `Failed to create component ${op.name}`);
       }
-      catch (error) {
-        handleAPIError('push_component', error as Error, `Failed to create component ${op.name}`);
-      }
-    }
-    else if (op.action === 'update') {
+    } else if (op.action === "update") {
       const existing = remote.components.get(op.name);
       if (existing?.id) {
-        const payload = toComponentUpdate(remapGroupUuids(stripApiFields(op.payload), groupUuidMap));
+        const payload = toComponentUpdate(
+          remapGroupUuids(stripApiFields(op.payload), groupUuidMap),
+        );
         try {
           await client.components.update(existing.id, {
             path: { space_id: spaceIdNum },
@@ -349,17 +385,20 @@ export async function executeRollback(
             throwOnError: true,
           });
           updated++;
-        }
-        catch (error) {
-          handleAPIError('update_component', error as Error, `Failed to update component ${op.name}`);
+        } catch (error) {
+          handleAPIError(
+            "update_component",
+            error as Error,
+            `Failed to update component ${op.name}`,
+          );
         }
       }
     }
   }
 
   // 3. Datasource creates/updates
-  for (const op of datasourceOps.filter(o => o.action !== 'delete')) {
-    if (op.action === 'create') {
+  for (const op of datasourceOps.filter((o) => o.action !== "delete")) {
+    if (op.action === "create") {
       const payload = toDatasourceCreate(stripApiFields(op.payload));
       try {
         await client.datasources.create({
@@ -368,12 +407,10 @@ export async function executeRollback(
           throwOnError: true,
         });
         created++;
+      } catch (error) {
+        handleAPIError("push_datasource", error as Error, `Failed to create datasource ${op.name}`);
       }
-      catch (error) {
-        handleAPIError('push_datasource', error as Error, `Failed to create datasource ${op.name}`);
-      }
-    }
-    else if (op.action === 'update') {
+    } else if (op.action === "update") {
       const existing = remote.datasources.get(op.name);
       if (existing?.id) {
         const payload = toDatasourceUpdate(stripApiFields(op.payload), existing);
@@ -384,16 +421,19 @@ export async function executeRollback(
             throwOnError: true,
           });
           updated++;
-        }
-        catch (error) {
-          handleAPIError('update_datasource', error as Error, `Failed to update datasource ${op.name}`);
+        } catch (error) {
+          handleAPIError(
+            "update_datasource",
+            error as Error,
+            `Failed to update datasource ${op.name}`,
+          );
         }
       }
     }
   }
 
   // 4. Datasource deletes
-  for (const op of datasourceOps.filter(o => o.action === 'delete')) {
+  for (const op of datasourceOps.filter((o) => o.action === "delete")) {
     const existing = remote.datasources.get(op.name);
     if (existing?.id) {
       try {
@@ -402,15 +442,18 @@ export async function executeRollback(
           throwOnError: true,
         });
         deleted++;
-      }
-      catch (error) {
-        handleAPIError('delete_datasource', error as Error, `Failed to delete datasource ${op.name}`);
+      } catch (error) {
+        handleAPIError(
+          "delete_datasource",
+          error as Error,
+          `Failed to delete datasource ${op.name}`,
+        );
       }
     }
   }
 
   // 5. Component deletes
-  for (const op of componentOps.filter(o => o.action === 'delete')) {
+  for (const op of componentOps.filter((o) => o.action === "delete")) {
     const existing = remote.components.get(op.name);
     if (existing?.id) {
       try {
@@ -419,9 +462,8 @@ export async function executeRollback(
           throwOnError: true,
         });
         deleted++;
-      }
-      catch (error) {
-        handleAPIError('delete_component', error as Error, `Failed to delete component ${op.name}`);
+      } catch (error) {
+        handleAPIError("delete_component", error as Error, `Failed to delete component ${op.name}`);
       }
     }
   }
@@ -430,20 +472,25 @@ export async function executeRollback(
   //    every component has been restored off them. Ids come from the live remote
   //    (grown with any groups recreated above).
   const folderDeletes = folderOps
-    .filter(o => o.action === 'delete')
-    .sort((a, b) => b.name.split('/').length - a.name.split('/').length);
+    .filter((o) => o.action === "delete")
+    .sort((a, b) => b.name.split("/").length - a.name.split("/").length);
   for (const op of folderDeletes) {
     const ref = groupRefByPath.get(op.name);
-    if (!ref) { continue; }
+    if (!ref) {
+      continue;
+    }
     try {
       await client.componentFolders.delete(ref.id, {
         path: { space_id: spaceIdNum },
         throwOnError: true,
       });
       deleted++;
-    }
-    catch (error) {
-      handleAPIError('delete_component_folder', error as Error, `Failed to delete folder ${op.name}`);
+    } catch (error) {
+      handleAPIError(
+        "delete_component_folder",
+        error as Error,
+        `Failed to delete folder ${op.name}`,
+      );
     }
   }
 

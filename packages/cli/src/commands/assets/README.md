@@ -4,8 +4,10 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
 
 ## Subcommands
 
-- [`pull`](./pull/README.md): Download assets from your Storyblok space, and optionally from the organization's shared libraries.
-- [`push`](./push/README.md): Upload assets to your Storyblok space, or to the organization's shared libraries.
+- [`pull`](./pull/README.md): Download assets from your Storyblok space, and optionally from the
+  organization's shared libraries.
+- [`push`](./push/README.md): Upload assets to your Storyblok space, or to the organization's shared
+  libraries.
 
 > See each subcommand for detailed usage, options, and examples.
 
@@ -14,13 +16,15 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
 ### Space-to-Space Migration
 
 1. Export assets from the source space: `storyblok assets pull --space SOURCE_ID`.
-2. Push assets into the target space (reusing exported assets via `--from`): `storyblok assets push --space TARGET_ID --from SOURCE_ID`.
+2. Push assets into the target space (reusing exported assets via `--from`):
+   `storyblok assets push --space TARGET_ID --from SOURCE_ID`.
 
 ### Third-Party CMS to Storyblok
 
 1. Export binaries and metadata from the source system.
 2. Place assets under `.storyblok/assets/TARGET_ID` as file+JSON pairs.
-3. Push assets into Storyblok: `storyblok assets push --space TARGET_ID` (use `--dry-run` first to validate).
+3. Push assets into Storyblok: `storyblok assets push --space TARGET_ID` (use `--dry-run` first to
+   validate).
 
 **Example asset payloads (set `id` to the source system values):**
 
@@ -50,8 +54,8 @@ The `assets` module provides tools to manage Storyblok assets and asset folders.
 
 **Example for folders:**
 
-Folders are stored in a flat list with parent references.
-In `.storyblok/assets/<space>/folders/`, you will find one JSON file per folder:
+Folders are stored in a flat list with parent references. In `.storyblok/assets/<space>/folders/`,
+you will find one JSON file per folder:
 
 ```json
 // wordpress -> Storyblok (.storyblok/assets/123/folders/marketing_100.json)
@@ -83,20 +87,31 @@ In `.storyblok/assets/<space>/folders/`, you will find one JSON file per folder:
 
 ## Asset Manifest
 
-The CLI maintains a manifest file at `.storyblok/assets/<space>/manifest.jsonl` (and `folders/manifest.jsonl`) to track the mapping between source IDs/filenames and the destination IDs/filenames. This is crucial for:
+The CLI maintains a manifest file at `.storyblok/assets/<space>/manifest.jsonl` (and
+`folders/manifest.jsonl`) to track the mapping between source IDs/filenames and the destination
+IDs/filenames. This is crucial for:
 
 - **Idempotency:** Preventing duplicate uploads if an asset has already been migrated.
-- **Reference Resolution:** Allowing the `stories` command to update asset references in your content using the new IDs.
+- **Reference Resolution:** Allowing the `stories` command to update asset references in your
+  content using the new IDs.
 
 ## The Role of `manifest.jsonl` and `folders/manifest.jsonl`
 
-The `manifest.jsonl` files created when running `storyblok assets push` act as a reference integrity backbone. Their role is critical for the following functions:
+The `manifest.jsonl` files created when running `storyblok assets push` act as a reference integrity
+backbone. Their role is critical for the following functions:
 
-1. **Identity Translation (Migration Mapping)**
-The manifests serve as a persistent translation table that maps "Source IDs" to "Target IDs".
+1. **Identity Translation (Migration Mapping)** The manifests serve as a persistent translation
+   table that maps "Source IDs" to "Target IDs".
    - **Space-to-Space:** It maps IDs from a source Storyblok space to a target space.
-   - **Third-Party CMS:** When migrating from systems like WordPress or Drupal, the manifest maps external IDs as the "old" keys, allowing the CLI to treat the external system as the source of truth.
-2. **Idempotency and Duplicate Prevention**
-Storyblok generates new, unique IDs upon creation. Without a manifest, the CLI has no way of knowing if a local file has been pushed before. The manifests ensure syncing works correctly. It helps the CLI to recognize that an item exists and updates the existing record instead of creating a duplicate.
-3. **Incremental Workflows**
-Manifests enable a "pull-modify-push" cycle. A user can pull a single asset to edit its metadata locally (e.g., updating an alt tag) and push it back. Because the manifest persists the relationship between the local file and the remote entity, the CLI correctly targets the existing item in the target space, even if the local source files were previously cleaned up.
+   - **Third-Party CMS:** When migrating from systems like WordPress or Drupal, the manifest maps
+     external IDs as the "old" keys, allowing the CLI to treat the external system as the source of
+     truth.
+2. **Idempotency and Duplicate Prevention** Storyblok generates new, unique IDs upon creation.
+   Without a manifest, the CLI has no way of knowing if a local file has been pushed before. The
+   manifests ensure syncing works correctly. It helps the CLI to recognize that an item exists and
+   updates the existing record instead of creating a duplicate.
+3. **Incremental Workflows** Manifests enable a "pull-modify-push" cycle. A user can pull a single
+   asset to edit its metadata locally (e.g., updating an alt tag) and push it back. Because the
+   manifest persists the relationship between the local file and the remote entity, the CLI
+   correctly targets the existing item in the target space, even if the local source files were
+   previously cleaned up.

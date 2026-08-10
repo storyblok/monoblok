@@ -32,11 +32,11 @@ Create a `repo-manifest.json` file in the monorepo root to define packages for m
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `repo` | The GitHub repository in `owner/repo` format |
+| Field    | Description                                   |
+| -------- | --------------------------------------------- |
+| `repo`   | The GitHub repository in `owner/repo` format  |
 | `branch` | The branch to sync from the source repository |
-| `path` | The destination path in the monorepo |
+| `path`   | The destination path in the monorepo          |
 
 #### Add a subtree
 
@@ -83,7 +83,8 @@ pnpm monoblok subtree rebuild region-helper
 pnpm monoblok subtree rebuild region-helper --yes
 ```
 
-> **Warning**: The rebuild command deletes the package directory and re-imports it from the source repository.
+> **Warning**: The rebuild command deletes the package directory and re-imports it from the source
+> repository.
 
 ### License management
 
@@ -98,7 +99,8 @@ pnpm monoblok license check @storyblok/js
 
 After migrating a package into the monorepo:
 
-1. Remove the `prepack` script from the package's `package.json` if it runs a build command. The CI workflow builds all packages before publishing.
+1. Remove the `prepack` script from the package's `package.json` if it runs a build command. The CI
+   workflow builds all packages before publishing.
 2. Remove standalone CI/CD workflows (GitHub Actions, etc.) from the package directory.
 3. Update the package's README to point to the monorepo for issues and discussions.
 4. Archive the original standalone repository.

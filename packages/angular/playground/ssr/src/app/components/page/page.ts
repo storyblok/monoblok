@@ -1,10 +1,10 @@
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
 import {
   SbRichTextComponent,
   type SbBlokData,
   type SbRichTextDoc,
   StoryblokComponent,
-} from '@storyblok/angular';
+} from "@storyblok/angular";
 
 export interface PageBlok {
   body?: SbBlokData[];
@@ -12,7 +12,7 @@ export interface PageBlok {
 }
 
 @Component({
-  selector: 'app-page',
+  selector: "app-page",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [SbRichTextComponent, StoryblokComponent],

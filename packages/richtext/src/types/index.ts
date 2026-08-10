@@ -20,7 +20,7 @@ export interface StoryblokRichTextImageOptions {
   /**
    * Loading strategy for the image. 'lazy' loads the image when it enters the viewport. 'eager' loads the image immediately.
    */
-  loading: 'lazy' | 'eager';
+  loading: "lazy" | "eager";
 
   /**
    * Optional filters that can be applied to the image to adjust its appearance.
@@ -38,8 +38,8 @@ export interface StoryblokRichTextImageOptions {
   filters: Partial<{
     blur: number;
     brightness: number;
-    fill: 'transparent';
-    format: 'webp' | 'png' | 'jpg';
+    fill: "transparent";
+    format: "webp" | "png" | "jpg";
     grayscale: boolean;
     quality: number;
     rotate: 0 | 90 | 180 | 270;

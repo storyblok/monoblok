@@ -12,17 +12,18 @@
  */
 export function slugifyFolderPath(displayPath: string): string {
   return displayPath
-    .split('/')
-    .map(segment =>
-      segment
-        .toString()
-        .toLowerCase()
-        .replace(/\s+/g, '-') // spaces → single dash
-        .replace(/[^\w-]+/g, '') // drop non-word chars
-        .replace(/-{2,}/g, '-') // collapse repeated dashes
-        .replace(/^-+/, '') // trim leading dashes
-        .replace(/-+$/, ''), // trim trailing dashes
+    .split("/")
+    .map(
+      (segment) =>
+        segment
+          .toString()
+          .toLowerCase()
+          .replace(/\s+/g, "-") // spaces → single dash
+          .replace(/[^\w-]+/g, "") // drop non-word chars
+          .replace(/-{2,}/g, "-") // collapse repeated dashes
+          .replace(/^-+/, "") // trim leading dashes
+          .replace(/-+$/, ""), // trim trailing dashes
     )
     .filter(Boolean)
-    .join('/');
+    .join("/");
 }

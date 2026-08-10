@@ -1,5 +1,5 @@
-import { escapeHtml } from './utils';
-import { optimizeImage } from './images-optimization';
+import { escapeHtml } from "./utils";
+import { optimizeImage } from "./images-optimization";
 import {
   areLinkMarksEqual,
   attrsToHtmlString,
@@ -11,18 +11,18 @@ import {
   processAttrs,
   resolveTag,
   styleToString,
-} from './static';
+} from "./static";
 import type {
   StoryblokRichTextElement,
   StoryblokRichTextInput,
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
-} from './static';
+} from "./static";
 import type {
   RichTextFieldValueTextNode,
   RichTextMark,
   RichTextNode,
-} from './generated/overlay/types.gen';
+} from "./generated/overlay/types.gen";
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
@@ -45,7 +45,7 @@ export function renderRichText(
   context?: StoryblokRichTextRenderContext,
 ): string {
   const nodes = normalizeNodes(document);
-  return nodes?.length ? renderChildren(nodes, context) : '';
+  return nodes?.length ? renderChildren(nodes, context) : "";
 }
 
 type NodeRenderer = (
@@ -63,23 +63,18 @@ type MarkRenderer = (
 
 /** Returns the `attrs` object of a node as a plain record, or undefined when absent. */
 function nodeAttrs(node: RichTextNode): Record<string, unknown> | undefined {
-  return 'attrs' in node ? (node.attrs as Record<string, unknown>) : undefined;
+  return "attrs" in node ? (node.attrs as Record<string, unknown>) : undefined;
 }
 
 /** Renders a single node to HTML. */
-function renderNode(
-  node: RichTextNode,
-  context?: StoryblokRichTextRenderContext,
-): string {
-  const content
-    = node.type !== 'text' && 'content' in node && node.content
+function renderNode(node: RichTextNode, context?: StoryblokRichTextRenderContext): string {
+  const content =
+    node.type !== "text" && "content" in node && node.content
       ? renderChildren(node.content, context)
-      : '';
+      : "";
 
   // Custom renderer takes full control
-  const customRenderer = context?.renderers?.[node.type] as
-    | NodeRenderer
-    | undefined;
+  const customRenderer = context?.renderers?.[node.type] as NodeRenderer | undefined;
   if (customRenderer) {
     // When passing context to a custom renderer, exclude that renderer type
     // to prevent infinite loops if the custom renderer calls renderRichText internally
@@ -96,13 +91,13 @@ function renderNode(
     });
   }
 
-  if (node.type === 'text') {
+  if (node.type === "text") {
     return renderTextNode(node, node.marks, context);
   }
 
-  if (node.type === 'blok') {
+  if (node.type === "blok") {
     console.warn('"blok" nodes require a custom renderer in renderRichText.');
-    return '';
+    return "";
   }
 
   const tag = resolveTag(node);
@@ -112,7 +107,7 @@ function renderNode(
     return content;
   }
 
-  if (node.type === 'image' && context?.optimizeImage) {
+  if (node.type === "image" && context?.optimizeImage) {
     return renderOptimizedImage(node, context);
   }
 
@@ -123,43 +118,35 @@ function renderNode(
     return `<${tag}${htmlAttrs}>`;
   }
 
-  if (node.type === 'table') {
+  if (node.type === "table") {
     return `<${tag}${htmlAttrs}>${renderTableRows(node.content, context)}</${tag}>`;
   }
 
   const staticChildren = getStaticChildren(node);
   if (staticChildren) {
-    const inner = renderStaticStructure(
-      node.type,
-      staticChildren,
-      attrs,
-      content,
-    );
+    const inner = renderStaticStructure(node.type, staticChildren, attrs, content);
     return `<${tag}>${inner}</${tag}>`;
   }
 
-  if (node.type === 'emoji') {
-    const emoji = ('attrs' in node ? node.attrs?.emoji : undefined) as string | undefined;
-    return `<${tag}${htmlAttrs}>${escapeHtml(emoji ?? '')}</${tag}>`;
+  if (node.type === "emoji") {
+    const emoji = ("attrs" in node ? node.attrs?.emoji : undefined) as string | undefined;
+    return `<${tag}${htmlAttrs}>${escapeHtml(emoji ?? "")}</${tag}>`;
   }
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
 
 /** Renders an image node with optimization applied. */
 function renderOptimizedImage(
-  node: Extract<RichTextNode, { type: 'image' }>,
+  node: Extract<RichTextNode, { type: "image" }>,
   context: StoryblokRichTextRenderContext,
 ): string {
-  const attrs = ('attrs' in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
+  const attrs = ("attrs" in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
 
   let finalAttrs: Record<string, unknown> = { ...attrs };
 
   if (src) {
-    const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(
-      src,
-      context.optimizeImage,
-    );
+    const { src: optimizedSrc, attrs: extraAttrs } = optimizeImage(src, context.optimizeImage);
 
     finalAttrs = {
       ...finalAttrs,
@@ -168,8 +155,8 @@ function renderOptimizedImage(
     };
   }
 
-  const htmlAttrs = buildHtmlAttrs('image', finalAttrs);
-  return htmlAttrs ? `<img${htmlAttrs}>` : '<img>';
+  const htmlAttrs = buildHtmlAttrs("image", finalAttrs);
+  return htmlAttrs ? `<img${htmlAttrs}>` : "<img>";
 }
 
 /**
@@ -181,7 +168,7 @@ function renderChildren(
   children: RichTextNode[],
   context?: StoryblokRichTextRenderContext,
 ): string {
-  let result = '';
+  let result = "";
   let i = 0;
   const len = children.length;
 
@@ -192,16 +179,12 @@ function renderChildren(
     if (linkMark) {
       // Find end of link group (consecutive text nodes with same link)
       let end = i + 1;
-      while (
-        end < len
-        && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))
-      ) {
+      while (end < len && areLinkMarksEqual(linkMark, getTextNodeLinkMark(children[end]))) {
         end++;
       }
       result += renderLinkGroup(children, i, end, linkMark, context);
       i = end;
-    }
-    else {
+    } else {
       result += renderNode(node, context);
       i++;
     }
@@ -236,9 +219,7 @@ function wrapWithMark(
   context?: StoryblokRichTextRenderContext,
 ): string {
   // Custom mark renderer
-  const customRenderer = context?.renderers?.[mark.type] as
-    | MarkRenderer
-    | undefined;
+  const customRenderer = context?.renderers?.[mark.type] as MarkRenderer | undefined;
   if (customRenderer) {
     return customRenderer({
       ...(mark as RichTextMark),
@@ -252,8 +233,7 @@ function wrapWithMark(
     return content;
   }
 
-  const markAttrs
-    = 'attrs' in mark ? (mark.attrs as Record<string, unknown>) : undefined;
+  const markAttrs = "attrs" in mark ? (mark.attrs as Record<string, unknown>) : undefined;
   const htmlAttrs = buildHtmlAttrs(mark.type, markAttrs);
   return `<${tag}${htmlAttrs}>${content}</${tag}>`;
 }
@@ -265,24 +245,22 @@ function renderLinkGroup(
   children: RichTextNode[],
   start: number,
   end: number,
-  linkMark: RichTextMark & { type: 'link' },
+  linkMark: RichTextMark & { type: "link" },
   context?: StoryblokRichTextRenderContext,
 ): string {
-  let inner = '';
+  let inner = "";
   for (let i = start; i < end; i++) {
     const node = children[i];
     // Link groups are always text nodes; guard ensures TypeScript narrows correctly
-    if (node.type !== 'text') {
+    if (node.type !== "text") {
       continue;
     }
-    const innerMarks = node.marks?.filter(m => m.type !== 'link');
+    const innerMarks = node.marks?.filter((m) => m.type !== "link");
     inner += renderTextNode(node, innerMarks, context);
   }
 
   // Custom link renderer
-  const customRenderer = context?.renderers?.[linkMark.type] as
-    | MarkRenderer
-    | undefined;
+  const customRenderer = context?.renderers?.[linkMark.type] as MarkRenderer | undefined;
   if (customRenderer) {
     return customRenderer({
       ...(linkMark as RichTextMark),
@@ -308,7 +286,7 @@ function renderTableRows(
   context?: StoryblokRichTextRenderContext,
 ): string {
   if (!rows?.length) {
-    return '';
+    return "";
   }
 
   // Find where header rows end (contiguous tableHeader rows at start)
@@ -317,22 +295,22 @@ function renderTableRows(
     headerEnd++;
   }
 
-  let result = '';
+  let result = "";
 
   if (headerEnd > 0) {
-    result += '<thead>';
+    result += "<thead>";
     for (let i = 0; i < headerEnd; i++) {
       result += renderNode(rows[i], context);
     }
-    result += '</thead>';
+    result += "</thead>";
   }
 
   if (headerEnd < rows.length) {
-    result += '<tbody>';
+    result += "<tbody>";
     for (let i = headerEnd; i < rows.length; i++) {
       result += renderNode(rows[i], context);
     }
-    result += '</tbody>';
+    result += "</tbody>";
   }
 
   return result;
@@ -347,7 +325,7 @@ function renderStaticStructure(
   parentAttrs: Record<string, unknown> | undefined,
   content: string,
 ): string {
-  let result = '';
+  let result = "";
 
   for (const spec of specs) {
     const { tag, children, attrs: specAttrs } = spec;
@@ -356,8 +334,7 @@ function renderStaticStructure(
 
     if (isSelfClosing(tag)) {
       result += `<${tag}${htmlAttrs}>`;
-    }
-    else {
+    } else {
       const inner = children
         ? renderStaticStructure(type, children, parentAttrs, content)
         : content;
@@ -374,8 +351,8 @@ export function buildHtmlAttrs(
   attrs: Record<string, unknown> | undefined,
 ): string {
   const processed = processAttrs(type, attrs, {
-    colspan: 'colspan',
-    rowspan: 'rowspan',
+    colspan: "colspan",
+    rowspan: "rowspan",
   });
 
   const styleObj = processed.style as Record<string, unknown> | undefined;

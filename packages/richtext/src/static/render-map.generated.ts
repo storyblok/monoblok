@@ -1,68 +1,68 @@
 // THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
-import { resolveHeadingTag } from './dynamic-resolvers';
+import { resolveHeadingTag } from "./dynamic-resolvers";
 /**
  * Render config for Tiptap nodes
  */
 export const NODE_RENDER_MAP = {
   paragraph: {
-    tag: 'p',
+    tag: "p",
     content: true,
   },
   doc: null,
   text: null,
   emoji: {
-    tag: 'span',
+    tag: "span",
   },
   blockquote: {
-    tag: 'blockquote',
+    tag: "blockquote",
     content: true,
   },
   heading: {
     resolve: resolveHeadingTag,
   },
   bullet_list: {
-    tag: 'ul',
+    tag: "ul",
     content: true,
   },
   ordered_list: {
-    tag: 'ol',
+    tag: "ol",
     attrs: {
       order: 1,
     },
     content: true,
   },
   list_item: {
-    tag: 'li',
+    tag: "li",
     content: true,
   },
   code_block: {
-    tag: 'pre',
+    tag: "pre",
     children: [
       {
-        tag: 'code',
+        tag: "code",
         content: true,
       },
     ],
   },
   hard_break: {
-    tag: 'br',
+    tag: "br",
   },
   horizontal_rule: {
-    tag: 'hr',
+    tag: "hr",
   },
   image: {
-    tag: 'img',
+    tag: "img",
   },
   table: {
-    tag: 'table',
+    tag: "table",
     content: true,
   },
   tableRow: {
-    tag: 'tr',
+    tag: "tr",
     content: true,
   },
   tableCell: {
-    tag: 'td',
+    tag: "td",
     attrs: {
       colspan: 1,
       rowspan: 1,
@@ -70,7 +70,7 @@ export const NODE_RENDER_MAP = {
     content: true,
   },
   tableHeader: {
-    tag: 'th',
+    tag: "th",
     attrs: {
       colspan: 1,
       rowspan: 1,
@@ -85,56 +85,56 @@ export const NODE_RENDER_MAP = {
  */
 export const MARK_RENDER_MAP = {
   link: {
-    tag: 'a',
+    tag: "a",
     attrs: {
-      rel: 'noopener noreferrer nofollow',
-      linktype: 'url',
+      rel: "noopener noreferrer nofollow",
+      linktype: "url",
       custom: {},
     },
     content: true,
   },
   bold: {
-    tag: 'strong',
+    tag: "strong",
     content: true,
   },
   italic: {
-    tag: 'em',
+    tag: "em",
     content: true,
   },
   strike: {
-    tag: 's',
+    tag: "s",
     content: true,
   },
   underline: {
-    tag: 'u',
+    tag: "u",
     content: true,
   },
   code: {
-    tag: 'code',
+    tag: "code",
     content: true,
   },
   superscript: {
-    tag: 'sup',
+    tag: "sup",
     content: true,
   },
   subscript: {
-    tag: 'sub',
+    tag: "sub",
     content: true,
   },
   highlight: {
-    tag: 'mark',
+    tag: "mark",
     content: true,
   },
   textStyle: {
-    tag: 'span',
+    tag: "span",
     content: true,
   },
   anchor: {
-    tag: 'span',
+    tag: "span",
     content: true,
   },
   styled: {
-    tag: 'span',
+    tag: "span",
     content: true,
   },
 } as const;

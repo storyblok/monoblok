@@ -1,6 +1,39 @@
-import { buildBlockquoteExtension, buildBulletListExtension, buildCodeBlockExtension, buildComponentBlokExtension, buildEmojiExtension, buildHardBreakExtension, buildHeadingExtension, buildHorizontalRuleExtension, buildImageExtension, buildListItemExtension, buildOrderedListExtension, buildParagraphExtension, buildTableCellExtension, buildTableExtension, buildTableHeaderExtension, buildTableRowExtension, Document, Text } from './nodes';
-import type { ExtensionKey, ExtensionOptions } from './richtext-attrs';
-import { Bold, buildAnchorExtension, buildHighlightExtension, buildLinkExtension, buildStyledExtension, buildTextStyleExtension, Code, Italic, Reporter, Strike, Subscript, Superscript, Underline } from './marks';
+import {
+  buildBlockquoteExtension,
+  buildBulletListExtension,
+  buildCodeBlockExtension,
+  buildComponentBlokExtension,
+  buildEmojiExtension,
+  buildHardBreakExtension,
+  buildHeadingExtension,
+  buildHorizontalRuleExtension,
+  buildImageExtension,
+  buildListItemExtension,
+  buildOrderedListExtension,
+  buildParagraphExtension,
+  buildTableCellExtension,
+  buildTableExtension,
+  buildTableHeaderExtension,
+  buildTableRowExtension,
+  Document,
+  Text,
+} from "./nodes";
+import type { ExtensionKey, ExtensionOptions } from "./richtext-attrs";
+import {
+  Bold,
+  buildAnchorExtension,
+  buildHighlightExtension,
+  buildLinkExtension,
+  buildStyledExtension,
+  buildTextStyleExtension,
+  Code,
+  Italic,
+  Reporter,
+  Strike,
+  Subscript,
+  Superscript,
+  Underline,
+} from "./marks";
 
 export interface StyleOption {
   name: string;

@@ -3,6 +3,7 @@
 Test playground for `storyblok schema push`, `init`, and `rollback`.
 
 Includes:
+
 - Composability patterns
 - Versioning
 - Use in a webapp, fully typed and using discriminated types for full Content types experience
@@ -37,7 +38,7 @@ Includes:
 ```bash
 pnpm schema:init          # Scaffold a schema.ts from a existing space (intended for single use)
 pnpm schema:push          # Push main schema
-pnpm schema:rollback  
+pnpm schema:rollback
 pnpm composability        # Push the schema in composability/schema.ts
 pnpm ver:1.0.0             # Push version 1.0.0
 pnpm ver:1.1.0             # Push version 1.1.0

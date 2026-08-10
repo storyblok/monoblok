@@ -5,14 +5,17 @@
 
 ## Context
 
-[Why this project exists, what pain it solves, who asked for it. 2-4 sentences. Include stakeholders, architectural decisions, or references that shape the project.]
+[Why this project exists, what pain it solves, who asked for it. 2-4 sentences. Include
+stakeholders, architectural decisions, or references that shape the project.]
 
 ## Specifications
 
 [What needs to be built. Structure this to match the project's shape:
 
-- **Bold labels** for SDK/feature projects: **Features**, **Environments**, **Compatibility**, **Testing**, **DX**
-- Sub-sections (###) for CLI/infrastructure projects: config formats, command syntax, file structures, filtering options
+- **Bold labels** for SDK/feature projects: **Features**, **Environments**, **Compatibility**,
+  **Testing**, **DX**
+- Sub-sections (###) for CLI/infrastructure projects: config formats, command syntax, file
+  structures, filtering options
 - Priority tiers (C0/C1/C2) when features have clear priority levels
 - Flat bullet list for small projects
 

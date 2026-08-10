@@ -1,6 +1,6 @@
-import type { Component, Datasource, Field } from '../../types';
-import { isRecord } from './utils';
-import { slugifyPath } from './folders';
+import type { Component, Datasource, Field } from "../../types";
+import { isRecord } from "./utils";
+import { slugifyPath } from "./folders";
 
 /**
  * Maps a single content-shape DSL field to its MAPI wire form. The field's
@@ -22,36 +22,38 @@ export function mapFieldToWire(field: Record<string, unknown>): { name: string; 
   const value: Record<string, unknown> = { ...rest };
   if (allow !== undefined && Array.isArray(allow)) {
     const folderPaths = allow
-      .filter((entry): entry is { folder: string } => isRecord(entry) && typeof entry.folder === 'string')
-      .map(entry => slugifyPath(entry.folder));
-    const blockNames = allow.filter(entry => typeof entry === 'string');
+      .filter(
+        (entry): entry is { folder: string } => isRecord(entry) && typeof entry.folder === "string",
+      )
+      .map((entry) => slugifyPath(entry.folder));
+    const blockNames = allow.filter((entry) => typeof entry === "string");
     if (folderPaths.length > 0) {
       value.component_group_whitelist = folderPaths;
-      if (rest.type === 'bloks' || rest.type === 'richtext') {
+      if (rest.type === "bloks" || rest.type === "richtext") {
         value.restrict_components = true;
-        value.restrict_type = 'groups';
+        value.restrict_type = "groups";
       }
-    }
-    else {
+    } else {
       value.component_whitelist = blockNames;
-      if (rest.type === 'bloks') {
+      if (rest.type === "bloks") {
         value.restrict_components = true;
-        value.restrict_type = '';
+        value.restrict_type = "";
       }
     }
-  }
-  else if (allow !== undefined) {
+  } else if (allow !== undefined) {
     value.component_whitelist = allow;
-    if (rest.type === 'bloks') {
+    if (rest.type === "bloks") {
       value.restrict_components = true;
-      value.restrict_type = '';
+      value.restrict_type = "";
     }
   }
-  if (datasource !== undefined) { value.datasource_slug = datasource; }
+  if (datasource !== undefined) {
+    value.datasource_slug = datasource;
+  }
 
   // The wire `Field` is a loose, fully-optional index shape; the structural
   // contract is exercised by the map-to-wire tests rather than the compiler.
-  return { name: typeof name === 'string' ? name : '', value: value as Field };
+  return { name: typeof name === "string" ? name : "", value: value as Field };
 }
 
 /**
@@ -66,15 +68,21 @@ export function mapBlockToWire(block: Record<string, unknown>): Component {
   const schema: Record<string, Field> = {};
   if (Array.isArray(fields)) {
     for (const field of fields) {
-      if (!isRecord(field)) { continue; }
+      if (!isRecord(field)) {
+        continue;
+      }
       const { name, value } = mapFieldToWire(field);
-      if (name) { schema[name] = value; }
+      if (name) {
+        schema[name] = value;
+      }
     }
   }
 
   return {
     ...rest,
-    ...(folder !== undefined && { folder: typeof folder === 'string' ? slugifyPath(folder) : null }),
+    ...(folder !== undefined && {
+      folder: typeof folder === "string" ? slugifyPath(folder) : null,
+    }),
     schema,
   } as unknown as Component;
 }

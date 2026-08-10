@@ -1,11 +1,11 @@
-import { StoryblokFeature } from './components.feature';
+import { StoryblokFeature } from "./components.feature";
 import {
   EnvironmentProviders,
   inject,
   makeEnvironmentProviders,
   provideAppInitializer,
-} from '@angular/core';
-import { STORYBLOK_CONFIG, StoryblokClientConfig, StoryblokService } from './storyblok.service';
+} from "@angular/core";
+import { STORYBLOK_CONFIG, StoryblokClientConfig, StoryblokService } from "./storyblok.service";
 
 /**
  * Provides Storyblok configuration at the application level.

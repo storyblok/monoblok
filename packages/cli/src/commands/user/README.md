@@ -9,6 +9,7 @@ storyblok user
 ```
 
 This command will display:
+
 - Your friendly name
 - Your email address
 - The region you're logged into
@@ -22,11 +23,13 @@ This command will display:
 ## Examples
 
 1. View your user information:
+
 ```bash
 storyblok user
 ```
 
 Output example:
+
 ```
 Hi John Doe, you are currently logged in with john@example.com on eu region
 ```

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { SbVueRichTextProps } from '../../index.ts';
+import type { SbVueRichTextProps } from "../../index.ts";
 
 defineOptions({ inheritAttrs: false });
-defineProps<SbVueRichTextProps['bold']>();
+defineProps<SbVueRichTextProps["bold"]>();
 </script>
 
 <template>

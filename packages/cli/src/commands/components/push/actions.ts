@@ -1,11 +1,11 @@
-import { FileSystemError, handleAPIError } from '../../../utils';
-import type { Component, ComponentFolder, InternalTag, Preset } from '../constants';
-import type { ComponentCreate, ComponentUpdate, Field } from '../../../types';
-import type { ReadComponentsOptions } from './constants';
-import { resolvePath } from '../../../utils/filesystem';
-import chalk from 'chalk';
-import { getMapiClient } from '../../../api';
-import { type ComponentsData, loadComponents } from '../loader';
+import { FileSystemError, handleAPIError } from "../../../utils";
+import type { Component, ComponentFolder, InternalTag, Preset } from "../constants";
+import type { ComponentCreate, ComponentUpdate, Field } from "../../../types";
+import type { ReadComponentsOptions } from "./constants";
+import { resolvePath } from "../../../utils/filesystem";
+import chalk from "chalk";
+import { getMapiClient } from "../../../api";
+import { type ComponentsData, loadComponents } from "../loader";
 
 export type { ComponentsData };
 
@@ -15,13 +15,15 @@ export type { ComponentsData };
  * `Record<string, Field>` shape expected by create/update.
  */
 function isSchemaField(value: unknown): value is Field {
-  return typeof value === 'object' && value !== null && 'type' in value;
+  return typeof value === "object" && value !== null && "type" in value;
 }
 
 function toWritableSchema(
   schema: Record<string, unknown> | undefined,
 ): Record<string, Field> | undefined {
-  if (!schema) { return undefined; }
+  if (!schema) {
+    return undefined;
+  }
   const result: Record<string, Field> = {};
   for (const [key, value] of Object.entries(schema)) {
     if (isSchemaField(value)) {
@@ -36,15 +38,18 @@ function toWritableSchema(
  * the create/update request shape (`number[]`) — a known upstream inconsistency
  * where the component serializer returns tag IDs as strings.
  */
-function toRequestTagIds(
-  tagIds: ReadonlyArray<string | number> | undefined,
-): number[] | undefined {
-  if (!tagIds) { return undefined; }
-  return tagIds.map(id => Number(id));
+function toRequestTagIds(tagIds: ReadonlyArray<string | number> | undefined): number[] | undefined {
+  if (!tagIds) {
+    return undefined;
+  }
+  return tagIds.map((id) => Number(id));
 }
 
 // Component actions
-export const pushComponent = async (space: string, component: ComponentCreate): Promise<Component | undefined> => {
+export const pushComponent = async (
+  space: string,
+  component: ComponentCreate,
+): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -58,13 +63,16 @@ export const pushComponent = async (space: string, component: ComponentCreate): 
     });
 
     return data?.component;
-  }
-  catch (error) {
-    handleAPIError('push_component', error as Error, `Failed to push component ${component.name}`);
+  } catch (error) {
+    handleAPIError("push_component", error as Error, `Failed to push component ${component.name}`);
   }
 };
 
-export const updateComponent = async (space: string, componentId: number, component: ComponentUpdate): Promise<Component | undefined> => {
+export const updateComponent = async (
+  space: string,
+  componentId: number,
+  component: ComponentUpdate,
+): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -79,9 +87,12 @@ export const updateComponent = async (space: string, componentId: number, compon
     });
 
     return data?.component;
-  }
-  catch (error) {
-    handleAPIError('update_component', error as Error, `Failed to update component ${component.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component",
+      error as Error,
+      `Failed to update component ${component.name}`,
+    );
   }
 };
 
@@ -93,7 +104,18 @@ export const upsertComponent = async (
   // Extract only the fields relevant for create/update, dropping read-only
   // properties (`id`, `created_at`, `updated_at`, etc.) that exist on
   // `Component` but not on `ComponentCreate`/`ComponentUpdate`.
-  const { name, display_name, schema, is_root, is_nestable, component_group_uuid, color, icon, preview_field, internal_tag_ids } = component;
+  const {
+    name,
+    display_name,
+    schema,
+    is_root,
+    is_nestable,
+    component_group_uuid,
+    color,
+    icon,
+    preview_field,
+    internal_tag_ids,
+  } = component;
   const payload = {
     name,
     display_name: display_name ?? undefined,
@@ -109,15 +131,17 @@ export const upsertComponent = async (
 
   if (existingId) {
     return await updateComponent(space, existingId, payload);
-  }
-  else {
+  } else {
     return await pushComponent(space, payload);
   }
 };
 
 // Component group actions
 
-export const pushComponentGroup = async (space: string, componentGroup: ComponentFolder): Promise<ComponentFolder | undefined> => {
+export const pushComponentGroup = async (
+  space: string,
+  componentGroup: ComponentFolder,
+): Promise<ComponentFolder | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -132,13 +156,20 @@ export const pushComponentGroup = async (space: string, componentGroup: Componen
     });
 
     return data?.component_group;
-  }
-  catch (error) {
-    handleAPIError('push_component_group', error as Error, `Failed to push component group ${componentGroup.name}`);
+  } catch (error) {
+    handleAPIError(
+      "push_component_group",
+      error as Error,
+      `Failed to push component group ${componentGroup.name}`,
+    );
   }
 };
 
-export const updateComponentGroup = async (space: string, groupId: number, componentGroup: ComponentFolder): Promise<ComponentFolder | undefined> => {
+export const updateComponentGroup = async (
+  space: string,
+  groupId: number,
+  componentGroup: ComponentFolder,
+): Promise<ComponentFolder | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -153,9 +184,12 @@ export const updateComponentGroup = async (space: string, groupId: number, compo
     });
 
     return data?.component_group;
-  }
-  catch (error) {
-    handleAPIError('update_component_group', error as Error, `Failed to update component group ${componentGroup.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component_group",
+      error as Error,
+      `Failed to update component group ${componentGroup.name}`,
+    );
   }
 };
 
@@ -167,15 +201,17 @@ export const upsertComponentGroup = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentGroup(space, existingId, group);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponentGroup(space, group);
   }
 };
 
 // Component preset actions
-export const pushComponentPreset = async (space: string, preset: Preset): Promise<Preset | undefined> => {
+export const pushComponentPreset = async (
+  space: string,
+  preset: Preset,
+): Promise<Preset | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -197,13 +233,20 @@ export const pushComponentPreset = async (space: string, preset: Preset): Promis
     });
 
     return data?.preset;
-  }
-  catch (error) {
-    handleAPIError('push_component_preset', error as Error, `Failed to push component preset ${preset.name}`);
+  } catch (error) {
+    handleAPIError(
+      "push_component_preset",
+      error as Error,
+      `Failed to push component preset ${preset.name}`,
+    );
   }
 };
 
-export const updateComponentPreset = async (space: string, presetId: number, preset: Preset): Promise<Preset | undefined> => {
+export const updateComponentPreset = async (
+  space: string,
+  presetId: number,
+  preset: Preset,
+): Promise<Preset | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -225,9 +268,12 @@ export const updateComponentPreset = async (space: string, presetId: number, pre
     });
 
     return data?.preset;
-  }
-  catch (error) {
-    handleAPIError('update_component_preset', error as Error, `Failed to update component preset ${preset.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component_preset",
+      error as Error,
+      `Failed to update component preset ${preset.name}`,
+    );
   }
 };
 
@@ -239,8 +285,7 @@ export const upsertComponentPreset = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentPreset(space, existingId, preset);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponentPreset(space, preset);
   }
@@ -255,15 +300,21 @@ export const deleteComponentPreset = async (space: string, presetId: number): Pr
       path: { space_id: Number(space) },
       throwOnError: true,
     });
-  }
-  catch (error) {
-    handleAPIError('delete_component_preset', error as Error, `Failed to delete component preset ${presetId}`);
+  } catch (error) {
+    handleAPIError(
+      "delete_component_preset",
+      error as Error,
+      `Failed to delete component preset ${presetId}`,
+    );
   }
 };
 
 // Component internal tag actions
 
-export const pushComponentInternalTag = async (space: string, componentInternalTag: InternalTag): Promise<InternalTag | undefined> => {
+export const pushComponentInternalTag = async (
+  space: string,
+  componentInternalTag: InternalTag,
+): Promise<InternalTag | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -276,13 +327,20 @@ export const pushComponentInternalTag = async (space: string, componentInternalT
     });
 
     return data.internal_tag;
-  }
-  catch (error) {
-    handleAPIError('push_component_internal_tag', error as Error, `Failed to push component internal tag ${componentInternalTag.name}`);
+  } catch (error) {
+    handleAPIError(
+      "push_component_internal_tag",
+      error as Error,
+      `Failed to push component internal tag ${componentInternalTag.name}`,
+    );
   }
 };
 
-export const updateComponentInternalTag = async (space: string, tagId: number, componentInternalTag: InternalTag): Promise<InternalTag | undefined> => {
+export const updateComponentInternalTag = async (
+  space: string,
+  tagId: number,
+  componentInternalTag: InternalTag,
+): Promise<InternalTag | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -295,9 +353,12 @@ export const updateComponentInternalTag = async (space: string, tagId: number, c
     });
 
     return data.internal_tag;
-  }
-  catch (error) {
-    handleAPIError('update_component_internal_tag', error as Error, `Failed to update component internal tag ${componentInternalTag.name}`);
+  } catch (error) {
+    handleAPIError(
+      "update_component_internal_tag",
+      error as Error,
+      `Failed to update component internal tag ${componentInternalTag.name}`,
+    );
   }
 };
 
@@ -309,24 +370,23 @@ export const upsertComponentInternalTag = async (
   if (existingId) {
     // We know it exists, update directly
     return await updateComponentInternalTag(space, existingId, tag);
-  }
-  else {
+  } else {
     // New resource, create directly
     return await pushComponentInternalTag(space, tag);
   }
 };
 
 export const readComponentsFiles = async (
-  options: ReadComponentsOptions): Promise<ComponentsData> => {
+  options: ReadComponentsOptions,
+): Promise<ComponentsData> => {
   const { from, path, suffix } = options;
   const resolvedPath = resolvePath(path, `components/${from}`);
 
   let result: ComponentsData;
   try {
     result = await loadComponents(resolvedPath, { suffix });
-  }
-  catch (error) {
-    if (error instanceof FileSystemError && error.code !== 'ENOENT') {
+  } catch (error) {
+    if (error instanceof FileSystemError && error.code !== "ENOENT") {
       throw error;
     }
     const message = `No local components found for space ${chalk.bold(from)}. To push components, you need to pull them first:
@@ -337,19 +397,14 @@ export const readComponentsFiles = async (
 2. Then try pushing again:
    ${chalk.cyan(`storyblok components push --space <target_space> --from ${from}`)}`;
 
-    throw new FileSystemError(
-      'file_not_found',
-      'read',
-      error as Error,
-      message,
-    );
+    throw new FileSystemError("file_not_found", "read", error as Error, message);
   }
 
   if (!result.components.length) {
     throw new FileSystemError(
-      'file_not_found',
-      'read',
-      new Error('No component data found'),
+      "file_not_found",
+      "read",
+      new Error("No component data found"),
       `No components found in ${resolvedPath}. Please make sure you have pulled the components first.`,
     );
   }

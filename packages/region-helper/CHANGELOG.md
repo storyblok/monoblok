@@ -14,7 +14,8 @@
 
 ### Minor Changes
 
-- 71e62e6: feat: This update introduced new functions to handle region management based on the first bits of the space id, using space id with a range of 49 to 53 bits.
+- 71e62e6: feat: This update introduced new functions to handle region management based on the first
+  bits of the space id, using space id with a range of 49 to 53 bits.
 
 ## 1.1.0
 
@@ -32,7 +33,8 @@
 
 - d9f1892: feat: `getRegionName` and `region code` exported
 - 8fdf2f5: feat: export ranges from all the regions
-- 734fdb3: feat: export the `isSpaceIdWithinRange` method that validates whether a given spaceId is valid or not
+- 734fdb3: feat: export the `isSpaceIdWithinRange` method that validates whether a given spaceId is
+  valid or not
 
 ## 0.2.0
 
@@ -50,13 +52,14 @@
 
 ### Patch Changes
 
-- b7a8132: Since each Storyblok `space` belongs to a `region` and each region has its own API address,
-  we need an easy way of giving an spaceId, obtaining its `region` and also its respective API address
-  and this is what this packages does.
+- b7a8132: Since each Storyblok `space` belongs to a `region` and each region has its own API
+  address, we need an easy way of giving an spaceId, obtaining its `region` and also its respective
+  API address and this is what this packages does.
 
-  It provides two core methods, the `getRegion(spaceId: number)` and the `getRegionUrl(region: Region)`
-  where the first, based on a `spaceId` returns a region (that can be `eu`, `us`, `ca`, and `pa`) and the last
-  which receives a given `region` and returns its correspondent API address.
+  It provides two core methods, the `getRegion(spaceId: number)` and the
+  `getRegionUrl(region: Region)` where the first, based on a `spaceId` returns a region (that can be
+  `eu`, `us`, `ca`, and `pa`) and the last which receives a given `region` and returns its
+  correspondent API address.
 
   Here is the list of the supported `regions`:
 

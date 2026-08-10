@@ -7,7 +7,8 @@ description: Example of a detailed test plan for a CLI feature
 
 ## Environment setup
 
-Run everything from the repo root: the qa-engineer-manual scripts load `.env.qa-engineer-manual` from the current working directory.
+Run everything from the repo root: the qa-engineer-manual scripts load `.env.qa-engineer-manual`
+from the current working directory.
 
 ```bash
 pnpm nx build storyblok

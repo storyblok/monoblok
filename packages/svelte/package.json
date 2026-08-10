@@ -1,23 +1,32 @@
 {
   "name": "@storyblok/svelte",
-  "type": "module",
   "version": "7.2.4",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using Svelte.",
-  "author": "Storyblok",
-  "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/svelte#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/svelte"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
+  "files": [
+    "!dist/**/*.spec.*",
+    "!dist/**/*.test.*",
+    "dist"
+  ],
+  "type": "module",
   "sideEffects": [
     "**/*.css"
   ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "svelte": "./dist/index.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -25,15 +34,9 @@
       "import": "./dist/index.js"
     }
   },
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "!dist/**/*.spec.*",
-    "!dist/**/*.test.*",
-    "dist"
-  ],
-  "svelte": "./dist/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "pnpm package",
@@ -54,9 +57,6 @@
     "test:ui": "vp test --ui",
     "test:e2e:watch": "START_SERVER_AND_TEST_INSECURE=1 start-server-and-test playground https://localhost:5173/ cy:open",
     "test:coverage": "vp test run --coverage"
-  },
-  "peerDependencies": {
-    "svelte": "^5.0.0"
   },
   "dependencies": {
     "@storyblok/js": "workspace:*",
@@ -83,13 +83,13 @@
     "vite-plugin-dts": "^4.5.3",
     "vitest": "^4.1.10"
   },
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
   "release": {
     "branches": [
       "main"
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

@@ -1,13 +1,13 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: 'node',
+    environment: "node",
     include: [],
     typecheck: {
       enabled: true,
-      include: ['./test/types/**/*.test-d.ts'],
+      include: ["./test/types/**/*.test-d.ts"],
     },
   },
 });

@@ -1,4 +1,4 @@
-import { Octokit } from 'octokit';
+import { Octokit } from "octokit";
 
 let octokit: Octokit;
 let lastToken: string | undefined;

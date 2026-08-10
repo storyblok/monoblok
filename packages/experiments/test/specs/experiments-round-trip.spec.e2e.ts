@@ -33,22 +33,27 @@
  * The target space must have A/B testing (experiments) enabled.
  */
 
-import type { Assignment, Experiment, ExperimentEvent, ExperimentVariant } from '@storyblok/experiments';
-import { createApiClient } from '@storyblok/api-client';
-import { createManagementApiClient } from '@storyblok/management-api-client';
-import { assignVariant, createExperiments, resolveExperiment } from '@storyblok/experiments';
-import { fetchAdapter } from '@storyblok/experiments/adapters';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type {
+  Assignment,
+  Experiment,
+  ExperimentEvent,
+  ExperimentVariant,
+} from "@storyblok/experiments";
+import { createApiClient } from "@storyblok/api-client";
+import { createManagementApiClient } from "@storyblok/management-api-client";
+import { assignVariant, createExperiments, resolveExperiment } from "@storyblok/experiments";
+import { fetchAdapter } from "@storyblok/experiments/adapters";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);
 
-const COMPONENT_NAME = 'e2e_experiments_page';
-const EXPERIMENT_NAME = 'e2e_experiments_hero';
-const EXPERIMENT_PREFIX = 'e2e_experiments_';
-const STORY_SLUG_PREFIX = 'e2e-experiments-';
+const COMPONENT_NAME = "e2e_experiments_page";
+const EXPERIMENT_NAME = "e2e_experiments_hero";
+const EXPERIMENT_PREFIX = "e2e_experiments_";
+const STORY_SLUG_PREFIX = "e2e-experiments-";
 const ORIGINAL_SLUG = `${STORY_SLUG_PREFIX}home`;
-const VISITOR_ID = 'visitor-e2e';
+const VISITOR_ID = "visitor-e2e";
 
 const mapi = createManagementApiClient({
   personalAccessToken: token,
@@ -83,21 +88,21 @@ interface ExperimentsListResponse {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 /** Narrows the untyped CAPI `cdn/experiments` body to the package's payload shape. */
 function readExperimentsPayload(data: unknown): { experiments: Experiment[]; cv: number } {
-  if (!isRecord(data) || !Array.isArray(data.experiments) || typeof data.cv !== 'number') {
-    throw new TypeError('GET cdn/experiments did not return an { experiments, cv } payload');
+  if (!isRecord(data) || !Array.isArray(data.experiments) || typeof data.cv !== "number") {
+    throw new TypeError("GET cdn/experiments did not return an { experiments, cv } payload");
   }
   return { experiments: data.experiments as Experiment[], cv: data.cv };
 }
 
 /** Reads the slug of a story returned by the CAPI `cdn/stories/:slug` endpoint. */
 function readStorySlug(data: unknown): string {
-  if (!isRecord(data) || !isRecord(data.story) || typeof data.story.full_slug !== 'string') {
-    throw new TypeError('GET cdn/stories/:slug did not return a story');
+  if (!isRecord(data) || !isRecord(data.story) || typeof data.story.full_slug !== "string") {
+    throw new TypeError("GET cdn/stories/:slug did not return a story");
   }
   return data.story.full_slug;
 }
@@ -111,7 +116,7 @@ async function cleanup(): Promise<void> {
     }
     // Only draft or completed experiments can be deleted, so a running or
     // paused one must be completed first.
-    if (experiment.status === 'running' || experiment.status === 'paused') {
+    if (experiment.status === "running" || experiment.status === "paused") {
       await mapi.put(`${experimentsPath}/${experiment.id}/complete`, { throwOnError: false });
     }
     await mapi.delete(`${experimentsPath}/${experiment.id}`, { throwOnError: false });
@@ -134,7 +139,7 @@ async function cleanup(): Promise<void> {
   }
 }
 
-describe('@storyblok/experiments CDN round-trip', () => {
+describe("@storyblok/experiments CDN round-trip", () => {
   let previewToken: string;
   let experiments: Experiment[];
   let experiment: Experiment;
@@ -163,7 +168,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
           name: COMPONENT_NAME,
           is_root: true,
           is_nestable: false,
-          schema: { title: { type: 'text', pos: 0 } },
+          schema: { title: { type: "text", pos: 0 } },
         },
       },
     });
@@ -172,9 +177,9 @@ describe('@storyblok/experiments CDN round-trip', () => {
     const storyRes = await mapi.stories.create({
       body: {
         story: {
-          name: 'E2E Experiments Home',
+          name: "E2E Experiments Home",
           slug: ORIGINAL_SLUG,
-          content: { component: COMPONENT_NAME, title: 'Home' },
+          content: { component: COMPONENT_NAME, title: "Home" },
         },
       },
     });
@@ -186,17 +191,19 @@ describe('@storyblok/experiments CDN round-trip', () => {
       body: {
         experiment: {
           name: EXPERIMENT_NAME,
-          display_name: 'E2E Experiments Hero',
+          display_name: "E2E Experiments Hero",
           story_ids: [originalStoryId],
           experiment_variants_attributes: [
-            { name: 'control', display_name: 'Control', weight: 50, is_control: true },
-            { name: 'variant_b', display_name: 'Variant B', weight: 50, is_control: false },
+            { name: "control", display_name: "Control", weight: 50, is_control: true },
+            { name: "variant_b", display_name: "Variant B", weight: 50, is_control: false },
           ],
         },
       },
     });
     const experimentId = createRes.data!.experiment.id;
-    const variantB = createRes.data!.experiment.experiment_variants.find(variant => !variant.is_control)!;
+    const variantB = createRes.data!.experiment.experiment_variants.find(
+      (variant) => !variant.is_control,
+    )!;
 
     // 5. Map the original story to variant B; omitting variant_story_id duplicates a copy.
     const mappingRes = await mapi.post<CreateStoryMappingResponse>(
@@ -214,44 +221,46 @@ describe('@storyblok/experiments CDN round-trip', () => {
 
     // 8. Read the public experiments payload with the user's own client.
     const capi = createApiClient({ accessToken: previewToken });
-    const cdnRes = await capi.get('/v2/cdn/experiments');
+    const cdnRes = await capi.get("/v2/cdn/experiments");
     experiments = readExperimentsPayload(cdnRes.data).experiments;
-    experiment = experiments.find(candidate => candidate.name === EXPERIMENT_NAME)!;
+    experiment = experiments.find((candidate) => candidate.name === EXPERIMENT_NAME)!;
   });
 
   afterAll(cleanup);
 
-  describe('payload', () => {
-    it('returns the running experiment in the package Experiment shape', () => {
+  describe("payload", () => {
+    it("returns the running experiment in the package Experiment shape", () => {
       expect(experiment).toBeDefined();
-      expect(experiment.display_name).toBe('E2E Experiments Hero');
+      expect(experiment.display_name).toBe("E2E Experiments Hero");
       expect(Array.isArray(experiment.story_ids)).toBe(true);
       expect(experiment.variants.length).toBe(2);
 
       for (const variant of experiment.variants) {
-        expect(typeof variant.name).toBe('string');
-        expect(typeof variant.public_id).toBe('string');
-        expect(typeof variant.weight).toBe('number');
-        expect(typeof variant.is_control).toBe('boolean');
+        expect(typeof variant.name).toBe("string");
+        expect(typeof variant.public_id).toBe("string");
+        expect(typeof variant.weight).toBe("number");
+        expect(typeof variant.is_control).toBe("boolean");
         expect(Array.isArray(variant.story_mappings)).toBe(true);
       }
 
-      const variant = experiment.variants.find(candidate => !candidate.is_control)!;
-      const mapping = variant.story_mappings.find(candidate => candidate.original_slug === ORIGINAL_SLUG)!;
+      const variant = experiment.variants.find((candidate) => !candidate.is_control)!;
+      const mapping = variant.story_mappings.find(
+        (candidate) => candidate.original_slug === ORIGINAL_SLUG,
+      )!;
       expect(mapping.variant_slug).toBe(variantSlug);
     });
   });
 
-  describe('assignVariant', () => {
-    it('is deterministic for the same visitor and experiment', () => {
-      const first = assignVariant({ experiment, visitorId: 'visitor-determinism' });
-      const second = assignVariant({ experiment, visitorId: 'visitor-determinism' });
+  describe("assignVariant", () => {
+    it("is deterministic for the same visitor and experiment", () => {
+      const first = assignVariant({ experiment, visitorId: "visitor-determinism" });
+      const second = assignVariant({ experiment, visitorId: "visitor-determinism" });
 
       expect(first?.variant.public_id).toBeDefined();
       expect(first?.variant.public_id).toBe(second?.variant.public_id);
     });
 
-    it('buckets visitors across both real variants', () => {
+    it("buckets visitors across both real variants", () => {
       let controlVisitor: string | undefined;
       let variantVisitor: string | undefined;
 
@@ -260,8 +269,7 @@ describe('@storyblok/experiments CDN round-trip', () => {
         const assignment = assignVariant({ experiment, visitorId })!;
         if (assignment.variant.is_control) {
           controlVisitor ??= visitorId;
-        }
-        else {
+        } else {
           variantVisitor ??= visitorId;
         }
       }
@@ -271,20 +279,23 @@ describe('@storyblok/experiments CDN round-trip', () => {
     });
   });
 
-  describe('resolveExperiment', () => {
-    it('renders the original slug for the control variant', () => {
-      const control = experiment.variants.find(variant => variant.is_control)!;
+  describe("resolveExperiment", () => {
+    it("renders the original slug for the control variant", () => {
+      const control = experiment.variants.find((variant) => variant.is_control)!;
       const assignment = assignmentFor(control);
 
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
       expect(resolved.slug).toBe(ORIGINAL_SLUG);
       expect(resolved.variant?.is_control).toBe(true);
-      expect(resolved.exposure).toMatchObject({ type: 'exposure', experiment: { id: experiment.id } });
+      expect(resolved.exposure).toMatchObject({
+        type: "exposure",
+        experiment: { id: experiment.id },
+      });
     });
 
-    it('renders the mapped variant slug for a variant assignment', () => {
-      const variant = experiment.variants.find(candidate => !candidate.is_control)!;
+    it("renders the mapped variant slug for a variant assignment", () => {
+      const variant = experiment.variants.find((candidate) => !candidate.is_control)!;
       const assignment = assignmentFor(variant);
 
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
@@ -293,17 +304,17 @@ describe('@storyblok/experiments CDN round-trip', () => {
       expect(resolved.exposure?.variant.public_id).toBe(variant.public_id);
     });
 
-    it('passes the slug through unchanged when no experiment matches', () => {
-      const resolved = resolveExperiment({ experiments, slug: 'definitely-not-in-any-experiment' });
+    it("passes the slug through unchanged when no experiment matches", () => {
+      const resolved = resolveExperiment({ experiments, slug: "definitely-not-in-any-experiment" });
 
-      expect(resolved.slug).toBe('definitely-not-in-any-experiment');
+      expect(resolved.slug).toBe("definitely-not-in-any-experiment");
       expect(resolved.exposure).toBeUndefined();
     });
   });
 
-  describe('event delivery', () => {
-    it('produces an exposure event an adapter can consume', () => {
-      const variant = experiment.variants.find(candidate => !candidate.is_control)!;
+  describe("event delivery", () => {
+    it("produces an exposure event an adapter can consume", () => {
+      const variant = experiment.variants.find((candidate) => !candidate.is_control)!;
       const assignment = assignmentFor(variant);
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 
@@ -312,60 +323,70 @@ describe('@storyblok/experiments CDN round-trip', () => {
       adapter(resolved.exposure!);
 
       expect(captured).toHaveLength(1);
-      expect(captured[0]).toMatchObject({ type: 'exposure', experiment: { id: experiment.id } });
+      expect(captured[0]).toMatchObject({ type: "exposure", experiment: { id: experiment.id } });
     });
 
-    it('exposes fetchAdapter from the /adapters subpath', () => {
-      expect(typeof fetchAdapter).toBe('function');
+    it("exposes fetchAdapter from the /adapters subpath", () => {
+      expect(typeof fetchAdapter).toBe("function");
     });
   });
 
-  describe('createExperiments', () => {
-    it('attributes a conversion tracked from a separate instance to the rendered variant', async () => {
+  describe("createExperiments", () => {
+    it("attributes a conversion tracked from a separate instance to the rendered variant", async () => {
       // The SSR case, against a real payload: the render and the conversion are
       // different requests, so they get different factory instances with no
       // shared state. Bucketing is a deterministic hash of visitorId, so the
       // second instance has to reach the same variant as the first.
       const renderEvents: ExperimentEvent[] = [];
       const conversionEvents: ExperimentEvent[] = [];
-      const visitorId = 'visitor-factory';
+      const visitorId = "visitor-factory";
 
-      const render = createExperiments({ experiments, adapters: [event => renderEvents.push(event)] });
+      const render = createExperiments({
+        experiments,
+        adapters: [(event) => renderEvents.push(event)],
+      });
       const resolved = render.resolveExperiment({ slug: ORIGINAL_SLUG, visitorId });
       expect([ORIGINAL_SLUG, variantSlug]).toContain(resolved.slug);
 
-      const conversion = createExperiments({ experiments, adapters: [event => conversionEvents.push(event)] });
-      await conversion.track('signup', visitorId, { props: { plan: 'pro' }, value: 4900 });
+      const conversion = createExperiments({
+        experiments,
+        adapters: [(event) => conversionEvents.push(event)],
+      });
+      await conversion.track("signup", visitorId, { props: { plan: "pro" }, value: 4900 });
 
-      const exposure = renderEvents.find(event => event.type === 'exposure')!;
+      const exposure = renderEvents.find((event) => event.type === "exposure")!;
       expect(exposure).toBeDefined();
 
-      const tracked = conversionEvents.find(event => event.type === 'conversion' && event.name === 'signup')!;
+      const tracked = conversionEvents.find(
+        (event) => event.type === "conversion" && event.name === "signup",
+      )!;
       expect(tracked).toBeDefined();
       expect(tracked.visitorId).toBe(visitorId);
       expect(tracked.experiment.id).toBe(experiment.id);
       expect(tracked.variant.public_id).toBe(exposure.variant.public_id);
     });
 
-    it('still attributes the deprecated track(goal, props) form within one instance', async () => {
+    it("still attributes the deprecated track(goal, props) form within one instance", async () => {
       // Back-compat only: this form has no visitorId and reads assignments
       // remembered by `resolveExperiment` on this same instance, so it works
       // solely when both calls happen in one request. Covered here to keep the
       // 1.x call shape working; new code uses the explicit form above.
       const events: ExperimentEvent[] = [];
-      const exp = createExperiments({ experiments, adapters: [event => events.push(event)] });
+      const exp = createExperiments({ experiments, adapters: [(event) => events.push(event)] });
 
-      exp.resolveExperiment({ slug: ORIGINAL_SLUG, visitorId: 'visitor-factory-deprecated' });
-      await exp.track('signup', { plan: 'pro' });
+      exp.resolveExperiment({ slug: ORIGINAL_SLUG, visitorId: "visitor-factory-deprecated" });
+      await exp.track("signup", { plan: "pro" });
 
-      expect(events.some(event => event.type === 'exposure')).toBe(true);
-      expect(events.some(event => event.type === 'conversion' && event.name === 'signup')).toBe(true);
+      expect(events.some((event) => event.type === "exposure")).toBe(true);
+      expect(events.some((event) => event.type === "conversion" && event.name === "signup")).toBe(
+        true,
+      );
     });
   });
 
-  describe('story round-trip', () => {
-    it('resolves to a slug that the CAPI can fetch', async () => {
-      const variant = experiment.variants.find(candidate => !candidate.is_control)!;
+  describe("story round-trip", () => {
+    it("resolves to a slug that the CAPI can fetch", async () => {
+      const variant = experiment.variants.find((candidate) => !candidate.is_control)!;
       const assignment = assignmentFor(variant);
       const resolved = resolveExperiment({ experiments, slug: ORIGINAL_SLUG, assignment });
 

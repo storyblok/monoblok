@@ -17,36 +17,33 @@
  *   STORYBLOK_SPACE_ID=<numeric-space-id>
  */
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createManagementApiClient } from '@storyblok/management-api-client';
-import type { StoryCreate } from '@storyblok/management-api-client';
-import { createApiClient } from '@storyblok/api-client';
-import {
-  defineBlock,
-  defineField,
-} from '@storyblok/schema';
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createManagementApiClient } from "@storyblok/management-api-client";
+import type { StoryCreate } from "@storyblok/management-api-client";
+import { createApiClient } from "@storyblok/api-client";
+import { defineBlock, defineField } from "@storyblok/schema";
 
 const token = process.env.STORYBLOK_TOKEN!;
 const spaceId = Number(process.env.STORYBLOK_SPACE_ID!);
 
-const PREFIX = 'e2e_capi_';
-const STORY_SLUG_PREFIX = 'e2e-capi-';
+const PREFIX = "e2e_capi_";
+const STORY_SLUG_PREFIX = "e2e-capi-";
 const STORY_SLUG = `${STORY_SLUG_PREFIX}test-page`;
 
 const teaserComponent = defineBlock({
   name: `${PREFIX}teaser`,
   fields: [
-    defineField('title', { type: 'text', required: true }),
-    defineField('image', { type: 'asset' }),
+    defineField("title", { type: "text", required: true }),
+    defineField("image", { type: "asset" }),
   ],
 });
 // Level-2 container: holds teasers in its `items` bloks field (level 3)
 const sectionComponent = defineBlock({
   name: `${PREFIX}section`,
   fields: [
-    defineField('title', { type: 'text' }),
-    defineField('items', {
-      type: 'bloks',
+    defineField("title", { type: "text" }),
+    defineField("items", {
+      type: "bloks",
       allow: [teaserComponent.name],
       required: true,
     }),
@@ -56,17 +53,17 @@ const pageComponent = defineBlock({
   name: `${PREFIX}page`,
   is_root: true,
   fields: [
-    defineField('headline', { type: 'text', required: true }),
-    defineField('rating', { type: 'number' }),
-    defineField('is_featured', { type: 'boolean' }),
-    defineField('enddate', { type: 'text' }),
-    defineField('body', {
-      type: 'bloks',
+    defineField("headline", { type: "text", required: true }),
+    defineField("rating", { type: "number" }),
+    defineField("is_featured", { type: "boolean" }),
+    defineField("enddate", { type: "text" }),
+    defineField("body", {
+      type: "bloks",
       allow: [teaserComponent.name, sectionComponent.name],
       required: true,
     }),
-    defineField('any_blocks', {
-      type: 'bloks',
+    defineField("any_blocks", {
+      type: "bloks",
       required: true,
     }),
   ],
@@ -76,7 +73,7 @@ interface StoryblokTypes {
   components: typeof pageComponent | typeof teaserComponent | typeof sectionComponent;
 }
 
-type Blocks = StoryblokTypes['components'];
+type Blocks = StoryblokTypes["components"];
 
 function createTypedCapiClient(accessToken: string) {
   return createApiClient({ accessToken, throwOnError: true }).withTypes<StoryblokTypes>();
@@ -106,7 +103,7 @@ async function cleanup() {
   }
 }
 
-describe('schema + capi-client CAPI round-trip', () => {
+describe("schema + capi-client CAPI round-trip", () => {
   let storyId: number;
   let previewToken: string;
 
@@ -121,59 +118,75 @@ describe('schema + capi-client CAPI round-trip', () => {
     // 2. Create teaser component (innermost — whitelisted by section).
     // Component create payloads are the MAPI wire shape (a `schema` record), not
     // the DSL `fields` array used for typing above.
-    await mapiClient.components.create({ body: { component: {
-      name: teaserComponent.name,
-      schema: {
-        title: { type: 'text', required: true, pos: 0 },
-        image: { type: 'asset', pos: 1 },
+    await mapiClient.components.create({
+      body: {
+        component: {
+          name: teaserComponent.name,
+          schema: {
+            title: { type: "text", required: true, pos: 0 },
+            image: { type: "asset", pos: 1 },
+          },
+        },
       },
-    } } });
+    });
 
     // 3. Create section component (level 2 — whitelists teaser, whitelisted by page)
-    await mapiClient.components.create({ body: { component: {
-      name: sectionComponent.name,
-      schema: {
-        title: { type: 'text', pos: 0 },
-        items: { type: 'bloks', component_whitelist: [teaserComponent.name], pos: 1 },
+    await mapiClient.components.create({
+      body: {
+        component: {
+          name: sectionComponent.name,
+          schema: {
+            title: { type: "text", pos: 0 },
+            items: { type: "bloks", component_whitelist: [teaserComponent.name], pos: 1 },
+          },
+        },
       },
-    } } });
+    });
 
     // 4. Create page component (level 1 — whitelists both teaser and section)
-    await mapiClient.components.create({ body: { component: {
-      name: pageComponent.name,
-      schema: {
-        headline: { type: 'text', required: true, pos: 0 },
-        rating: { type: 'number', pos: 1 },
-        is_featured: { type: 'boolean', pos: 2 },
-        enddate: { type: 'text', pos: 3 },
-        body: { type: 'bloks', component_whitelist: [teaserComponent.name, sectionComponent.name], pos: 4 },
-        any_blocks: { type: 'bloks', pos: 5 },
+    await mapiClient.components.create({
+      body: {
+        component: {
+          name: pageComponent.name,
+          schema: {
+            headline: { type: "text", required: true, pos: 0 },
+            rating: { type: "number", pos: 1 },
+            is_featured: { type: "boolean", pos: 2 },
+            enddate: { type: "text", pos: 3 },
+            body: {
+              type: "bloks",
+              component_whitelist: [teaserComponent.name, sectionComponent.name],
+              pos: 4,
+            },
+            any_blocks: { type: "bloks", pos: 5 },
+          },
+          is_root: true,
+        },
       },
-      is_root: true,
-    } } });
+    });
 
     // 5. Create story: body[0]=teaser (level 2), body[1]=section{items:[teaser]} (levels 2+3)
     const storyPayload: StoryCreate<Blocks> = {
-      name: 'E2E CAPI Test Page',
+      name: "E2E CAPI Test Page",
       slug: STORY_SLUG,
       content: {
         component: pageComponent.name,
-        headline: 'Hello from CAPI e2e',
-        rating: '42',
+        headline: "Hello from CAPI e2e",
+        rating: "42",
         is_featured: true,
-        enddate: '2020-06-15 12:00',
+        enddate: "2020-06-15 12:00",
         body: [
           {
             component: teaserComponent.name,
-            title: 'Teaser Title',
+            title: "Teaser Title",
           },
           {
             component: sectionComponent.name,
-            title: 'Section Title',
+            title: "Section Title",
             items: [
               {
                 component: teaserComponent.name,
-                title: 'Nested Teaser Title',
+                title: "Nested Teaser Title",
               },
             ],
           },
@@ -181,7 +194,7 @@ describe('schema + capi-client CAPI round-trip', () => {
         any_blocks: [
           {
             component: teaserComponent.name,
-            title: 'Any Block Teaser',
+            title: "Any Block Teaser",
           },
         ],
       },
@@ -195,8 +208,8 @@ describe('schema + capi-client CAPI round-trip', () => {
 
   afterAll(cleanup);
 
-  describe('stories.get', () => {
-    it('should match defined schema field types at runtime for story content', async () => {
+  describe("stories.get", () => {
+    it("should match defined schema field types at runtime for story content", async () => {
       const capiClient = createTypedCapiClient(previewToken);
       const res = await capiClient.stories.get(STORY_SLUG);
       const story = res.data?.story;
@@ -208,26 +221,25 @@ describe('schema + capi-client CAPI round-trip', () => {
       // Accessing story.content.headline etc. only compiles when the component guard passes,
       // so this block validates both runtime correctness and compile-time type narrowing.
       if (story?.content?.component === pageComponent.name) {
-        expect(typeof story.content.headline).toBe('string');
-        expect(story.content.headline).toBe('Hello from CAPI e2e');
+        expect(typeof story.content.headline).toBe("string");
+        expect(story.content.headline).toBe("Hello from CAPI e2e");
 
-        expect(typeof story.content.rating).toBe('number');
+        expect(typeof story.content.rating).toBe("number");
         expect(story.content.rating).toBe(42);
 
-        expect(typeof story.content.is_featured).toBe('boolean');
+        expect(typeof story.content.is_featured).toBe("boolean");
         expect(story.content.is_featured).toBe(true);
 
         expect(Array.isArray(story.content.body)).toBe(true);
         expect(story.content.body.length).toBeGreaterThan(0);
-      }
-      else {
+      } else {
         throw new Error(
           `Expected story.content.component to be '${pageComponent.name}', got '${story?.content?.component}'`,
         );
       }
     });
 
-    it('should have correct structure for nested teaser blok (body[0] is not never)', async () => {
+    it("should have correct structure for nested teaser blok (body[0] is not never)", async () => {
       const capiClient = createTypedCapiClient(previewToken);
       const res = await capiClient.stories.get(STORY_SLUG);
       const story = res.data?.story;
@@ -240,19 +252,19 @@ describe('schema + capi-client CAPI round-trip', () => {
         const teaser = story.content.body[0];
 
         if (teaser.component === teaserComponent.name) {
-          expect(typeof teaser.title).toBe('string');
-          expect(teaser.title).toBe('Teaser Title');
+          expect(typeof teaser.title).toBe("string");
+          expect(teaser.title).toBe("Teaser Title");
+        } else {
+          throw new Error(
+            `Expected body[0].component to be '${teaserComponent.name}', got '${teaser?.component}'`,
+          );
         }
-        else {
-          throw new Error(`Expected body[0].component to be '${teaserComponent.name}', got '${teaser?.component}'`);
-        }
-      }
-      else {
-        throw new Error('Unexpected component discriminant');
+      } else {
+        throw new Error("Unexpected component discriminant");
       }
     });
 
-    it('should resolve correct types for three-level nested blok (page → section → teaser)', async () => {
+    it("should resolve correct types for three-level nested blok (page → section → teaser)", async () => {
       const capiClient = createTypedCapiClient(previewToken);
       const res = await capiClient.stories.get(STORY_SLUG);
       const story = res.data?.story;
@@ -262,8 +274,8 @@ describe('schema + capi-client CAPI round-trip', () => {
         const section = story.content.body[1];
 
         if (section.component === sectionComponent.name) {
-          expect(typeof section.title).toBe('string');
-          expect(section.title).toBe('Section Title');
+          expect(typeof section.title).toBe("string");
+          expect(section.title).toBe("Section Title");
           expect(Array.isArray(section.items)).toBe(true);
           expect(section.items.length).toBeGreaterThan(0);
 
@@ -271,23 +283,24 @@ describe('schema + capi-client CAPI round-trip', () => {
           const nestedTeaser = section.items[0];
 
           if (nestedTeaser.component === teaserComponent.name) {
-            expect(typeof nestedTeaser.title).toBe('string');
-            expect(nestedTeaser.title).toBe('Nested Teaser Title');
+            expect(typeof nestedTeaser.title).toBe("string");
+            expect(nestedTeaser.title).toBe("Nested Teaser Title");
+          } else {
+            throw new Error(
+              `Expected items[0].component to be '${teaserComponent.name}', got '${nestedTeaser.component}'`,
+            );
           }
-          else {
-            throw new Error(`Expected items[0].component to be '${teaserComponent.name}', got '${nestedTeaser.component}'`);
-          }
+        } else {
+          throw new Error(
+            `Expected body[1].component to be '${sectionComponent.name}', got '${section.component}'`,
+          );
         }
-        else {
-          throw new Error(`Expected body[1].component to be '${sectionComponent.name}', got '${section.component}'`);
-        }
-      }
-      else {
-        throw new Error('Unexpected component discriminant at level 1');
+      } else {
+        throw new Error("Unexpected component discriminant at level 1");
       }
     });
 
-    it('should resolve all schema component types for bloks field without whitelist', async () => {
+    it("should resolve all schema component types for bloks field without whitelist", async () => {
       const capiClient = createTypedCapiClient(previewToken);
       const res = await capiClient.stories.get(STORY_SLUG);
       const story = res.data?.story;
@@ -299,21 +312,21 @@ describe('schema + capi-client CAPI round-trip', () => {
         // teaser discriminant proves the discriminated union is correctly typed.
         const blok = story.content.any_blocks[0];
         if (blok.component === teaserComponent.name) {
-          expect(typeof blok.title).toBe('string');
-          expect(blok.title).toBe('Any Block Teaser');
+          expect(typeof blok.title).toBe("string");
+          expect(blok.title).toBe("Any Block Teaser");
+        } else {
+          throw new Error(
+            `Expected any_blocks[0].component to be '${teaserComponent.name}', got '${blok.component}'`,
+          );
         }
-        else {
-          throw new Error(`Expected any_blocks[0].component to be '${teaserComponent.name}', got '${blok.component}'`);
-        }
-      }
-      else {
-        throw new Error('Unexpected component discriminant');
+      } else {
+        throw new Error("Unexpected component discriminant");
       }
     });
   });
 
-  describe('stories.list', () => {
-    it('should return narrowed types including three-level nesting for stories list', async () => {
+  describe("stories.list", () => {
+    it("should return narrowed types including three-level nesting for stories list", async () => {
       const capiClient = createTypedCapiClient(previewToken);
 
       const res = await capiClient.stories.list({
@@ -326,13 +339,13 @@ describe('schema + capi-client CAPI round-trip', () => {
 
       const story = stories![0];
       if (story.content.component === pageComponent.name) {
-        expect(typeof story.content.headline).toBe('string');
+        expect(typeof story.content.headline).toBe("string");
         expect(Array.isArray(story.content.body)).toBe(true);
 
         // Validate two-level narrowing (body[0] = teaser)
         const first = story.content.body[0];
         if (first.component === teaserComponent.name) {
-          expect(typeof first.title).toBe('string');
+          expect(typeof first.title).toBe("string");
         }
 
         // Validate three-level narrowing (body[1] = section → items[0] = teaser)
@@ -341,23 +354,23 @@ describe('schema + capi-client CAPI round-trip', () => {
           expect(Array.isArray(second.items)).toBe(true);
           const nestedTeaser = second.items[0];
           if (nestedTeaser.component === teaserComponent.name) {
-            expect(typeof nestedTeaser.title).toBe('string');
+            expect(typeof nestedTeaser.title).toBe("string");
           }
         }
       }
     });
 
-    it('should filter stories by nested filter_query with lt_date operator', async () => {
+    it("should filter stories by nested filter_query with lt_date operator", async () => {
       const capiClient = createTypedCapiClient(previewToken);
 
       // Use a date in the future so the story's enddate ('2020-06-15 12:00') passes the lt_date filter
       const future = new Date();
       future.setFullYear(future.getFullYear() + 5);
       const year = future.getFullYear();
-      const month = String(future.getMonth() + 1).padStart(2, '0');
-      const day = String(future.getDate()).padStart(2, '0');
-      const hours = String(future.getHours()).padStart(2, '0');
-      const minutes = String(future.getMinutes()).padStart(2, '0');
+      const month = String(future.getMonth() + 1).padStart(2, "0");
+      const day = String(future.getDate()).padStart(2, "0");
+      const hours = String(future.getHours()).padStart(2, "0");
+      const minutes = String(future.getMinutes()).padStart(2, "0");
 
       const res = await capiClient.stories.list({
         query: {
@@ -373,9 +386,8 @@ describe('schema + capi-client CAPI round-trip', () => {
 
       const story = res.data!.stories![0];
       if (story.content.component === pageComponent.name) {
-        expect(story.content.enddate).toBe('2020-06-15 12:00');
-      }
-      else {
+        expect(story.content.enddate).toBe("2020-06-15 12:00");
+      } else {
         throw new Error(`Unexpected component discriminant: ${story.content.component}`);
       }
     });

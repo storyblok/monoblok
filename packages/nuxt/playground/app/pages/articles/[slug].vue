@@ -2,8 +2,8 @@
 const path = useRoute();
 const { story } = await useAsyncStoryblok(`vue/articles/${path.params.slug}`, {
   api: {
-    version: 'draft',
-    language: 'en',
+    version: "draft",
+    language: "en",
   },
   bridge: {},
 });

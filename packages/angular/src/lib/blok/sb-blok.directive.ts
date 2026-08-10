@@ -7,11 +7,11 @@ import {
   input,
   untracked,
   ViewContainerRef,
-} from '@angular/core';
-import { storyblokEditable } from '@storyblok/live-preview';
+} from "@angular/core";
+import { storyblokEditable } from "@storyblok/live-preview";
 
-import { StoryblokComponentResolver } from './sb-blok.feature';
-import { SbBlokData } from '../types';
+import { StoryblokComponentResolver } from "./sb-blok.feature";
+import { SbBlokData } from "../types";
 
 /**
  * Directive that dynamically renders a Storyblok component based on the blok data.
@@ -44,7 +44,7 @@ import { SbBlokData } from '../types';
  * ```
  */
 @Directive({
-  selector: '[sbBlok]',
+  selector: "[sbBlok]",
 })
 export class SbBlokDirective {
   private readonly viewContainerRef = inject(ViewContainerRef);
@@ -76,9 +76,9 @@ export class SbBlokDirective {
   private applyEditableAttributes(componentRef: ComponentRef<unknown>, blok: SbBlokData): void {
     const editable = storyblokEditable(blok);
     const host = componentRef.location.nativeElement;
-    if (editable['data-blok-c'] && host?.setAttribute) {
-      host.setAttribute('data-blok-c', editable['data-blok-c']);
-      host.setAttribute('data-blok-uid', editable['data-blok-uid']);
+    if (editable["data-blok-c"] && host?.setAttribute) {
+      host.setAttribute("data-blok-c", editable["data-blok-c"]);
+      host.setAttribute("data-blok-uid", editable["data-blok-uid"]);
     }
   }
 
@@ -110,7 +110,7 @@ export class SbBlokDirective {
     }
 
     this.currentComponentType = componentType;
-    this.componentRef?.setInput('blok', blok);
+    this.componentRef?.setInput("blok", blok);
     this.applyEditableAttributes(this.componentRef!, blok);
   }
 }

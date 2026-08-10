@@ -1,6 +1,6 @@
-import { createApiClient } from '@storyblok/api-client';
+import { createApiClient } from "@storyblok/api-client";
 
-import type { Schema } from '../schema/schema';
+import type { Schema } from "../schema/schema";
 
 /**
  * Type-safe Storyblok Content Delivery API client.
@@ -13,13 +13,13 @@ export function createStoryblokClient() {
   const accessToken = import.meta.env.STORYBLOK_PREVIEW_TOKEN;
 
   if (!accessToken) {
-    throw new Error('Missing required env var: STORYBLOK_PREVIEW_TOKEN');
+    throw new Error("Missing required env var: STORYBLOK_PREVIEW_TOKEN");
   }
 
   return createApiClient({
     accessToken,
     cache: {
-      strategy: 'network-first',
+      strategy: "network-first",
     },
   }).withTypes<Schema>();
 }

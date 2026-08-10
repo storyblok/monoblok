@@ -1,9 +1,15 @@
-import type { StoryCreate, StoryUpdate } from '../../types';
-import type { ExistingTargetStories, FetchStoriesResult, StoriesQueryParams, Story, TargetStoryRef } from './constants';
-import { normalizeFullSlug } from './constants';
-import { getMapiClient } from '../../api';
-import { chunk } from '../../utils/array';
-import { handleAPIError } from '../../utils/error/api-error';
+import type { StoryCreate, StoryUpdate } from "../../types";
+import type {
+  ExistingTargetStories,
+  FetchStoriesResult,
+  StoriesQueryParams,
+  Story,
+  TargetStoryRef,
+} from "./constants";
+import { normalizeFullSlug } from "./constants";
+import { getMapiClient } from "../../api";
+import { chunk } from "../../utils/array";
+import { handleAPIError } from "../../utils/error/api-error";
 
 /**
  * Fetches a single page of stories from Storyblok Management API
@@ -33,16 +39,12 @@ export const fetchStories = async (
       stories: data.stories || [],
       headers: response.headers,
     };
-  }
-  catch (error) {
-    handleAPIError('pull_stories', error as Error);
+  } catch (error) {
+    handleAPIError("pull_stories", error as Error);
   }
 };
 
-export const fetchStory = async (
-  spaceId: string,
-  storyId: string | number,
-) => {
+export const fetchStory = async (spaceId: string, storyId: string | number) => {
   try {
     const client = getMapiClient();
 
@@ -54,9 +56,8 @@ export const fetchStory = async (
     });
 
     return data.story;
-  }
-  catch (error) {
-    handleAPIError('pull_story', error as Error);
+  } catch (error) {
+    handleAPIError("pull_story", error as Error);
   }
 };
 
@@ -86,9 +87,8 @@ export const createStory = async (
     });
 
     return data?.story;
-  }
-  catch (error) {
-    handleAPIError('create_story', error);
+  } catch (error) {
+    handleAPIError("create_story", error);
   }
 };
 
@@ -125,7 +125,7 @@ export const updateStory = async (
         },
       },
       query: {
-        force_update: payload.force_update === '1',
+        force_update: payload.force_update === "1",
         ...(payload.publish ? { publish: Boolean(payload.publish) } : {}),
       },
       throwOnError: true,
@@ -133,16 +133,15 @@ export const updateStory = async (
 
     const story = data?.story;
     if (!story) {
-      throw new Error('Failed to update story');
+      throw new Error("Failed to update story");
     }
 
     return story;
-  }
-  catch (error) {
-    if (error instanceof Error && error.message === 'Failed to update story') {
+  } catch (error) {
+    if (error instanceof Error && error.message === "Failed to update story") {
       throw error;
     }
-    handleAPIError('update_story', error);
+    handleAPIError("update_story", error);
   }
 };
 
@@ -160,11 +159,10 @@ const addRef = (result: ExistingTargetStories, story: Story): void => {
     const existing = result.bySlug.get(key);
     if (existing) {
       // Avoid duplicates if the same story comes back via both by_slugs and by_ids.
-      if (!existing.some(r => r.id === ref.id)) {
+      if (!existing.some((r) => r.id === ref.id)) {
         existing.push(ref);
       }
-    }
-    else {
+    } else {
       result.bySlug.set(key, [ref]);
     }
   }
@@ -188,8 +186,8 @@ const fetchChunkAllPages = async (
       return;
     }
     onPageStories(response.stories);
-    const total = Number(response.headers.get('Total'));
-    const perPage = Number(response.headers.get('Per-Page')) || PREFETCH_PER_PAGE;
+    const total = Number(response.headers.get("Total"));
+    const perPage = Number(response.headers.get("Per-Page")) || PREFETCH_PER_PAGE;
     if (!Number.isFinite(total) || total <= page * perPage) {
       return;
     }
@@ -226,7 +224,7 @@ export const prefetchTargetStoriesByKeys = async (
   }
   const idSet = new Set<number>();
   for (const id of keys.ids) {
-    if (typeof id === 'number' && Number.isFinite(id)) {
+    if (typeof id === "number" && Number.isFinite(id)) {
       idSet.add(id);
     }
   }
@@ -243,25 +241,29 @@ export const prefetchTargetStoriesByKeys = async (
   const requests: Array<Promise<void>> = [];
 
   for (const slugs of slugChunks) {
-    requests.push((async () => {
-      await fetchChunkAllPages(spaceId, { by_slugs: slugs.join(',') }, (stories) => {
-        for (const story of stories) {
-          addRef(result, story);
-        }
-      });
-      options?.onIncrement?.(slugs.length);
-    })());
+    requests.push(
+      (async () => {
+        await fetchChunkAllPages(spaceId, { by_slugs: slugs.join(",") }, (stories) => {
+          for (const story of stories) {
+            addRef(result, story);
+          }
+        });
+        options?.onIncrement?.(slugs.length);
+      })(),
+    );
   }
 
   for (const ids of idChunks) {
-    requests.push((async () => {
-      await fetchChunkAllPages(spaceId, { by_ids: ids.join(',') }, (stories) => {
-        for (const story of stories) {
-          addRef(result, story);
-        }
-      });
-      options?.onIncrement?.(ids.length);
-    })());
+    requests.push(
+      (async () => {
+        await fetchChunkAllPages(spaceId, { by_ids: ids.join(",") }, (stories) => {
+          for (const story of stories) {
+            addRef(result, story);
+          }
+        });
+        options?.onIncrement?.(ids.length);
+      })(),
+    );
   }
 
   await Promise.all(requests);

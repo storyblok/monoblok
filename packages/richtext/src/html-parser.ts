@@ -1,6 +1,6 @@
-import { generateJSON } from '@tiptap/html';
-import type { StoryblokRichTextDoc } from './static';
-import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensions';
+import { generateJSON } from "@tiptap/html";
+import type { StoryblokRichTextDoc } from "./static";
+import { getStoryblokTiptapExtensions, type HTMLParserOptions } from "./extensions";
 
 /**
  * Converts an HTML string into a Storyblok Rich Text JSON document.
@@ -32,10 +32,7 @@ import { getStoryblokTiptapExtensions, type HTMLParserOptions } from './extensio
  *
  * console.log(result);
  */
-export function htmlToStoryblokRichtext(
-  html: string,
-  options?: HTMLParserOptions,
-) {
+export function htmlToStoryblokRichtext(html: string, options?: HTMLParserOptions) {
   const allExtensions = getStoryblokTiptapExtensions({
     parsers: options?.parsers,
     enableReporter: true,
@@ -44,5 +41,5 @@ export function htmlToStoryblokRichtext(
     preserveWhitespace: options?.preserveWhitespace || false,
   }) as StoryblokRichTextDoc;
 }
-export type { HTMLParserOptions } from './extensions';
-export { mapToAttribute } from './extensions/utils';
+export type { HTMLParserOptions } from "./extensions";
+export { mapToAttribute } from "./extensions/utils";

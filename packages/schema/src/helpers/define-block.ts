@@ -1,18 +1,13 @@
-import type {
-  Block,
-  BlockFields,
-  NestableBlock,
-  RootBlock,
-} from '../generated/types/block';
-import type { BlockFolder } from './define-folder';
-import type { Prettify } from '../utils/prettify';
+import type { Block, BlockFields, NestableBlock, RootBlock } from "../generated/types/block";
+import type { BlockFolder } from "./define-folder";
+import type { Prettify } from "../utils/prettify";
 
 export type { Block, BlockFields, NestableBlock, RootBlock };
 
 const BLOCK_DEFAULTS = {
   id: 1,
-  created_at: '',
-  updated_at: '',
+  created_at: "",
+  updated_at: "",
   is_root: false,
   is_nestable: true,
 };
@@ -33,13 +28,13 @@ type BlockInput<
   TIsNestable extends boolean = true,
   TFolder extends FolderInput | undefined = undefined,
 > = Prettify<
-  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'folder' | BlockOptional> & {
+  Omit<Block, "name" | "fields" | "is_root" | "is_nestable" | "folder" | BlockOptional> & {
     name: TName;
     fields: TFields;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
     folder?: TFolder;
-  } & Partial<Pick<Block, Exclude<BlockOptional, 'is_root' | 'is_nestable'>>>
+  } & Partial<Pick<Block, Exclude<BlockOptional, "is_root" | "is_nestable">>>
 >;
 
 type DefinedBlock<
@@ -49,7 +44,7 @@ type DefinedBlock<
   TIsNestable extends boolean,
   TFolder extends FolderInput | undefined = undefined,
 > = Prettify<
-  Omit<Block, 'name' | 'fields' | 'is_root' | 'is_nestable' | 'folder'> & {
+  Omit<Block, "name" | "fields" | "is_root" | "is_nestable" | "folder"> & {
     name: TName;
     fields: TFields;
     is_root: TIsRoot;
@@ -88,9 +83,11 @@ export function defineBlock(block: any) {
   const seen = new Set<string>();
   const fields = inputFields.map((field: any, index: number) => {
     const name = field?.name;
-    if (typeof name === 'string') {
+    if (typeof name === "string") {
       if (seen.has(name)) {
-        throw new Error(`defineBlock: duplicate field name "${name}" in block "${block?.name ?? ''}"`);
+        throw new Error(
+          `defineBlock: duplicate field name "${name}" in block "${block?.name ?? ""}"`,
+        );
       }
       seen.add(name);
     }
@@ -98,15 +95,20 @@ export function defineBlock(block: any) {
   });
 
   const { folder, ...restBlock } = block ?? {};
-  if (folder !== undefined && typeof restBlock.component_group_uuid === 'string') {
-    throw new Error(`defineBlock: block "${block?.name ?? ''}" sets both "folder" and "component_group_uuid"; use one`);
+  if (folder !== undefined && typeof restBlock.component_group_uuid === "string") {
+    throw new Error(
+      `defineBlock: block "${block?.name ?? ""}" sets both "folder" and "component_group_uuid"; use one`,
+    );
   }
-  if (typeof folder === 'string' && !folder.split('/').some(segment => segment.trim() !== '')) {
-    throw new Error(`defineBlock: block "${block?.name ?? ''}" has an empty "folder" path`);
+  if (typeof folder === "string" && !folder.split("/").some((segment) => segment.trim() !== "")) {
+    throw new Error(`defineBlock: block "${block?.name ?? ""}" has an empty "folder" path`);
   }
-  const normalizedFolder = folder === undefined
-    ? undefined
-    : (folder !== null && typeof folder === 'object' ? folder.path : folder);
+  const normalizedFolder =
+    folder === undefined
+      ? undefined
+      : folder !== null && typeof folder === "object"
+        ? folder.path
+        : folder;
 
   return {
     ...BLOCK_DEFAULTS,

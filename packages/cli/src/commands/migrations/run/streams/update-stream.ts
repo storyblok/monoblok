@@ -1,17 +1,20 @@
-import { Writable } from 'node:stream';
-import type { Sema } from 'async-sema';
-import type { StoryUpdate } from '../../../../types';
-import type { BlokContent } from '../../../stories/constants';
-import { updateStory } from '../../../stories/actions';
-import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../../../stories/utils';
-import { getLogger } from '../../../../lib/logger/logger';
-import { createPipelineBackpressureLock } from '../../../../utils/backpressure-lock';
-import { ERROR_CODES } from '../constants';
-import { toError } from '../../../../utils/error';
+import { Writable } from "node:stream";
+import type { Sema } from "async-sema";
+import type { StoryUpdate } from "../../../../types";
+import type { BlokContent } from "../../../stories/constants";
+import { updateStory } from "../../../stories/actions";
+import {
+  isStoryPublishedWithoutChanges,
+  isStoryWithUnpublishedChanges,
+} from "../../../stories/utils";
+import { getLogger } from "../../../../lib/logger/logger";
+import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
+import { ERROR_CODES } from "../constants";
+import { toError } from "../../../../utils/error";
 
 export interface UpdateStreamOptions {
   space: string;
-  publish?: 'all' | 'published' | 'published-with-changes';
+  publish?: "all" | "published" | "published-with-changes";
   dryRun?: boolean;
   onProgress?: (current: number) => void;
   onTotal?: (total: number) => void;
@@ -45,7 +48,17 @@ export class UpdateStream extends Writable {
     this.semaphore = createPipelineBackpressureLock();
   }
 
-  async _write(chunk: { storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean }, _encoding: string, callback: (error?: Error | null) => void) {
+  async _write(
+    chunk: {
+      storyId: number;
+      name: string | undefined;
+      content: BlokContent;
+      published?: boolean;
+      unpublished_changes?: boolean;
+    },
+    _encoding: string,
+    callback: (error?: Error | null) => void,
+  ) {
     try {
       await this.semaphore.acquire();
 
@@ -54,13 +67,18 @@ export class UpdateStream extends Writable {
       });
 
       callback();
-    }
-    catch (error) {
+    } catch (error) {
       callback(error as Error);
     }
   }
 
-  private async updateStory(migrationResult: { storyId: number; name: string | undefined; content: BlokContent; published?: boolean; unpublished_changes?: boolean }): Promise<void> {
+  private async updateStory(migrationResult: {
+    storyId: number;
+    name: string | undefined;
+    content: BlokContent;
+    published?: boolean;
+    unpublished_changes?: boolean;
+  }): Promise<void> {
     const { storyId, name, content, published, unpublished_changes } = migrationResult;
     const storyName = name || storyId.toString();
 
@@ -74,30 +92,34 @@ export class UpdateStream extends Writable {
           content,
           name: storyName,
         },
-        force_update: '1',
+        force_update: "1",
       };
 
       // Determine if we should publish based on options using actual story data
-      if (this.options.publish === 'published' && isStoryPublishedWithoutChanges({ published, unpublished_changes })) {
+      if (
+        this.options.publish === "published" &&
+        isStoryPublishedWithoutChanges({ published, unpublished_changes })
+      ) {
         payload.publish = 1;
-      }
-      else if (this.options.publish === 'published-with-changes' && isStoryWithUnpublishedChanges({ published, unpublished_changes })) {
+      } else if (
+        this.options.publish === "published-with-changes" &&
+        isStoryWithUnpublishedChanges({ published, unpublished_changes })
+      ) {
         payload.publish = 1;
-      }
-      else if (this.options.publish === 'all') {
+      } else if (this.options.publish === "all") {
         payload.publish = 1;
       }
 
-      const updatedStory = !this.options.dryRun && await updateStory(this.options.space, storyId, payload);
+      const updatedStory =
+        !this.options.dryRun && (await updateStory(this.options.space, storyId, payload));
       const isStoryUpdated = Boolean(updatedStory);
       if (isStoryUpdated || this.options.dryRun) {
         this.results.successful.push({ storyId, name: storyName });
         this.results.totalProcessed++;
         this.options.onProgress?.(this.results.totalProcessed);
-        getLogger().info('Updated story', { storyId });
-      }
-      else {
-        const error = new Error('Update returned null');
+        getLogger().info("Updated story", { storyId });
+      } else {
+        const error = new Error("Update returned null");
         this.results.failed.push({
           storyId,
           name: storyName,
@@ -110,8 +132,7 @@ export class UpdateStream extends Writable {
           errorCode: ERROR_CODES.MIGRATION_STORY_UPDATE_NULL,
         });
       }
-    }
-    catch (maybeError) {
+    } catch (maybeError) {
       const error = toError(maybeError);
       this.results.failed.push({
         storyId,
@@ -133,8 +154,7 @@ export class UpdateStream extends Writable {
       // Process any remaining items
       await this.semaphore.drain();
       callback();
-    }
-    catch (batchError) {
+    } catch (batchError) {
       callback(batchError as Error);
       return;
     }

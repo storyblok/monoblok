@@ -7,7 +7,12 @@
   "is_nestable": true,
   "schema": {
     "heading": { "type": "text", "pos": 0 },
-    "items": { "type": "bloks", "pos": 1, "restrict_components": true, "component_whitelist": ["feature_item"] },
+    "items": {
+      "type": "bloks",
+      "pos": 1,
+      "restrict_components": true,
+      "component_whitelist": ["feature_item"]
+    },
     "columns": { "type": "number", "pos": 2, "min_value": 1, "max_value": 4 },
     "description": { "type": "richtext", "pos": 3 }
   },

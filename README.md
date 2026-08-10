@@ -20,7 +20,7 @@
   </a>
 </p>
 
-## 📦  Packages
+## 📦 Packages
 
 This monorepo contains the following official Storyblok SDKs and integrations:
 
@@ -51,7 +51,8 @@ This monorepo contains the following official Storyblok SDKs and integrations:
 
 ## 🚧 Migration Status
 
-This repository represents an ongoing migration from a polyrepo structure to a unified monorepo. While we're actively working on this transition, please note:
+This repository represents an ongoing migration from a polyrepo structure to a unified monorepo.
+While we're actively working on this transition, please note:
 
 - All new development should be done in this repository
 - Existing packages are being migrated gradually
@@ -70,6 +71,7 @@ This repository represents an ongoing migration from a polyrepo structure to a u
 ### Setup
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/storyblok/monoblok.git
    cd monoblok
@@ -82,7 +84,8 @@ This repository represents an ongoing migration from a polyrepo structure to a u
 
 ### Package management
 
-This repository uses pnpm workspaces (configured in the root `package.json`) for dependency management.
+This repository uses pnpm workspaces (configured in the root `package.json`) for dependency
+management.
 
 ```bash
 # Install dependencies
@@ -104,9 +107,11 @@ Packages share a unified toolchain via [Vite+](https://viteplus.dev) (`vp` CLI):
 - `vp lint` for linting (Oxlint via `@storyblok/lint-config`)
 - `vp fmt` for formatting (Oxfmt)
 
-Framework-specific builders (Angular CLI, Nuxt module builder, svelte-package, Redocly) are kept where Vite+ doesn't apply.
+Framework-specific builders (Angular CLI, Nuxt module builder, svelte-package, Redocly) are kept
+where Vite+ doesn't apply.
 
-Every package exposes the same canonical script names. See [`AGENTS.md`](./AGENTS.md) for the full table.
+Every package exposes the same canonical script names. See [`AGENTS.md`](./AGENTS.md) for the full
+table.
 
 ### Common commands
 
@@ -139,6 +144,7 @@ pnpm nx graph
 ```
 
 For more advanced NX usage:
+
 - [NX Documentation](https://nx.dev/docs)
 - [NX Cache](https://nx.dev/concepts/how-caching-works)
 - [NX Affected](https://nx.dev/concepts/affected)
@@ -146,11 +152,13 @@ For more advanced NX usage:
 
 ### Repository administration
 
-For repository administrators, the internal `monoblok` CLI helps manage the monorepo (license checks, migration helpers, etc.). See [`tools/monoblok`](tools/monoblok) for details.
+For repository administrators, the internal `monoblok` CLI helps manage the monorepo (license
+checks, migration helpers, etc.). See [`tools/monoblok`](tools/monoblok) for details.
 
 ## 📄 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
+
 - Code style and standards
 - Pull request process
 - Development workflow

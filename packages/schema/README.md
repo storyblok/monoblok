@@ -29,14 +29,18 @@
 
 ## Features
 
-- **Generated Types**: TypeScript types generated from Storyblok Management and Content API OpenAPI specifications
+- **Generated Types**: TypeScript types generated from Storyblok Management and Content API OpenAPI
+  specifications
 - **Shared Schema Layer**: Reuse the same Storyblok content shapes across packages and integrations
-- **Framework Agnostic**: Use the package in any TypeScript project without framework-specific dependencies
-- **Monorepo Aligned**: Built from the same source specifications used throughout the Storyblok monoblok repository
+- **Framework Agnostic**: Use the package in any TypeScript project without framework-specific
+  dependencies
+- **Monorepo Aligned**: Built from the same source specifications used throughout the Storyblok
+  monoblok repository
 
 ## Documentation
 
-For complete documentation, please visit the [package reference](https://www.storyblok.com/docs/libraries/js/schema).
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/schema).
 
 ## Contributing
 
@@ -44,7 +48,8 @@ If you'd like to contribute, please refer to the [contributing guidelines](../..
 
 ## Community
 
-For help, discussion about best practices, or any other conversation that would benefit from being searchable:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
 - [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
 
@@ -54,18 +59,25 @@ For community support, chatting with other users, please visit:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+For bugs or feature requests, please
+[submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-> [!IMPORTANT]
-> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
 
 ### Feedback
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

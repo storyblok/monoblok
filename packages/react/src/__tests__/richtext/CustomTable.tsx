@@ -1,10 +1,6 @@
-import { type SbReactRichTextProps, splitTableRows, StoryblokRichText } from '@storyblok/react';
+import { type SbReactRichTextProps, splitTableRows, StoryblokRichText } from "@storyblok/react";
 
-export default function CustomTable({
-  attrs,
-  content,
-  context,
-}: SbReactRichTextProps<'table'>) {
+export default function CustomTable({ attrs, content, context }: SbReactRichTextProps<"table">) {
   const { headerRows, bodyRows } = splitTableRows(content);
 
   return (

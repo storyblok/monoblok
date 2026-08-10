@@ -1,6 +1,6 @@
-import type { StoryListQuery } from '../../types';
+import type { StoryListQuery } from "../../types";
 
-export type FilterQuery = NonNullable<StoryListQuery['filter_query']>;
+export type FilterQuery = NonNullable<StoryListQuery["filter_query"]>;
 
 /**
  * Parses the CLI `--query` value into the structured `filter_query` object the
@@ -18,21 +18,29 @@ export type FilterQuery = NonNullable<StoryListQuery['filter_query']>;
  */
 export function parseFilterQuery(input: string): FilterQuery {
   const trimmed = input.trim();
-  if (!trimmed) { return {}; }
+  if (!trimmed) {
+    return {};
+  }
 
-  if (trimmed.startsWith('{')) {
+  if (trimmed.startsWith("{")) {
     return JSON.parse(trimmed) as FilterQuery;
   }
 
   const result: Record<string, Record<string, string>> = {};
-  for (const clause of trimmed.split('&')) {
-    if (!clause) { continue; }
-    const eq = clause.indexOf('=');
-    if (eq === -1) { continue; }
+  for (const clause of trimmed.split("&")) {
+    if (!clause) {
+      continue;
+    }
+    const eq = clause.indexOf("=");
+    if (eq === -1) {
+      continue;
+    }
     const path = clause.slice(0, eq);
     const value = clause.slice(eq + 1);
-    const keys = [...path.matchAll(/\[([^\]]+)\]/g)].map(match => match[1]);
-    if (keys.length < 2) { continue; }
+    const keys = [...path.matchAll(/\[([^\]]+)\]/g)].map((match) => match[1]);
+    if (keys.length < 2) {
+      continue;
+    }
     const [field, operation] = keys;
     result[field] = { ...result[field], [operation]: value };
   }

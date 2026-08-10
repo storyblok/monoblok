@@ -1,14 +1,14 @@
-import { defineConfig, type Plugin } from 'vitest/config';
-import path from 'node:path';
-import { copyFileSync } from 'node:fs';
-import { lightGreen } from 'kolorist';
-import banner from 'vite-plugin-banner';
-import dts from 'vite-plugin-dts';
+import { defineConfig, type Plugin } from "vitest/config";
+import path from "node:path";
+import { copyFileSync } from "node:fs";
+import { lightGreen } from "kolorist";
+import banner from "vite-plugin-banner";
+import dts from "vite-plugin-dts";
 
-import pkg from './package.json' with { type: 'json' };
+import pkg from "./package.json" with { type: "json" };
 
 // eslint-disable-next-line no-console
-console.log(`${lightGreen('StoryblokJS')} v${pkg.version}`);
+console.log(`${lightGreen("StoryblokJS")} v${pkg.version}`);
 
 export default defineConfig({
   plugins: [
@@ -16,8 +16,8 @@ export default defineConfig({
       insertTypesEntry: true,
       afterBuild(emittedFiles) {
         for (const filePath of emittedFiles.keys()) {
-          if (filePath.endsWith('.d.ts')) {
-            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, '.d.cts'));
+          if (filePath.endsWith(".d.ts")) {
+            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, ".d.cts"));
           }
         }
       },
@@ -28,32 +28,32 @@ export default defineConfig({
   ] as Plugin[],
   build: {
     lib: {
-      entry: path.resolve(import.meta.dirname, 'src', 'index.ts'),
-      name: 'storyblok',
+      entry: path.resolve(import.meta.dirname, "src", "index.ts"),
+      name: "storyblok",
       fileName: (format) => {
-        const name = 'storyblok-js';
-        return format === 'es' ? `${name}.mjs` : `${name}.cjs`;
+        const name = "storyblok-js";
+        return format === "es" ? `${name}.mjs` : `${name}.cjs`;
       },
     },
     rollupOptions: {
-      external: ['@storyblok/richtext', 'storyblok-js-client'],
+      external: ["@storyblok/richtext", "storyblok-js-client"],
       output: {
         globals: {
-          '@storyblok/richtext': 'StoryblokRichtext',
-          'storyblok-js-client': 'StoryblokClient',
+          "@storyblok/richtext": "StoryblokRichtext",
+          "storyblok-js-client": "StoryblokClient",
         },
       },
     },
   },
   test: {
     globals: true,
-    include: ['./src/**/*.test.ts'],
-    exclude: ['./cypress'],
+    include: ["./src/**/*.test.ts"],
+    exclude: ["./cypress"],
     coverage: {
-      include: ['src'],
-      reporter: ['text', 'json', 'html'],
-      reportsDirectory: './tests/unit/coverage',
+      include: ["src"],
+      reporter: ["text", "json", "html"],
+      reportsDirectory: "./tests/unit/coverage",
     },
-    environment: 'jsdom',
+    environment: "jsdom",
   },
 });

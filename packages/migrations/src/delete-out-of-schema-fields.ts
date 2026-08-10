@@ -1,8 +1,8 @@
-import type { Story } from './types';
+import type { Story } from "./types";
 
-import type { ComponentSchemas } from './map-refs';
+import type { ComponentSchemas } from "./map-refs";
 
-const SYSTEM_FIELDS = new Set(['_uid', 'component', '_editable']);
+const SYSTEM_FIELDS = new Set(["_uid", "component", "_editable"]);
 
 interface RemovedField {
   component: string;
@@ -36,7 +36,7 @@ function cleanBlok(
     }
 
     // Strip i18n suffix to get base field name
-    const baseFieldName = key.replace(/__i18n__.*/, '');
+    const baseFieldName = key.replace(/__i18n__.*/, "");
 
     // Field not in schema — remove it
     if (!validFieldSet.has(baseFieldName)) {
@@ -45,35 +45,30 @@ function cleanBlok(
     }
 
     // Check if this is an array of bloks (objects with component property)
-    const isBlokArray
-      = Array.isArray(value)
-        && value.some(
-          item =>
-            item
-            && typeof item === 'object'
-            && !Array.isArray(item)
-            && (item as Record<string, unknown>).component,
-        );
+    const isBlokArray =
+      Array.isArray(value) &&
+      value.some(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          !Array.isArray(item) &&
+          (item as Record<string, unknown>).component,
+      );
 
     if (isBlokArray) {
       // Traverse blok arrays and process nested bloks recursively
       result[key] = (value as unknown[]).map((item) => {
         if (
-          item
-          && typeof item === 'object'
-          && !Array.isArray(item)
-          && (item as Record<string, unknown>).component
+          item &&
+          typeof item === "object" &&
+          !Array.isArray(item) &&
+          (item as Record<string, unknown>).component
         ) {
-          return cleanBlok(
-            item as Record<string, unknown>,
-            schemaDefinition,
-            removedFields,
-          );
+          return cleanBlok(item as Record<string, unknown>, schemaDefinition, removedFields);
         }
         return item;
       });
-    }
-    else {
+    } else {
       // Valid field — keep it
       result[key] = value;
     }
@@ -100,7 +95,7 @@ export function deleteOutOfSchemaFields(
 
   return {
     // cleanBlok returns Record<string,unknown>; runtime shape satisfies Blok
-    story: { ...story, content: newContent as unknown as Story['content'] },
+    story: { ...story, content: newContent as unknown as Story["content"] },
     removedFields,
   };
 }

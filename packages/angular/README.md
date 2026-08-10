@@ -57,19 +57,19 @@ Add the Storyblok provider to your application configuration:
 
 ```typescript
 // app.config.ts
-import { ApplicationConfig } from '@angular/core';
-import { provideStoryblok, withStoryblokComponents, withLivePreview } from '@storyblok/angular';
+import { ApplicationConfig } from "@angular/core";
+import { provideStoryblok, withStoryblokComponents, withLivePreview } from "@storyblok/angular";
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideStoryblok(
       {
-        accessToken: 'YOUR_ACCESS_TOKEN',
-        region: 'eu', // 'eu', 'us', 'ap', 'ca', or 'cn'
+        accessToken: "YOUR_ACCESS_TOKEN",
+        region: "eu", // 'eu', 'us', 'ap', 'ca', or 'cn'
       },
       withStoryblokComponents({
-        page: () => import('./components/page').then((m) => m.PageComponent),
-        teaser: () => import('./components/teaser').then((m) => m.TeaserComponent),
+        page: () => import("./components/page").then((m) => m.PageComponent),
+        teaser: () => import("./components/teaser").then((m) => m.TeaserComponent),
       }),
       withLivePreview(),
     ),
@@ -83,15 +83,15 @@ Create Angular components that match your Storyblok component names:
 
 ```typescript
 // components/teaser.ts
-import { Component, input } from '@angular/core';
-import { type SbBlokData } from '@storyblok/angular';
+import { Component, input } from "@angular/core";
+import { type SbBlokData } from "@storyblok/angular";
 
 interface TeaserBlok extends SbBlokData {
   headline?: string;
 }
 
 @Component({
-  selector: 'app-teaser',
+  selector: "app-teaser",
   template: `<h2>{{ blok().headline }}</h2>`,
 })
 export class TeaserComponent {
@@ -105,11 +105,11 @@ Use `StoryblokService` to fetch content and `SbBlokDirective` to render it:
 
 ```typescript
 // routes/home.component.ts
-import { Component, inject, signal, OnInit } from '@angular/core';
-import { StoryblokService, SbBlokDirective, type SbBlokData } from '@storyblok/angular';
+import { Component, inject, signal, OnInit } from "@angular/core";
+import { StoryblokService, SbBlokDirective, type SbBlokData } from "@storyblok/angular";
 
 @Component({
-  selector: 'app-home',
+  selector: "app-home",
   imports: [SbBlokDirective],
   template: `<ng-container [sbBlok]="content()" />`,
 })
@@ -119,15 +119,16 @@ export class HomeComponent implements OnInit {
 
   async ngOnInit() {
     const client = this.storyblok.getClient();
-    const { data } = await client.stories.get('home', {
-      query: { version: 'draft' },
+    const { data } = await client.stories.get("home", {
+      query: { version: "draft" },
     });
     this.content.set(data?.story?.content);
   }
 }
 ```
 
-> **Note:** For spaces created in the United States or China, the `region` parameter **must** be specified.
+> **Note:** For spaces created in the United States or China, the `region` parameter **must** be
+> specified.
 
 ## Live Preview
 
@@ -136,9 +137,9 @@ Enable real-time visual editing in the Storyblok Visual Editor:
 ```typescript
 // app.config.ts
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN' },
+  { accessToken: "YOUR_ACCESS_TOKEN" },
   withLivePreview({
-    resolveRelations: ['article.author'],
+    resolveRelations: ["article.author"],
   }),
 );
 ```
@@ -146,8 +147,8 @@ provideStoryblok(
 In your route component, listen for live updates:
 
 ```typescript
-import { Component, inject, linkedSignal, input, OnInit } from '@angular/core';
-import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storyblok/angular';
+import { Component, inject, linkedSignal, input, OnInit } from "@angular/core";
+import { LivePreviewService, SbBlokDirective, type ISbStoryData } from "@storyblok/angular";
 
 @Component({
   imports: [SbBlokDirective],
@@ -156,7 +157,7 @@ import { LivePreviewService, SbBlokDirective, type ISbStoryData } from '@storybl
 export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
 
-  readonly storyInput = input<ISbStoryData | null>(null, { alias: 'story' });
+  readonly storyInput = input<ISbStoryData | null>(null, { alias: "story" });
   readonly story = linkedSignal(() => this.storyInput());
 
   ngOnInit() {
@@ -172,8 +173,8 @@ export class CatchAllComponent implements OnInit {
 Use the `SbRichTextComponent` to render rich text fields:
 
 ```typescript
-import { Component, input } from '@angular/core';
-import { SbRichTextComponent, type SbRichTextNode } from '@storyblok/angular';
+import { Component, input } from "@angular/core";
+import { SbRichTextComponent, type SbRichTextNode } from "@storyblok/angular";
 
 @Component({
   imports: [SbRichTextComponent],
@@ -190,10 +191,10 @@ Override default elements with custom Angular components:
 
 ```typescript
 // app.config.ts
-import { withStoryblokRichtextComponents } from '@storyblok/angular';
+import { withStoryblokRichtextComponents } from "@storyblok/angular";
 
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN' },
+  { accessToken: "YOUR_ACCESS_TOKEN" },
   withStoryblokRichtextComponents({
     link: CustomLinkComponent,
     image: OptimizedImageComponent,
@@ -204,11 +205,11 @@ provideStoryblok(
 Create a custom component using the `props` input pattern:
 
 ```typescript
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import type { SbAngularRichTextProps } from '@storyblok/angular';
+import { ChangeDetectionStrategy, Component, input } from "@angular/core";
+import type { SbAngularRichTextProps } from "@storyblok/angular";
 
 @Component({
-  selector: 'app-link',
+  selector: "app-link",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <a [href]="data().attrs?.href">
@@ -216,11 +217,11 @@ import type { SbAngularRichTextProps } from '@storyblok/angular';
     </a>
   `,
   host: {
-    style: 'display: inline-block',
+    style: "display: inline-block",
   },
 })
 export class LinkComponent {
-  readonly data = input.required<SbAngularRichTextProps<'link'>>();
+  readonly data = input.required<SbAngularRichTextProps<"link">>();
 }
 ```
 
@@ -230,13 +231,13 @@ Register components with lazy loading for optimal bundle size:
 
 ```typescript
 const storyblokComponents: StoryblokComponentsMap = {
-  page: () => import('./components/page').then((m) => m.PageComponent),
-  teaser: () => import('./components/teaser').then((m) => m.TeaserComponent),
-  grid: () => import('./components/grid').then((m) => m.GridComponent),
+  page: () => import("./components/page").then((m) => m.PageComponent),
+  teaser: () => import("./components/teaser").then((m) => m.TeaserComponent),
+  grid: () => import("./components/grid").then((m) => m.GridComponent),
 };
 
 provideStoryblok(
-  { accessToken: 'YOUR_ACCESS_TOKEN' },
+  { accessToken: "YOUR_ACCESS_TOKEN" },
   withStoryblokComponents(storyblokComponents),
 );
 ```
@@ -278,7 +279,8 @@ provideStoryblok(
 
 ## Documentation
 
-For complete documentation, visit the [Storyblok Angular SDK documentation](https://www.storyblok.com/docs/packages/storyblok-angular).
+For complete documentation, visit the
+[Storyblok Angular SDK documentation](https://www.storyblok.com/docs/packages/storyblok-angular).
 
 ## Contributing
 
@@ -293,18 +295,25 @@ For help, discussion about best practices, or any other conversation:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+For bugs or feature requests, please
+[submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-> [!IMPORTANT]
-> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
 
 ### Feedback
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

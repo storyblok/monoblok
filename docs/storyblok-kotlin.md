@@ -1,6 +1,7 @@
 # Storyblok Kotlin Repository
 
-Kotlin Multiplatform Ktor client plugin for Storyblok APIs. Supports all KMP targets (JVM, Android, JS, Wasm, iOS, macOS, tvOS, watchOS, Linux, Windows).
+Kotlin Multiplatform Ktor client plugin for Storyblok APIs. Supports all KMP targets (JVM, Android,
+JS, Wasm, iOS, macOS, tvOS, watchOS, Linux, Windows).
 
 ## When to explore storyblok-kotlin
 

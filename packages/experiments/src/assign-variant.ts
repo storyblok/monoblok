@@ -1,5 +1,5 @@
-import type { Assignment, Experiment, ExperimentVariant } from './types';
-import { hashToBucket } from './hash';
+import type { Assignment, Experiment, ExperimentVariant } from "./types";
+import { hashToBucket } from "./hash";
 
 export interface AssignVariantOptions {
   experiment: Experiment;
@@ -9,7 +9,11 @@ export interface AssignVariantOptions {
 // The assignment carries the experiment's identity rather than only its id, so
 // building a conversion from it needs no lookup. `experimentId` is the
 // deprecated 1.x spelling of `experiment.id`.
-const assignmentFor = (experiment: Experiment, visitorId: string, variant: ExperimentVariant): Assignment => ({
+const assignmentFor = (
+  experiment: Experiment,
+  visitorId: string,
+  variant: ExperimentVariant,
+): Assignment => ({
   experiment: { id: experiment.id, name: experiment.name },
   experimentId: experiment.id,
   visitorId,
@@ -23,7 +27,10 @@ const assignmentFor = (experiment: Experiment, visitorId: string, variant: Exper
  * variant carries positive weight. Returns `undefined` for an experiment with
  * no variants.
  */
-export function assignVariant({ experiment, visitorId }: AssignVariantOptions): Assignment | undefined {
+export function assignVariant({
+  experiment,
+  visitorId,
+}: AssignVariantOptions): Assignment | undefined {
   const { variants } = experiment;
   if (variants.length === 0) {
     return undefined;
@@ -33,7 +40,7 @@ export function assignVariant({ experiment, visitorId }: AssignVariantOptions): 
 
   // No positive weights: fall back to the control variant (or the first one).
   if (totalWeight <= 0) {
-    const fallback = variants.find(variant => variant.is_control) ?? variants[0];
+    const fallback = variants.find((variant) => variant.is_control) ?? variants[0];
     return assignmentFor(experiment, visitorId, fallback);
   }
 

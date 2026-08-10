@@ -17,11 +17,15 @@ Use this skill for the following tasks:
 ## Voice and Perspective
 
 - **Active Voice**: Always use the active voice. Avoid the passive voice.
-- **Imperative Mood**: Use the imperative second-person voice for instructions ("Add the following...").
+- **Imperative Mood**: Use the imperative second-person voice for instructions ("Add the
+  following...").
 - **Third-person**: Use the third-person voice for descriptions and technical references.
-- **Generic Voice**: Strive for simplicity, clarity, and consistency. Avoid soloists; the documentation should feel written by one team.
-- **Gerunds**: Avoid gerunds (nouns ending in "-ing") in headings and instructions. Use "Find information" instead of "Finding information."
-  - **Exception**: Gerunds are acceptable when referring to established technical concepts (for example, "Caching," "Routing," or "Versioning").
+- **Generic Voice**: Strive for simplicity, clarity, and consistency. Avoid soloists; the
+  documentation should feel written by one team.
+- **Gerunds**: Avoid gerunds (nouns ending in "-ing") in headings and instructions. Use "Find
+  information" instead of "Finding information."
+  - **Exception**: Gerunds are acceptable when referring to established technical concepts (for
+    example, "Caching," "Routing," or "Versioning").
 
 ### Active voice
 
@@ -42,16 +46,20 @@ Subject performs action. Prefer this.
 
 ### Spelling
 
-- **American English**: Use standard American spellings (for example, *neighbor*, *center*).
-- **Abbreviations**: Define on first reference if used more than twice (for example, "universal resource identifier (URI)"). Use abbreviations for common terms (for example, "HTTP").
-- **Special Characters**: Use only when technically correct. Avoid emojis and decorative symbols unless they add technical value.
+- **American English**: Use standard American spellings (for example, _neighbor_, _center_).
+- **Abbreviations**: Define on first reference if used more than twice (for example, "universal
+  resource identifier (URI)"). Use abbreviations for common terms (for example, "HTTP").
+- **Special Characters**: Use only when technically correct. Avoid emojis and decorative symbols
+  unless they add technical value.
 
 ### Capitalization
 
 - **Title Case**: Use Title Case for H1/Titles (`#`) and CTAs.
 - **Sentence Case**: Use sentence case for headings H2 through H6.
-  - Important: if there is no H1 assume that you're only see part of the document and always stick to casing rules!
-- **Technical Casing**: Always use the technical casing for code, variables, and instances (for example, `pop()`, `StoryblokBridge` vs `storyblokBridge`).
+  - Important: if there is no H1 assume that you're only see part of the document and always stick
+    to casing rules!
+- **Technical Casing**: Always use the technical casing for code, variables, and instances (for
+  example, `pop()`, `StoryblokBridge` vs `storyblokBridge`).
 - **File Types**: Use uppercase (for example, JPEG, ZIP).
 - **URLs**: Use lowercase.
 - **Lists**: Capitalize list items.
@@ -60,13 +68,15 @@ Subject performs action. Prefer this.
 ## Punctuation
 
 - **Oxford Comma**: Always use a comma before the last item in a list.
-- **Dashes**: 
+- **Dashes**:
   - **Hyphens**: Join compound phrases.
   - **Em dashes**: Demarcate an aside, surrounded by spaces. Avoid En dashes.
 - **Spaces**: Use only one space between sentences. No space before punctuation.
 - **Quotes**: End punctuation goes inside the quotation mark ("like this.").
-  - **Exception**: Place punctuation outside quotation marks if the quote is a literal string, command, or code snippet to avoid syntax errors (for example, set the value to "true".).
-- **Parentheticals**: End punctuation goes after the closing parenthesis unless the parenthetical is a full sentence.
+  - **Exception**: Place punctuation outside quotation marks if the quote is a literal string,
+    command, or code snippet to avoid syntax errors (for example, set the value to "true".).
+- **Parentheticals**: End punctuation goes after the closing parenthesis unless the parenthetical is
+  a full sentence.
 
 ## Structure
 

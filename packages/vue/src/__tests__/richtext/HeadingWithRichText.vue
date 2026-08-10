@@ -4,10 +4,10 @@ This tests the infinite loop prevention - without it, this would cause:
 HeadingWithRichText -> StoryblokRichText -> HeadingWithRichText -> ...
 -->
 <script setup lang="ts">
-import type { SbVueRichTextProps } from '../../index.ts';
-import StoryblokRichText from '../../components/StoryblokRichText.vue';
+import type { SbVueRichTextProps } from "../../index.ts";
+import StoryblokRichText from "../../components/StoryblokRichText.vue";
 
-const props = defineProps<SbVueRichTextProps['heading']>();
+const props = defineProps<SbVueRichTextProps["heading"]>();
 const level = props.attrs?.level || 1;
 </script>
 

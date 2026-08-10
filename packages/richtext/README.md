@@ -29,17 +29,23 @@
 
 ## Features
 
-- **Framework-Agnostic Rendering**: Outputs raw HTML by default but can be configured to produce framework-specific elements, such as React components or Vue nodes.
-- **Custom Resolvers**: Allows developers to override default rendering behavior for specific elements like links, images, and embedded components. This enables integration with custom components or styling frameworks like Tailwind CSS.
-Storyblok
-- **Image Optimization**: Supports image optimization options, including lazy loading, responsive sizing, and format conversion (e.g., to WebP), enhancing performance and user experience.
-Storyblok
-- **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and improved developer experience across different frameworks.
-- **Markdown to Rich Text Conversion**: Converts Markdown content to Storyblok's rich text nodes, allowing for seamless integration with markdown-based content management systems.
+- **Framework-Agnostic Rendering**: Outputs raw HTML by default but can be configured to produce
+  framework-specific elements, such as React components or Vue nodes.
+- **Custom Resolvers**: Allows developers to override default rendering behavior for specific
+  elements like links, images, and embedded components. This enables integration with custom
+  components or styling frameworks like Tailwind CSS. Storyblok
+- **Image Optimization**: Supports image optimization options, including lazy loading, responsive
+  sizing, and format conversion (e.g., to WebP), enhancing performance and user experience.
+  Storyblok
+- **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and
+  improved developer experience across different frameworks.
+- **Markdown to Rich Text Conversion**: Converts Markdown content to Storyblok's rich text nodes,
+  allowing for seamless integration with markdown-based content management systems.
 
 ## Documentation
 
-For complete documentation, please visit [package reference](https://www.storyblok.com/docs/packages/storyblok-richtext)
+For complete documentation, please visit
+[package reference](https://www.storyblok.com/docs/packages/storyblok-richtext)
 
 ## Contributing
 
@@ -47,7 +53,8 @@ If you'd like to contribute, please refer to the [contributing guidelines](CONTR
 
 ## Community
 
-For help, discussion about best practices, or any other conversation that would benefit from being searchable:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
 - [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
 
@@ -57,18 +64,25 @@ For community support, chatting with other users, please visit:
 
 ## Support
 
-For bugs or feature requests, please [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
+For bugs or feature requests, please
+[submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
-> [!IMPORTANT]
-> Please search existing issues before submitting a new one. Issues without a minimal reproducible example will be closed. [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
 
 ### I can't share my company project code
 
-We understand that you might not be able to share your company's project code. Please provide a minimal reproducible example that demonstrates the issue by using tools like [Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a README file with the instructions to build and run the project, important not to include any access token, password or personal information of any kind.
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
 
 ### Feedback
 
-If you have a question, please ask in the [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
 ## License
 

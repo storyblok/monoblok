@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   areLinkMarksEqual,
   getInnerMarks,
@@ -6,39 +6,39 @@ import {
   groupLinkNodes,
   isTableHeaderRow,
   splitTableRows,
-} from './node-helpers';
-import type { RichTextNode } from '../generated/overlay/types.gen';
-import { linkMark, text as textNode } from '../test-utils/helpers';
+} from "./node-helpers";
+import type { RichTextNode } from "../generated/overlay/types.gen";
+import { linkMark, text as textNode } from "../test-utils/helpers";
 
 // ============================================================================
 // getTextNodeLinkMark
 // ============================================================================
 
-describe('getTextNodeLinkMark', () => {
-  it('returns null for non-text nodes', () => {
-    const node: RichTextNode = { type: 'paragraph', content: [] };
+describe("getTextNodeLinkMark", () => {
+  it("returns null for non-text nodes", () => {
+    const node: RichTextNode = { type: "paragraph", content: [] };
     expect(getTextNodeLinkMark(node)).toBeNull();
   });
 
-  it('returns null for text node without marks', () => {
-    const node = textNode('hello');
+  it("returns null for text node without marks", () => {
+    const node = textNode("hello");
     expect(getTextNodeLinkMark(node)).toBeNull();
   });
 
-  it('returns null for text node with non-link marks', () => {
-    const node = textNode('hello', [{ type: 'bold' }]);
+  it("returns null for text node with non-link marks", () => {
+    const node = textNode("hello", [{ type: "bold" }]);
     expect(getTextNodeLinkMark(node)).toBeNull();
   });
 
-  it('returns link mark when present', () => {
-    const mark = linkMark('/test');
-    const node = textNode('hello', [mark]);
+  it("returns link mark when present", () => {
+    const mark = linkMark("/test");
+    const node = textNode("hello", [mark]);
     expect(getTextNodeLinkMark(node)).toEqual(mark);
   });
 
-  it('returns link mark even with other marks present', () => {
-    const mark = linkMark('/test');
-    const node = textNode('hello', [{ type: 'bold' }, mark, { type: 'italic' }]);
+  it("returns link mark even with other marks present", () => {
+    const mark = linkMark("/test");
+    const node = textNode("hello", [{ type: "bold" }, mark, { type: "italic" }]);
     expect(getTextNodeLinkMark(node)).toEqual(mark);
   });
 });
@@ -47,93 +47,99 @@ describe('getTextNodeLinkMark', () => {
 // areLinkMarksEqual
 // ============================================================================
 
-describe('areLinkMarksEqual', () => {
-  it('returns false when first mark is null', () => {
-    expect(areLinkMarksEqual(null, linkMark('/a'))).toBe(false);
+describe("areLinkMarksEqual", () => {
+  it("returns false when first mark is null", () => {
+    expect(areLinkMarksEqual(null, linkMark("/a"))).toBe(false);
   });
 
-  it('returns false when second mark is null', () => {
-    expect(areLinkMarksEqual(linkMark('/a'), null)).toBe(false);
+  it("returns false when second mark is null", () => {
+    expect(areLinkMarksEqual(linkMark("/a"), null)).toBe(false);
   });
 
-  it('returns false when both marks are null', () => {
+  it("returns false when both marks are null", () => {
     expect(areLinkMarksEqual(null, null)).toBe(false);
   });
 
-  it('returns true for identical marks', () => {
-    const mark = linkMark('/test', { target: '_blank' });
+  it("returns true for identical marks", () => {
+    const mark = linkMark("/test", { target: "_blank" });
     expect(areLinkMarksEqual(mark, { ...mark })).toBe(true);
   });
 
-  it('returns true for marks with same href', () => {
-    expect(areLinkMarksEqual(linkMark('/a'), linkMark('/a'))).toBe(true);
+  it("returns true for marks with same href", () => {
+    expect(areLinkMarksEqual(linkMark("/a"), linkMark("/a"))).toBe(true);
   });
 
-  it('returns false for marks with different href', () => {
-    expect(areLinkMarksEqual(linkMark('/a'), linkMark('/b'))).toBe(false);
+  it("returns false for marks with different href", () => {
+    expect(areLinkMarksEqual(linkMark("/a"), linkMark("/b"))).toBe(false);
   });
 
-  it('returns false for marks with different target', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { target: '_blank' }),
-      linkMark('/a', { target: '_self' }),
-    )).toBe(false);
+  it("returns false for marks with different target", () => {
+    expect(
+      areLinkMarksEqual(linkMark("/a", { target: "_blank" }), linkMark("/a", { target: "_self" })),
+    ).toBe(false);
   });
 
-  it('returns false for marks with different linktype', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { linktype: 'story' }),
-      linkMark('/a', { linktype: 'url' }),
-    )).toBe(false);
+  it("returns false for marks with different linktype", () => {
+    expect(
+      areLinkMarksEqual(linkMark("/a", { linktype: "story" }), linkMark("/a", { linktype: "url" })),
+    ).toBe(false);
   });
 
-  it('returns false for marks with different anchor', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { anchor: 'section1' }),
-      linkMark('/a', { anchor: 'section2' }),
-    )).toBe(false);
+  it("returns false for marks with different anchor", () => {
+    expect(
+      areLinkMarksEqual(
+        linkMark("/a", { anchor: "section1" }),
+        linkMark("/a", { anchor: "section2" }),
+      ),
+    ).toBe(false);
   });
 
-  it('returns false for marks with different uuid', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { uuid: 'uuid-1' }),
-      linkMark('/a', { uuid: 'uuid-2' }),
-    )).toBe(false);
+  it("returns false for marks with different uuid", () => {
+    expect(
+      areLinkMarksEqual(linkMark("/a", { uuid: "uuid-1" }), linkMark("/a", { uuid: "uuid-2" })),
+    ).toBe(false);
   });
 
-  it('returns true for marks with same custom attributes', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { custom: { title: 'hello' } }),
-      linkMark('/a', { custom: { title: 'hello' } }),
-    )).toBe(true);
+  it("returns true for marks with same custom attributes", () => {
+    expect(
+      areLinkMarksEqual(
+        linkMark("/a", { custom: { title: "hello" } }),
+        linkMark("/a", { custom: { title: "hello" } }),
+      ),
+    ).toBe(true);
   });
 
-  it('returns false for marks with different custom attributes', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { custom: { title: 'hello' } }),
-      linkMark('/a', { custom: { title: 'world' } }),
-    )).toBe(false);
+  it("returns false for marks with different custom attributes", () => {
+    expect(
+      areLinkMarksEqual(
+        linkMark("/a", { custom: { title: "hello" } }),
+        linkMark("/a", { custom: { title: "world" } }),
+      ),
+    ).toBe(false);
   });
 
-  it('returns false when one mark has custom and other does not', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { custom: { title: 'hello' } }),
-      linkMark('/a'),
-    )).toBe(false);
+  it("returns false when one mark has custom and other does not", () => {
+    expect(areLinkMarksEqual(linkMark("/a", { custom: { title: "hello" } }), linkMark("/a"))).toBe(
+      false,
+    );
   });
 
-  it('returns true for marks with nested custom attributes', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { custom: { data: { nested: 'value' } } }),
-      linkMark('/a', { custom: { data: { nested: 'value' } } }),
-    )).toBe(true);
+  it("returns true for marks with nested custom attributes", () => {
+    expect(
+      areLinkMarksEqual(
+        linkMark("/a", { custom: { data: { nested: "value" } } }),
+        linkMark("/a", { custom: { data: { nested: "value" } } }),
+      ),
+    ).toBe(true);
   });
 
-  it('returns false for marks with different nested custom attributes', () => {
-    expect(areLinkMarksEqual(
-      linkMark('/a', { custom: { data: { nested: 'value1' } } }),
-      linkMark('/a', { custom: { data: { nested: 'value2' } } }),
-    )).toBe(false);
+  it("returns false for marks with different nested custom attributes", () => {
+    expect(
+      areLinkMarksEqual(
+        linkMark("/a", { custom: { data: { nested: "value1" } } }),
+        linkMark("/a", { custom: { data: { nested: "value2" } } }),
+      ),
+    ).toBe(false);
   });
 });
 
@@ -141,30 +147,34 @@ describe('areLinkMarksEqual', () => {
 // getInnerMarks
 // ============================================================================
 
-describe('getInnerMarks', () => {
-  it('returns empty array for non-text nodes', () => {
-    const node: RichTextNode = { type: 'paragraph', content: [] };
+describe("getInnerMarks", () => {
+  it("returns empty array for non-text nodes", () => {
+    const node: RichTextNode = { type: "paragraph", content: [] };
     expect(getInnerMarks(node)).toEqual([]);
   });
 
-  it('returns empty array for text node without marks', () => {
-    const node = textNode('hello');
+  it("returns empty array for text node without marks", () => {
+    const node = textNode("hello");
     expect(getInnerMarks(node)).toEqual([]);
   });
 
-  it('returns empty array when only link mark present', () => {
-    const node = textNode('hello', [linkMark('/test')]);
+  it("returns empty array when only link mark present", () => {
+    const node = textNode("hello", [linkMark("/test")]);
     expect(getInnerMarks(node)).toEqual([]);
   });
 
-  it('returns non-link marks', () => {
-    const boldMark = { type: 'bold' };
-    const italicMark = { type: 'italic' };
-    const node = textNode('hello', [{
-      type: 'bold',
-    }, linkMark('/test'), {
-      type: 'italic',
-    }]);
+  it("returns non-link marks", () => {
+    const boldMark = { type: "bold" };
+    const italicMark = { type: "italic" };
+    const node = textNode("hello", [
+      {
+        type: "bold",
+      },
+      linkMark("/test"),
+      {
+        type: "italic",
+      },
+    ]);
     expect(getInnerMarks(node)).toEqual([boldMark, italicMark]);
   });
 });
@@ -173,77 +183,77 @@ describe('getInnerMarks', () => {
 // groupLinkNodes
 // ============================================================================
 
-describe('groupLinkNodes', () => {
-  it('returns empty array for empty children', () => {
+describe("groupLinkNodes", () => {
+  it("returns empty array for empty children", () => {
     expect(groupLinkNodes([])).toEqual([]);
   });
 
-  it('groups single non-linked text node', () => {
-    const node = textNode('hello');
+  it("groups single non-linked text node", () => {
+    const node = textNode("hello");
     const result = groupLinkNodes([node]);
-    expect(result).toEqual([{ _key: 'group-node-0', nodes: [node], linkMark: null }]);
+    expect(result).toEqual([{ _key: "group-node-0", nodes: [node], linkMark: null }]);
   });
 
-  it('groups single linked text node', () => {
-    const mark = linkMark('/test');
-    const node = textNode('hello', [mark]);
+  it("groups single linked text node", () => {
+    const mark = linkMark("/test");
+    const node = textNode("hello", [mark]);
     const result = groupLinkNodes([node]);
-    expect(result).toEqual([{ _key: 'group-link-0', nodes: [node], linkMark: mark }]);
+    expect(result).toEqual([{ _key: "group-link-0", nodes: [node], linkMark: mark }]);
   });
 
-  it('merges adjacent text nodes with same link', () => {
-    const mark = linkMark('/test');
-    const node1 = textNode('hello ', [mark]);
-    const node2 = textNode('world', [mark]);
+  it("merges adjacent text nodes with same link", () => {
+    const mark = linkMark("/test");
+    const node1 = textNode("hello ", [mark]);
+    const node2 = textNode("world", [mark]);
     const result = groupLinkNodes([node1, node2]);
-    expect(result).toEqual([{ _key: 'group-link-0', nodes: [node1, node2], linkMark: mark }]);
+    expect(result).toEqual([{ _key: "group-link-0", nodes: [node1, node2], linkMark: mark }]);
   });
 
-  it('separates text nodes with different links', () => {
-    const mark1 = linkMark('/a');
-    const mark2 = linkMark('/b');
-    const node1 = textNode('hello', [mark1]);
-    const node2 = textNode('world', [mark2]);
+  it("separates text nodes with different links", () => {
+    const mark1 = linkMark("/a");
+    const mark2 = linkMark("/b");
+    const node1 = textNode("hello", [mark1]);
+    const node2 = textNode("world", [mark2]);
     const result = groupLinkNodes([node1, node2]);
     expect(result).toEqual([
-      { _key: 'group-link-0', nodes: [node1], linkMark: mark1 },
-      { _key: 'group-link-1', nodes: [node2], linkMark: mark2 },
+      { _key: "group-link-0", nodes: [node1], linkMark: mark1 },
+      { _key: "group-link-1", nodes: [node2], linkMark: mark2 },
     ]);
   });
 
-  it('separates linked and non-linked text nodes', () => {
-    const mark = linkMark('/test');
-    const linkedNode = textNode('linked', [mark]);
-    const plainNode = textNode('plain');
+  it("separates linked and non-linked text nodes", () => {
+    const mark = linkMark("/test");
+    const linkedNode = textNode("linked", [mark]);
+    const plainNode = textNode("plain");
     const result = groupLinkNodes([linkedNode, plainNode]);
     expect(result).toEqual([
-      { _key: 'group-link-0', nodes: [linkedNode], linkMark: mark },
-      { _key: 'group-node-1', nodes: [plainNode], linkMark: null },
+      { _key: "group-link-0", nodes: [linkedNode], linkMark: mark },
+      { _key: "group-node-1", nodes: [plainNode], linkMark: null },
     ]);
   });
 
-  it('handles non-text nodes', () => {
-    const mark = linkMark('/test');
-    const textNodeA: RichTextNode = textNode('before', [mark]);
-    const brNode: RichTextNode = { type: 'hard_break' };
-    const textNodeB: RichTextNode = textNode('after', [mark]);
+  it("handles non-text nodes", () => {
+    const mark = linkMark("/test");
+    const textNodeA: RichTextNode = textNode("before", [mark]);
+    const brNode: RichTextNode = { type: "hard_break" };
+    const textNodeB: RichTextNode = textNode("after", [mark]);
     const result = groupLinkNodes([textNodeA, brNode, textNodeB]);
     expect(result).toEqual([
-      { _key: 'group-link-0', nodes: [textNodeA], linkMark: mark },
-      { _key: 'group-node-1', nodes: [brNode], linkMark: null },
-      { _key: 'group-link-2', nodes: [textNodeB], linkMark: mark },
+      { _key: "group-link-0", nodes: [textNodeA], linkMark: mark },
+      { _key: "group-node-1", nodes: [brNode], linkMark: null },
+      { _key: "group-link-2", nodes: [textNodeB], linkMark: mark },
     ]);
   });
 
-  it('separates nodes when custom attributes differ', () => {
-    const mark1 = linkMark('/a', { custom: { title: 'google' } });
-    const mark2 = linkMark('/a', { custom: { title: 'new' } });
-    const node1 = textNode('A', [mark1]);
-    const node2 = textNode('B', [mark2]);
+  it("separates nodes when custom attributes differ", () => {
+    const mark1 = linkMark("/a", { custom: { title: "google" } });
+    const mark2 = linkMark("/a", { custom: { title: "new" } });
+    const node1 = textNode("A", [mark1]);
+    const node2 = textNode("B", [mark2]);
     const result = groupLinkNodes([node1, node2]);
     expect(result).toEqual([
-      { _key: 'group-link-0', nodes: [node1], linkMark: mark1 },
-      { _key: 'group-link-1', nodes: [node2], linkMark: mark2 },
+      { _key: "group-link-0", nodes: [node1], linkMark: mark1 },
+      { _key: "group-link-1", nodes: [node2], linkMark: mark2 },
     ]);
   });
 });
@@ -252,42 +262,42 @@ describe('groupLinkNodes', () => {
 // isTableHeaderRow
 // ============================================================================
 
-describe('isTableHeaderRow', () => {
-  it('returns false for row without content', () => {
-    const row: RichTextNode = { type: 'tableRow' };
+describe("isTableHeaderRow", () => {
+  it("returns false for row without content", () => {
+    const row: RichTextNode = { type: "tableRow" };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
-  it('returns false for row with empty content', () => {
-    const row: RichTextNode = { type: 'tableRow', content: [] };
+  it("returns false for row with empty content", () => {
+    const row: RichTextNode = { type: "tableRow", content: [] };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
-  it('returns false for row with tableCell', () => {
+  it("returns false for row with tableCell", () => {
     const row: RichTextNode = {
-      type: 'tableRow',
-      content: [{ type: 'tableCell', attrs: {} }],
+      type: "tableRow",
+      content: [{ type: "tableCell", attrs: {} }],
     };
     expect(isTableHeaderRow(row)).toBe(false);
   });
 
-  it('returns true for row with only tableHeader cells', () => {
+  it("returns true for row with only tableHeader cells", () => {
     const row: RichTextNode = {
-      type: 'tableRow',
+      type: "tableRow",
       content: [
-        { type: 'tableHeader', attrs: {} },
-        { type: 'tableHeader', attrs: {} },
+        { type: "tableHeader", attrs: {} },
+        { type: "tableHeader", attrs: {} },
       ],
     };
     expect(isTableHeaderRow(row)).toBe(true);
   });
 
-  it('returns false for mixed row', () => {
+  it("returns false for mixed row", () => {
     const row: RichTextNode = {
-      type: 'tableRow',
+      type: "tableRow",
       content: [
-        { type: 'tableHeader', attrs: {} },
-        { type: 'tableCell', attrs: {} },
+        { type: "tableHeader", attrs: {} },
+        { type: "tableCell", attrs: {} },
       ],
     };
     expect(isTableHeaderRow(row)).toBe(false);
@@ -298,35 +308,44 @@ describe('isTableHeaderRow', () => {
 // splitTableRows
 // ============================================================================
 
-describe('splitTableRows', () => {
-  it('returns empty arrays for undefined rows', () => {
+describe("splitTableRows", () => {
+  it("returns empty arrays for undefined rows", () => {
     expect(splitTableRows(undefined)).toEqual({ headerRows: [], bodyRows: [] });
   });
 
-  it('returns empty arrays for empty rows', () => {
+  it("returns empty arrays for empty rows", () => {
     expect(splitTableRows([])).toEqual({ headerRows: [], bodyRows: [] });
   });
 
-  it('returns all rows as body when no header rows', () => {
+  it("returns all rows as body when no header rows", () => {
     const rows: RichTextNode[] = [
-      { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] },
-      { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] },
+      { type: "tableRow", content: [{ type: "tableCell", attrs: {} }] },
+      { type: "tableRow", content: [{ type: "tableCell", attrs: {} }] },
     ];
     expect(splitTableRows(rows)).toEqual({ headerRows: [], bodyRows: rows });
   });
 
-  it('returns all rows as header when all are header rows', () => {
+  it("returns all rows as header when all are header rows", () => {
     const rows: RichTextNode[] = [
-      { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] },
-      { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] },
+      { type: "tableRow", content: [{ type: "tableHeader", attrs: {} }] },
+      { type: "tableRow", content: [{ type: "tableHeader", attrs: {} }] },
     ];
     expect(splitTableRows(rows)).toEqual({ headerRows: rows, bodyRows: [] });
   });
 
-  it('splits header and body rows correctly', () => {
-    const headerRow: RichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] };
-    const bodyRow1: RichTextNode = { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] };
-    const bodyRow2: RichTextNode = { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] };
+  it("splits header and body rows correctly", () => {
+    const headerRow: RichTextNode = {
+      type: "tableRow",
+      content: [{ type: "tableHeader", attrs: {} }],
+    };
+    const bodyRow1: RichTextNode = {
+      type: "tableRow",
+      content: [{ type: "tableCell", attrs: {} }],
+    };
+    const bodyRow2: RichTextNode = {
+      type: "tableRow",
+      content: [{ type: "tableCell", attrs: {} }],
+    };
     const rows = [headerRow, bodyRow1, bodyRow2];
     expect(splitTableRows(rows)).toEqual({
       headerRows: [headerRow],
@@ -334,10 +353,16 @@ describe('splitTableRows', () => {
     });
   });
 
-  it('only considers contiguous header rows at start', () => {
-    const headerRow1: RichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] };
-    const bodyRow: RichTextNode = { type: 'tableRow', content: [{ type: 'tableCell', attrs: {} }] };
-    const headerRow2: RichTextNode = { type: 'tableRow', content: [{ type: 'tableHeader', attrs: {} }] };
+  it("only considers contiguous header rows at start", () => {
+    const headerRow1: RichTextNode = {
+      type: "tableRow",
+      content: [{ type: "tableHeader", attrs: {} }],
+    };
+    const bodyRow: RichTextNode = { type: "tableRow", content: [{ type: "tableCell", attrs: {} }] };
+    const headerRow2: RichTextNode = {
+      type: "tableRow",
+      content: [{ type: "tableHeader", attrs: {} }],
+    };
     const rows = [headerRow1, bodyRow, headerRow2];
     expect(splitTableRows(rows)).toEqual({
       headerRows: [headerRow1],

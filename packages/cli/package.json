@@ -1,22 +1,30 @@
 {
   "name": "storyblok",
-  "type": "module",
   "version": "4.22.0",
   "description": "Storyblok CLI",
-  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/storyblok/monoblok.git",
-    "branch": "main",
-    "directory": "packages/cli"
-  },
   "keywords": [
     "cli",
     "javascript",
     "node",
     "storyblok"
   ],
+  "license": "MIT",
+  "author": "Alvaro Saburido <hola@alvarosaburido.dev> (https://github.com/alvarosabu/)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
+    "branch": "main",
+    "directory": "packages/cli"
+  },
+  "bin": {
+    "storyblok": "./dist/index.mjs"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
@@ -27,14 +35,6 @@
       "import": "./dist/config/index.mjs"
     }
   },
-  "main": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "bin": {
-    "storyblok": "./dist/index.mjs"
-  },
-  "files": [
-    "dist/**"
-  ],
   "scripts": {
     "build": "vp pack",
     "release": "release-it",

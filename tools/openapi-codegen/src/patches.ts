@@ -9,14 +9,14 @@
  * migrate the fix upstream when the contract is owned there.
  */
 
-import type { UserConfig } from '@hey-api/openapi-ts';
-import type { SpecSource } from './aliases.ts';
+import type { UserConfig } from "@hey-api/openapi-ts";
+import type { SpecSource } from "./aliases.ts";
 
-type Parser = NonNullable<UserConfig['parser']>;
+type Parser = NonNullable<UserConfig["parser"]>;
 
 /** True for a non-null object we can walk/mutate as a parsed schema node. */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 /**
@@ -43,8 +43,8 @@ function widenComponentGroupUuid(schema: unknown): void {
     return;
   }
   const group = component.properties.component_group_uuid;
-  if (isRecord(group) && group.type === 'string') {
-    group.type = ['string', 'null'];
+  if (isRecord(group) && group.type === "string") {
+    group.type = ["string", "null"];
   }
 }
 

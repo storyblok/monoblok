@@ -10,20 +10,25 @@ Apply these rules when writing any Storyblok documentation, README, or prose con
 
 ## Core rules
 
-- Do not use em dashes or en dashes. Use commas, colons, or periods instead. Hyphens `-` are fine in bullet lists and compound phrases.
+- Do not use em dashes or en dashes. Use commas, colons, or periods instead. Hyphens `-` are fine in
+  bullet lists and compound phrases.
 
 ## Voice and perspective
 
-- **Active voice**: Always prefer. Avoid passive unless the actor is unknown, the object is more important, or it describes system behavior.
+- **Active voice**: Always prefer. Avoid passive unless the actor is unknown, the object is more
+  important, or it describes system behavior.
 - **Imperative mood**: Use second-person imperative for instructions ("Add the following...").
 - **Third-person**: Use for descriptions and technical references.
-- **Generic voice**: Simplicity, clarity, consistency. The documentation should feel written by one team.
-- **Gerunds**: Avoid in headings and instructions ("Find information" not "Finding information"). Exception: established technical concepts (Caching, Routing, Versioning).
+- **Generic voice**: Simplicity, clarity, consistency. The documentation should feel written by one
+  team.
+- **Gerunds**: Avoid in headings and instructions ("Find information" not "Finding information").
+  Exception: established technical concepts (Caching, Routing, Versioning).
 
 ## Spelling and capitalization
 
 - **American English**: Standard spellings (neighbor, center).
-- **Abbreviations**: Define on first reference if used more than twice. Use abbreviations for common terms (HTTP, URI).
+- **Abbreviations**: Define on first reference if used more than twice. Use abbreviations for common
+  terms (HTTP, URI).
 - **Title Case**: H1/Titles (`#`) and CTAs.
 - **Sentence case**: H2 through H6.
 - **Technical casing**: Always match code casing (`pop()`, `StoryblokBridge`).
@@ -34,8 +39,10 @@ Apply these rules when writing any Storyblok documentation, README, or prose con
 
 - **Oxford comma**: Always.
 - **Spaces**: One space between sentences. No space before punctuation.
-- **Quotes**: Punctuation inside ("like this."). Exception: literal strings, commands, or code snippets go outside to avoid syntax errors.
-- **Parentheticals**: Punctuation after closing parenthesis unless the parenthetical is a full sentence.
+- **Quotes**: Punctuation inside ("like this."). Exception: literal strings, commands, or code
+  snippets go outside to avoid syntax errors.
+- **Parentheticals**: Punctuation after closing parenthesis unless the parenthetical is a full
+  sentence.
 
 ## Structure
 

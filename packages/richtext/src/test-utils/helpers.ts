@@ -3,13 +3,10 @@ import type {
   RichTextFieldValueLinkMark,
   RichTextMark,
   RichTextNode,
-} from '../generated/overlay/types.gen';
+} from "../generated/overlay/types.gen";
 
-export const text = (
-  content: string,
-  marks?: RichTextMark[] | undefined,
-): RichTextNode => ({
-  type: 'text',
+export const text = (content: string, marks?: RichTextMark[] | undefined): RichTextNode => ({
+  type: "text",
   text: content,
   ...(marks && { marks }),
 });
@@ -18,16 +15,16 @@ export const linkMark = (
   href: string,
   options: {
     uuid?: string;
-    target?: '_blank' | '_self';
-    linktype?: 'url' | 'story' | 'email' | 'asset';
+    target?: "_blank" | "_self";
+    linktype?: "url" | "story" | "email" | "asset";
     anchor?: string;
     custom?: Record<string, unknown>;
   } = {},
 ): RichTextFieldValueLinkMark => ({
-  type: 'link',
+  type: "link",
   attrs: {
     href,
-    linktype: options.linktype ?? 'url',
+    linktype: options.linktype ?? "url",
     target: options.target ?? null,
     anchor: options.anchor ?? null,
     uuid: options.uuid ?? null,
@@ -45,8 +42,8 @@ export const tableCell = (
   } = {},
   marks?: RichTextMark[] | undefined,
 ): RichTextNode => ({
-  type: 'tableCell',
-  content: [{ type: 'paragraph', content: [text(content, marks)] }],
+  type: "tableCell",
+  content: [{ type: "paragraph", content: [text(content, marks)] }],
   attrs: {
     colspan: attrs.colspan ?? 1,
     rowspan: attrs.rowspan ?? 1,
@@ -55,26 +52,23 @@ export const tableCell = (
   },
 });
 
-export const tableHeader = (
-  content: string,
-  marks?: RichTextMark[] | undefined,
-): RichTextNode => ({
-  type: 'tableHeader',
-  content: [{ type: 'paragraph', content: [text(content, marks)] }],
+export const tableHeader = (content: string, marks?: RichTextMark[] | undefined): RichTextNode => ({
+  type: "tableHeader",
+  content: [{ type: "paragraph", content: [text(content, marks)] }],
   attrs: { colspan: 1, rowspan: 1 },
 });
 
 export const tableRow = (cells: RichTextNode[]): RichTextNode => ({
-  type: 'tableRow',
+  type: "tableRow",
   content: cells,
 });
 
 export const table = (rows: RichTextNode[]): RichTextNode => ({
-  type: 'table',
+  type: "table",
   content: rows,
 });
 
 export const doc = (content: RichTextNode | RichTextNode[]): RichTextDoc => ({
-  type: 'doc',
+  type: "doc",
   content: Array.isArray(content) ? content : [content],
 });

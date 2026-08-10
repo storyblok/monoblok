@@ -1,5 +1,5 @@
-import type { RegionCode } from '../constants';
-import type { SpaceDetail } from '@storyblok/management-api-client';
+import type { RegionCode } from "../constants";
+import type { SpaceDetail } from "@storyblok/management-api-client";
 
 export type {
   Asset,
@@ -36,7 +36,7 @@ export type {
   StoryListQuery,
   StoryUpdate,
   User,
-} from '@storyblok/management-api-client';
+} from "@storyblok/management-api-client";
 
 /**
  * Interface representing the default options for a CLI command.
@@ -51,10 +51,10 @@ export interface CommandOptions {
 /**
  * Interface representing a language in Storyblok
  */
-export type Language = NonNullable<SpaceDetail['languages']>[number];
+export type Language = NonNullable<SpaceDetail["languages"]>[number];
 
 export interface SpaceInternationalization {
-  languages: NonNullable<SpaceDetail['languages']>;
+  languages: NonNullable<SpaceDetail["languages"]>;
   default_lang_name: string;
 }
 

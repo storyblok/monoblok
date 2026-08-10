@@ -1,13 +1,13 @@
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
-import { type SbAngularRichTextProps } from '@storyblok/angular';
-import { buildStoryblokImage } from '@storyblok/richtext';
+import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
+import { type SbAngularRichTextProps } from "@storyblok/angular";
+import { buildStoryblokImage } from "@storyblok/richtext";
 
 /**
  * Custom image component demonstrating Storyblok image optimization.
  * Uses buildStoryblokImage to apply responsive sizing and lazy loading.
  */
 @Component({
-  selector: 'app-image',
+  selector: "app-image",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (optimizedImage().src) {
@@ -20,21 +20,21 @@ import { buildStoryblokImage } from '@storyblok/richtext';
       />
     }
   `,
-  host: { style: 'display: contents' },
+  host: { style: "display: contents" },
 })
 export class ImageComponent {
-  readonly data = input.required<SbAngularRichTextProps<'image'>>();
+  readonly data = input.required<SbAngularRichTextProps<"image">>();
 
   /** Apply Storyblok image optimization */
   readonly optimizedImage = computed(() => {
     const src = this.data().attrs?.src;
     if (!src) {
-      return { src: '', attrs: {} };
+      return { src: "", attrs: {} };
     }
 
     return buildStoryblokImage(src, {
       width: 800,
-      loading: 'lazy',
+      loading: "lazy",
     });
   });
 }

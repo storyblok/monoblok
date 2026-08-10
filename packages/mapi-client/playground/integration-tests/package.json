@@ -1,9 +1,9 @@
 {
   "name": "@storyblok/mapi-integration-tests",
-  "type": "module",
   "version": "0.0.0",
   "private": true,
   "description": "Integration tests for @storyblok/management-api-client paired with @storyblok/schema",
+  "type": "module",
   "scripts": {
     "test": "vp test run",
     "test:types": "tsc --noEmit --skipLibCheck",

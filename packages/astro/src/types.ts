@@ -25,4 +25,4 @@ export type {
   StoryblokBridgeV2,
   StoryblokClient,
   StoryblokComponentType,
-} from '@storyblok/js';
+} from "@storyblok/js";

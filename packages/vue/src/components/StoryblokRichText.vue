@@ -1,19 +1,23 @@
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { StoryblokRichTextInput } from '@storyblok/richtext';
-import BlokRenderer from './BlokRenderer.ts';
-import { createRichTextRenderer, type StoryblokVueRichTextComponentMap, type StoryblokVueRichTextRenderContext } from '../rich-text-renderer';
+import { defineComponent } from "vue";
+import type { PropType } from "vue";
+import type { StoryblokRichTextInput } from "@storyblok/richtext";
+import BlokRenderer from "./BlokRenderer.ts";
+import {
+  createRichTextRenderer,
+  type StoryblokVueRichTextComponentMap,
+  type StoryblokVueRichTextRenderContext,
+} from "../rich-text-renderer";
 
 export default defineComponent({
-  name: 'StoryblokRichText',
+  name: "StoryblokRichText",
   props: {
     document: {
       type: Object as PropType<StoryblokRichTextInput>,
       required: false,
     },
     optimizeImage: {
-      type: [Boolean, Object] as PropType<StoryblokVueRichTextRenderContext['optimizeImage']>,
+      type: [Boolean, Object] as PropType<StoryblokVueRichTextRenderContext["optimizeImage"]>,
       required: false,
     },
     components: {

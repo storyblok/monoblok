@@ -1,14 +1,14 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit, signal, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { type Story } from '@storyblok/angular';
-import { ArticleService } from './article.service';
+import { Component, ChangeDetectionStrategy, inject, OnInit, signal, input } from "@angular/core";
+import { RouterLink } from "@angular/router";
+import { type Story } from "@storyblok/angular";
+import { ArticleService } from "./article.service";
 
 export interface ArticleOverviewComponentBlok {
   title?: string;
 }
 
 @Component({
-  selector: 'app-article-overview',
+  selector: "app-article-overview",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   template: `
@@ -17,7 +17,7 @@ export interface ArticleOverviewComponentBlok {
       @for (article of articles(); track article.uuid) {
         <div>
           <a [routerLink]="'/' + article.full_slug">
-            {{ article.content['title'] }}
+            {{ article.content["title"] }}
           </a>
         </div>
       }

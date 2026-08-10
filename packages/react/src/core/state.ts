@@ -1,7 +1,4 @@
-import type {
-  SbReactComponentsMap,
-  StoryblokClient,
-} from '@/types';
+import type { SbReactComponentsMap, StoryblokClient } from "@/types";
 
 // Shared state - single source of truth
 let storyblokApiInstance: StoryblokClient = null;
@@ -16,7 +13,9 @@ export const setStoryblokApiInstance = (instance: StoryblokClient): void => {
 };
 
 export const getComponentsMap = (): Map<string, React.ElementType> => componentsMap;
-export const setComponents = (newComponentsMap: SbReactComponentsMap): Map<string, React.ElementType> => {
+export const setComponents = (
+  newComponentsMap: SbReactComponentsMap,
+): Map<string, React.ElementType> => {
   Object.entries(newComponentsMap).forEach(([key, value]) => {
     componentsMap.set(key, value);
   });

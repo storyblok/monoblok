@@ -5,7 +5,7 @@ import {
   signal,
   computed,
   OnInit,
-} from '@angular/core';
+} from "@angular/core";
 import {
   type SbBlokData,
   type BridgeParams,
@@ -13,10 +13,10 @@ import {
   LivePreviewService,
   Story,
   StoryblokComponent,
-} from '@storyblok/angular';
+} from "@storyblok/angular";
 
 @Component({
-  selector: 'app-home',
+  selector: "app-home",
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [StoryblokComponent],
   template: `
@@ -42,15 +42,15 @@ export class HomeComponent implements OnInit {
   readonly loading = signal(true);
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
   readonly bridgeConfig: BridgeParams = {
-    resolveRelations: ['featured-articles.articles'],
+    resolveRelations: ["featured-articles.articles"],
     preventClicks: true,
   };
   async ngOnInit(): Promise<void> {
     try {
-      const { data } = await this.client.stories.get('angular/home', {
+      const { data } = await this.client.stories.get("angular/home", {
         query: {
-          version: 'draft',
-          resolve_relations: 'featured-articles.articles',
+          version: "draft",
+          resolve_relations: "featured-articles.articles",
         },
       });
       this.story.set((data?.story as Story) || null);

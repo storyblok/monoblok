@@ -1,8 +1,8 @@
-import type { DiffResult, RemoteSchemaData, SchemaData } from '../../types';
-import type { BreakingChange, ComponentBreakingChanges, RenameMatch } from './types';
+import type { DiffResult, RemoteSchemaData, SchemaData } from "../../types";
+import type { BreakingChange, ComponentBreakingChanges, RenameMatch } from "./types";
 
 /** Fields treated as internal Storyblok sentinels — never part of user-defined schema. */
-const SENTINEL_FIELDS = new Set(['_uid', 'component']);
+const SENTINEL_FIELDS = new Set(["_uid", "component"]);
 
 /** Classification of field-level changes between remote and local component schemas. */
 export interface FieldClassification {
@@ -24,16 +24,20 @@ export function classifyFieldChanges(
   remoteSchema: Record<string, { type?: string; required?: boolean }>,
   localSchema: Record<string, { type?: string; required?: boolean }>,
 ): FieldClassification {
-  const removed: FieldClassification['removed'] = [];
-  const added: FieldClassification['added'] = [];
-  const typeChanged: FieldClassification['typeChanged'] = [];
-  const requiredAdded: FieldClassification['requiredAdded'] = [];
-  const requiredChanged: FieldClassification['requiredChanged'] = [];
+  const removed: FieldClassification["removed"] = [];
+  const added: FieldClassification["added"] = [];
+  const typeChanged: FieldClassification["typeChanged"] = [];
+  const requiredAdded: FieldClassification["requiredAdded"] = [];
+  const requiredChanged: FieldClassification["requiredChanged"] = [];
 
   // Fields in remote but not in local → removed
   for (const [field, remoteField] of Object.entries(remoteSchema)) {
-    if (SENTINEL_FIELDS.has(field)) { continue; }
-    if (typeof remoteField.type !== 'string') { continue; }
+    if (SENTINEL_FIELDS.has(field)) {
+      continue;
+    }
+    if (typeof remoteField.type !== "string") {
+      continue;
+    }
     if (!(field in localSchema)) {
       removed.push({ field, type: remoteField.type });
     }
@@ -43,19 +47,23 @@ export function classifyFieldChanges(
   // Fields in both but with different type → typeChanged
   // Fields in both where required changed from falsy to true → requiredChanged
   for (const [field, localField] of Object.entries(localSchema)) {
-    if (SENTINEL_FIELDS.has(field)) { continue; }
-    if (typeof localField.type !== 'string') { continue; }
+    if (SENTINEL_FIELDS.has(field)) {
+      continue;
+    }
+    if (typeof localField.type !== "string") {
+      continue;
+    }
     if (!(field in remoteSchema)) {
       if (localField.required) {
         requiredAdded.push({ field, type: localField.type });
-      }
-      else {
+      } else {
         added.push({ field, type: localField.type, required: false });
       }
-    }
-    else {
+    } else {
       const remoteField = remoteSchema[field];
-      if (typeof remoteField?.type !== 'string') { continue; }
+      if (typeof remoteField?.type !== "string") {
+        continue;
+      }
       if (remoteField.type !== localField.type) {
         typeChanged.push({ field, oldType: remoteField.type, newType: localField.type });
       }
@@ -71,8 +79,8 @@ export function classifyFieldChanges(
 /** Result of rename detection for a set of removed and added fields. */
 export interface RenameDetectionResult {
   renames: RenameMatch[];
-  unmatchedRemoved: FieldClassification['removed'];
-  unmatchedAdded: FieldClassification['added'];
+  unmatchedRemoved: FieldClassification["removed"];
+  unmatchedAdded: FieldClassification["added"];
 }
 
 /**
@@ -90,7 +98,9 @@ function longestCommonSubstring(a: string, b: string): number {
       while (i + len < a.length && j + len < b.length && a[i + len] === b[j + len]) {
         len++;
       }
-      if (len > maxLen) { maxLen = len; }
+      if (len > maxLen) {
+        maxLen = len;
+      }
     }
   }
   return maxLen;
@@ -102,7 +112,9 @@ function longestCommonSubstring(a: string, b: string): number {
  */
 function nameSimilarity(a: string, b: string): number {
   const longer = Math.max(a.length, b.length);
-  if (longer === 0) { return 1; }
+  if (longer === 0) {
+    return 1;
+  }
   return longestCommonSubstring(a, b) / longer;
 }
 
@@ -119,15 +131,15 @@ function nameSimilarity(a: string, b: string): number {
  * @returns Matched rename pairs plus the unmatched remainders.
  */
 export function detectRenames(
-  removed: FieldClassification['removed'],
-  added: FieldClassification['added'],
+  removed: FieldClassification["removed"],
+  added: FieldClassification["added"],
 ): RenameDetectionResult {
   const renames: RenameMatch[] = [];
   const usedRemoved = new Set<string>();
   const usedAdded = new Set<string>();
 
   // Group added fields by type for efficient candidate lookup
-  const addedByType = new Map<string, FieldClassification['added']>();
+  const addedByType = new Map<string, FieldClassification["added"]>();
   for (const addedField of added) {
     if (!addedByType.has(addedField.type)) {
       addedByType.set(addedField.type, []);
@@ -139,8 +151,10 @@ export function detectRenames(
 
   for (const removedField of removed) {
     const candidates = addedByType.get(removedField.type) ?? [];
-    const availableCandidates = candidates.filter(c => !usedAdded.has(c.field));
-    if (availableCandidates.length === 0) { continue; }
+    const availableCandidates = candidates.filter((c) => !usedAdded.has(c.field));
+    if (availableCandidates.length === 0) {
+      continue;
+    }
 
     // Pick the candidate with the highest name similarity
     let bestCandidate = availableCandidates[0];
@@ -153,15 +167,21 @@ export function detectRenames(
       }
     }
 
-    if (!isSinglePair && bestScore < 0.3) { continue; }
+    if (!isSinglePair && bestScore < 0.3) {
+      continue;
+    }
 
-    renames.push({ oldField: removedField.field, newField: bestCandidate.field, fieldType: removedField.type });
+    renames.push({
+      oldField: removedField.field,
+      newField: bestCandidate.field,
+      fieldType: removedField.type,
+    });
     usedRemoved.add(removedField.field);
     usedAdded.add(bestCandidate.field);
   }
 
-  const unmatchedRemoved = removed.filter(r => !usedRemoved.has(r.field));
-  const unmatchedAdded = added.filter(a => !usedAdded.has(a.field));
+  const unmatchedRemoved = removed.filter((r) => !usedRemoved.has(r.field));
+  const unmatchedAdded = added.filter((a) => !usedAdded.has(a.field));
 
   return { renames, unmatchedRemoved, unmatchedAdded };
 }
@@ -183,14 +203,16 @@ export function analyzeBreakingChanges(
   const results: ComponentBreakingChanges[] = [];
 
   const updatedComponents = diffResult.diffs.filter(
-    d => d.type === 'component' && d.action === 'update',
+    (d) => d.type === "component" && d.action === "update",
   );
 
   for (const diff of updatedComponents) {
-    const localComp = local.components.find(c => c.name === diff.name);
+    const localComp = local.components.find((c) => c.name === diff.name);
     const remoteComp = remote.components.get(diff.name);
 
-    if (!localComp?.schema || !remoteComp?.schema) { continue; }
+    if (!localComp?.schema || !remoteComp?.schema) {
+      continue;
+    }
 
     const classification = classifyFieldChanges(
       remoteComp.schema as Record<string, Record<string, unknown>>,
@@ -201,26 +223,34 @@ export function analyzeBreakingChanges(
 
     // Detect renames from removed+added pairs (non-required only — required
     // additions signal developer intent for a new field, not a rename)
-    const { renames, unmatchedRemoved } = detectRenames(classification.removed, classification.added);
+    const { renames, unmatchedRemoved } = detectRenames(
+      classification.removed,
+      classification.added,
+    );
 
     for (const rename of renames) {
-      changes.push({ kind: 'rename', field: rename.newField, oldField: rename.oldField });
+      changes.push({ kind: "rename", field: rename.newField, oldField: rename.oldField });
     }
 
     for (const removed of unmatchedRemoved) {
-      changes.push({ kind: 'removed', field: removed.field });
+      changes.push({ kind: "removed", field: removed.field });
     }
 
     for (const tc of classification.typeChanged) {
-      changes.push({ kind: 'type_changed', field: tc.field, oldType: tc.oldType, newType: tc.newType });
+      changes.push({
+        kind: "type_changed",
+        field: tc.field,
+        oldType: tc.oldType,
+        newType: tc.newType,
+      });
     }
 
     for (const ra of classification.requiredAdded) {
-      changes.push({ kind: 'required_added', field: ra.field, fieldType: ra.type });
+      changes.push({ kind: "required_added", field: ra.field, fieldType: ra.type });
     }
 
     for (const rc of classification.requiredChanged) {
-      changes.push({ kind: 'required_changed', field: rc.field, fieldType: rc.type });
+      changes.push({ kind: "required_changed", field: rc.field, fieldType: rc.type });
     }
 
     if (changes.length > 0) {

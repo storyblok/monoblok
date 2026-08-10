@@ -1,10 +1,12 @@
-import { access } from 'node:fs/promises';
-import { join } from 'pathe';
-import { FileSystemError, handleFileSystemError } from './utils';
-import { getStoryblokGlobalPath, readFile, saveToFile } from './utils/filesystem';
-import type { StoryblokCredentials } from './types';
+import { access } from "node:fs/promises";
+import { join } from "pathe";
+import { FileSystemError, handleFileSystemError } from "./utils";
+import { getStoryblokGlobalPath, readFile, saveToFile } from "./utils/filesystem";
+import type { StoryblokCredentials } from "./types";
 
-export const getCredentials = async (filePath = join(getStoryblokGlobalPath(), 'credentials.json')): Promise<StoryblokCredentials | null> => {
+export const getCredentials = async (
+  filePath = join(getStoryblokGlobalPath(), "credentials.json"),
+): Promise<StoryblokCredentials | null> => {
   try {
     await access(filePath);
     const content = await readFile(filePath);
@@ -16,27 +18,26 @@ export const getCredentials = async (filePath = join(getStoryblokGlobalPath(), '
     }
 
     return parsedContent;
-  }
-  catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       // File doesn't exist, create it with empty credentials
       await saveToFile(filePath, JSON.stringify({}, null, 2), { mode: 0o600 });
       return null;
     }
-    handleFileSystemError('read', error as NodeJS.ErrnoException);
+    handleFileSystemError("read", error as NodeJS.ErrnoException);
     return null;
   }
 };
 
 export const addCredentials = async ({
-  filePath = join(getStoryblokGlobalPath(), 'credentials.json'),
+  filePath = join(getStoryblokGlobalPath(), "credentials.json"),
   machineName,
   login,
   password,
   region,
 }: Record<string, string>) => {
   const credentials = {
-    ...await getCredentials(filePath),
+    ...(await getCredentials(filePath)),
     [machineName]: {
       login,
       password,
@@ -46,13 +47,17 @@ export const addCredentials = async ({
 
   try {
     await saveToFile(filePath, JSON.stringify(credentials, null, 2), { mode: 0o600 });
-  }
-  catch (error) {
-    throw new FileSystemError('invalid_argument', 'write', error as NodeJS.ErrnoException, `Error adding/updating entry for machine ${machineName} in credentials.json file`);
+  } catch (error) {
+    throw new FileSystemError(
+      "invalid_argument",
+      "write",
+      error as NodeJS.ErrnoException,
+      `Error adding/updating entry for machine ${machineName} in credentials.json file`,
+    );
   }
 };
 
 export const removeAllCredentials = async (filepath: string = getStoryblokGlobalPath()) => {
-  const filePath = join(filepath, 'credentials.json');
+  const filePath = join(filepath, "credentials.json");
   await saveToFile(filePath, JSON.stringify({}, null, 2), { mode: 0o600 });
 };

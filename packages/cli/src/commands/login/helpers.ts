@@ -1,11 +1,11 @@
-import chalk from 'chalk';
-import { input, password, select } from '@inquirer/prompts';
-import type { RegionCode } from '../../constants';
-import { colorPalette, regionNames, regions } from '../../constants';
-import { handleError } from '../../utils';
-import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
-import { session } from '../../session';
-import { type CLISpinner, getUI, stderrPromptContext } from '../../lib/ui';
+import chalk from "chalk";
+import { input, password, select } from "@inquirer/prompts";
+import type { RegionCode } from "../../constants";
+import { colorPalette, regionNames, regions } from "../../constants";
+import { handleError } from "../../utils";
+import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from "./actions";
+import { session } from "../../session";
+import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
 
 /**
  * Performs interactive login flow with email/password or token
@@ -25,47 +25,60 @@ export async function performInteractiveLogin(options?: {
   let activeSpinner: CLISpinner | null = null;
 
   try {
-    const strategy = await select({
-      message: 'How would you like to login?',
-      choices: [
-        {
-          name: 'With email',
-          value: 'login-with-email',
-          short: 'Email',
-        },
-        {
-          name: 'With Token (Personal Access Token – works also for SSO accounts)',
-          value: 'login-with-token',
-          short: 'Token',
-        },
-      ],
-    }, stderrPromptContext);
+    const strategy = await select(
+      {
+        message: "How would you like to login?",
+        choices: [
+          {
+            name: "With email",
+            value: "login-with-email",
+            short: "Email",
+          },
+          {
+            name: "With Token (Personal Access Token – works also for SSO accounts)",
+            value: "login-with-token",
+            short: "Token",
+          },
+        ],
+      },
+      stderrPromptContext,
+    );
 
     let userToken: string;
     let userRegion: RegionCode;
 
-    if (strategy === 'login-with-token') {
-      ui.info([
-        '🔑 You can use a Personal Access Token to log in.',
-        'This works for all accounts, including SSO accounts.',
-        `Generate one in your Storyblok account settings: ${chalk.underline.blue('https://app.storyblok.com/#/me/account?tab=token')}`,
-      ].join('\n'));
+    if (strategy === "login-with-token") {
+      ui.info(
+        [
+          "🔑 You can use a Personal Access Token to log in.",
+          "This works for all accounts, including SSO accounts.",
+          `Generate one in your Storyblok account settings: ${chalk.underline.blue("https://app.storyblok.com/#/me/account?tab=token")}`,
+        ].join("\n"),
+      );
 
-      userToken = await password({
-        message: 'Please enter your Personal Access Token:',
-        validate: (value: string) => {
-          return value.length > 0;
+      userToken = await password(
+        {
+          message: "Please enter your Personal Access Token:",
+          validate: (value: string) => {
+            return value.length > 0;
+          },
         },
-      }, stderrPromptContext);
+        stderrPromptContext,
+      );
 
-      userRegion = preSelectedRegion || await select({
-        message: 'Please select the region you would like to work in:',
-        choices: Object.values(regions).map((region: RegionCode) => ({
-          name: regionNames[region],
-          value: region,
-        })),
-        default: regions.EU,
-      }, stderrPromptContext);
+      userRegion =
+        preSelectedRegion ||
+        (await select(
+          {
+            message: "Please select the region you would like to work in:",
+            choices: Object.values(regions).map((region: RegionCode) => ({
+              name: regionNames[region],
+              value: region,
+            })),
+            default: regions.EU,
+          },
+          stderrPromptContext,
+        ));
 
       activeSpinner = ui.createSpinner(`Logging in with token`);
       const user = await loginWithToken(userToken, userRegion);
@@ -76,49 +89,65 @@ export async function performInteractiveLogin(options?: {
         updateSession(user.email, userToken, userRegion);
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
-          ui.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`, true);
+          ui.ok(
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
+            true,
+          );
         }
         return { token: userToken, region: userRegion };
       }
-    }
-    else {
-      const userEmail = await input({
-        message: 'Please enter your email address:',
-        required: true,
-        validate: (value: string) => {
-          const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
-          return emailRegex.test(value);
+    } else {
+      const userEmail = await input(
+        {
+          message: "Please enter your email address:",
+          required: true,
+          validate: (value: string) => {
+            const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/;
+            return emailRegex.test(value);
+          },
         },
-      }, stderrPromptContext);
-      const userPassword = await password({
-        message: 'Please enter your password:',
-      }, stderrPromptContext);
+        stderrPromptContext,
+      );
+      const userPassword = await password(
+        {
+          message: "Please enter your password:",
+        },
+        stderrPromptContext,
+      );
 
-      userRegion = preSelectedRegion || await select({
-        message: 'Please select the region you would like to work in:',
-        choices: Object.values(regions).map((region: RegionCode) => ({
-          name: regionNames[region],
-          value: region,
-        })),
-        default: regions.EU,
-      }, stderrPromptContext);
+      userRegion =
+        preSelectedRegion ||
+        (await select(
+          {
+            message: "Please select the region you would like to work in:",
+            choices: Object.values(regions).map((region: RegionCode) => ({
+              name: regionNames[region],
+              value: region,
+            })),
+            default: regions.EU,
+          },
+          stderrPromptContext,
+        ));
 
       activeSpinner = ui.createSpinner(`Logging in with email`);
       const response = await loginWithEmailAndPassword(userEmail, userPassword, userRegion);
       activeSpinner.succeed();
 
       if (response?.otp_required) {
-        const otp = await input({
-          message: 'Add the code from your Authenticator app, or the one we sent to your e-mail / phone:',
-          required: true,
-        }, stderrPromptContext);
+        const otp = await input(
+          {
+            message:
+              "Add the code from your Authenticator app, or the one we sent to your e-mail / phone:",
+            required: true,
+          },
+          stderrPromptContext,
+        );
 
         const otpResponse = await loginWithOtp(userEmail, userPassword, otp, userRegion);
         if (otpResponse?.access_token) {
           userToken = otpResponse.access_token;
         }
-      }
-      else if (response?.access_token) {
+      } else if (response?.access_token) {
         userToken = response.access_token;
       }
 
@@ -127,15 +156,17 @@ export async function performInteractiveLogin(options?: {
         updateSession(userEmail, userToken, userRegion);
         await persistCredentials(userRegion);
         if (showWelcomeMessage) {
-          ui.ok(`Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`, true);
+          ui.ok(
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(userEmail)}.`,
+            true,
+          );
         }
         return { token: userToken, region: userRegion };
       }
     }
 
     return null;
-  }
-  catch (error) {
+  } catch (error) {
     activeSpinner?.failed();
     ui.br();
     handleError(error as Error, verbose);

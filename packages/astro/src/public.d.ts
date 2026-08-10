@@ -3,35 +3,37 @@
  * Provides IntelliSense, JSDoc, and type safety for SDK consumers.
  */
 
-declare module 'virtual:storyblok-init' {
-  import type { StoryblokClient } from '@storyblok/astro';
+declare module "virtual:storyblok-init" {
+  import type { StoryblokClient } from "@storyblok/astro";
 
   export const storyblokApiInstance: StoryblokClient;
 }
 
-declare module '@storyblok/astro/StoryblokComponent.astro' {
-  import type { SbBlokData } from '@storyblok/astro';
+declare module "@storyblok/astro/StoryblokComponent.astro" {
+  import type { SbBlokData } from "@storyblok/astro";
 
   function StoryblokComponent(
     _props: Record<string, unknown> & {
       /** The Storyblok blok data for this component (required) */
       blok: SbBlokData;
-    }
+    },
   ): any;
 
   /** Renders a dynamic Storyblok component */
   export default StoryblokComponent;
 }
-declare module '@storyblok/astro/StoryblokServerData.astro' {
-  function StoryblokServerData(
-    _props: Record<string, unknown>
-  ): any;
+declare module "@storyblok/astro/StoryblokServerData.astro" {
+  function StoryblokServerData(_props: Record<string, unknown>): any;
 
   /** Renders a dynamic Storyblok component */
   export default StoryblokServerData;
 }
-declare module '@storyblok/astro/StoryblokRichText.astro' {
-  import type { SbAstroRichTextComponentMap, SbRichTextImageOptions, SbRichTextInput } from '@storyblok/astro';
+declare module "@storyblok/astro/StoryblokRichText.astro" {
+  import type {
+    SbAstroRichTextComponentMap,
+    SbRichTextImageOptions,
+    SbRichTextInput,
+  } from "@storyblok/astro";
 
   function StoryblokRichText(
     _props: Record<string, unknown> & {
@@ -39,14 +41,14 @@ declare module '@storyblok/astro/StoryblokRichText.astro' {
       document: SbRichTextInput;
       optimizeImage?: boolean | SbRichTextImageOptions;
       components?: SbAstroRichTextComponentMap;
-    }
+    },
   ): any;
 
   /** Renders a dynamic Storyblok component */
   export default StoryblokRichText;
 }
-declare module '@storyblok/astro/client' {
-  import type { StoryblokClient } from '@storyblok/astro';
+declare module "@storyblok/astro/client" {
+  import type { StoryblokClient } from "@storyblok/astro";
 
   /**
    * Provides direct access to the initialized Storyblok API client instance.

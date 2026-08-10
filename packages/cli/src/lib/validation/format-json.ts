@@ -1,5 +1,5 @@
-import type { LevelOption, ValidationFilter, ValidationRunResult } from './types';
-import { countIssues, filterIssuesByLevel } from './filter';
+import type { LevelOption, ValidationFilter, ValidationRunResult } from "./types";
+import { countIssues, filterIssuesByLevel } from "./filter";
 
 /** The machine-readable payload emitted by `--format json`. */
 export interface ValidationJsonReport {
@@ -24,11 +24,11 @@ export interface ValidationJsonReport {
   warnings: number;
   fetchFailures: number;
   /** Why each unit could not be fetched. Omitted when nothing failed. */
-  fetchErrors?: ValidationRunResult['fetchErrors'];
+  fetchErrors?: ValidationRunResult["fetchErrors"];
   listFailed: boolean;
   /** Why listing failed. Omitted unless `listFailed` is `true`. */
   listError?: string;
-  groups: ValidationRunResult['groups'];
+  groups: ValidationRunResult["groups"];
 }
 
 /**
@@ -59,8 +59,8 @@ export function formatJson(result: ValidationRunResult, level: LevelOption): str
     listFailed,
     ...(listFailed && result.listError ? { listError: result.listError } : {}),
     groups: result.groups
-      .map(group => ({ ...group, issues: filterIssuesByLevel(group.issues, level) }))
-      .filter(group => group.issues.length > 0),
+      .map((group) => ({ ...group, issues: filterIssuesByLevel(group.issues, level) }))
+      .filter((group) => group.issues.length > 0),
   };
 
   return JSON.stringify(report, null, 2);

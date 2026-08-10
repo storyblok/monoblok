@@ -9,17 +9,17 @@
  * aliased `types.gen.ts` plus the wrapper templates it needs.
  */
 
-import { createClient } from '@hey-api/openapi-ts';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { resolve } from 'pathe';
-import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from './aliases.ts';
-import type { KnownType } from './known-types.ts';
-import { hashCache, readLock } from './lock.ts';
-import { SPEC_PATHS, TEMPLATES_DIR } from './paths.ts';
-import { SPEC_PARSERS } from './patches.ts';
-import { templateFor, TEMPLATES, type WrapperFile } from './templates.ts';
-import { type KeepEntry, transformGeneratedFile } from './transform.ts';
+import { createClient } from "@hey-api/openapi-ts";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { resolve } from "pathe";
+import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from "./aliases.ts";
+import type { KnownType } from "./known-types.ts";
+import { hashCache, readLock } from "./lock.ts";
+import { SPEC_PATHS, TEMPLATES_DIR } from "./paths.ts";
+import { SPEC_PARSERS } from "./patches.ts";
+import { templateFor, TEMPLATES, type WrapperFile } from "./templates.ts";
+import { type KeepEntry, transformGeneratedFile } from "./transform.ts";
 
 export interface GenerateConfig {
   /** Where to write the consumer's `src/generated/` tree (absolute). */
@@ -27,7 +27,7 @@ export interface GenerateConfig {
   /** Public type names the consumer wants. The tool resolves transitive deps. */
   include: readonly KnownType[];
   /** Emit the full SDK on this surface in addition to types. */
-  sdk?: 'mapi' | 'capi' | false;
+  sdk?: "mapi" | "capi" | false;
   /**
    * Additionally emit Zod v4 schemas for the given spec's components into
    * `<outDir>/<spec>/zod.gen.ts`, for use by runtime validators.
@@ -57,10 +57,10 @@ export async function generate(config: GenerateConfig): Promise<void> {
   const cacheHash = hashCache();
   if (cacheHash !== lock.hash) {
     throw new Error(
-      `OpenAPI cache is out of sync with spec.lock.\n`
-      + `  expected (spec.lock): ${lock.hash}\n`
-      + `  computed:             ${cacheHash}\n`
-      + `Run \`pnpm --filter @storyblok/openapi-codegen pull\` to resync the cache.`,
+      `OpenAPI cache is out of sync with spec.lock.\n` +
+        `  expected (spec.lock): ${lock.hash}\n` +
+        `  computed:             ${cacheHash}\n` +
+        `Run \`pnpm --filter @storyblok/openapi-codegen pull\` to resync the cache.`,
     );
   }
   const { wrappers, publicPerSpec, leafPerSpec, leafLocation } = resolveInclude(config.include);
@@ -74,23 +74,23 @@ export async function generate(config: GenerateConfig): Promise<void> {
     await emitFullSdk(config.sdk, config.outDir, config.verbose === true);
   }
 
-  for (const spec of ['capi', 'mapi', 'overlay'] as const) {
+  for (const spec of ["capi", "mapi", "overlay"] as const) {
     const publicKeep = publicPerSpec[spec];
     const leafKeep = leafPerSpec[spec];
     if (publicKeep.length === 0 && leafKeep.length === 0) {
       continue;
     }
 
-    const tempDir = mkdtempSync(resolve(tmpdir(), 'openapi-codegen-'));
+    const tempDir = mkdtempSync(resolve(tmpdir(), "openapi-codegen-"));
     try {
       await createClient({
         input: SPEC_PATHS[spec],
         output: tempDir,
         parser: SPEC_PARSERS[spec],
-        plugins: ['@hey-api/typescript'],
-        logs: { level: 'silent' },
+        plugins: ["@hey-api/typescript"],
+        logs: { level: "silent" },
       });
-      const intermediate = readFileSync(resolve(tempDir, 'types.gen.ts'), 'utf8');
+      const intermediate = readFileSync(resolve(tempDir, "types.gen.ts"), "utf8");
       const specDir = resolve(config.outDir, spec);
       mkdirSync(specDir, { recursive: true });
 
@@ -98,12 +98,16 @@ export async function generate(config: GenerateConfig): Promise<void> {
         // When the full SDK is emitted on this spec, the aliased/narrowed types
         // go to `types-aliased.gen.ts` so they don't clobber the SDK's full
         // `types.gen.ts`. Otherwise, types-only emit owns `types.gen.ts`.
-        const typesFileName = config.sdk === spec ? 'types-aliased.gen.ts' : 'types.gen.ts';
-        const { output, emitted } = transformGeneratedFile(intermediate, publicKeep, renameMaps[spec]);
-        writeFileSync(resolve(specDir, typesFileName), output, 'utf8');
+        const typesFileName = config.sdk === spec ? "types-aliased.gen.ts" : "types.gen.ts";
+        const { output, emitted } = transformGeneratedFile(
+          intermediate,
+          publicKeep,
+          renameMaps[spec],
+        );
+        writeFileSync(resolve(specDir, typesFileName), output, "utf8");
         logVerbose(
           config,
-          `[${spec}] emitted ${emitted.length} public type(s) to ${typesFileName}: ${emitted.join(', ')}`,
+          `[${spec}] emitted ${emitted.length} public type(s) to ${typesFileName}: ${emitted.join(", ")}`,
         );
       }
       if (leafKeep.length > 0) {
@@ -111,20 +115,30 @@ export async function generate(config: GenerateConfig): Promise<void> {
         // which is itself only imported by the wrapper templates. Consumer code
         // must not import from this file; the leading underscore + `.gen` suffix
         // signal "tool-managed, internal".
-        const { output, emitted } = transformGeneratedFile(intermediate, leafKeep, renameMaps[spec]);
-        writeFileSync(resolve(specDir, '_internal.gen.ts'), output, 'utf8');
+        const { output, emitted } = transformGeneratedFile(
+          intermediate,
+          leafKeep,
+          renameMaps[spec],
+        );
+        writeFileSync(resolve(specDir, "_internal.gen.ts"), output, "utf8");
         logVerbose(
           config,
-          `[${spec}] emitted ${emitted.length} internal leaf(s) to _internal.gen.ts: ${emitted.join(', ')}`,
+          `[${spec}] emitted ${emitted.length} internal leaf(s) to _internal.gen.ts: ${emitted.join(", ")}`,
         );
       }
-    }
-    finally {
+    } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
   }
 
-  copyWrapperTemplates(config.outDir, wrappers, publicPerSpec, leafPerSpec, leafLocation, config.sdk);
+  copyWrapperTemplates(
+    config.outDir,
+    wrappers,
+    publicPerSpec,
+    leafPerSpec,
+    leafLocation,
+    config.sdk,
+  );
 
   if (config.zod) {
     await emitZodSchemas(config.zod.spec, config.outDir, config.verbose === true);
@@ -136,29 +150,26 @@ export async function generate(config: GenerateConfig): Promise<void> {
  * Runs a dedicated `@hey-api/openapi-ts` pass with the `zod` plugin.
  */
 async function emitZodSchemas(spec: SpecSource, outDir: string, verbose: boolean): Promise<void> {
-  const tempDir = mkdtempSync(resolve(tmpdir(), 'openapi-codegen-zod-'));
+  const tempDir = mkdtempSync(resolve(tmpdir(), "openapi-codegen-zod-"));
   try {
     await createClient({
       input: SPEC_PATHS[spec],
       output: tempDir,
       parser: SPEC_PARSERS[spec],
-      plugins: [
-        '@hey-api/typescript',
-        { name: 'zod', compatibilityVersion: 4 },
-      ],
-      logs: { level: 'silent' },
+      plugins: ["@hey-api/typescript", { name: "zod", compatibilityVersion: 4 }],
+      logs: { level: "silent" },
     });
-    const generated = readFileSync(resolve(tempDir, 'zod.gen.ts'), 'utf8');
+    const generated = readFileSync(resolve(tempDir, "zod.gen.ts"), "utf8");
     const specDir = resolve(outDir, spec);
     mkdirSync(specDir, { recursive: true });
-    const header = '// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n'
-      + '// Internal Zod v4 schemas — imported only by runtime validators, never by public types.\n\n';
-    writeFileSync(resolve(specDir, 'zod.gen.ts'), header + generated, 'utf8');
+    const header =
+      "// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n" +
+      "// Internal Zod v4 schemas — imported only by runtime validators, never by public types.\n\n";
+    writeFileSync(resolve(specDir, "zod.gen.ts"), header + generated, "utf8");
     if (verbose) {
       console.warn(`[${spec}] emitted Zod v4 schemas to zod.gen.ts`);
     }
-  }
-  finally {
+  } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }
 }
@@ -170,18 +181,14 @@ async function emitZodSchemas(spec: SpecSource, outDir: string, verbose: boolean
  * runtime helpers. Names follow upstream OpenAPI conventions; the alias map
  * does not apply here (clients consume raw schema/operation names directly).
  */
-async function emitFullSdk(spec: 'capi' | 'mapi', outDir: string, verbose: boolean): Promise<void> {
+async function emitFullSdk(spec: "capi" | "mapi", outDir: string, verbose: boolean): Promise<void> {
   const sdkDir = resolve(outDir, spec);
   await createClient({
     input: SPEC_PATHS[spec],
     output: sdkDir,
     parser: SPEC_PARSERS[spec],
-    plugins: [
-      '@hey-api/typescript',
-      '@hey-api/client-ky',
-      { name: '@hey-api/sdk' },
-    ],
-    logs: { level: 'silent' },
+    plugins: ["@hey-api/typescript", "@hey-api/client-ky", { name: "@hey-api/sdk" }],
+    logs: { level: "silent" },
   });
   if (verbose) {
     console.warn(`[${spec}] emitted full SDK to ${sdkDir}`);
@@ -195,7 +202,7 @@ interface ResolvedInclude {
   /** Wrapper template `sourceLeaves` (template-private; never consumer-imported). */
   leafPerSpec: Record<SpecSource, KeepEntry[]>;
   /** Per-emit-name, which file the leaf lives in (used to build `_sources.ts`). */
-  leafLocation: Map<string, 'public' | 'internal'>;
+  leafLocation: Map<string, "public" | "internal">;
 }
 
 function resolveInclude(include: readonly KnownType[]): ResolvedInclude {
@@ -221,8 +228,7 @@ function resolveInclude(include: readonly KnownType[]): ResolvedInclude {
     const wrapper = templateFor(name);
     if (wrapper) {
       expandWrapper(wrapper);
-    }
-    else {
+    } else {
       // Direct alias (no wrapper template provides this name).
       publicAliases.add(name);
     }
@@ -232,9 +238,9 @@ function resolveInclude(include: readonly KnownType[]): ResolvedInclude {
   // the consumer asked for it on the public surface, so it should be reachable
   // there, and `_sources.ts` will re-export from the public file instead of
   // duplicating into `_internal.gen.ts`.
-  const leafLocation = new Map<string, 'public' | 'internal'>();
+  const leafLocation = new Map<string, "public" | "internal">();
   for (const leaf of leafAliases) {
-    leafLocation.set(leaf, publicAliases.has(leaf) ? 'public' : 'internal');
+    leafLocation.set(leaf, publicAliases.has(leaf) ? "public" : "internal");
   }
   for (const leaf of publicAliases) {
     leafAliases.delete(leaf);
@@ -245,7 +251,9 @@ function resolveInclude(include: readonly KnownType[]): ResolvedInclude {
   const push = (target: Record<SpecSource, KeepEntry[]>, emitAs: string): void => {
     const alias = ALIAS_BY_EMIT_NAME.get(emitAs);
     if (!alias) {
-      throw new Error(`No alias defined for "${emitAs}". Add it to tools/openapi-codegen/src/aliases.ts.`);
+      throw new Error(
+        `No alias defined for "${emitAs}". Add it to tools/openapi-codegen/src/aliases.ts.`,
+      );
     }
     target[alias.spec].push({ source: alias.source, emitAs: alias.emitAs, unwrap: alias.unwrap });
   };
@@ -289,24 +297,23 @@ function copyWrapperTemplates(
   wrappers: ReadonlySet<WrapperFile>,
   publicPerSpec: Record<SpecSource, KeepEntry[]>,
   leafPerSpec: Record<SpecSource, KeepEntry[]>,
-  leafLocation: ReadonlyMap<string, 'public' | 'internal'>,
-  sdk: 'mapi' | 'capi' | false | undefined,
+  leafLocation: ReadonlyMap<string, "public" | "internal">,
+  sdk: "mapi" | "capi" | false | undefined,
 ): void {
   if (wrappers.size === 0) {
     return;
   }
-  const typesDir = resolve(outDir, 'types');
+  const typesDir = resolve(outDir, "types");
   mkdirSync(typesDir, { recursive: true });
 
   for (const file of wrappers) {
     const src = resolve(TEMPLATES_DIR, `${file}.ts`);
-    const body = readFileSync(src, 'utf8');
+    const body = readFileSync(src, "utf8");
     writeFileSync(
       resolve(typesDir, `${file}.ts`),
-      `// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n`
-      + `// Source template lives in tools/openapi-codegen/templates/.\n\n${
-        body}`,
-      'utf8',
+      `// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n` +
+        `// Source template lives in tools/openapi-codegen/templates/.\n\n${body}`,
+      "utf8",
     );
   }
 
@@ -314,28 +321,34 @@ function copyWrapperTemplates(
   // code that builds on the generated types), so `Prettify` lives in one place
   // instead of being redefined per template.
   if (wrappers.size > 0) {
-    writeFileSync(resolve(typesDir, '_utils.ts'), buildUtilsFile(), 'utf8');
-    writeFileSync(resolve(typesDir, '_sources.ts'), buildSourcesFile(publicPerSpec, leafPerSpec, leafLocation, sdk), 'utf8');
+    writeFileSync(resolve(typesDir, "_utils.ts"), buildUtilsFile(), "utf8");
+    writeFileSync(
+      resolve(typesDir, "_sources.ts"),
+      buildSourcesFile(publicPerSpec, leafPerSpec, leafLocation, sdk),
+      "utf8",
+    );
   }
 }
 
 function buildUtilsFile(): string {
-  return '// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n\n'
-    + 'export type Prettify<T> = { [K in keyof T]: T[K] } & {};\n\n'
-    + '/** Replaces the keys of `T` that also appear in `U` with the definitions from `U`. */\n'
-    + 'export type Override<T, U> = Prettify<Omit<T, keyof U> & U>;\n';
+  return (
+    "// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n\n" +
+    "export type Prettify<T> = { [K in keyof T]: T[K] } & {};\n\n" +
+    "/** Replaces the keys of `T` that also appear in `U` with the definitions from `U`. */\n" +
+    "export type Override<T, U> = Prettify<Omit<T, keyof U> & U>;\n"
+  );
 }
 
 function buildSourcesFile(
   publicPerSpec: Record<SpecSource, KeepEntry[]>,
   leafPerSpec: Record<SpecSource, KeepEntry[]>,
-  leafLocation: ReadonlyMap<string, 'public' | 'internal'>,
-  sdk: 'mapi' | 'capi' | false | undefined,
+  leafLocation: ReadonlyMap<string, "public" | "internal">,
+  sdk: "mapi" | "capi" | false | undefined,
 ): string {
-  const header = '// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n\n';
+  const header = "// Generated by @storyblok/openapi-codegen. Do not edit by hand.\n\n";
   const lines: string[] = [];
-  for (const spec of ['capi', 'mapi', 'overlay'] as const) {
-    const publicFileName = sdk === spec ? 'types-aliased.gen' : 'types.gen';
+  for (const spec of ["capi", "mapi", "overlay"] as const) {
+    const publicFileName = sdk === spec ? "types-aliased.gen" : "types.gen";
     // For each spec, group leaves by which file they ended up in: a leaf that
     // was ALSO an explicit `include` lives in the public types file; everything
     // else lives in `_internal.gen.ts`.
@@ -345,18 +358,22 @@ function buildSourcesFile(
       fromInternal.push(entry.emitAs);
     }
     for (const entry of publicPerSpec[spec]) {
-      if (leafLocation.get(entry.emitAs) === 'public') {
+      if (leafLocation.get(entry.emitAs) === "public") {
         fromPublic.push(entry.emitAs);
       }
     }
     if (fromInternal.length > 0) {
-      lines.push(`export type { ${fromInternal.sort().join(', ')} } from '../${spec}/_internal.gen';`);
+      lines.push(
+        `export type { ${fromInternal.sort().join(", ")} } from '../${spec}/_internal.gen';`,
+      );
     }
     if (fromPublic.length > 0) {
-      lines.push(`export type { ${fromPublic.sort().join(', ')} } from '../${spec}/${publicFileName}';`);
+      lines.push(
+        `export type { ${fromPublic.sort().join(", ")} } from '../${spec}/${publicFileName}';`,
+      );
     }
   }
-  return `${header + lines.join('\n')}\n`;
+  return `${header + lines.join("\n")}\n`;
 }
 
 export type { KnownType };

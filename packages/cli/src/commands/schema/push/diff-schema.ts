@@ -1,11 +1,11 @@
-import { createTwoFilesPatch } from 'diff';
+import { createTwoFilesPatch } from "diff";
 
-import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from '../types';
-import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS, isRecord } from '../utils';
-import { serializeComponent, serializeDatasource } from '../serialize';
-import { buildGroupPathByUuid } from '../folders';
+import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from "../types";
+import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS, isRecord } from "../utils";
+import { serializeComponent, serializeDatasource } from "../serialize";
+import { buildGroupPathByUuid } from "../folders";
 
-type EntityType = 'component' | 'datasource';
+type EntityType = "component" | "datasource";
 
 /**
  * Deep-copies a component's `schema`, translating each field's
@@ -17,17 +17,19 @@ type EntityType = 'component' | 'datasource';
  * visible diff. The source schema objects are never mutated.
  */
 function translateGroupWhitelist(schema: unknown, uuidToPath: Map<string, string>): unknown {
-  if (!isRecord(schema)) { return schema; }
+  if (!isRecord(schema)) {
+    return schema;
+  }
   const result: Record<string, unknown> = {};
   for (const [fieldName, field] of Object.entries(schema)) {
     if (isRecord(field) && Array.isArray(field.component_group_whitelist)) {
       result[fieldName] = {
         ...field,
         component_group_whitelist: field.component_group_whitelist.map((entry: unknown) =>
-          (typeof entry === 'string' ? uuidToPath.get(entry) ?? entry : entry)),
+          typeof entry === "string" ? (uuidToPath.get(entry) ?? entry) : entry,
+        ),
       };
-    }
-    else {
+    } else {
       result[fieldName] = field;
     }
   }
@@ -41,13 +43,13 @@ function diffEntity(
   remoteSerialized: string | null,
 ): EntityDiff {
   if (!remoteSerialized && localSerialized) {
-    return { type, name, action: 'create', diff: null, local: null, remote: null };
+    return { type, name, action: "create", diff: null, local: null, remote: null };
   }
   if (remoteSerialized && !localSerialized) {
-    return { type, name, action: 'stale', diff: null, local: null, remote: null };
+    return { type, name, action: "stale", diff: null, local: null, remote: null };
   }
   if (localSerialized === remoteSerialized) {
-    return { type, name, action: 'unchanged', diff: null, local: null, remote: null };
+    return { type, name, action: "unchanged", diff: null, local: null, remote: null };
   }
 
   const patch = createTwoFilesPatch(
@@ -55,11 +57,11 @@ function diffEntity(
     `local/${name}`,
     remoteSerialized!,
     localSerialized!,
-    'remote',
-    'local',
+    "remote",
+    "local",
   );
 
-  return { type, name, action: 'update', diff: patch, local: null, remote: null };
+  return { type, name, action: "update", diff: patch, local: null, remote: null };
 }
 
 /** Diffs local schema against remote state and returns classified results. */
@@ -72,21 +74,35 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
   const groupPathByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
   const uuidToPath = new Map<string, string>();
   for (const [uuid, segments] of groupPathByUuid) {
-    uuidToPath.set(uuid, segments.join('/'));
+    uuidToPath.set(uuid, segments.join("/"));
   }
   const remoteFolderPaths = new Set(uuidToPath.values());
 
   // Diff folders (before components). Renames are unsupported, so a folder is
   // only ever `create`/`unchanged`/`stale` — display names matter at creation
   // only. `EntityDiff.name` carries the slug path.
-  const localFolderPaths = new Set(local.folders.map(f => f.path));
+  const localFolderPaths = new Set(local.folders.map((f) => f.path));
   for (const folder of local.folders) {
-    const action = remoteFolderPaths.has(folder.path) ? 'unchanged' : 'create';
-    diffs.push({ type: 'folder', name: folder.path, action, diff: null, local: null, remote: null });
+    const action = remoteFolderPaths.has(folder.path) ? "unchanged" : "create";
+    diffs.push({
+      type: "folder",
+      name: folder.path,
+      action,
+      diff: null,
+      local: null,
+      remote: null,
+    });
   }
   for (const path of remoteFolderPaths) {
     if (!localFolderPaths.has(path)) {
-      diffs.push({ type: 'folder', name: path, action: 'stale', diff: null, local: null, remote: null });
+      diffs.push({
+        type: "folder",
+        name: path,
+        action: "stale",
+        diff: null,
+        local: null,
+        remote: null,
+      });
     }
   }
 
@@ -98,27 +114,31 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     // Only diff the group UUID when the local block opts into the escape hatch;
     // otherwise it stays stripped on both sides so remote UI groups are left
     // untouched and no false diff is produced.
-    const includeGroupUuid = typeof comp.component_group_uuid === 'string';
+    const includeGroupUuid = typeof comp.component_group_uuid === "string";
 
     // Shallow copies so group membership (`folder`) and whitelist path
     // translation never mutate the local schema or the remote component map.
     const localForDiff: Record<string, unknown> = { ...comp };
-    const remoteForDiff: Record<string, unknown> | undefined = remoteComp ? { ...remoteComp } : undefined;
+    const remoteForDiff: Record<string, unknown> | undefined = remoteComp
+      ? { ...remoteComp }
+      : undefined;
 
     // Group membership is only diffed when the local block manages it (a
     // `folder` key, string path or `null` for explicitly ungrouped). Synthesize
     // the remote block's `folder` from its group uuid so both sides diff in
     // slug-path space. Unmanaged blocks keep today's behavior: strip `folder`
     // from both sides so remote UI groups are left untouched.
-    if ('folder' in comp) {
+    if ("folder" in comp) {
       if (remoteForDiff) {
         const uuid = remoteForDiff.component_group_uuid;
-        remoteForDiff.folder = typeof uuid === 'string' && uuid ? uuidToPath.get(uuid) ?? null : null;
+        remoteForDiff.folder =
+          typeof uuid === "string" && uuid ? (uuidToPath.get(uuid) ?? null) : null;
       }
-    }
-    else {
+    } else {
       delete localForDiff.folder;
-      if (remoteForDiff) { delete remoteForDiff.folder; }
+      if (remoteForDiff) {
+        delete remoteForDiff.folder;
+      }
     }
 
     // Translate whitelist uuids → slug paths on both sides. `schema init` emits
@@ -129,15 +149,17 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
       remoteForDiff.schema = translateGroupWhitelist(remoteForDiff.schema, uuidToPath);
     }
 
-    const localSerialized = serializeComponent(applyDefaults(localForDiff, COMPONENT_DEFAULTS), { includeGroupUuid });
+    const localSerialized = serializeComponent(applyDefaults(localForDiff, COMPONENT_DEFAULTS), {
+      includeGroupUuid,
+    });
     const remoteSerialized = remoteForDiff
       ? serializeComponent(applyDefaults(remoteForDiff, COMPONENT_DEFAULTS), { includeGroupUuid })
       : null;
-    diffs.push(diffEntity('component', comp.name, localSerialized, remoteSerialized));
+    diffs.push(diffEntity("component", comp.name, localSerialized, remoteSerialized));
   }
   for (const [name] of remote.components) {
     if (!processedComponentNames.has(name)) {
-      diffs.push(diffEntity('component', name, null, 'stale'));
+      diffs.push(diffEntity("component", name, null, "stale"));
     }
   }
 
@@ -147,20 +169,22 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     processedDatasourceNames.add(ds.name);
     const remoteDs = remote.datasources.get(ds.name);
     const localSerialized = serializeDatasource(applyDefaults(ds, DATASOURCE_DEFAULTS));
-    const remoteSerialized = remoteDs ? serializeDatasource(applyDefaults(remoteDs, DATASOURCE_DEFAULTS)) : null;
-    diffs.push(diffEntity('datasource', ds.name, localSerialized, remoteSerialized));
+    const remoteSerialized = remoteDs
+      ? serializeDatasource(applyDefaults(remoteDs, DATASOURCE_DEFAULTS))
+      : null;
+    diffs.push(diffEntity("datasource", ds.name, localSerialized, remoteSerialized));
   }
   for (const [name] of remote.datasources) {
     if (!processedDatasourceNames.has(name)) {
-      diffs.push(diffEntity('datasource', name, null, 'stale'));
+      diffs.push(diffEntity("datasource", name, null, "stale"));
     }
   }
 
   return {
     diffs,
-    creates: diffs.filter(d => d.action === 'create').length,
-    updates: diffs.filter(d => d.action === 'update').length,
-    unchanged: diffs.filter(d => d.action === 'unchanged').length,
-    stale: diffs.filter(d => d.action === 'stale').length,
+    creates: diffs.filter((d) => d.action === "create").length,
+    updates: diffs.filter((d) => d.action === "update").length,
+    unchanged: diffs.filter((d) => d.action === "unchanged").length,
+    stale: diffs.filter((d) => d.action === "stale").length,
   };
 }

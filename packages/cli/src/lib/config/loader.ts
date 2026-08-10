@@ -1,4 +1,4 @@
-import { loadConfig as c12LoadConfig, SUPPORTED_EXTENSIONS } from 'c12';
+import { loadConfig as c12LoadConfig, SUPPORTED_EXTENSIONS } from "c12";
 
 export { SUPPORTED_EXTENSIONS };
 

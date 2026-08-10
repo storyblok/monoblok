@@ -1,18 +1,29 @@
-'use client';
+"use client";
 
-import { type ISbStoryData, loadStoryblokBridge, registerStoryblokBridge, type StoryblokBridgeConfigV2 } from '@storyblok/js';
-import { startTransition, useEffect } from 'react';
-import { getStoryCacheKey } from '../core/story-cache';
-import { isBridgeLoaded, isVisualEditor } from '../utils';
+import {
+  type ISbStoryData,
+  loadStoryblokBridge,
+  registerStoryblokBridge,
+  type StoryblokBridgeConfigV2,
+} from "@storyblok/js";
+import { startTransition, useEffect } from "react";
+import { getStoryCacheKey } from "../core/story-cache";
+import { isBridgeLoaded, isVisualEditor } from "../utils";
 
-const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISbStoryData; bridgeOptions?: StoryblokBridgeConfigV2 }) => {
+const StoryblokLiveEditing = ({
+  story = null,
+  bridgeOptions = {},
+}: {
+  story: ISbStoryData;
+  bridgeOptions?: StoryblokBridgeConfigV2;
+}) => {
   const inVisualEditor = isVisualEditor();
 
   if (!inVisualEditor) {
     return null;
   }
 
-  const storyId = typeof story?.id === 'number' ? story.id : null;
+  const storyId = typeof story?.id === "number" ? story.id : null;
   useEffect(() => {
     if (storyId === null) {
       return;
@@ -32,7 +43,7 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
         }
 
         try {
-          const { liveEditUpdateAction } = await import('./live-edit-update-action');
+          const { liveEditUpdateAction } = await import("./live-edit-update-action");
 
           startTransition(() => {
             liveEditUpdateAction({
@@ -40,10 +51,9 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
               pathToRevalidate: window.location.pathname,
             });
           });
-        }
-        catch (error) {
+        } catch (error) {
           // Fallback: just cache the story if server action is not available
-          console.warn('Server action not available, caching story locally:', error);
+          console.warn("Server action not available, caching story locally:", error);
           const fallbackKey = getStoryCacheKey(incoming);
           if (fallbackKey) {
             globalThis.storyCache?.set(fallbackKey, incoming);
@@ -51,7 +61,7 @@ const StoryblokLiveEditing = ({ story = null, bridgeOptions = {} }: { story: ISb
         }
       };
 
-      registerStoryblokBridge(storyId, newStory => handleInput(newStory), bridgeOptions);
+      registerStoryblokBridge(storyId, (newStory) => handleInput(newStory), bridgeOptions);
     })();
   }, [storyId, JSON.stringify(bridgeOptions)]);
 

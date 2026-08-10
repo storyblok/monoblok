@@ -1,9 +1,5 @@
-import type {
-  ISbStoryData,
-  StoryblokBridgeConfigV2,
-  StoryblokClient,
-} from '../types';
-import type { AstroGlobal } from 'astro';
+import type { ISbStoryData, StoryblokBridgeConfigV2, StoryblokClient } from "../types";
+import type { AstroGlobal } from "astro";
 
 /**
  * Returns the Storyblok API client instance.
@@ -23,7 +19,7 @@ import type { AstroGlobal } from 'astro';
  */
 export function useStoryblokApi(): StoryblokClient {
   if (!globalThis?.storyblokApiInstance) {
-    throw new Error('storyblokApiInstance has not been initialized correctly');
+    throw new Error("storyblokApiInstance has not been initialized correctly");
   }
   return globalThis.storyblokApiInstance;
 }
@@ -49,9 +45,9 @@ export function useStoryblokApi(): StoryblokClient {
  * }
  * ```
  */
-export async function getLiveStory(
-  Astro: { locals: AstroGlobal['locals'] },
-): Promise<ISbStoryData | null> {
+export async function getLiveStory(Astro: {
+  locals: AstroGlobal["locals"];
+}): Promise<ISbStoryData | null> {
   let story: ISbStoryData | null = null;
   if (Astro && Astro.locals._storyblok_preview_data) {
     story = Astro.locals._storyblok_preview_data.story || null;
@@ -109,12 +105,10 @@ export async function getPayload<
   return { story, serverData };
 }
 
-export function initStoryblokBridge(
-  config: boolean | StoryblokBridgeConfigV2,
-): string {
-  if (typeof config === 'object') {
+export function initStoryblokBridge(config: boolean | StoryblokBridgeConfigV2): string {
+  if (typeof config === "object") {
     const bridgeConfig = JSON.stringify(config);
     return `const storyblokInstance = new StoryblokBridge(${bridgeConfig});`;
   }
-  return 'const storyblokInstance = new StoryblokBridge();';
+  return "const storyblokInstance = new StoryblokBridge();";
 }

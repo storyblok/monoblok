@@ -1,10 +1,10 @@
-import chalk from 'chalk';
-import { MultiBar, Presets } from 'cli-progress';
-import { Spinner } from '@topcli/spinner';
-import { colorPalette } from '../../constants';
-import { DEFAULT_GLOBAL_CONFIG } from '../config/defaults';
-import { getActiveConfig } from '../config/store';
-import { capitalize } from '../../utils/format';
+import chalk from "chalk";
+import { MultiBar, Presets } from "cli-progress";
+import { Spinner } from "@topcli/spinner";
+import { colorPalette } from "../../constants";
+import { DEFAULT_GLOBAL_CONFIG } from "../config/defaults";
+import { getActiveConfig } from "../config/store";
+import { capitalize } from "../../utils/format";
 
 interface InfoOptions {
   header?: boolean;
@@ -46,10 +46,14 @@ let stdoutEpipeGuarded = false;
  * come back for every `code` that is not EPIPE.
  */
 function guardStdoutEpipe(ui: UI): void {
-  if (stdoutEpipeGuarded) { return; }
+  if (stdoutEpipeGuarded) {
+    return;
+  }
   stdoutEpipeGuarded = true;
-  process.stdout.on('error', (error: NodeJS.ErrnoException) => {
-    if (error.code === 'EPIPE') { return; }
+  process.stdout.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EPIPE") {
+      return;
+    }
     ui.error(`Failed to write to stdout: ${error.message}`);
     // A runtime failure, not a bad invocation, so 1 rather than 2. Set here
     // because the write already failed: the document on stdout is truncated,
@@ -71,7 +75,7 @@ const noopSpinner: CLISpinner = {
 };
 
 export class UI {
-  private console: Pick<typeof console, 'log' | 'info' | 'warn' | 'error'> | null;
+  private console: Pick<typeof console, "log" | "info" | "warn" | "error"> | null;
   private enabled: boolean;
   private multiBar: MultiBar | null;
 
@@ -84,7 +88,9 @@ export class UI {
 
   /** Update the enabled state (called by getUI when preAction resolves config). */
   setEnabled(enabled: boolean) {
-    if (this.enabled === enabled) { return; }
+    if (this.enabled === enabled) {
+      return;
+    }
     this.applyEnabled(enabled);
   }
 
@@ -102,19 +108,21 @@ export class UI {
         }
       : null;
     this.multiBar = enabled
-      ? new MultiBar({
-        clearOnComplete: false,
-        format: `${chalk.bold(' {title} ')} ${chalk.hex(colorPalette.PRIMARY)('[{bar}]')} {percentage}% | {eta_formatted} | {value}/{total} processed`,
-        etaBuffer: 60,
-      }, Presets.rect)
+      ? new MultiBar(
+          {
+            clearOnComplete: false,
+            format: `${chalk.bold(" {title} ")} ${chalk.hex(colorPalette.PRIMARY)("[{bar}]")} {percentage}% | {eta_formatted} | {value}/{total} processed`,
+            etaBuffer: 60,
+          },
+          Presets.rect,
+        )
       : null;
   }
 
   title(message: string, color: string, subtitle?: string) {
     if (subtitle) {
       this.console?.log(`${chalk.bgHex(color).bold(` ${capitalize(message)} `)} ${subtitle}`);
-    }
-    else {
+    } else {
       this.console?.log(chalk.bgHex(color).bold(` ${capitalize(message)} `));
     }
     this.br();
@@ -122,7 +130,7 @@ export class UI {
   }
 
   br() {
-    this.console?.log('');
+    this.console?.log("");
   }
 
   ok(message?: string, header: boolean = false) {
@@ -133,7 +141,7 @@ export class UI {
       this.br();
     }
 
-    this.console?.log(message ? `${chalk.green('✔')} ${message}` : '');
+    this.console?.log(message ? `${chalk.green("✔")} ${message}` : "");
   }
 
   info(message: string, options: InfoOptions = {}) {
@@ -144,7 +152,7 @@ export class UI {
       this.console?.info(infoHeader);
     }
 
-    this.console?.info(message ? `${chalk.blue('ℹ')} ${message}` : '');
+    this.console?.info(message ? `${chalk.blue("ℹ")} ${message}` : "");
     if (margin) {
       this.br();
     }
@@ -157,27 +165,29 @@ export class UI {
       this.console?.warn(warnHeader);
     }
 
-    this.console?.warn(message ? `${chalk.yellow('⚠️ ')} ${message}` : '');
+    this.console?.warn(message ? `${chalk.yellow("⚠️ ")} ${message}` : "");
   }
 
   error(message: string, info?: unknown, options: ErrorOptions = {}) {
     const { header = false, margin = false } = options;
     // Errors always go to stderr, even when UI is disabled (e.g. --no-ui-enabled in CI).
-    const out = this.console ?? { error: (...args: unknown[]) => console.error(...args), log: (...args: unknown[]) => console.error(...args) };
+    const out = this.console ?? {
+      error: (...args: unknown[]) => console.error(...args),
+      log: (...args: unknown[]) => console.error(...args),
+    };
     if (header) {
       const errorHeader = chalk.bgRed.bold.white(` Error `);
       out.error(errorHeader);
-      out.log('');
+      out.log("");
     }
 
     if (info) {
-      out.error(`${chalk.red.bold('▲ error')} ${message}`, info);
-    }
-    else {
-      out.error(`${chalk.red.bold('▲ error')} ${message}`);
+      out.error(`${chalk.red.bold("▲ error")} ${message}`, info);
+    } else {
+      out.error(`${chalk.red.bold("▲ error")} ${message}`);
     }
     if (margin) {
-      out.log('');
+      out.log("");
     }
   }
 
@@ -204,14 +214,19 @@ export class UI {
 
   createProgressBar(options: { title: string }): ProgressBar {
     const bar = this.multiBar?.create(0, 0, options);
-    if (!bar) { return noopProgressBar; }
+    if (!bar) {
+      return noopProgressBar;
+    }
     // cli-progress only substitutes payload tokens ({title}) when the payload is
     // passed alongside the update. Keep forwarding the original options on every call.
     return {
       increment: (count = 1) => bar.increment(count, options),
       // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
       // Floor at 1 so an empty phase stays a clean 0/1 instead.
-      setTotal: (total) => { bar.setTotal(Math.max(total, 1)); bar.update(options); },
+      setTotal: (total) => {
+        bar.setTotal(Math.max(total, 1));
+        bar.update(options);
+      },
       stop: () => bar.stop(),
     };
   }
@@ -221,7 +236,9 @@ export class UI {
   }
 
   createSpinner(title: string): CLISpinner {
-    if (!this.enabled) { return noopSpinner; }
+    if (!this.enabled) {
+      return noopSpinner;
+    }
     const spinner = new Spinner({ verbose: getActiveConfig().verbose });
     spinner.stream = process.stderr;
     return spinner.start(title);
@@ -236,8 +253,7 @@ let uiInstance: UI | null = null;
 export function getUI(options?: { enabled: boolean }) {
   if (!uiInstance) {
     uiInstance = new UI(options ?? { enabled: DEFAULT_GLOBAL_CONFIG.ui.enabled });
-  }
-  else if (options !== undefined) {
+  } else if (options !== undefined) {
     uiInstance.setEnabled(options.enabled);
   }
 

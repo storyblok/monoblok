@@ -1,141 +1,164 @@
-import { colorPalette, commands } from '../../../constants';
-import { assetsCommand } from '../command';
-import { getUI } from '../../../lib/ui';
-import { getLogger } from '../../../lib/logger/logger';
-import { getReporter } from '../../../lib/reporter/reporter';
-import { session } from '../../../session';
-import { requireAuthentication } from '../../../utils/auth';
-import { CommandError } from '../../../utils/error/command-error';
-import { handleError, logOnlyError, toError } from '../../../utils/error/error';
-import { FailureReasonGroup } from '../../../utils/failure-reason-group';
-import { fetchAllSpaceAssetIds, transferAssets } from '../actions';
+import { colorPalette, commands } from "../../../constants";
+import { assetsCommand } from "../command";
+import { getUI } from "../../../lib/ui";
+import { getLogger } from "../../../lib/logger/logger";
+import { getReporter } from "../../../lib/reporter/reporter";
+import { session } from "../../../session";
+import { requireAuthentication } from "../../../utils/auth";
+import { CommandError } from "../../../utils/error/command-error";
+import { handleError, logOnlyError, toError } from "../../../utils/error/error";
+import { FailureReasonGroup } from "../../../utils/failure-reason-group";
+import { fetchAllSpaceAssetIds, transferAssets } from "../actions";
 
 const transferCmd = assetsCommand
-  .command('transfer [asset-id...]')
-  .option('-s, --space <space>', 'space ID')
-  .option('--folder-id <folderId>', 'destination asset folder ID in the shared library')
-  .option('--all', 'Transfer every asset in the space to the shared library')
-  .option('-q, --query <query>', 'Transfer every asset in the space matching a Storyblok filter query. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"')
-  .option('-d, --dry-run', 'Preview changes without applying them to Storyblok')
+  .command("transfer [asset-id...]")
+  .option("-s, --space <space>", "space ID")
+  .option("--folder-id <folderId>", "destination asset folder ID in the shared library")
+  .option("--all", "Transfer every asset in the space to the shared library")
+  .option(
+    "-q, --query <query>",
+    'Transfer every asset in the space matching a Storyblok filter query. Example: --query="search=my-file.jpg&with_tags=tag1,tag2"',
+  )
+  .option("-d, --dry-run", "Preview changes without applying them to Storyblok")
   .description(`Transfer space assets into the organization's shared asset library.`);
 
-transferCmd
-  .action(async (assetIds: string[], options, command) => {
-    const ui = getUI();
-    const logger = getLogger();
-    const reporter = getReporter();
+transferCmd.action(async (assetIds: string[], options, command) => {
+  const ui = getUI();
+  const logger = getLogger();
+  const reporter = getReporter();
 
-    ui.title(`${commands.ASSETS}`, colorPalette.ASSETS, 'Transferring assets...');
-    logger.info('Transferring assets started');
+  ui.title(`${commands.ASSETS}`, colorPalette.ASSETS, "Transferring assets...");
+  logger.info("Transferring assets started");
 
-    if (options.dryRun) {
-      ui.warn(`DRY RUN MODE ENABLED: No changes will be made.\n`);
-      logger.warn('Dry run mode enabled');
-    }
+  if (options.dryRun) {
+    ui.warn(`DRY RUN MODE ENABLED: No changes will be made.\n`);
+    logger.warn("Dry run mode enabled");
+  }
 
-    const { space, verbose } = command.optsWithGlobals();
-    const { state } = session();
+  const { space, verbose } = command.optsWithGlobals();
+  const { state } = session();
 
-    if (!requireAuthentication(state, verbose)) {
+  if (!requireAuthentication(state, verbose)) {
+    return;
+  }
+  if (!space) {
+    handleError(
+      new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`),
+      verbose,
+    );
+    return;
+  }
+
+  const folderId = Number(options.folderId);
+  if (!options.folderId || !Number.isFinite(folderId) || folderId <= 0) {
+    handleError(
+      new CommandError(`Please provide a destination folder with --folder-id YOUR_FOLDER_ID.`),
+      verbose,
+    );
+    return;
+  }
+
+  // `--all` (the whole space) and `--query` (a filtered subset) both select
+  // the working set from the space itself, so they are mutually exclusive
+  // with each other and with naming explicit asset IDs.
+  if (options.all && options.query) {
+    handleError(
+      new CommandError(
+        `Cannot combine --all with --query. Use --all to transfer every asset, or --query to transfer a filtered subset.`,
+      ),
+      verbose,
+    );
+    return;
+  }
+
+  const bulk = Boolean(options.all || options.query);
+
+  if (bulk && assetIds.length > 0) {
+    handleError(
+      new CommandError(`Cannot combine explicit asset IDs with --all or --query.`),
+      verbose,
+    );
+    return;
+  }
+
+  let ids: number[];
+  if (bulk) {
+    const params = options.query
+      ? Object.fromEntries(new URLSearchParams(options.query))
+      : undefined;
+    logger.info("Enumerating space assets", { space, query: options.query });
+    try {
+      ids = await fetchAllSpaceAssetIds(space, params);
+    } catch (maybeError) {
+      handleError(toError(maybeError), verbose);
       return;
     }
-    if (!space) {
-      handleError(new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`), verbose);
-      return;
-    }
-
-    const folderId = Number(options.folderId);
-    if (!options.folderId || !Number.isFinite(folderId) || folderId <= 0) {
-      handleError(new CommandError(`Please provide a destination folder with --folder-id YOUR_FOLDER_ID.`), verbose);
-      return;
-    }
-
-    // `--all` (the whole space) and `--query` (a filtered subset) both select
-    // the working set from the space itself, so they are mutually exclusive
-    // with each other and with naming explicit asset IDs.
-    if (options.all && options.query) {
-      handleError(new CommandError(`Cannot combine --all with --query. Use --all to transfer every asset, or --query to transfer a filtered subset.`), verbose);
-      return;
-    }
-
-    const bulk = Boolean(options.all || options.query);
-
-    if (bulk && assetIds.length > 0) {
-      handleError(new CommandError(`Cannot combine explicit asset IDs with --all or --query.`), verbose);
-      return;
-    }
-
-    let ids: number[];
-    if (bulk) {
-      const params = options.query ? Object.fromEntries(new URLSearchParams(options.query)) : undefined;
-      logger.info('Enumerating space assets', { space, query: options.query });
-      try {
-        ids = await fetchAllSpaceAssetIds(space, params);
-      }
-      catch (maybeError) {
-        handleError(toError(maybeError), verbose);
-        return;
-      }
-      logger.info('Enumerated space assets', { count: ids.length });
-      if (ids.length === 0) {
-        ui.info(options.query
+    logger.info("Enumerated space assets", { count: ids.length });
+    if (ids.length === 0) {
+      ui.info(
+        options.query
           ? `No assets in space ${space} match the query. Nothing to transfer.`
-          : `No assets found in space ${space}. Nothing to transfer.`);
-        logger.info('Transferring assets finished (no assets found)');
-        process.exitCode = 0;
-        return;
-      }
-    }
-    else {
-      ids = assetIds.map(id => Number(id)).filter(id => !Number.isNaN(id));
-      if (ids.length === 0) {
-        handleError(new CommandError(`Please provide at least one valid asset ID, or use --all.`), verbose);
-        return;
-      }
-    }
-
-    if (options.dryRun) {
-      const summary = { total: ids.length, succeeded: 0, failed: 0 };
-      ui.info(`Transfer plan: ${ids.length} asset(s) to folder ${folderId}`);
-      ui.list(ids.map(id => `${id} -> folder ${folderId}`));
-      reporter.addSummary('transferResults', summary);
-      reporter.finalize();
-      logger.info('Transferring assets finished (dry run)', { summary });
+          : `No assets found in space ${space}. Nothing to transfer.`,
+      );
+      logger.info("Transferring assets finished (no assets found)");
       process.exitCode = 0;
       return;
     }
-
-    // Per-ID errors are captured individually, so unlike push/pull this
-    // command needs no outer fatalError try/catch wrapper.
-    const progress = ui.createProgressBar({ title: 'Transferring assets...' });
-    progress.setTotal(ids.length);
-
-    const results = await transferAssets(space, ids, folderId, {
-      onSuccess: ({ assetId, filename }) => logger.info('Transferred asset', { assetId, filename }),
-      onError: (error, assetId) => logOnlyError(error, { assetId }),
-      onProgress: () => progress.increment(),
-    });
-
-    ui.stopAllProgressBars();
-
-    const succeeded = results.filter(result => result.status === 'transferred').length;
-    const summary = { total: results.length, succeeded, failed: results.length - succeeded };
-
-    ui.info(`Transfer results: ${summary.succeeded} transferred, ${summary.failed} failed (of ${summary.total}).`);
-
-    if (summary.failed > 0) {
-      const failures = new FailureReasonGroup();
-      for (const result of results) {
-        if (result.status === 'failed') {
-          failures.record(result.reason ?? 'Unknown error');
-        }
-      }
-      ui.list(failures.toListLines('transfer'));
+  } else {
+    ids = assetIds.map((id) => Number(id)).filter((id) => !Number.isNaN(id));
+    if (ids.length === 0) {
+      handleError(
+        new CommandError(`Please provide at least one valid asset ID, or use --all.`),
+        verbose,
+      );
+      return;
     }
+  }
 
-    reporter.addSummary('transferResults', summary);
+  if (options.dryRun) {
+    const summary = { total: ids.length, succeeded: 0, failed: 0 };
+    ui.info(`Transfer plan: ${ids.length} asset(s) to folder ${folderId}`);
+    ui.list(ids.map((id) => `${id} -> folder ${folderId}`));
+    reporter.addSummary("transferResults", summary);
     reporter.finalize();
-    logger.info('Transferring assets finished', { summary });
+    logger.info("Transferring assets finished (dry run)", { summary });
+    process.exitCode = 0;
+    return;
+  }
 
-    process.exitCode = summary.failed > 0 ? 1 : 0;
+  // Per-ID errors are captured individually, so unlike push/pull this
+  // command needs no outer fatalError try/catch wrapper.
+  const progress = ui.createProgressBar({ title: "Transferring assets..." });
+  progress.setTotal(ids.length);
+
+  const results = await transferAssets(space, ids, folderId, {
+    onSuccess: ({ assetId, filename }) => logger.info("Transferred asset", { assetId, filename }),
+    onError: (error, assetId) => logOnlyError(error, { assetId }),
+    onProgress: () => progress.increment(),
   });
+
+  ui.stopAllProgressBars();
+
+  const succeeded = results.filter((result) => result.status === "transferred").length;
+  const summary = { total: results.length, succeeded, failed: results.length - succeeded };
+
+  ui.info(
+    `Transfer results: ${summary.succeeded} transferred, ${summary.failed} failed (of ${summary.total}).`,
+  );
+
+  if (summary.failed > 0) {
+    const failures = new FailureReasonGroup();
+    for (const result of results) {
+      if (result.status === "failed") {
+        failures.record(result.reason ?? "Unknown error");
+      }
+    }
+    ui.list(failures.toListLines("transfer"));
+  }
+
+  reporter.addSummary("transferResults", summary);
+  reporter.finalize();
+  logger.info("Transferring assets finished", { summary });
+
+  process.exitCode = summary.failed > 0 ? 1 : 0;
+});

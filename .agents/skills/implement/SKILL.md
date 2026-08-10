@@ -22,6 +22,7 @@ Implement the approved plan: $ARGUMENTS
 4. **Verify as you go** - Run relevant checks after each change
 
 ## Rules
+
 - Do NOT add new dependencies unless explicitly in the plan
 - Do NOT refactor unrelated code
 - Do NOT add comments/docs unless specifically requested
@@ -31,24 +32,27 @@ Implement the approved plan: $ARGUMENTS
 
 ```markdown
 ## Changes Made
-| File | Change |
-|------|--------|
+
+| File            | Change       |
+| --------------- | ------------ |
 | path/to/file.ts | What changed |
 
 ## Verification
+
 \`\`\`bash
+
 # Commands run and output
-pnpm nx lint <package>
-pnpm nx test <package>
-pnpm nx run <package> test:types
-\`\`\`
+
+pnpm nx lint <package> pnpm nx test <package> pnpm nx run <package> test:types \`\`\`
 
 ## Notes
+
 - Any deviations from plan (with justification)
 - Any follow-up items discovered
 ```
 
 ## Post-Implementation Checklist
+
 - [ ] All planned changes completed
 - [ ] Lint passes: `pnpm nx lint <package>`
 - [ ] Tests pass: `pnpm nx test <package>`

@@ -1,12 +1,16 @@
 # @storyblok/mapi-integration-tests
 
-Integration tests for [`@storyblok/management-api-client`](../../) paired with [`@storyblok/schema`](../../../schema).
+Integration tests for [`@storyblok/management-api-client`](../../) paired with
+[`@storyblok/schema`](../../../schema).
 
-This playground exists so the management-api-client package itself stays free of a runtime dependency on `@storyblok/schema`, while still letting us verify that the two packages line up.
+This playground exists so the management-api-client package itself stays free of a runtime
+dependency on `@storyblok/schema`, while still letting us verify that the two packages line up.
 
 ## Type tests
 
-`test/types/*.test-d.ts` assert that `defineBlock` / `defineX*` payloads from `@storyblok/schema` are assignable to the corresponding MAPI request bodies, and that `.withTypes()` narrows responses correctly. They run in CI:
+`test/types/*.test-d.ts` assert that `defineBlock` / `defineX*` payloads from `@storyblok/schema`
+are assignable to the corresponding MAPI request bodies, and that `.withTypes()` narrows responses
+correctly. They run in CI:
 
 ```bash
 pnpm --filter @storyblok/mapi-integration-tests test
@@ -15,7 +19,8 @@ pnpm --filter @storyblok/mapi-integration-tests test:types
 
 ## End-to-end tests
 
-`test/specs/*.spec.e2e.ts` exercise a real round-trip against the Storyblok MAPI using a personal access token. Run manually only:
+`test/specs/*.spec.e2e.ts` exercise a real round-trip against the Storyblok MAPI using a personal
+access token. Run manually only:
 
 ```bash
 pnpm --filter @storyblok/mapi-integration-tests test:e2e

@@ -13,13 +13,13 @@
  * if the cache on disk doesn't match what spec.lock claims.
  */
 
-import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'pathe';
-import { CACHE_DIR, LOCK_PATH } from './paths.ts';
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { relative, resolve } from "pathe";
+import { CACHE_DIR, LOCK_PATH } from "./paths.ts";
 
-export { CACHE_DIR, LOCK_PATH, TOOL_ROOT } from './paths.ts';
-export const UPSTREAM_REPO = 'storyblok/openapi-wdx';
+export { CACHE_DIR, LOCK_PATH, TOOL_ROOT } from "./paths.ts";
+export const UPSTREAM_REPO = "storyblok/openapi-wdx";
 
 export interface SpecLock {
   repo: string;
@@ -31,11 +31,11 @@ export function readLock(): SpecLock | null {
   if (!existsSync(LOCK_PATH)) {
     return null;
   }
-  return JSON.parse(readFileSync(LOCK_PATH, 'utf8')) as SpecLock;
+  return JSON.parse(readFileSync(LOCK_PATH, "utf8")) as SpecLock;
 }
 
 export function writeLock(lock: SpecLock): void {
-  writeFileSync(LOCK_PATH, `${JSON.stringify(lock, null, 2)}\n`, 'utf8');
+  writeFileSync(LOCK_PATH, `${JSON.stringify(lock, null, 2)}\n`, "utf8");
 }
 
 /**
@@ -53,8 +53,7 @@ export function hashCache(): string {
       const full = resolve(dir, entry);
       if (statSync(full).isDirectory()) {
         walk(full);
-      }
-      else {
+      } else {
         files.push(full);
       }
     }
@@ -62,12 +61,12 @@ export function hashCache(): string {
   walk(CACHE_DIR);
   files.sort();
 
-  const hash = createHash('sha256');
+  const hash = createHash("sha256");
   for (const file of files) {
     hash.update(relative(CACHE_DIR, file));
-    hash.update('\0');
+    hash.update("\0");
     hash.update(readFileSync(file));
-    hash.update('\0');
+    hash.update("\0");
   }
-  return `sha256:${hash.digest('hex')}`;
+  return `sha256:${hash.digest("hex")}`;
 }

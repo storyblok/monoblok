@@ -1,37 +1,37 @@
-import type { Client, ResolvedRequestOptions, RetryOptions } from './generated/mapi/client';
-import type { Middleware } from './generated/mapi/client/utils.gen';
-import { createClient, createConfig } from './generated/mapi/client';
-import { getManagementBaseUrl } from '@storyblok/region-helper';
-import type { Region } from '@storyblok/region-helper';
-import type { Block } from './generated/types/block';
-import { ClientError } from './error';
-import type { RateLimitConfig } from './utils/rate-limit';
-import { createThrottleManager } from './utils/rate-limit';
-import { querySerializer } from './utils/query-serializer';
-import { createAssetFoldersResource } from './resources/asset-folders';
-import { createAssetsResource } from './resources/assets';
-import { createComponentFoldersResource } from './resources/component-folders';
-import { createComponentsResource } from './resources/components';
-import { createDatasourceEntriesResource } from './resources/datasource-entries';
-import { createDatasourcesResource } from './resources/datasources';
-import { createExperimentsResource } from './resources/experiments';
-import { createInternalTagsResource } from './resources/internal-tags';
-import { createPresetsResource } from './resources/presets';
-import { createSharedAssetFoldersResource } from './resources/shared-asset-folders';
-import { createSharedAssetsResource } from './resources/shared-assets';
-import { createSharedInternalTagsResource } from './resources/shared-internal-tags';
-import { createSpacesResource } from './resources/spaces';
-import { createStoriesResource } from './resources/stories';
-import { createUsersResource } from './resources/users';
+import type { Client, ResolvedRequestOptions, RetryOptions } from "./generated/mapi/client";
+import type { Middleware } from "./generated/mapi/client/utils.gen";
+import { createClient, createConfig } from "./generated/mapi/client";
+import { getManagementBaseUrl } from "@storyblok/region-helper";
+import type { Region } from "@storyblok/region-helper";
+import type { Block } from "./generated/types/block";
+import { ClientError } from "./error";
+import type { RateLimitConfig } from "./utils/rate-limit";
+import { createThrottleManager } from "./utils/rate-limit";
+import { querySerializer } from "./utils/query-serializer";
+import { createAssetFoldersResource } from "./resources/asset-folders";
+import { createAssetsResource } from "./resources/assets";
+import { createComponentFoldersResource } from "./resources/component-folders";
+import { createComponentsResource } from "./resources/components";
+import { createDatasourceEntriesResource } from "./resources/datasource-entries";
+import { createDatasourcesResource } from "./resources/datasources";
+import { createExperimentsResource } from "./resources/experiments";
+import { createInternalTagsResource } from "./resources/internal-tags";
+import { createPresetsResource } from "./resources/presets";
+import { createSharedAssetFoldersResource } from "./resources/shared-asset-folders";
+import { createSharedAssetsResource } from "./resources/shared-assets";
+import { createSharedInternalTagsResource } from "./resources/shared-internal-tags";
+import { createSpacesResource } from "./resources/spaces";
+import { createStoriesResource } from "./resources/stories";
+import { createUsersResource } from "./resources/users";
 
 // ---------------------------------------------------------------------------
 // Client types (co-located with runtime)
 // ---------------------------------------------------------------------------
 
-export type ApiResponse<T, ThrowOnError extends boolean = false> =
-  ThrowOnError extends true
-    ? { data: T; error?: never; response: Response; request: Request }
-    : | { data: T; error: undefined; response: Response; request: Request }
+export type ApiResponse<T, ThrowOnError extends boolean = false> = ThrowOnError extends true
+  ? { data: T; error?: never; response: Response; request: Request }
+  :
+      | { data: T; error: undefined; response: Response; request: Request }
       | { data: undefined; error: ClientError; response: Response; request: Request };
 
 export interface RequestConfigOverrides {
@@ -62,7 +62,7 @@ export interface HttpRequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   signal?: AbortSignal;
-  throwOnError?: RequestConfigOverrides['throwOnError'];
+  throwOnError?: RequestConfigOverrides["throwOnError"];
   fetchOptions?: FetchOptions;
 }
 
@@ -72,28 +72,29 @@ export interface HttpRequestOptions {
 export interface MapiResourceDeps<DefaultThrowOnError extends boolean = false> {
   client: Client;
   spaceId?: number;
-  wrapRequest: <TData, ThrowOnError extends boolean = DefaultThrowOnError>(fn: () => Promise<unknown>, throwOnError?: ThrowOnError) => Promise<ApiResponse<TData, ThrowOnError>>;
+  wrapRequest: <TData, ThrowOnError extends boolean = DefaultThrowOnError>(
+    fn: () => Promise<unknown>,
+    throwOnError?: ThrowOnError,
+  ) => Promise<ApiResponse<TData, ThrowOnError>>;
 }
 
 type TokenConfig =
   | {
-    /** Personal access token for authentication. */
-    personalAccessToken: string;
-    oauthToken?: never;
-  }
+      /** Personal access token for authentication. */
+      personalAccessToken: string;
+      oauthToken?: never;
+    }
   | {
-    personalAccessToken?: never;
-    /** OAuth bearer token for authentication. */
-    oauthToken: string;
-  }
+      personalAccessToken?: never;
+      /** OAuth bearer token for authentication. */
+      oauthToken: string;
+    }
   | {
-    personalAccessToken?: undefined;
-    oauthToken?: undefined;
-  };
+      personalAccessToken?: undefined;
+      oauthToken?: undefined;
+    };
 
-export type ManagementApiClientConfig<
-  ThrowOnError extends boolean = false,
-> = TokenConfig & {
+export type ManagementApiClientConfig<ThrowOnError extends boolean = false> = TokenConfig & {
   /**
    * The Storyblok space ID. Used as the default for space-scoped endpoints.
    * You can also override it per request via `path.space_id`.
@@ -146,7 +147,7 @@ function getAuthorizationHeader(config: ManagementApiClientConfig<boolean>): str
     return config.personalAccessToken;
   }
   if (config.oauthToken) {
-    return config.oauthToken.startsWith('Bearer ')
+    return config.oauthToken.startsWith("Bearer ")
       ? config.oauthToken
       : `Bearer ${config.oauthToken}`;
   }
@@ -161,14 +162,14 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
 } => {
   const {
     spaceId,
-    region = 'eu',
+    region = "eu",
     baseUrl,
     headers = {},
     throwOnError = false,
     retry = {
       limit: 12,
       backoffLimit: 20_000,
-      methods: ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'],
+      methods: ["get", "post", "put", "delete", "patch", "head", "options", "trace"],
       statusCodes: [429],
     },
     timeout = 30_000,
@@ -199,9 +200,9 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
 
   client.interceptors.error.use(
     (error: unknown, response: Response) =>
-      new ClientError(response?.statusText || 'API request failed', {
+      new ClientError(response?.statusText || "API request failed", {
         status: response?.status ?? 0,
-        statusText: response?.statusText ?? '',
+        statusText: response?.statusText ?? "",
         data: error,
       }),
   );
@@ -210,9 +211,7 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
     fn: () => Promise<unknown>,
     _throwOnError?: CurrentThrowOnError,
   ): Promise<ApiResponse<TData, CurrentThrowOnError>> {
-    return throttleManager.execute(
-      () => fn() as Promise<ApiResponse<TData, CurrentThrowOnError>>,
-    );
+    return throttleManager.execute(() => fn() as Promise<ApiResponse<TData, CurrentThrowOnError>>);
   }
 
   const deps: MapiResourceDeps<DefaultThrowOnError> = { client, spaceId, wrapRequest };
@@ -233,7 +232,13 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   ): Promise<ApiResponse<TData, DefaultThrowOnError>> => {
     const { fetchOptions, ...rest } = options;
     return deps.wrapRequest<TData>(() =>
-      client.get({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.get({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -247,7 +252,13 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   ): Promise<ApiResponse<TData, DefaultThrowOnError>> => {
     const { fetchOptions, ...rest } = options;
     return deps.wrapRequest<TData>(() =>
-      client.post({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.post({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -261,7 +272,13 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   ): Promise<ApiResponse<TData, DefaultThrowOnError>> => {
     const { fetchOptions, ...rest } = options;
     return deps.wrapRequest<TData>(() =>
-      client.put({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.put({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -275,7 +292,13 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   ): Promise<ApiResponse<TData, DefaultThrowOnError>> => {
     const { fetchOptions, ...rest } = options;
     return deps.wrapRequest<TData>(() =>
-      client.patch({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.patch({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -289,7 +312,13 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
   ): Promise<ApiResponse<TData, DefaultThrowOnError>> => {
     const { fetchOptions, ...rest } = options;
     return deps.wrapRequest<TData>(() =>
-      client.delete({ url: path, ...rest, ...(fetchOptions ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } } : {}) }),
+      client.delete({
+        url: path,
+        ...rest,
+        ...(fetchOptions
+          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
+          : {}),
+      }),
     );
   };
 
@@ -303,7 +332,12 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
     delete: httpDelete,
     get: httpGet,
     patch: httpPatch,
-    interceptors: client.interceptors as Middleware<Request, Response, unknown, ResolvedRequestOptions>,
+    interceptors: client.interceptors as Middleware<
+      Request,
+      Response,
+      unknown,
+      ResolvedRequestOptions
+    >,
     internalTags: createInternalTagsResource(deps),
     post: httpPost,
     presets: createPresetsResource(deps),
@@ -318,10 +352,13 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
 
 type StoryblokTypesConfig = { components: Block } | { blocks: Block };
 
-type ResolveComponents<T extends StoryblokTypesConfig> =
-  T extends { components: infer C extends Block } ? C
-    : T extends { blocks: infer B extends Block } ? B
-      : never;
+type ResolveComponents<T extends StoryblokTypesConfig> = T extends {
+  components: infer C extends Block;
+}
+  ? C
+  : T extends { blocks: infer B extends Block }
+    ? B
+    : never;
 
 /** Extracts the `fieldType → value` plugin map from a Schema, defaulting to an empty map. */
 type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<never, never>;
@@ -353,12 +390,14 @@ export type ManagementApiClient<
    *   .withTypes<Schema>();
    * ```
    */
-  withTypes: <T extends StoryblokTypesConfig>() => ManagementApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, DefaultThrowOnError>;
+  withTypes: <T extends StoryblokTypesConfig>() => ManagementApiClient<
+    ResolveComponents<T>,
+    ResolveFieldPlugins<T>,
+    DefaultThrowOnError
+  >;
 };
 
-export const createManagementApiClient = <
-  DefaultThrowOnError extends boolean = false,
->(
+export const createManagementApiClient = <DefaultThrowOnError extends boolean = false>(
   config: ManagementApiClientConfig<DefaultThrowOnError>,
 ): ManagementApiClient<Block, Record<never, never>, DefaultThrowOnError> => {
   const { deps, resources } = createManagementApiClientBase(config);
@@ -367,7 +406,11 @@ export const createManagementApiClient = <
     components: createComponentsResource<DefaultThrowOnError>(deps),
     stories: createStoriesResource<Block, Record<never, never>, DefaultThrowOnError>(deps),
     withTypes<T extends StoryblokTypesConfig>() {
-      return self as unknown as ManagementApiClient<ResolveComponents<T>, ResolveFieldPlugins<T>, DefaultThrowOnError>;
+      return self as unknown as ManagementApiClient<
+        ResolveComponents<T>,
+        ResolveFieldPlugins<T>,
+        DefaultThrowOnError
+      >;
     },
   };
   return self;

@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs';
-import ts from 'typescript';
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 
-const CONTENT_PROP = 'content';
-const MARKS_PROP = 'marks';
+const CONTENT_PROP = "content";
+const MARKS_PROP = "marks";
 
 interface NodeEntry {
   typeValue: string;
@@ -17,13 +17,8 @@ interface NodeEntry {
 }
 
 function parseNodes(inputPath: string): NodeEntry[] {
-  const source = readFileSync(inputPath, 'utf-8');
-  const sf = ts.createSourceFile(
-    'types.gen.ts',
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-  );
+  const source = readFileSync(inputPath, "utf-8");
+  const sf = ts.createSourceFile("types.gen.ts", source, ts.ScriptTarget.Latest, true);
   const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
   const entries: NodeEntry[] = [];
@@ -32,13 +27,11 @@ function parseNodes(inputPath: string): NodeEntry[] {
     if (!ts.isInterfaceDeclaration(stmt)) {
       continue;
     }
-    const isExported
-      = stmt.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)
-        ?? false;
+    const isExported = stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
     if (!isExported) {
       continue;
     }
-    if (!stmt.name.text.startsWith('RichTextFieldValue')) {
+    if (!stmt.name.text.startsWith("RichTextFieldValue")) {
       continue;
     }
 
@@ -46,13 +39,13 @@ function parseNodes(inputPath: string): NodeEntry[] {
     let typeValue: string | undefined;
     for (const m of stmt.members) {
       if (
-        ts.isPropertySignature(m)
-        && m.name
-        && ts.isIdentifier(m.name)
-        && m.name.text === 'type'
-        && m.type
-        && ts.isLiteralTypeNode(m.type)
-        && ts.isStringLiteral(m.type.literal)
+        ts.isPropertySignature(m) &&
+        m.name &&
+        ts.isIdentifier(m.name) &&
+        m.name.text === "type" &&
+        m.type &&
+        ts.isLiteralTypeNode(m.type) &&
+        ts.isStringLiteral(m.type.literal)
       ) {
         typeValue = m.type.literal.text;
         break;
@@ -68,7 +61,7 @@ function parseNodes(inputPath: string): NodeEntry[] {
     let contentOptional = false;
     let hasMarks = false;
     let marksOptional = false;
-    const extraProps: NodeEntry['extraProps'] = [];
+    const extraProps: NodeEntry["extraProps"] = [];
 
     for (const m of stmt.members) {
       if (!ts.isPropertySignature(m) || !m.name || !ts.isIdentifier(m.name)) {
@@ -77,23 +70,20 @@ function parseNodes(inputPath: string): NodeEntry[] {
       const prop = m.name.text;
       const optional = !!m.questionToken;
 
-      if (prop === 'type') {
+      if (prop === "type") {
         continue;
       }
 
-      if (prop === 'attrs') {
+      if (prop === "attrs") {
         hasAttrs = true;
         attrsOptional = optional;
-      }
-      else if (prop === CONTENT_PROP) {
+      } else if (prop === CONTENT_PROP) {
         hasContent = true;
         contentOptional = optional;
-      }
-      else if (prop === MARKS_PROP) {
+      } else if (prop === MARKS_PROP) {
         hasMarks = true;
         marksOptional = optional;
-      }
-      else if (m.type) {
+      } else if (m.type) {
         extraProps.push({
           name: prop,
           optional,
@@ -123,44 +113,44 @@ export function generateElementTypes(inputPath: string): string {
 
   // Import only the interfaces that have attrs (we reference their ['attrs'] type)
   const ifaceImports = nodes
-    .filter(n => n.hasAttrs)
-    .map(n => n.ifaceName)
+    .filter((n) => n.hasAttrs)
+    .map((n) => n.ifaceName)
     .sort();
 
   const lines: string[] = [
-    '// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.',
-    '',
-    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(', ')} } from '../generated/overlay/types.gen';`,
-    '',
+    "// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.",
+    "",
+    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(", ")} } from '../generated/overlay/types.gen';`,
+    "",
   ];
 
   // ── SbRichTextElementByType ───────────────────────────────────────────────
-  lines.push('export interface StoryblokRichTextElementByType<TContext = unknown> {');
+  lines.push("export interface StoryblokRichTextElementByType<TContext = unknown> {");
   for (const n of nodes) {
     lines.push(`  ${n.typeValue}: {`);
     lines.push(`    type: '${n.typeValue}';`);
 
     if (n.hasAttrs) {
-      const opt = n.attrsOptional ? '?' : '';
+      const opt = n.attrsOptional ? "?" : "";
       lines.push(`    attrs${opt}: ${n.ifaceName}['attrs'];`);
     }
 
     for (const p of n.extraProps) {
-      lines.push(`    ${p.name}${p.optional ? '?' : ''}: ${p.typeText};`);
+      lines.push(`    ${p.name}${p.optional ? "?" : ""}: ${p.typeText};`);
     }
 
     if (n.hasContent) {
-      lines.push(`    content${n.contentOptional ? '?' : ''}: RichTextNode[];`);
+      lines.push(`    content${n.contentOptional ? "?" : ""}: RichTextNode[];`);
     }
     if (n.hasMarks) {
-      lines.push(`    marks${n.marksOptional ? '?' : ''}: RichTextMark[];`);
+      lines.push(`    marks${n.marksOptional ? "?" : ""}: RichTextMark[];`);
     }
 
-    lines.push('    _key?: string;');
-    lines.push('    context?: TContext;');
-    lines.push('  };');
+    lines.push("    _key?: string;");
+    lines.push("    context?: TContext;");
+    lines.push("  };");
   }
-  lines.push('}', '');
+  lines.push("}", "");
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

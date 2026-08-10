@@ -1,10 +1,10 @@
-import chalk from 'chalk';
-import type { LevelOption, ValidationRunResult } from './types';
-import { countIssues, filterIssuesByLevel } from './filter';
+import chalk from "chalk";
+import type { LevelOption, ValidationRunResult } from "./types";
+import { countIssues, filterIssuesByLevel } from "./filter";
 
 const SYMBOL = {
-  error: chalk.red('✖'),
-  warning: chalk.yellow('⚠'),
+  error: chalk.red("✖"),
+  warning: chalk.yellow("⚠"),
 } as const;
 
 function pluralize(count: number, noun: string): string {
@@ -29,31 +29,28 @@ export function formatPretty(result: ValidationRunResult, level: LevelOption): s
       continue;
     }
     lines.push(group.header);
-    const codeWidth = Math.max(...visible.map(issue => issue.code.length));
+    const codeWidth = Math.max(...visible.map((issue) => issue.code.length));
     for (const issue of visible) {
-      const location = issue.path.length > 0
-        ? `${issue.path.join('.')}: ${issue.message}`
-        : issue.message;
+      const location =
+        issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message;
       lines.push(`  ${SYMBOL[issue.severity]} ${issue.code.padEnd(codeWidth)}   ${location}`);
     }
   }
 
   const { errors, warnings, unitsWithIssues } = countIssues(result);
-  const summarySymbol = errors > 0
-    ? chalk.red('✖')
-    : warnings > 0
-      ? chalk.yellow('⚠')
-      : chalk.green('✔');
+  const summarySymbol =
+    errors > 0 ? chalk.red("✖") : warnings > 0 ? chalk.yellow("⚠") : chalk.green("✔");
   // Errors and warnings are pluralized, so a plural unit noun next to a count of
   // one reads as an oversight: `1 error, 0 warnings across 1 of 1 stories`.
   const unitNoun = result.unitsTotal === 1 ? result.unitNounSingular : result.unitNoun;
-  const hidden = level === 'error' && warnings > 0
-    ? chalk.dim(` (${pluralize(warnings, 'warning')} hidden by --level error)`)
-    : '';
+  const hidden =
+    level === "error" && warnings > 0
+      ? chalk.dim(` (${pluralize(warnings, "warning")} hidden by --level error)`)
+      : "";
   lines.push(
-    `${summarySymbol} ${pluralize(errors, 'error')}, ${pluralize(warnings, 'warning')} `
-    + `across ${unitsWithIssues} of ${result.unitsTotal} ${unitNoun}${hidden}`,
+    `${summarySymbol} ${pluralize(errors, "error")}, ${pluralize(warnings, "warning")} ` +
+      `across ${unitsWithIssues} of ${result.unitsTotal} ${unitNoun}${hidden}`,
   );
 
-  return lines.join('\n');
+  return lines.join("\n");
 }

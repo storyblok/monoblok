@@ -1,20 +1,15 @@
-import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from 'react';
-import {
-  createRichTextRenderer,
-  type StoryblokReactRichTextComponentProps,
-} from './richtext';
-import type { SbBlokData } from '@storyblok/js';
-import { createDefaultBlok } from './create-default-blok';
+import type { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
+import { createRichTextRenderer, type StoryblokReactRichTextComponentProps } from "./richtext";
+import type { SbBlokData } from "@storyblok/js";
+import { createDefaultBlok } from "./create-default-blok";
 
-type DivProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'>;
+type DivProps = Omit<ComponentPropsWithoutRef<"div">, "children">;
 type WrappedProps = StoryblokReactRichTextComponentProps & DivProps & { wrapper?: true };
 type UnwrappedProps = StoryblokReactRichTextComponentProps & { wrapper: false };
 
 export type SbRichTextProps = WrappedProps | UnwrappedProps;
 
-export function createStoryblokRichText(
-  StoryblokComponent: ComponentType<{ blok: SbBlokData }>,
-) {
+export function createStoryblokRichText(StoryblokComponent: ComponentType<{ blok: SbBlokData }>) {
   const DefaultBlok = createDefaultBlok(StoryblokComponent);
 
   return function StoryblokRichText({

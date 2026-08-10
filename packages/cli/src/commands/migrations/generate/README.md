@@ -1,6 +1,7 @@
 # Migrations Generate Command
 
-The `migrations generate` command allows you to create a migration file for a specific component in your Storyblok space.
+The `migrations generate` command allows you to create a migration file for a specific component in
+your Storyblok space.
 
 ## Basic Usage
 
@@ -9,6 +10,7 @@ storyblok migrations generate COMPONENT_NAME --space YOUR_SPACE_ID
 ```
 
 This will generate a migration file for the specified component:
+
 ```
 .storyblok/
 └── migrations/
@@ -18,19 +20,22 @@ This will generate a migration file for the specified component:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to generate the migration for | - |
-| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`) | - |
-| `-p, --path <path>` | Custom path to store the migration file | `.storyblok/migrations` |
+| Option                    | Description                                                           | Default                 |
+| ------------------------- | --------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for          | -                       |
+| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`) | -                       |
+| `-p, --path <path>`       | Custom path to store the migration file                               | `.storyblok/migrations` |
 
 ## Examples
 
 1. Generate a migration for a component:
+
 ```bash
 storyblok migrations generate hero --space 12345
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── migrations/
@@ -39,10 +44,13 @@ Generates:
 ```
 
 2. Generate a migration with a suffix:
+
 ```bash
 storyblok migrations generate hero --space 12345 --suffix field-name-change
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── migrations/
@@ -51,10 +59,13 @@ Generates:
 ```
 
 3. Generate a migration in a custom path:
+
 ```bash
 storyblok migrations generate hero --space 12345 --path ./backup
 ```
+
 Generates:
+
 ```
 backup/
 └── migrations/
@@ -65,6 +76,7 @@ backup/
 ## File Structure
 
 The command follows this pattern for file generation:
+
 ```
 {path}/
 └── migrations/
@@ -73,6 +85,7 @@ The command follows this pattern for file generation:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{componentName}` is the name of the component

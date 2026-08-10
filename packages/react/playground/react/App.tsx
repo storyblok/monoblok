@@ -1,7 +1,7 @@
-import { BrowserRouter, Link, Route, Routes } from 'react-router';
-import Home from './pages/Home';
-import RichtextPage from './pages/RichtextPage';
-import CatchAllPage from './pages/CatchAllPage';
+import { BrowserRouter, Link, Route, Routes } from "react-router";
+import Home from "./pages/Home";
+import RichtextPage from "./pages/RichtextPage";
+import CatchAllPage from "./pages/CatchAllPage";
 
 function App() {
   return (

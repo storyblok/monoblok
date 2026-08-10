@@ -1,40 +1,40 @@
 #!/usr/bin/env node
-import 'dotenv/config';
+import "dotenv/config";
 
-import { CommanderError } from 'commander';
-import { handleError } from './utils';
-import { getProgram } from './program';
-import { getUI } from './lib/ui';
-import { colorPalette } from './constants';
-import './commands/login';
-import './commands/logout';
-import './commands/signup';
-import './commands/user';
-import './commands/components';
-import './commands/languages';
-import './commands/migrations';
-import './commands/types';
-import './commands/datasources';
-import './commands/create';
-import './commands/logs';
-import './commands/reports';
-import './commands/assets';
-import './commands/stories';
-import './commands/schema';
+import { CommanderError } from "commander";
+import { handleError } from "./utils";
+import { getProgram } from "./program";
+import { getUI } from "./lib/ui";
+import { colorPalette } from "./constants";
+import "./commands/login";
+import "./commands/logout";
+import "./commands/signup";
+import "./commands/user";
+import "./commands/components";
+import "./commands/languages";
+import "./commands/migrations";
+import "./commands/types";
+import "./commands/datasources";
+import "./commands/create";
+import "./commands/logs";
+import "./commands/reports";
+import "./commands/assets";
+import "./commands/stories";
+import "./commands/schema";
 
-export * from './types/storyblok';
+export * from "./types/storyblok";
 
 const program = getProgram();
 const ui = getUI();
 
 ui.br();
-ui.title('Storyblok CLI', colorPalette.PRIMARY);
+ui.title("Storyblok CLI", colorPalette.PRIMARY);
 ui.br();
 
 // Handle invalid commands
-program.on('command:*', () => {
-  console.error(`Invalid command: ${program.args.join(' ')}`);
-  console.error('');
+program.on("command:*", () => {
+  console.error(`Invalid command: ${program.args.join(" ")}`);
+  console.error("");
   // Write help text directly to stderr — do not use outputHelp({ error: true })
   // which routes through configureOutput.writeErr → handleError, turning help text into an error.
   console.error(program.helpInformation());
@@ -43,8 +43,7 @@ program.on('command:*', () => {
 
 try {
   await program.parseAsync(process.argv);
-}
-catch (error) {
+} catch (error) {
   // Commander throws CommanderError after exitOverride — exit code is already set
   // via writeErr → handleError, so we only need to handle the --help / --version cases.
   if (error instanceof CommanderError) {
@@ -56,8 +55,7 @@ catch (error) {
         process.exitCode = error.exitCode;
       }
     }
-  }
-  else {
+  } else {
     handleError(error as Error);
   }
 }

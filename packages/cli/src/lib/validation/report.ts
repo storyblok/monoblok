@@ -1,6 +1,6 @@
-import type { Reporter } from '../reporter/reporter';
-import type { ValidationRunResult } from './types';
-import { countIssues } from './filter';
+import type { Reporter } from "../reporter/reporter";
+import type { ValidationRunResult } from "./types";
+import { countIssues } from "./filter";
 
 /**
  * Populates the shared reporter with a validation run's summary and the full
@@ -10,13 +10,13 @@ import { countIssues } from './filter';
 export function writeValidationReport(reporter: Reporter, result: ValidationRunResult): void {
   const { errors, warnings, unitsWithIssues } = countIssues(result);
 
-  reporter.addSummary('validation', {
+  reporter.addSummary("validation", {
     total: result.unitsTotal,
     succeeded: result.unitsTotal - unitsWithIssues,
     failed: unitsWithIssues,
   });
 
-  reporter.addMeta('validation', {
+  reporter.addMeta("validation", {
     unitNoun: result.unitNoun,
     errors,
     warnings,

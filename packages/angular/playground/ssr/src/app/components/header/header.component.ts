@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component } from "@angular/core";
+import { RouterLink, RouterLinkActive } from "@angular/router";
 
 @Component({
-  selector: 'app-header',
+  selector: "app-header",
   imports: [RouterLink, RouterLinkActive],
   template: `
     <header class="bg-slate-800 text-white px-8 py-4">

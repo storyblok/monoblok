@@ -1,16 +1,16 @@
-import { saveToFileSync } from '../../utils/filesystem';
-import { existsSync, readdirSync, unlinkSync } from 'node:fs';
-import { dirname, extname, join, relative } from 'pathe';
+import { saveToFileSync } from "../../utils/filesystem";
+import { existsSync, readdirSync, unlinkSync } from "node:fs";
+import { dirname, extname, join, relative } from "pathe";
 
 export const REPORT_STATUS = {
-  unfinished: 'UNFINISHED',
-  success: 'SUCCESS',
-  partialSuccess: 'PARTIAL_SUCCESS',
-  failure: 'FAILURE',
+  unfinished: "UNFINISHED",
+  success: "SUCCESS",
+  partialSuccess: "PARTIAL_SUCCESS",
+  failure: "FAILURE",
 } as const;
 
 export interface Report {
-  status: typeof REPORT_STATUS[keyof typeof REPORT_STATUS];
+  status: (typeof REPORT_STATUS)[keyof typeof REPORT_STATUS];
   meta: {
     command?: string;
     cliVersion?: string;
@@ -19,12 +19,15 @@ export interface Report {
     durationMs?: number;
     config?: Record<string, unknown>;
   } & Record<string, unknown>;
-  summary: Record<string, {
-    total: number;
-    succeeded: number;
-    skipped?: number;
-    failed: number;
-  }>;
+  summary: Record<
+    string,
+    {
+      total: number;
+      succeeded: number;
+      skipped?: number;
+      failed: number;
+    }
+  >;
 }
 
 export interface ReporterOptions {
@@ -52,12 +55,12 @@ export class Reporter {
     this.maxFiles = options?.maxFiles;
   }
 
-  public addMeta(key: keyof Report['meta'], value: Report['meta'][typeof key]) {
+  public addMeta(key: keyof Report["meta"], value: Report["meta"][typeof key]) {
     this.report.meta[key] = value;
     return this;
   }
 
-  public addSummary(key: keyof Report['summary'], value: Report['summary'][typeof key]) {
+  public addSummary(key: keyof Report["summary"], value: Report["summary"][typeof key]) {
     this.report.summary[key] = value;
     return this;
   }
@@ -90,11 +93,9 @@ export class Reporter {
 
     if (failedTotal === 0) {
       this.report.status = REPORT_STATUS.success;
-    }
-    else if (succeededTotal > 0) {
+    } else if (succeededTotal > 0) {
       this.report.status = REPORT_STATUS.partialSuccess;
-    }
-    else {
+    } else {
       this.report.status = REPORT_STATUS.failure;
     }
   }
@@ -110,17 +111,13 @@ export class Reporter {
     Reporter.pruneReportFiles(dir, this.maxFiles, ext);
   }
 
-  public static pruneReportFiles(
-    directory: string,
-    keep: number,
-    extension = '.json',
-  ) {
+  public static pruneReportFiles(directory: string, keep: number, extension = ".json") {
     if (!existsSync(directory)) {
       return 0;
     }
 
     const files = readdirSync(directory)
-      .filter(file => extname(file) === extension)
+      .filter((file) => extname(file) === extension)
       .sort();
 
     const filesToDelete = files.length - keep;
@@ -135,17 +132,14 @@ export class Reporter {
     return filesToDelete;
   }
 
-  public static listReportFiles(
-    directory: string,
-    extension = '.json',
-  ) {
+  public static listReportFiles(directory: string, extension = ".json") {
     if (!existsSync(directory)) {
       return [];
     }
 
     return readdirSync(directory)
-      .filter(file => extname(file) === extension)
-      .map(f => relative(process.cwd(), join(directory, f)))
+      .filter((file) => extname(file) === extension)
+      .map((f) => relative(process.cwd(), join(directory, f)))
       .sort();
   }
 }

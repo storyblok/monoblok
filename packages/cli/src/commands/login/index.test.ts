@@ -1,27 +1,27 @@
-import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from './actions';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loginCommand } from './';
-import { input, password, select } from '@inquirer/prompts';
-import { regions } from '../../constants';
-import chalk from 'chalk';
-import { session } from '../../session';
-import type { User } from '../user/actions';
-import { loggedOutSessionState } from '../../../test/setup';
+import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from "./actions";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { loginCommand } from "./";
+import { input, password, select } from "@inquirer/prompts";
+import { regions } from "../../constants";
+import chalk from "chalk";
+import { session } from "../../session";
+import type { User } from "../user/actions";
+import { loggedOutSessionState } from "../../../test/setup";
 
-vi.mock('./actions', () => ({
+vi.mock("./actions", () => ({
   loginWithEmailAndPassword: vi.fn(),
   loginWithOtp: vi.fn(),
   loginWithToken: vi.fn(),
 }));
 
-vi.mock('../../creds', () => ({
+vi.mock("../../creds", () => ({
   getCredentials: vi.fn(),
   addCredentials: vi.fn(),
   removeCredentials: vi.fn(),
   removeAllCredentials: vi.fn(),
 }));
 
-vi.mock('@inquirer/prompts', () => ({
+vi.mock("@inquirer/prompts", () => ({
   input: vi.fn(),
   password: vi.fn(),
   select: vi.fn(),
@@ -35,167 +35,215 @@ const preconditions = {
   },
 };
 
-describe('loginCommand', () => {
+describe("loginCommand", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     preconditions.loggedOut();
   });
 
-  describe('default interactive login', () => {
-    it('should prompt the user for login strategy when no token is provided', async () => {
-      await loginCommand.parseAsync(['node', 'test']);
+  describe("default interactive login", () => {
+    it("should prompt the user for login strategy when no token is provided", async () => {
+      await loginCommand.parseAsync(["node", "test"]);
 
-      expect(select).toHaveBeenCalledWith(expect.objectContaining({
-        message: 'How would you like to login?',
-      }), expect.anything());
+      expect(select).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "How would you like to login?",
+        }),
+        expect.anything(),
+      );
     });
 
-    describe('login-with-email strategy', () => {
-      it('should prompt the user for email and password when login-with-email is selected', async () => {
+    describe("login-with-email strategy", () => {
+      it("should prompt the user for email and password when login-with-email is selected", async () => {
         vi.mocked(select)
-          .mockResolvedValueOnce('login-with-email') // For login strategy
-          .mockResolvedValueOnce('eu'); // For region
+          .mockResolvedValueOnce("login-with-email") // For login strategy
+          .mockResolvedValueOnce("eu"); // For region
 
         vi.mocked(input)
-          .mockResolvedValueOnce('user@example.com') // For email
-          .mockResolvedValueOnce('123456'); // For OTP code
+          .mockResolvedValueOnce("user@example.com") // For email
+          .mockResolvedValueOnce("123456"); // For OTP code
 
-        vi.mocked(password).mockResolvedValueOnce('test-password');
+        vi.mocked(password).mockResolvedValueOnce("test-password");
 
-        await loginCommand.parseAsync(['node', 'test']);
+        await loginCommand.parseAsync(["node", "test"]);
 
-        expect(input).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please enter your email address:',
-        }), expect.anything());
+        expect(input).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Please enter your email address:",
+          }),
+          expect.anything(),
+        );
 
-        expect(password).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please enter your password:',
-        }), expect.anything());
+        expect(password).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Please enter your password:",
+          }),
+          expect.anything(),
+        );
 
-        expect(select).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please select the region you would like to work in:',
-        }), expect.anything());
+        expect(select).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Please select the region you would like to work in:",
+          }),
+          expect.anything(),
+        );
       });
 
-      it('should login with email and password if provided using login-with-email strategy', async () => {
+      it("should login with email and password if provided using login-with-email strategy", async () => {
         vi.mocked(select)
-          .mockResolvedValueOnce('login-with-email') // For login strategy
-          .mockResolvedValueOnce('eu'); // For region
+          .mockResolvedValueOnce("login-with-email") // For login strategy
+          .mockResolvedValueOnce("eu"); // For region
 
         vi.mocked(input)
-          .mockResolvedValueOnce('user@example.com') // For email
-          .mockResolvedValueOnce('123456'); // For OTP code
+          .mockResolvedValueOnce("user@example.com") // For email
+          .mockResolvedValueOnce("123456"); // For OTP code
 
-        vi.mocked(password).mockResolvedValueOnce('test-password');
+        vi.mocked(password).mockResolvedValueOnce("test-password");
 
         vi.mocked(loginWithEmailAndPassword).mockResolvedValueOnce({ otp_required: true } as any);
-        vi.mocked(loginWithOtp).mockResolvedValueOnce({ access_token: 'test-token' } as any);
+        vi.mocked(loginWithOtp).mockResolvedValueOnce({ access_token: "test-token" } as any);
 
-        await loginCommand.parseAsync(['node', 'test']);
+        await loginCommand.parseAsync(["node", "test"]);
 
-        expect(loginWithEmailAndPassword).toHaveBeenCalledWith('user@example.com', 'test-password', 'eu');
+        expect(loginWithEmailAndPassword).toHaveBeenCalledWith(
+          "user@example.com",
+          "test-password",
+          "eu",
+        );
 
-        expect(loginWithOtp).toHaveBeenCalledWith('user@example.com', 'test-password', '123456', 'eu');
+        expect(loginWithOtp).toHaveBeenCalledWith(
+          "user@example.com",
+          "test-password",
+          "123456",
+          "eu",
+        );
       });
 
-      it('should throw an error for invalid email and password', async () => {
-        vi.mocked(select).mockResolvedValueOnce('login-with-email');
-        vi.mocked(input).mockResolvedValueOnce('eu');
+      it("should throw an error for invalid email and password", async () => {
+        vi.mocked(select).mockResolvedValueOnce("login-with-email");
+        vi.mocked(input).mockResolvedValueOnce("eu");
 
-        const mockError = new Error('Error logging in with email and password');
+        const mockError = new Error("Error logging in with email and password");
         vi.mocked(loginWithEmailAndPassword).mockRejectedValueOnce(mockError);
 
-        await loginCommand.parseAsync(['node', 'test']);
+        await loginCommand.parseAsync(["node", "test"]);
 
-        expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error logging in with email and password'));
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining("Error logging in with email and password"),
+        );
       });
     });
 
-    describe('login-with-token strategy', () => {
-      it('should prompt the user for token when login-with-token is selected', async () => {
-        vi.mocked(select).mockResolvedValueOnce('login-with-token');
-        vi.mocked(password).mockResolvedValueOnce('test-token');
+    describe("login-with-token strategy", () => {
+      it("should prompt the user for token when login-with-token is selected", async () => {
+        vi.mocked(select).mockResolvedValueOnce("login-with-token");
+        vi.mocked(password).mockResolvedValueOnce("test-token");
 
-        await loginCommand.parseAsync(['node', 'test']);
+        await loginCommand.parseAsync(["node", "test"]);
 
         expect(console.error).toHaveBeenCalledWith(
-          expect.stringContaining('You can use a Personal Access Token to log in'),
+          expect.stringContaining("You can use a Personal Access Token to log in"),
         );
         expect(console.error).toHaveBeenCalledWith(
-          expect.stringContaining('https://app.storyblok.com/#/me/account?tab=token'),
+          expect.stringContaining("https://app.storyblok.com/#/me/account?tab=token"),
         );
 
-        expect(password).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please enter your Personal Access Token:',
-        }), expect.anything());
+        expect(password).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Please enter your Personal Access Token:",
+          }),
+          expect.anything(),
+        );
       });
 
-      it('should login with token if token is provided using login-with-token strategy', async () => {
-        vi.mocked(select).mockResolvedValueOnce('login-with-token');
-        vi.mocked(password).mockResolvedValueOnce('test-token');
-        const mockUser: User = { id: 1, email: 'user@example.com', friendly_name: 'Test User' } as User;
+      it("should login with token if token is provided using login-with-token strategy", async () => {
+        vi.mocked(select).mockResolvedValueOnce("login-with-token");
+        vi.mocked(password).mockResolvedValueOnce("test-token");
+        const mockUser: User = {
+          id: 1,
+          email: "user@example.com",
+          friendly_name: "Test User",
+        } as User;
         vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
-        await loginCommand.parseAsync(['node', 'test', '--region', 'eu']);
+        await loginCommand.parseAsync(["node", "test", "--region", "eu"]);
 
-        expect(password).toHaveBeenCalledWith(expect.objectContaining({
-          message: 'Please enter your Personal Access Token:',
-        }), expect.anything());
+        expect(password).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: "Please enter your Personal Access Token:",
+          }),
+          expect.anything(),
+        );
         // Verify that loginWithToken was called with the correct arguments
-        expect(loginWithToken).toHaveBeenCalledWith('test-token', 'eu');
+        expect(loginWithToken).toHaveBeenCalledWith("test-token", "eu");
 
         // Verify that updateSession was called with the correct arguments
-        expect(session().updateSession).toHaveBeenCalledWith(mockUser.email, 'test-token', 'eu');
+        expect(session().updateSession).toHaveBeenCalledWith(mockUser.email, "test-token", "eu");
       });
     });
   });
 
-  describe('--token', () => {
-    it('should login with a valid token', async () => {
-      const mockToken = 'test-token';
-      const mockUser: User = { id: 1, email: 'test@example.com', friendly_name: 'Test User' } as User;
+  describe("--token", () => {
+    it("should login with a valid token", async () => {
+      const mockToken = "test-token";
+      const mockUser: User = {
+        id: 1,
+        email: "test@example.com",
+        friendly_name: "Test User",
+      } as User;
       vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
-      await loginCommand.parseAsync(['node', 'test', '--token', mockToken, '--region', 'eu']);
+      await loginCommand.parseAsync(["node", "test", "--token", mockToken, "--region", "eu"]);
 
-      expect(loginWithToken).toHaveBeenCalledWith(mockToken, 'eu');
+      expect(loginWithToken).toHaveBeenCalledWith(mockToken, "eu");
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Successfully logged in to region Europe (eu). Welcome Test User.'));
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Successfully logged in to region Europe (eu). Welcome Test User."),
+      );
     });
 
-    it('should login with a valid token in another region --region', async () => {
-      const mockToken = 'test-token';
-      const mockUser: User = { id: 1, email: 'test@example.com', friendly_name: 'Test User' } as User;
+    it("should login with a valid token in another region --region", async () => {
+      const mockToken = "test-token";
+      const mockUser: User = {
+        id: 1,
+        email: "test@example.com",
+        friendly_name: "Test User",
+      } as User;
       vi.mocked(loginWithToken).mockResolvedValue(mockUser);
 
-      await loginCommand.parseAsync(['node', 'test', '--token', mockToken, '--region', 'us']);
+      await loginCommand.parseAsync(["node", "test", "--token", mockToken, "--region", "us"]);
 
-      expect(loginWithToken).toHaveBeenCalledWith(mockToken, 'us');
+      expect(loginWithToken).toHaveBeenCalledWith(mockToken, "us");
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Successfully logged in to region United States (us). Welcome Test User.'));
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Successfully logged in to region United States (us). Welcome Test User.",
+        ),
+      );
     });
 
-    it('should throw an error for an invalid token', async () => {
-      const mockError = new Error(`The token provided ${chalk.bold('inva*********')} is invalid: ${chalk.bold('401 Unauthorized')}
+    it("should throw an error for an invalid token", async () => {
+      const mockError =
+        new Error(`The token provided ${chalk.bold("inva*********")} is invalid: ${chalk.bold("401 Unauthorized")}
 
       Please make sure you are using the correct token and try again.`);
 
       vi.mocked(loginWithToken).mockRejectedValue(mockError);
 
-      await loginCommand.parseAsync(['node', 'test', '--token', 'invalid-token']);
+      await loginCommand.parseAsync(["node", "test", "--token", "invalid-token"]);
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('The token provided'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("The token provided"));
     });
   });
 
-  describe('--region', () => {
-    it('should handle invalid region error with correct message', async () => {
-      await loginCommand.parseAsync(['node', 'test', '--region', 'invalid-region']);
+  describe("--region", () => {
+    it("should handle invalid region error with correct message", async () => {
+      await loginCommand.parseAsync(["node", "test", "--region", "invalid-region"]);
 
       // Build the expected error message
-      const expectedMessage = `The provided region: invalid-region is not valid. Please use one of the following values: ${Object.values(regions).join(' | ')}`;
+      const expectedMessage = `The provided region: invalid-region is not valid. Please use one of the following values: ${Object.values(regions).join(" | ")}`;
 
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining(expectedMessage));
     });

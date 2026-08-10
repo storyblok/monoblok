@@ -1,20 +1,30 @@
 {
   "name": "@storyblok/schema",
-  "type": "module",
   "version": "0.3.0",
   "description": "Storyblok schema types and helpers",
-  "license": "MIT",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/schema#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/schema"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "publishConfig": {
-    "access": "public"
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "field-plugins": [
+        "./dist/field-plugins/index.d.cts"
+      ]
+    }
   },
   "exports": {
     ".": {
@@ -27,19 +37,9 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
-  "typesVersions": {
-    "*": {
-      "field-plugins": [
-        "./dist/field-plugins/index.d.cts"
-      ]
-    }
+  "publishConfig": {
+    "access": "public"
   },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
     "build": "vp pack",

@@ -1,10 +1,10 @@
-import { StoryblokComponent, useStoryblok } from '@storyblok/react';
-import { useParams } from 'react-router';
+import { StoryblokComponent, useStoryblok } from "@storyblok/react";
+import { useParams } from "react-router";
 
 function CatchAllPage() {
   const params = useParams();
-  const slug = params['*'];
-  const story = useStoryblok(slug || 'react', { version: 'draft' });
+  const slug = params["*"];
+  const story = useStoryblok(slug || "react", { version: "draft" });
   if (!story?.content) {
     return <div>Loading...</div>;
   }

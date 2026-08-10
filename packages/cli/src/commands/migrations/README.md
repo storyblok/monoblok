@@ -1,6 +1,8 @@
 # Migrations Command
 
-The `migrations` module provides tools to manage and execute migrations for your Storyblok components. Migrations are useful for making changes to existing stories in your space, such as updating component structures or content.
+The `migrations` module provides tools to manage and execute migrations for your Storyblok
+components. Migrations are useful for making changes to existing stories in your space, such as
+updating component structures or content.
 
 ## Subcommands
 
@@ -19,6 +21,7 @@ The `migrations` module provides tools to manage and execute migrations for your
 ## File Structure
 
 All migration files are stored in:
+
 ```
 .storyblok/
 └── migrations/

@@ -1,9 +1,12 @@
 {
   "name": "monoblok",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "description": "Official monorepo for Storyblok open source packages",
-  "packageManager": "pnpm@10.27.0",
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
   "type": "module",
   "scripts": {
     "monoblok": "node tools/monoblok/dist/index.mjs",
@@ -19,10 +22,9 @@
     "test:types": "nx run-many --target=test:types",
     "test:coverage": "nx run-many --target=test:coverage"
   },
-  "workspaces": [
-    "packages/*",
-    "tools/*"
-  ],
+  "dependencies": {
+    "cypress": "^14.3.3"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
@@ -40,7 +42,5 @@
     "cypress": "^14.3.3",
     "happy-dom": "^20.8.8"
   },
-  "dependencies": {
-    "cypress": "^14.3.3"
-  }
+  "packageManager": "pnpm@10.27.0"
 }

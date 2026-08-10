@@ -1,31 +1,36 @@
-import { stringToStyle } from '../static';
-import { kebabToCamel } from '../static/style';
+import { stringToStyle } from "../static";
+import { kebabToCamel } from "../static/style";
 
 /**
  * List of supported HTML attributes by tag name, used by the Reporter mark.
  */
 export const supportedAttributesByTagName: Record<string, string[]> = {
-  a: ['href', 'target', 'data-uuid', 'data-anchor', 'data-linktype'],
-  img: ['alt', 'src', 'title'],
-  span: ['class'],
+  a: ["href", "target", "data-uuid", "data-anchor", "data-linktype"],
+  img: ["alt", "src", "title"],
+  span: ["class"],
 } as const;
 
 /**
  * Gets allowed style classes for an element, warning on invalid ones.
  */
-export function getAllowedStylesForElement(element: HTMLElement, { allowedStyles }: { allowedStyles: string[] }): string[] {
-  const classString = element.getAttribute('class') || '';
-  const classes = classString.split(' ').filter(Boolean);
+export function getAllowedStylesForElement(
+  element: HTMLElement,
+  { allowedStyles }: { allowedStyles: string[] },
+): string[] {
+  const classString = element.getAttribute("class") || "";
+  const classes = classString.split(" ").filter(Boolean);
   if (!classes.length) {
     return [];
   }
 
-  const invalidStyles = classes.filter(x => !allowedStyles.includes(x));
+  const invalidStyles = classes.filter((x) => !allowedStyles.includes(x));
   for (const invalidStyle of invalidStyles) {
-    console.warn(`[StoryblokRichText] - \`class\` "${invalidStyle}" on \`<${element.tagName.toLowerCase()}>\` can not be transformed to rich text.`);
+    console.warn(
+      `[StoryblokRichText] - \`class\` "${invalidStyle}" on \`<${element.tagName.toLowerCase()}>\` can not be transformed to rich text.`,
+    );
   }
 
-  return allowedStyles.filter(x => classes.includes(x));
+  return allowedStyles.filter((x) => classes.includes(x));
 }
 /**
  * Creates a DOM attribute parser for use in rich text extensions.
@@ -69,7 +74,7 @@ export function mapToAttribute(attributes?: string[] | string, styleProperty?: s
 
     // 2. Check style
     if (styleProperty) {
-      const style = el.getAttribute('style');
+      const style = el.getAttribute("style");
       if (style) {
         const styleObj = stringToStyle(style);
         const value = styleObj[kebabToCamel(styleProperty)];

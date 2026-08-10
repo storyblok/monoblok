@@ -1,5 +1,8 @@
-import BlokRenderer from '../components/BlokRenderer';
-import { createRichTextRenderer, type StoryblokVueRichTextRenderContext } from '../rich-text-renderer';
+import BlokRenderer from "../components/BlokRenderer";
+import {
+  createRichTextRenderer,
+  type StoryblokVueRichTextRenderContext,
+} from "../rich-text-renderer";
 
 /**
  * Creates a Storyblok Rich Text renderer.
@@ -33,9 +36,7 @@ import { createRichTextRenderer, type StoryblokVueRichTextRenderContext } from '
  * </template>
  * ```
  */
-export function useStoryblokRichText(
-  props: StoryblokVueRichTextRenderContext,
-) {
+export function useStoryblokRichText(props: StoryblokVueRichTextRenderContext) {
   return createRichTextRenderer({
     optimizeImage: props.optimizeImage,
     components: {

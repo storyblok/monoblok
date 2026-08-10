@@ -1,6 +1,7 @@
 # Contributing to Storyblok SDKs
 
-Thank you for your interest in contributing to Storyblok SDKs! This document provides guidelines and instructions for contributing to our monorepo.
+Thank you for your interest in contributing to Storyblok SDKs! This document provides guidelines and
+instructions for contributing to our monorepo.
 
 ## Development Workflow
 
@@ -23,13 +24,16 @@ Thank you for your interest in contributing to Storyblok SDKs! This document pro
 
 1. Clone this repository
 2. Install dependencies:
+
 ```bash
 pnpm install
 ```
 
-3. Install Vite+ (`vp`) following the [official Vite+ install guide](https://viteplus.dev/guide/). Pin the version listed in `.viteplus-version` to match CI, then verify with `vp --version`.
+3. Install Vite+ (`vp`) following the [official Vite+ install guide](https://viteplus.dev/guide/).
+   Pin the version listed in `.viteplus-version` to match CI, then verify with `vp --version`.
 
-4. (Optional) Rebuild the internal monoblok CLI tool. It is built on `pnpm install` automatically; rebuild manually only when changing it:
+4. (Optional) Rebuild the internal monoblok CLI tool. It is built on `pnpm install` automatically;
+   rebuild manually only when changing it:
 
 ```bash
 pnpm --filter monoblok-cli build
@@ -71,6 +75,7 @@ pnpm --filter @storyblok/migrations test:watch
 ### PR Previews
 
 When you create a pull request, our CI automatically:
+
 1. Builds all packages
 2. Generates a preview version (e.g., `0.0.0-pr123-a1b2c3d`)
 3. Publishes the packages to GitHub Packages
@@ -79,12 +84,14 @@ When you create a pull request, our CI automatically:
 To use a preview package:
 
 1. Add the following to your `.npmrc`:
+
 ```ini
 @storyblok:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
 2. Install the preview package:
+
 ```bash
 npm install @storyblok/package-name@0.0.0-pr123-a1b2c3d
 ```
@@ -130,6 +137,7 @@ The preview version format is: `0.0.0-pr{PR_NUMBER}-{COMMIT_SHA}`
 ## Questions?
 
 If you have any questions about contributing, please:
+
 1. Check the [Storyblok Documentation](https://www.storyblok.com/docs)
 2. Open an issue in this repository
-3. Join our [Discord community](https://storyblok.com/join-discord) 
+3. Join our [Discord community](https://storyblok.com/join-discord)

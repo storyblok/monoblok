@@ -39,15 +39,18 @@ Investigate the following GitHub issue: $ARGUMENTS
 
 ### Phase 4: Root Cause Analysis
 
-Determine category: bug in logic, API change, type mismatch, missing validation, race condition, environment issue, configuration, or documentation gap.
+Determine category: bug in logic, API change, type mismatch, missing validation, race condition,
+environment issue, configuration, or documentation gap.
 
 ### Phase 5: Propose Solutions
 
-For each root cause: the fix (file paths + line numbers), test coverage needed, verification commands.
+For each root cause: the fix (file paths + line numbers), test coverage needed, verification
+commands.
 
 ## Output
 
-1. Extract identifier from arguments (issue `424` → `424`, ticket `DX-296` → `DX-296`, text → slugified)
+1. Extract identifier from arguments (issue `424` → `424`, ticket `DX-296` → `DX-296`, text →
+   slugified)
 2. `mkdir -p claude-output`
 3. Write to `claude-output/investigate-<identifier>.md`
 4. Confirm to user: "Investigation written to `claude-output/investigate-<identifier>.md`"
@@ -60,12 +63,20 @@ For each root cause: the fix (file paths + line numbers), test coverage needed, 
 **Title:** | **URL:** | **Created:** | **State:** | **Author:**
 
 ## Summary
+
 ## Affected Package(s) (table: Package, Confidence, Evidence)
+
 ## Issue Details (Reported Behavior, Expected Behavior, Environment, Reproduction Steps)
+
 ## Code Analysis (Relevant Files table, Execution Flow, Code snippets)
+
 ## Root Cause (Category, Explanation, Evidence)
+
 ## Proposed Solutions (Changes table, Code before/after, Tests to add, Verification)
+
 ## Similar Issues
+
 ## Notes / Risks
+
 ## Next Steps
 ```

@@ -1,6 +1,6 @@
-import type { Space, SpaceCreate, SpaceCreateQuery, SpaceDetail, SpaceUpdate } from '../../types';
-import { handleAPIError } from '../../utils';
-import { getMapiClient } from '../../api';
+import type { Space, SpaceCreate, SpaceCreateQuery, SpaceDetail, SpaceUpdate } from "../../types";
+import { handleAPIError } from "../../utils";
+import { getMapiClient } from "../../api";
 
 export type { Space, SpaceCreate, SpaceCreateQuery, SpaceDetail, SpaceUpdate };
 
@@ -16,9 +16,8 @@ export const fetchSpace = async (spaceId: string): Promise<SpaceDetail | undefin
     });
 
     return data?.space;
-  }
-  catch (error) {
-    handleAPIError('pull_spaces', error as Error, `Failed to fetch space ${spaceId}`);
+  } catch (error) {
+    handleAPIError("pull_spaces", error as Error, `Failed to fetch space ${spaceId}`);
   }
 };
 
@@ -29,7 +28,7 @@ export const fetchSpace = async (spaceId: string): Promise<SpaceDetail | undefin
  */
 export const createSpace = async (
   space: SpaceCreate,
-  query?: Pick<SpaceCreateQuery, 'in_org' | 'assign_partner' | 'space_type' | 'dup_id'>,
+  query?: Pick<SpaceCreateQuery, "in_org" | "assign_partner" | "space_type" | "dup_id">,
 ): Promise<SpaceDetail | undefined> => {
   try {
     const client = getMapiClient();
@@ -41,8 +40,7 @@ export const createSpace = async (
     });
 
     return data?.space;
-  }
-  catch (error) {
-    handleAPIError('create_space', error as Error, `Failed to create space ${space.name}`);
+  } catch (error) {
+    handleAPIError("create_space", error as Error, `Failed to create space ${space.name}`);
   }
 };

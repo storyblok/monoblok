@@ -1,7 +1,7 @@
-import { join } from 'pathe';
-import { FileSystemError, handleFileSystemError } from '../../utils';
-import type { Component, ComponentFolder, InternalTag, Preset } from './constants';
-import { filterJsonBySuffix, readDirectory, readJsonFile } from '../../utils/filesystem';
+import { join } from "pathe";
+import { FileSystemError, handleFileSystemError } from "../../utils";
+import type { Component, ComponentFolder, InternalTag, Preset } from "./constants";
+import { filterJsonBySuffix, readDirectory, readJsonFile } from "../../utils/filesystem";
 
 export interface ComponentsData {
   components: Component[];
@@ -12,19 +12,19 @@ export interface ComponentsData {
 
 // Content-based entity discriminators — classify items by their data shape, not filename
 function isComponent(item: Record<string, unknown>): item is Component {
-  return 'schema' in item;
+  return "schema" in item;
 }
 
 function isPreset(item: Record<string, unknown>): item is Preset {
-  return 'component_id' in item && 'preset' in item;
+  return "component_id" in item && "preset" in item;
 }
 
 function isInternalTag(item: Record<string, unknown>): item is InternalTag {
-  return 'object_type' in item;
+  return "object_type" in item;
 }
 
 function isComponentGroup(item: Record<string, unknown>): item is ComponentFolder {
-  return 'uuid' in item && !('schema' in item);
+  return "uuid" in item && !("schema" in item);
 }
 
 /**
@@ -49,28 +49,27 @@ export async function loadComponents(
   for (const file of filterJsonBySuffix(files, suffix)) {
     const { data, error } = await readJsonFile<Record<string, unknown>>(join(directoryPath, file));
     if (error) {
-      handleFileSystemError('read', error);
+      handleFileSystemError("read", error);
       continue;
     }
 
     for (const item of data) {
       if (isPreset(item)) {
         presets.push(item);
-      }
-      else if (isInternalTag(item)) {
+      } else if (isInternalTag(item)) {
         if (!item.id) {
           throw new Error('Internal tag is missing "id"!');
         }
         tagMap.set(item.id, item);
-      }
-      else if (isComponent(item)) {
+      } else if (isComponent(item)) {
         const existing = componentMap.get(item.name);
         if (existing) {
-          duplicates.push(`Component "${item.name}" found in both "${existing.file}" and "${file}"`);
+          duplicates.push(
+            `Component "${item.name}" found in both "${existing.file}" and "${file}"`,
+          );
         }
         componentMap.set(item.name, { component: item, file });
-      }
-      else if (isComponentGroup(item)) {
+      } else if (isComponentGroup(item)) {
         groupMap.set(item.id, item);
       }
     }
@@ -78,10 +77,10 @@ export async function loadComponents(
 
   if (duplicates.length) {
     throw new FileSystemError(
-      'invalid_argument',
-      'read',
-      new Error('Duplicate components detected'),
-      `Duplicate components found in ${directoryPath}:\n\n${duplicates.join('\n')}\n\nThis can happen when multiple environment snapshots (e.g. components.json and components.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull components again in the format you intend`,
+      "invalid_argument",
+      "read",
+      new Error("Duplicate components detected"),
+      `Duplicate components found in ${directoryPath}:\n\n${duplicates.join("\n")}\n\nThis can happen when multiple environment snapshots (e.g. components.json and components.dev.json) or mixed formats coexist in the same directory.\n\nTo fix this, either:\n  - Use --suffix <env> to target a specific environment (e.g. --suffix dev)\n  - Clean up the directory and pull components again in the format you intend`,
     );
   }
 

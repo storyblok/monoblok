@@ -4,8 +4,8 @@ import {
   type StoryblokRichTextImageOptions,
   type StoryblokRichTextProps,
   styleToString,
-} from '@storyblok/richtext';
-import type { Component, Snippet } from 'svelte';
+} from "@storyblok/richtext";
+import type { Component, Snippet } from "svelte";
 
 export type StoryblokSvelteRichTextComponentMap = {
   [K in StoryblokRichTextElement]?: Component<any>;
@@ -27,11 +27,13 @@ export interface StoryblokSvelteRichTextRenderContext {
  */
 export type SbSvelteRichTextRenderContext = StoryblokSvelteRichTextRenderContext;
 
-export type StoryblokSvelteRichTextProps<T extends StoryblokRichTextElement> =
-  Omit<StoryblokRichTextProps<T>, 'context' | 'children'> & {
-    context?: StoryblokSvelteRichTextRenderContext;
-    children?: Snippet;
-  };
+export type StoryblokSvelteRichTextProps<T extends StoryblokRichTextElement> = Omit<
+  StoryblokRichTextProps<T>,
+  "context" | "children"
+> & {
+  context?: StoryblokSvelteRichTextRenderContext;
+  children?: Snippet;
+};
 
 /**
  * @deprecated Use {@link StoryblokSvelteRichTextProps} instead. Will be removed in the next major version.
@@ -39,10 +41,13 @@ export type StoryblokSvelteRichTextProps<T extends StoryblokRichTextElement> =
 export type SbSvelteRichTextProps<T extends StoryblokRichTextElement> =
   StoryblokSvelteRichTextProps<T>;
 
-export function buildSvelteAttrs(type: StoryblokRichTextElement, attrs: Record<string, unknown>): Record<string, unknown> {
+export function buildSvelteAttrs(
+  type: StoryblokRichTextElement,
+  attrs: Record<string, unknown>,
+): Record<string, unknown> {
   const processedAttrs = processAttrs(type, attrs, {
-    colspan: 'colspan',
-    rowspan: 'rowspan',
+    colspan: "colspan",
+    rowspan: "rowspan",
   });
 
   const styleObj = processedAttrs?.style as Record<string, unknown> | undefined;

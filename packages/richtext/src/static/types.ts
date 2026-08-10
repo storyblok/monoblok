@@ -4,8 +4,8 @@ import type {
   RichTextFieldValueRichTextNode,
   RichTextMark,
   RichTextNode,
-} from '../generated/overlay/types.gen';
-import type { StoryblokRichTextImageOptions } from '../types';
+} from "../generated/overlay/types.gen";
+import type { StoryblokRichTextImageOptions } from "../types";
 
 /**
  * Union of every renderable element type in a Storyblok RichText document,
@@ -13,9 +13,7 @@ import type { StoryblokRichTextImageOptions } from '../types';
  *
  * Covers all 18 content node types and all 12 mark types.
  */
-export type StoryblokRichTextElement =
-  | (RichTextNode | RichTextMark)['type']
-  | 'doc';
+export type StoryblokRichTextElement = (RichTextNode | RichTextMark)["type"] | "doc";
 
 /**
  * @deprecated Use {@link StoryblokRichTextElement} instead. Will be removed in the next major version.
@@ -66,17 +64,12 @@ export type StoryblokRichTextNodeWithKey = RichTextNode & {
   marks?: StoryblokRichTextMarkWithKey[];
 };
 
-export type StoryblokRichTextTextNode = Extract<RichTextNode, { type: 'text' }>;
+export type StoryblokRichTextTextNode = Extract<RichTextNode, { type: "text" }>;
 
 /** @deprecated Use {@link StoryblokRichTextTextNode} instead. Will be removed in the next major version. */
 export type SbRichTextTextNode = StoryblokRichTextTextNode;
 
-export type StoryblokRichTextInput =
-  | RichTextDoc
-  | RichTextNode
-  | RichTextNode[]
-  | null
-  | undefined;
+export type StoryblokRichTextInput = RichTextDoc | RichTextNode | RichTextNode[] | null | undefined;
 
 /**
  * @deprecated Use {@link StoryblokRichTextInput} instead. Will be removed in the next major version.
@@ -89,32 +82,31 @@ export type SbRichTextInput = StoryblokRichTextInput;
  * @internal
  */
 type RichTextElementMap = {
-  [N in RichTextFieldValueRichTextNode as N['type']]: N;
-} & { [M in RichTextFieldValueRichTextMark as M['type']]: M } & {
+  [N in RichTextFieldValueRichTextNode as N["type"]]: N;
+} & { [M in RichTextFieldValueRichTextMark as M["type"]]: M } & {
   doc: RichTextDoc;
 };
 
-export type StoryblokRichTextProps<T extends StoryblokRichTextElement> =
-  Omit<RichTextElementMap[T], 'content' | 'marks'> & {
-    content?: StoryblokRichTextNodeWithKey[];
-    marks?: StoryblokRichTextMarkWithKey[];
-    children: string;
-    context?: StoryblokRichTextRenderContext;
-  };
+export type StoryblokRichTextProps<T extends StoryblokRichTextElement> = Omit<
+  RichTextElementMap[T],
+  "content" | "marks"
+> & {
+  content?: StoryblokRichTextNodeWithKey[];
+  marks?: StoryblokRichTextMarkWithKey[];
+  children: string;
+  context?: StoryblokRichTextRenderContext;
+};
 
 /**
  * @deprecated Use {@link StoryblokRichTextProps} instead. Will be removed in the next major version.
  */
-export type SbRichTextProps<T extends StoryblokRichTextElement> =
-  StoryblokRichTextProps<T>;
+export type SbRichTextProps<T extends StoryblokRichTextElement> = StoryblokRichTextProps<T>;
 
 /**
  * Component/render map for static renderers.
  */
 export type StoryblokRichTextRendererMap = {
-  [K in StoryblokRichTextElement]?: (
-    props: StoryblokRichTextProps<K>,
-  ) => string;
+  [K in StoryblokRichTextElement]?: (props: StoryblokRichTextProps<K>) => string;
 };
 
 /**

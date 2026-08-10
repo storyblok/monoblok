@@ -1,11 +1,17 @@
-import type { DependencyGraph, NodeProcessingResult, NodeType, ProcessingLevel, PushResults } from './types';
-import { determineProcessingOrder } from './dependency-graph';
-import { pushComponent } from '../actions';
-import type { ComponentCreate } from '../../../../types';
-import { getActiveConfig } from '../../../../lib/config';
-import { getUI } from '../../../../lib/ui';
-import type { ProgressBar } from '../../../../lib/ui';
-import { getLogger } from '../../../../lib/logger/logger';
+import type {
+  DependencyGraph,
+  NodeProcessingResult,
+  NodeType,
+  ProcessingLevel,
+  PushResults,
+} from "./types";
+import { determineProcessingOrder } from "./dependency-graph";
+import { pushComponent } from "../actions";
+import type { ComponentCreate } from "../../../../types";
+import { getActiveConfig } from "../../../../lib/config";
+import { getUI } from "../../../../lib/ui";
+import type { ProgressBar } from "../../../../lib/ui";
+import { getLogger } from "../../../../lib/logger/logger";
 
 // =============================================================================
 // RESOURCE PROCESSING
@@ -37,16 +43,21 @@ export async function processAllResources(
     }
   }
 
-  logger.info('Processing order determined', {
+  logger.info("Processing order determined", {
     levels: levels.length,
     totalResources: Array.from(countByType.values()).reduce((a, b) => a + b, 0),
-    cyclic: levels.filter(l => l.isCyclic).length,
+    cyclic: levels.filter((l) => l.isCyclic).length,
   });
 
   // Create one progress bar per resource type, in display order (pad titles for alignment)
-  const typeOrder: NodeType[] = ['tag', 'group', 'component', 'preset'];
-  const typeLabels: Record<NodeType, string> = { tag: 'Tags', group: 'Groups', component: 'Components', preset: 'Presets' };
-  const pad = Math.max(...Object.values(typeLabels).map(l => l.length));
+  const typeOrder: NodeType[] = ["tag", "group", "component", "preset"];
+  const typeLabels: Record<NodeType, string> = {
+    tag: "Tags",
+    group: "Groups",
+    component: "Components",
+    preset: "Presets",
+  };
+  const pad = Math.max(...Object.values(typeLabels).map((l) => l.length));
   const bars = new Map<NodeType, ProgressBar>();
 
   for (const type of typeOrder) {
@@ -63,15 +74,15 @@ export async function processAllResources(
       if (level.isCyclic) {
         const cyclicResults = await processCyclicLevel(level, graph, space, backpressure, bars);
         mergeResults(results, cyclicResults);
-      }
-      else {
+      } else {
         const levelResults = await processLevel(level.nodes, graph, space, backpressure, bars);
         mergeResults(results, levelResults);
       }
     }
-  }
-  finally {
-    for (const bar of bars.values()) { bar.stop(); }
+  } finally {
+    for (const bar of bars.values()) {
+      bar.stop();
+    }
     ui.stopAllProgressBars();
   }
 
@@ -90,7 +101,9 @@ async function processCyclicLevel(
   bars: Map<NodeType, ProgressBar>,
 ): Promise<PushResults> {
   const logger = getLogger();
-  logger.warn(`Detected circular dependencies: ${level.nodes.map(id => id.replace('component:', '')).join(', ')}`);
+  logger.warn(
+    `Detected circular dependencies: ${level.nodes.map((id) => id.replace("component:", "")).join(", ")}`,
+  );
 
   // STEP 1: Create stub components for any missing components in the cycle
   await createStubComponents(level.nodes, graph, space);
@@ -111,7 +124,7 @@ async function createStubComponents(
 
   for (const nodeId of nodeIds) {
     const node = graph.nodes.get(nodeId);
-    if (node && node.type === 'component' && !node.targetData) {
+    if (node && node.type === "component" && !node.targetData) {
       missingComponents.push(node.name);
     }
   }
@@ -121,12 +134,14 @@ async function createStubComponents(
   }
 
   const logger = getLogger();
-  logger.info(`Creating stub components for circular dependencies: ${missingComponents.join(', ')}`);
+  logger.info(
+    `Creating stub components for circular dependencies: ${missingComponents.join(", ")}`,
+  );
 
   // Create minimal stub components
   for (const nodeId of nodeIds) {
     const node = graph.nodes.get(nodeId);
-    if (node && node.type === 'component' && !node.targetData) {
+    if (node && node.type === "component" && !node.targetData) {
       try {
         const stubComponent = createMinimalStubComponent(node.name);
         const result = await pushComponent(space, stubComponent);
@@ -136,8 +151,7 @@ async function createStubComponents(
           node.updateTargetData(result);
           logger.info(`Created stub component: ${node.name}`);
         }
-      }
-      catch (error) {
+      } catch (error) {
         logger.error(`Failed to create stub component ${node.name}`, { error: error as Error });
         throw error;
       }
@@ -178,7 +192,10 @@ async function processLevel(
   }
 
   // PASS 2: Process all nodes in this level with resolved references
-  const semaphore: Array<Promise<NodeProcessingResult> | null> = Array.from({ length: backpressure }, () => null);
+  const semaphore: Array<Promise<NodeProcessingResult> | null> = Array.from(
+    { length: backpressure },
+    () => null,
+  );
   const promises: Promise<NodeProcessingResult>[] = [];
 
   for (let i = 0; i < level.length; i++) {
@@ -223,10 +240,12 @@ async function processNode(
     bars.get(node.type)?.increment();
 
     return { name: node.getName() };
-  }
-  catch (error) {
+  } catch (error) {
     const elapsedMs = Date.now() - startTime;
-    logger.error(`Failed to upsert ${node.type}: ${node.getName()}`, { elapsedMs, error: error as Error });
+    logger.error(`Failed to upsert ${node.type}: ${node.getName()}`, {
+      elapsedMs,
+      error: error as Error,
+    });
     bars.get(node.type)?.increment();
     return { name: node.getName(), error };
   }
@@ -241,8 +260,7 @@ function aggregateResults(results: NodeProcessingResult[]): PushResults {
   for (const result of results) {
     if (result.error) {
       aggregated.failed.push({ name: result.name, error: result.error });
-    }
-    else {
+    } else {
       aggregated.successful.push(result.name);
     }
   }

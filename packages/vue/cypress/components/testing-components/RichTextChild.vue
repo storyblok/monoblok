@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { StoryblokRichText, useStoryblok } from '@storyblok/vue';
+import { StoryblokRichText, useStoryblok } from "@storyblok/vue";
 
-const story = await useStoryblok('vue/test-richtext', { version: 'draft' });
+const story = await useStoryblok("vue/test-richtext", { version: "draft" });
 </script>
 
 <template>

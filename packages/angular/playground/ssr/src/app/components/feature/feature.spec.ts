@@ -1,8 +1,8 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from "@angular/core/testing";
 
-import { FeatureComponent } from './feature';
+import { FeatureComponent } from "./feature";
 
-describe('FeatureComponent', () => {
+describe("FeatureComponent", () => {
   let component: FeatureComponent;
   let fixture: ComponentFixture<FeatureComponent>;
 
@@ -13,11 +13,11 @@ describe('FeatureComponent', () => {
 
     fixture = TestBed.createComponent(FeatureComponent);
     component = fixture.componentInstance;
-    fixture.componentRef.setInput('blok', { _uid: 'test', component: 'feature' });
+    fixture.componentRef.setInput("blok", { _uid: "test", component: "feature" });
     await fixture.whenStable();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

@@ -1,5 +1,5 @@
-import type { SbBlokData, SbSDKOptions } from '@storyblok/js';
-import type { Component } from 'svelte';
+import type { SbBlokData, SbSDKOptions } from "@storyblok/js";
+import type { Component } from "svelte";
 
 export type StoryblokComponentProps<T> = {
   blok: T;
@@ -32,4 +32,4 @@ export type {
   StoryblokClient,
   StoryblokComponentType,
   useStoryblokBridge,
-} from '@storyblok/js';
+} from "@storyblok/js";

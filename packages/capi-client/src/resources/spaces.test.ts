@@ -1,7 +1,7 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
-import { createApiClient } from '../index';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
+import { createApiClient } from "../index";
 
 const server = setupServer();
 
@@ -9,15 +9,15 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('spaces.get()', () => {
-  it('should successfully retrieve the current space', async () => {
+describe("spaces.get()", () => {
+  it("should successfully retrieve the current space", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/spaces/me', () => {
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {
         return HttpResponse.json({
           space: {
             id: 1,
-            name: 'Test Space',
-            domain: 'https://test.storyblok.com',
+            name: "Test Space",
+            domain: "https://test.storyblok.com",
             version: 1,
             language_codes: [],
           },
@@ -25,23 +25,23 @@ describe('spaces.get()', () => {
       }),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
     const result = await client.spaces.get();
 
     expect(result.error).toBeUndefined();
-    expect(typeof result.data?.space).toBe('object');
+    expect(typeof result.data?.space).toBe("object");
   });
 
-  it('should return error on 401', async () => {
+  it("should return error on 401", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/spaces/me', () => {
-        return HttpResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {
+        return HttpResponse.json({ error: "Unauthorized" }, { status: 401 });
       }),
     );
     const client = createApiClient({
-      accessToken: 'invalid-token',
+      accessToken: "invalid-token",
     });
 
     const result = await client.spaces.get();
@@ -51,16 +51,16 @@ describe('spaces.get()', () => {
     expect(result.response.status).toBe(401);
   });
 
-  it('should include the token in the request URL', async () => {
-    let capturedUrl = '';
+  it("should include the token in the request URL", async () => {
+    let capturedUrl = "";
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/spaces/me', ({ request }) => {
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", ({ request }) => {
         capturedUrl = request.url;
         return HttpResponse.json({
           space: {
             id: 1,
-            name: 'Test Space',
-            domain: 'https://test.storyblok.com',
+            name: "Test Space",
+            domain: "https://test.storyblok.com",
             version: 1,
             language_codes: [],
           },
@@ -68,25 +68,25 @@ describe('spaces.get()', () => {
       }),
     );
     const client = createApiClient({
-      accessToken: 'my-test-token',
+      accessToken: "my-test-token",
     });
 
     await client.spaces.get();
 
     const url = new URL(capturedUrl);
-    expect(url.searchParams.get('token')).toBe('my-test-token');
+    expect(url.searchParams.get("token")).toBe("my-test-token");
   });
 
-  it('should always hit the network (not cached)', async () => {
+  it("should always hit the network (not cached)", async () => {
     let requestCount = 0;
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/spaces/me', () => {
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {
         requestCount++;
         return HttpResponse.json({
           space: {
             id: 1,
-            name: 'Test Space',
-            domain: 'https://test.storyblok.com',
+            name: "Test Space",
+            domain: "https://test.storyblok.com",
             version: 1,
             language_codes: [],
           },
@@ -94,7 +94,7 @@ describe('spaces.get()', () => {
       }),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
     await client.spaces.get();
@@ -103,14 +103,14 @@ describe('spaces.get()', () => {
     expect(requestCount).toBe(2);
   });
 
-  it('should use the custom fetch function when provided', async () => {
+  it("should use the custom fetch function when provided", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/spaces/me', () => {
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {
         return HttpResponse.json({
           space: {
             id: 1,
-            name: 'Test Space',
-            domain: 'https://test.storyblok.com',
+            name: "Test Space",
+            domain: "https://test.storyblok.com",
             version: 1,
             language_codes: [],
           },
@@ -119,7 +119,7 @@ describe('spaces.get()', () => {
     );
     const customFetch = vi.fn(globalThis.fetch);
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
       fetch: customFetch,
     });
 

@@ -1,4 +1,4 @@
-import type { RichTextDoc, RichTextNode } from '../generated/overlay/types.gen';
+import type { RichTextDoc, RichTextNode } from "../generated/overlay/types.gen";
 
 export interface HtmlFixture {
   title: string;

@@ -15,24 +15,24 @@
  *   ENTRY=packages/PACKAGE_NAME/dist/index.js node scratchpad/serverless-sim.mjs
  */
 
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL } from "node:url";
 
-const ENTRY = pathToFileURL(process.env.ENTRY ?? 'packages/PACKAGE_NAME/dist/index.js').href; // ADAPT
+const ENTRY = pathToFileURL(process.env.ENTRY ?? "packages/PACKAGE_NAME/dist/index.js").href; // ADAPT
 
 // --- Side-effect probe -------------------------------------------------------
 // ADAPT if the side effect under test is not an outbound request.
 
 const calls = [];
 globalThis.fetch = async (input) => {
-  calls.push(String(typeof input === 'string' ? input : (input?.url ?? input)));
-  return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  calls.push(String(typeof input === "string" ? input : (input?.url ?? input)));
+  return new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
 };
 
 // --- The documented happy path ----------------------------------------------
 
 async function exercise(mod) {
   // ADAPT: the smallest thing that exercises the documented behavior end to end.
-  const client = mod.createClient({ token: 'test-token' });
+  const client = mod.createClient({ token: "test-token" });
   return client.doThing({ id: 1 });
 }
 
@@ -51,7 +51,7 @@ async function coldRequest(instance) {
   return { instance, result, landedByResponse: calls.length - before };
 }
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const first = await coldRequest(1);
 const second = await coldRequest(2);
@@ -65,11 +65,15 @@ const afterWaiting = calls.length;
 const findings = [];
 
 if (first.landedByResponse === 0 || second.landedByResponse === 0) {
-  findings.push('A request resolved having produced no side effect. On a frozen instance it never lands.');
+  findings.push(
+    "A request resolved having produced no side effect. On a frozen instance it never lands.",
+  );
 }
 
 if (afterWaiting > atResponse) {
-  findings.push(`${afterWaiting - atResponse} side effect(s) arrived after the response. A frozen instance drops these: the caller needs a way to await them.`);
+  findings.push(
+    `${afterWaiting - atResponse} side effect(s) arrived after the response. A frozen instance drops these: the caller needs a way to await them.`,
+  );
 }
 
 // ADAPT: assert that request 2 saw none of request 1's state. What "state" means is
@@ -77,9 +81,10 @@ if (afterWaiting > atResponse) {
 console.log(JSON.stringify({ first, second, atResponse, afterWaiting }, null, 2));
 
 if (findings.length > 0) {
-  console.error(`\nFindings:\n${findings.map(f => `  - ${f}`).join('\n')}`);
+  console.error(`\nFindings:\n${findings.map((f) => `  - ${f}`).join("\n")}`);
   process.exitCode = 1;
-}
-else {
-  console.log('\nNo lifetime findings from this harness. Cold-instance boxes only: the warm-instance and browser boxes are separate.');
+} else {
+  console.log(
+    "\nNo lifetime findings from this harness. Cold-instance boxes only: the warm-instance and browser boxes are separate.",
+  );
 }

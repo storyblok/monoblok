@@ -9,11 +9,6 @@
     "declarationMap": true,
     "types": []
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "**/*.spec.ts",
-    "playground/**/*"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.spec.ts", "playground/**/*"]
 }

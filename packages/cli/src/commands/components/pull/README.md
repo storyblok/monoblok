@@ -1,6 +1,7 @@
 # Components Pull Command
 
-The `components pull` command allows you to download components and their dependencies from your Storyblok space.
+The `components pull` command allows you to download components and their dependencies from your
+Storyblok space.
 
 ## Basic Usage
 
@@ -9,6 +10,7 @@ storyblok components pull --space YOUR_SPACE_ID
 ```
 
 This will download all components and their dependencies to consolidated files:
+
 ```
 .storyblok/
 └── components/
@@ -19,8 +21,8 @@ This will download all components and their dependencies to consolidated files:
         └── tags.json           # Component tags
 ```
 
-> [!WARNING]
-> The `--filename` option is ignored when using `--separate-files`. Each component will be saved with its own name.
+> [!WARNING] The `--filename` option is ignored when using `--separate-files`. Each component will
+> be saved with its own name.
 
 ## Pull a Single Component
 
@@ -29,6 +31,7 @@ storyblok components pull COMPONENT_NAME --space YOUR_SPACE_ID
 ```
 
 This will download a single component and its dependencies to:
+
 ```
 .storyblok/
 └── components/
@@ -41,24 +44,27 @@ This will download a single component and its dependencies to:
 
 ## Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-s, --space <space>` | (Required) The ID of the space to pull components from | - |
-| `-f, --filename <filename>` | Custom name for the components file | `components` |
-| `--sf, --separate-files` | Create a separate file for each component | `false` |
-| `--su, --suffix <suffix>` | Suffix to add to the files names  | |
-| `-p, --path <path>` | Custom path to store the files | `.storyblok/components` |
-| `--fi, --filter <glob>` | Glob pattern to select components by name | - |
-| `--gr, --group <name>` | Component group to select by name, or by a slash-separated path of nested group names (e.g. `Checkout/Payment`) to disambiguate. Repeatable, includes descendant groups | - |
-| `--tg, --tag <name>` | Component tag name to select. Repeatable and comma-separated | - |
+| Option                      | Description                                                                                                                                                             | Default                 |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`       | (Required) The ID of the space to pull components from                                                                                                                  | -                       |
+| `-f, --filename <filename>` | Custom name for the components file                                                                                                                                     | `components`            |
+| `--sf, --separate-files`    | Create a separate file for each component                                                                                                                               | `false`                 |
+| `--su, --suffix <suffix>`   | Suffix to add to the files names                                                                                                                                        |                         |
+| `-p, --path <path>`         | Custom path to store the files                                                                                                                                          | `.storyblok/components` |
+| `--fi, --filter <glob>`     | Glob pattern to select components by name                                                                                                                               | -                       |
+| `--gr, --group <name>`      | Component group to select by name, or by a slash-separated path of nested group names (e.g. `Checkout/Payment`) to disambiguate. Repeatable, includes descendant groups | -                       |
+| `--tg, --tag <name>`        | Component tag name to select. Repeatable and comma-separated                                                                                                            | -                       |
 
 ## Examples
 
 1. Pull all components with default settings:
+
 ```bash
 storyblok components pull --space 12345
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -70,10 +76,13 @@ Generates:
 ```
 
 2. Pull a single component:
+
 ```bash
 storyblok components pull hero --space 12345
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -85,10 +94,13 @@ Generates:
 ```
 
 3. Pull components with a custom file name:
+
 ```bash
 storyblok components pull --space 12345 --filename my-components
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -100,10 +112,13 @@ Generates:
 ```
 
 4. Pull components with custom suffix:
+
 ```bash
 storyblok components pull --space 12345 --suffix dev
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -115,10 +130,13 @@ Generates:
 ```
 
 5. Pull components to separate files:
+
 ```bash
 storyblok components pull --space 12345 --separate-files
 ```
+
 Generates:
+
 ```
 .storyblok/
 └── components/
@@ -133,10 +151,13 @@ Generates:
 ```
 
 6. Pull components to a custom path:
+
 ```bash
 storyblok components pull --space 12345 --path ./backup
 ```
+
 Generates:
+
 ```
 backup/
 └── components/
@@ -150,6 +171,7 @@ backup/
 ## File Structure
 
 The command follows this pattern for file generation:
+
 ```
 {path}/
 └── components/
@@ -161,6 +183,7 @@ The command follows this pattern for file generation:
 ```
 
 When using `--separate-files`:
+
 ```
 {path}/
 └── components/
@@ -175,6 +198,7 @@ When using `--separate-files`:
 ```
 
 Where:
+
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok Space ID
 - `{filename}` is the name you specified (default: `components`)
@@ -185,7 +209,8 @@ Where:
 
 - The space ID is required
 - The command will create the necessary directories if they don't exist
-- When using `--separate-files` or single component, presets are saved in separate files named `{componentName}.presets.json`
+- When using `--separate-files` or single component, presets are saved in separate files named
+  `{componentName}.presets.json`
 - The command downloads:
   - Components
   - Component groups

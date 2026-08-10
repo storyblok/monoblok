@@ -1,25 +1,35 @@
 {
   "name": "storyblok-js-client",
-  "type": "module",
   "version": "7.7.3",
   "description": "Universal JavaScript SDK for Storyblok's API",
-  "author": "Alexander Feiglstorfer <delooks@gmail.com>",
-  "license": "MIT",
+  "keywords": [
+    "api",
+    "javascript",
+    "storyblok"
+  ],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js-client#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Alexander Feiglstorfer <delooks@gmail.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/js-client"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [
-    "storyblok",
-    "javascript",
-    "api"
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "src"
   ],
+  "type": "module",
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "unpkg": "./dist/index.umd.js",
+  "jsdelivr": "./dist/index.umd.js",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -27,16 +37,9 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "unpkg": "./dist/index.umd.js",
-  "jsdelivr": "./dist/index.umd.js",
-  "types": "./dist/index.d.cts",
-  "source": "src/index.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vp pack --watch",
     "build": "vp pack",
@@ -74,9 +77,6 @@
         "prerelease": true
       }
     ]
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "nx": {
     "implicitDependencies": [

@@ -1,6 +1,6 @@
-import type { DOMOutputSpec } from 'prosemirror-model';
-import type { StoryblokRichTextRenderSpec } from '../types';
-import { stringToStyle, styleToString } from '../style';
+import type { DOMOutputSpec } from "prosemirror-model";
+import type { StoryblokRichTextRenderSpec } from "../types";
+import { stringToStyle, styleToString } from "../style";
 
 /** DOM spec in array form: [tag, attrs?, ...children] */
 type ArrayDOMSpec = readonly [string, ...unknown[]];
@@ -18,11 +18,9 @@ type AttrsObject = Record<string, unknown>;
 const CUSTOM_SPECS: Record<string, ArrayDOMSpec> = {};
 
 /** Parses a ProseMirror DOMOutputSpec into a StoryblokRichTextRenderSpec. */
-export function parseDOMSpec(
-  spec: DOMOutputSpec,
-): StoryblokRichTextRenderSpec | null {
+export function parseDOMSpec(spec: DOMOutputSpec): StoryblokRichTextRenderSpec | null {
   // string
-  if (typeof spec === 'string') {
+  if (typeof spec === "string") {
     return { tag: spec };
   }
   // custom override
@@ -56,8 +54,7 @@ function parseArraySpec(spec: ArrayDOMSpec): StoryblokRichTextRenderSpec {
   if (isAttrsObject(maybeAttrs)) {
     attrs = maybeAttrs;
     children = rest;
-  }
-  else {
+  } else {
     children = maybeAttrs !== undefined ? [maybeAttrs, ...rest] : rest;
   }
 
@@ -76,16 +73,14 @@ function parseArraySpec(spec: ArrayDOMSpec): StoryblokRichTextRenderSpec {
   }
   if (parsedChildren.length > 1) {
     console.warn(
-      `\x1B[1;33m[Storyblok RichText]\x1B[0m Invalid DOM spec: <${tag}> has multiple sibling elements (${parsedChildren.map(child => `<${child.tag}>`).join(', ')}). This may lead to unexpected rendering.`,
+      `\x1B[1;33m[Storyblok RichText]\x1B[0m Invalid DOM spec: <${tag}> has multiple sibling elements (${parsedChildren.map((child) => `<${child.tag}>`).join(", ")}). This may lead to unexpected rendering.`,
     );
   }
   const filteredAttrs = attrs ? filterNullAttrs(attrs) : undefined;
 
   const result: StoryblokRichTextRenderSpec = {
     tag,
-    ...(filteredAttrs && Object.keys(filteredAttrs).length > 0
-      ? { attrs: filteredAttrs }
-      : {}),
+    ...(filteredAttrs && Object.keys(filteredAttrs).length > 0 ? { attrs: filteredAttrs } : {}),
     ...(content ? { content: true } : {}),
     ...(parsedChildren.length > 0 ? { children: parsedChildren } : {}),
   };
@@ -106,7 +101,7 @@ function filterNullAttrs(attrs: AttrsObject): Record<string, unknown> {
     }
 
     // Special handling for style
-    if (key === 'style' && typeof value === 'string') {
+    if (key === "style" && typeof value === "string") {
       const styleObj = stringToStyle(value);
 
       const filteredStyle: Record<string, unknown> = {};
@@ -134,23 +129,18 @@ function filterNullAttrs(attrs: AttrsObject): Record<string, unknown> {
 
 /** Type guard for attribute objects. */
 function isAttrsObject(value: unknown): value is AttrsObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 /** Type guard for array-form DOM specs. */
 function isValidAttrValue(value: unknown): value is string | number | boolean {
-  return (
-    value !== null
-    && value !== undefined
-    && value !== 'null'
-    && value !== 'undefined'
-  );
+  return value !== null && value !== undefined && value !== "null" && value !== "undefined";
 }
 /** Type guard for array-form DOM specs. */
 function isArraySpec(value: unknown): value is ArrayDOMSpec {
-  return Array.isArray(value) && typeof value[0] === 'string';
+  return Array.isArray(value) && typeof value[0] === "string";
 }
 
 /** Type guard for DOM object specs. */
 function isDOMObjectSpec(value: unknown): value is DOMObjectSpec {
-  return typeof value === 'object' && value !== null && 'dom' in value;
+  return typeof value === "object" && value !== null && "dom" in value;
 }

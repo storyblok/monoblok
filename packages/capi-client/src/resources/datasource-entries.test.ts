@@ -1,7 +1,7 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { setupServer } from 'msw/node';
-import { http, HttpResponse } from 'msw';
-import { createApiClient } from '../index';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { setupServer } from "msw/node";
+import { http, HttpResponse } from "msw";
+import { createApiClient } from "../index";
 
 const server = setupServer();
 
@@ -9,10 +9,10 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('datasourceEntries.list()', () => {
-  it('should successfully retrieve datasource entries', async () => {
+describe("datasourceEntries.list()", () => {
+  it("should successfully retrieve datasource entries", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/datasource_entries', () => {
+      http.get("https://api.storyblok.com/v2/cdn/datasource_entries", () => {
         return HttpResponse.json({
           datasource_entries: [],
           cv: 12345,
@@ -20,7 +20,7 @@ describe('datasourceEntries.list()', () => {
       }),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
     const result = await client.datasourceEntries.list();
@@ -29,49 +29,52 @@ describe('datasourceEntries.list()', () => {
     expect(Array.isArray(result.data?.datasource_entries)).toBe(true);
   });
 
-  it('should pass query parameters when filtering by datasource', async () => {
+  it("should pass query parameters when filtering by datasource", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/datasource_entries', ({ request }: { request: Request }) => {
-        const url = new URL(request.url);
-        return HttpResponse.json({
-          datasource_entries: [
-            {
-              id: 1,
-              name: 'entry-one',
-              value: 'value-one',
-            },
-          ],
-          cv: 12345,
-          _datasource: url.searchParams.get('datasource'),
-        });
-      }),
+      http.get(
+        "https://api.storyblok.com/v2/cdn/datasource_entries",
+        ({ request }: { request: Request }) => {
+          const url = new URL(request.url);
+          return HttpResponse.json({
+            datasource_entries: [
+              {
+                id: 1,
+                name: "entry-one",
+                value: "value-one",
+              },
+            ],
+            cv: 12345,
+            _datasource: url.searchParams.get("datasource"),
+          });
+        },
+      ),
     );
     const client = createApiClient({
-      accessToken: 'test-token',
+      accessToken: "test-token",
     });
 
-    const result = await client.datasourceEntries.list({ query: { datasource: 'my-datasource' } });
+    const result = await client.datasourceEntries.list({ query: { datasource: "my-datasource" } });
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.datasource_entries)).toBe(true);
     expect(result.data?.datasource_entries).toHaveLength(1);
-    expect(result.data?.datasource_entries[0]?.name).toBe('entry-one');
+    expect(result.data?.datasource_entries[0]?.name).toBe("entry-one");
   });
 
-  it('should return error response on 401', async () => {
+  it("should return error response on 401", async () => {
     server.use(
-      http.get('https://api.storyblok.com/v2/cdn/datasource_entries', () => {
+      http.get("https://api.storyblok.com/v2/cdn/datasource_entries", () => {
         return HttpResponse.json(
           {
-            error: 'Unauthorized',
-            message: 'Access token is invalid',
+            error: "Unauthorized",
+            message: "Access token is invalid",
           },
           { status: 401 },
         );
       }),
     );
     const client = createApiClient({
-      accessToken: 'invalid-token',
+      accessToken: "invalid-token",
     });
 
     const result = await client.datasourceEntries.list();

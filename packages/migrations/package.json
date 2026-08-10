@@ -1,30 +1,36 @@
 {
   "name": "@storyblok/migrations",
-  "type": "module",
   "version": "0.4.0",
   "private": false,
   "description": "Migration utilities for Storyblok",
-  "author": "Storyblok",
-  "license": "MIT",
+  "keywords": [
+    "cms",
+    "content",
+    "data-migration",
+    "headless",
+    "migrations",
+    "schema",
+    "storyblok"
+  ],
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/migrations#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",
     "directory": "packages/migrations"
   },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
-  "keywords": [
-    "storyblok",
-    "migrations",
-    "content",
-    "cms",
-    "headless",
-    "schema",
-    "data-migration"
+  "files": [
+    "dist"
   ],
+  "type": "module",
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -32,12 +38,6 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public"
   },

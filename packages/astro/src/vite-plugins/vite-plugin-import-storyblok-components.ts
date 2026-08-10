@@ -1,9 +1,9 @@
-import { normalizeAstroExtension } from '../utils/normalizeAstroExtension';
-import { normalizePath } from '../utils/normalizePath';
-import { toCamelCase } from '../utils/toCamelCase';
-import type { Plugin } from 'vite';
+import { normalizeAstroExtension } from "../utils/normalizeAstroExtension";
+import { normalizePath } from "../utils/normalizePath";
+import { toCamelCase } from "../utils/toCamelCase";
+import type { Plugin } from "vite";
 
-const VIRTUAL_MODULE_ID = 'virtual:import-storyblok-components';
+const VIRTUAL_MODULE_ID = "virtual:import-storyblok-components";
 const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
 /**
@@ -17,7 +17,7 @@ export function vitePluginImportStoryblokComponents(
   customFallbackComponent?: string,
 ): Plugin {
   return {
-    name: 'vite-plugin-import-storyblok-components',
+    name: "vite-plugin-import-storyblok-components",
 
     async resolveId(id: string) {
       if (id === VIRTUAL_MODULE_ID) {
@@ -46,7 +46,7 @@ export function vitePluginImportStoryblokComponents(
 
       return {
         code: generateModuleCode(componentsDir, fallbackRegistration, manualRegistrations),
-        moduleType: 'js',
+        moduleType: "js",
       };
     },
   };
@@ -77,13 +77,13 @@ export function generateModuleCode(
     allRegistrations.push(fallbackRegistration);
   }
 
-  const importStatements = allRegistrations.map(r => r.importStatement);
-  const wrapperDefinitions = allRegistrations.map(r => r.wrapperDefinition);
-  const registrationCalls = allRegistrations.map(r => r.registrationCall);
+  const importStatements = allRegistrations.map((r) => r.importStatement);
+  const wrapperDefinitions = allRegistrations.map((r) => r.wrapperDefinition);
+  const registrationCalls = allRegistrations.map((r) => r.registrationCall);
 
   return `
     import { toCamelCase } from '@storyblok/astro';
-    ${importStatements.join('\n    ')}
+    ${importStatements.join("\n    ")}
 
     const modules = import.meta.glob('${globPattern}', { eager: true });
 
@@ -107,9 +107,9 @@ export function generateModuleCode(
       }
     }
 
-    ${wrapperDefinitions.join('\n    ')}
+    ${wrapperDefinitions.join("\n    ")}
 
-    ${registrationCalls.join('\n    ')}
+    ${registrationCalls.join("\n    ")}
 
     export { storyblokComponents };
   `.trim();
@@ -126,21 +126,19 @@ async function resolveFallbackComponent(
   }
   if (!customFallbackComponent) {
     return createComponentRegistrationParts({
-      componentName: 'FallbackComponent',
-      importPath: '@storyblok/astro/FallbackComponent.astro',
+      componentName: "FallbackComponent",
+      importPath: "@storyblok/astro/FallbackComponent.astro",
     });
   }
 
   const componentPath = getComponentFullPath(componentsDir, customFallbackComponent);
   const resolved = await ctx.resolve(componentPath);
   if (!resolved) {
-    throw new Error(
-      `Custom fallback component could not be found. Does "${componentPath}" exist?`,
-    );
+    throw new Error(`Custom fallback component could not be found. Does "${componentPath}" exist?`);
   }
 
   return createComponentRegistrationParts({
-    componentName: 'FallbackComponent',
+    componentName: "FallbackComponent",
     importPath: resolved.id,
   });
 }
@@ -164,20 +162,19 @@ async function resolveUserComponents(
         );
       }
       continue;
-    };
+    }
     const componentName = toCamelCase(blokName);
-    resolvedComponents.push(createComponentRegistrationParts({
-      componentName,
-      importPath: resolved.id,
-    }));
+    resolvedComponents.push(
+      createComponentRegistrationParts({
+        componentName,
+        importPath: resolved.id,
+      }),
+    );
   }
   return resolvedComponents;
 }
 
-function getComponentFullPath(
-  componentsDir: string,
-  componentPath: string,
-): string {
+function getComponentFullPath(componentsDir: string, componentPath: string): string {
   const normalizedComponentsDir = normalizePath(componentsDir);
   const fullComponentPath = `${normalizedComponentsDir}${normalizePath(componentPath)}`;
   return normalizeAstroExtension(fullComponentPath);

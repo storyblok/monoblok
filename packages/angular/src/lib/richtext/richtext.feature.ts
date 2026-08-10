@@ -1,7 +1,11 @@
-import { InjectionToken, Type, Injectable, inject, InputSignal } from '@angular/core';
-import type { StoryblokRichTextElement, StoryblokRichTextElementByType, StoryblokRichTextImageOptions } from '@storyblok/richtext';
+import { InjectionToken, Type, Injectable, inject, InputSignal } from "@angular/core";
+import type {
+  StoryblokRichTextElement,
+  StoryblokRichTextElementByType,
+  StoryblokRichTextImageOptions,
+} from "@storyblok/richtext";
 
-import { type StoryblokFeature, BaseComponentResolver } from '../components.feature';
+import { type StoryblokFeature, BaseComponentResolver } from "../components.feature";
 
 /**
  * Props type for Angular richtext node/mark components.
@@ -18,7 +22,8 @@ export type StoryblokAngularRichTextProps<T extends StoryblokRichTextElement> =
 /**
  * @deprecated Use {@link StoryblokAngularRichTextProps} instead. Will be removed in the next major version.
  */
-export type SbAngularRichTextProps<T extends StoryblokRichTextElement> = StoryblokAngularRichTextProps<T>;
+export type SbAngularRichTextProps<T extends StoryblokRichTextElement> =
+  StoryblokAngularRichTextProps<T>;
 
 /**
  * Context passed to every custom richtext node/mark component alongside its `data` input.
@@ -113,7 +118,7 @@ export type SbAngularComponentMap = StoryblokAngularRichTextComponentMap;
  * Defaults to an empty map if not provided.
  */
 export const STORYBLOK_RICHTEXT_COMPONENTS =
-  new InjectionToken<StoryblokAngularRichTextComponentMap>('STORYBLOK_RICHTEXT_COMPONENTS', {
+  new InjectionToken<StoryblokAngularRichTextComponentMap>("STORYBLOK_RICHTEXT_COMPONENTS", {
     factory: () => ({}),
   });
 
@@ -125,7 +130,7 @@ export const STORYBLOK_RICHTEXT_COMPONENTS =
  * nested `<sb-rich-text>` falls back to native HTML rendering for that type.
  */
 export const STORYBLOK_RICHTEXT_EXCLUDED_TYPES = new InjectionToken<ReadonlySet<string>>(
-  'STORYBLOK_RICHTEXT_EXCLUDED_TYPES',
+  "STORYBLOK_RICHTEXT_EXCLUDED_TYPES",
   { factory: () => new Set<string>() },
 );
 
@@ -133,7 +138,7 @@ export const STORYBLOK_RICHTEXT_EXCLUDED_TYPES = new InjectionToken<ReadonlySet<
  * Service for resolving richtext components with lazy loading support.
  * Caches resolved components to avoid repeated dynamic imports.
  */
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class StoryblokRichtextResolver extends BaseComponentResolver<StoryblokRichTextElement> {
   protected readonly registry = inject(STORYBLOK_RICHTEXT_COMPONENTS);
 
@@ -175,7 +180,7 @@ export function withStoryblokRichtextComponents(
   components: StoryblokAngularRichTextComponentMap,
 ): StoryblokFeature {
   return {
-    ɵkind: 'richtext',
+    ɵkind: "richtext",
     ɵproviders: [{ provide: STORYBLOK_RICHTEXT_COMPONENTS, useValue: components }],
   };
 }

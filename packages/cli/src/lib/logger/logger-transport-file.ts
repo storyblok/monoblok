@@ -1,8 +1,8 @@
-import type { LogContext, LogLevel, LogRecord, LogTransport } from './logger';
-import { appendToFileSync } from '../../utils/filesystem';
-import { existsSync, readdirSync, unlinkSync } from 'node:fs';
-import { dirname, extname, join } from 'pathe';
-import { APIError } from '../../utils/error/api-error';
+import type { LogContext, LogLevel, LogRecord, LogTransport } from "./logger";
+import { appendToFileSync } from "../../utils/filesystem";
+import { existsSync, readdirSync, unlinkSync } from "node:fs";
+import { dirname, extname, join } from "pathe";
+import { APIError } from "../../utils/error/api-error";
 
 export interface FileTransportOptions {
   filePath?: string;
@@ -18,7 +18,7 @@ export class FileTransport implements LogTransport {
 
   constructor(options?: FileTransportOptions) {
     this.filePath = options?.filePath ?? `./${Date.now()}.jsonl`;
-    this.level = options?.level ?? 'info';
+    this.level = options?.level ?? "info";
     this.maxFiles = options?.maxFiles;
   }
 
@@ -50,17 +50,13 @@ export class FileTransport implements LogTransport {
     FileTransport.pruneLogFiles(dir, this.maxFiles, ext);
   }
 
-  public static pruneLogFiles(
-    directory: string,
-    keep: number,
-    extension = '.jsonl',
-  ) {
+  public static pruneLogFiles(directory: string, keep: number, extension = ".jsonl") {
     if (!existsSync(directory)) {
       return 0;
     }
 
     const files = readdirSync(directory)
-      .filter(file => extname(file) === extension)
+      .filter((file) => extname(file) === extension)
       .sort();
 
     const filesToDelete = files.length - keep;
@@ -72,13 +68,12 @@ export class FileTransport implements LogTransport {
     for (const file of files.slice(0, filesToDelete)) {
       try {
         unlinkSync(join(directory, file));
-      }
-      catch (error) {
+      } catch (error) {
         // `readdirSync` and `unlinkSync` are not atomic, so a concurrent CLI
         // process logging to the same directory may prune the same file first.
         // The file is already gone, which is the desired outcome, so ignore it
         // rather than letting best-effort log rotation crash the command.
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
           throw error;
         }
       }
@@ -88,30 +83,27 @@ export class FileTransport implements LogTransport {
     return deleted;
   }
 
-  public static listLogFiles(
-    directory: string,
-    extension = '.jsonl',
-  ) {
+  public static listLogFiles(directory: string, extension = ".jsonl") {
     if (!existsSync(directory)) {
       return [];
     }
 
     const files = readdirSync(directory)
-      .filter(file => extname(file) === extension)
+      .filter((file) => extname(file) === extension)
       .sort();
 
-    return files.map(f => join(directory, f).replace(process.cwd(), '.'));
+    return files.map((f) => join(directory, f).replace(process.cwd(), "."));
   }
 
   private levelRank(level: LogLevel): number {
     switch (level) {
-      case 'error':
+      case "error":
         return 0;
-      case 'warn':
+      case "warn":
         return 1;
-      case 'info':
+      case "info":
         return 2;
-      case 'debug':
+      case "debug":
         return 3;
       default:
         return 3;
@@ -125,7 +117,7 @@ export class FileTransport implements LogTransport {
   private format(record: LogRecord): string {
     const timestamp = (record.timestamp ?? new Date()).toISOString();
     const level = record.level.toUpperCase();
-    const message = record.message.replaceAll('\n', '\\n');
+    const message = record.message.replaceAll("\n", "\\n");
     const contextNormalized = record.context && this.formatContext(record.context);
 
     return JSON.stringify({ timestamp, level, message, context: contextNormalized });

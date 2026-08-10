@@ -1,4 +1,4 @@
-import type { Experiment } from './types';
+import type { Experiment } from "./types";
 
 export interface FindExperimentBySlugOptions {
   experiments: Experiment[];
@@ -7,8 +7,8 @@ export interface FindExperimentBySlugOptions {
 
 /** True when any variant of `experiment` maps `slug` as an `original_slug`. */
 export function mapsSlug(experiment: Experiment, slug: string): boolean {
-  return experiment.variants.some(variant =>
-    variant.story_mappings.some(mapping => mapping.original_slug === slug),
+  return experiment.variants.some((variant) =>
+    variant.story_mappings.some((mapping) => mapping.original_slug === slug),
   );
 }
 
@@ -20,6 +20,9 @@ export function mapsSlug(experiment: Experiment, slug: string): boolean {
  * by an existing assignment's `experiment.id` when you have one — this lookup is
  * for the case where you only know the slug.
  */
-export function findExperimentBySlug({ experiments, slug }: FindExperimentBySlugOptions): Experiment | undefined {
-  return experiments.find(candidate => mapsSlug(candidate, slug));
+export function findExperimentBySlug({
+  experiments,
+  slug,
+}: FindExperimentBySlugOptions): Experiment | undefined {
+  return experiments.find((candidate) => mapsSlug(candidate, slug));
 }

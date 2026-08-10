@@ -1,10 +1,7 @@
-import { MARK_RENDER_MAP, NODE_RENDER_MAP } from './render-map.generated';
-import type {
-  RichTextMark,
-  RichTextNode,
-} from '../generated/overlay/types.gen';
-import { SELF_CLOSING_TAGS } from '../utils';
-import { escapeAttr } from './attribute';
+import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "./render-map.generated";
+import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
+import { SELF_CLOSING_TAGS } from "../utils";
+import { escapeAttr } from "./attribute";
 /**
  * Resolves the HTML tag for a given Richtext node or mark.
  * @param node - The Richtext node or mark to resolve the tag for.
@@ -17,20 +14,20 @@ import { escapeAttr } from './attribute';
 export function resolveTag(node: RichTextNode | RichTextMark): string | null {
   const type = node.type;
 
-  const entry
-    = NODE_RENDER_MAP[type as keyof typeof NODE_RENDER_MAP]
-      ?? MARK_RENDER_MAP[type as keyof typeof MARK_RENDER_MAP];
+  const entry =
+    NODE_RENDER_MAP[type as keyof typeof NODE_RENDER_MAP] ??
+    MARK_RENDER_MAP[type as keyof typeof MARK_RENDER_MAP];
 
   if (!entry) {
     return null;
   }
 
-  if ('resolve' in entry && typeof entry.resolve === 'function') {
-    const attrs = 'attrs' in node ? node.attrs : undefined;
+  if ("resolve" in entry && typeof entry.resolve === "function") {
+    const attrs = "attrs" in node ? node.attrs : undefined;
     return entry.resolve(attrs as Parameters<typeof entry.resolve>[0]);
   }
 
-  if ('tag' in entry && typeof entry.tag === 'string') {
+  if ("tag" in entry && typeof entry.tag === "string") {
     return entry.tag;
   }
 
@@ -62,14 +59,13 @@ export function isSelfClosing(tag: string): boolean {
  */
 export function getStaticChildren(node: RichTextNode) {
   const renderMap = NODE_RENDER_MAP[node.type as keyof typeof NODE_RENDER_MAP];
-  const staticChildren
-    = renderMap && 'children' in renderMap ? renderMap.children : null;
+  const staticChildren = renderMap && "children" in renderMap ? renderMap.children : null;
   return staticChildren;
 }
 
 /** Converts attribute record to HTML string: ` key="value" key2="value2"` */
 export function attrsToHtmlString(attrs: Record<string, unknown>): string {
-  let result = '';
+  let result = "";
 
   for (const key in attrs) {
     const value = attrs[key];
@@ -84,5 +80,5 @@ export function attrsToHtmlString(attrs: Record<string, unknown>): string {
 export function hasContent<T extends RichTextNode>(
   node: T,
 ): node is T & { content: RichTextNode[] } {
-  return 'content' in node && Array.isArray(node.content);
+  return "content" in node && Array.isArray(node.content);
 }

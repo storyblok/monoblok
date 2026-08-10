@@ -1,11 +1,11 @@
-import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from "@angular/core";
 
 export interface FeatureBlok {
   name?: string;
 }
 
 @Component({
-  selector: 'app-feature',
+  selector: "app-feature",
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-6 bg-white border border-slate-200 rounded-lg shadow-sm">

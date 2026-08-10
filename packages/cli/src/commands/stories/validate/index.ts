@@ -1,19 +1,26 @@
-import { Transform, Writable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
-import type { Story } from '../constants';
-import { normalizeStartsWith } from '../constants';
-import { colorPalette, commands } from '../../../constants';
-import { session } from '../../../session';
-import { storiesCommand } from '../command';
-import type { ProgressBar } from '../../../lib/ui';
-import { getUI } from '../../../lib/ui';
-import { getLogger } from '../../../lib/logger/logger';
-import { getReporter } from '../../../lib/reporter/reporter';
-import { fetchStoriesStream, fetchStoryStream } from '../streams';
-import { requireAuthentication } from '../../../utils/auth';
-import { handleError, toError } from '../../../utils/error/error';
-import { CommandError } from '../../../utils/error/command-error';
-import type { FormatOption, LevelOption, SchemaLike, ValidationGroup, ValidationGroupRef, ValidationRunResult } from '../../../lib/validation';
+import { Transform, Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { Story } from "../constants";
+import { normalizeStartsWith } from "../constants";
+import { colorPalette, commands } from "../../../constants";
+import { session } from "../../../session";
+import { storiesCommand } from "../command";
+import type { ProgressBar } from "../../../lib/ui";
+import { getUI } from "../../../lib/ui";
+import { getLogger } from "../../../lib/logger/logger";
+import { getReporter } from "../../../lib/reporter/reporter";
+import { fetchStoriesStream, fetchStoryStream } from "../streams";
+import { requireAuthentication } from "../../../utils/auth";
+import { handleError, toError } from "../../../utils/error/error";
+import { CommandError } from "../../../utils/error/command-error";
+import type {
+  FormatOption,
+  LevelOption,
+  SchemaLike,
+  ValidationGroup,
+  ValidationGroupRef,
+  ValidationRunResult,
+} from "../../../lib/validation";
 import {
   countIssues,
   formatJson,
@@ -23,7 +30,7 @@ import {
   parseLevel,
   validateStory,
   writeValidationReport,
-} from '../../../lib/validation';
+} from "../../../lib/validation";
 
 interface StoriesValidateOptions {
   schema?: string;
@@ -41,7 +48,7 @@ function storyHeader(story: Story): string {
 /** Machine-readable identity for a story group, so a consumer never parses the header. */
 function storyRef(story: Story): ValidationGroupRef {
   return {
-    kind: 'story',
+    kind: "story",
     id: story.id,
     ...(story.full_slug ? { slug: story.full_slug } : {}),
     ...(story.name ? { name: story.name } : {}),
@@ -49,20 +56,26 @@ function storyRef(story: Story): ValidationGroupRef {
 }
 
 storiesCommand
-  .command('validate')
-  .description('Validate every story\'s draft content in a space against a local code-defined schema.')
-  .option('-s, --space <space>', 'space ID')
-  .option('--schema <entry-file>', 'Path to the TypeScript schema entry file')
-  .option('--starts-with <path>', 'Only validate stories whose path starts with this prefix. Example: --starts-with="en/blog/"')
-  .option('--level <level>', 'Display threshold: error|warning', 'warning')
-  .option('--format <format>', 'Output format: pretty|json', 'pretty')
+  .command("validate")
+  .description(
+    "Validate every story's draft content in a space against a local code-defined schema.",
+  )
+  .option("-s, --space <space>", "space ID")
+  .option("--schema <entry-file>", "Path to the TypeScript schema entry file")
+  .option(
+    "--starts-with <path>",
+    'Only validate stories whose path starts with this prefix. Example: --starts-with="en/blog/"',
+  )
+  .option("--level <level>", "Display threshold: error|warning", "warning")
+  .option("--format <format>", "Output format: pretty|json", "pretty")
   .action(async (options: StoriesValidateOptions, command) => {
     const { schema: schemaEntry } = options;
     // A leading slash would make `starts_with` match nothing; `/` alone leaves no
     // prefix at all, which is the same as not filtering.
-    const startsWith = options.startsWith === undefined
-      ? undefined
-      : normalizeStartsWith(options.startsWith) || undefined;
+    const startsWith =
+      options.startsWith === undefined
+        ? undefined
+        : normalizeStartsWith(options.startsWith) || undefined;
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -71,7 +84,7 @@ storiesCommand
 
     const failFatal = (message: string): void => {
       // Record a failure so the report reflects the aborted run, not SUCCESS.
-      reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
+      reporter.addSummary("validation", { total: 1, succeeded: 0, failed: 1 });
       // `handleError` owns the exit code: a CommandError already exits 2.
       handleError(new CommandError(message), verbose);
     };
@@ -83,27 +96,26 @@ storiesCommand
       try {
         level = parseLevel(options.level);
         format = parseFormat(options.format);
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         failFatal(toError(maybeError).message);
         return;
       }
 
-      const isJson = format === 'json';
-      logger.info('Stories validate started', { space, schemaEntry, startsWith, level, format });
+      const isJson = format === "json";
+      logger.info("Stories validate started", { space, schemaEntry, startsWith, level, format });
 
       if (!requireAuthentication(state, verbose)) {
         // `requireAuthentication` has already reported through `handleError`,
         // which owns the exit code.
-        reporter.addSummary('validation', { total: 1, succeeded: 0, failed: 1 });
+        reporter.addSummary("validation", { total: 1, succeeded: 0, failed: 1 });
         return;
       }
       if (!space) {
-        failFatal('Please provide the space as argument --space YOUR_SPACE_ID.');
+        failFatal("Please provide the space as argument --space YOUR_SPACE_ID.");
         return;
       }
       if (!schemaEntry) {
-        failFatal('Please provide the schema entry file with --schema <entry-file>.');
+        failFatal("Please provide the schema entry file with --schema <entry-file>.");
         return;
       }
 
@@ -113,8 +125,7 @@ storiesCommand
         // Story content cannot be validated without block definitions, so an
         // entry file with none is a bad invocation rather than a clean run.
         ({ schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true }));
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         failFatal(toError(maybeError).message);
         return;
       }
@@ -122,7 +133,7 @@ storiesCommand
       // 3. Fetch every non-folder story and validate its content.
       const groups: ValidationGroup[] = [];
       let totalStories = 0;
-      const fetchErrors: NonNullable<ValidationRunResult['fetchErrors']> = [];
+      const fetchErrors: NonNullable<ValidationRunResult["fetchErrors"]> = [];
       let listFailed = false;
       let listError: string | undefined;
 
@@ -136,7 +147,7 @@ storiesCommand
         if (isJson) {
           return undefined;
         }
-        progress ??= ui.createProgressBar({ title: 'Validating Stories...'.padEnd(23) });
+        progress ??= ui.createProgressBar({ title: "Validating Stories...".padEnd(23) });
         return progress;
       };
       // The list `Total` header counts folders too, and is re-reported on every
@@ -159,7 +170,7 @@ storiesCommand
       };
 
       if (!isJson) {
-        ui.title(`${commands.STORIES}`, colorPalette.STORIES, 'Validating stories...');
+        ui.title(`${commands.STORIES}`, colorPalette.STORIES, "Validating stories...");
       }
 
       try {
@@ -177,7 +188,7 @@ storiesCommand
               listError = error.message;
               // Leave no live bar redrawing itself underneath the error output.
               stopProgress();
-              logger.error('Failed to list stories', { error: error.message, page, total });
+              logger.error("Failed to list stories", { error: error.message, page, total });
               handleError(error, verbose, { page, total });
             },
           }),
@@ -206,7 +217,7 @@ storiesCommand
                 message: error.message,
               });
               progress?.increment();
-              logger.error('Failed to fetch story', { error: error.message, storyId: story.id });
+              logger.error("Failed to fetch story", { error: error.message, storyId: story.id });
               handleError(error, verbose, { storyId: story.id });
             },
           }),
@@ -220,8 +231,7 @@ storiesCommand
                 }
                 progress?.increment();
                 callback();
-              }
-              catch (maybeError) {
+              } catch (maybeError) {
                 // Validation is not expected to throw; treat it as fatal rather
                 // than letting the stream hang on a missing callback.
                 callback(toError(maybeError));
@@ -229,8 +239,7 @@ storiesCommand
             },
           }),
         );
-      }
-      catch (maybeError) {
+      } catch (maybeError) {
         // An unexpected pipeline failure (e.g. the network is down) is fatal.
         stopProgress();
         failFatal(toError(maybeError).message);
@@ -259,13 +268,15 @@ storiesCommand
       //    formatter can present an incomplete run as a clean one.
       const fetchFailures = fetchErrors.length;
       const result: ValidationRunResult = {
-        unitNoun: 'stories',
-        unitNounSingular: 'story',
+        unitNoun: "stories",
+        unitNounSingular: "story",
         unitsTotal: totalStories,
         groups,
         // Travels with the result so both formatters can say the population was
         // narrowed, rather than only the pretty one knowing.
-        ...(startsWith === undefined ? {} : { filter: { option: '--starts-with', value: startsWith } }),
+        ...(startsWith === undefined
+          ? {}
+          : { filter: { option: "--starts-with", value: startsWith } }),
         fetchFailures,
         fetchErrors,
         listFailed,
@@ -275,18 +286,24 @@ storiesCommand
       // 5. Report. The artifact carries the run-level fetch/list failures so an
       //    incomplete run is never recorded as success.
       writeValidationReport(reporter, result);
-      reporter.addSummary('fetch', {
+      reporter.addSummary("fetch", {
         total: totalStories,
         succeeded: totalStories - fetchFailures,
         failed: fetchFailures,
       });
       if (listFailed) {
         // Mark the run failed in the report even when no story had issues.
-        reporter.addSummary('list', { total: 1, succeeded: 0, failed: 1 });
+        reporter.addSummary("list", { total: 1, succeeded: 0, failed: 1 });
       }
 
       const { errors, warnings } = countIssues(result);
-      logger.info('Stories validate finished', { errors, warnings, stories: totalStories, fetchFailures, listFailed });
+      logger.info("Stories validate finished", {
+        errors,
+        warnings,
+        stories: totalStories,
+        fetchFailures,
+        listFailed,
+      });
 
       // 6. Render and set the exit code. A failed listing means the run never
       //    had a population to validate, so it reports as fatal rather than
@@ -297,7 +314,7 @@ storiesCommand
 
       if (listFailed) {
         if (!isJson) {
-          ui.error('Listing stories failed; the space was not fully validated.');
+          ui.error("Listing stories failed; the space was not fully validated.");
         }
         // `onPageError` already reported the API failure through `handleError`,
         // which owns the exit code. Returning here is what keeps the clean
@@ -311,7 +328,9 @@ storiesCommand
         // clean space. Say so, or the run reads as a pass over content it never
         // looked at.
         if (result.filter && totalStories === 0) {
-          ui.warn(`No stories matched ${result.filter.option} "${result.filter.value}"; nothing was validated.`);
+          ui.warn(
+            `No stories matched ${result.filter.option} "${result.filter.value}"; nothing was validated.`,
+          );
         }
         if (fetchFailures > 0) {
           ui.warn(`${fetchFailures} story(s) could not be fetched and were not validated.`);
@@ -319,8 +338,7 @@ storiesCommand
       }
 
       process.exitCode = errors > 0 || fetchFailures > 0 ? 1 : 0;
-    }
-    finally {
+    } finally {
       // Always write the report artifact, including on every fatal early return.
       reporter.finalize();
     }

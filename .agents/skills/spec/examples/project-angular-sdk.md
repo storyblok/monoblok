@@ -4,7 +4,9 @@
 
 Check for inspiration VMO2 package -> https://github.com/jimdrury/ng-storyblok
 
-It was agreed that the Angular SDK will follow the new architecture, composed on top of @storyblok/capi-client, @storyblok/live-preview (name to be fully decided) and @storyblok/richtext instead of on top fo the current JS SDK
+It was agreed that the Angular SDK will follow the new architecture, composed on top of
+@storyblok/capi-client, @storyblok/live-preview (name to be fully decided) and @storyblok/richtext
+instead of on top fo the current JS SDK
 
 **Requested by:**
 
@@ -26,7 +28,9 @@ It was agreed that the Angular SDK will follow the new architecture, composed on
 
 **Compatibility:** full support targets Angular 17+
 
-**Testing:** similar to other Frontend SDKs, it's tested focusing on value and pragmatism favoring real scenarios via e2e/integration tests. Unit are used when and if needed (complex isolated functionality we want to extra-assure).
+**Testing:** similar to other Frontend SDKs, it's tested focusing on value and pragmatism favoring
+real scenarios via e2e/integration tests. Unit are used when and if needed (complex isolated
+functionality we want to extra-assure).
 
 - Coverage >80%
 - Fully typed
@@ -35,7 +39,8 @@ It was agreed that the Angular SDK will follow the new architecture, composed on
 
 **Idiomatic Angular DX** (services, DI, signals, observables, directives, etc)
 
-Built on the new architecture (@storyblok/capi-client, @storyblok/live-preview, @storyblok/richtext), which will enable cleaner composition than building on the existing JS SDK
+Built on the new architecture (@storyblok/capi-client, @storyblok/live-preview,
+@storyblok/richtext), which will enable cleaner composition than building on the existing JS SDK
 
 ## Reference
 
@@ -49,7 +54,8 @@ Built on the new architecture (@storyblok/capi-client, @storyblok/live-preview, 
 - [ ] AC4: Live editing updates content in real-time when opened in Visual Editor
 - [ ] AC5: Visual Editor can click to select elements marked as editable
 - [ ] AC6: Rich text with embedded bloks renders both HTML and Angular components correctly
-- [ ] AC7: TypeScript autocompletion works for the user implementation cases: story rendering, richtext rendering, module setup, etc
+- [ ] AC7: TypeScript autocompletion works for the user implementation cases: story rendering,
+      richtext rendering, module setup, etc
 - [ ] AC8: Tests achieve > 80% coverage
 - [ ] AC9: README points to the Package Reference, with a similar structure than other SDKs
 

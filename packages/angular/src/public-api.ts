@@ -3,31 +3,31 @@
  */
 
 // Core service and provider
-export { StoryblokService, type StoryblokClientConfig } from './lib/storyblok.service';
-export { provideStoryblok } from './lib/storyblok.feature';
+export { StoryblokService, type StoryblokClientConfig } from "./lib/storyblok.service";
+export { provideStoryblok } from "./lib/storyblok.feature";
 // Component registry
-export { withStoryblokComponents, type StoryblokComponentsMap } from './lib/components.feature';
+export { withStoryblokComponents, type StoryblokComponentsMap } from "./lib/components.feature";
 
 // Live Preview feature (optional, tree-shakeable)
-export { LivePreviewService } from './lib/livepreview/livepreview.service';
-export { withLivePreview } from './lib/livepreview/livepreview.feature';
-export { type BridgeParams } from '@storyblok/live-preview';
+export { LivePreviewService } from "./lib/livepreview/livepreview.service";
+export { withLivePreview } from "./lib/livepreview/livepreview.feature";
+export { type BridgeParams } from "@storyblok/live-preview";
 
 // Storyblok Component
-export { StoryblokComponent } from './lib/blok/sb-component.component';
+export { StoryblokComponent } from "./lib/blok/sb-component.component";
 
 // Directive
-export { SbBlokDirective } from './lib/blok/sb-blok.directive';
+export { SbBlokDirective } from "./lib/blok/sb-blok.directive";
 
 // Rich Text (with custom component overrides)
-export { SbRichTextComponent } from './lib/richtext/rich-text.component';
-export { withStoryblokRichtextComponents } from './lib/richtext/richtext.feature';
+export { SbRichTextComponent } from "./lib/richtext/rich-text.component";
+export { withStoryblokRichtextComponents } from "./lib/richtext/richtext.feature";
 export type {
   StoryblokAngularRichTextComponent,
   StoryblokAngularRichTextComponentMap,
   StoryblokAngularRichTextProps,
   StoryblokAngularRichTextRenderContext,
-} from './lib/richtext/richtext.feature';
+} from "./lib/richtext/richtext.feature";
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export type {
@@ -36,13 +36,13 @@ export type {
   SbAngularRichTextComponent,
   SbAngularRichTextProps,
   SbAngularRichTextRenderContext,
-} from './lib/richtext/richtext.feature';
+} from "./lib/richtext/richtext.feature";
 
-export type { Story } from '@storyblok/api-client';
-export * from './lib/types';
+export type { Story } from "@storyblok/api-client";
+export * from "./lib/types";
 
 // Re-exporting same exports from @storyblok/richtext
-export { buildStoryblokImage, renderRichText, splitTableRows } from '@storyblok/richtext';
+export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 
 export type {
   StoryblokRichTextElement,
@@ -56,7 +56,7 @@ export type {
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 
 // ── Deprecated: Sb* aliases — will be removed in the next major version ───────
 export type {
@@ -67,7 +67,7 @@ export type {
   SbRichTextNode,
   SbRichTextProps,
   SbRichTextRenderContext,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";
 
 // Re-exporting helpers from @storyblok/richtext for custom component implementations.
 export {
@@ -81,4 +81,4 @@ export {
   processAttrs,
   resolveTag,
   styleToString,
-} from '@storyblok/richtext';
+} from "@storyblok/richtext";

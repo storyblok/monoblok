@@ -1,10 +1,10 @@
-import type { Experiment, ExperimentEvent } from './types';
-import { describe, expect, it, vi } from 'vitest';
-import { assignVariant } from './assign-variant';
-import { createConversion } from './create-conversion';
-import { createExperiments } from './create-experiments';
-import { defineGoal } from './define-goal';
-import { homepageExperiment, pricingExperiment } from './fixtures';
+import type { Experiment, ExperimentEvent } from "./types";
+import { describe, expect, it, vi } from "vitest";
+import { assignVariant } from "./assign-variant";
+import { createConversion } from "./create-conversion";
+import { createExperiments } from "./create-experiments";
+import { defineGoal } from "./define-goal";
+import { homepageExperiment, pricingExperiment } from "./fixtures";
 
 /**
  * Scenario coverage for the topologies the package has to support. Each block
@@ -21,7 +21,7 @@ function createSink() {
     adapter: (event: ExperimentEvent) => {
       events.push(event);
     },
-    ofType: (type: ExperimentEvent['type']) => events.filter(event => event.type === type),
+    ofType: (type: ExperimentEvent["type"]) => events.filter((event) => event.type === type),
   };
 }
 
@@ -31,7 +31,7 @@ function createSink() {
  * both visitors happen to share a variant.
  */
 function visitorsWithDifferentVariants(experiment: Experiment): [string, string] {
-  const first = 'visitor-1';
+  const first = "visitor-1";
   const firstVariant = assignVariant({ experiment, visitorId: first })?.variant.public_id;
   for (let index = 2; index < 200; index++) {
     const candidate = `visitor-${index}`;
@@ -39,88 +39,100 @@ function visitorsWithDifferentVariants(experiment: Experiment): [string, string]
       return [first, candidate];
     }
   }
-  throw new Error('fixture is not split, cannot find two visitors on different variants');
+  throw new Error("fixture is not split, cannot find two visitors on different variants");
 }
 
 const variantOf = (experiment: Experiment, visitorId: string) =>
   assignVariant({ experiment, visitorId })?.variant.public_id;
 
-describe('scenario: SSR render, click converts in a later request', () => {
-  it('records the conversion from a fresh instance with no prior resolve', async () => {
+describe("scenario: SSR render, click converts in a later request", () => {
+  it("records the conversion from a fresh instance with no prior resolve", async () => {
     const sink = createSink();
     const config = { experiments: [homepageExperiment], adapters: [sink.adapter] };
 
     // Request 1: the page render. This instance is discarded with the response.
     const render = createExperiments(config);
-    const { slug } = render.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
-    expect(['home', 'home-b']).toContain(slug);
+    const { slug } = render.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
+    expect(["home", "home-b"]).toContain(slug);
 
     // Request 2: the conversion. A brand new instance, no shared state.
     const conversion = createExperiments(config);
-    await conversion.track('signup', 'visitor-7');
+    await conversion.track("signup", "visitor-7");
 
-    expect(sink.ofType('exposure')).toHaveLength(1);
-    expect(sink.ofType('conversion')).toHaveLength(1);
-    expect(sink.ofType('conversion')[0]).toMatchObject({
-      name: 'signup',
-      visitorId: 'visitor-7',
+    expect(sink.ofType("exposure")).toHaveLength(1);
+    expect(sink.ofType("conversion")).toHaveLength(1);
+    expect(sink.ofType("conversion")[0]).toMatchObject({
+      name: "signup",
+      visitorId: "visitor-7",
       experiment: { id: 123 },
     });
   });
 
-  it('attributes the conversion to the same variant the render used', async () => {
+  it("attributes the conversion to the same variant the render used", async () => {
     const sink = createSink();
     const config = { experiments: [homepageExperiment], adapters: [sink.adapter] };
 
-    createExperiments(config).resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
-    await createExperiments(config).track('signup', 'visitor-7');
+    createExperiments(config).resolveExperiment({ slug: "home", visitorId: "visitor-7" });
+    await createExperiments(config).track("signup", "visitor-7");
 
-    const [exposure] = sink.ofType('exposure');
-    const [conversion] = sink.ofType('conversion');
+    const [exposure] = sink.ofType("exposure");
+    const [conversion] = sink.ofType("conversion");
     expect(conversion.variant).toEqual(exposure.variant);
   });
 
-  it('never emits an exposure as a side effect of tracking', async () => {
+  it("never emits an exposure as a side effect of tracking", async () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    await experiments.track('signup', 'visitor-7');
+    await experiments.track("signup", "visitor-7");
 
-    expect(sink.ofType('exposure')).toHaveLength(0);
-    expect(sink.ofType('conversion')).toHaveLength(1);
+    expect(sink.ofType("exposure")).toHaveLength(0);
+    expect(sink.ofType("conversion")).toHaveLength(1);
   });
 
-  it('carries visitorId on both events so a sink can join them', async () => {
+  it("carries visitorId on both events so a sink can join them", async () => {
     const sink = createSink();
     const config = { experiments: [homepageExperiment], adapters: [sink.adapter] };
 
-    createExperiments(config).resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
-    await createExperiments(config).track('signup', 'visitor-7');
+    createExperiments(config).resolveExperiment({ slug: "home", visitorId: "visitor-7" });
+    await createExperiments(config).track("signup", "visitor-7");
 
     // The join a customer's warehouse has to be able to do.
-    const joined = sink.ofType('conversion').filter(conversion =>
-      sink.ofType('exposure').some(exposure =>
-        exposure.visitorId === conversion.visitorId
-        && exposure.experiment.id === conversion.experiment.id),
-    );
+    const joined = sink
+      .ofType("conversion")
+      .filter((conversion) =>
+        sink
+          .ofType("exposure")
+          .some(
+            (exposure) =>
+              exposure.visitorId === conversion.visitorId &&
+              exposure.experiment.id === conversion.experiment.id,
+          ),
+      );
     expect(joined).toHaveLength(1);
   });
 });
 
-describe('scenario: shared module-scope instance', () => {
-  it('attributes concurrent visitors to their own variants', async () => {
+describe("scenario: shared module-scope instance", () => {
+  it("attributes concurrent visitors to their own variants", async () => {
     const sink = createSink();
     const [visitorA, visitorB] = visitorsWithDifferentVariants(homepageExperiment);
     // One instance, created once, serving every request.
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: visitorA });
-    experiments.resolveExperiment({ slug: 'home', visitorId: visitorB });
-    await experiments.track('signup', visitorA);
-    await experiments.track('signup', visitorB);
+    experiments.resolveExperiment({ slug: "home", visitorId: visitorA });
+    experiments.resolveExperiment({ slug: "home", visitorId: visitorB });
+    await experiments.track("signup", visitorA);
+    await experiments.track("signup", visitorB);
 
     const byVisitor = (visitorId: string) =>
-      sink.ofType('conversion').find(event => event.visitorId === visitorId);
+      sink.ofType("conversion").find((event) => event.visitorId === visitorId);
     expect(byVisitor(visitorA)?.variant.public_id).toBe(variantOf(homepageExperiment, visitorA));
     expect(byVisitor(visitorB)?.variant.public_id).toBe(variantOf(homepageExperiment, visitorB));
     // The whole point: the two visitors are on different variants, so a shared
@@ -128,154 +140,185 @@ describe('scenario: shared module-scope instance', () => {
     expect(byVisitor(visitorA)?.variant.public_id).not.toBe(byVisitor(visitorB)?.variant.public_id);
   });
 
-  it('resolves interleaved visitors independently', () => {
+  it("resolves interleaved visitors independently", () => {
     const sink = createSink();
     const [visitorA, visitorB] = visitorsWithDifferentVariants(homepageExperiment);
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    const a1 = experiments.resolveExperiment({ slug: 'home', visitorId: visitorA });
-    const b1 = experiments.resolveExperiment({ slug: 'home', visitorId: visitorB });
-    const a2 = experiments.resolveExperiment({ slug: 'home', visitorId: visitorA });
+    const a1 = experiments.resolveExperiment({ slug: "home", visitorId: visitorA });
+    const b1 = experiments.resolveExperiment({ slug: "home", visitorId: visitorB });
+    const a2 = experiments.resolveExperiment({ slug: "home", visitorId: visitorA });
 
     expect(a1.slug).toBe(a2.slug);
     expect(a1.slug).not.toBe(b1.slug);
   });
 });
 
-describe('scenario: deferring the exposure to the client', () => {
-  it('returns the exposure descriptor without firing it', () => {
+describe("scenario: deferring the exposure to the client", () => {
+  it("returns the exposure descriptor without firing it", () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    const resolved = experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7', exposure: false });
+    const resolved = experiments.resolveExperiment({
+      slug: "home",
+      visitorId: "visitor-7",
+      exposure: false,
+    });
 
     expect(sink.events).toHaveLength(0);
-    expect(resolved.exposure).toMatchObject({ type: 'exposure', visitorId: 'visitor-7' });
+    expect(resolved.exposure).toMatchObject({ type: "exposure", visitorId: "visitor-7" });
     // Suppressing the exposure must not change what gets rendered.
-    const control = resolved.exposure!.variant.public_id === 'var_control';
-    expect(resolved.slug).toBe(control ? 'home' : 'home-b');
+    const control = resolved.exposure!.variant.public_id === "var_control";
+    expect(resolved.slug).toBe(control ? "home" : "home-b");
   });
 
-  it('fires the deferred exposure through send when the client reports back', async () => {
+  it("fires the deferred exposure through send when the client reports back", async () => {
     const sink = createSink();
     const config = { experiments: [homepageExperiment], adapters: [sink.adapter] };
 
     // Render: hand the descriptor to the browser instead of firing it.
-    const { exposure } = createExperiments(config)
-      .resolveExperiment({ slug: 'home', visitorId: 'visitor-7', exposure: false });
+    const { exposure } = createExperiments(config).resolveExperiment({
+      slug: "home",
+      visitorId: "visitor-7",
+      exposure: false,
+    });
     // Later request: the browser beacons it back once the component mounted.
     await createExperiments(config).send(exposure!);
 
-    expect(sink.ofType('exposure')).toHaveLength(1);
-    expect(sink.ofType('exposure')[0].visitorId).toBe('visitor-7');
+    expect(sink.ofType("exposure")).toHaveLength(1);
+    expect(sink.ofType("exposure")[0].visitorId).toBe("visitor-7");
   });
 
-  it('still returns the fired exposure when autofire is on', () => {
+  it("still returns the fired exposure when autofire is on", () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    const resolved = experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
+    const resolved = experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
 
-    expect(sink.ofType('exposure')).toHaveLength(1);
-    expect(resolved.exposure).toEqual(sink.ofType('exposure')[0]);
+    expect(sink.ofType("exposure")).toHaveLength(1);
+    expect(resolved.exposure).toEqual(sink.ofType("exposure")[0]);
   });
 
-  it('reports no exposure for an unmatched slug', () => {
+  it("reports no exposure for an unmatched slug", () => {
     const experiments = createExperiments({ experiments: [homepageExperiment] });
 
-    const resolved = experiments.resolveExperiment({ slug: 'about', visitorId: 'visitor-7' });
+    const resolved = experiments.resolveExperiment({ slug: "about", visitorId: "visitor-7" });
 
-    expect(resolved.slug).toBe('about');
+    expect(resolved.slug).toBe("about");
     expect(resolved.exposure).toBeUndefined();
     expect(resolved.variant).toBeUndefined();
   });
 });
 
-describe('scenario: client builds the payload, server forwards it', () => {
-  it('createEvent returns a ready-to-send conversion without delivering it', () => {
+describe("scenario: client builds the payload, server forwards it", () => {
+  it("createEvent returns a ready-to-send conversion without delivering it", () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    const [assignment] = experiments.assignments('visitor-7');
-    const event = experiments.createEvent('signup', assignment, { props: { plan: 'pro' }, value: 4900 });
+    const [assignment] = experiments.assignments("visitor-7");
+    const event = experiments.createEvent("signup", assignment, {
+      props: { plan: "pro" },
+      value: 4900,
+    });
 
     expect(sink.events).toHaveLength(0);
     expect(event).toMatchObject({
-      type: 'conversion',
-      name: 'signup',
-      visitorId: 'visitor-7',
+      type: "conversion",
+      name: "signup",
+      visitorId: "visitor-7",
       value: 4900,
-      props: { plan: 'pro' },
-      experiment: { id: 123, name: 'homepage_hero' },
+      props: { plan: "pro" },
+      experiment: { id: 123, name: "homepage_hero" },
     });
-    expect(event.variant.public_id).toBe(variantOf(homepageExperiment, 'visitor-7'));
+    expect(event.variant.public_id).toBe(variantOf(homepageExperiment, "visitor-7"));
   });
 
-  it('round-trips a createEvent payload through send', async () => {
+  it("round-trips a createEvent payload through send", async () => {
     const sink = createSink();
     const config = { experiments: [homepageExperiment], adapters: [sink.adapter] };
 
     // Render: embed the payload for a beacon.
     const render = createExperiments(config);
-    const payload = render.createEvent('signup', render.assignments('visitor-7')[0]);
+    const payload = render.createEvent("signup", render.assignments("visitor-7")[0]);
     const serialized = JSON.stringify(payload);
     // Endpoint: forward exactly what the browser sent.
     await createExperiments(config).send(JSON.parse(serialized) as ExperimentEvent);
 
-    expect(sink.ofType('conversion')).toHaveLength(1);
-    expect(sink.ofType('conversion')[0]).toEqual(payload);
+    expect(sink.ofType("conversion")).toHaveLength(1);
+    expect(sink.ofType("conversion")[0]).toEqual(payload);
   });
 
-  it('accepts a defineGoal declaration and applies call-site overrides', () => {
-    const signup = defineGoal({ name: 'signup', props: { source: 'hero' } });
+  it("accepts a defineGoal declaration and applies call-site overrides", () => {
+    const signup = defineGoal({ name: "signup", props: { source: "hero" } });
     const experiments = createExperiments({ experiments: [homepageExperiment] });
-    const [assignment] = experiments.assignments('visitor-7');
+    const [assignment] = experiments.assignments("visitor-7");
 
     const defaults = experiments.createEvent(signup, assignment);
-    const overridden = experiments.createEvent(signup, assignment, { props: { source: 'footer' }, value: 100 });
+    const overridden = experiments.createEvent(signup, assignment, {
+      props: { source: "footer" },
+      value: 100,
+    });
 
-    expect(defaults).toMatchObject({ name: 'signup', props: { source: 'hero' } });
+    expect(defaults).toMatchObject({ name: "signup", props: { source: "hero" } });
     expect(defaults.value).toBeUndefined();
-    expect(overridden).toMatchObject({ name: 'signup', props: { source: 'footer' }, value: 100 });
+    expect(overridden).toMatchObject({ name: "signup", props: { source: "footer" }, value: 100 });
   });
 
-  it('reuses one declaration across track and createEvent', async () => {
+  it("reuses one declaration across track and createEvent", async () => {
     const sink = createSink();
-    const purchase = defineGoal({ name: 'purchase', value: 1000 });
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const purchase = defineGoal({ name: "purchase", value: 1000 });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    await experiments.track(purchase, 'visitor-7');
-    const built = experiments.createEvent(purchase, experiments.assignments('visitor-7')[0]);
+    await experiments.track(purchase, "visitor-7");
+    const built = experiments.createEvent(purchase, experiments.assignments("visitor-7")[0]);
 
-    expect(sink.ofType('conversion')[0]).toEqual(built);
+    expect(sink.ofType("conversion")[0]).toEqual(built);
   });
 
-  it('bare createConversion builds the same event without the factory', () => {
+  it("bare createConversion builds the same event without the factory", () => {
     const experiments = createExperiments({ experiments: [homepageExperiment] });
-    const [assignment] = experiments.assignments('visitor-7');
+    const [assignment] = experiments.assignments("visitor-7");
 
-    expect(createConversion({ assignment, goal: 'signup', value: 4900 })).toEqual(
-      experiments.createEvent('signup', assignment, { value: 4900 }),
+    expect(createConversion({ assignment, goal: "signup", value: 4900 })).toEqual(
+      experiments.createEvent("signup", assignment, { value: 4900 }),
     );
   });
 });
 
-describe('scenario: scoping and deduplicating conversions', () => {
-  it('reports one assignment per running experiment, firing nothing', () => {
+describe("scenario: scoping and deduplicating conversions", () => {
+  it("reports one assignment per running experiment, firing nothing", () => {
     const sink = createSink();
     const experiments = createExperiments({
       experiments: [homepageExperiment, pricingExperiment],
       adapters: [sink.adapter],
     });
 
-    const assignments = experiments.assignments('visitor-7');
+    const assignments = experiments.assignments("visitor-7");
 
-    expect(assignments.map(assignment => assignment.experiment.id)).toEqual([123, 456]);
-    expect(assignments.map(assignment => assignment.visitorId)).toEqual(['visitor-7', 'visitor-7']);
+    expect(assignments.map((assignment) => assignment.experiment.id)).toEqual([123, 456]);
+    expect(assignments.map((assignment) => assignment.visitorId)).toEqual([
+      "visitor-7",
+      "visitor-7",
+    ]);
     expect(sink.events).toHaveLength(0);
   });
 
-  it('records only the experiments left after the caller filters', async () => {
+  it("records only the experiments left after the caller filters", async () => {
     const sink = createSink();
     const experiments = createExperiments({
       experiments: [homepageExperiment, pricingExperiment],
@@ -285,74 +328,84 @@ describe('scenario: scoping and deduplicating conversions', () => {
     // The shape an app uses to honor a per-visitor cookie, or to scope the goal
     // to one experiment: filter the assignments, then build and send only those.
     const scoped = experiments
-      .assignments('visitor-7')
-      .filter(assignment => assignment.experiment.id === pricingExperiment.id);
-    await Promise.all(scoped.map(assignment => experiments.send(experiments.createEvent('signup', assignment))));
+      .assignments("visitor-7")
+      .filter((assignment) => assignment.experiment.id === pricingExperiment.id);
+    await Promise.all(
+      scoped.map((assignment) => experiments.send(experiments.createEvent("signup", assignment))),
+    );
 
-    expect(sink.ofType('conversion')).toHaveLength(1);
-    expect(sink.ofType('conversion')[0].experiment.id).toBe(456);
+    expect(sink.ofType("conversion")).toHaveLength(1);
+    expect(sink.ofType("conversion")[0].experiment.id).toBe(456);
   });
 
-  it('reports no assignments for a visitor with no running experiments', () => {
+  it("reports no assignments for a visitor with no running experiments", () => {
     const experiments = createExperiments({ experiments: [] });
 
-    expect(experiments.assignments('visitor-7')).toEqual([]);
+    expect(experiments.assignments("visitor-7")).toEqual([]);
   });
 });
 
-describe('scenario: multiple running experiments', () => {
-  it('records one conversion per experiment the visitor is bucketed into', async () => {
+describe("scenario: multiple running experiments", () => {
+  it("records one conversion per experiment the visitor is bucketed into", async () => {
     const sink = createSink();
     const experiments = createExperiments({
       experiments: [homepageExperiment, pricingExperiment],
       adapters: [sink.adapter],
     });
 
-    await experiments.track('signup', 'visitor-7');
+    await experiments.track("signup", "visitor-7");
 
     // Deliberate: a conversion is recorded against every assignment, not only
     // the experiment whose slug was rendered. The sink joins on visitorId to
     // decide which of these had a matching exposure.
-    expect(sink.ofType('conversion').map(event => event.experiment.id).sort()).toEqual([123, 456]);
-    for (const event of sink.ofType('conversion')) {
-      expect(event.visitorId).toBe('visitor-7');
+    expect(
+      sink
+        .ofType("conversion")
+        .map((event) => event.experiment.id)
+        .sort(),
+    ).toEqual([123, 456]);
+    for (const event of sink.ofType("conversion")) {
+      expect(event.visitorId).toBe("visitor-7");
     }
   });
 
-  it('exposes only the experiment matching the rendered slug', () => {
+  it("exposes only the experiment matching the rendered slug", () => {
     const sink = createSink();
     const experiments = createExperiments({
       experiments: [homepageExperiment, pricingExperiment],
       adapters: [sink.adapter],
     });
 
-    experiments.resolveExperiment({ slug: 'pricing', visitorId: 'visitor-7' });
+    experiments.resolveExperiment({ slug: "pricing", visitorId: "visitor-7" });
 
-    expect(sink.ofType('exposure')).toHaveLength(1);
-    expect(sink.ofType('exposure')[0].experiment.id).toBe(456);
+    expect(sink.ofType("exposure")).toHaveLength(1);
+    expect(sink.ofType("exposure")[0].experiment.id).toBe(456);
   });
 });
 
-describe('scenario: repeated resolves are not deduplicated', () => {
-  it('fires one exposure per resolve, leaving dedupe to the sink', () => {
+describe("scenario: repeated resolves are not deduplicated", () => {
+  it("fires one exposure per resolve, leaving dedupe to the sink", () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
     // A layout and a page both resolving, or a reload: the package does not
     // remember what it already sent, so both are delivered. visitorId on the
     // event is what makes sink-side dedupe possible.
-    experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
-    experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
+    experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
+    experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
 
-    const exposures = sink.ofType('exposure');
+    const exposures = sink.ofType("exposure");
     expect(exposures).toHaveLength(2);
-    const deduped = new Set(exposures.map(event => `${event.visitorId}:${event.experiment.id}`));
+    const deduped = new Set(exposures.map((event) => `${event.visitorId}:${event.experiment.id}`));
     expect(deduped.size).toBe(1);
   });
 });
 
-describe('scenario: serverless delivery lifetime', () => {
-  it('track resolves only after an async adapter settles', async () => {
+describe("scenario: serverless delivery lifetime", () => {
+  it("track resolves only after an async adapter settles", async () => {
     let delivered = false;
     let release: () => void;
     const delivery = new Promise<void>((resolve) => {
@@ -360,10 +413,15 @@ describe('scenario: serverless delivery lifetime', () => {
     });
     const experiments = createExperiments({
       experiments: [homepageExperiment],
-      adapters: [() => delivery.then(() => { delivered = true; })],
+      adapters: [
+        () =>
+          delivery.then(() => {
+            delivered = true;
+          }),
+      ],
     });
 
-    const tracked = experiments.track('signup', 'visitor-7');
+    const tracked = experiments.track("signup", "visitor-7");
     expect(delivered).toBe(false);
 
     release!();
@@ -371,7 +429,7 @@ describe('scenario: serverless delivery lifetime', () => {
     expect(delivered).toBe(true);
   });
 
-  it('exposes the exposure delivery as a promise the host can hand to waitUntil', async () => {
+  it("exposes the exposure delivery as a promise the host can hand to waitUntil", async () => {
     let delivered = false;
     let release: () => void;
     const delivery = new Promise<void>((resolve) => {
@@ -379,10 +437,18 @@ describe('scenario: serverless delivery lifetime', () => {
     });
     const experiments = createExperiments({
       experiments: [homepageExperiment],
-      adapters: [() => delivery.then(() => { delivered = true; })],
+      adapters: [
+        () =>
+          delivery.then(() => {
+            delivered = true;
+          }),
+      ],
     });
 
-    const { delivered: pending } = experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
+    const { delivered: pending } = experiments.resolveExperiment({
+      slug: "home",
+      visitorId: "visitor-7",
+    });
     expect(delivered).toBe(false);
 
     release!();
@@ -390,15 +456,18 @@ describe('scenario: serverless delivery lifetime', () => {
     expect(delivered).toBe(true);
   });
 
-  it('resolves delivered immediately when no exposure was fired', async () => {
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [() => Promise.resolve()] });
+  it("resolves delivered immediately when no exposure was fired", async () => {
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [() => Promise.resolve()],
+    });
 
-    const { delivered } = experiments.resolveExperiment({ slug: 'about', visitorId: 'visitor-7' });
+    const { delivered } = experiments.resolveExperiment({ slug: "about", visitorId: "visitor-7" });
 
     await expect(delivered).resolves.toBeUndefined();
   });
 
-  it('still hands deliveries to a construction-time waitUntil', async () => {
+  it("still hands deliveries to a construction-time waitUntil", async () => {
     const waitUntil = vi.fn();
     const experiments = createExperiments({
       experiments: [homepageExperiment],
@@ -406,164 +475,188 @@ describe('scenario: serverless delivery lifetime', () => {
       waitUntil,
     });
 
-    await experiments.track('signup', 'visitor-7');
+    await experiments.track("signup", "visitor-7");
 
     expect(waitUntil).toHaveBeenCalledTimes(1);
   });
 
-  it('never rejects when an adapter fails, routing to onError instead', async () => {
+  it("never rejects when an adapter fails, routing to onError instead", async () => {
     const onError = vi.fn();
-    const boom = new Error('sink down');
+    const boom = new Error("sink down");
     const experiments = createExperiments({
       experiments: [homepageExperiment],
       adapters: [() => Promise.reject(boom)],
       onError,
     });
 
-    await expect(experiments.track('signup', 'visitor-7')).resolves.toBeUndefined();
-    const { delivered } = experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
+    await expect(experiments.track("signup", "visitor-7")).resolves.toBeUndefined();
+    const { delivered } = experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
     await expect(delivered).resolves.toBeUndefined();
-    expect(onError).toHaveBeenCalledWith(boom, expect.objectContaining({ type: 'conversion' }));
-    expect(onError).toHaveBeenCalledWith(boom, expect.objectContaining({ type: 'exposure' }));
+    expect(onError).toHaveBeenCalledWith(boom, expect.objectContaining({ type: "conversion" }));
+    expect(onError).toHaveBeenCalledWith(boom, expect.objectContaining({ type: "exposure" }));
   });
 
-  it('never rejects from send when an adapter throws synchronously', async () => {
+  it("never rejects from send when an adapter throws synchronously", async () => {
     const onError = vi.fn();
     const experiments = createExperiments({
       experiments: [homepageExperiment],
-      adapters: [() => { throw new Error('sink down'); }],
+      adapters: [
+        () => {
+          throw new Error("sink down");
+        },
+      ],
       onError,
     });
 
-    const event = experiments.createEvent('signup', experiments.assignments('visitor-7')[0]);
+    const event = experiments.createEvent("signup", experiments.assignments("visitor-7")[0]);
     await expect(experiments.send(event)).resolves.toBeUndefined();
     expect(onError).toHaveBeenCalledTimes(1);
   });
 });
 
-describe('scenario: 1.x callers keep working', () => {
-  it('supports the deprecated props-only track after a same-instance resolve', async () => {
+describe("scenario: 1.x callers keep working", () => {
+  it("supports the deprecated props-only track after a same-instance resolve", async () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
-    await experiments.track('signup', { plan: 'pro' });
+    experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
+    await experiments.track("signup", { plan: "pro" });
 
-    expect(sink.ofType('conversion')[0]).toMatchObject({
-      name: 'signup',
-      props: { plan: 'pro' },
-      visitorId: 'visitor-7',
+    expect(sink.ofType("conversion")[0]).toMatchObject({
+      name: "signup",
+      props: { plan: "pro" },
+      visitorId: "visitor-7",
     });
   });
 
-  it('supports the deprecated no-argument track', async () => {
+  it("supports the deprecated no-argument track", async () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
-    await experiments.track('signup');
+    experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
+    await experiments.track("signup");
 
-    expect(sink.ofType('conversion')).toHaveLength(1);
-    expect(sink.ofType('conversion')[0].props).toBeUndefined();
+    expect(sink.ofType("conversion")).toHaveLength(1);
+    expect(sink.ofType("conversion")[0].props).toBeUndefined();
   });
 
-  it('records nothing on the deprecated path when no resolve happened', async () => {
+  it("records nothing on the deprecated path when no resolve happened", async () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    await experiments.track('signup', { plan: 'pro' });
+    await experiments.track("signup", { plan: "pro" });
 
     expect(sink.events).toHaveLength(0);
   });
 
-  it('treats a props bag containing visitorId as props, not as the new shape', async () => {
+  it("treats a props bag containing visitorId as props, not as the new shape", async () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: 'real-visitor' });
+    experiments.resolveExperiment({ slug: "home", visitorId: "real-visitor" });
     // The exact call the 1.x workaround produced. Discriminating on the presence
     // of a `visitorId` key would silently reinterpret this; discriminating on
     // `typeof` cannot.
-    await experiments.track('signup', { visitorId: 'prop-value' });
+    await experiments.track("signup", { visitorId: "prop-value" });
 
-    const [conversion] = sink.ofType('conversion');
-    expect(conversion.props).toEqual({ visitorId: 'prop-value' });
-    expect(conversion.visitorId).toBe('real-visitor');
+    const [conversion] = sink.ofType("conversion");
+    expect(conversion.props).toEqual({ visitorId: "prop-value" });
+    expect(conversion.visitorId).toBe("real-visitor");
   });
 
-  it('does not leak assignments from the deprecated path across visitors', async () => {
+  it("does not leak assignments from the deprecated path across visitors", async () => {
     const sink = createSink();
     const [visitorA, visitorB] = visitorsWithDifferentVariants(homepageExperiment);
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: visitorA });
+    experiments.resolveExperiment({ slug: "home", visitorId: visitorA });
     // Explicit visitorId must win over whatever the instance remembered.
-    await experiments.track('signup', visitorB);
+    await experiments.track("signup", visitorB);
 
-    const [conversion] = sink.ofType('conversion');
+    const [conversion] = sink.ofType("conversion");
     expect(conversion.visitorId).toBe(visitorB);
     expect(conversion.variant.public_id).toBe(variantOf(homepageExperiment, visitorB));
   });
 });
 
-describe('scenario: a visitorId that went missing', () => {
+describe("scenario: a visitorId that went missing", () => {
   /**
    * The failure mode this guards: `track(goal, cookies.get('sb_vid')?.value)` on
    * an instance shared across requests. Without the guard the undefined falls
    * through to the deprecated path and the conversion is attributed to whichever
    * visitor happened to resolve last — wrong, and invisible in the sink.
    */
-  it('refuses an undefined second argument instead of attributing it to the last visitor', () => {
+  it("refuses an undefined second argument instead of attributing it to the last visitor", () => {
     const sink = createSink();
     const [visitorA] = visitorsWithDifferentVariants(homepageExperiment);
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: visitorA });
+    experiments.resolveExperiment({ slug: "home", visitorId: visitorA });
 
-    expect(() => experiments.track('signup', undefined)).toThrow(TypeError);
-    expect(sink.ofType('conversion')).toHaveLength(0);
+    expect(() => experiments.track("signup", undefined)).toThrow(TypeError);
+    expect(sink.ofType("conversion")).toHaveLength(0);
   });
 
-  it('throws synchronously so an un-awaited call cannot become an unhandled rejection', () => {
+  it("throws synchronously so an un-awaited call cannot become an unhandled rejection", () => {
     const experiments = createExperiments({ experiments: [homepageExperiment] });
 
     // `track` promises never to reject, so misuse has to surface at the call site
     // rather than on a floating promise nobody is holding.
     let thrown: unknown;
     try {
-      void experiments.track('signup', undefined);
-    }
-    catch (error) {
+      void experiments.track("signup", undefined);
+    } catch (error) {
       thrown = error;
     }
 
     expect(thrown).toBeInstanceOf(TypeError);
   });
 
-  it('names both ways out', () => {
+  it("names both ways out", () => {
     const experiments = createExperiments({ experiments: [homepageExperiment] });
 
-    expect(() => experiments.track('signup', undefined)).toThrow(/track\(goal, visitorId/);
-    expect(() => experiments.track('signup', undefined)).toThrow(/no second argument/);
+    expect(() => experiments.track("signup", undefined)).toThrow(/track\(goal, visitorId/);
+    expect(() => experiments.track("signup", undefined)).toThrow(/no second argument/);
   });
 
-  it('refuses other non-string, non-object second arguments', () => {
+  it("refuses other non-string, non-object second arguments", () => {
     const experiments = createExperiments({ experiments: [homepageExperiment] });
 
     // @ts-expect-error null is not a valid props bag; JS callers can still get here.
-    expect(() => experiments.track('signup', null)).toThrow(/got null/);
+    expect(() => experiments.track("signup", null)).toThrow(/got null/);
     // @ts-expect-error a number is neither a visitorId nor a props bag.
-    expect(() => experiments.track('signup', 42)).toThrow(/got number/);
+    expect(() => experiments.track("signup", 42)).toThrow(/got number/);
   });
 
-  it('still accepts the deprecated call with no second argument at all', async () => {
+  it("still accepts the deprecated call with no second argument at all", async () => {
     const sink = createSink();
-    const experiments = createExperiments({ experiments: [homepageExperiment], adapters: [sink.adapter] });
+    const experiments = createExperiments({
+      experiments: [homepageExperiment],
+      adapters: [sink.adapter],
+    });
 
-    experiments.resolveExperiment({ slug: 'home', visitorId: 'visitor-7' });
+    experiments.resolveExperiment({ slug: "home", visitorId: "visitor-7" });
     // The distinction the guard rests on: omitted is fine, explicitly undefined is not.
-    await expect(experiments.track('signup')).resolves.toBeUndefined();
+    await expect(experiments.track("signup")).resolves.toBeUndefined();
 
-    expect(sink.ofType('conversion')).toHaveLength(1);
+    expect(sink.ofType("conversion")).toHaveLength(1);
   });
 });

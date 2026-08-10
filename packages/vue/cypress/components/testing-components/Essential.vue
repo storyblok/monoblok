@@ -1,6 +1,6 @@
 <script setup>
-import { onMounted } from 'vue';
-import { useStoryblokApi, useStoryblokBridge } from '@storyblok/vue';
+import { onMounted } from "vue";
+import { useStoryblokApi, useStoryblokBridge } from "@storyblok/vue";
 
 const blok = {
   content: {
@@ -13,10 +13,10 @@ const blokProd = {
 };
 
 const storyblokApi = useStoryblokApi();
-const apiExists = !!(storyblokApi && typeof storyblokApi.get === 'function');
+const apiExists = !!(storyblokApi && typeof storyblokApi.get === "function");
 
 // eslint-disable-next-line no-console
-onMounted(() => useStoryblokBridge(12345, () => console.log('hola')));
+onMounted(() => useStoryblokBridge(12345, () => console.log("hola")));
 </script>
 
 <template>

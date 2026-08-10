@@ -1,6 +1,6 @@
-import type { ComponentFolder } from '../../types';
-import { slugify } from '../../utils/format';
-import type { LocalFolder } from './types';
+import type { ComponentFolder } from "../../types";
+import { slugify } from "../../utils/format";
+import type { LocalFolder } from "./types";
 
 /**
  * `schema init` lays remote blocks out into local directories that mirror their
@@ -17,7 +17,7 @@ import type { LocalFolder } from './types';
  * `schema init` to lay blocks out in nested group directories.
  */
 export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, string[]> {
-  const byUuid = new Map(folders.map(folder => [folder.uuid, folder]));
+  const byUuid = new Map(folders.map((folder) => [folder.uuid, folder]));
   const cache = new Map<string, string[]>();
 
   // `visited` tracks the groups in the current upward walk so a self-referential
@@ -26,19 +26,29 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
   // treated as a path root. (The `cache` can't guard this: it's only populated
   // after the recursive call returns, so it's empty while a cycle is unwinding.)
   function pathFor(uuid: string | null, visited: Set<string>): string[] {
-    if (!uuid) { return []; }
+    if (!uuid) {
+      return [];
+    }
     const cached = cache.get(uuid);
-    if (cached) { return cached; }
+    if (cached) {
+      return cached;
+    }
     const folder = byUuid.get(uuid);
-    if (!folder) { return []; }
-    if (visited.has(uuid)) { return []; }
+    if (!folder) {
+      return [];
+    }
+    if (visited.has(uuid)) {
+      return [];
+    }
     visited.add(uuid);
     const path = [...pathFor(folder.parent_uuid, visited), slugify(folder.name)];
     cache.set(uuid, path);
     return path;
   }
 
-  for (const folder of folders) { pathFor(folder.uuid, new Set()); }
+  for (const folder of folders) {
+    pathFor(folder.uuid, new Set());
+  }
   return cache;
 }
 
@@ -58,7 +68,11 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
  * helper to avoid a runtime dependency on `@storyblok/schema`.)
  */
 export function slugifyPath(displayPath: string): string {
-  return displayPath.split('/').map(segment => slugify(segment)).filter(Boolean).join('/');
+  return displayPath
+    .split("/")
+    .map((segment) => slugify(segment))
+    .filter(Boolean)
+    .join("/");
 }
 
 /**
@@ -71,9 +85,9 @@ export function slugifyPath(displayPath: string): string {
  */
 export function expandFolderPath(displayPath: string): LocalFolder[] {
   const segments = displayPath
-    .split('/')
-    .map(segment => ({ name: segment, slug: slugify(segment) }))
-    .filter(segment => segment.slug !== '');
+    .split("/")
+    .map((segment) => ({ name: segment, slug: slugify(segment) }))
+    .filter((segment) => segment.slug !== "");
   const result: LocalFolder[] = [];
   let parentPath: string | null = null;
   for (const { name, slug } of segments) {

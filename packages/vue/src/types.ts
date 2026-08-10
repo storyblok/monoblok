@@ -1,8 +1,8 @@
-import type { SbSDKOptions } from '@storyblok/js';
-import type StoryblokComponent from './components/StoryblokComponent.vue';
-import type { Directive } from 'vue';
+import type { SbSDKOptions } from "@storyblok/js";
+import type StoryblokComponent from "./components/StoryblokComponent.vue";
+import type { Directive } from "vue";
 
-declare module 'vue' {
+declare module "vue" {
   export interface GlobalComponents {
     StoryblokComponent: typeof StoryblokComponent;
   }
@@ -36,7 +36,7 @@ export type {
   StoryblokBridgeV2,
   StoryblokClient,
   StoryblokComponentType,
-} from '@storyblok/js';
+} from "@storyblok/js";
 
 export interface SbVueSDKOptions extends SbSDKOptions {
   /**

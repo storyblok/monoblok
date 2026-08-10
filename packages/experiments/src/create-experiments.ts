@@ -1,9 +1,17 @@
-import type { ConversionGoal } from './define-goal';
-import type { Adapter, Assignment, Conversion, Experiment, ExperimentEvent, ExperimentVariant, Exposure } from './types';
-import { assignVariant } from './assign-variant';
-import { createConversion } from './create-conversion';
-import { findExperimentBySlug } from './find-experiment-by-slug';
-import { resolveExperiment } from './resolve-experiment';
+import type { ConversionGoal } from "./define-goal";
+import type {
+  Adapter,
+  Assignment,
+  Conversion,
+  Experiment,
+  ExperimentEvent,
+  ExperimentVariant,
+  Exposure,
+} from "./types";
+import { assignVariant } from "./assign-variant";
+import { createConversion } from "./create-conversion";
+import { findExperimentBySlug } from "./find-experiment-by-slug";
+import { resolveExperiment } from "./resolve-experiment";
 
 export interface CreateExperimentsOptions {
   experiments: Experiment[];
@@ -129,7 +137,11 @@ export interface Experiments {
    * Get the assignment from `assignments`, or from `assignVariant` when you
    * already hold the experiment.
    */
-  createEvent: (goal: string | ConversionGoal, assignment: Assignment, options?: TrackOptions) => Conversion;
+  createEvent: (
+    goal: string | ConversionGoal,
+    assignment: Assignment,
+    options?: TrackOptions,
+  ) => Conversion;
   /**
    * Delivers an already-built event through the configured adapters. Use it to
    * forward an event that arrived from the browser, or to fire an exposure that
@@ -150,7 +162,12 @@ export interface Experiments {
 }
 
 function isThenable(value: unknown): value is PromiseLike<unknown> {
-  return typeof value === 'object' && value !== null && 'then' in value && typeof value.then === 'function';
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "then" in value &&
+    typeof value.then === "function"
+  );
 }
 
 /**
@@ -178,7 +195,12 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
  * across requests. The bare `assignVariant` / `resolveExperiment` functions stay
  * available for full control.
  */
-export function createExperiments({ experiments, adapters = [], onError, waitUntil }: CreateExperimentsOptions): Experiments {
+export function createExperiments({
+  experiments,
+  adapters = [],
+  onError,
+  waitUntil,
+}: CreateExperimentsOptions): Experiments {
   // Async deliveries still in flight, so flush() can await them.
   const pending = new Set<Promise<void>>();
 
@@ -205,15 +227,16 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
         if (isThenable(result)) {
           const delivery = Promise.resolve(result).then(
             () => undefined,
-            (error) => { onError?.(error, event); },
+            (error) => {
+              onError?.(error, event);
+            },
           );
           pending.add(delivery);
           delivery.then(() => pending.delete(delivery));
           waitUntil?.(delivery);
           settled.push(delivery);
         }
-      }
-      catch (error) {
+      } catch (error) {
         onError?.(error, event);
       }
     }
@@ -226,14 +249,15 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
 
   const assignments = (visitorId: string): Assignment[] =>
     experiments
-      .map(experiment => assignVariant({ experiment, visitorId }))
+      .map((experiment) => assignVariant({ experiment, visitorId }))
       .filter((assignment): assignment is Assignment => assignment !== undefined);
 
   const createEvent = (
     goal: string | ConversionGoal,
     assignment: Assignment,
     options: TrackOptions = {},
-  ): Conversion => createConversion({ assignment, goal, value: options.value, props: options.props });
+  ): Conversion =>
+    createConversion({ assignment, goal, value: options.value, props: options.props });
 
   // Not `async`: a bad argument throws synchronously, so it surfaces at the call
   // site instead of becoming a rejected promise. `track` promises never to
@@ -247,8 +271,10 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
     // deprecated props bag. Discriminating on `typeof` rather than on a
     // `visitorId` key matters: `track('signup', { visitorId })` was a real 1.x
     // call, and key-sniffing would silently reinterpret it as the new shape.
-    if (typeof visitorIdOrProps === 'string') {
-      return sendAll(assignments(visitorIdOrProps).map(assignment => createEvent(goal, assignment, options)));
+    if (typeof visitorIdOrProps === "string") {
+      return sendAll(
+        assignments(visitorIdOrProps).map((assignment) => createEvent(goal, assignment, options)),
+      );
     }
 
     // A second argument that was passed but is neither a visitorId nor a props
@@ -265,15 +291,20 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
     // a default parameter value is applied to an explicitly passed `undefined`
     // too, so the two are indistinguishable by value.
     const secondArgumentPassed = arguments.length > 1;
-    if (secondArgumentPassed && (visitorIdOrProps === null || typeof visitorIdOrProps !== 'object')) {
+    if (
+      secondArgumentPassed &&
+      (visitorIdOrProps === null || typeof visitorIdOrProps !== "object")
+    ) {
       throw new TypeError(
-        `track: the second argument must be a visitorId string or a props object, got ${visitorIdOrProps === null ? 'null' : typeof visitorIdOrProps}. `
-        + 'Pass the visitor explicitly as `track(goal, visitorId, { props })`, or call `track(goal)` with no second argument to keep the deprecated behavior.',
+        `track: the second argument must be a visitorId string or a props object, got ${visitorIdOrProps === null ? "null" : typeof visitorIdOrProps}. ` +
+          "Pass the visitor explicitly as `track(goal, visitorId, { props })`, or call `track(goal)` with no second argument to keep the deprecated behavior.",
       );
     }
 
     return sendAll(
-      [...rememberedAssignments.values()].map(assignment => createEvent(goal, assignment, { props: visitorIdOrProps ?? undefined })),
+      [...rememberedAssignments.values()].map((assignment) =>
+        createEvent(goal, assignment, { props: visitorIdOrProps ?? undefined }),
+      ),
     );
   }
 
@@ -291,8 +322,14 @@ export function createExperiments({ experiments, adapters = [], onError, waitUnt
       rememberedAssignments.set(experiment.id, assignment);
 
       const resolved = resolveExperiment({ experiments: [experiment], slug, assignment });
-      const delivered = resolved.exposure && fireExposure ? send(resolved.exposure) : Promise.resolve();
-      return { slug: resolved.slug, variant: resolved.variant, exposure: resolved.exposure, delivered };
+      const delivered =
+        resolved.exposure && fireExposure ? send(resolved.exposure) : Promise.resolve();
+      return {
+        slug: resolved.slug,
+        variant: resolved.variant,
+        exposure: resolved.exposure,
+        delivered,
+      };
     },
 
     track,

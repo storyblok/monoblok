@@ -1,26 +1,39 @@
 {
   "name": "@storyblok/experiments",
-  "type": "module",
   "version": "1.2.0",
   "private": false,
   "description": "Runtime A/B testing utilities for the Storyblok experiments API",
-  "author": "Storyblok",
-  "license": "MIT",
-  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/experiments#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/storyblok/monoblok.git",
-    "directory": "packages/experiments"
-  },
-  "bugs": {
-    "url": "https://github.com/storyblok/monoblok/issues"
-  },
   "keywords": [
     "ab-testing",
     "experiments",
     "storyblok"
   ],
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/experiments#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
+    "directory": "packages/experiments"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
   "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "typesVersions": {
+    "*": {
+      "adapters": [
+        "./dist/adapters.d.cts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -32,19 +45,6 @@
     },
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
-  "typesVersions": {
-    "*": {
-      "adapters": [
-        "./dist/adapters.d.cts"
-      ]
-    }
-  },
-  "files": [
-    "dist"
-  ],
   "publishConfig": {
     "access": "public"
   },
@@ -61,6 +61,18 @@
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
     "test:coverage": "vp test run --coverage"
+  },
+  "devDependencies": {
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/lint-config": "workspace:*",
+    "@storyblok/management-api-client": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
+    "@types/node": "^24.11.0",
+    "dotenv": "^17.3.1",
+    "msw": "^2.12.9",
+    "oxlint": "1.76.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   },
   "nx": {
     "targets": {
@@ -79,17 +91,5 @@
         ]
       }
     }
-  },
-  "devDependencies": {
-    "@storyblok/api-client": "workspace:*",
-    "@storyblok/lint-config": "workspace:*",
-    "@storyblok/management-api-client": "workspace:*",
-    "@storyblok/openapi-codegen": "workspace:*",
-    "@types/node": "^24.11.0",
-    "dotenv": "^17.3.1",
-    "msw": "^2.12.9",
-    "oxlint": "1.76.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
   }
 }

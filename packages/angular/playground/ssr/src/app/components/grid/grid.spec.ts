@@ -1,8 +1,8 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from "@angular/core/testing";
 
-import { GridComponent } from './grid';
+import { GridComponent } from "./grid";
 
-describe('GridComponent', () => {
+describe("GridComponent", () => {
   let component: GridComponent;
   let fixture: ComponentFixture<GridComponent>;
 
@@ -13,11 +13,11 @@ describe('GridComponent', () => {
 
     fixture = TestBed.createComponent(GridComponent);
     component = fixture.componentInstance;
-    fixture.componentRef.setInput('blok', { _uid: 'test', component: 'grid' });
+    fixture.componentRef.setInput("blok", { _uid: "test", component: "grid" });
     await fixture.whenStable();
   });
 
-  it('should create', () => {
+  it("should create", () => {
     expect(component).toBeTruthy();
   });
 });

@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-import throttledQueue from './throttlePromise';
+import { describe, expect, it, vi } from "vitest";
+import throttledQueue from "./throttlePromise";
 
-describe('throttledQueue (per-second rate limiter)', () => {
-  it('allows up to `limit` calls to start within a rolling interval', async () => {
+describe("throttledQueue (per-second rate limiter)", () => {
+  it("allows up to `limit` calls to start within a rolling interval", async () => {
     vi.useFakeTimers();
     try {
       const fn = vi.fn(async (i: number) => i);
@@ -22,13 +22,12 @@ describe('throttledQueue (per-second rate limiter)', () => {
 
       await vi.advanceTimersByTimeAsync(1000);
       expect(fn).toHaveBeenCalledTimes(7);
-    }
-    finally {
+    } finally {
       vi.useRealTimers();
     }
   });
 
-  it('eventually resolves every call with its own result under sustained load', async () => {
+  it("eventually resolves every call with its own result under sustained load", async () => {
     vi.useFakeTimers();
     try {
       const fn = vi.fn(async (i: number) => i);
@@ -39,19 +38,19 @@ describe('throttledQueue (per-second rate limiter)', () => {
         throttled(i).then((value) => {
           results.push(value as number);
           return value;
-        }));
+        }),
+      );
 
       await vi.advanceTimersByTimeAsync(3000);
       await Promise.all(promises);
 
       expect(results.slice().sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
-    }
-    finally {
+    } finally {
       vi.useRealTimers();
     }
   });
 
-  it('does not leak state across requests spaced beyond the window (Cloudflare Workers regression #533)', async () => {
+  it("does not leak state across requests spaced beyond the window (Cloudflare Workers regression #533)", async () => {
     // On Cloudflare Workers the isolate can suspend between requests and drop
     // pending timers. A limiter that released its slots from such a timer would
     // leak its in-flight count across requests and eventually deadlock. This
@@ -70,13 +69,12 @@ describe('throttledQueue (per-second rate limiter)', () => {
         await pending;
         await vi.advanceTimersByTimeAsync(1000); // let the window clear
       }
-    }
-    finally {
+    } finally {
       vi.useRealTimers();
     }
   });
 
-  it('rejects pending calls with an AbortError when aborted; in-flight calls still settle', async () => {
+  it("rejects pending calls with an AbortError when aborted; in-flight calls still settle", async () => {
     vi.useFakeTimers();
     try {
       const fn = vi.fn(async (i: number) => i);
@@ -89,34 +87,29 @@ describe('throttledQueue (per-second rate limiter)', () => {
       throttled.abort?.();
 
       await expect(pending).rejects.toBeInstanceOf(Error);
-      await expect(pending).rejects.toHaveProperty('name', 'AbortError');
+      await expect(pending).rejects.toHaveProperty("name", "AbortError");
       await expect(inFlight).resolves.toBe(0);
-    }
-    finally {
+    } finally {
       vi.useRealTimers();
     }
   });
 
-  it('does not throttle when the limit is non-positive or infinite', async () => {
+  it("does not throttle when the limit is non-positive or infinite", async () => {
     const fn = vi.fn(async (i: number) => i);
 
     for (const limit of [0, Number.POSITIVE_INFINITY]) {
       const throttled = throttledQueue(fn, limit, 1000);
-      const results = await Promise.all(
-        Array.from({ length: 5 }, (_, i) => throttled(i)),
-      );
+      const results = await Promise.all(Array.from({ length: 5 }, (_, i) => throttled(i)));
       expect(results).toEqual([0, 1, 2, 3, 4]);
     }
   });
 
-  it('does not throttle when the interval is non-positive or non-finite', async () => {
+  it("does not throttle when the interval is non-positive or non-finite", async () => {
     const fn = vi.fn(async (i: number) => i);
 
     for (const interval of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
       const throttled = throttledQueue(fn, 2, interval);
-      const results = await Promise.all(
-        Array.from({ length: 5 }, (_, i) => throttled(i)),
-      );
+      const results = await Promise.all(Array.from({ length: 5 }, (_, i) => throttled(i)));
       expect(results).toEqual([0, 1, 2, 3, 4]);
     }
   });

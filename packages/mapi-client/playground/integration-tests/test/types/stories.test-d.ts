@@ -1,60 +1,66 @@
-import { defineBlock, defineField, defineSchema, type Schema as InferSchema } from '@storyblok/schema';
-import { storyblokColorField } from '@storyblok/schema/field-plugins';
-import { createManagementApiClient, type PluginFieldValue, type Story as StoryMapi } from '@storyblok/management-api-client';
-import { describe, expectTypeOf, it } from 'vitest';
+import {
+  defineBlock,
+  defineField,
+  defineSchema,
+  type Schema as InferSchema,
+} from "@storyblok/schema";
+import { storyblokColorField } from "@storyblok/schema/field-plugins";
+import {
+  createManagementApiClient,
+  type PluginFieldValue,
+  type Story as StoryMapi,
+} from "@storyblok/management-api-client";
+import { describe, expectTypeOf, it } from "vitest";
 
 // Nestable block — not a root story type
 const teaserComponent = defineBlock({
-  name: 'teaser',
-  fields: [
-    defineField('text', { type: 'text' }),
-    defineField('image', { type: 'asset' }),
-  ],
+  name: "teaser",
+  fields: [defineField("text", { type: "text" }), defineField("image", { type: "asset" })],
   id: 0,
-  created_at: '',
-  updated_at: '',
+  created_at: "",
+  updated_at: "",
 });
 
 // Root content type that is also nestable (can appear as both a story and inside bloks)
 const heroComponent = defineBlock({
-  name: 'hero',
+  name: "hero",
   is_root: true,
   fields: [
-    defineField('title', { type: 'text' }),
-    defineField('count', { type: 'number' }),
+    defineField("title", { type: "text" }),
+    defineField("count", { type: "number" }),
     // bloks field without a whitelist — resolves to nestable components only
-    defineField('sections', { type: 'bloks' }),
+    defineField("sections", { type: "bloks" }),
   ],
   id: 0,
-  created_at: '',
-  updated_at: '',
+  created_at: "",
+  updated_at: "",
 });
 
 // Root content type, not nestable
 const _pageComponent = defineBlock({
-  name: 'page',
+  name: "page",
   is_root: true,
   is_nestable: false,
   fields: [
-    defineField('headline', { type: 'text' }),
-    defineField('body', { type: 'richtext' }),
-    defineField('teasers', { type: 'bloks', allow: [teaserComponent.name] }),
-    defineField('hero', { type: 'bloks', allow: [heroComponent.name] }),
-    defineField('blocks', { type: 'bloks', allow: [heroComponent.name, teaserComponent.name] }),
+    defineField("headline", { type: "text" }),
+    defineField("body", { type: "richtext" }),
+    defineField("teasers", { type: "bloks", allow: [teaserComponent.name] }),
+    defineField("hero", { type: "bloks", allow: [heroComponent.name] }),
+    defineField("blocks", { type: "bloks", allow: [heroComponent.name, teaserComponent.name] }),
   ],
   id: 0,
-  created_at: '',
-  updated_at: '',
+  created_at: "",
+  updated_at: "",
 });
 
-const CLIENT_CONFIG = { personalAccessToken: 'test-token', spaceId: 12345 };
+const CLIENT_CONFIG = { personalAccessToken: "test-token", spaceId: 12345 };
 
 interface StoryblokTypes {
   components: typeof _pageComponent | typeof heroComponent | typeof teaserComponent;
 }
 
-describe('createManagementApiClient without .withTypes()', () => {
-  it('should return StoryMapi from stories.get()', async () => {
+describe("createManagementApiClient without .withTypes()", () => {
+  it("should return StoryMapi from stories.get()", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG);
     const result = await client.stories.get(123);
     if (result.data) {
@@ -62,7 +68,7 @@ describe('createManagementApiClient without .withTypes()', () => {
     }
   });
 
-  it('should return StoryMapi array from stories.list()', async () => {
+  it("should return StoryMapi array from stories.list()", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG);
     const result = await client.stories.list();
     if (result.data) {
@@ -70,14 +76,14 @@ describe('createManagementApiClient without .withTypes()', () => {
     }
   });
 
-  it('should infer ThrowOnError from config without .withTypes()', async () => {
+  it("should infer ThrowOnError from config without .withTypes()", async () => {
     const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true });
     const result = await client.stories.get(123);
     // ThrowOnError=true means data is always defined (no optional chaining needed)
     expectTypeOf(result.data.story).toEqualTypeOf<StoryMapi | undefined>();
   });
 
-  it('should allow per-call throwOnError override to false', async () => {
+  it("should allow per-call throwOnError override to false", async () => {
     const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true });
     const result = await client.stories.get(123, { throwOnError: false });
     if (result.data) {
@@ -86,200 +92,211 @@ describe('createManagementApiClient without .withTypes()', () => {
   });
 });
 
-describe('createManagementApiClient with .withTypes()', () => {
-  it('should narrow page content fields after component discriminant check on get()', async () => {
+describe("createManagementApiClient with .withTypes()", () => {
+  it("should narrow page content fields after component discriminant check on get()", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
       const story = result.data.story;
-      if (story.content.component === 'page') {
+      if (story.content.component === "page") {
         expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
-        expectTypeOf(story.content.component).toEqualTypeOf<'page'>();
+        expectTypeOf(story.content.component).toEqualTypeOf<"page">();
       }
     }
   });
 
-  it('should narrow hero content fields after component discriminant check on get()', async () => {
+  it("should narrow hero content fields after component discriminant check on get()", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
       const story = result.data.story;
-      if (story.content.component === 'hero') {
+      if (story.content.component === "hero") {
         expectTypeOf(story.content.title).toEqualTypeOf<string | null | undefined>();
         expectTypeOf(story.content.count).toEqualTypeOf<string | null | undefined>();
-        expectTypeOf(story.content.component).toEqualTypeOf<'hero'>();
+        expectTypeOf(story.content.component).toEqualTypeOf<"hero">();
       }
     }
   });
 
-  it('should have union of literal component names on content', async () => {
+  it("should have union of literal component names on content", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
       // Only root components (is_root: true) appear in story content
-      expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
+      expectTypeOf(result.data.story.content.component).toEqualTypeOf<"page" | "hero">();
     }
   });
 
-  it('should narrow discriminated union in stories.list()', async () => {
+  it("should narrow discriminated union in stories.list()", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.list();
     if (result.data?.stories) {
       for (const story of result.data.stories) {
-        if (story.content.component === 'page') {
+        if (story.content.component === "page") {
           expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
         }
-        if (story.content.component === 'hero') {
+        if (story.content.component === "hero") {
           expectTypeOf(story.content.count).toEqualTypeOf<string | null | undefined>();
         }
       }
     }
   });
 
-  it('should narrow bloks field on page to whitelisted component names', async () => {
+  it("should narrow bloks field on page to whitelisted component names", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
       const story = result.data.story;
-      if (story.content.component === 'page') {
+      if (story.content.component === "page") {
         if (story.content.teasers) {
           for (const teaser of story.content.teasers) {
-            expectTypeOf(teaser.component).toEqualTypeOf<'teaser'>();
+            expectTypeOf(teaser.component).toEqualTypeOf<"teaser">();
             expectTypeOf(teaser.text).toEqualTypeOf<string | null | undefined>();
           }
         }
         if (story.content.hero) {
           for (const hero of story.content.hero) {
-            expectTypeOf(hero.component).toEqualTypeOf<'hero'>();
+            expectTypeOf(hero.component).toEqualTypeOf<"hero">();
             expectTypeOf(hero.count).toEqualTypeOf<string | null | undefined>();
           }
         }
         if (story.content.blocks) {
           for (const blok of story.content.blocks) {
             // blocks whitelists both hero and teaser → union of the two
-            expectTypeOf(blok.component).toEqualTypeOf<'hero' | 'teaser'>();
+            expectTypeOf(blok.component).toEqualTypeOf<"hero" | "teaser">();
           }
         }
       }
     }
   });
 
-  it('should fall back to all schema components for bloks field without whitelist', async () => {
+  it("should fall back to all schema components for bloks field without whitelist", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data?.story) {
       const story = result.data.story;
-      if (story.content.component === 'hero' && story.content.sections) {
+      if (story.content.component === "hero" && story.content.sections) {
         // sections has no component_whitelist — falls back to nestable (is_nestable: true)
         // components only; page has is_nestable: false, so it is excluded
         type Sections = typeof story.content.sections;
-        expectTypeOf<Sections[number]['component']>().toEqualTypeOf<'hero' | 'teaser'>();
+        expectTypeOf<Sections[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
       }
     }
   });
 
-  it('should infer ThrowOnError alongside .withTypes()', async () => {
-    const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true }).withTypes<StoryblokTypes>();
+  it("should infer ThrowOnError alongside .withTypes()", async () => {
+    const client = createManagementApiClient({
+      ...CLIENT_CONFIG,
+      throwOnError: true,
+    }).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
     if (result.data.story) {
       // ThrowOnError=true keeps data defined; only root components appear in content
-      expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
+      expectTypeOf(result.data.story.content.component).toEqualTypeOf<"page" | "hero">();
     }
   });
 
-  it('should allow per-call throwOnError override to false alongside .withTypes()', async () => {
-    const client = createManagementApiClient({ ...CLIENT_CONFIG, throwOnError: true }).withTypes<StoryblokTypes>();
+  it("should allow per-call throwOnError override to false alongside .withTypes()", async () => {
+    const client = createManagementApiClient({
+      ...CLIENT_CONFIG,
+      throwOnError: true,
+    }).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123, { throwOnError: false });
     if (result.data?.story) {
-      expectTypeOf(result.data.story.content.component).toEqualTypeOf<'page' | 'hero'>();
+      expectTypeOf(result.data.story.content.component).toEqualTypeOf<"page" | "hero">();
     }
   });
 
-  it('should narrow story in create() response', async () => {
+  it("should narrow story in create() response", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.create({
-      body: { story: { name: 'My Page', content: { component: 'page' } } },
+      body: { story: { name: "My Page", content: { component: "page" } } },
     });
     if (result.data?.story) {
       const story = result.data.story;
-      if (story.content.component === 'page') {
+      if (story.content.component === "page") {
         expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
       }
     }
   });
 
-  it('should narrow story in update() response', async () => {
+  it("should narrow story in update() response", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.update(123, {
-      body: { story: { content: { component: 'hero' } } },
+      body: { story: { content: { component: "hero" } } },
     });
     if (result.data?.story) {
       const story = result.data.story;
-      if (story.content.component === 'hero') {
+      if (story.content.component === "hero") {
         expectTypeOf(story.content.title).toEqualTypeOf<string | null | undefined>();
       }
     }
   });
 
-  it('should narrow create() body story.content to component union', async () => {
+  it("should narrow create() body story.content to component union", async () => {
     const _client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
-    type CreateBodyType = Parameters<typeof _client.stories.create>[0]['body'];
-    type CreateStoryContent = NonNullable<CreateBodyType['story']['content']>;
+    type CreateBodyType = Parameters<typeof _client.stories.create>[0]["body"];
+    type CreateStoryContent = NonNullable<CreateBodyType["story"]["content"]>;
     // The write payload's content discriminant is narrowed to root component names too
-    expectTypeOf<CreateStoryContent['component']>().toEqualTypeOf<'page' | 'hero'>();
+    expectTypeOf<CreateStoryContent["component"]>().toEqualTypeOf<"page" | "hero">();
   });
 
-  it('should narrow update() body story.content to component union', async () => {
+  it("should narrow update() body story.content to component union", async () => {
     const _client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
-    type UpdateBodyType = Parameters<typeof _client.stories.update>[1]['body'];
-    type UpdateStoryContent = NonNullable<UpdateBodyType['story']['content']>;
+    type UpdateBodyType = Parameters<typeof _client.stories.update>[1]["body"];
+    type UpdateStoryContent = NonNullable<UpdateBodyType["story"]["content"]>;
     // update() is the second positional arg (id, body); content discriminant is the root union
-    expectTypeOf<UpdateStoryContent['component']>().toEqualTypeOf<'page' | 'hero'>();
+    expectTypeOf<UpdateStoryContent["component"]>().toEqualTypeOf<"page" | "hero">();
   });
 });
 
-describe('withTypes() write-body narrowing', () => {
-  it('should reject nestable-only component name in create body content', () => {
+describe("withTypes() write-body narrowing", () => {
+  it("should reject nestable-only component name in create body content", () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     client.stories.create({
       // @ts-expect-error: teaser is nestable-only, not a root component
-      body: { story: { name: 'Bad', content: { component: 'teaser' } } },
+      body: { story: { name: "Bad", content: { component: "teaser" } } },
     });
   });
 
-  it('should reject wrong field value type in create body content', () => {
+  it("should reject wrong field value type in create body content", () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     client.stories.create({
-      body: { story: { name: 'Bad', content: {
-        component: 'page',
-        // @ts-expect-error: headline must be string, not number
-        headline: 123,
-      } } },
+      body: {
+        story: {
+          name: "Bad",
+          content: {
+            component: "page",
+            // @ts-expect-error: headline must be string, not number
+            headline: 123,
+          },
+        },
+      },
     });
   });
 
-  it('should return a typed story with content.component as discriminant from stories.get', async () => {
+  it("should return a typed story with content.component as discriminant from stories.get", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<StoryblokTypes>();
     const result = await client.stories.get(123);
 
     if (result.data?.story) {
       const story = result.data.story;
-      expectTypeOf(story.content.component).toEqualTypeOf<'page' | 'hero'>();
+      expectTypeOf(story.content.component).toEqualTypeOf<"page" | "hero">();
 
-      if (story.content.component === 'page') {
+      if (story.content.component === "page") {
         expectTypeOf(story.content.headline).toEqualTypeOf<string | null | undefined>();
       }
     }
   });
 });
 
-describe('createManagementApiClient with .withTypes() — field plugins', () => {
+describe("createManagementApiClient with .withTypes() — field plugins", () => {
   const _themedComponent = defineBlock({
-    name: 'themed',
+    name: "themed",
     is_root: true,
     fields: [
-      defineField('bg', { type: 'custom', field_type: 'storyblok-colorpicker' }),
-      defineField('legacy', { type: 'custom', field_type: 'unregistered-plugin' }),
+      defineField("bg", { type: "custom", field_type: "storyblok-colorpicker" }),
+      defineField("legacy", { type: "custom", field_type: "unregistered-plugin" }),
     ],
   });
   const _schema = defineSchema({
@@ -288,10 +305,10 @@ describe('createManagementApiClient with .withTypes() — field plugins', () => 
   });
   type Schema = InferSchema<typeof _schema>;
 
-  it('resolves a registered custom field to the validator output merged with the plugin envelope', async () => {
+  it("resolves a registered custom field to the validator output merged with the plugin envelope", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<Schema>();
     const result = await client.stories.get(123);
-    if (result.data?.story && result.data.story.content.component === 'themed') {
+    if (result.data?.story && result.data.story.content.component === "themed") {
       expectTypeOf<NonNullable<typeof result.data.story.content.bg>>().toEqualTypeOf<{
         color: string;
         plugin: string;
@@ -300,11 +317,13 @@ describe('createManagementApiClient with .withTypes() — field plugins', () => 
     }
   });
 
-  it('leaves an unregistered custom field as PluginFieldValue', async () => {
+  it("leaves an unregistered custom field as PluginFieldValue", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<Schema>();
     const result = await client.stories.get(123);
-    if (result.data?.story && result.data.story.content.component === 'themed') {
-      expectTypeOf<NonNullable<typeof result.data.story.content.legacy>>().toEqualTypeOf<PluginFieldValue>();
+    if (result.data?.story && result.data.story.content.component === "themed") {
+      expectTypeOf<
+        NonNullable<typeof result.data.story.content.legacy>
+      >().toEqualTypeOf<PluginFieldValue>();
     }
   });
 });

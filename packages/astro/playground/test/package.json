@@ -19,11 +19,11 @@
     "svelte": "^5.55.0",
     "vue": "^3.5.30"
   },
-  "nx": {
-    "projectType": "application"
-  },
   "devDependencies": {
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:"
+  },
+  "nx": {
+    "projectType": "application"
   }
 }

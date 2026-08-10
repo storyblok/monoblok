@@ -1,44 +1,51 @@
-import { describe, expect, it } from 'vitest';
-import StoryblokRichText from '../components/StoryblokRichText.vue';
-import type { SbVueRichTextComponentMap } from '../composables/use-storyblok-rich-text.ts';
-import { mount } from '@vue/test-utils';
-import { customRendererFixture, integrationFixtures, linkFixtures, markFixtures, nodeFixtures, tableFixtures } from '@storyblok/richtext/test-utils';
-import CustomBold from './richtext/CustomBold.vue';
-import CustomLink from './richtext/CustomLink.vue';
-import CustomCodeBlock from './richtext/CustomCodeBlock.vue';
-import CustomTable from './richtext/CustomTable.vue';
-import CustomText from './richtext/CustomText.vue';
-import HeadingWithRichText from './richtext/HeadingWithRichText.vue';
-import { h } from 'vue';
+import { describe, expect, it } from "vitest";
+import StoryblokRichText from "../components/StoryblokRichText.vue";
+import type { SbVueRichTextComponentMap } from "../composables/use-storyblok-rich-text.ts";
+import { mount } from "@vue/test-utils";
+import {
+  customRendererFixture,
+  integrationFixtures,
+  linkFixtures,
+  markFixtures,
+  nodeFixtures,
+  tableFixtures,
+} from "@storyblok/richtext/test-utils";
+import CustomBold from "./richtext/CustomBold.vue";
+import CustomLink from "./richtext/CustomLink.vue";
+import CustomCodeBlock from "./richtext/CustomCodeBlock.vue";
+import CustomTable from "./richtext/CustomTable.vue";
+import CustomText from "./richtext/CustomText.vue";
+import HeadingWithRichText from "./richtext/HeadingWithRichText.vue";
+import { h } from "vue";
 
-describe('storyblok vue richtext rendering', () => {
-  describe('input handling', () => {
-    it('returns empty string for null input', () => {
+describe("storyblok vue richtext rendering", () => {
+  describe("input handling", () => {
+    it("returns empty string for null input", () => {
       const wrapper = mount(StoryblokRichText, {
         props: {
           document: null,
         },
       });
-      expect(wrapper.html({ raw: true })).toBe('');
+      expect(wrapper.html({ raw: true })).toBe("");
     });
-    it('returns empty string for undefined input', () => {
+    it("returns empty string for undefined input", () => {
       const wrapper = mount(StoryblokRichText, {
         props: {
           document: undefined,
         },
       });
-      expect(wrapper.html({ raw: true })).toBe('');
+      expect(wrapper.html({ raw: true })).toBe("");
     });
-    it('returns empty string for empty array', () => {
+    it("returns empty string for empty array", () => {
       const wrapper = mount(StoryblokRichText, {
         props: {
           document: [],
         },
       });
-      expect(wrapper.html({ raw: true })).toBe('');
+      expect(wrapper.html({ raw: true })).toBe("");
     });
   });
-  describe('nodes', () => {
+  describe("nodes", () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const wrapper = mount(StoryblokRichText, {
@@ -50,7 +57,7 @@ describe('storyblok vue richtext rendering', () => {
       });
     });
   });
-  describe('marks', () => {
+  describe("marks", () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const wrapper = mount(StoryblokRichText, {
@@ -62,7 +69,7 @@ describe('storyblok vue richtext rendering', () => {
       });
     });
   });
-  describe('links', () => {
+  describe("links", () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const wrapper = mount(StoryblokRichText, {
@@ -74,7 +81,7 @@ describe('storyblok vue richtext rendering', () => {
       });
     });
   });
-  describe('tables', () => {
+  describe("tables", () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const wrapper = mount(StoryblokRichText, {
@@ -86,7 +93,7 @@ describe('storyblok vue richtext rendering', () => {
       });
     });
   });
-  describe('integration', () => {
+  describe("integration", () => {
     integrationFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const wrapper = mount(StoryblokRichText, {
@@ -98,7 +105,7 @@ describe('storyblok vue richtext rendering', () => {
       });
     });
   });
-  describe('custom components', () => {
+  describe("custom components", () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
       const components: SbVueRichTextComponentMap = {
@@ -106,8 +113,8 @@ describe('storyblok vue richtext rendering', () => {
           h(
             `h${attrs?.level ?? 6}`,
             {
-              'data-type': 'custom-heading',
-              'data-level': attrs?.level ?? 6,
+              "data-type": "custom-heading",
+              "data-level": attrs?.level ?? 6,
             },
             slots.default?.(),
           ),
@@ -120,12 +127,15 @@ describe('storyblok vue richtext rendering', () => {
           components,
         },
       });
-      expect((wrapper.html({ raw: true }))).toBe(node_and_mark.expected);
+      expect(wrapper.html({ raw: true })).toBe(node_and_mark.expected);
     });
     const recursive = customRendererFixture.recursive;
     it(recursive.title, () => {
       const components: SbVueRichTextComponentMap = {
-        heading: ({ content, attrs }) => h('h1', { 'data-type': 'custom-heading', 'data-level': attrs?.level }, [h(StoryblokRichText, { document: content, components })]),
+        heading: ({ content, attrs }) =>
+          h("h1", { "data-type": "custom-heading", "data-level": attrs?.level }, [
+            h(StoryblokRichText, { document: content, components }),
+          ]),
         bold: CustomBold,
       };
       const wrapper = mount(StoryblokRichText, {
@@ -135,7 +145,7 @@ describe('storyblok vue richtext rendering', () => {
         },
       });
 
-      expect((wrapper.html({ raw: true }))).toBe(recursive.expected);
+      expect(wrapper.html({ raw: true })).toBe(recursive.expected);
     });
     const code_block = customRendererFixture.code_block;
     it(code_block.title, () => {
@@ -148,7 +158,7 @@ describe('storyblok vue richtext rendering', () => {
           components,
         },
       });
-      expect((wrapper.html({ raw: true }))).toBe(code_block.expected);
+      expect(wrapper.html({ raw: true })).toBe(code_block.expected);
     });
     const table = customRendererFixture.table;
 
@@ -163,7 +173,7 @@ describe('storyblok vue richtext rendering', () => {
           components: tableComponents,
         },
       });
-      expect((wrapper.html({ raw: true }))).toBe(table.expected);
+      expect(wrapper.html({ raw: true })).toBe(table.expected);
     });
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
@@ -174,10 +184,10 @@ describe('storyblok vue richtext rendering', () => {
         props: {
           document: text_node.input,
           components,
-          data: { prefix: '[prefix]' },
+          data: { prefix: "[prefix]" },
         },
       });
-      expect((wrapper.html({ raw: true }))).toBe(text_node.expected);
+      expect(wrapper.html({ raw: true })).toBe(text_node.expected);
     });
     const infinite_loop = customRendererFixture.infinite_loop_prevention;
     it(infinite_loop.title, () => {
@@ -190,7 +200,7 @@ describe('storyblok vue richtext rendering', () => {
           components,
         },
       });
-      expect((wrapper.html({ raw: true }))).toBe(infinite_loop.expected);
+      expect(wrapper.html({ raw: true })).toBe(infinite_loop.expected);
     });
   });
 });

@@ -5,15 +5,15 @@
  *
  * Run this before `pnpm seed` to re-seed an existing space from scratch.
  */
-import 'dotenv/config';
+import "dotenv/config";
 
-import { createManagementApiClient } from '@storyblok/management-api-client';
+import { createManagementApiClient } from "@storyblok/management-api-client";
 
 const token = process.env.STORYBLOK_TOKEN;
 const spaceId = process.env.STORYBLOK_SPACE_ID;
 
 if (!token || !spaceId) {
-  console.error('Missing required env vars: STORYBLOK_TOKEN, STORYBLOK_SPACE_ID');
+  console.error("Missing required env vars: STORYBLOK_TOKEN, STORYBLOK_SPACE_ID");
   process.exit(1);
 }
 
@@ -35,7 +35,7 @@ async function fetchAllPages<T, R>(
     const { data, response } = await fetchPage(page);
     const pageItems = extract(data);
     items.push(...pageItems);
-    const totalHeader = response.headers.get('total');
+    const totalHeader = response.headers.get("total");
     if (!totalHeader) {
       return items;
     }
@@ -49,22 +49,22 @@ async function fetchAllPages<T, R>(
 
 async function listStories() {
   return fetchAllPages(
-    page => client.stories.list({ query: { page, per_page: PER_PAGE } }),
-    data => data?.stories ?? [],
+    (page) => client.stories.list({ query: { page, per_page: PER_PAGE } }),
+    (data) => data?.stories ?? [],
   );
 }
 
 async function listAssets() {
   return fetchAllPages(
-    page => client.assets.list({ query: { page, per_page: PER_PAGE } }),
-    data => data?.assets ?? [],
+    (page) => client.assets.list({ query: { page, per_page: PER_PAGE } }),
+    (data) => data?.assets ?? [],
   );
 }
 
 async function listDatasources() {
   return fetchAllPages(
-    page => client.datasources.list({ query: { page, per_page: PER_PAGE } }),
-    data => data?.datasources ?? [],
+    (page) => client.datasources.list({ query: { page, per_page: PER_PAGE } }),
+    (data) => data?.datasources ?? [],
   );
 }
 
@@ -82,7 +82,7 @@ async function deleteStories(stories: Awaited<ReturnType<typeof listStories>>) {
   // Deepest paths first so a folder's children are gone before the folder is
   // deleted; otherwise the cascade-delete leaves orphan ids that 404.
   const ordered = [...stories].sort(
-    (a, b) => (b.full_slug?.split('/').length ?? 0) - (a.full_slug?.split('/').length ?? 0),
+    (a, b) => (b.full_slug?.split("/").length ?? 0) - (a.full_slug?.split("/").length ?? 0),
   );
   for (const story of ordered) {
     if (story.id) {
@@ -98,7 +98,7 @@ async function deleteAssets(assets: Awaited<ReturnType<typeof listAssets>>) {
   }
 
   console.info(`Deleting ${assets.length} asset(s)...`);
-  const ids = assets.map(a => a.id).filter((id): id is number => id !== undefined);
+  const ids = assets.map((a) => a.id).filter((id): id is number => id !== undefined);
   // MAPI deleteMany rejects payloads above 100 ids, so chunk the call.
   for (let i = 0; i < ids.length; i += PER_PAGE) {
     const chunk = ids.slice(i, i + PER_PAGE);
@@ -122,7 +122,7 @@ async function deleteDatasources(datasources: Awaited<ReturnType<typeof listData
 }
 
 async function deleteComponents(components: Awaited<ReturnType<typeof listComponents>>) {
-  const toDelete = components.filter(c => !c.name?.toLowerCase().endsWith('page'));
+  const toDelete = components.filter((c) => !c.name?.toLowerCase().endsWith("page"));
   if (toDelete.length === 0) {
     return;
   }
@@ -148,10 +148,9 @@ async function main() {
     await deleteStories(stories);
     await deleteDatasources(datasources);
     await deleteComponents(components);
-    console.info('Cleanup complete.');
-  }
-  catch (err) {
-    console.error('Cleanup failed:', err);
+    console.info("Cleanup complete.");
+  } catch (err) {
+    console.error("Cleanup failed:", err);
     process.exit(1);
   }
 }

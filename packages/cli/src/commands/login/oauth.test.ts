@@ -35,11 +35,15 @@ describe('login --oauth', () => {
     vi.mocked(session().initializeSession).mockImplementation(async () => {
       session().state = loggedOutSessionState();
     });
-    // Seed a stored client so resolveOAuthClient succeeds.
-    await getOAuthEntry('eu');
-    vol.fromJSON({
-      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({ oauth: { eu: { client: { client_id: 'cid', client_secret: 'secret', scopes: ['stories:read', 'offline_access'] } } } }),
-    });
+    // The baked-in client is still a placeholder, so point the CLI at a test client
+    // through the env-var override that development and self-hosted setups use.
+    process.env.STORYBLOK_OAUTH_CLIENT_ID = 'cid';
+    process.env.STORYBLOK_OAUTH_CLIENT_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
 
   it('should complete the oauth flow and persist tokens and spaces', async () => {

@@ -62,9 +62,8 @@ export const removeAllCredentials = async (filepath: string = getStoryblokGlobal
   await saveToFile(filePath, JSON.stringify({}, null, 2), { mode: 0o600 });
 };
 
-// Removes the PAT machine entries while preserving the `oauth` section (provisioned
-// client credentials and any OAuth sessions). Logging out of a PAT session must not
-// wipe the OAuth client provisioned via `oauth setup`.
+// Removes the PAT machine entries while preserving the `oauth` section (OAuth sessions
+// per region). Logging out of a PAT session must not end an OAuth session.
 export const removePatCredentials = async (filepath: string = getStoryblokGlobalPath()) => {
   const filePath = join(filepath, 'credentials.json');
   const credentials = await getCredentials(filePath) as Record<string, unknown> | null;

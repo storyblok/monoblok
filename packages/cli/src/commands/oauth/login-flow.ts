@@ -4,7 +4,7 @@ import { managementApiRegions } from '../../constants';
 import { CommandError } from '../../utils';
 import { getUI } from '../../lib/ui';
 import { resolveOAuthClient } from './client';
-import { DEFAULT_LOGIN_SCOPES, OAUTH_CALLBACK_PATH, OAUTH_CALLBACK_PORT, OAUTH_REDIRECT_URI } from './constants';
+import { OAUTH_CALLBACK_PATH, OAUTH_CALLBACK_PORT, OAUTH_LOGIN_SCOPES, OAUTH_REDIRECT_URI } from './constants';
 import { introspectGrant } from './grant';
 import { generatePkce, generateState } from './pkce';
 import { computeExpiresAt } from './refresh';
@@ -46,21 +46,8 @@ export const performOAuthLogin = async (options: {
   const openBrowser = options.openBrowser ?? (url => open(url));
   const ui = getUI();
 
-  const client = await resolveOAuthClient(region);
-  // Read scopes from the resolved client so credentials and scopes always come
-  // from the same source. Env-var clients carry no scope catalog, so they fall
-  // back to the restrictive default set below.
-  const resolvedScopes = client.scopes;
-  const scopes = resolvedScopes ?? DEFAULT_LOGIN_SCOPES;
-  if (!resolvedScopes) {
-    // Bring-your-own clients (env vars or a manually stored id/secret) have no
-    // scope catalog, so we request a restrictive default set. If the client was
-    // granted broader scopes, provision it via `oauth setup` to request them.
-    ui.warn(
-      `No scopes stored for this OAuth client; requesting the default set: ${DEFAULT_LOGIN_SCOPES.join(', ')}.\n`
-      + `Run \`storyblok oauth setup --token <personal-access-token>\` to provision a client with the full scope catalog.`,
-    );
-  }
+  const client = resolveOAuthClient();
+  const scopes = OAUTH_LOGIN_SCOPES;
   const { verifier, challenge } = generatePkce();
   const state = generateState();
 

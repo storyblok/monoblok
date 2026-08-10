@@ -8,7 +8,6 @@ import { getUI } from "./lib/ui";
 import { colorPalette } from "./constants";
 import "./commands/login";
 import "./commands/logout";
-import "./commands/oauth";
 import "./commands/signup";
 import "./commands/user";
 import "./commands/components";

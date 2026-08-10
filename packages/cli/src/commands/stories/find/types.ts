@@ -8,7 +8,7 @@ export interface FindOptions {
   searchMode?: string;
   entryType?: EntryType;
   startsWith?: string;
-  rootBlock?: string;
+  containerBlock?: string;
   containsBlock?: string;
   query?: string;
   where?: string[];

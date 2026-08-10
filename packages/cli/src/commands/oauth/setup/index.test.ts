@@ -5,7 +5,7 @@ import { setupServer } from 'msw/node';
 
 import { oauthCommand } from '../index';
 import { getOAuthEntry } from '../store';
-import { getUI } from '../../../utils/ui';
+import { getUI } from '../../../lib/ui';
 
 vi.mock('node:fs');
 vi.mock('node:fs/promises');

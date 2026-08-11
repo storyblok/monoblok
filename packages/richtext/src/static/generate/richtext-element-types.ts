@@ -17,9 +17,11 @@ interface NodeEntry {
 }
 
 /**
- * Object declarations the generator understands. `@hey-api/openapi-ts` emits
- * `export interface X { … }` in some versions and `export type X = { … }` in
- * others, so accept both shapes rather than tracking the generator's style.
+ * Object declarations the generator understands. `@hey-api/openapi-ts` has no
+ * option to control whether it emits `export interface X { … }` or
+ * `export type X = { … }`, and it has switched between the two across releases.
+ * Both are the same shape for our purposes, so match either instead of pinning
+ * ourselves to the style of whichever version is currently installed.
  */
 function readObjectDeclaration(
   stmt: ts.Statement,

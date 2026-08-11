@@ -1725,7 +1725,7 @@ importers:
   tools/openapi-codegen:
     dependencies:
       '@hey-api/openapi-ts':
-        specifier: ^0.92.3
+        specifier: 0.92.4
         version: 0.92.4(magicast@0.5.2)(typescript@5.8.3)
       pathe:
         specifier: ^2.0.3

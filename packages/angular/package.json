@@ -72,7 +72,7 @@
     "ng-packagr": "^22.0.0",
     "oxlint": "catalog:",
     "rxjs": "~7.8.0",
-    "typescript": "~6.0.3",
+    "typescript": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {

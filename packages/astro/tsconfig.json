@@ -4,7 +4,6 @@
   "compilerOptions": {
     "target": "ESNext",
     "jsx": "preserve",
-    "baseUrl": ".",
     "module": "ESNext",
     /* Bundler mode */
     "moduleResolution": "bundler",

@@ -136,7 +136,7 @@ describe('assets transfer command', () => {
     // Summary counts, then one grouped reason line with the count — not three
     // separate per-asset rows.
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('0 transferred, 3 failed (of 3)'));
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('(3)'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('3 assets'));
     expect(process.exitCode).toBe(1);
   });
 

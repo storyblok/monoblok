@@ -7,7 +7,8 @@ import { fetchStoriesStream, fetchStoryStream, mapReferencesStream, writeStorySt
 import { validateStoryAgainstSchemas } from '../stories/validate-story';
 import type { Logger } from '../../lib/logger/logger';
 import type { Report } from '../../lib/reporter/reporter';
-import { logOnlyError } from '../../utils/error/error';
+import { logOnlyError, toError } from '../../utils/error/error';
+import { FailureReasonGroup } from '../../utils/failure-reason-group';
 import type {
   AppendAssetFolderManifestTransport,
   AppendAssetManifestTransport,
@@ -116,6 +117,11 @@ export const upsertAssetsPipeline = async ({
   const assetProgress = ui.createProgressBar({ title: 'Assets...'.padEnd(PROGRESS_BAR_PADDING) });
   const summary = { total: 0, succeeded: 0, failed: 0 };
 
+  // Collect failures during the pipeline and group by reason afterwards.
+  // This mirrors the transfer pipeline convention (transfer/index.ts) and
+  // prevents 60+ identical warn lines interleaved with active progress bars.
+  const failures = new FailureReasonGroup();
+
   const steps = [];
   // Use the asset provided via the CLI.
   if (assetBinaryPath && assetData) {
@@ -129,6 +135,7 @@ export const upsertAssetsPipeline = async ({
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
+        failures.record(toError(error).message, assetData?.short_filename ?? assetData?.filename ?? assetBinaryPath);
       },
     }));
   }
@@ -140,10 +147,11 @@ export const upsertAssetsPipeline = async ({
         summary.total = total;
         assetProgress.setTotal(total);
       },
-      onAssetError: (error) => {
+      onAssetError: (error, filePath) => {
         summary.failed += 1;
         assetProgress.increment();
         logOnlyError(error);
+        failures.record(toError(error).message, filePath);
       },
     }));
   }
@@ -171,9 +179,16 @@ export const upsertAssetsPipeline = async ({
     onAssetError: (error, asset) => {
       summary.failed += 1;
       logOnlyError(error, { assetId: asset.id });
+      failures.record(toError(error).message, asset.short_filename ?? asset.filename ?? String(asset.id));
     },
   }));
   await pipeline(steps);
+
+  // Emit grouped failure warnings after the pipeline completes so they appear
+  // below (not interleaved with) the active progress bars.
+  for (const line of failures.toListLines()) {
+    ui.warn(line);
+  }
 
   return [['assetResults', summary]];
 };

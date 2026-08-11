@@ -1668,7 +1668,7 @@ describe('stories push command', () => {
       expect(report.status).toBe('FAILURE');
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
-      expect(logFile).toContain('The server returned an error');
+      expect(logFile).toContain('Failed to create placeholder story');
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
@@ -1677,7 +1677,7 @@ describe('stories push command', () => {
         expect.stringContaining(`story-a (uuid: `),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('The server returned an error'),
+        expect.stringContaining('Failed to create placeholder story'),
       );
       // UI
       expect(console.error).toHaveBeenCalledWith(
@@ -1799,13 +1799,13 @@ describe('stories push command', () => {
       expect(report?.status).toBe('PARTIAL_SUCCESS');
       // Logging
       const logFile = getLogFileContents(LOG_PREFIX);
-      expect(logFile).toContain('The server returned an error');
+      expect(logFile).toContain('Failed to update story');
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed stories (1):'),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('The server returned an error'),
+        expect.stringContaining('Failed to update story'),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(`story-a (uuid: `),

@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getResponseStatus, handleError, toError } from './error';
 import { CommandError } from './command-error';
+import type { APIError } from './api-error';
+import { handleAPIError } from './api-error';
+import { FetchError } from '../fetch';
 
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -97,5 +100,28 @@ describe('getResponseStatus', () => {
   it('should extract a numeric status from an error with a response', () => {
     const err = Object.assign(new Error('fail'), { response: { status: 403 } });
     expect(getResponseStatus(err)).toBe(403);
+  });
+});
+
+describe('toError message extraction', () => {
+  it('should return error.message for a plain Error', () => {
+    expect(toError(new Error('plain error')).message).toBe('plain error');
+  });
+
+  it('should wrap a string into an Error', () => {
+    expect(toError('oops').message).toBe('oops');
+  });
+
+  it('should return APIError.message, which already contains the server-provided string', () => {
+    const fetchError = new FetchError('Not Found', {
+      status: 404,
+      statusText: 'Not Found',
+      data: { error: 'Story not found in this space' },
+    });
+    let caught: APIError | undefined;
+    try { handleAPIError('pull_story', fetchError); }
+    catch (e) { caught = e as APIError; }
+    // The APIError constructor already extracted the server message into error.message.
+    expect(toError(caught).message).toBe('Story not found in this space');
   });
 });

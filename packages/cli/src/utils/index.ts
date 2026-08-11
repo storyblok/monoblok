@@ -6,6 +6,7 @@ import { regions } from '../constants';
 export * from './array';
 export * from './auth';
 export * from './error/';
+export * from './failure-reason-group';
 export * from './format';
 export * from './object';
 export * from './package';

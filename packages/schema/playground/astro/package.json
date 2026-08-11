@@ -36,13 +36,13 @@
     "@storyblok/management-api-client": "workspace:*",
     "@tailwindcss/typography": "0.5.19",
     "@tailwindcss/vite": "^4.2.4",
-    "@types/node": "^24.11.0",
-    "dotenv": "^17.3.1",
-    "oxlint": "1.76.0",
+    "@types/node": "catalog:",
+    "dotenv": "catalog:",
+    "oxlint": "catalog:",
     "storyblok": "workspace:*",
     "tailwindcss": "^4.2.4",
-    "tsx": "^4.21.0",
-    "typescript": "5.8.3",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
     "vite": "^8.1.1"
   }
 }

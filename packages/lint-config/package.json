@@ -59,8 +59,8 @@
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "devDependencies": {
-    "oxlint": "1.76.0",
-    "typescript": "^5.8.3"
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {
     "oxlint": ">=0.15.0"

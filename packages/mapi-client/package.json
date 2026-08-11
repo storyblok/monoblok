@@ -48,12 +48,12 @@
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
-    "@types/node": "^24.1.0",
-    "msw": "^2.12.9",
-    "oxlint": "1.76.0",
-    "pathe": "^2.0.3",
-    "tsx": "^4.20.3",
-    "vitest": "^4.1.10"
+    "@types/node": "catalog:",
+    "msw": "catalog:",
+    "oxlint": "catalog:",
+    "pathe": "catalog:",
+    "tsx": "catalog:",
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {

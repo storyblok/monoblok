@@ -66,14 +66,14 @@
     "@angular/ssr": "^22.0.4",
     "@storyblok/lint-config": "workspace:*",
     "@types/express": "^5.0.1",
-    "@types/node": "^20.17.19",
+    "@types/node": "catalog:",
     "express": "^5.1.0",
-    "jsdom": "^27.1.0",
+    "jsdom": "catalog:",
     "ng-packagr": "^22.0.0",
-    "oxlint": "1.76.0",
+    "oxlint": "catalog:",
     "rxjs": "~7.8.0",
     "typescript": "~6.0.3",
-    "vitest": "^4.0.8"
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@angular/common": "^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0",

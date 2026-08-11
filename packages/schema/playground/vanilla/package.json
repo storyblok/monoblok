@@ -17,10 +17,10 @@
     "@storyblok/api-client": "workspace:*",
     "@storyblok/schema": "workspace:*",
     "hono": "^4.12.26",
-    "zod": "^3.25.76"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "storyblok": "workspace:*",
-    "tsx": "^4.21.0"
+    "tsx": "catalog:"
   }
 }

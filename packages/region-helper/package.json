@@ -37,11 +37,11 @@
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
-    "@types/node": "^24.11.0",
-    "@vitest/coverage-v8": "^4.1.10",
-    "jiti": "^2.4.2",
-    "oxlint": "1.76.0",
-    "typescript": "5.8.3",
-    "vitest": "^4.1.10"
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "jiti": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

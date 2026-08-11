@@ -60,10 +60,10 @@
     "@arethetypeswrong/core": "^0.18.2",
     "@storyblok/lint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
-    "msw": "^2.10.2",
-    "oxlint": "1.76.0",
-    "typescript": "5.8.3",
-    "vitest": "^4.1.10"
+    "msw": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "release": {
     "branches": [

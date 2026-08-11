@@ -34,8 +34,8 @@
     "lint-staged": "^15.5.2",
     "nx": "21.3.11",
     "oxfmt": "0.61.0",
-    "oxlint": "1.76.0",
-    "typescript": "5.8.3",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
     "vite-plus": "0.2.8"
   },
   "resolutions": {

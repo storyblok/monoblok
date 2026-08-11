@@ -33,15 +33,15 @@
   },
   "dependencies": {
     "@hey-api/openapi-ts": "0.92.4",
-    "pathe": "^2.0.3",
-    "typescript": "5.8.3",
+    "pathe": "catalog:",
+    "typescript": "catalog:",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
-    "@types/node": "^24.11.0",
-    "oxlint": "1.76.0",
-    "vitest": "^4.1.10"
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {

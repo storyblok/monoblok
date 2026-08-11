@@ -13,9 +13,9 @@
     "@storyblok/api-client": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
     "@storyblok/schema": "workspace:*",
-    "@types/node": "^24.11.0",
-    "dotenv": "^17.3.1",
-    "typescript": "5.8.3",
-    "vitest": "^4.1.10"
+    "@types/node": "catalog:",
+    "dotenv": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

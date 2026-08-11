@@ -36,9 +36,24 @@ type NoBlocks = false;
 type IsBaseBlock<T> = [Block] extends [T] ? true : false;
 
 /**
+ * True when a field carries no value at all, i.e. its `FieldValue` is `never`.
+ *
+ * `tab` and `section` are layout containers the editor UI draws; they group other
+ * fields and never appear in story content. Their `FieldTypeValueMap` entries are
+ * `never`, which without this check surfaces them as `key?: null` properties —
+ * keys no API response ever has, cluttering autocomplete on every block that uses
+ * a tab.
+ *
+ * The tuple wrapping is required: a bare `V extends never` distributes over the
+ * naked type parameter and never matches.
+ */
+type HasNoValue<V> = [V] extends [never] ? true : false;
+
+/**
  * Maps a block's ordered `fields` array to its read content object, splitting
- * required (`required: true`) from optional fields. Each `F` is a member of the
- * field union, so it provably satisfies `FieldValue`'s `Field` constraint.
+ * required (`required: true`) from optional fields, and dropping fields that
+ * carry no value (see {@link HasNoValue}). Each `F` is a member of the field
+ * union, so it provably satisfies `FieldValue`'s `Field` constraint.
  */
 type ContentFields<
   TFields extends BlockFields,
@@ -46,17 +61,17 @@ type ContentFields<
   TFieldPlugins = Record<never, never>,
 > = Prettify<
   {
-    [F in TFields[number] as F extends { required: true } ? F["name"] : never]: FieldValue<
-      F,
-      TBlocks,
-      TFieldPlugins
-    >;
+    [F in TFields[number] as HasNoValue<FieldValue<F, TBlocks, TFieldPlugins>> extends true
+      ? never
+      : F extends { required: true }
+        ? F["name"]
+        : never]: FieldValue<F, TBlocks, TFieldPlugins>;
   } & {
-    [F in TFields[number] as F extends { required: true } ? never : F["name"]]?: FieldValue<
-      F,
-      TBlocks,
-      TFieldPlugins
-    > | null;
+    [F in TFields[number] as HasNoValue<FieldValue<F, TBlocks, TFieldPlugins>> extends true
+      ? never
+      : F extends { required: true }
+        ? never
+        : F["name"]]?: FieldValue<F, TBlocks, TFieldPlugins> | null;
   }
 >;
 
@@ -67,17 +82,17 @@ type ContentFieldsInput<
   TFieldPlugins = Record<never, never>,
 > = Prettify<
   {
-    [F in TFields[number] as F extends { required: true } ? F["name"] : never]: FieldValueInput<
-      F,
-      TBlocks,
-      TFieldPlugins
-    >;
+    [F in TFields[number] as HasNoValue<FieldValueInput<F, TBlocks, TFieldPlugins>> extends true
+      ? never
+      : F extends { required: true }
+        ? F["name"]
+        : never]: FieldValueInput<F, TBlocks, TFieldPlugins>;
   } & {
-    [F in TFields[number] as F extends { required: true } ? never : F["name"]]?: FieldValueInput<
-      F,
-      TBlocks,
-      TFieldPlugins
-    > | null;
+    [F in TFields[number] as HasNoValue<FieldValueInput<F, TBlocks, TFieldPlugins>> extends true
+      ? never
+      : F extends { required: true }
+        ? never
+        : F["name"]]?: FieldValueInput<F, TBlocks, TFieldPlugins> | null;
   }
 >;
 

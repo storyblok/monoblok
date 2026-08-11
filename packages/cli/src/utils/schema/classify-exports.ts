@@ -13,6 +13,7 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "pathe";
 import { CommandError } from "../error/command-error";
+import { importModule } from "../import-module";
 import { isRecord } from "../object";
 
 /** Returns true if the value looks like a `defineBlock()` result (content-shape DSL). */
@@ -157,7 +158,5 @@ export async function loadSchemaModule(entryPath: string): Promise<Record<string
   } catch {
     throw new CommandError(`Schema entry file not found at "${entryPath}".`);
   }
-  const { createJiti } = await import("jiti");
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
-  return (await jiti.import(entryAbs)) as Record<string, unknown>;
+  return importModule(entryAbs);
 }

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComponentFolder } from "../../types";
-import { buildGroupPathByUuid, expandFolderPath, slugifyPath } from "./folders";
+import {
+  buildGroupDisplayPathByUuid,
+  buildGroupPathByUuid,
+  expandFolderPath,
+  slugifyPath,
+} from "./folders";
 
 function folder(
   partial: Partial<ComponentFolder> & { name: string; uuid: string },
@@ -94,5 +99,45 @@ describe("expandFolderPath", () => {
       { name: "Layout", path: "layout", parentPath: null },
       { name: "Heros", path: "layout/heros", parentPath: "layout" },
     ]);
+  });
+});
+
+describe("buildGroupDisplayPathByUuid", () => {
+  it("joins parent display names with slashes, preserving original casing", () => {
+    const folders = [
+      folder({ uuid: "a", name: "My Layout" }),
+      folder({ uuid: "b", name: "Heros", parent_uuid: "a" }),
+    ];
+
+    const result = buildGroupDisplayPathByUuid(folders);
+
+    expect(result.get("a")).toBe("My Layout");
+    expect(result.get("b")).toBe("My Layout/Heros");
+  });
+
+  it("treats a cyclic parent chain as a root instead of recursing forever", () => {
+    const folders = [
+      folder({ uuid: "a", name: "A", parent_uuid: "b" }),
+      folder({ uuid: "b", name: "B", parent_uuid: "a" }),
+    ];
+
+    const result = buildGroupDisplayPathByUuid(folders);
+
+    // The cycle is cut wherever the walk enters it, so which of the two ends up
+    // the root depends on iteration order, not on behaviour. What must hold is
+    // that both groups terminate with a path built only from real segments, and
+    // that neither repeats a segment (which is what a missed cycle would do).
+    for (const uuid of ["a", "b"]) {
+      const segments = result.get(uuid)?.split("/") ?? [];
+      expect(segments.length).toBeGreaterThan(0);
+      expect(segments.every((segment) => ["A", "B"].includes(segment))).toBe(true);
+      expect(new Set(segments).size).toBe(segments.length);
+    }
+  });
+
+  it("ignores a parent uuid that is not in the folder list", () => {
+    const folders = [folder({ uuid: "a", name: "Orphan", parent_uuid: "missing" })];
+
+    expect(buildGroupDisplayPathByUuid(folders).get("a")).toBe("Orphan");
   });
 });

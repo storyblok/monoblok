@@ -12,11 +12,14 @@ import type { LocalFolder } from "./types";
  */
 
 /**
- * Builds a `component_group_uuid → slugified path segments` map from the remote
- * component groups, walking each group's `parent_uuid` chain. Used by
- * `schema init` to lay blocks out in nested group directories.
+ * Builds a `component_group_uuid → path segments` map from the remote component
+ * groups, walking each group's `parent_uuid` chain and passing every group name
+ * through `toSegment`.
  */
-export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, string[]> {
+function buildGroupSegmentsByUuid(
+  folders: ComponentFolder[],
+  toSegment: (name: string) => string,
+): Map<string, string[]> {
   const byUuid = new Map(folders.map((folder) => [folder.uuid, folder]));
   const cache = new Map<string, string[]>();
 
@@ -41,7 +44,7 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
       return [];
     }
     visited.add(uuid);
-    const path = [...pathFor(folder.parent_uuid, visited), slugify(folder.name)];
+    const path = [...pathFor(folder.parent_uuid, visited), toSegment(folder.name)];
     cache.set(uuid, path);
     return path;
   }
@@ -50,6 +53,28 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
     pathFor(folder.uuid, new Set());
   }
   return cache;
+}
+
+/**
+ * Builds a `component_group_uuid → slugified path segments` map. Used by
+ * `schema init` to lay blocks out in nested group directories.
+ */
+export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, string[]> {
+  return buildGroupSegmentsByUuid(folders, slugify);
+}
+
+/**
+ * Builds a `component_group_uuid → display-name path` map (e.g.
+ * `'My Layout/Heros'`). Unlike {@link buildGroupPathByUuid}, segments keep their
+ * original names: this map feeds the `folder` literals in generated *types*,
+ * where `Block['folder']` is documented as a display-name path. Both sides of a
+ * `MatchesFolder` comparison (a block's `folder` and a field's
+ * `allow: [{ folder }]`) come from this same map, so they always narrow
+ * consistently.
+ */
+export function buildGroupDisplayPathByUuid(folders: ComponentFolder[]): Map<string, string> {
+  const segmentsByUuid = buildGroupSegmentsByUuid(folders, (name) => name);
+  return new Map([...segmentsByUuid].map(([uuid, segments]) => [uuid, segments.join("/")]));
 }
 
 /**

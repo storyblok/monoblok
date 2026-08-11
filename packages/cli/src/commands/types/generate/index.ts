@@ -9,6 +9,8 @@ import { readDatasourcesFiles } from "../../datasources/push/actions";
 import type { SpaceDatasourcesData } from "../../../commands/datasources/constants";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
+import { DEFAULT_SCHEMA_ENTRY_PATH } from "../../schema/constants";
+import { runFutureSchemaTypes } from "./future-schema";
 
 const generateCmd = typesCommand
   .command("generate")
@@ -30,13 +32,34 @@ const generateCmd = typesCommand
     "--compiler-options <options>",
     "path to the compiler options from json-schema-to-typescript",
   )
-  .option("-s, --space <space>", "space ID");
+  .option("-s, --space <space>", "space ID")
+  .option("--future-schema", "Generate types from the space schema")
+  .option(
+    "--field-plugins <path>",
+    `Path to a module exporting your defineFieldPlugin declarations (default: ${DEFAULT_SCHEMA_ENTRY_PATH})`,
+  );
 
 generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
   const ui = getUI();
-  ui.title(`${commands.TYPES}`, colorPalette.TYPES, "Generating types...");
-
   const { space, path, verbose, suffix, filename, separateFiles } = command.optsWithGlobals();
+
+  if (options.futureSchema) {
+    await runFutureSchemaTypes({
+      options,
+      globals: { space, path, filename, separateFiles, verbose },
+      getOptionValueSource: (attributeName) => command.getOptionValueSource(attributeName),
+    });
+    return;
+  }
+
+  ui.title(`${commands.TYPES}`, colorPalette.TYPES, "Generating types...");
+  ui.warn(
+    "`types generate` without --future-schema is deprecated. The legacy generator does not follow " +
+      "field `required` flags, block whitelists, or nestable/root distinctions. Re-run with --future-schema.",
+  );
+  if (options.fieldPlugins !== undefined) {
+    ui.warn("--field-plugins is ignored without --future-schema.");
+  }
 
   if (!space) {
     handleError(

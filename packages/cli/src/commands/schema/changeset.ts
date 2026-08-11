@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
 
+import { SCHEMA_DIR_NAME } from "./constants";
 import type { ChangesetData } from "./types";
 import { fileTimestamp } from "./utils";
 
@@ -11,7 +12,7 @@ async function ensureDir(dir: string): Promise<void> {
 
 /** Saves a changeset recording what was pushed and the full pre-push remote state for rollback. Returns the written file path. */
 export async function saveChangeset(basePath: string, data: ChangesetData): Promise<string> {
-  const dir = join(basePath, "schema", "changesets");
+  const dir = join(basePath, SCHEMA_DIR_NAME, "changesets");
   await ensureDir(dir);
   const fileName = `${fileTimestamp(data.timestamp)}.json`;
   const filePath = join(dir, fileName);

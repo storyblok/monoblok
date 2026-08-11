@@ -172,7 +172,7 @@ const preconditions = {
     // Runs the real classifier so the aborting error is the production one; it
     // never touches jiti, only the already-loaded module exports below.
     const { classifyExports } =
-      await vi.importActual<typeof import("./load-schema")>("./load-schema");
+      await vi.importActual<typeof import("../load-schema")>("../load-schema");
     vi.mocked(loadSchema).mockImplementation(async () =>
       classifyExports({
         a: { name: "hero", fields: [{ name: "headline", type: "text" }] },

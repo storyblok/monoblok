@@ -103,7 +103,9 @@ schemaCommand
       // from = remote (base), to = local (target): the diff describes the push.
       // The local DSL opts into group-uuid diffing, so a block that sets
       // `component_group_uuid` explicitly gets its membership pushed.
-      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local), { compareGroupUuid: true });
+      const diffResult = diffSchema(remoteToNormalized(remote), localToNormalized(local), {
+        compareGroupUuid: true,
+      });
 
       // 5. Display diffs
       ui.br();

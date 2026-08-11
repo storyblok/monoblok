@@ -1,11 +1,17 @@
-import type { Component, Datasource } from '../../types';
-import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema } from './types';
-import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS, formatValue, isRecord } from './utils';
-import { cleanComponent, cleanDatasource } from './serialize';
-import { mapSchemaGroupLists } from './folders';
-import { mapSchemaTagLists } from './tags';
+import type { Component, Datasource } from "../../types";
+import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema } from "./types";
+import {
+  applyDefaults,
+  COMPONENT_DEFAULTS,
+  DATASOURCE_DEFAULTS,
+  formatValue,
+  isRecord,
+} from "./utils";
+import { cleanComponent, cleanDatasource } from "./serialize";
+import { mapSchemaGroupLists } from "./folders";
+import { mapSchemaTagLists } from "./tags";
 
-type EntityType = 'component' | 'datasource';
+type EntityType = "component" | "datasource";
 
 /**
  * Translates one side's references into the shared identity space both sides are
@@ -25,7 +31,7 @@ interface NameSpace {
  */
 function nameSpaceFor(own: NormalizedSchema, other: NormalizedSchema): NameSpace {
   return {
-    group: uuid => own.groupPathByUuid.get(uuid) ?? other.groupPathByUuid.get(uuid) ?? uuid,
+    group: (uuid) => own.groupPathByUuid.get(uuid) ?? other.groupPathByUuid.get(uuid) ?? uuid,
     tag: (entry) => {
       const id = String(entry);
       return own.tagNameById.get(id) ?? other.tagNameById.get(id) ?? entry;
@@ -38,7 +44,7 @@ function stringifyTagIds(internalTagIds: unknown): unknown {
   if (!Array.isArray(internalTagIds)) {
     return internalTagIds;
   }
-  return internalTagIds.map(id => (typeof id === 'number' ? String(id) : id));
+  return internalTagIds.map((id) => (typeof id === "number" ? String(id) : id));
 }
 
 /**
@@ -54,7 +60,7 @@ function tagNames(comp: Record<string, unknown>, names: NameSpace): string[] {
   if (!Array.isArray(comp.internal_tag_ids)) {
     return [];
   }
-  return comp.internal_tag_ids.map(id => String(names.tag(id))).sort();
+  return comp.internal_tag_ids.map((id) => String(names.tag(id))).sort();
 }
 
 /**
@@ -67,21 +73,24 @@ function tagNames(comp: Record<string, unknown>, names: NameSpace): string[] {
  * from, and an id that is already correct must not report the block as changed
  * on every push. The source component is never mutated.
  */
-function toNameSpace(comp: Component, names: NameSpace, byTagName: boolean): Record<string, unknown> {
+function toNameSpace(
+  comp: Component,
+  names: NameSpace,
+  byTagName: boolean,
+): Record<string, unknown> {
   const prepared: Record<string, unknown> = { ...comp };
 
   if (byTagName) {
     prepared.tags = tagNames(prepared, names);
     delete prepared.internal_tag_ids;
-  }
-  else {
+  } else {
     delete prepared.tags;
-    if ('internal_tag_ids' in prepared) {
+    if ("internal_tag_ids" in prepared) {
       prepared.internal_tag_ids = stringifyTagIds(prepared.internal_tag_ids);
     }
   }
 
-  if ('schema' in prepared) {
+  if ("schema" in prepared) {
     prepared.schema = mapSchemaGroupLists(prepared.schema, names.group);
     prepared.schema = mapSchemaTagLists(prepared.schema, names.tag);
   }
@@ -107,13 +116,11 @@ function diffKeyed(before: Record<string, unknown>, after: Record<string, unknow
     const inBefore = field in before;
     const inAfter = field in after;
     if (inBefore && !inAfter) {
-      changes.push({ field, change: 'removed', before: before[field] });
-    }
-    else if (!inBefore && inAfter) {
-      changes.push({ field, change: 'added', after: after[field] });
-    }
-    else if (canonical(before[field]) !== canonical(after[field])) {
-      changes.push({ field, change: 'modified', before: before[field], after: after[field] });
+      changes.push({ field, change: "removed", before: before[field] });
+    } else if (!inBefore && inAfter) {
+      changes.push({ field, change: "added", after: after[field] });
+    } else if (canonical(before[field]) !== canonical(after[field])) {
+      changes.push({ field, change: "modified", before: before[field], after: after[field] });
     }
   }
 
@@ -128,7 +135,10 @@ function asRecord(value: unknown): Record<string, unknown> {
  * Field-level changes for a component: top-level props (display_name, is_nestable,
  * component_group_uuid, …) and, expanded one level, individual schema fields.
  */
-function componentChanges(before: Record<string, unknown>, after: Record<string, unknown>): FieldChange[] {
+function componentChanges(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): FieldChange[] {
   const { schema: beforeSchema, ...beforeProps } = before;
   const { schema: afterSchema, ...afterProps } = after;
   return [
@@ -147,27 +157,28 @@ function buildEntityDiff(
   toClean: Record<string, unknown> | null,
 ): EntityDiff {
   if (!fromClean && toClean) {
-    return { type, name, action: 'create', changes: [], before: null, after: toRaw };
+    return { type, name, action: "create", changes: [], before: null, after: toRaw };
   }
   if (fromClean && !toClean) {
-    return { type, name, action: 'stale', changes: [], before: fromRaw, after: null };
+    return { type, name, action: "stale", changes: [], before: fromRaw, after: null };
   }
   if (canonical(fromClean) === canonical(toClean)) {
-    return { type, name, action: 'unchanged', changes: [], before: fromRaw, after: toRaw };
+    return { type, name, action: "unchanged", changes: [], before: fromRaw, after: toRaw };
   }
 
-  const changes = type === 'component'
-    ? componentChanges(fromClean!, toClean!)
-    : diffKeyed(fromClean!, toClean!);
+  const changes =
+    type === "component" ? componentChanges(fromClean!, toClean!) : diffKeyed(fromClean!, toClean!);
 
-  return { type, name, action: 'update', changes, before: fromRaw, after: toRaw };
+  return { type, name, action: "update", changes, before: fromRaw, after: toRaw };
 }
 
 /** Names of `to` in insertion order, then any `from`-only names — mirrors the target's order. */
 function orderedNames<T>(from: Map<string, T>, to: Map<string, T>): string[] {
   const names = [...to.keys()];
   for (const name of from.keys()) {
-    if (!to.has(name)) { names.push(name); }
+    if (!to.has(name)) {
+      names.push(name);
+    }
   }
   return names;
 }
@@ -185,23 +196,32 @@ function diffComponent(
   // `component_group_uuid` is a deliberate escape hatch). When comparing two
   // spaces they never match and would flag every grouped block as changed, so
   // the field stays stripped on both sides unless both are opted in.
-  const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === 'string';
+  const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === "string";
   // Tag membership diffs by name whenever the target block manages it that way:
   // a `tags` key is the block declaring its tags, in any space.
-  const byTagName = toComp ? 'tags' in toComp : false;
+  const byTagName = toComp ? "tags" in toComp : false;
   const fromClean = fromComp
-    ? cleanComponent(applyDefaults(toNameSpace(fromComp, fromNames, byTagName), COMPONENT_DEFAULTS), { includeGroupUuid })
+    ? cleanComponent(
+        applyDefaults(toNameSpace(fromComp, fromNames, byTagName), COMPONENT_DEFAULTS),
+        { includeGroupUuid },
+      )
     : null;
   const toClean = toComp
-    ? cleanComponent(applyDefaults(toNameSpace(toComp, toNames, byTagName), COMPONENT_DEFAULTS), { includeGroupUuid })
+    ? cleanComponent(applyDefaults(toNameSpace(toComp, toNames, byTagName), COMPONENT_DEFAULTS), {
+        includeGroupUuid,
+      })
     : null;
-  return buildEntityDiff('component', name, fromComp ?? null, toComp ?? null, fromClean, toClean);
+  return buildEntityDiff("component", name, fromComp ?? null, toComp ?? null, fromClean, toClean);
 }
 
-function diffDatasource(name: string, fromDs: Datasource | undefined, toDs: Datasource | undefined): EntityDiff {
+function diffDatasource(
+  name: string,
+  fromDs: Datasource | undefined,
+  toDs: Datasource | undefined,
+): EntityDiff {
   const fromClean = fromDs ? cleanDatasource(applyDefaults(fromDs, DATASOURCE_DEFAULTS)) : null;
   const toClean = toDs ? cleanDatasource(applyDefaults(toDs, DATASOURCE_DEFAULTS)) : null;
-  return buildEntityDiff('datasource', name, fromDs ?? null, toDs ?? null, fromClean, toClean);
+  return buildEntityDiff("datasource", name, fromDs ?? null, toDs ?? null, fromClean, toClean);
 }
 
 /**
@@ -210,15 +230,16 @@ function diffDatasource(name: string, fromDs: Datasource | undefined, toDs: Data
  * (source-only), or `unchanged` — display names matter at creation only, and
  * there are no field-level changes. {@link EntityDiff.name} carries the path.
  */
-function diffFolder(name: string, fromFolder: LocalFolder | undefined, toFolder: LocalFolder | undefined): EntityDiff {
+function diffFolder(
+  name: string,
+  fromFolder: LocalFolder | undefined,
+  toFolder: LocalFolder | undefined,
+): EntityDiff {
   const before = fromFolder ? { ...fromFolder } : null;
   const after = toFolder ? { ...toFolder } : null;
-  const action = !fromFolder && toFolder
-    ? 'create'
-    : fromFolder && !toFolder
-      ? 'stale'
-      : 'unchanged';
-  return { type: 'folder', name, action, changes: [], before, after };
+  const action =
+    !fromFolder && toFolder ? "create" : fromFolder && !toFolder ? "stale" : "unchanged";
+  return { type: "folder", name, action, changes: [], before, after };
 }
 
 /**
@@ -251,7 +272,16 @@ export function diffSchema(
   const fromNames = nameSpaceFor(from, to);
   const toNames = nameSpaceFor(to, from);
   for (const name of orderedNames(from.components, to.components)) {
-    diffs.push(diffComponent(name, from.components.get(name), to.components.get(name), fromNames, toNames, compareGroupUuid));
+    diffs.push(
+      diffComponent(
+        name,
+        from.components.get(name),
+        to.components.get(name),
+        fromNames,
+        toNames,
+        compareGroupUuid,
+      ),
+    );
   }
 
   for (const name of orderedNames(from.datasources, to.datasources)) {
@@ -260,9 +290,9 @@ export function diffSchema(
 
   return {
     diffs,
-    creates: diffs.filter(d => d.action === 'create').length,
-    updates: diffs.filter(d => d.action === 'update').length,
-    unchanged: diffs.filter(d => d.action === 'unchanged').length,
-    stale: diffs.filter(d => d.action === 'stale').length,
+    creates: diffs.filter((d) => d.action === "create").length,
+    updates: diffs.filter((d) => d.action === "update").length,
+    unchanged: diffs.filter((d) => d.action === "unchanged").length,
+    stale: diffs.filter((d) => d.action === "stale").length,
   };
 }

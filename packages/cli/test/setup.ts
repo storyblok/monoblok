@@ -14,7 +14,7 @@ export const loggedInSessionState = (): SessionState => ({
   password: "valid-token",
   region: "eu",
   envLogin: false,
-  authType: 'pat',
+  authType: "pat",
 });
 const sessionApi = {
   state: loggedInSessionState(),

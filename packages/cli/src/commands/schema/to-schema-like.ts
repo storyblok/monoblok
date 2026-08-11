@@ -1,10 +1,10 @@
-import type { FieldType } from '@storyblok/schema';
+import type { FieldType } from "@storyblok/schema";
 
-import type { Component } from '../../types';
-import { isRecord } from './utils';
+import type { Component } from "../../types";
+import { isRecord } from "./utils";
 
 /** Field-schema keys that are internal Storyblok sentinels, never user-defined fields. */
-const SENTINEL_FIELDS = new Set(['_uid', 'component']);
+const SENTINEL_FIELDS = new Set(["_uid", "component"]);
 
 // Content field types the `@storyblok/schema` validators understand. Declaring
 // this as `Record<FieldType, true>` makes it a compile-time exhaustiveness check:
@@ -31,7 +31,9 @@ const KNOWN_FIELD_TYPES = {
 } satisfies Record<FieldType, true>;
 
 function isKnownFieldType(value: unknown): value is FieldType {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(KNOWN_FIELD_TYPES, value);
+  return (
+    typeof value === "string" && Object.prototype.hasOwnProperty.call(KNOWN_FIELD_TYPES, value)
+  );
 }
 
 /** A single field in the adapted schema, structurally compatible with the validators' `SchemaFieldLike`. */
@@ -59,7 +61,9 @@ function toField(name: string, def: Record<string, unknown>): AdaptedField | nul
   // MAPI stores the allowed-blocks list for `bloks` fields as `component_whitelist`;
   // the validators expect it under `allow`.
   if (Array.isArray(def.component_whitelist)) {
-    field.allow = def.component_whitelist.filter((entry): entry is string => typeof entry === 'string');
+    field.allow = def.component_whitelist.filter(
+      (entry): entry is string => typeof entry === "string",
+    );
   }
 
   return field;
@@ -73,7 +77,7 @@ function toField(name: string, def: Record<string, unknown>): AdaptedField | nul
  */
 export function toSchemaLike(components: Component[]): AdaptedSchema {
   return {
-    blocks: components.map(component => ({
+    blocks: components.map((component) => ({
       name: component.name,
       fields: Object.entries(component.schema ?? {})
         .filter(([key]) => !SENTINEL_FIELDS.has(key))

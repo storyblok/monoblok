@@ -13,6 +13,8 @@ export interface FindOptions {
   query?: string;
   where?: string[];
   publishStatus?: PublishStatus;
+  referencesTo?: string;
+  checkReferences?: boolean;
 }
 
 export type ClientFilter = (story: Story) => boolean;

@@ -1,6 +1,6 @@
-import type { Component } from '../../../../types';
-import { toDslField } from '../../../schema/to-dsl-field';
-import { INDENT, isRecord, quoteString, sortSchemaByPos } from '../../../schema/utils';
+import type { Component } from "../../../../types";
+import { toDslField } from "../../../schema/to-dsl-field";
+import { INDENT, isRecord, quoteString, sortSchemaByPos } from "../../../schema/utils";
 
 /** Resolution context shared by every block in one generation run. */
 export interface SerializeContext {
@@ -29,11 +29,11 @@ export interface SerializedBlock {
  * field whose value is not a record is dropped by the caller's own filter.
  */
 function isFieldRecordMap(value: unknown): value is Record<string, Record<string, unknown>> {
-  return isRecord(value) && Object.values(value).every(field => isRecord(field));
+  return isRecord(value) && Object.values(value).every((field) => isRecord(field));
 }
 
 /** Field types whose `allow` list the wire actually uses to restrict blocks. */
-const BLOCK_RESTRICTED_FIELD_TYPES = new Set(['bloks', 'richtext']);
+const BLOCK_RESTRICTED_FIELD_TYPES = new Set(["bloks", "richtext"]);
 
 /**
  * Serializes one `allow` entry: a bare block name, or a folder reference. Any
@@ -41,8 +41,12 @@ const BLOCK_RESTRICTED_FIELD_TYPES = new Set(['bloks', 'richtext']);
  * is safer than wrong narrowing).
  */
 function serializeAllowEntry(entry: unknown): string | undefined {
-  if (typeof entry === 'string') { return quoteString(entry); }
-  if (isRecord(entry) && typeof entry.folder === 'string') { return `{ folder: ${quoteString(entry.folder)} }`; }
+  if (typeof entry === "string") {
+    return quoteString(entry);
+  }
+  if (isRecord(entry) && typeof entry.folder === "string") {
+    return `{ folder: ${quoteString(entry.folder)} }`;
+  }
   return undefined;
 }
 
@@ -62,12 +66,16 @@ function serializeAllowEntry(entry: unknown): string | undefined {
  * are already known-good by the time they arrive here.
  */
 function serializeAllowEntries(allow: unknown[], knownBlockNames: Set<string>): string | undefined {
-  const known = allow.filter(entry => typeof entry !== 'string' || knownBlockNames.has(entry));
-  if (known.length === 0) { return undefined; }
+  const known = allow.filter((entry) => typeof entry !== "string" || knownBlockNames.has(entry));
+  if (known.length === 0) {
+    return undefined;
+  }
 
   const entries = known.map(serializeAllowEntry);
-  if (!entries.every((entry): entry is string => entry !== undefined)) { return undefined; }
-  return `allow: [${entries.join(', ')}]`;
+  if (!entries.every((entry): entry is string => entry !== undefined)) {
+    return undefined;
+  }
+  return `allow: [${entries.join(", ")}]`;
 }
 
 /**
@@ -90,9 +98,14 @@ function serializeAllowEntries(allow: unknown[], knownBlockNames: Set<string>): 
  * key is meaningless, so emitting `allow` there would put a misleading list in
  * a file the user reads. The type level ignores it either way.
  */
-function isRestrictedByBlocks(fieldData: Record<string, unknown>, dsl: Record<string, unknown>): boolean {
-  if (fieldData.restrict_components === false) { return false; }
-  return typeof dsl.type === 'string' && BLOCK_RESTRICTED_FIELD_TYPES.has(dsl.type);
+function isRestrictedByBlocks(
+  fieldData: Record<string, unknown>,
+  dsl: Record<string, unknown>,
+): boolean {
+  if (fieldData.restrict_components === false) {
+    return false;
+  }
+  return typeof dsl.type === "string" && BLOCK_RESTRICTED_FIELD_TYPES.has(dsl.type);
 }
 
 /**
@@ -113,21 +126,28 @@ function serializeField(
   });
 
   const members = [`name: ${quoteString(fieldName)}`];
-  if (typeof dsl.type === 'string') { members.push(`type: ${quoteString(dsl.type)}`); }
-  if (dsl.required === true) { members.push('required: true'); }
+  if (typeof dsl.type === "string") {
+    members.push(`type: ${quoteString(dsl.type)}`);
+  }
+  if (dsl.required === true) {
+    members.push("required: true");
+  }
 
   if (isRestrictedByBlocks(fieldData, dsl) && Array.isArray(dsl.allow) && dsl.allow.length > 0) {
     const allow = serializeAllowEntries(dsl.allow, context.knownBlockNames);
-    if (allow !== undefined) { members.push(allow); }
+    if (allow !== undefined) {
+      members.push(allow);
+    }
   }
 
-  const customFieldType = dsl.type === 'custom' && typeof dsl.field_type === 'string'
-    ? dsl.field_type
-    : undefined;
-  if (customFieldType !== undefined) { members.push(`field_type: ${quoteString(customFieldType)}`); }
+  const customFieldType =
+    dsl.type === "custom" && typeof dsl.field_type === "string" ? dsl.field_type : undefined;
+  if (customFieldType !== undefined) {
+    members.push(`field_type: ${quoteString(customFieldType)}`);
+  }
 
   return {
-    code: `{ ${members.join('; ')} }`,
+    code: `{ ${members.join("; ")} }`,
     ...(customFieldType === undefined ? {} : { customFieldType }),
   };
 }
@@ -142,18 +162,24 @@ function serializeField(
  * `is_root`, `is_nestable`, `folder`, and `fields` are read by
  * `BlockContent`/`ApplyAllow`/`RootBlock`, so those stay literal.
  */
-export function serializeBlockDefinition(component: Component, context: SerializeContext): SerializedBlock {
-  const lines = ['{'];
+export function serializeBlockDefinition(
+  component: Component,
+  context: SerializeContext,
+): SerializedBlock {
+  const lines = ["{"];
   lines.push(`${INDENT}readonly id: number;`);
   lines.push(`${INDENT}created_at: string;`);
   lines.push(`${INDENT}updated_at: string;`);
   lines.push(`${INDENT}name: ${quoteString(component.name)};`);
-  lines.push(`${INDENT}is_root: ${component.is_root === true ? 'true' : 'false'};`);
-  lines.push(`${INDENT}is_nestable: ${component.is_nestable === false ? 'false' : 'true'};`);
+  lines.push(`${INDENT}is_root: ${component.is_root === true ? "true" : "false"};`);
+  lines.push(`${INDENT}is_nestable: ${component.is_nestable === false ? "false" : "true"};`);
 
   const groupUuid = component.component_group_uuid;
-  const folderPath = typeof groupUuid === 'string' ? context.displayPathByUuid.get(groupUuid) : undefined;
-  if (folderPath !== undefined) { lines.push(`${INDENT}folder: ${quoteString(folderPath)};`); }
+  const folderPath =
+    typeof groupUuid === "string" ? context.displayPathByUuid.get(groupUuid) : undefined;
+  if (folderPath !== undefined) {
+    lines.push(`${INDENT}folder: ${quoteString(folderPath)};`);
+  }
 
   const schema = isFieldRecordMap(component.schema) ? component.schema : {};
   const fields = sortSchemaByPos(schema).filter(([, data]) => isRecord(data));
@@ -161,8 +187,7 @@ export function serializeBlockDefinition(component: Component, context: Serializ
   const customFieldTypes: string[] = [];
   if (fields.length === 0) {
     lines.push(`${INDENT}fields: [];`);
-  }
-  else {
+  } else {
     lines.push(`${INDENT}fields: [`);
     for (const [fieldName, fieldData] of fields) {
       const { code, customFieldType } = serializeField(fieldName, fieldData, context);
@@ -174,7 +199,7 @@ export function serializeBlockDefinition(component: Component, context: Serializ
     lines.push(`${INDENT}];`);
   }
 
-  lines.push('}');
+  lines.push("}");
 
-  return { componentName: component.name, definitionBody: lines.join('\n'), customFieldTypes };
+  return { componentName: component.name, definitionBody: lines.join("\n"), customFieldTypes };
 }

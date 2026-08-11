@@ -11,7 +11,7 @@
  * `--future-schema`.
  */
 export function toDeclarationFileName(filename: string): string {
-  return `${filename.replace(/\.d\.ts$/, '')}.d.ts`;
+  return `${filename.replace(/\.d\.ts$/, "")}.d.ts`;
 }
 
 /**
@@ -30,5 +30,5 @@ export function toDeclarationFileName(filename: string): string {
  * has to match it cannot drift apart.
  */
 export function toDeclarationImportSpecifier(baseName: string): string {
-  return `${baseName.replace(/\.d\.ts$/, '')}.js`;
+  return `${baseName.replace(/\.d\.ts$/, "")}.js`;
 }

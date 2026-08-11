@@ -185,12 +185,12 @@ export function stripKeys(
  */
 export function toKebabCase(str: string): string {
   return str
-    .replace(/[\s_]+/g, '-')
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/[\s_]+/g, "-")
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
     .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -204,7 +204,9 @@ export function toKebabCase(str: string): string {
  * `Foo` + `BlockDefinition` needs no guard, but a leading digit still does.
  */
 export function toSafeIdentifier(identifier: string): string {
-  if (!identifier) { return '_'; }
+  if (!identifier) {
+    return "_";
+  }
   return /^\d/.test(identifier) ? `_${identifier}` : identifier;
 }
 
@@ -214,13 +216,18 @@ export function toSafeIdentifier(identifier: string): string {
  * generated `export const`s and schema-object keys never collide. Index-aligned
  * to `rawNames`.
  */
-export function resolveVarNames(rawNames: string[], baseVarName: (name: string) => string): string[] {
+export function resolveVarNames(
+  rawNames: string[],
+  baseVarName: (name: string) => string,
+): string[] {
   const used = new Set<string>();
   return rawNames.map((raw) => {
     const base = baseVarName(raw);
     let candidate = base;
     let n = 2;
-    while (used.has(candidate)) { candidate = `${base}${n++}`; }
+    while (used.has(candidate)) {
+      candidate = `${base}${n++}`;
+    }
     used.add(candidate);
     return candidate;
   });
@@ -242,12 +249,17 @@ export function resolveVarNames(rawNames: string[], baseVarName: (name: string) 
 export function resolveFileNames(baseNames: string[], dirKeys?: string[]): string[] {
   const usedByDir = new Map<string, Set<string>>();
   return baseNames.map((base, i) => {
-    const dir = dirKeys?.[i] ?? '';
+    const dir = dirKeys?.[i] ?? "";
     let used = usedByDir.get(dir);
-    if (!used) { used = new Set<string>(); usedByDir.set(dir, used); }
+    if (!used) {
+      used = new Set<string>();
+      usedByDir.set(dir, used);
+    }
     let candidate = base;
     let n = 2;
-    while (used.has(candidate)) { candidate = `${base}-${n++}`; }
+    while (used.has(candidate)) {
+      candidate = `${base}-${n++}`;
+    }
     used.add(candidate);
     return candidate;
   });
@@ -259,12 +271,14 @@ export function componentFileName(name: string): string {
 }
 
 /** Sorts schema fields by `pos` for stable ordering. */
-export function sortSchemaByPos(schema: Record<string, Record<string, unknown>>): [string, Record<string, unknown>][] {
+export function sortSchemaByPos(
+  schema: Record<string, Record<string, unknown>>,
+): [string, Record<string, unknown>][] {
   return Object.entries(schema)
-    .filter(([key]) => key !== '_uid' && key !== 'component')
+    .filter(([key]) => key !== "_uid" && key !== "component")
     .sort(([, a], [, b]) => {
-      const posA = typeof a.pos === 'number' ? a.pos : Infinity;
-      const posB = typeof b.pos === 'number' ? b.pos : Infinity;
+      const posA = typeof a.pos === "number" ? a.pos : Infinity;
+      const posB = typeof b.pos === "number" ? b.pos : Infinity;
       return posA - posB;
     });
 }

@@ -1,5 +1,5 @@
 /** Base file name `--future-schema` writes when `--filename` is unset. */
-export const DEFAULT_SCHEMA_TYPES_FILENAME = 'storyblok-schema';
+export const DEFAULT_SCHEMA_TYPES_FILENAME = "storyblok-schema";
 
 /**
  * Base file name the legacy generator writes when `--filename` is unset.
@@ -7,7 +7,7 @@ export const DEFAULT_SCHEMA_TYPES_FILENAME = 'storyblok-schema';
  * Shared with `--future-schema`, which warns when `--filename` aims it at this
  * name, so the two generators cannot overwrite each other unnoticed.
  */
-export const DEFAULT_COMPONENT_TYPES_FILENAME = 'storyblok-components';
+export const DEFAULT_COMPONENT_TYPES_FILENAME = "storyblok-components";
 
 export interface GenerateTypesOptions {
   separateFiles?: boolean;

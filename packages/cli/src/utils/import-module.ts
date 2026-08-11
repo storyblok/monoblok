@@ -11,7 +11,7 @@
  * Importing runs the module, so any top-level side effects it has will happen.
  */
 export async function importModule(absolutePath: string): Promise<Record<string, unknown>> {
-  const { createJiti } = await import('jiti');
+  const { createJiti } = await import("jiti");
   const jiti = createJiti(import.meta.url, { interopDefault: true });
-  return await jiti.import(absolutePath) as Record<string, unknown>;
+  return (await jiti.import(absolutePath)) as Record<string, unknown>;
 }

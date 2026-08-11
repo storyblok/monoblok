@@ -1,11 +1,11 @@
-import { existsSync } from 'node:fs';
-import { resolve } from 'pathe';
+import { existsSync } from "node:fs";
+import { resolve } from "pathe";
 
-import { CommandError, toError } from '../../../../utils';
-import { DEFAULT_STORAGE_DIR } from '../../../../utils/filesystem';
-import { importModule } from '../../../../utils/import-module';
-import { SCHEMA_ENTRY_RELATIVE_PATH } from '../../../schema/constants';
-import { isRecord } from '../../../schema/utils';
+import { CommandError, toError } from "../../../../utils";
+import { DEFAULT_STORAGE_DIR } from "../../../../utils/filesystem";
+import { importModule } from "../../../../utils/import-module";
+import { SCHEMA_ENTRY_RELATIVE_PATH } from "../../../schema/constants";
+import { isRecord } from "../../../schema/utils";
 
 /**
  * Where the generated `FieldPlugins` type comes from.
@@ -27,15 +27,19 @@ import { isRecord } from '../../../schema/utils';
  * looking at reads as the command failing to see it.
  */
 export type FieldPluginsSource =
-  | { kind: 'none'; reason: 'missing' | 'unusable'; searchedPath: string; nearMissExport?: string }
-  | { kind: 'schema'; modulePath: string; fieldTypes: string[] }
-  | { kind: 'record'; modulePath: string; fieldTypes: string[] };
+  | { kind: "none"; reason: "missing" | "unusable"; searchedPath: string; nearMissExport?: string }
+  | { kind: "schema"; modulePath: string; fieldTypes: string[] }
+  | { kind: "record"; modulePath: string; fieldTypes: string[] };
 
 /** Collects the `fieldType` of every entry in a `fieldPlugins` record. */
 function collectFieldTypes(fieldPlugins: Record<string, unknown>): string[] {
   const fieldTypes: string[] = [];
   for (const plugin of Object.values(fieldPlugins)) {
-    if (isRecord(plugin) && typeof plugin.fieldType === 'string' && !fieldTypes.includes(plugin.fieldType)) {
+    if (
+      isRecord(plugin) &&
+      typeof plugin.fieldType === "string" &&
+      !fieldTypes.includes(plugin.fieldType)
+    ) {
       fieldTypes.push(plugin.fieldType);
     }
   }
@@ -54,11 +58,20 @@ function collectFieldTypes(fieldPlugins: Record<string, unknown>): string[] {
  */
 function findNearMissExport(module: Record<string, unknown>): string | undefined {
   for (const [name, value] of Object.entries(module)) {
-    if (name === 'schema' || name === 'fieldPlugins' || name === 'default') { continue; }
-    if (!isRecord(value)) { continue; }
-    if (isRecord(value.fieldPlugins)) { return name; }
+    if (name === "schema" || name === "fieldPlugins" || name === "default") {
+      continue;
+    }
+    if (!isRecord(value)) {
+      continue;
+    }
+    if (isRecord(value.fieldPlugins)) {
+      return name;
+    }
     const entries = Object.values(value);
-    if (entries.length > 0 && entries.every(entry => isRecord(entry) && typeof entry.fieldType === 'string')) {
+    if (
+      entries.length > 0 &&
+      entries.every((entry) => isRecord(entry) && typeof entry.fieldType === "string")
+    ) {
       return name;
     }
   }
@@ -82,37 +95,41 @@ function findNearMissExport(module: Record<string, unknown>): string | undefined
  * field with no registered plugin is reported afterwards as an unmapped
  * `field_type`.
  */
-export async function resolveFieldPluginsSource(
-  options: { cwd: string; path?: string; override?: string },
-): Promise<FieldPluginsSource> {
+export async function resolveFieldPluginsSource(options: {
+  cwd: string;
+  path?: string;
+  override?: string;
+}): Promise<FieldPluginsSource> {
   const isExplicit = options.override !== undefined;
-  const modulePath = options.override === undefined
-    // Honours `--path`, the same base the generated types are written under.
-    ? resolve(options.cwd, options.path ?? DEFAULT_STORAGE_DIR, SCHEMA_ENTRY_RELATIVE_PATH)
-    : resolve(options.cwd, options.override);
+  const modulePath =
+    options.override === undefined
+      ? // Honours `--path`, the same base the generated types are written under.
+        resolve(options.cwd, options.path ?? DEFAULT_STORAGE_DIR, SCHEMA_ENTRY_RELATIVE_PATH)
+      : resolve(options.cwd, options.override);
 
   if (!existsSync(modulePath)) {
     if (isExplicit) {
       throw new CommandError(`Field plugins module not found: ${modulePath}`);
     }
-    return { kind: 'none', reason: 'missing', searchedPath: modulePath };
+    return { kind: "none", reason: "missing", searchedPath: modulePath };
   }
 
   let module: Record<string, unknown>;
   try {
     module = await importModule(modulePath);
-  }
-  catch (maybeError) {
-    throw new CommandError(`Failed to load field plugins from ${modulePath}: ${toError(maybeError).message}`);
+  } catch (maybeError) {
+    throw new CommandError(
+      `Failed to load field plugins from ${modulePath}: ${toError(maybeError).message}`,
+    );
   }
 
   const schemaExport = module.schema;
   if (isRecord(schemaExport) && isRecord(schemaExport.fieldPlugins)) {
-    return { kind: 'schema', modulePath, fieldTypes: collectFieldTypes(schemaExport.fieldPlugins) };
+    return { kind: "schema", modulePath, fieldTypes: collectFieldTypes(schemaExport.fieldPlugins) };
   }
 
   if (isRecord(module.fieldPlugins)) {
-    return { kind: 'record', modulePath, fieldTypes: collectFieldTypes(module.fieldPlugins) };
+    return { kind: "record", modulePath, fieldTypes: collectFieldTypes(module.fieldPlugins) };
   }
 
   const nearMiss = findNearMissExport(module);
@@ -120,12 +137,18 @@ export async function resolveFieldPluginsSource(
     throw new CommandError(
       `${modulePath} exports neither a \`schema\` (a defineSchema result with fieldPlugins) nor a \`fieldPlugins\` record.${
         nearMiss === undefined
-          ? ''
-          : ` Found \`${nearMiss}\`, which looks like one: rename it to \`schema\` or \`fieldPlugins\`.`}`,
+          ? ""
+          : ` Found \`${nearMiss}\`, which looks like one: rename it to \`schema\` or \`fieldPlugins\`.`
+      }`,
     );
   }
   // The convention path degrades rather than failing, but the near miss is still
   // worth carrying: the unmapped-field-type warning can then name the export to
   // rename instead of restating the contract.
-  return { kind: 'none', reason: 'unusable', searchedPath: modulePath, ...(nearMiss === undefined ? {} : { nearMissExport: nearMiss }) };
+  return {
+    kind: "none",
+    reason: "unusable",
+    searchedPath: modulePath,
+    ...(nearMiss === undefined ? {} : { nearMissExport: nearMiss }),
+  };
 }

@@ -1,4 +1,4 @@
-import { defineFieldPlugin } from '@storyblok/schema';
+import { defineFieldPlugin } from "@storyblok/schema";
 
 /** The value type a `colorpicker` custom field should resolve to. */
 export interface ColorPickerValue {
@@ -12,7 +12,7 @@ export interface ColorPickerValue {
  * validates at runtime, only the output type is used.
  */
 interface MinimalStandardSchema<Output> {
-  readonly '~standard': {
+  readonly "~standard": {
     readonly version: 1;
     readonly vendor: string;
     readonly validate: (value: unknown) => { readonly value: Output };
@@ -21,10 +21,10 @@ interface MinimalStandardSchema<Output> {
 }
 
 const colorPickerSchema: MinimalStandardSchema<ColorPickerValue> = {
-  '~standard': {
+  "~standard": {
     version: 1,
-    vendor: 'fixture',
-    validate: () => ({ value: { hex: '#000000' } }),
+    vendor: "fixture",
+    validate: () => ({ value: { hex: "#000000" } }),
     // Standard Schema's own convention: `types` exists only for static
     // inference (`StandardSchemaV1.InferOutput`) and is never read at
     // runtime, so real implementations (zod, valibot, …) assign it the same
@@ -36,7 +36,7 @@ const colorPickerSchema: MinimalStandardSchema<ColorPickerValue> = {
 /** Registers `colorpicker` as the custom field used by `page.accent` in `components.ts`. */
 export const fieldPlugins = {
   colorPicker: defineFieldPlugin({
-    fieldType: 'colorpicker',
+    fieldType: "colorpicker",
     value: colorPickerSchema,
   }),
 };

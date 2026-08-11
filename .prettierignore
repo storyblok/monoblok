@@ -23,3 +23,8 @@ tools/openapi-codegen/specs/
 **/.next/
 **/.astro/
 **/.cache/
+
+# The generated-types fixtures must stay byte-identical to what renderSchemaTypes
+# emits; the drift test compares them. Formatting them would break it.
+packages/cli/src/commands/types/generate/schema-types/__fixtures__/expected-types.d.ts
+packages/cli/src/commands/types/generate/schema-types/__fixtures__/expected-types-with-plugins.d.ts

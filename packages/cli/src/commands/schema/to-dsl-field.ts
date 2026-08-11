@@ -17,9 +17,15 @@ export function resolveGroupWhitelistEntries<T>(
   whitelist: unknown,
   resolveEntry?: (uuid: string) => T | undefined,
 ): T[] | undefined {
-  if (!resolveEntry || !Array.isArray(whitelist) || whitelist.length === 0) { return undefined; }
-  const entries = whitelist.map(uuid => (typeof uuid === 'string' ? resolveEntry(uuid) : undefined));
-  if (!entries.every((entry): entry is T => entry !== undefined)) { return undefined; }
+  if (!resolveEntry || !Array.isArray(whitelist) || whitelist.length === 0) {
+    return undefined;
+  }
+  const entries = whitelist.map((uuid) =>
+    typeof uuid === "string" ? resolveEntry(uuid) : undefined,
+  );
+  if (!entries.every((entry): entry is T => entry !== undefined)) {
+    return undefined;
+  }
   return entries;
 }
 
@@ -56,9 +62,8 @@ export function toDslField<T>(
   const groupEntries = restrictionDisabled
     ? undefined
     : resolveGroupWhitelistEntries(component_group_whitelist, resolveGroupEntry);
-  const hasBlockNames = !restrictionDisabled
-    && Array.isArray(component_whitelist)
-    && component_whitelist.length > 0;
+  const hasBlockNames =
+    !restrictionDisabled && Array.isArray(component_whitelist) && component_whitelist.length > 0;
   if (restrictionDisabled) {
     // The restriction is switched off, so the whitelist beside it is inert.
     // Mapping it to `allow` would make `defineField` re-derive
@@ -67,19 +72,24 @@ export function toDslField<T>(
     // inactive whitelist is dropped: it is not in force, and keeping it is what
     // causes the flip.
     out.restrict_components = false;
-    if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
-  }
-  else if (hasBlockNames) {
+    if (restrict_type !== undefined) {
+      out.restrict_type = restrict_type;
+    }
+  } else if (hasBlockNames) {
     out.allow = component_whitelist;
-  }
-  else if (groupEntries) {
+  } else if (groupEntries) {
     out.allow = groupEntries;
-  }
-  else if (component_group_whitelist !== undefined) {
+  } else if (component_group_whitelist !== undefined) {
     out.component_group_whitelist = component_group_whitelist;
-    if (restrict_components !== undefined) { out.restrict_components = restrict_components; }
-    if (restrict_type !== undefined) { out.restrict_type = restrict_type; }
+    if (restrict_components !== undefined) {
+      out.restrict_components = restrict_components;
+    }
+    if (restrict_type !== undefined) {
+      out.restrict_type = restrict_type;
+    }
   }
-  if (datasource_slug !== undefined) { out.datasource = datasource_slug; }
+  if (datasource_slug !== undefined) {
+    out.datasource = datasource_slug;
+  }
   return out;
 }

@@ -1,15 +1,15 @@
-import { rm } from 'node:fs/promises';
-import { join } from 'pathe';
+import { rm } from "node:fs/promises";
+import { join } from "pathe";
 
-import { CommandError } from '../../../../utils';
-import { fileExists, readDirectory, saveToFile } from '../../../../utils/filesystem';
-import { buildGroupDisplayPathByUuid } from '../../../schema/folders';
-import { fetchRemoteSchema } from '../../../schema/actions';
-import type { GenerateTypesOptions } from '../constants';
-import { toDeclarationFileName } from '../filename';
-import { resolveFieldPluginsSource } from './field-plugins';
-import { renderSchemaTypes, renderSeparateFiles, toRelativeImport } from './render';
-import { serializeBlockDefinition } from './serialize';
+import { CommandError } from "../../../../utils";
+import { fileExists, readDirectory, saveToFile } from "../../../../utils/filesystem";
+import { buildGroupDisplayPathByUuid } from "../../../schema/folders";
+import { fetchRemoteSchema } from "../../../schema/actions";
+import type { GenerateTypesOptions } from "../constants";
+import { toDeclarationFileName } from "../filename";
+import { resolveFieldPluginsSource } from "./field-plugins";
+import { renderSchemaTypes, renderSeparateFiles, toRelativeImport } from "./render";
+import { serializeBlockDefinition } from "./serialize";
 
 /**
  * Options that only the legacy `json-schema-to-typescript` generator supports,
@@ -20,10 +20,14 @@ import { serializeBlockDefinition } from './serialize';
  * file selection and has nothing to do with it.
  */
 const LEGACY_ONLY_FLAGS: ReadonlyArray<readonly [keyof GenerateTypesOptions, string, string]> = [
-  ['strict', '--strict', 'field optionality comes from each field\'s `required` flag'],
-  ['customFieldsParser', '--custom-fields-parser', 'custom fields are typed with defineFieldPlugin, see --field-plugins'],
-  ['compilerOptions', '--compiler-options', 'there is no JSON-schema compiler to configure'],
-  ['suffix', '--suffix', 'it selects pulled component files, which this generator never reads'],
+  ["strict", "--strict", "field optionality comes from each field's `required` flag"],
+  [
+    "customFieldsParser",
+    "--custom-fields-parser",
+    "custom fields are typed with defineFieldPlugin, see --field-plugins",
+  ],
+  ["compilerOptions", "--compiler-options", "there is no JSON-schema compiler to configure"],
+  ["suffix", "--suffix", "it selects pulled component files, which this generator never reads"],
 ];
 
 /**
@@ -46,8 +50,8 @@ export function assertNoLegacyFlags(
   getOptionValueSource?: (attributeName: string) => string | undefined,
 ): string[] {
   const set = LEGACY_ONLY_FLAGS.filter(([key]) => options[key] !== undefined);
-  const fromConfig = set.filter(([key]) => getOptionValueSource?.(key) === 'config');
-  const used = set.filter(entry => !fromConfig.includes(entry));
+  const fromConfig = set.filter(([key]) => getOptionValueSource?.(key) === "config");
+  const used = set.filter((entry) => !fromConfig.includes(entry));
 
   if (used.length === 1) {
     const [, flag, reason] = used[0]!;
@@ -56,8 +60,8 @@ export function assertNoLegacyFlags(
 
   if (used.length > 1) {
     throw new CommandError(
-      `${used.map(([, flag]) => flag).join(', ')} are not supported with --future-schema. `
-      + `${used.map(([, flag, reason]) => `${flag}: ${reason}`).join('. ')}.`,
+      `${used.map(([, flag]) => flag).join(", ")} are not supported with --future-schema. ` +
+        `${used.map(([, flag, reason]) => `${flag}: ${reason}`).join(". ")}.`,
     );
   }
 
@@ -65,7 +69,7 @@ export function assertNoLegacyFlags(
 }
 
 /** The subdirectory `--separate-files` owns, one declaration file per block. */
-const BLOCKS_DIR = 'blocks';
+const BLOCKS_DIR = "blocks";
 
 /**
  * Deletes declaration files in `blocks/` that this run did not write.
@@ -83,16 +87,21 @@ const BLOCKS_DIR = 'blocks';
  *
  * @returns absolute paths deleted.
  */
-async function pruneStaleBlockFiles(outputDir: string, outputs: Map<string, string>): Promise<string[]> {
+async function pruneStaleBlockFiles(
+  outputDir: string,
+  outputs: Map<string, string>,
+): Promise<string[]> {
   const blocksDir = join(outputDir, BLOCKS_DIR);
 
-  if (!await fileExists(blocksDir)) {
+  if (!(await fileExists(blocksDir))) {
     return [];
   }
 
   const written = new Set([...outputs.keys()]);
   const entries = await readDirectory(blocksDir);
-  const stale = entries.filter(entry => entry.endsWith('.d.ts') && !written.has(`${BLOCKS_DIR}/${entry}`));
+  const stale = entries.filter(
+    (entry) => entry.endsWith(".d.ts") && !written.has(`${BLOCKS_DIR}/${entry}`),
+  );
 
   const deleted: string[] = [];
   for (const entry of stale) {
@@ -135,7 +144,7 @@ export interface GenerateSchemaTypesResult {
    */
   fieldPlugins:
     | { resolved: true; path: string }
-    | { resolved: false; reason: 'missing' | 'unusable'; path: string; nearMissExport?: string };
+    | { resolved: false; reason: "missing" | "unusable"; path: string; nearMissExport?: string };
 }
 
 /**
@@ -152,11 +161,13 @@ export async function generateSchemaTypes(
   const { rawComponents, rawComponentFolders } = await fetchRemoteSchema(options.space);
 
   if (rawComponents.length === 0) {
-    throw new CommandError(`Space ${options.space} has no components, so there are no types to generate.`);
+    throw new CommandError(
+      `Space ${options.space} has no components, so there are no types to generate.`,
+    );
   }
 
   const displayPathByUuid = buildGroupDisplayPathByUuid(rawComponentFolders);
-  const knownBlockNames = new Set(rawComponents.map(component => component.name));
+  const knownBlockNames = new Set(rawComponents.map((component) => component.name));
   // Sorted by name so regeneration is byte-stable: MAPI does not promise a
   // stable component order, and this file is committed, so an upstream
   // reordering would otherwise show up as a diff with no semantic change.
@@ -164,16 +175,19 @@ export async function generateSchemaTypes(
   // differently depending on the machine's locale.
   const blocks = [...rawComponents]
     .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-    .map(component => serializeBlockDefinition(component, { displayPathByUuid, knownBlockNames }));
+    .map((component) =>
+      serializeBlockDefinition(component, { displayPathByUuid, knownBlockNames }),
+    );
 
   const fieldPlugins = await resolveFieldPluginsSource({
     cwd: options.cwd,
     path: options.path,
     override: options.fieldPluginsPath,
   });
-  const fieldPluginsImportPath = fieldPlugins.kind === 'none'
-    ? undefined
-    : toRelativeImport(options.outputDir, fieldPlugins.modulePath);
+  const fieldPluginsImportPath =
+    fieldPlugins.kind === "none"
+      ? undefined
+      : toRelativeImport(options.outputDir, fieldPlugins.modulePath);
 
   const renderOptions = {
     blocks,
@@ -197,21 +211,25 @@ export async function generateSchemaTypes(
 
   const prunedFiles = await pruneStaleBlockFiles(options.outputDir, outputs);
 
-  const registered = new Set(fieldPlugins.kind === 'none' ? [] : fieldPlugins.fieldTypes);
-  const unmappedFieldTypes = [...new Set(blocks.flatMap(block => block.customFieldTypes))]
-    .filter(fieldType => !registered.has(fieldType));
+  const registered = new Set(fieldPlugins.kind === "none" ? [] : fieldPlugins.fieldTypes);
+  const unmappedFieldTypes = [...new Set(blocks.flatMap((block) => block.customFieldTypes))].filter(
+    (fieldType) => !registered.has(fieldType),
+  );
 
   return {
     files,
     prunedFiles,
     unmappedFieldTypes,
-    fieldPlugins: fieldPlugins.kind === 'none'
-      ? {
-          resolved: false,
-          reason: fieldPlugins.reason,
-          path: fieldPlugins.searchedPath,
-          ...(fieldPlugins.nearMissExport === undefined ? {} : { nearMissExport: fieldPlugins.nearMissExport }),
-        }
-      : { resolved: true, path: fieldPlugins.modulePath },
+    fieldPlugins:
+      fieldPlugins.kind === "none"
+        ? {
+            resolved: false,
+            reason: fieldPlugins.reason,
+            path: fieldPlugins.searchedPath,
+            ...(fieldPlugins.nearMissExport === undefined
+              ? {}
+              : { nearMissExport: fieldPlugins.nearMissExport }),
+          }
+        : { resolved: true, path: fieldPlugins.modulePath },
   };
 }

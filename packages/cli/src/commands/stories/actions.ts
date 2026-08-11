@@ -44,7 +44,10 @@ export const fetchStories = async (
   }
 };
 
-export const fetchStory = async (spaceId: string, storyId: string | number) => {
+export const fetchStory = async (
+  spaceId: string,
+  storyId: string | number,
+): Promise<Story | undefined> => {
   try {
     const client = getMapiClient();
 
@@ -110,7 +113,7 @@ export const updateStory = async (
     force_update?: string;
     publish?: number;
   },
-) => {
+): Promise<Story> => {
   try {
     const client = getMapiClient();
     const { data } = await client.stories.update(storyId, {

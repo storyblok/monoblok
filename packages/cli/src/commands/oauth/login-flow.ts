@@ -1,17 +1,22 @@
-import open from 'open';
-import type { RegionCode } from '../../constants';
-import { managementApiRegions } from '../../constants';
-import { CommandError } from '../../utils';
-import { getUI } from '../../lib/ui';
-import { resolveOAuthClient } from './client';
-import { OAUTH_CALLBACK_PATH, OAUTH_CALLBACK_PORT, OAUTH_LOGIN_SCOPES, OAUTH_REDIRECT_URI } from './constants';
-import { introspectGrant } from './grant';
-import { generatePkce, generateState } from './pkce';
-import { computeExpiresAt } from './refresh';
-import { waitForCallback } from './server';
-import { setOAuthActiveRegion, updateOAuthEntry } from './store';
-import type { OAuthGrantSpace, OAuthTokens } from './store';
-import { exchangeToken } from './token-endpoint';
+import open from "open";
+import type { RegionCode } from "../../constants";
+import { managementApiRegions } from "../../constants";
+import { CommandError } from "../../utils";
+import { getUI } from "../../lib/ui";
+import { resolveOAuthClient } from "./client";
+import {
+  OAUTH_CALLBACK_PATH,
+  OAUTH_CALLBACK_PORT,
+  OAUTH_LOGIN_SCOPES,
+  OAUTH_REDIRECT_URI,
+} from "./constants";
+import { introspectGrant } from "./grant";
+import { generatePkce, generateState } from "./pkce";
+import { computeExpiresAt } from "./refresh";
+import { waitForCallback } from "./server";
+import { setOAuthActiveRegion, updateOAuthEntry } from "./store";
+import type { OAuthGrantSpace, OAuthTokens } from "./store";
+import { exchangeToken } from "./token-endpoint";
 
 export interface OAuthLoginResult {
   region: RegionCode;
@@ -29,11 +34,11 @@ export const buildAuthorizeUrl = (params: {
   const query = new URLSearchParams({
     client_id: params.clientId,
     redirect_uri: OAUTH_REDIRECT_URI,
-    response_type: 'code',
-    scope: params.scopes.join(' '),
+    response_type: "code",
+    scope: params.scopes.join(" "),
     state: params.state,
     code_challenge: params.challenge,
-    code_challenge_method: 'S256',
+    code_challenge_method: "S256",
   });
   return `https://${managementApiRegions[params.region]}/oauth/init?${query.toString()}`;
 };
@@ -43,7 +48,7 @@ export const performOAuthLogin = async (options: {
   openBrowser?: (url: string) => Promise<unknown>;
 }): Promise<OAuthLoginResult> => {
   const { region } = options;
-  const openBrowser = options.openBrowser ?? (url => open(url));
+  const openBrowser = options.openBrowser ?? ((url) => open(url));
   const ui = getUI();
 
   const client = resolveOAuthClient();
@@ -54,17 +59,27 @@ export const performOAuthLogin = async (options: {
   // Start listening before opening the browser so no callback is missed.
   const callbackPromise = waitForCallback(OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH);
 
-  const authorizeUrl = buildAuthorizeUrl({ region, clientId: client.client_id, scopes, state, challenge });
-  ui.info(`Opening your browser to authorize the Storyblok CLI.\nIf it does not open, visit:\n${authorizeUrl}`);
+  const authorizeUrl = buildAuthorizeUrl({
+    region,
+    clientId: client.client_id,
+    scopes,
+    state,
+    challenge,
+  });
+  ui.info(
+    `Opening your browser to authorize the Storyblok CLI.\nIf it does not open, visit:\n${authorizeUrl}`,
+  );
   await openBrowser(authorizeUrl);
 
   const { code, state: returnedState } = await callbackPromise;
   if (returnedState !== state) {
-    throw new CommandError('OAuth state mismatch; aborting for your safety. Please try `storyblok login` again.');
+    throw new CommandError(
+      "OAuth state mismatch; aborting for your safety. Please try `storyblok login` again.",
+    );
   }
 
   const token = await exchangeToken(region, {
-    grant_type: 'authorization_code',
+    grant_type: "authorization_code",
     code,
     redirect_uri: OAUTH_REDIRECT_URI,
     code_verifier: verifier,
@@ -77,7 +92,7 @@ export const performOAuthLogin = async (options: {
   const grant = await introspectGrant(region, token.access_token);
 
   const tokens: OAuthTokens = {
-    auth_type: 'oauth',
+    auth_type: "oauth",
     access_token: token.access_token,
     refresh_token: token.refresh_token,
     expires_at: computeExpiresAt(token.expires_in),

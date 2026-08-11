@@ -1,25 +1,25 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { vol } from 'memfs';
-import { http, HttpResponse } from 'msw';
-import { setupServer } from 'msw/node';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { vol } from "memfs";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
 
-import '../../index';
-import { loginCommand } from './index';
-import { getOAuthEntry } from '../oauth/store';
-import { session } from '../../session';
-import { loggedOutSessionState } from '../../../test/setup';
+import "../../index";
+import { loginCommand } from "./index";
+import { getOAuthEntry } from "../oauth/store";
+import { session } from "../../session";
+import { loggedOutSessionState } from "../../../test/setup";
 
-vi.mock('node:fs');
-vi.mock('node:fs/promises');
+vi.mock("node:fs");
+vi.mock("node:fs/promises");
 // Avoid opening a real browser and a real socket in tests.
-vi.mock('open', () => ({ default: vi.fn(async () => undefined) }));
-vi.mock('../oauth/server', () => ({
-  waitForCallback: vi.fn(async () => ({ code: 'auth-code', state: 'ignored' })),
+vi.mock("open", () => ({ default: vi.fn(async () => undefined) }));
+vi.mock("../oauth/server", () => ({
+  waitForCallback: vi.fn(async () => ({ code: "auth-code", state: "ignored" })),
 }));
 // Force the state check to pass by returning the same state generatePkce/generateState produced.
-vi.mock('../oauth/pkce', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../oauth/pkce')>();
-  return { ...actual, generateState: () => 'ignored' };
+vi.mock("../oauth/pkce", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../oauth/pkce")>();
+  return { ...actual, generateState: () => "ignored" };
 });
 
 const server = setupServer();
@@ -27,7 +27,7 @@ beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-describe('login --oauth', () => {
+describe("login --oauth", () => {
   beforeEach(async () => {
     vol.reset();
     // The shared test session mock defaults to a logged-in state; reset it so the login
@@ -37,8 +37,8 @@ describe('login --oauth', () => {
     });
     // The baked-in client is still a placeholder, so point the CLI at a test client
     // through the env-var override that development and self-hosted setups use.
-    process.env.STORYBLOK_OAUTH_CLIENT_ID = 'cid';
-    process.env.STORYBLOK_OAUTH_CLIENT_SECRET = 'secret';
+    process.env.STORYBLOK_OAUTH_CLIENT_ID = "cid";
+    process.env.STORYBLOK_OAUTH_CLIENT_SECRET = "secret";
   });
 
   afterEach(() => {
@@ -46,19 +46,34 @@ describe('login --oauth', () => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
 
-  it('should complete the oauth flow and persist tokens and spaces', async () => {
+  it("should complete the oauth flow and persist tokens and spaces", async () => {
     server.use(
-      http.post('https://mapi.storyblok.com/oauth/token', () =>
-        HttpResponse.json({ access_token: 'sb_oat_x', refresh_token: 'sb_ort_x', token_type: 'bearer', expires_in: 900, scope: 'stories:read offline_access' })),
+      http.post("https://mapi.storyblok.com/oauth/token", () =>
+        HttpResponse.json({
+          access_token: "sb_oat_x",
+          refresh_token: "sb_ort_x",
+          token_type: "bearer",
+          expires_in: 900,
+          scope: "stories:read offline_access",
+        }),
+      ),
       // The grant introspection payload is nested under a `grant` root key (storyrails).
-      http.get('https://mapi.storyblok.com/v1/oauth/grant', () =>
-        HttpResponse.json({ grant: { scopes: ['stories:read', 'offline_access'], expires_at: '2026-07-20T12:00:00.000Z', app: { client_id: 'cid', name: 'Storyblok CLI' }, spaces: [{ id: 99, region: 'eu' }] } })),
+      http.get("https://mapi.storyblok.com/v1/oauth/grant", () =>
+        HttpResponse.json({
+          grant: {
+            scopes: ["stories:read", "offline_access"],
+            expires_at: "2026-07-20T12:00:00.000Z",
+            app: { client_id: "cid", name: "Storyblok CLI" },
+            spaces: [{ id: 99, region: "eu" }],
+          },
+        }),
+      ),
     );
 
-    await loginCommand.parseAsync(['node', 'test', '--oauth', '--region', 'eu']);
+    await loginCommand.parseAsync(["node", "test", "--oauth", "--region", "eu"]);
 
-    const entry = await getOAuthEntry('eu');
-    expect(entry.tokens?.access_token).toBe('sb_oat_x');
-    expect(entry.spaces).toEqual([{ id: 99, region: 'eu' }]);
+    const entry = await getOAuthEntry("eu");
+    expect(entry.tokens?.access_token).toBe("sb_oat_x");
+    expect(entry.spaces).toEqual([{ id: 99, region: "eu" }]);
   });
 });

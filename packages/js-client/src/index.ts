@@ -241,9 +241,12 @@ export class Storyblok {
     }
     const url = `/${slug}`;
 
-    // Only add version parameter for CDN URLs
+    // Only add/keep version parameter for CDN URLs — strip it from MAPI requests
     if (isCDNUrl(url)) {
       params.version = params.version || this.version;
+    }
+    else if (params.version) {
+      delete params.version;
     }
 
     const query = this.factoryParamOptions(url, params);

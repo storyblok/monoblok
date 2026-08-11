@@ -83,8 +83,8 @@ describe("reports list command", () => {
 
     await reportsCommand.parseAsync(["node", "test", "list"]);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("Found 1 report file:"));
-    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining("undefined"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Found 1 report file:"));
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("undefined"));
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining("storyblok-schema-diff-1234567890.json"),
     );
@@ -95,7 +95,7 @@ describe("reports list command", () => {
 
     await reportsCommand.parseAsync(["node", "test", "list"]);
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("No reports found."));
-    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining("undefined"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("No reports found."));
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("undefined"));
   });
 });

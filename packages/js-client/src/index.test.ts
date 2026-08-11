@@ -2109,4 +2109,32 @@ describe("storyblokClient", () => {
       vi.doMock("../src/sbFetch");
     }, 3000);
   });
+
+  describe('version param on non-CDN URLs', () => {
+    it('strips version from params when calling a Management API endpoint', async () => {
+      vi.doUnmock('../src/sbFetch');
+      const { default: RealSbFetch } = await import('./sbFetch');
+
+      const capturedUrls: string[] = [];
+      const mockFetch = vi.fn((url: string): Promise<Response> => {
+        capturedUrls.push(url);
+        return Promise.resolve(
+          new Response(JSON.stringify({ story: { id: 123 } }), { status: 200 }),
+        );
+      });
+
+      const mapiClient = new StoryblokClient({ oauthToken: 'test-management-token' });
+      (mapiClient as any).client = new RealSbFetch({
+        baseURL: 'https://mapi.storyblok.com/v1',
+        headers: new Headers(),
+        fetch: mockFetch as any,
+      });
+
+      await mapiClient.get('spaces/123/stories/456', { version: 'draft' } as any);
+
+      expect(capturedUrls[0]).not.toContain('version');
+
+      vi.doMock('../src/sbFetch');
+    });
+  });
 });

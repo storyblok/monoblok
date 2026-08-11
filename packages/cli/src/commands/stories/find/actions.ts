@@ -38,6 +38,11 @@ export function buildQueryParams(text: string | undefined, options: FindOptions)
     Object.assign(params, publishStatusToQueryParams(options.publishStatus));
   }
 
+  // Reference search (server-side)
+  if (options.referencesTo) {
+    params.reference_search = options.referencesTo;
+  }
+
   // Entry type filter
   if (options.entryType === 'story') {
     params.story_only = true;

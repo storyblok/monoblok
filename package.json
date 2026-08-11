@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "monoblok": "node tools/monoblok/dist/index.mjs",
-    "prepare": "husky",
+    "prepare": "husky && (git config blame.ignoreRevsFile .git-blame-ignore-revs || true)",
     "release": "node tools/release.mjs",
     "build": "pnpm nx run-many --target=build",
     "lint": "oxlint --disable-nested-config && nx run-many --target=lint",

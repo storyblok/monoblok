@@ -1,0 +1,17 @@
+# Commits to skip in `git blame`.
+#
+# Only ever add commits that are purely mechanical, such as a formatter run or
+# a mass rename, with no behavior change. Blame skips them entirely, so
+# anything real hidden in such a commit becomes very hard to find later.
+#
+# GitHub reads this file automatically. For local `git blame`, run:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# `pnpm install` does this for you via the root `prepare` script.
+
+# chore: reformat repo with oxfmt (1111 files)
+5f5fcbe7a6bbaf7539b861542165fb99a2214e62
+
+# chore(js-client): apply pending formatting fixes (#745)
+c1600ab4514f1e707ba3db5e70839cf98794a8c4

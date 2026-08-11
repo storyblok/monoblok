@@ -50,7 +50,7 @@ storyblok types generate --space 12345 --separate-files
 ## File Structure
 
 The command will generate two files:
-1. A `storyblok.d.ts` file with base Storyblok types (like `StoryblokAsset`, `StoryblokRichtext`, etc.)
+1. A `storyblok.d.ts` file with base Storyblok types (like `StoryblokAsset`, `StoryblokRichTextDoc`, etc.)
 2. A `storyblok-components.d.ts` file for each space inside the `.storyblok/types/{spaceId}/` directory with your component types
 
 ### Example Structure

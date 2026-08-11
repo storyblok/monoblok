@@ -1,6 +1,21 @@
 import { toPascalCase } from '../../../utils';
 
 /**
+ * Explicit type-name overrides for Storyblok field types where the generated
+ * name (Storyblok + PascalCase(type)) does not match the exported type name.
+ */
+const TYPE_NAME_OVERRIDES: Record<string, string> = {
+  richtext: 'StoryblokRichTextDoc',
+};
+
+export function storyblokTypeName(type: string): string {
+  if (TYPE_NAME_OVERRIDES[type]) {
+    return TYPE_NAME_OVERRIDES[type];
+  }
+  return `Storyblok${toPascalCase(type)}`;
+}
+
+/**
  * Generates imports for Storyblok types (ISbStoryData, StoryblokAsset, etc.)
  * @param storyblokPropertyTypes - Set of Storyblok property types used
  * @param STORY_TYPE - The ISbStoryData constant
@@ -21,8 +36,7 @@ export function generateStoryblokImports(
 
   if (storyblokPropertyTypes.size > 0) {
     const typeImports = Array.from(storyblokPropertyTypes).map((type) => {
-      const pascalType = toPascalCase(type);
-      return `Storyblok${pascalType}`;
+      return storyblokTypeName(type);
     });
 
     imports.push(`import type { ${typeImports.join(', ')} } from '../storyblok.d.ts';`);
@@ -68,8 +82,7 @@ export function detectUsedStoryblokTypes(
 
   // Check for other Storyblok types
   Array.from(storyblokPropertyTypes).forEach((type) => {
-    const pascalType = toPascalCase(type);
-    if (content.includes(`Storyblok${pascalType}`)) {
+    if (content.includes(storyblokTypeName(type))) {
       usedTypes.push(type);
     }
   });
@@ -146,8 +159,7 @@ export function generateComponentImports(
 
     if (otherTypes.length > 0) {
       const typeImports = otherTypes.map((type) => {
-        const pascalType = toPascalCase(type);
-        return `Storyblok${pascalType}`;
+        return storyblokTypeName(type);
       });
       imports.push(`import type { ${typeImports.join(', ')} } from '../storyblok.d.ts';`);
     }

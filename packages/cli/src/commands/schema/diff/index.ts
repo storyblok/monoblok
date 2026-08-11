@@ -2,7 +2,7 @@ import { colorPalette, commands } from "../../../constants";
 import { handleError, requireAuthentication, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
-import { getUI } from "../../../utils/ui";
+import { getUI } from "../../../lib/ui";
 import { session } from "../../../session";
 import { schemaCommand } from "../command";
 import { diffSchema } from "../diff-schema";

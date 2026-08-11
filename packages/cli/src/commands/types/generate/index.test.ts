@@ -13,6 +13,7 @@ const uiOkMock = vi.hoisted(() => vi.fn());
 const uiBrMock = vi.hoisted(() => vi.fn());
 const uiSpinnerSucceedMock = vi.hoisted(() => vi.fn());
 const uiSpinnerFailedMock = vi.hoisted(() => vi.fn());
+const uiErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../lib/ui", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -24,6 +25,7 @@ vi.mock("../../../lib/ui", async (importOriginal) => {
       info: uiInfoMock,
       ok: uiOkMock,
       br: uiBrMock,
+      error: uiErrorMock,
       createSpinner: () => ({
         start: vi.fn(),
         succeed: uiSpinnerSucceedMock,
@@ -103,8 +105,9 @@ describe("types generate", () => {
 
       expect(generateTypes).toHaveBeenCalledWith(mockSpaceData, expect.objectContaining({}));
 
-      expect(console.error).toHaveBeenCalledWith(
+      expect(uiOkMock).toHaveBeenCalledWith(
         expect.stringContaining("Successfully generated types for space"),
+        true,
       );
     });
 
@@ -324,7 +327,7 @@ describe("types generate", () => {
 
       await typesCommand.parseAsync(["node", "test", "generate", "--space", "12345"]);
 
-      expect(konsola.warn).toHaveBeenCalledWith(expect.stringContaining("--future-schema"));
+      expect(uiWarnMock).toHaveBeenCalledWith(expect.stringContaining("--future-schema"));
     });
   });
 
@@ -340,7 +343,7 @@ describe("types generate", () => {
         "--strict",
       ]);
 
-      expect(konsola.error).toHaveBeenCalledWith(
+      expect(uiErrorMock).toHaveBeenCalledWith(
         expect.objectContaining({ message: expect.stringContaining("--strict") }),
         false,
       );

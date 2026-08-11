@@ -64,7 +64,9 @@ export type Exposure = ExperimentEvent & { type: "exposure" };
 export type Conversion = ExperimentEvent & { type: "conversion" };
 
 /**
- * A sink for experiment events. Bring your own, or use `fetchAdapter`.
+ * A sink for experiment events. Bring your own, or build one with an adapter
+ * factory such as `createFetchAdapter`.
+ *
  * Adapters can be sync or async: return a promise so callers, and the
  * factory's `flush` and `waitUntil`, can await delivery.
  */

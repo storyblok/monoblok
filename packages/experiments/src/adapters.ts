@@ -2,7 +2,7 @@ import type { Adapter, ExperimentEvent } from "./types";
 
 export type { Adapter } from "./types";
 
-export interface FetchAdapterOptions {
+export interface CreateFetchAdapterOptions {
   /** Override the `fetch` implementation (e.g. for testing or a custom client). */
   fetch?: typeof globalThis.fetch;
   /** Extra headers merged onto the request. */
@@ -14,12 +14,12 @@ export interface FetchAdapterOptions {
   baseUrl?: string;
 }
 
-export interface BeaconAdapterOptions {
+export interface CreateBeaconAdapterOptions {
   /** Override `navigator.sendBeacon` (e.g. for testing). */
   sendBeacon?: (url: string, body: Blob) => boolean;
   /**
    * Content type the beacon is sent with. Defaults to `application/json`, which
-   * matches `fetchAdapter` so one endpoint can parse both.
+   * matches `createFetchAdapter` so one endpoint can parse both.
    *
    * `application/json` is not a CORS-safelisted content type, so a cross-origin
    * beacon is preflighted — and a preflight fired during page unload often does
@@ -43,15 +43,15 @@ function resolveTarget(url: string, baseUrl?: string): string {
     return new URL(url, base).toString();
   } catch {
     throw new Error(
-      `fetchAdapter: cannot resolve "${url}". Server-side fetch has no origin to resolve a relative path against — pass an absolute url, or set \`baseUrl\` to the incoming request url.`,
+      `createFetchAdapter: cannot resolve "${url}". Server-side fetch has no origin to resolve a relative path against — pass an absolute url, or set \`baseUrl\` to the incoming request url.`,
     );
   }
 }
 
 /**
- * An adapter that POSTs each event as JSON to `url`. This is the generic sink
- * for any HTTP endpoint. For other destinations, pass your own `Adapter`
- * function instead.
+ * Creates an `Adapter` that POSTs each event as JSON to `url`. This is the
+ * generic sink for any HTTP endpoint. For other destinations, pass your own
+ * `Adapter` function instead.
  *
  * `fetch` only rejects on a network failure, so a non-2xx response is turned
  * into a thrown error to make delivery failures observable (surfaced through
@@ -67,11 +67,11 @@ function resolveTarget(url: string, baseUrl?: string): string {
  * url on the server constructed fine and then failed on every delivery into
  * `onError`. Two consequences worth knowing:
  *
- * - A module-scope `fetchAdapter('/api/events')` in a module that both server and
- *   client code import now throws on the server, even when only the browser ever
- *   delivers through it. Pass `baseUrl`, use an absolute url, or build the
- *   adapter where it is used. On the client, prefer `beaconAdapter`, which takes
- *   a relative url and survives page unload.
+ * - A module-scope `createFetchAdapter('/api/events')` in a module that both
+ *   server and client code import now throws on the server, even when only the
+ *   browser ever delivers through it. Pass `baseUrl`, use an absolute url, or
+ *   build the adapter where it is used. On the client, prefer
+ *   `createBeaconAdapter`, which takes a relative url and survives page unload.
  * - In a browser the url is resolved once, at construction, against the page that
  *   was current then. Root-relative paths (`/api/events`) are unaffected; a
  *   path-relative one (`api/events`) keeps resolving against that first page
@@ -80,7 +80,7 @@ function resolveTarget(url: string, baseUrl?: string): string {
  * Pointing this at your own deployment costs an extra invocation per event; for
  * a same-deployment sink, pass a plain function as the adapter instead.
  */
-export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Adapter {
+export function createFetchAdapter(url: string, options: CreateFetchAdapterOptions = {}): Adapter {
   const { fetch = globalThis.fetch, headers, baseUrl } = options;
   const target = resolveTarget(url, baseUrl);
   return async (event: ExperimentEvent) => {
@@ -91,7 +91,7 @@ export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Ad
     });
     if (!response.ok) {
       throw new Error(
-        `fetchAdapter: POST ${target} failed with ${response.status} ${response.statusText}`,
+        `createFetchAdapter: POST ${target} failed with ${response.status} ${response.statusText}`,
       );
     }
     return response;
@@ -99,32 +99,61 @@ export function fetchAdapter(url: string, options: FetchAdapterOptions = {}): Ad
 }
 
 /**
- * A browser adapter that queues each event with `navigator.sendBeacon`. The
- * beacon survives page unload, so it works on a link or a form submit as well
+ * Creates a browser `Adapter` that queues each event with
+ * `navigator.sendBeacon`. The beacon survives page unload, so it works on a link or a form submit as well
  * as a button, where a `fetch` would be cancelled by the navigation.
  *
  * Delivery is fire-and-forget: the browser reports only whether it accepted the
  * payload for sending, not whether it arrived.
  *
  * The event is sent as a `Blob` rather than a string so the request carries
- * `content-type: application/json`, the same as `fetchAdapter`. A bare string
+ * `content-type: application/json`, the same as `createFetchAdapter`. A bare string
  * would be sent as `text/plain`, which a JSON-only endpoint rejects. See
  * `contentType` for the cross-origin caveat that comes with it.
  */
-export function beaconAdapter(url: string, options: BeaconAdapterOptions = {}): Adapter {
+export function createBeaconAdapter(
+  url: string,
+  options: CreateBeaconAdapterOptions = {},
+): Adapter {
   const { contentType = "application/json" } = options;
   return (event: ExperimentEvent): void => {
     const sendBeacon =
       options.sendBeacon ?? globalThis.navigator?.sendBeacon?.bind(globalThis.navigator);
     if (!sendBeacon) {
       throw new Error(
-        "beaconAdapter: navigator.sendBeacon is unavailable. Use it in a browser, or pass `fetchAdapter` on the server.",
+        "createBeaconAdapter: navigator.sendBeacon is unavailable. Use it in a browser, or pass `createFetchAdapter` on the server.",
       );
     }
     if (!sendBeacon(url, new Blob([JSON.stringify(event)], { type: contentType }))) {
       throw new Error(
-        `beaconAdapter: the browser refused to queue the event for ${url}, most likely because the payload exceeds its beacon size limit.`,
+        `createBeaconAdapter: the browser refused to queue the event for ${url}, most likely because the payload exceeds its beacon size limit.`,
       );
     }
   };
 }
+
+/**
+ * @deprecated Renamed to `CreateFetchAdapterOptions`, matching the renamed
+ * factory. Kept for backward compatibility, removed in the next major.
+ */
+export type FetchAdapterOptions = CreateFetchAdapterOptions;
+
+/**
+ * @deprecated Renamed to `CreateBeaconAdapterOptions`, matching the renamed
+ * factory. Kept for backward compatibility, removed in the next major.
+ */
+export type BeaconAdapterOptions = CreateBeaconAdapterOptions;
+
+/**
+ * @deprecated Renamed to `createFetchAdapter`, which reflects that it builds an
+ * `Adapter` rather than being one. This alias is kept for backward
+ * compatibility and will be removed in the next major.
+ */
+export const fetchAdapter = createFetchAdapter;
+
+/**
+ * @deprecated Renamed to `createBeaconAdapter`, which reflects that it builds an
+ * `Adapter` rather than being one. This alias is kept for backward
+ * compatibility and will be removed in the next major.
+ */
+export const beaconAdapter = createBeaconAdapter;

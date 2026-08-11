@@ -343,10 +343,9 @@ describe("types generate", () => {
         "--strict",
       ]);
 
-      expect(uiErrorMock).toHaveBeenCalledWith(
-        expect.objectContaining({ message: expect.stringContaining("--strict") }),
-        false,
-      );
+      expect(uiErrorMock).toHaveBeenCalledWith(expect.stringContaining("--strict"), undefined, {
+        header: true,
+      });
     });
 
     it("generates schema types and reports success, per-file output, and unmapped field types", async () => {

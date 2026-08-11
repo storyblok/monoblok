@@ -1,4 +1,4 @@
-import { isRecord } from '../utils';
+import { isRecord } from "../utils";
 
 /** Usage of a single component within one story's content. */
 export interface ComponentUsage {
@@ -14,7 +14,7 @@ function recordBlok(
   usage: Map<string, ComponentUsage>,
 ): void {
   const component = blok.component;
-  if (typeof component !== 'string') {
+  if (typeof component !== "string") {
     return;
   }
   const impactedFields = impacted.get(component);

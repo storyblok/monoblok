@@ -1,18 +1,22 @@
-import { Readable, Writable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { Readable, Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
-import { validateStory } from '@storyblok/schema';
-import type { ValidationIssue } from '@storyblok/schema';
+import { validateStory } from "@storyblok/schema";
+import type { ValidationIssue } from "@storyblok/schema";
 
-import type { Story } from '../../../types';
-import type { DiffResult } from '../types';
-import type { BreakingChange, ComponentBreakingChanges } from '../migrations/types';
-import type { AdaptedSchema } from '../to-schema-like';
-import { fetchStoriesStream, fetchStoryStream, readLocalStoriesStream } from '../../stories/streams';
-import { collectComponentUsage } from './content-usage';
+import type { Story } from "../../../types";
+import type { DiffResult } from "../types";
+import type { BreakingChange, ComponentBreakingChanges } from "../migrations/types";
+import type { AdaptedSchema } from "../to-schema-like";
+import {
+  fetchStoriesStream,
+  fetchStoryStream,
+  readLocalStoriesStream,
+} from "../../stories/streams";
+import { collectComponentUsage } from "./content-usage";
 
 /** How an impacted component changed. `removed` = deleted from the local schema. */
-export type ImpactAction = 'update' | 'removed';
+export type ImpactAction = "update" | "removed";
 
 /** A field-level change that affects existing content. */
 export interface ImpactedField {
@@ -20,7 +24,7 @@ export interface ImpactedField {
   field: string;
   /** Key present in existing (remote) content — the old name for renames. */
   contentKey: string;
-  kind: BreakingChange['kind'];
+  kind: BreakingChange["kind"];
 }
 
 /** An impacted component plus the field-level changes driving the impact. */
@@ -36,7 +40,7 @@ export type ImpactedMap = Map<string, ImpactedComponent>;
 export interface AttributedIssue {
   component: string;
   field?: string;
-  severity: ValidationIssue['severity'];
+  severity: ValidationIssue["severity"];
   code: string;
   message: string;
 }
@@ -65,7 +69,7 @@ export interface AffectedStory {
 /** Per-field aggregate. */
 export interface FieldImpact {
   field: string;
-  kind: BreakingChange['kind'];
+  kind: BreakingChange["kind"];
   used: number;
   broken: number;
 }
@@ -89,7 +93,7 @@ export interface AffectedReport {
 
 /** The content key a breaking change touches in existing content, and the reported field name. */
 function toImpactedField(change: BreakingChange): ImpactedField {
-  if (change.kind === 'rename') {
+  if (change.kind === "rename") {
     return { field: change.field, contentKey: change.oldField, kind: change.kind };
   }
   return { field: change.field, contentKey: change.field, kind: change.kind };
@@ -112,15 +116,15 @@ export function computeImpactedComponents(
   for (const comp of breakingChanges) {
     impacted.set(comp.componentName, {
       component: comp.componentName,
-      action: 'update',
+      action: "update",
       fields: comp.changes.map(toImpactedField),
     });
   }
 
   if (options.withDelete) {
     for (const diff of diffResult.diffs) {
-      if (diff.type === 'component' && diff.action === 'stale') {
-        impacted.set(diff.name, { component: diff.name, action: 'removed', fields: [] });
+      if (diff.type === "component" && diff.action === "stale") {
+        impacted.set(diff.name, { component: diff.name, action: "removed", fields: [] });
       }
     }
   }
@@ -132,7 +136,7 @@ export function computeImpactedComponents(
 function toContentKeyMap(impacted: ImpactedMap): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   for (const [component, entry] of impacted) {
-    map.set(component, new Set(entry.fields.map(field => field.contentKey)));
+    map.set(component, new Set(entry.fields.map((field) => field.contentKey)));
   }
   return map;
 }
@@ -146,18 +150,24 @@ export interface AnalyzeContext {
 }
 
 /** Builds the shared analysis context (hoists the per-component content-key map). */
-export function createAnalyzeContext(impacted: ImpactedMap, oldSchema: AdaptedSchema, newSchema: AdaptedSchema): AnalyzeContext {
+export function createAnalyzeContext(
+  impacted: ImpactedMap,
+  oldSchema: AdaptedSchema,
+  newSchema: AdaptedSchema,
+): AnalyzeContext {
   return { impacted, contentKeyMap: toContentKeyMap(impacted), oldSchema, newSchema };
 }
 
 /** Stable identity for a validation issue, used to diff old vs. new schema results. */
 function issueKey(issue: ValidationIssue): string {
-  return `${issue.entity}|${issue.code}|${issue.path.join('.')}`;
+  return `${issue.entity}|${issue.code}|${issue.path.join(".")}`;
 }
 
 /** Finds the impacted field an issue path points at, matching by old or new field name. */
 function matchField(entry: ImpactedComponent, issuePath: (string | number)[]): string | undefined {
-  const pathKeys = new Set(issuePath.filter((segment): segment is string => typeof segment === 'string'));
+  const pathKeys = new Set(
+    issuePath.filter((segment): segment is string => typeof segment === "string"),
+  );
   for (const field of entry.fields) {
     // Renames validate at the new name but occupy the old content key, so match either.
     if (pathKeys.has(field.contentKey) || pathKeys.has(field.field)) {
@@ -200,12 +210,12 @@ export function analyzeStory(story: Story, ctx: AnalyzeContext): AffectedStory |
   // `story` entity (not `block:<name>`), so surface them explicitly here.
   for (const component of usage.keys()) {
     const entry = ctx.impacted.get(component);
-    if (entry?.action === 'removed') {
+    if (entry?.action === "removed") {
       broken = true;
       issues.push({
         component,
-        severity: 'error',
-        code: 'component_removed',
+        severity: "error",
+        code: "component_removed",
         message: `Component "${component}" is removed from the schema; its content becomes out-of-schema.`,
       });
     }
@@ -216,15 +226,15 @@ export function analyzeStory(story: Story, ctx: AnalyzeContext): AffectedStory |
   const preExisting = new Set(validateStory(story, ctx.oldSchema).issues.map(issueKey));
   const { issues: validationIssues } = validateStory(story, ctx.newSchema);
   for (const issue of validationIssues) {
-    if (!issue.entity.startsWith('block:') || preExisting.has(issueKey(issue))) {
+    if (!issue.entity.startsWith("block:") || preExisting.has(issueKey(issue))) {
       continue;
     }
-    const component = issue.entity.slice('block:'.length);
+    const component = issue.entity.slice("block:".length);
     const entry = ctx.impacted.get(component);
     if (!entry || !usage.has(component)) {
       continue;
     }
-    if (issue.severity === 'error') {
+    if (issue.severity === "error") {
       broken = true;
     }
     issues.push({
@@ -238,9 +248,9 @@ export function analyzeStory(story: Story, ctx: AnalyzeContext): AffectedStory |
 
   return {
     id: story.id,
-    uuid: story.uuid ?? '',
-    name: story.name ?? '',
-    full_slug: story.full_slug ?? '',
+    uuid: story.uuid ?? "",
+    name: story.name ?? "",
+    full_slug: story.full_slug ?? "",
     components: [...usage.keys()],
     usedFields,
     broken,
@@ -249,19 +259,32 @@ export function analyzeStory(story: Story, ctx: AnalyzeContext): AffectedStory |
 }
 
 /** Aggregates per-story results into per-component and per-field impact totals. */
-export function aggregate(space: string, impacted: ImpactedMap, stories: AffectedStory[]): AffectedReport {
+export function aggregate(
+  space: string,
+  impacted: ImpactedMap,
+  stories: AffectedStory[],
+): AffectedReport {
   const components: ComponentImpact[] = [];
 
   for (const [component, entry] of impacted) {
-    const used = stories.filter(story => story.components.includes(component));
-    const broken = used.filter(story => story.issues.some(issue => issue.component === component && issue.severity === 'error'));
+    const used = stories.filter((story) => story.components.includes(component));
+    const broken = used.filter((story) =>
+      story.issues.some((issue) => issue.component === component && issue.severity === "error"),
+    );
 
     const fields: FieldImpact[] = entry.fields.map((field) => {
-      const usedCount = used.filter(story =>
-        story.usedFields.some(usedField => usedField.component === component && usedField.field === field.field),
+      const usedCount = used.filter((story) =>
+        story.usedFields.some(
+          (usedField) => usedField.component === component && usedField.field === field.field,
+        ),
       ).length;
-      const brokenCount = broken.filter(story =>
-        story.issues.some(issue => issue.component === component && issue.field === field.field && issue.severity === 'error'),
+      const brokenCount = broken.filter((story) =>
+        story.issues.some(
+          (issue) =>
+            issue.component === component &&
+            issue.field === field.field &&
+            issue.severity === "error",
+        ),
       ).length;
       return { field: field.field, kind: field.kind, used: usedCount, broken: brokenCount };
     });
@@ -281,8 +304,8 @@ export function aggregate(space: string, impacted: ImpactedMap, stories: Affecte
     stories,
     totals: {
       usedStories: stories.length,
-      brokenStories: stories.filter(story => story.broken).length,
-      brokenComponents: components.filter(component => component.brokenStories > 0).length,
+      brokenStories: stories.filter((story) => story.broken).length,
+      brokenComponents: components.filter((component) => component.brokenStories > 0).length,
     },
   };
 }
@@ -344,7 +367,8 @@ export async function analyzeRemoteStories(
     const listStream = fetchStoriesStream({
       spaceId,
       params: { contain_component: component },
-      onPageError: (error, page) => hooks.onStoryError?.(error, `component "${component}" (page ${page})`),
+      onPageError: (error, page) =>
+        hooks.onStoryError?.(error, `component "${component}" (page ${page})`),
     });
     for await (const story of listStream) {
       refs.set(story.id, story);
@@ -353,7 +377,7 @@ export async function analyzeRemoteStories(
 
   const rootStream = fetchStoriesStream({
     spaceId,
-    params: { filter_query: { component: { in: [...impacted.keys()].join(',') } } },
+    params: { filter_query: { component: { in: [...impacted.keys()].join(",") } } },
     onPageError: (error, page) => hooks.onStoryError?.(error, `root content type (page ${page})`),
   });
   for await (const story of rootStream) {

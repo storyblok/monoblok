@@ -87,7 +87,7 @@
     "start-server-and-test": "^2.0.11",
     "typescript": "catalog:",
     "vite": "^8.0.0",
-    "vite-plugin-dts": "^4.5.3",
+    "vite-plugin-dts": "catalog:",
     "vite-plugin-static-copy": "^4.1.1",
     "vitest": "catalog:"
   },

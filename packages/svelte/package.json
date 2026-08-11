@@ -80,7 +80,7 @@
     "svelte-check": "^4.1.5",
     "typescript": "catalog:",
     "vite": "^6.4.3",
-    "vite-plugin-dts": "^4.5.3",
+    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {

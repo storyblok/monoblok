@@ -13,9 +13,9 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.4",
-    "pathe": "^1.1.2",
+    "pathe": "catalog:",
     "tailwindcss": "^4.1.4",
-    "typescript": "^5.7.2",
+    "typescript": "catalog:",
     "vite": "^5.4.21",
     "vite-plugin-qrcode": "^0.2.3"
   },

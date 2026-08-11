@@ -117,17 +117,17 @@
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
     "@types/markdown-it": "^14.1.2",
-    "@types/node": "^24.11.0",
+    "@types/node": "catalog:",
     "kolorist": "^1.8.0",
     "lint-staged": "^15.5.2",
     "oxfmt": "0.61.0",
-    "oxlint": "1.76.0",
-    "pathe": "^2.0.3",
+    "oxlint": "catalog:",
+    "pathe": "catalog:",
     "prosemirror-model": "^1.25.4",
     "release-it": "^18.1.2",
-    "tsx": "^4.20.3",
-    "typescript": "5.8.3",
-    "vitest": "^4.1.10"
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "commitlint": {
     "extends": [

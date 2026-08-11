@@ -3,13 +3,56 @@ packages:
   - packages/*/playground
   - packages/*/playground/*
   - tools/*
+
+# Shared toolchain. Every package that uses one of these should reference it as
+# `catalog:` so a bump is a one-line change here instead of a repo-wide sweep.
 catalog:
+  "@types/node": ^24.11.0
+  "@vitest/coverage-v8": ^4.1.10
+  dotenv: ^17.3.1
+  jiti: ^2.6.1
+  jsdom: ^27.1.0
+  msw: ^2.12.9
+  oxlint: 1.76.0
+  pathe: ^2.0.3
+  publint: ^0.3.22
+  tsx: ^4.21.0
+  typescript: 5.9.3
+  vitest: ^4.1.10
+  zod: ^4.3.6
+
+# Named catalogs pin the framework version matrix the playgrounds exist to
+# cover. Keep them separate from `catalog:` so bumping the toolchain never
+# silently drags a legacy playground onto a newer framework.
+catalogs:
+  # Legacy React 18 / Next 13 playgrounds. These deliberately stay behind.
+  react18:
+    "@types/react": ^18.3.4
+    react: ^18.3.1
+    react-dom: ^18.3.1
+  next13:
+    eslint: ^8.57.0
+    eslint-config-next: ^14.2.28
+    next: ^13.5.7
+
+  # Current React 19 / Next 16 line.
+  #
   # Pin a single React 19 types version so the React playgrounds and the
   # workspace-linked @storyblok/react resolve one @types/react copy. Must track
   # what Next.js expects (its generated route types reference the global React
   # namespace), otherwise a duplicate ReactNode causes type errors.
-  "@types/react": 19.2.3
-  "@types/react-dom": 19.2.3
+  react19:
+    "@types/react": 19.2.3
+    "@types/react-dom": 19.2.3
+    react: ^19.2.4
+    react-dom: ^19.2.4
+  next16:
+    next: ^16.0.0
+
+# Route newly added dependencies into the catalog automatically, and warn (not
+# fail) when a package asks for a version the catalog does not carry — the
+# version-matrix playgrounds legitimately need their own pins.
+catalogMode: prefer
 
 injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:

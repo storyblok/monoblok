@@ -10,15 +10,15 @@
   "dependencies": {
     "@storyblok/react": "workspace:*",
     "@storyblok/richtext": "workspace:*",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "catalog:react19",
+    "react-dom": "catalog:react19",
     "react-router": "^7.6.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.7",
-    "@types/node": "^24.11.0",
-    "@types/react": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:react19",
     "@vitejs/plugin-basic-ssl": "^2.0.0",
     "tailwindcss": "^4.1.10",
     "vite": "^6.4.3"

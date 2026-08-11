@@ -54,12 +54,12 @@
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
-    "@types/node": "^24.11.0",
+    "@types/node": "catalog:",
     "bumpp": "^10.4.1",
-    "jsdom": "^25.0.0",
-    "oxlint": "1.76.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
+    "jsdom": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {

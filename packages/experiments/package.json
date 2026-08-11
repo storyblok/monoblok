@@ -67,12 +67,12 @@
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
-    "@types/node": "^24.11.0",
-    "dotenv": "^17.3.1",
-    "msw": "^2.12.9",
-    "oxlint": "1.76.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.10"
+    "@types/node": "catalog:",
+    "dotenv": "catalog:",
+    "msw": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {

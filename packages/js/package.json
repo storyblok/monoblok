@@ -59,21 +59,21 @@
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
-    "@types/node": "^24.11.0",
+    "@types/node": "catalog:",
     "@vitest/ui": "^4.1.10",
     "cypress": "^14.3.3",
-    "jsdom": "^26.0.0",
+    "jsdom": "catalog:",
     "kolorist": "^1.8.0",
-    "oxlint": "1.76.0",
-    "pathe": "^2.0.3",
-    "publint": "^0.3.22",
+    "oxlint": "catalog:",
+    "pathe": "catalog:",
+    "publint": "catalog:",
     "start-server-and-test": "^2.0.11",
-    "typescript": "5.8.3",
+    "typescript": "catalog:",
     "vite": "^6.4.3",
     "vite-plugin-banner": "^0.8.0",
     "vite-plugin-dts": "^4.5.3",
     "vite-plugin-qrcode": "^0.2.4",
-    "vitest": "^4.1.10"
+    "vitest": "catalog:"
   },
   "release": {
     "branches": [

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { generatePkce, generateState } from './pkce';
+import { describe, expect, it } from "vitest";
+import { generatePkce, generateState } from "./pkce";
 
-describe('generatePkce', () => {
-  it('should produce a verifier within the RFC 7636 length range and matching charset', () => {
+describe("generatePkce", () => {
+  it("should produce a verifier within the RFC 7636 length range and matching charset", () => {
     const { verifier, challenge } = generatePkce();
     expect(verifier.length).toBeGreaterThanOrEqual(43);
     expect(verifier.length).toBeLessThanOrEqual(128);
@@ -12,8 +12,8 @@ describe('generatePkce', () => {
   });
 });
 
-describe('generateState', () => {
-  it('should produce a non-empty url-safe string', () => {
+describe("generateState", () => {
+  it("should produce a non-empty url-safe string", () => {
     expect(generateState()).toMatch(/^[\w\-]+$/);
   });
 });

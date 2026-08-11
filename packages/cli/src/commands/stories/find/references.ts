@@ -1,8 +1,8 @@
-import type { Component } from '../../../types';
-import type { Story } from '../constants';
+import type { Component } from "../../../types";
+import type { Story } from "../constants";
 
-export type RefType = 'multilink' | 'richtext' | 'relation';
-export type IssueType = 'broken' | 'unpublished' | 'stale_url';
+export type RefType = "multilink" | "richtext" | "relation";
+export type IssueType = "broken" | "unpublished" | "stale_url";
 
 export interface RefEntry {
   targetUuid: string;
@@ -35,9 +35,9 @@ export function buildRelationFieldMap(components: Component[]): RelationFieldMap
     const relationFields = new Set<string>();
     for (const [fieldName, field] of Object.entries(component.schema ?? {})) {
       if (
-        (field.type === 'option' || field.type === 'options')
-        && typeof field.source === 'string'
-        && field.source === 'internal_stories'
+        (field.type === "option" || field.type === "options") &&
+        typeof field.source === "string" &&
+        field.source === "internal_stories"
       ) {
         relationFields.add(fieldName);
       }
@@ -51,8 +51,8 @@ export function buildRelationFieldMap(components: Component[]): RelationFieldMap
 
 export function extractReferences(story: Story, relationFieldMap: RelationFieldMap): RefEntry[] {
   const refs: RefEntry[] = [];
-  if (story.content && typeof story.content === 'object') {
-    walkNode(story.content, 'content', undefined, relationFieldMap, refs);
+  if (story.content && typeof story.content === "object") {
+    walkNode(story.content, "content", undefined, relationFieldMap, refs);
   }
   return refs;
 }
@@ -71,39 +71,44 @@ function walkNode(
     return;
   }
 
-  if (node === null || typeof node !== 'object') {
+  if (node === null || typeof node !== "object") {
     return;
   }
 
   const obj = node as Record<string, unknown>;
 
   // Multilink field: { fieldtype: "multilink", linktype: "story", id: "<uuid>" }
-  if (obj.fieldtype === 'multilink' && obj.linktype === 'story' && typeof obj.id === 'string' && UUID_RE.test(obj.id)) {
+  if (
+    obj.fieldtype === "multilink" &&
+    obj.linktype === "story" &&
+    typeof obj.id === "string" &&
+    UUID_RE.test(obj.id)
+  ) {
     refs.push({
       targetUuid: obj.id,
-      refType: 'multilink',
+      refType: "multilink",
       fieldPath: path,
-      cachedUrl: typeof obj.cached_url === 'string' ? obj.cached_url : undefined,
+      cachedUrl: typeof obj.cached_url === "string" ? obj.cached_url : undefined,
     });
     return;
   }
 
   // Richtext link mark: { type: "link", attrs: { linktype: "story", uuid: "<uuid>" } }
-  if (obj.type === 'link' && obj.attrs && typeof obj.attrs === 'object') {
+  if (obj.type === "link" && obj.attrs && typeof obj.attrs === "object") {
     const attrs = obj.attrs as Record<string, unknown>;
-    if (attrs.linktype === 'story' && typeof attrs.uuid === 'string' && UUID_RE.test(attrs.uuid)) {
+    if (attrs.linktype === "story" && typeof attrs.uuid === "string" && UUID_RE.test(attrs.uuid)) {
       refs.push({
         targetUuid: attrs.uuid,
-        refType: 'richtext',
+        refType: "richtext",
         fieldPath: path,
-        cachedUrl: typeof attrs.href === 'string' ? attrs.href : undefined,
+        cachedUrl: typeof attrs.href === "string" ? attrs.href : undefined,
       });
       return;
     }
   }
 
   // Track current component name for relation field lookup
-  const currentComponent = typeof obj.component === 'string' ? obj.component : componentName;
+  const currentComponent = typeof obj.component === "string" ? obj.component : componentName;
 
   // Relation fields (schema-aware)
   if (currentComponent) {
@@ -112,13 +117,20 @@ function walkNode(
       for (const fieldName of relationFields) {
         if (fieldName in obj) {
           const value = obj[fieldName];
-          if (typeof value === 'string' && UUID_RE.test(value)) {
-            refs.push({ targetUuid: value, refType: 'relation', fieldPath: `${path}.${fieldName}` });
-          }
-          else if (Array.isArray(value)) {
+          if (typeof value === "string" && UUID_RE.test(value)) {
+            refs.push({
+              targetUuid: value,
+              refType: "relation",
+              fieldPath: `${path}.${fieldName}`,
+            });
+          } else if (Array.isArray(value)) {
             for (let i = 0; i < value.length; i++) {
-              if (typeof value[i] === 'string' && UUID_RE.test(value[i])) {
-                refs.push({ targetUuid: value[i], refType: 'relation', fieldPath: `${path}.${fieldName}[${i}]` });
+              if (typeof value[i] === "string" && UUID_RE.test(value[i])) {
+                refs.push({
+                  targetUuid: value[i],
+                  refType: "relation",
+                  fieldPath: `${path}.${fieldName}[${i}]`,
+                });
               }
             }
           }
@@ -129,16 +141,16 @@ function walkNode(
 
   // Recurse into object values
   for (const [key, value] of Object.entries(obj)) {
-    if (key === '_uid') {
+    if (key === "_uid") {
       continue;
     }
-    if (typeof value === 'object' && value !== null) {
+    if (typeof value === "object" && value !== null) {
       walkNode(value, `${path}.${key}`, currentComponent, relationFieldMap, refs);
     }
   }
 }
 
-const normalizePath = (url: string): string => url.replace(/^\/+/, '').replace(/\/+$/, '');
+const normalizePath = (url: string): string => url.replace(/^\/+/, "").replace(/\/+$/, "");
 
 export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta>): RefIssue[] {
   const issues: RefIssue[] = [];
@@ -146,7 +158,7 @@ export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta
     const target = targetMap.get(ref.targetUuid);
     if (!target) {
       issues.push({
-        type: 'broken',
+        type: "broken",
         ref_type: ref.refType,
         target_uuid: ref.targetUuid,
         cached_url: ref.cachedUrl,
@@ -156,7 +168,7 @@ export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta
     }
     if (!target.is_published) {
       issues.push({
-        type: 'unpublished',
+        type: "unpublished",
         ref_type: ref.refType,
         target_uuid: ref.targetUuid,
         cached_url: ref.cachedUrl,
@@ -165,9 +177,12 @@ export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta
       });
       continue;
     }
-    if (ref.cachedUrl !== undefined && normalizePath(ref.cachedUrl) !== normalizePath(target.full_slug)) {
+    if (
+      ref.cachedUrl !== undefined &&
+      normalizePath(ref.cachedUrl) !== normalizePath(target.full_slug)
+    ) {
       issues.push({
-        type: 'stale_url',
+        type: "stale_url",
         ref_type: ref.refType,
         target_uuid: ref.targetUuid,
         cached_url: ref.cachedUrl,

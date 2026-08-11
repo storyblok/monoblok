@@ -1,7 +1,7 @@
-import type { Story } from '../constants';
-import type { PublishStatus } from './filters';
+import type { Story } from "../constants";
+import type { PublishStatus } from "./filters";
 
-export type EntryType = 'all' | 'story' | 'folder';
+export type EntryType = "all" | "story" | "folder";
 
 export interface FindOptions {
   space?: string;

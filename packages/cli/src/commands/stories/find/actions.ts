@@ -1,13 +1,13 @@
-import { JSONPath } from 'jsonpath-plus';
-import type { StoriesQueryParams, Story } from '../constants';
-import { parseFilterQuery } from '../filter-query';
-import type { ClientFilter, FindOptions } from './types';
-import {
-  matchesPublishStatus,
-  publishStatusToQueryParams,
-} from './filters';
+import { JSONPath } from "jsonpath-plus";
+import type { StoriesQueryParams, Story } from "../constants";
+import { parseFilterQuery } from "../filter-query";
+import type { ClientFilter, FindOptions } from "./types";
+import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
 
-export function buildQueryParams(text: string | undefined, options: FindOptions): StoriesQueryParams {
+export function buildQueryParams(
+  text: string | undefined,
+  options: FindOptions,
+): StoriesQueryParams {
   const params: StoriesQueryParams = {};
 
   // Text search
@@ -23,8 +23,8 @@ export function buildQueryParams(text: string | undefined, options: FindOptions)
   // Filter query and container block (both contribute to filter_query)
   if (options.query || options.containerBlock) {
     params.filter_query = {
-      ...options.query ? parseFilterQuery(options.query) : {},
-      ...options.containerBlock ? { component: { in: options.containerBlock } } : {},
+      ...(options.query ? parseFilterQuery(options.query) : {}),
+      ...(options.containerBlock ? { component: { in: options.containerBlock } } : {}),
     };
   }
 
@@ -44,10 +44,9 @@ export function buildQueryParams(text: string | undefined, options: FindOptions)
   }
 
   // Entry type filter
-  if (options.entryType === 'story') {
+  if (options.entryType === "story") {
     params.story_only = true;
-  }
-  else if (options.entryType === 'folder') {
+  } else if (options.entryType === "folder") {
     params.folder_only = true;
   }
 
@@ -58,8 +57,8 @@ export function buildClientFilters(options: FindOptions): ClientFilter[] {
   const filters: ClientFilter[] = [];
 
   // Publish status client-side filter (for 'published' and 'changed')
-  if (options.publishStatus && options.publishStatus !== 'draft') {
-    filters.push(story => matchesPublishStatus(story, options.publishStatus!));
+  if (options.publishStatus && options.publishStatus !== "draft") {
+    filters.push((story) => matchesPublishStatus(story, options.publishStatus!));
   }
 
   // JSONPath --where filters
@@ -75,7 +74,7 @@ export function buildClientFilters(options: FindOptions): ClientFilter[] {
 }
 
 export function applyClientFilters(story: Story, filters: ClientFilter[]): boolean {
-  return filters.every(filter => filter(story));
+  return filters.every((filter) => filter(story));
 }
 
 /**

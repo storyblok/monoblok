@@ -1,7 +1,7 @@
-import type { Story } from '../constants';
-import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from '../utils';
+import type { Story } from "../constants";
+import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from "../utils";
 
-export type PublishStatus = 'published' | 'changed' | 'draft';
+export type PublishStatus = "published" | "changed" | "draft";
 
 /**
  * Filters a story by publish status (client-side).
@@ -14,11 +14,11 @@ export type PublishStatus = 'published' | 'changed' | 'draft';
  */
 export function matchesPublishStatus(story: Story, status: PublishStatus): boolean {
   switch (status) {
-    case 'published':
+    case "published":
       return isStoryPublishedWithoutChanges(story) === true;
-    case 'changed':
+    case "changed":
       return isStoryWithUnpublishedChanges(story) === true;
-    case 'draft':
+    case "draft":
       return true; // fully server-side filtered
   }
 }
@@ -28,10 +28,10 @@ export function matchesPublishStatus(story: Story, status: PublishStatus): boole
  */
 export function publishStatusToQueryParams(status: PublishStatus): { is_published?: boolean } {
   switch (status) {
-    case 'published':
-    case 'changed':
+    case "published":
+    case "changed":
       return { is_published: true };
-    case 'draft':
+    case "draft":
       return { is_published: false };
   }
 }

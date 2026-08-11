@@ -2110,10 +2110,10 @@ describe("storyblokClient", () => {
     }, 3000);
   });
 
-  describe('version param on non-CDN URLs', () => {
-    it('strips version from params when calling a Management API endpoint', async () => {
-      vi.doUnmock('../src/sbFetch');
-      const { default: RealSbFetch } = await import('./sbFetch');
+  describe("version param on non-CDN URLs", () => {
+    it("strips version from params when calling a Management API endpoint", async () => {
+      vi.doUnmock("../src/sbFetch");
+      const { default: RealSbFetch } = await import("./sbFetch");
 
       const capturedUrls: string[] = [];
       const mockFetch = vi.fn((url: string): Promise<Response> => {
@@ -2123,18 +2123,18 @@ describe("storyblokClient", () => {
         );
       });
 
-      const mapiClient = new StoryblokClient({ oauthToken: 'test-management-token' });
+      const mapiClient = new StoryblokClient({ oauthToken: "test-management-token" });
       (mapiClient as any).client = new RealSbFetch({
-        baseURL: 'https://mapi.storyblok.com/v1',
+        baseURL: "https://mapi.storyblok.com/v1",
         headers: new Headers(),
         fetch: mockFetch as any,
       });
 
-      await mapiClient.get('spaces/123/stories/456', { version: 'draft' } as any);
+      await mapiClient.get("spaces/123/stories/456", { version: "draft" } as any);
 
-      expect(capturedUrls[0]).not.toContain('version');
+      expect(capturedUrls[0]).not.toContain("version");
 
-      vi.doMock('../src/sbFetch');
+      vi.doMock("../src/sbFetch");
     });
   });
 });

@@ -239,8 +239,7 @@ export class Storyblok {
     // Only add/keep version parameter for CDN URLs — strip it from MAPI requests
     if (isCDNUrl(url)) {
       params.version = params.version || this.version;
-    }
-    else if (params.version) {
+    } else if (params.version) {
       delete params.version;
     }
 
@@ -590,7 +589,7 @@ export class Storyblok {
     links.forEach((story: ISbStoryData | any) => {
       this.links[resolveId][story.uuid] = {
         ...story,
-        ...{ _stopResolving: true },
+        _stopResolving: true,
       };
     });
   }
@@ -640,7 +639,7 @@ export class Storyblok {
       relations.forEach((story: ISbStoryData) => {
         this.relations[resolveId][story.uuid] = {
           ...story,
-          ...{ _stopResolving: true },
+          _stopResolving: true,
         };
       });
     }

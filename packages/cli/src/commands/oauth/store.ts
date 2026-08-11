@@ -1,8 +1,8 @@
-import { join } from 'pathe';
-import type { RegionCode } from '../../constants';
-import { getCredentials } from '../../creds';
-import { isRegion } from '../../utils';
-import { getStoryblokGlobalPath, saveToFile } from '../../utils/filesystem';
+import { join } from "pathe";
+import type { RegionCode } from "../../constants";
+import { getCredentials } from "../../creds";
+import { isRegion } from "../../utils";
+import { getStoryblokGlobalPath, saveToFile } from "../../utils/filesystem";
 
 export interface OAuthClientCredentials {
   client_id: string;
@@ -10,7 +10,7 @@ export interface OAuthClientCredentials {
 }
 
 export interface OAuthTokens {
-  auth_type: 'oauth';
+  auth_type: "oauth";
   access_token: string;
   refresh_token?: string;
   expires_at: string;
@@ -18,7 +18,7 @@ export interface OAuthTokens {
 
 export interface OAuthGrantSpace {
   id: number;
-  region: RegionCode | 'unknown';
+  region: RegionCode | "unknown";
 }
 
 export interface OAuthRegionEntry {
@@ -32,10 +32,10 @@ export interface OAuthRegionEntry {
 // authenticated at once. Its key never collides with a region code.
 type OAuthStore = Partial<Record<RegionCode, OAuthRegionEntry>> & { activeRegion?: RegionCode };
 
-const credentialsPath = (): string => join(getStoryblokGlobalPath(), 'credentials.json');
+const credentialsPath = (): string => join(getStoryblokGlobalPath(), "credentials.json");
 
 const readAll = async (): Promise<Record<string, unknown>> => {
-  return (await getCredentials(credentialsPath()) as Record<string, unknown> | null) ?? {};
+  return ((await getCredentials(credentialsPath())) as Record<string, unknown> | null) ?? {};
 };
 
 export const getOAuthEntry = async (region: RegionCode): Promise<OAuthRegionEntry> => {
@@ -69,7 +69,10 @@ export const getOAuthClientFromEnv = (): OAuthClientCredentials | null => {
   return null;
 };
 
-export const updateOAuthEntry = async (region: RegionCode, patch: OAuthRegionEntry): Promise<void> => {
+export const updateOAuthEntry = async (
+  region: RegionCode,
+  patch: OAuthRegionEntry,
+): Promise<void> => {
   const all = await readAll();
   const oauth = (all.oauth ?? {}) as OAuthStore;
   oauth[region] = { ...oauth[region], ...patch };

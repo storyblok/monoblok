@@ -1,7 +1,7 @@
-import type { DiffResult, EntityDiff, NormalizedSchema } from '../types';
-import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from '../actions';
-import { formatDiff } from '../format-diff';
-import { loadSchema } from '../load-schema';
+import type { DiffResult, EntityDiff, NormalizedSchema } from "../types";
+import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
+import { formatDiff } from "../format-diff";
+import { loadSchema } from "../load-schema";
 
 /** A schema source: a numeric space ID or a path to a schema entry file. */
 export function isSpaceRef(ref: string): boolean {
@@ -22,8 +22,7 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
     try {
       const { remote } = await fetchRemoteSchema(value);
       return remoteToNormalized(remote);
-    }
-    catch (error) {
+    } catch (error) {
       throw new Error(
         `Could not load space "${value}" (${label}): ${describeError(error)}. Check the space ID and that you are logged in with access to it.`,
       );
@@ -31,8 +30,7 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
   }
   try {
     return localToNormalized(await loadSchema(value));
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(
       `Could not load schema entry file "${value}" (${label}): ${describeError(error)}. Check the path, and that it is a project where the schema package and its dependencies are installed.`,
     );
@@ -52,7 +50,12 @@ export function buildDiffReport(result: DiffResult, from: string, to: string): S
   return {
     from,
     to,
-    summary: { create: result.creates, update: result.updates, unchanged: result.unchanged, stale: result.stale },
+    summary: {
+      create: result.creates,
+      update: result.updates,
+      unchanged: result.unchanged,
+      stale: result.stale,
+    },
     entities: result.diffs,
   };
 }
@@ -63,12 +66,12 @@ export function buildDiffReport(result: DiffResult, from: string, to: string): S
  * count and in `meta.diff`) to keep space-to-space output readable.
  */
 export function formatSchemaDiff(result: DiffResult, from: string, to: string): string {
-  const labels = { create: 'added', update: 'changed', unchanged: 'unchanged', stale: 'removed' };
+  const labels = { create: "added", update: "changed", unchanged: "unchanged", stale: "removed" };
   return formatDiff(result, {
     header: `from ${from} → to ${to}`,
     tags: labels,
     summary: labels,
     showUnchanged: false,
-    emptySummary: 'no differences',
+    emptySummary: "no differences",
   });
 }

@@ -34,8 +34,8 @@
 - **Dependency-free**: The core ships with zero runtime dependencies
 - **Composable**: `assignVariant`, `resolveExperiment`, and `createConversion` are usable on their
   own, or bind them together with the `createExperiments` factory
-- **Pluggable adapters**: Deliver exposure and conversion events to any sink, or use the built-in
-  `fetchAdapter`
+- **Pluggable adapters**: Deliver exposure and conversion events to any sink, or build one with the
+  built-in `createFetchAdapter` factory
 
 ## Documentation
 

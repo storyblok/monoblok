@@ -2,7 +2,7 @@ import type { ExperimentEvent } from "./types";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { beaconAdapter, fetchAdapter } from "./adapters";
+import { createBeaconAdapter, createFetchAdapter } from "./adapters";
 
 const server = setupServer();
 
@@ -18,7 +18,7 @@ const event: ExperimentEvent = {
   name: "signup",
 };
 
-describe("fetchAdapter", () => {
+describe("createFetchAdapter", () => {
   it("sends the event as a JSON POST to the configured url", async () => {
     let captured: { body: unknown; contentType: string | null } | undefined;
     server.use(
@@ -28,7 +28,7 @@ describe("fetchAdapter", () => {
       }),
     );
 
-    await fetchAdapter("https://sink.example/events")(event);
+    await createFetchAdapter("https://sink.example/events")(event);
 
     expect(captured?.body).toEqual(event);
     expect(captured?.contentType).toContain("application/json");
@@ -43,7 +43,7 @@ describe("fetchAdapter", () => {
       }),
     );
 
-    await fetchAdapter("https://sink.example/events", {
+    await createFetchAdapter("https://sink.example/events", {
       headers: { authorization: "Bearer token" },
     })(event);
 
@@ -57,7 +57,7 @@ describe("fetchAdapter", () => {
       return new Response(null, { status: 204 });
     }) as typeof globalThis.fetch;
 
-    await fetchAdapter("https://sink.example/events", { fetch: fakeFetch })(event);
+    await createFetchAdapter("https://sink.example/events", { fetch: fakeFetch })(event);
 
     expect(calls).toEqual(["https://sink.example/events"]);
   });
@@ -67,23 +67,23 @@ describe("fetchAdapter", () => {
       http.post("https://sink.example/events", () => new HttpResponse(null, { status: 500 })),
     );
 
-    await expect(fetchAdapter("https://sink.example/events")(event)).rejects.toThrow(/500/);
+    await expect(createFetchAdapter("https://sink.example/events")(event)).rejects.toThrow(/500/);
   });
 
   it("throws at construction for a relative url with no base", () => {
     // Server-side `fetch` has no origin to resolve against, so a relative path
     // fails on every delivery — where `onError` swallows it. Fail loudly here.
-    expect(() => fetchAdapter("/api/experiments")).toThrow(/cannot resolve/i);
+    expect(() => createFetchAdapter("/api/experiments")).toThrow(/cannot resolve/i);
   });
 
   it("names the offending url and the way out when it cannot resolve", () => {
-    expect(() => fetchAdapter("/api/experiments")).toThrow(/\/api\/experiments/);
-    expect(() => fetchAdapter("/api/experiments")).toThrow(/baseUrl/);
+    expect(() => createFetchAdapter("/api/experiments")).toThrow(/\/api\/experiments/);
+    expect(() => createFetchAdapter("/api/experiments")).toThrow(/baseUrl/);
   });
 
   it("accepts any absolute url", () => {
-    expect(() => fetchAdapter("https://sink.example/events")).not.toThrow();
-    expect(() => fetchAdapter("http://localhost:3000/api/experiments")).not.toThrow();
+    expect(() => createFetchAdapter("https://sink.example/events")).not.toThrow();
+    expect(() => createFetchAdapter("http://localhost:3000/api/experiments")).not.toThrow();
   });
 
   it("resolves a relative url against baseUrl", async () => {
@@ -95,7 +95,9 @@ describe("fetchAdapter", () => {
       }),
     );
 
-    await fetchAdapter("/api/experiments", { baseUrl: "https://sink.example/pages/home" })(event);
+    await createFetchAdapter("/api/experiments", { baseUrl: "https://sink.example/pages/home" })(
+      event,
+    );
 
     expect(captured).toBe("hit");
   });
@@ -107,7 +109,7 @@ describe("fetchAdapter", () => {
       return new Response(null, { status: 204 });
     }) as typeof globalThis.fetch;
 
-    await fetchAdapter("https://sink.example/events", {
+    await createFetchAdapter("https://sink.example/events", {
       baseUrl: "https://other.example",
       fetch: fakeFetch,
     })(event);
@@ -126,7 +128,7 @@ describe("fetchAdapter", () => {
     }) as typeof globalThis.fetch;
 
     try {
-      await fetchAdapter("/api/experiments", { fetch: fakeFetch })(event);
+      await createFetchAdapter("/api/experiments", { fetch: fakeFetch })(event);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -135,11 +137,11 @@ describe("fetchAdapter", () => {
   });
 });
 
-describe("beaconAdapter", () => {
+describe("createBeaconAdapter", () => {
   it("posts the serialized event to the url", async () => {
     const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
-    beaconAdapter("/api/experiments", { sendBeacon })(event);
+    createBeaconAdapter("/api/experiments", { sendBeacon })(event);
 
     const [target, body] = sendBeacon.mock.calls[0];
     expect(target).toBe("/api/experiments");
@@ -149,7 +151,7 @@ describe("beaconAdapter", () => {
   it("sends the payload as application/json so a JSON endpoint accepts it", () => {
     const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
-    beaconAdapter("/api/experiments", { sendBeacon })(event);
+    createBeaconAdapter("/api/experiments", { sendBeacon })(event);
 
     expect(sendBeacon.mock.calls[0][1].type).toBe("application/json");
   });
@@ -157,7 +159,7 @@ describe("beaconAdapter", () => {
   it("honors a contentType override, for a cross-origin sink avoiding a preflight", () => {
     const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
-    beaconAdapter("/api/experiments", { sendBeacon, contentType: "text/plain" })(event);
+    createBeaconAdapter("/api/experiments", { sendBeacon, contentType: "text/plain" })(event);
 
     expect(sendBeacon.mock.calls[0][1].type).toBe("text/plain");
   });
@@ -165,17 +167,17 @@ describe("beaconAdapter", () => {
   it("accepts a relative url", () => {
     const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
-    expect(() => beaconAdapter("/api/experiments", { sendBeacon })(event)).not.toThrow();
+    expect(() => createBeaconAdapter("/api/experiments", { sendBeacon })(event)).not.toThrow();
   });
 
   it("throws when the browser refuses to queue the payload", () => {
     const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => false);
 
-    expect(() => beaconAdapter("/api/experiments", { sendBeacon })(event)).toThrow(/queue/i);
+    expect(() => createBeaconAdapter("/api/experiments", { sendBeacon })(event)).toThrow(/queue/i);
   });
 
   it("throws a clear error when sendBeacon is unavailable", () => {
-    expect(() => beaconAdapter("/api/experiments", { sendBeacon: undefined })(event)).toThrow(
+    expect(() => createBeaconAdapter("/api/experiments", { sendBeacon: undefined })(event)).toThrow(
       /sendBeacon/,
     );
   });
@@ -183,6 +185,15 @@ describe("beaconAdapter", () => {
   it("returns nothing so the factory treats delivery as synchronous", () => {
     const sendBeacon = vi.fn<(url: string, body: Blob) => boolean>(() => true);
 
-    expect(beaconAdapter("/api/experiments", { sendBeacon })(event)).toBeUndefined();
+    expect(createBeaconAdapter("/api/experiments", { sendBeacon })(event)).toBeUndefined();
+  });
+});
+
+describe("deprecated aliases", () => {
+  it("keeps fetchAdapter and beaconAdapter pointing at the renamed factories", async () => {
+    const { beaconAdapter, fetchAdapter } = await import("./adapters");
+
+    expect(fetchAdapter).toBe(createFetchAdapter);
+    expect(beaconAdapter).toBe(createBeaconAdapter);
   });
 });

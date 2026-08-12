@@ -49,8 +49,7 @@ describe("login actions", () => {
 
     it("should throw an masked error for invalid token", async () => {
       await expect(loginWithToken("invalid-token", "eu")).rejects.toThrow(
-        `The token provided ${chalk.bold("inva*********")} is invalid.
-        Please make sure you are using the correct token and try again.`,
+        `The token provided ${chalk.bold("inva*********")} is invalid. Please make sure you are using the correct token and try again.`,
       );
     });
 

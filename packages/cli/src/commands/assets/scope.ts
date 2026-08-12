@@ -2,6 +2,7 @@ import { join } from "pathe";
 import { directories } from "../../constants";
 import { getMapiClient } from "../../api";
 import { APIError, handleAPIError } from "../../utils/error/api-error";
+import { isUnsupportedTokenTypeServerError } from "../../utils/error/credential-hint";
 import { toError } from "../../utils/error/error";
 import { resolveCommandPath } from "../../utils/filesystem";
 import type { SharedAssetFolder } from "./types";
@@ -78,7 +79,11 @@ export async function listLibrariesOrDegrade(spaceId: string): Promise<Library[]
   try {
     return await listLibraries(spaceId);
   } catch (error) {
-    if (error instanceof APIError && error.code === 403) {
+    if (
+      error instanceof APIError &&
+      error.code === 403 &&
+      isUnsupportedTokenTypeServerError(error.serverError)
+    ) {
       return undefined;
     }
     throw error;

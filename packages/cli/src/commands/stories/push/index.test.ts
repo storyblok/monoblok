@@ -214,7 +214,10 @@ describe("stories push command", () => {
     resetReporter();
     process.exitCode = undefined;
   });
-  afterAll(() => server.close());
+  afterAll(() => {
+    server.close();
+    process.exitCode = undefined;
+  });
 
   describe("first-time push", () => {
     it("should push stories with mapped references", async () => {
@@ -2067,7 +2070,7 @@ describe("stories push command", () => {
     it("should not report stories as pushed when every update fails", async () => {
       // Regression for a live run measured with `stories:write` missing:
       // the headline said "10 stories pushed" while nothing was written.
-      // Uses a 422 (not 403) so this stays independent of the credential
+      // Uses a 500 (not 403) so this stays independent of the credential
       // short-circuit path covered above.
       const storyA = makeMockStory({ slug: "story-a" });
       const storyB = makeMockStory({ slug: "story-b" });

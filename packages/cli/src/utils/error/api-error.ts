@@ -188,6 +188,13 @@ export class APIError extends Error {
   response: FetchError["response"] | undefined;
   /** True when the failure is credential-level, so bulk loops should stop instead of retrying. */
   fatal: boolean;
+  /**
+   * The raw `data.error`/`data.message` string extracted from the response, before any
+   * rewrite. Undefined when a `customMessage` suppressed extraction, or none was present.
+   * Callers that need to distinguish specific server signatures (e.g. the unsupported-token-type
+   * 403) beyond the generic `errorId`/`fatal` classification should match on this.
+   */
+  serverError: string | undefined;
   constructor(
     errorId: keyof typeof API_ERRORS,
     action: keyof typeof API_ACTIONS,
@@ -203,6 +210,7 @@ export class APIError extends Error {
     this.error = error;
     this.response = error?.response;
     this.fatal = false;
+    this.serverError = undefined;
 
     if (!customMessage) {
       this.messageStack.push(API_ACTIONS[action]);
@@ -215,6 +223,7 @@ export class APIError extends Error {
     const serverMessage = customMessage
       ? undefined
       : extractServerString(responseData ?? {}, this.code, statusText);
+    this.serverError = serverMessage;
 
     const stackLengthBefore422 = this.messageStack.length;
 

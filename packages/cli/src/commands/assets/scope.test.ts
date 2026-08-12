@@ -30,6 +30,16 @@ const preconditions = {
       ),
     );
   },
+  forbidsLibraryDiscoveryForAnotherReason() {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders", () =>
+        HttpResponse.json(
+          { error: "This token is restricted to specific spaces" },
+          { status: 403 },
+        ),
+      ),
+    );
+  },
 };
 
 describe("listLibrariesOrDegrade", () => {
@@ -43,6 +53,12 @@ describe("listLibrariesOrDegrade", () => {
     preconditions.hasNoLibraries();
 
     await expect(listLibrariesOrDegrade("12345")).resolves.toEqual([]);
+  });
+
+  it("should still fail loudly for a different 403 from the same endpoint", async () => {
+    preconditions.forbidsLibraryDiscoveryForAnotherReason();
+
+    await expect(listLibrariesOrDegrade("12345")).rejects.toThrow();
   });
 });
 

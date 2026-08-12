@@ -12,6 +12,7 @@ import { getReporter } from "../../../lib/reporter/reporter";
 import { requireAuthentication } from "../../../utils/auth";
 import { APIError } from "../../../utils/error/api-error";
 import { CommandError } from "../../../utils/error/command-error";
+import { isUnsupportedTokenTypeServerError } from "../../../utils/error/credential-hint";
 import { handleError, logOnlyError, toError } from "../../../utils/error/error";
 import {
   downloadAssetStream,
@@ -359,7 +360,11 @@ pullCmd.action(async (options, command) => {
             try {
               resolveRoot = await buildLibraryRootResolver(space);
             } catch (error) {
-              if (error instanceof APIError && error.code === 403) {
+              if (
+                error instanceof APIError &&
+                error.code === 403 &&
+                isUnsupportedTokenTypeServerError(error.serverError)
+              ) {
                 getUI().warn(
                   "Shared libraries are unavailable with this login; skipping referenced library assets.",
                 );

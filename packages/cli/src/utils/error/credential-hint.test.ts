@@ -79,6 +79,31 @@ describe("matchCredentialError", () => {
     expect(hint?.message).toBe(formatSpaceNotAllowedMessage(999, [1, 2]));
   });
 
+  it("should name the personal access token and a remedy it can act on for a space-restricted PAT", () => {
+    const hint = matchCredentialError(403, "This token does not have access to this space", {
+      kind: "pat",
+      space: 222,
+      spaces: [],
+    });
+
+    expect(hint?.message).toBe(
+      "Space 222 is not covered by your personal access token. Create a new token that covers this space under My account, Personal access tokens.",
+    );
+  });
+
+  it("should omit the empty parenthetical for an OAuth grant with no known space list", () => {
+    const hint = matchCredentialError(403, "This token does not have access to this space", {
+      kind: "oauth",
+      space: 222,
+      spaces: [],
+    });
+
+    expect(hint?.message).toBe(
+      "Space 222 is not covered by your OAuth login. Re-run `storyblok login` and select this space at the consent screen.",
+    );
+    expect(hint?.message).not.toContain("(authorized spaces: )");
+  });
+
   it("should treat a 401 as a dead session regardless of the body", () => {
     expect(matchCredentialError(401, "Unauthorized", oauth)?.message).toBe(
       "Your OAuth login is no longer valid, it may have been revoked or expired. Run `storyblok login` to sign in again.",

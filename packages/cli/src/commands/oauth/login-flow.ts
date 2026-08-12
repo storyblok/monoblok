@@ -15,7 +15,7 @@ import { generatePkce, generateState } from "./pkce";
 import { computeExpiresAt } from "./refresh";
 import { waitForCallback } from "./server";
 import { setOAuthActiveRegion, updateOAuthEntry } from "./store";
-import type { OAuthGrantSpace, OAuthTokens } from "./store";
+import type { OAuthClientCredentials, OAuthGrantSpace, OAuthTokens } from "./store";
 import { exchangeToken } from "./token-endpoint";
 
 export interface OAuthLoginResult {
@@ -51,12 +51,13 @@ export const performOAuthLogin = async (options: {
   const openBrowser = options.openBrowser ?? ((url) => open(url));
   const ui = getUI();
 
-  let client;
+  let client: OAuthClientCredentials;
   try {
     client = resolveOAuthClient();
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     throw new CommandError(
-      `${(error as Error).message} Log in with a Personal Access Token (\`storyblok login --token <token>\`), or set STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET to use your own OAuth app.`,
+      `${message} Log in with a Personal Access Token (\`storyblok login --token <token>\`), or set STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET to use your own OAuth app.`,
     );
   }
   const scopes = OAUTH_LOGIN_SCOPES;

@@ -143,6 +143,16 @@ const preconditions = {
       ),
     );
   },
+  forbidsLibraryDiscovery() {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders", () =>
+        HttpResponse.json(
+          { error: "This endpoint does not support this token type" },
+          { status: 403 },
+        ),
+      ),
+    );
+  },
   hasLocalStoriesReferencing(assetIds: number[]) {
     vol.fromJSON({
       ".storyblok/stories/12345/home_uuid.json": JSON.stringify({
@@ -587,6 +597,51 @@ describe("assets pull command", () => {
       await assetsCommand.parseAsync(["node", "test", "pull", "--space", "12345"]);
 
       expect(sharedSpy).not.toHaveBeenCalled();
+    });
+
+    it("should pull space assets and warn when referenced-library discovery is forbidden", async () => {
+      const spaceAsset = makeMockAsset({ id: 42 });
+      preconditions.hasLocalStoriesReferencing([42, 90]);
+      preconditions.canFetchRemoteFolders([]);
+      preconditions.canFetchRemoteAssetPages([[spaceAsset]]);
+      preconditions.canDownloadAssets([spaceAsset]);
+      preconditions.sharedAssetResolves({
+        id: 90,
+        filename: "https://a.storyblok.com/g/1/x.png",
+        asset_folder_id: 7,
+      });
+      preconditions.forbidsLibraryDiscovery();
+
+      await assetsCommand.parseAsync(["node", "test", "pull", "--space", "12345"]);
+
+      expect(assetFileExists(spaceAsset)).toBeTruthy();
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Shared libraries are unavailable"),
+      );
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("should fail when libraries were explicitly requested but are forbidden", async () => {
+      preconditions.forbidsLibraryDiscovery();
+
+      await assetsCommand.parseAsync([
+        "node",
+        "test",
+        "pull",
+        "--space",
+        "12345",
+        "--target",
+        "shared",
+      ]);
+
+      expect(
+        (console.error as ReturnType<typeof vi.fn>).mock.calls
+          .flat()
+          .some(
+            (arg) => typeof arg === "string" && arg.includes("This command is not available with"),
+          ),
+      ).toBe(true);
+      expect(process.exitCode).toBe(1);
     });
 
     it("rejects an invalid --target value", async () => {

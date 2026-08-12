@@ -10,6 +10,7 @@ import { resolveCommandPath } from "../../../utils/filesystem";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { requireAuthentication } from "../../../utils/auth";
+import { APIError } from "../../../utils/error/api-error";
 import { CommandError } from "../../../utils/error/command-error";
 import { handleError, logOnlyError, toError } from "../../../utils/error/error";
 import {
@@ -350,16 +351,33 @@ pullCmd.action(async (options, command) => {
           const sharedAssets = resolved.filter((asset): asset is Asset => Boolean(asset?.id));
 
           if (sharedAssets.length > 0) {
-            const resolveRoot = await buildLibraryRootResolver(space);
-            const byLibrary = new Map<number, Asset[]>();
-            for (const asset of sharedAssets) {
-              const libraryId = resolveRoot(asset.asset_folder_id ?? 0);
-              const bucket = byLibrary.get(libraryId) ?? [];
-              bucket.push(asset);
-              byLibrary.set(libraryId, bucket);
+            // `with-referenced` is implicit: the user asked to pull assets, not libraries. A
+            // credential that cannot reach library discovery degrades to the space-only pull
+            // with a warning rather than failing the whole command. An explicit `--target
+            // shared`/`--target all` still fails via `listReadableLibraries`.
+            let resolveRoot: ((assetFolderId: number) => number) | undefined;
+            try {
+              resolveRoot = await buildLibraryRootResolver(space);
+            } catch (error) {
+              if (error instanceof APIError && error.code === 403) {
+                getUI().warn(
+                  "Shared libraries are unavailable with this login; skipping referenced library assets.",
+                );
+              } else {
+                throw error;
+              }
             }
-            for (const [libraryId, assets] of byLibrary) {
-              await pullReferencedAssets(libraryId, assets);
+            if (resolveRoot) {
+              const byLibrary = new Map<number, Asset[]>();
+              for (const asset of sharedAssets) {
+                const libraryId = resolveRoot(asset.asset_folder_id ?? 0);
+                const bucket = byLibrary.get(libraryId) ?? [];
+                bucket.push(asset);
+                byLibrary.set(libraryId, bucket);
+              }
+              for (const [libraryId, assets] of byLibrary) {
+                await pullReferencedAssets(libraryId, assets);
+              }
             }
           }
         }

@@ -14,6 +14,7 @@ import { session } from "./session";
 import { getMapiClient } from "./api";
 import { assertSpaceAllowed } from "./lib/oauth/space-guard";
 import { createOAuthTokenProvider } from "./lib/oauth/token-provider";
+import { setCredentialContext } from "./utils/error/credential-context";
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -90,6 +91,14 @@ export function getProgram(): Command {
           region: state.region ?? resolvedConfig.region,
         });
       }
+
+      // Tell the error layer which credential is in play so 401/403 responses can name
+      // the right remedy. Set for every credential kind, including none at all.
+      setCredentialContext({
+        kind: state.authType ?? "unknown",
+        spaces: state.oauthSpaces,
+        space: targetCommand.optsWithGlobals().space,
+      });
 
       // Guard OAuth sessions against operating on spaces outside their consent grant.
       // A thrown CommandError here propagates out of the preAction hook, rejecting

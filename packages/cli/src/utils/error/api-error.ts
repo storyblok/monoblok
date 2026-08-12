@@ -1,3 +1,5 @@
+import { getCredentialContext } from "./credential-context";
+import { matchCredentialError } from "./credential-hint";
 import { FetchError } from "../fetch";
 
 export const API_ACTIONS = {
@@ -69,6 +71,8 @@ export const API_ERRORS = {
   not_found: "The requested resource was not found",
   unprocessable_entity:
     "The request was well-formed but was unable to be followed due to semantic errors",
+  forbidden: "The user is not allowed to perform this action",
+  insufficient_scope: "The credential is missing a required permission",
 } as const;
 
 function getErrorId(status: number): keyof typeof API_ERRORS {
@@ -79,6 +83,8 @@ function getErrorId(status: number): keyof typeof API_ERRORS {
       return "not_found";
     case 422:
       return "unprocessable_entity";
+    case 403:
+      return "forbidden";
     default:
       return status >= 500 ? "server_error" : "generic";
   }
@@ -180,6 +186,8 @@ export class APIError extends Error {
   messageStack: string[];
   error: FetchError | undefined;
   response: FetchError["response"] | undefined;
+  /** True when the failure is credential-level, so bulk loops should stop instead of retrying. */
+  fatal: boolean;
   constructor(
     errorId: keyof typeof API_ERRORS,
     action: keyof typeof API_ACTIONS,
@@ -194,6 +202,7 @@ export class APIError extends Error {
     this.messageStack = [];
     this.error = error;
     this.response = error?.response;
+    this.fatal = false;
 
     if (!customMessage) {
       this.messageStack.push(API_ACTIONS[action]);
@@ -242,6 +251,20 @@ export class APIError extends Error {
         this.message = stripBasePrefix(this.messageStack[stackLengthBefore422]);
         this.cause = this.message;
       }
+    }
+
+    // A credential-level 401/403 gets a rewritten, actionable message. This runs last so it
+    // wins over the raw server string, and replaces only the final stack entry so the
+    // `API_ACTIONS[action]` context line above it survives.
+    const hint = customMessage
+      ? undefined
+      : matchCredentialError(this.code, serverMessage, getCredentialContext());
+    if (hint) {
+      this.errorId = hint.errorId;
+      this.message = hint.message;
+      this.cause = hint.message;
+      this.fatal = hint.fatal;
+      this.messageStack[this.messageStack.length - 1] = hint.message;
     }
   }
 

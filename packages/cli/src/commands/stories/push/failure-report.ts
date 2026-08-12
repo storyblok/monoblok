@@ -112,6 +112,7 @@ function renderFailureReport(ui: UI, records: FailedStoryRecord[], verbose: bool
  */
 export class FailureCollector {
   private records = new Map<string, FailedStoryRecord>();
+  private fatal = false;
 
   private keyFor(story: StoryIdentity): string {
     return story.full_slug ?? story.uuid ?? story.filename ?? `__unknown_${this.records.size}`;
@@ -123,6 +124,9 @@ export class FailureCollector {
    * the caller should skip counter updates to avoid double-billing).
    */
   record(story: StoryIdentity, error: Error): boolean {
+    if (error instanceof APIError && error.fatal) {
+      this.fatal = true;
+    }
     const key = this.keyFor(story);
     if (this.records.has(key)) {
       return false;
@@ -140,6 +144,14 @@ export class FailureCollector {
 
   get isEmpty(): boolean {
     return this.records.size === 0;
+  }
+
+  /**
+   * True when a recorded failure is credential-level. Such a failure is identical for
+   * every remaining item, so the caller should stop rather than repeat it per story.
+   */
+  get hasFatal(): boolean {
+    return this.fatal;
   }
 
   get size(): number {

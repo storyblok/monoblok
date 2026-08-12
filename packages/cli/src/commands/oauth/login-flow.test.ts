@@ -105,3 +105,32 @@ describe("performOAuthLogin", () => {
     expect(await getOAuthActiveRegion()).toBeUndefined();
   });
 });
+
+// This suite's top-level `vi.mock("./client", ...)` stubs resolveOAuthClient for every other
+// test above so they don't trip the placeholder-client guard. Here we unmock it for real, so
+// performOAuthLogin runs against the actual resolveOAuthClient() and its thrown cause, letting
+// this test verify the login-specific remedy the catch block in login-flow.ts appends.
+describe("performOAuthLogin when no oauth client credentials are available", () => {
+  afterEach(() => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+    vi.doMock("./client", () => ({
+      resolveOAuthClient: vi.fn(() => ({ client_id: "cid", client_secret: "sec" })),
+    }));
+    vi.resetModules();
+  });
+
+  it("should surface the login remedy naming a token login and the client env vars", async () => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+    vi.doUnmock("./client");
+    vi.resetModules();
+    const { performOAuthLogin: performOAuthLoginWithRealClient } = await import("./login-flow");
+
+    await expect(
+      performOAuthLoginWithRealClient({ region: "eu", openBrowser: async () => {} }),
+    ).rejects.toThrow(
+      "or set STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET to use your own OAuth app",
+    );
+  });
+});

@@ -1,6 +1,12 @@
 import chalk from "chalk";
 import type { ApiCredential } from "../../utils";
-import { getResponseStatus, handleAPIError, maskToken, toError } from "../../utils";
+import {
+  getCredentialContext,
+  getResponseStatus,
+  handleAPIError,
+  maskToken,
+  toError,
+} from "../../utils";
 import { createMapiClient } from "../../api";
 import type { RegionCode } from "../../constants";
 
@@ -14,7 +20,6 @@ export type { User } from "../../types";
 export const getUser = async (credential: string | ApiCredential, region: RegionCode) => {
   const config: ApiCredential =
     typeof credential === "string" ? { personalAccessToken: credential } : credential;
-  const isOauth = "oauthToken" in config;
   const token = "personalAccessToken" in config ? config.personalAccessToken : config.oauthToken;
   try {
     const client = createMapiClient({
@@ -30,13 +35,12 @@ export const getUser = async (credential: string | ApiCredential, region: Region
   } catch (maybeError) {
     const error = toError(maybeError);
     const status = getResponseStatus(maybeError);
+    // Only when no session is established, which is the `login --token` validation path.
+    // With a session present, the centralized credential rewrite owns 401 messaging, and a
+    // customMessage here would suppress it.
     const customMessage =
-      status === 401
-        ? isOauth
-          ? `Your OAuth session has expired or been revoked.
-        Please run \`storyblok login --oauth\` to authenticate again.`
-          : `The token provided ${chalk.bold(maskToken(token))} is invalid.
-        Please make sure you are using the correct token and try again.`
+      status === 401 && getCredentialContext().kind === "unknown"
+        ? `The token provided ${chalk.bold(maskToken(token))} is invalid. Please make sure you are using the correct token and try again.`
         : undefined;
     handleAPIError("get_user", error, customMessage);
   }

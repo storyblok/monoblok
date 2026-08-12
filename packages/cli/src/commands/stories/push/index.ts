@@ -311,6 +311,12 @@ pushCmd.action(async (options, command) => {
           creationProgress.increment();
         },
         onStoryError(error, entry) {
+          // A credential-level failure is identical for every remaining story, so
+          // once one is recorded, treat any already-queued concurrent entry as a
+          // no-op instead of repeating the same failure per story.
+          if (failures.hasFatal) {
+            return;
+          }
           if (failures.record(entry, error)) {
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
@@ -354,6 +360,11 @@ pushCmd.action(async (options, command) => {
           updateProgress.setTotal(total);
         },
         onStoryError(error, filename) {
+          // See the creation-phase `onStoryError` above: a credential-level
+          // failure is identical for every remaining story, so stop repeating it.
+          if (failures.hasFatal) {
+            return;
+          }
           if (failures.record({ filename }, error)) {
             summary.processResults.failed += 1;
           } else {
@@ -380,6 +391,11 @@ pushCmd.action(async (options, command) => {
           summary.processResults.succeeded += 1;
         },
         onStoryError(error, localStory) {
+          // See the creation-phase `onStoryError` above: a credential-level
+          // failure is identical for every remaining story, so stop repeating it.
+          if (failures.hasFatal) {
+            return;
+          }
           // Always keep the audit trail — even when we suppress the
           // user-facing summary entry for stories that already failed
           // creation, the file log should retain the full per-phase error.
@@ -416,6 +432,11 @@ pushCmd.action(async (options, command) => {
           summary.updateResults.succeeded += 1;
         },
         onStoryError(error, localStory) {
+          // See the creation-phase `onStoryError` above: a credential-level
+          // failure is identical for every remaining story, so stop repeating it.
+          if (failures.hasFatal) {
+            return;
+          }
           logOnlyError(error, { storyId: localStory.uuid });
           if (failures.record(localStory, error)) {
             summary.updateResults.failed += 1;

@@ -215,6 +215,8 @@ pushCmd.action(async (options, command) => {
         scanProgress.increment();
       },
       onError(error, filename) {
+        // No `hasFatal` guard here: a local filesystem/parse error can never
+        // be an `APIError`, so it can never be fatal — nothing to short-circuit.
         if (failures.record({ filename }, error)) {
           summary.creationResults.failed += 1;
         }
@@ -328,6 +330,12 @@ pushCmd.action(async (options, command) => {
           logOnlyError(error, { storyId: entry.uuid });
         },
       });
+      // A credential failure inside this level was recorded; the same
+      // failure would repeat for every remaining level, so stop creating
+      // placeholders rather than issuing more doomed requests.
+      if (failures.hasFatal) {
+        break;
+      }
     }
 
     if (summary.creationResults.failed > 0) {
@@ -348,6 +356,7 @@ pushCmd.action(async (options, command) => {
       // Read local stories from `.json` files.
       readLocalStoriesStream({
         directoryPath: storiesDirectoryPath,
+        shouldStop: () => failures.hasFatal,
         fileFilter({ filename }) {
           // Only load files that were successfully created and mapped.
           const uuid = uuidByFilename.get(filename);
@@ -382,6 +391,7 @@ pushCmd.action(async (options, command) => {
       mapReferencesStream({
         schemas,
         maps,
+        shouldStop: () => failures.hasFatal,
         onIncrement() {
           processProgress.increment();
         },
@@ -391,15 +401,17 @@ pushCmd.action(async (options, command) => {
           summary.processResults.succeeded += 1;
         },
         onStoryError(error, localStory) {
+          // Always keep the audit trail — even when we suppress the
+          // user-facing summary entry for stories that already failed
+          // creation (or that are skipped below because a credential
+          // failure was already recorded), the file log should retain the
+          // full per-phase error.
+          logOnlyError(error, { storyId: localStory.uuid });
           // See the creation-phase `onStoryError` above: a credential-level
           // failure is identical for every remaining story, so stop repeating it.
           if (failures.hasFatal) {
             return;
           }
-          // Always keep the audit trail — even when we suppress the
-          // user-facing summary entry for stories that already failed
-          // creation, the file log should retain the full per-phase error.
-          logOnlyError(error, { storyId: localStory.uuid });
           if (failures.record(localStory, error)) {
             summary.processResults.failed += 1;
           } else {
@@ -412,6 +424,7 @@ pushCmd.action(async (options, command) => {
       }),
       // Update remote stories with correct references.
       writeStoryStream({
+        shouldStop: () => failures.hasFatal,
         transports: {
           writeStory: options.dryRun
             ? async (story: Story) => story
@@ -487,5 +500,14 @@ pushCmd.action(async (options, command) => {
       reporter.addMeta("failedStories", failures.toReporterMeta());
     }
     reporter.finalize();
+
+    // Per-story failures (including a credential-level one) go through
+    // `logOnlyError`, not `handleError`, so they never touch `process.exitCode`
+    // on their own — without this, a push that failed every story would still
+    // exit 0. Guarded so we never downgrade an exit code a thrown error
+    // already set via `handleError` in the `catch` block above.
+    if (process.exitCode === undefined) {
+      process.exitCode = failures.isEmpty ? 0 : 1;
+    }
   }
 });

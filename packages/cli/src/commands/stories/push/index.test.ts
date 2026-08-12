@@ -153,17 +153,27 @@ const preconditions = {
       );
     }
   },
+  /**
+   * Every update fails with the same credential-level 403. Returns a counter
+   * object tracking how many PUT requests the handler actually received, so
+   * a test can prove the pipeline stopped issuing requests early rather than
+   * attempting every story.
+   */
   failsToUpdateStoriesWithInsufficientScope(stories: MockStory[], space = DEFAULT_SPACE) {
-    for (const story of stories) {
-      server.use(
-        http.put(`https://mapi.storyblok.com/v1/spaces/${space}/stories/${story.id}`, () => {
-          return HttpResponse.json(
-            { error: "Insufficient scope: stories:write is required" },
-            { status: 403 },
-          );
-        }),
-      );
-    }
+    const requestCount = { current: 0 };
+    const ids = new Set(stories.map((s) => String(s.id)));
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${space}/stories/:id`, ({ params }) => {
+        if (ids.has(String(params.id))) {
+          requestCount.current += 1;
+        }
+        return HttpResponse.json(
+          { error: "Insufficient scope: stories:write is required" },
+          { status: 403 },
+        );
+      }),
+    );
+    return requestCount;
   },
   canListStories(stories: MockStory[], space = DEFAULT_SPACE) {
     // The push command issues targeted list calls filtered by `by_slugs` or
@@ -202,6 +212,7 @@ describe("stories push command", () => {
     server.resetHandlers();
     getProgram().setOptionValueWithSource("path", undefined, "default");
     resetReporter();
+    process.exitCode = undefined;
   });
   afterAll(() => server.close());
 
@@ -2066,6 +2077,29 @@ describe("stories push command", () => {
       const errorCalls = (console.error as unknown as ReturnType<typeof vi.fn>).mock.calls;
       const rendered = errorCalls.map((call) => call[0]).join("\n");
       expect(rendered.match(/stories:write/g)).toHaveLength(1);
+      // An aborted run is not a silent success.
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should stop issuing update requests once a credential failure is detected, instead of attempting every story", async () => {
+      // Comfortably larger than the pipeline's concurrency limit (12 in-flight
+      // requests by default) so that, if the run kept going, the mock would
+      // see every story attempted. Proves the pipeline actually halts rather
+      // than merely going quiet about repeats.
+      const localStories = Array.from({ length: 40 }, (_, i) =>
+        makeMockStory({ slug: `story-${i}` }),
+      );
+      preconditions.canLoadStories(localStories);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })]);
+      const remoteStories = preconditions.canCreateStories(localStories);
+      const requestCount = preconditions.failsToUpdateStoriesWithInsufficientScope(remoteStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      // Far below the 40 local stories: the pipeline stopped dispatching new
+      // update requests once the first credential failure was recorded.
+      expect(requestCount.current).toBeLessThan(localStories.length / 2);
+      expect(process.exitCode).toBe(1);
     });
   });
 });

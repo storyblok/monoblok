@@ -26,6 +26,14 @@
   files.
 - IMPORTANT: When running `assets push --update-stories` or `stories push`, make sure you run
   `components pull` first!
+- `stories push` stops at the first credential-level failure (for example a missing scope) instead
+  of repeating the same error for every remaining story, and it now exits 1 whenever any story
+  failed, where it previously always exited 0. Watch for this when scripting CI checks around the
+  exit code.
+- The `stories push` summary headline ("N stories pushed") counts only stories whose content was
+  actually written, not stories attempted. A run that creates a placeholder but fails to write its
+  content reports 0 pushed; skipped creations get their own "skipped" label in the per-phase rows
+  instead of counting as succeeded.
 
 ### Scenario seeds
 
@@ -88,6 +96,13 @@ A shared asset library is a top-level shared asset folder owned by the organizat
 read or write access. `assets pull` and `assets push` reach libraries through `--target` and
 `--library`. Library assets live under `.storyblok/assets/shared/<library_id>/`, parallel to the
 space subtree at `.storyblok/assets/<space_id>/`, each with its own `manifest.jsonl`.
+
+Shared libraries are unreachable with an OAuth login. `shared_asset_folders_controller` and
+`shared_internal_tags_controller` carry no `require_token_scopes`, so storyrails default-denies any
+scoped credential, and `credential.rb` never grants an OAuth grant `user_permission?`. Consent
+cannot change this. `assets push` and `assets pull` therefore warn and continue with the space
+scope; `--target shared`, `--target all`, and `--library` still fail. Use a personal access token to
+test libraries.
 
 ```bash
 # Pull only the readable libraries (writes .storyblok/assets/shared/<library_id>/).

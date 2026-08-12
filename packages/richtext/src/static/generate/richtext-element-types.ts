@@ -16,28 +16,50 @@ interface NodeEntry {
   extraProps: Array<{ name: string; optional: boolean; typeText: string }>;
 }
 
-function parseNodes(inputPath: string): NodeEntry[] {
-  const source = readFileSync(inputPath, "utf-8");
+/**
+ * Object declarations the generator understands. `@hey-api/openapi-ts` has no
+ * option to control whether it emits `export interface X { … }` or
+ * `export type X = { … }`, and it has switched between the two across releases.
+ * Both are the same shape for our purposes, so match either instead of pinning
+ * ourselves to the style of whichever version is currently installed.
+ */
+function readObjectDeclaration(
+  stmt: ts.Statement,
+): { name: string; members: ts.NodeArray<ts.TypeElement> } | undefined {
+  const isExported = ts.canHaveModifiers(stmt)
+    ? (ts.getModifiers(stmt)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false)
+    : false;
+  if (!isExported) {
+    return undefined;
+  }
+
+  if (ts.isInterfaceDeclaration(stmt)) {
+    return { name: stmt.name.text, members: stmt.members };
+  }
+  if (ts.isTypeAliasDeclaration(stmt) && ts.isTypeLiteralNode(stmt.type)) {
+    return { name: stmt.name.text, members: stmt.type.members };
+  }
+  return undefined;
+}
+
+function parseNodes(source: string): NodeEntry[] {
   const sf = ts.createSourceFile("types.gen.ts", source, ts.ScriptTarget.Latest, true);
   const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
 
   const entries: NodeEntry[] = [];
 
   for (const stmt of sf.statements) {
-    if (!ts.isInterfaceDeclaration(stmt)) {
+    const declaration = readObjectDeclaration(stmt);
+    if (!declaration) {
       continue;
     }
-    const isExported = stmt.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
-    if (!isExported) {
-      continue;
-    }
-    if (!stmt.name.text.startsWith("RichTextFieldValue")) {
+    if (!declaration.name.startsWith("RichTextFieldValue")) {
       continue;
     }
 
     // Find type: 'literal'
     let typeValue: string | undefined;
-    for (const m of stmt.members) {
+    for (const m of declaration.members) {
       if (
         ts.isPropertySignature(m) &&
         m.name &&
@@ -63,7 +85,7 @@ function parseNodes(inputPath: string): NodeEntry[] {
     let marksOptional = false;
     const extraProps: NodeEntry["extraProps"] = [];
 
-    for (const m of stmt.members) {
+    for (const m of declaration.members) {
       if (!ts.isPropertySignature(m) || !m.name || !ts.isIdentifier(m.name)) {
         continue;
       }
@@ -94,7 +116,7 @@ function parseNodes(inputPath: string): NodeEntry[] {
 
     entries.push({
       typeValue,
-      ifaceName: stmt.name.text,
+      ifaceName: declaration.name,
       hasAttrs,
       attrsOptional,
       hasContent,
@@ -109,7 +131,23 @@ function parseNodes(inputPath: string): NodeEntry[] {
 }
 
 export function generateElementTypes(inputPath: string): string {
-  const nodes = parseNodes(inputPath);
+  return generateElementTypesFromSource(readFileSync(inputPath, "utf-8"), inputPath);
+}
+
+export function generateElementTypesFromSource(
+  source: string,
+  sourceName = "types.gen.ts",
+): string {
+  const nodes = parseNodes(source);
+
+  // Without this the generator writes an empty `StoryblokRichTextElementByType`
+  // and exits successfully, which only surfaces much later as a type error in a
+  // consumer package.
+  if (nodes.length === 0) {
+    throw new Error(
+      `No exported RichTextFieldValue* object declarations found in ${sourceName}. The generated element types would be empty.`,
+    );
+  }
 
   // Import only the interfaces that have attrs (we reference their ['attrs'] type)
   const ifaceImports = nodes

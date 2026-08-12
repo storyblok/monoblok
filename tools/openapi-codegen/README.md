@@ -23,6 +23,14 @@ The second source is the easier one to get wrong. Editing a file under `specs/` 
 generated types for every consumer even though `spec.lock` does not move, so there is no lock diff
 to remind you to regenerate.
 
+There is a third, less obvious input: the generator version itself. `@hey-api/openapi-ts` is a `0.x`
+package that changes its output across patch releases — 0.92.4 emits `export type X = { … }` where
+earlier releases emitted `export interface X { … }`, and that style is not configurable. Because the
+generated output is committed and CI never regenerates it (that needs spec access), a floating range
+would let a plain `pnpm install` silently change what the next regeneration produces. So
+`@hey-api/openapi-ts` is pinned to an exact version here. Bump it deliberately, regenerate every
+consumer in the same PR, and review the diff.
+
 ## Workflow
 
 ```sh

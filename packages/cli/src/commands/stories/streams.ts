@@ -141,6 +141,7 @@ export const readLocalStoriesStream = ({
   onIncrement,
   onStorySuccess,
   onStoryError,
+  shouldStop,
 }: {
   directoryPath: string;
   /**
@@ -155,6 +156,13 @@ export const readLocalStoriesStream = ({
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, filename: string) => void;
+  /**
+   * Checked before each file is read. Once it returns `true`, the generator
+   * stops yielding — a clean end-of-stream, not an error — so a caller-level
+   * fatal failure (e.g. a credential error) halts the rest of the pipeline
+   * instead of reading and forwarding every remaining file.
+   */
+  shouldStop?: () => boolean;
 }) => {
   const listGenerator = async function* localStoryIterator() {
     const files = (await readDirectory(directoryPath)).filter(
@@ -163,6 +171,9 @@ export const readLocalStoriesStream = ({
     setTotalStories?.(files.length);
 
     for (const file of files) {
+      if (shouldStop?.()) {
+        break;
+      }
       try {
         const filePath = join(directoryPath, file);
         const fileContent = await readFile(filePath, "utf-8");
@@ -186,16 +197,27 @@ export const mapReferencesStream = ({
   onIncrement,
   onStorySuccess,
   onStoryError,
+  shouldStop,
 }: {
   schemas: ComponentSchemas;
   maps: RefMaps;
   onIncrement?: () => void;
   onStorySuccess?: (localStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
+  /**
+   * Checked before each chunk is mapped. Once it returns `true`, the chunk is
+   * dropped without pushing it downstream, so a caller-level fatal failure
+   * stops feeding `writeStoryStream` further work.
+   */
+  shouldStop?: () => boolean;
 }) => {
   return new Transform({
     objectMode: true,
     transform(localStory: Story, _encoding, callback) {
+      if (shouldStop?.()) {
+        callback();
+        return;
+      }
       try {
         const mappedStory = storyRefMapper(localStory, { schemas, maps });
         onStorySuccess?.(mappedStory);
@@ -527,6 +549,7 @@ export const writeStoryStream = ({
   onIncrement,
   onStorySuccess,
   onStoryError,
+  shouldStop,
 }: {
   transports: {
     writeStory: WriteStoryTransport;
@@ -535,12 +558,25 @@ export const writeStoryStream = ({
   onIncrement?: () => void;
   onStorySuccess?: (mappedLocalStory: Story, remoteStory: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
+  /**
+   * Checked before each write is dispatched. Once it returns `true`, the
+   * story is dropped without calling `writeStory` (no API call, no
+   * increment) — a caller-level fatal failure stops issuing further
+   * requests instead of repeating the same failure per story. Stories
+   * already dispatched to the transport before the flag flipped still run
+   * to completion; only not-yet-started work is skipped.
+   */
+  shouldStop?: () => boolean;
 }) => {
   const processing = new Set<Promise<void>>();
 
   return new Writable({
     objectMode: true,
     async write(mappedLocalStory: Story, _encoding, callback) {
+      if (shouldStop?.()) {
+        callback();
+        return;
+      }
       await getPipelineSlot().acquire();
 
       const task = (async () => {

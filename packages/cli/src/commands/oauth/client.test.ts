@@ -20,4 +20,16 @@ describe("resolveOAuthClient", () => {
     expect(OAUTH_CLIENT_ID.startsWith(OAUTH_CLIENT_PLACEHOLDER_PREFIX)).toBe(true);
     expect(() => resolveOAuthClient()).toThrow(/ships without OAuth client credentials/);
   });
+
+  it("should throw a cause-only message that names no command flag", () => {
+    expect(() => resolveOAuthClient()).toThrow(
+      "This build of the CLI ships without OAuth client credentials.",
+    );
+    try {
+      resolveOAuthClient();
+    } catch (error) {
+      expect((error as Error).message).not.toContain("--oauth");
+      expect((error as Error).message).not.toContain("\n");
+    }
+  });
 });

@@ -20,7 +20,14 @@ const doRefresh = async (region: RegionCode): Promise<OAuthTokens> => {
     throw new CommandError("No OAuth refresh token stored. Run `storyblok login` to authenticate.");
   }
 
-  const client = resolveOAuthClient();
+  let client;
+  try {
+    client = resolveOAuthClient();
+  } catch (error) {
+    throw new CommandError(
+      `Your OAuth session cannot be refreshed: ${(error as Error).message} Log in with a Personal Access Token (\`storyblok login --token <token>\`).`,
+    );
+  }
 
   let response;
   try {

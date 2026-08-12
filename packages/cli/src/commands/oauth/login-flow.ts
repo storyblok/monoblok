@@ -51,7 +51,14 @@ export const performOAuthLogin = async (options: {
   const openBrowser = options.openBrowser ?? ((url) => open(url));
   const ui = getUI();
 
-  const client = resolveOAuthClient();
+  let client;
+  try {
+    client = resolveOAuthClient();
+  } catch (error) {
+    throw new CommandError(
+      `${(error as Error).message} Log in with a Personal Access Token (\`storyblok login --token <token>\`), or set STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET to use your own OAuth app.`,
+    );
+  }
   const scopes = OAUTH_LOGIN_SCOPES;
   const { verifier, challenge } = generatePkce();
   const state = generateState();

@@ -1,4 +1,4 @@
-import { CommandError } from "../../utils";
+import { CommandError, formatSpaceNotAllowedMessage } from "../../utils";
 
 // A grant with an empty/absent space list is not space-restricted (storyrails token_scopeable.rb).
 export const assertSpaceAllowed = (
@@ -13,10 +13,11 @@ export const assertSpaceAllowed = (
   }
   const target = Number(space);
   if (!grantedSpaces.some((granted) => granted.id === target)) {
-    const allowed = grantedSpaces.map((granted) => granted.id).join(", ");
     throw new CommandError(
-      `Space ${space} is not covered by your OAuth login (authorized spaces: ${allowed}).\n` +
-        `Re-run \`storyblok login\` and select this space at the consent screen.`,
+      formatSpaceNotAllowedMessage(
+        space,
+        grantedSpaces.map((granted) => granted.id),
+      ),
     );
   }
 };

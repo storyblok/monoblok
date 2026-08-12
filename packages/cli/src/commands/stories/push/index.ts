@@ -432,11 +432,21 @@ pushCmd.action(async (options, command) => {
     ui.br();
 
     const failedCount = failures.size;
+    // A story's content is only actually written to the remote during the
+    // update phase (creation only reserves a placeholder id, and a
+    // newly-created story still goes through update to receive its real
+    // content). So `updateResults.succeeded` alone is "stories actually
+    // pushed" — summing it with `creationResults.succeeded` would double
+    // count every newly-created story that also updated successfully.
+    // `skipped` creations still proceed to update and are counted there, so
+    // they are neither a success nor a failure of their own and get no
+    // separate weight in this headline.
+    const pushedCount = summary.updateResults.succeeded;
     ui.info(
-      `Push results: ${summary.creationResults.total} ${summary.creationResults.total === 1 ? "story" : "stories"} pushed, ${failedCount} ${failedCount === 1 ? "story" : "stories"} failed`,
+      `Push results: ${pushedCount} ${pushedCount === 1 ? "story" : "stories"} pushed, ${failedCount} ${failedCount === 1 ? "story" : "stories"} failed`,
     );
     ui.list([
-      `Creating stories: ${summary.creationResults.succeeded + summary.creationResults.skipped}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed.`,
+      `Creating stories: ${summary.creationResults.succeeded}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed, ${summary.creationResults.skipped} skipped.`,
       `Processing stories: ${summary.processResults.succeeded}/${summary.processResults.total} succeeded, ${summary.processResults.failed} failed.`,
       `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed.`,
     ]);

@@ -427,7 +427,7 @@ describe("stories push command", () => {
         expect.stringContaining("Push results: 5 stories pushed, 0 stories failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 5/5 succeeded, 0 failed."),
+        expect.stringContaining("Creating stories: 5/5 succeeded, 0 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 5/5 succeeded, 0 failed."),
@@ -878,8 +878,10 @@ describe("stories push command", () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Push results: 1 story pushed, 0 stories failed"),
       );
+      // The story already existed remotely, so creation was skipped, not
+      // succeeded. Only the update phase actually wrote anything.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 1/1 succeeded, 0 failed."),
+        expect.stringContaining("Creating stories: 0/1 succeeded, 0 failed, 1 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 1/1 succeeded, 0 failed."),
@@ -1396,12 +1398,12 @@ describe("stories push command", () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed stories (1):"));
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining(`story-a (uuid: `));
-      // UI
+      // UI — creation itself failed (manifest append), so nothing was written.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 1 story pushed, 1 story failed"),
+        expect.stringContaining("Push results: 0 stories pushed, 1 story failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed."),
+        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 0/0 succeeded, 0 failed."),
@@ -1690,7 +1692,7 @@ describe("stories push command", () => {
       const report = getReport();
       expect(report?.status).toBe("FAILURE");
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed."),
+        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 0/0 succeeded, 0 failed."),
@@ -1841,12 +1843,12 @@ describe("stories push command", () => {
       // UI — deferred, grouped summary (no inline console.error during streaming)
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed stories (1):"));
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("story-a.json"));
-      // UI
+      // UI — the local file failed to load, so no story was ever pushed.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 1 story pushed, 1 story failed"),
+        expect.stringContaining("Push results: 0 stories pushed, 1 story failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed."),
+        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 0/0 succeeded, 0 failed."),
@@ -1883,12 +1885,12 @@ describe("stories push command", () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Failed to create placeholder story"),
       );
-      // UI
+      // UI — placeholder creation failed, so nothing reached the remote.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 1 story pushed, 1 story failed"),
+        expect.stringContaining("Push results: 0 stories pushed, 1 story failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed."),
+        expect.stringContaining("Creating stories: 0/1 succeeded, 1 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 0/0 succeeded, 0 failed."),
@@ -1935,11 +1937,13 @@ describe("stories push command", () => {
         expect.stringContaining("Invalid bloks field: expected an array"),
       );
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining(`story-a (uuid: `));
+      // The placeholder was created, but mapping references failed before
+      // the update phase ever ran, so the story's content never got written.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 1 story pushed, 1 story failed"),
+        expect.stringContaining("Push results: 0 stories pushed, 1 story failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 1/1 succeeded, 0 failed."),
+        expect.stringContaining("Creating stories: 1/1 succeeded, 0 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 0/1 succeeded, 1 failed."),
@@ -1998,11 +2002,13 @@ describe("stories push command", () => {
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed stories (1):"));
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed to update story"));
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining(`story-a (uuid: `));
+      // The placeholder was created and references were mapped, but the
+      // update call itself failed, so the story's real content never wrote.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 1 story pushed, 1 story failed"),
+        expect.stringContaining("Push results: 0 stories pushed, 1 story failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Creating stories: 1/1 succeeded, 0 failed."),
+        expect.stringContaining("Creating stories: 1/1 succeeded, 0 failed, 0 skipped."),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Processing stories: 1/1 succeeded, 0 failed."),
@@ -2046,15 +2052,58 @@ describe("stories push command", () => {
         // story disappears from this phase's counts.
         updateResults: { total: 0, succeeded: 0, failed: 0 },
       });
-      // Top summary must reflect the distinct failure (1), not 0.
+      // Top summary must reflect the distinct failure (1), not 0, and nothing
+      // was actually written, so pushed stays 0.
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 1 story pushed, 1 story failed"),
+        expect.stringContaining("Push results: 0 stories pushed, 1 story failed"),
       );
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("Updating stories: 0/0 succeeded, 0 failed."),
       );
       // The grouped report still lists the story exactly once.
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed stories (1):"));
+    });
+
+    it("should not report stories as pushed when every update fails", async () => {
+      // Regression for a live run measured with `stories:write` missing:
+      // the headline said "10 stories pushed" while nothing was written.
+      // Uses a 422 (not 403) so this stays independent of the credential
+      // short-circuit path covered above.
+      const storyA = makeMockStory({ slug: "story-a" });
+      const storyB = makeMockStory({ slug: "story-b" });
+      const localStories = [storyA, storyB];
+      preconditions.canLoadStories(localStories);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })]);
+      // Matching uuids in the target space mean creation is skipped for
+      // both stories; only the update phase determines whether anything
+      // was actually written.
+      preconditions.canListStories(localStories);
+      preconditions.failsToUpdateStories(localStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Push results: 0 stories pushed, 2 stories failed"),
+      );
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("2 stories pushed"));
+    });
+
+    it("should count skipped creations separately from succeeded ones", async () => {
+      const storyA = makeMockStory({ slug: "story-a" });
+      const storyB = makeMockStory({ slug: "story-b" });
+      const localStories = [storyA, storyB];
+      preconditions.canLoadStories(localStories);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })]);
+      preconditions.canListStories(localStories);
+      preconditions.failsToUpdateStories(localStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      // Every story already existed remotely, so all creations were
+      // skipped, not succeeded — "0 succeeded" must not fold skipped in.
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Creating stories: 0/2 succeeded, 0 failed, 2 skipped."),
+      );
     });
 
     it("should stop after the first credential failure instead of repeating it per story", async () => {

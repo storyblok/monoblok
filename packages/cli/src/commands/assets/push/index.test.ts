@@ -457,6 +457,16 @@ const preconditions = {
       [filePath]: content,
     });
   },
+  forbidsLibraryDiscovery({ space = DEFAULT_SPACE }: { space?: string } = {}) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${space}/shared_asset_folders`, () =>
+        HttpResponse.json(
+          { error: "This endpoint does not support this token type" },
+          { status: 403 },
+        ),
+      ),
+    );
+  },
   hasLibraries(
     libraries: { id: number; name: string; accessLevel: "read" | "write" }[],
     { space = DEFAULT_SPACE }: { space?: string } = {},
@@ -2569,6 +2579,44 @@ describe("assets push command", () => {
       expect(
         stderrCalls.some((msg: unknown) => typeof msg === "string" && msg.includes("ENOENT")),
       ).toBe(false);
+    });
+
+    it("should push space assets and warn when library discovery is forbidden", async () => {
+      preconditions.forbidsLibraryDiscovery();
+      const asset = makeMockAsset();
+      preconditions.canLoadFolders([]);
+      preconditions.canLoadAssets([asset]);
+      preconditions.canUpsertRemoteAssets([asset]);
+
+      await assetsCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Shared libraries are unavailable"),
+      );
+      expect(process.exitCode).toBe(0);
+    });
+
+    it("should fail when libraries were explicitly requested but are forbidden", async () => {
+      preconditions.forbidsLibraryDiscovery();
+
+      await assetsCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--target",
+        "shared",
+      ]);
+
+      expect(
+        (console.error as ReturnType<typeof vi.fn>).mock.calls
+          .flat()
+          .some(
+            (arg) => typeof arg === "string" && arg.includes("This command is not available with"),
+          ),
+      ).toBe(true);
+      expect(process.exitCode).toBe(1);
     });
   });
 });

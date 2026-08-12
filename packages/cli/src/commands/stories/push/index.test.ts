@@ -153,6 +153,18 @@ const preconditions = {
       );
     }
   },
+  failsToUpdateStoriesWithInsufficientScope(stories: MockStory[], space = DEFAULT_SPACE) {
+    for (const story of stories) {
+      server.use(
+        http.put(`https://mapi.storyblok.com/v1/spaces/${space}/stories/${story.id}`, () => {
+          return HttpResponse.json(
+            { error: "Insufficient scope: stories:write is required" },
+            { status: 403 },
+          );
+        }),
+      );
+    }
+  },
   canListStories(stories: MockStory[], space = DEFAULT_SPACE) {
     // The push command issues targeted list calls filtered by `by_slugs` or
     // `by_ids`. Honor both filters so the handler matches the real MAPI shape;
@@ -2032,6 +2044,28 @@ describe("stories push command", () => {
       );
       // The grouped report still lists the story exactly once.
       expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Failed stories (1):"));
+    });
+
+    it("should stop after the first credential failure instead of repeating it per story", async () => {
+      const storyA = makeMockStory({ slug: "story-a" });
+      const storyB = makeMockStory({ slug: "story-b" });
+      const storyC = makeMockStory({ slug: "story-c" });
+      const localStories = [storyA, storyB, storyC];
+      preconditions.canLoadStories(localStories);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })]);
+      const remoteStories = preconditions.canCreateStories(localStories);
+      preconditions.failsToUpdateStoriesWithInsufficientScope(remoteStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      // The shared harness mocks a PAT session, so the rendered message is the
+      // PAT-flavored variant ("Your personal access token is missing the
+      // \"stories:write\" scope…"), not the OAuth one. Assert on the scope
+      // name, which both variants contain, so this stays about the count
+      // rather than the wording.
+      const errorCalls = (console.error as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const rendered = errorCalls.map((call) => call[0]).join("\n");
+      expect(rendered.match(/stories:write/g)).toHaveLength(1);
     });
   });
 });

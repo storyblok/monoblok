@@ -274,11 +274,13 @@ describe("generateComponentFile", () => {
 
     const result = generateComponentFile(component as any);
 
-    // The lists pass through verbatim, but nothing puts them in force, so the
-    // flags are the byproducts they always were.
+    // The tag list passes through verbatim but nothing puts it in force, so it is
+    // not treated as the tag dimension. `restrict_components: true` is still real
+    // state with nothing to re-derive it, so it round-trips with its selector.
     expect(result).toContain("component_tag_whitelist: [");
-    expect(result).not.toContain("restrict_type");
-    expect(result).not.toContain("restrict_components");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).toContain("restrict_type: '',");
+    expect(result).not.toContain("allow: [");
   });
 
   it("should resolve a group whitelist to allow: [folderVar] and import the folder when uuids are known", () => {
@@ -500,10 +502,11 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("component_denylist");
   });
 
-  it("should drop orphaned restrict flags when a restricted field has no names and no groups", () => {
-    // `restrict_components: true` with an empty `component_whitelist` and no group
-    // whitelist is a wire byproduct that `allow` re-derives on push; without an
-    // allow to back it, it must not be emitted as orphaned DSL state.
+  it("should keep `restrict_components: true` when no list is in force", () => {
+    // Regression: this was treated as a wire byproduct that `allow` re-derives on
+    // push, but with an empty `component_whitelist` there is no `allow` to emit and
+    // so nothing re-derives it. Dropping it switched the restriction off on the
+    // round-trip, turning "restricted, nothing selected" into "unrestricted".
     const component = {
       id: 1,
       name: "landing",
@@ -522,9 +525,44 @@ describe("generateComponentFile", () => {
     const result = generateComponentFile(component as any);
 
     expect(result).toContain("defineField('body', {");
-    expect(result).not.toContain("restrict_components");
+    expect(result).toContain("restrict_components: true,");
+    // The empty list carries no dimension, so it is not emitted either way.
     expect(result).not.toContain("component_whitelist");
     expect(result).not.toContain("allow");
+  });
+
+  it("should not emit restriction keys for a field type that does not own them", () => {
+    // The Management API stores a component schema as an opaque blob, so a space
+    // can hold a stray `restrict_components` on an `asset` field. `defineField`
+    // rejects an option the field type does not own, so emitting it verbatim
+    // generated code that did not compile.
+    const component = {
+      id: 1,
+      name: "landing",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        disabled_pic: { type: "asset", pos: 0, restrict_components: false, restrict_type: "" },
+        active_pic: { type: "asset", pos: 1, restrict_components: true, restrict_type: "" },
+        tagged_pic: {
+          type: "asset",
+          pos: 2,
+          restrict_type: "tags",
+          component_tag_whitelist: [1],
+        },
+        tagged_text: { type: "text", pos: 3, component_tag_whitelist: [1] },
+        grouped_pic: { type: "asset", pos: 4, component_group_whitelist: ["uuid"] },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).not.toContain("restrict_components");
+    expect(result).not.toContain("restrict_type");
+    // The tag lists reach the output through the untouched-key passthrough rather
+    // than the restriction branches, so they need the same guard.
+    expect(result).not.toContain("component_tag_whitelist");
+    expect(result).not.toContain("component_group_whitelist");
   });
 
   it("should keep a disabled restriction disabled instead of mapping a stale name whitelist to allow", () => {

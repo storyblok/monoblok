@@ -12,6 +12,7 @@ vi.unmock("node:fs/promises");
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -100,6 +101,23 @@ describe("loadConfig", () => {
     const { config } = await loadProjectConfig(cwd);
 
     expect(config).toMatchObject({ space: "45678" });
+  });
+
+  it("should skip alias resolution when JITI_TSCONFIG_PATHS is false", async () => {
+    // A tsconfig that extends an uninstalled package throws while being read,
+    // which otherwise blocks a config file that uses no aliases at all.
+    const project = {
+      "tsconfig.json": JSON.stringify({ extends: "@tsconfig/node20/tsconfig.json" }),
+      "storyblok.config.ts": `export default { space: '67890' };\n`,
+    };
+    await expect(loadProjectConfig(await createProject(project))).rejects.toThrow(
+      "File '@tsconfig/node20/tsconfig.json' not found.",
+    );
+
+    vi.stubEnv("JITI_TSCONFIG_PATHS", "false");
+    const { config } = await loadProjectConfig(await createProject(project));
+
+    expect(config).toMatchObject({ space: "67890" });
   });
 
   it("should load a config file when the project has no tsconfig", async () => {

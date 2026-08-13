@@ -162,6 +162,13 @@ export async function loadSchemaModule(entryPath: string): Promise<Record<string
     throw new CommandError(`Schema entry file not found at "${entryPath}".`);
   }
   const { createJiti } = await import("jiti");
-  const jiti = createJiti(import.meta.url, { interopDefault: true, tsconfigPaths: true });
+  const jiti = createJiti(import.meta.url, {
+    interopDefault: true,
+    // Reading the tsconfig throws when it extends something unresolvable, which
+    // would block the schema commands in a project that does not even use
+    // aliases. jiti's own JITI_TSCONFIG_PATHS default is overridden by this
+    // explicit option, so honour it here to leave users a way out.
+    tsconfigPaths: process.env.JITI_TSCONFIG_PATHS !== "false",
+  });
   return (await jiti.import(entryAbs)) as Record<string, unknown>;
 }

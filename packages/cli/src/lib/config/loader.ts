@@ -22,7 +22,11 @@ export async function loadConfig(options: {
     dotenv: false,
     packageJson: false,
     jitiOptions: {
-      tsconfigPaths: true,
+      // Reading the tsconfig throws when it extends something unresolvable, which
+      // would block every command in a project that does not even use aliases.
+      // jiti's own JITI_TSCONFIG_PATHS default is overridden by this explicit
+      // option, so honour it here to leave users a way out.
+      tsconfigPaths: process.env.JITI_TSCONFIG_PATHS !== "false",
     },
   });
 }

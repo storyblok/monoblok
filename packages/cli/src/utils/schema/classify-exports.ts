@@ -138,9 +138,13 @@ export function collectSchemaExports(
 /**
  * Loads a TypeScript schema entry file via jiti and returns its raw module
  * exports. The path is resolved to an absolute path first, so jiti's base URL
- * is irrelevant. Shared by `schema push` (wire mapping) and the validate
- * commands (DSL shape). The jiti import throws when the path cannot be
- * resolved — fatal for the callers.
+ * does not affect which file is loaded; `tsconfigPaths` does read a tsconfig
+ * relative to that base URL, but jiti evaluates each module through a child
+ * instance rooted at the module itself, so the aliases applied to the entry
+ * file come from the user's project and not from the CLI's own tsconfig.
+ * Shared by `schema push` (wire mapping) and the validate commands (DSL
+ * shape). The jiti import throws when the path cannot be resolved — fatal for
+ * the callers.
  *
  * A missing entry file is a bad invocation, so it surfaces as a
  * {@link CommandError} instead of Node's resolution failure with its `Require
@@ -158,6 +162,13 @@ export async function loadSchemaModule(entryPath: string): Promise<Record<string
     throw new CommandError(`Schema entry file not found at "${entryPath}".`);
   }
   const { createJiti } = await import("jiti");
-  const jiti = createJiti(import.meta.url, { interopDefault: true });
+  const jiti = createJiti(import.meta.url, {
+    interopDefault: true,
+    // Reading the tsconfig throws when it extends something unresolvable, which
+    // would block the schema commands in a project that does not even use
+    // aliases. jiti's own JITI_TSCONFIG_PATHS default is overridden by this
+    // explicit option, so honour it here to leave users a way out.
+    tsconfigPaths: process.env.JITI_TSCONFIG_PATHS !== "false",
+  });
   return (await jiti.import(entryAbs)) as Record<string, unknown>;
 }

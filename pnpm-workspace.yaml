@@ -10,7 +10,7 @@ catalog:
   "@types/node": ^24.11.0
   "@vitest/coverage-v8": ^4.1.10
   dotenv: ^17.3.1
-  jiti: ^2.6.1
+  jiti: 2.7.0
   jsdom: ^27.1.0
   msw: ^2.12.9
   oxlint: 1.76.0

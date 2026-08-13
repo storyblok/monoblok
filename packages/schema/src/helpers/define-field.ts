@@ -107,29 +107,17 @@ type WireRestrictionKeys =
   | "restrict_type";
 
 /**
- * `Field` with the wire restriction keys stripped from every variant, so
- * {@link FieldInput} is their only declaration site.
+ * The documented declarations of the wire restriction keys, the single site that
+ * carries their `@deprecated` tags.
  *
  * Redeclaring them in an intersection while `Field` still declares them would
- * silently drop the `@deprecated` tags: TypeScript reports a property as
- * deprecated only when *every* declaration of it carries the tag, so the untagged
- * `Field` declaration would cancel the tagged one out (verified on TS 6.0.3 and
- * 5.8.3, for intersections and unions alike, in either order).
+ * silently drop those tags: TypeScript reports a property as deprecated only when
+ * *every* declaration of it carries the tag, so the untagged `Field` declaration
+ * would cancel the tagged one out (verified on TS 6.0.3 and 5.8.3, for
+ * intersections and unions alike, in either order). {@link FieldInput} therefore
+ * strips them from each variant with `Omit` and picks them back from here.
  */
-type FieldWithoutRestrictions<T = Field> = T extends any ? Omit<T, WireRestrictionKeys> : never;
-
-/**
- * Field config accepted by {@link defineField}: the content-shape field plus the
- * DSL reference keys. `allow` replaces the wire `component_whitelist` /
- * `component_group_whitelist`, `deny` the wire `component_denylist` /
- * `component_group_denylist`; `datasource` holds the datasource ref/slug (the
- * wire `source` selector still passes through).
- *
- * The wire restriction keys stay legal as a lower-level escape hatch, but they
- * cannot be combined with `allow` / `deny` on one field: see
- * {@link NoRestrictionConflict}.
- */
-export type FieldInput = FieldWithoutRestrictions & {
+type WireRestrictionDocs = {
   /**
    * @deprecated Use `allow` instead: it takes block names or `defineBlock` refs
    * and derives `restrict_components` / `restrict_type` for you. On `bloks` and
@@ -198,6 +186,10 @@ export type FieldInput = FieldWithoutRestrictions & {
    * dimension with no DSL equivalent.
    */
   restrict_type?: string;
+};
+
+/** The DSL reference keys {@link defineField} adds to every field type. */
+type DslInput = {
   allow?: BlockRef | FolderRef | readonly (BlockRef | FolderRef)[];
   /**
    * Blocks this field must not accept, by block ref/name or `defineFolder` ref.
@@ -219,6 +211,32 @@ export type FieldInput = FieldWithoutRestrictions & {
   datasource?: DatasourceRef;
   required?: boolean;
 };
+
+/**
+ * Field config accepted by {@link defineField}: the content-shape field plus the
+ * DSL reference keys. `allow` replaces the wire `component_whitelist` /
+ * `component_group_whitelist`, `deny` the wire `component_denylist` /
+ * `component_group_denylist`; `datasource` holds the datasource ref/slug (the
+ * wire `source` selector still passes through).
+ *
+ * The wire restriction keys stay legal as a lower-level escape hatch, but they
+ * cannot be combined with `allow` / `deny` on one field: see
+ * {@link NoRestrictionConflict}.
+ *
+ * Built one `Field` variant at a time, re-picking only the wire restriction keys
+ * that variant actually declares. Grafting all of them onto *every* variant would
+ * put `FieldInput` at odds with {@link NoExtraKeys}, which checks against the
+ * matched variant: `FieldInput`'s own `text` member would carry
+ * `component_whitelist`, which `text` does not own, so `FieldInput` would fail its
+ * own check and `defineField` would reject its documented input type.
+ */
+export type FieldInput = FieldInputOf<Field>;
+
+type FieldInputOf<T> = T extends any
+  ? Omit<T, WireRestrictionKeys> &
+      Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
+      DslInput
+  : never;
 
 declare const invalidKey: unique symbol;
 /**

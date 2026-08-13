@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { FieldValue } from "../generated/types/field";
 import { defineBlock } from "./define-block";
-import { defineField } from "./define-field";
+import { defineField, type FieldInput } from "./define-field";
 import { defineFolder } from "./define-folder";
 
 describe("defineField type inference", () => {
@@ -422,6 +422,106 @@ describe("defineField field option checking", () => {
   it("should reject tag lists on a field type that does not own them", () => {
     // @ts-expect-error tag lists are meaningless on 'text'
     void defineField("title", { type: "text", component_tag_whitelist: [1] });
+  });
+
+  it("should accept a value typed as the exported `FieldInput`", () => {
+    // Regression: `FieldInput` grafted every wire restriction key onto every
+    // variant while the option check runs against the matched `Field` variant, so
+    // `FieldInput`'s own `text` member failed that check and `defineField`
+    // rejected its own documented input type.
+    const title: FieldInput = { type: "text", max_length: 10 };
+    void defineField("title", title);
+    const body: FieldInput = { type: "bloks", component_whitelist: ["teaser"] };
+    void defineField("body", body);
+  });
+
+  // Fixture-driven guard for the overlay spec: every option the Storyblok editor
+  // can write must be declared on the matching `Field` variant, or `schema init`
+  // emits it verbatim into code that does not compile. Sourced from the editor's
+  // per-field-type schema forms. Add a case here when the editor grows an option.
+  it("should accept every option the editor writes for each field type", () => {
+    // `add_https` and the crop options belong to the legacy `image`/`file`
+    // types. `FieldTypeAsset` computes a protocol from `add_https`, but its only
+    // consumer runs behind the `deprecated` prop that only `FieldTypeImage` and
+    // `FieldTypeFile` pass, so an `asset` created in the editor stays bare.
+    void defineField("picture", {
+      type: "asset",
+      filetypes: ["images"],
+      allow_external_url: false,
+      asset_folder_id: 12,
+    });
+    void defineField("gallery", {
+      type: "multiasset",
+      filetypes: ["images"],
+      maximum_entries: 5,
+    });
+    // The legacy `image`/`file` types own the crop options.
+    void defineField("imageold", {
+      type: "image",
+      add_https: true,
+      image_crop: true,
+      image_width: 800,
+      image_height: 600,
+      keep_image_size: false,
+    });
+    // A crop dimension is cleared by writing an empty string, not by removing
+    // the key.
+    void defineField("imageold", { type: "image", image_crop: true, image_width: "" });
+    void defineField("fileold", { type: "file", add_https: true });
+    void defineField("body", {
+      type: "richtext",
+      customize_toolbar: true,
+      toolbar: ["bold", "italic"],
+      style_options: [{ name: "Lead", value: "lead" }],
+      allow_target_blank: true,
+      allow_custom_attributes: true,
+      link_scope: "/blog/",
+      max_length: 500,
+      rtl: false,
+    });
+    void defineField("notes", {
+      type: "markdown",
+      allow_multiline: true,
+      customize_toolbar: true,
+      rich_markdown: true,
+      toolbar: ["bold"],
+      max_length: 100,
+      rtl: false,
+    });
+    void defineField("link", {
+      type: "multilink",
+      allow_target_blank: true,
+      allow_custom_attributes: true,
+      asset_link_type: true,
+      email_link_type: true,
+      force_link_scope: true,
+      link_scope: "/blog/",
+      restrict_content_types: true,
+      show_anchor: true,
+    });
+    void defineField("count", {
+      type: "number",
+      decimals: 2,
+      steps: 1,
+      min_value: 0,
+      max_value: 10,
+    });
+    void defineField("title", { type: "text", max_length: 10, regex: "^a", rtl: false });
+    void defineField("summary", { type: "textarea", max_length: 100, rtl: false });
+    void defineField("enabled", { type: "boolean", inline_label: true });
+    void defineField("published", { type: "datetime", disable_time: true });
+    void defineField("category", {
+      type: "option",
+      options: [{ _uid: "a1", name: "News", value: "news" }],
+      use_uuid: true,
+      exclude_empty_option: true,
+    });
+    void defineField("categories", {
+      type: "options",
+      source: "internal_stories",
+      is_reference_type: true,
+      exclude_empty_option: true,
+    });
   });
 
   it("should still check the value types of known keys", () => {

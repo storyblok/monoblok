@@ -211,9 +211,16 @@ type ApplyAllow<TField, TBlocks> = TField extends {
       : never
     : never;
 
-/** The folder paths named by the `{ folder: path }` entries of an `allow`/`deny` union. */
-type FolderOf<T> =
-  Extract<T, { folder: string }> extends { folder: infer F extends string } ? F : never;
+/**
+ * The folder paths named by the `{ folder: path }` entries of an `allow`/`deny` union.
+ *
+ * Written as an indexed access rather than a conditional with `infer`: when the
+ * union names no folder at all, `Extract` yields `never`, and `never extends
+ * { folder: infer F extends string }` takes the *true* branch with no inference
+ * candidate for `F`, which then falls back to its `string` constraint. That turned
+ * a block-name-only `deny` into "deny every folder".
+ */
+type FolderOf<T> = Extract<T, { folder: string }>["folder"];
 
 /**
  * Removes the registry blocks in `TFolders` (or any nested folder), the

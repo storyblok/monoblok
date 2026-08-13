@@ -164,6 +164,65 @@ describe("defineField type inference", () => {
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
   });
 
+  it("should remove every block named in a multi-entry `deny`", () => {
+    // Regression: splitting the deny union with a distributive conditional would
+    // union the per-entry `Exclude` results back together, re-admitting both.
+    const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", is_nestable: true, fields: [] });
+    const _bannerBlock = defineBlock({ name: "banner", is_nestable: true, fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: ["teaser", "banner"] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _teaserBlock | typeof _bannerBlock
+    >;
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero">();
+  });
+
+  it("should normalize folder refs in `deny` to tagged path entries", () => {
+    const heros = defineFolder({ name: "Heros" });
+    const f = defineField("body", { type: "bloks", deny: [heros] });
+    expectTypeOf(f.deny).toEqualTypeOf<readonly [{ folder: "Heros" }]>();
+  });
+
+  it("should narrow bloks content by folder `deny` entries, including nested folders", () => {
+    const layout = defineFolder({ name: "Layout" });
+    const heros = defineFolder({ name: "Heros", parent: layout });
+    const _heroBlock = defineBlock({ name: "hero", folder: heros, fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: [layout] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _teaserBlock
+    >;
+    // `hero` sits in a subfolder of the denied `Layout`, so only the unfoldered
+    // `teaser` survives.
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"teaser">();
+  });
+
+  it("should treat a folder `deny` naming no populated folder as inert", () => {
+    const empty = defineFolder({ name: "Empty" });
+    const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", is_nestable: true, fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: [empty] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _teaserBlock
+    >;
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
+  });
+
   it("should treat a `deny` entry naming an unknown block as inert", () => {
     const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
     const _teaserBlock = defineBlock({ name: "teaser", is_nestable: true, fields: [] });

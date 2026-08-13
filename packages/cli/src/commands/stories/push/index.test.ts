@@ -1436,6 +1436,8 @@ describe("stories push command", () => {
       );
       expect(actions.createStory).not.toHaveBeenCalled();
       expect(actions.updateStory).not.toHaveBeenCalled();
+      // Bailing on a precondition is a failed push; CI must not read it as a clean run.
+      expect(process.exitCode).toBe(2);
     });
 
     it("should abort with a hard error when a story references a missing component schema", async () => {
@@ -1461,6 +1463,7 @@ describe("stories push command", () => {
       );
       const report = getReport();
       expect(report?.status).toBe("FAILURE");
+      expect(process.exitCode).toBe(2);
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain("Schema validation failed");
     });
@@ -2152,6 +2155,39 @@ describe("stories push command", () => {
       // update requests once the first credential failure was recorded.
       expect(requestCount.current).toBeLessThan(localStories.length / 2);
       expect(process.exitCode).toBe(1);
+    });
+
+    it("should name the stories an aborted run never attempted", async () => {
+      const localStories = Array.from({ length: 5 }, (_, i) =>
+        makeMockStory({ slug: `story-${i}` }),
+      );
+      preconditions.canLoadStories(localStories);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })]);
+      const remoteStories = preconditions.canCreateStories(localStories);
+      preconditions.failsToUpdateStoriesWithInsufficientScope(remoteStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      // Without the "not attempted" tail this reads as "0/5 succeeded, 1 failed", leaving
+      // four stories silently unaccounted for and the abort looking like data loss.
+      const errorCalls = (console.error as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      const rendered = errorCalls.map((call) => call[0]).join("\n");
+      expect(rendered).toContain("Updating stories: 0/5 succeeded, 1 failed, 4 not attempted.");
+    });
+
+    it("should not add a not-attempted tail when every story is accounted for", async () => {
+      const localStories = [makeMockStory({ slug: "story-a" })];
+      preconditions.canLoadStories(localStories);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })]);
+      const remoteStories = preconditions.canCreateStories(localStories);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Updating stories: 1/1 succeeded, 0 failed."),
+      );
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("not attempted"));
     });
   });
 });

@@ -225,6 +225,36 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("component_whitelist");
   });
 
+  // Regression, reproduced against a real space: requiring a non-empty tag list to
+  // recognise the dimension dropped `restrict_type` and `restrict_components` for a
+  // tag restriction whose lists happen to be empty, and nothing re-derives them —
+  // `schema init` emitted a bare `defineField('content', { type: 'bloks' })` and the
+  // next push unrestricted the field.
+  it("should keep the tag dimension when its lists are empty", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [],
+          component_tag_denylist: [],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).not.toContain("allow: [");
+  });
+
   it("should not treat tag lists as a restriction when restrict_type does not select them", () => {
     const component = {
       id: 1,

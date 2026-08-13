@@ -13,7 +13,7 @@ export interface FindOptions {
   query?: string;
   where?: string[];
   publishStatus?: PublishStatus;
-  referencesTo?: string;
+  references?: string;
   checkReferences?: boolean;
 }
 

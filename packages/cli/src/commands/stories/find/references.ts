@@ -1,5 +1,6 @@
 import type { Component } from "../../../types";
 import type { Story } from "../constants";
+import { baseFieldName, isStoryRelationField } from "../content-fields";
 
 export type RefType = "multilink" | "richtext" | "relation";
 export type IssueType = "broken" | "unpublished" | "stale_url";
@@ -22,7 +23,18 @@ export interface RefIssue {
 
 export interface TargetMeta {
   full_slug: string;
+  /** `null` when the API did not report a publish state (unknown, not "unpublished"). */
   is_published: boolean | null;
+  is_folder?: boolean;
+}
+
+/** Projects a story into the metadata a reference check needs about its target. */
+export function toTargetMeta(story: Story): TargetMeta {
+  return {
+    full_slug: story.full_slug ?? "",
+    is_published: story.published ?? null,
+    is_folder: story.is_folder ?? false,
+  };
 }
 
 export type RelationFieldMap = Map<string, Set<string>>;
@@ -34,11 +46,7 @@ export function buildRelationFieldMap(components: Component[]): RelationFieldMap
   for (const component of components) {
     const relationFields = new Set<string>();
     for (const [fieldName, field] of Object.entries(component.schema ?? {})) {
-      if (
-        (field.type === "option" || field.type === "options") &&
-        typeof field.source === "string" &&
-        field.source === "internal_stories"
-      ) {
+      if (isStoryRelationField(field)) {
         relationFields.add(fieldName);
       }
     }
@@ -110,28 +118,30 @@ function walkNode(
   // Track current component name for relation field lookup
   const currentComponent = typeof obj.component === "string" ? obj.component : componentName;
 
-  // Relation fields (schema-aware)
+  // Relation fields (schema-aware). Iterate the node's own keys rather than the
+  // schema's field names so a field-level translation (`link__i18n__de`) is
+  // matched by its base name instead of being skipped.
   if (currentComponent) {
     const relationFields = relationFieldMap.get(currentComponent);
     if (relationFields) {
-      for (const fieldName of relationFields) {
-        if (fieldName in obj) {
-          const value = obj[fieldName];
-          if (typeof value === "string" && UUID_RE.test(value)) {
-            refs.push({
-              targetUuid: value,
-              refType: "relation",
-              fieldPath: `${path}.${fieldName}`,
-            });
-          } else if (Array.isArray(value)) {
-            for (let i = 0; i < value.length; i++) {
-              if (typeof value[i] === "string" && UUID_RE.test(value[i])) {
-                refs.push({
-                  targetUuid: value[i],
-                  refType: "relation",
-                  fieldPath: `${path}.${fieldName}[${i}]`,
-                });
-              }
+      for (const [key, value] of Object.entries(obj)) {
+        if (!relationFields.has(baseFieldName(key))) {
+          continue;
+        }
+        if (typeof value === "string" && UUID_RE.test(value)) {
+          refs.push({
+            targetUuid: value,
+            refType: "relation",
+            fieldPath: `${path}.${key}`,
+          });
+        } else if (Array.isArray(value)) {
+          for (let i = 0; i < value.length; i++) {
+            if (typeof value[i] === "string" && UUID_RE.test(value[i])) {
+              refs.push({
+                targetUuid: value[i],
+                refType: "relation",
+                fieldPath: `${path}.${key}[${i}]`,
+              });
             }
           }
         }
@@ -166,7 +176,9 @@ export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta
       });
       continue;
     }
-    if (!target.is_published) {
+    // Only an explicit `false` counts: a folder is not a publishable entity, and
+    // `null` means the API never told us — reporting either would be a false positive.
+    if (target.is_published === false && !target.is_folder) {
       issues.push({
         type: "unpublished",
         ref_type: ref.refType,

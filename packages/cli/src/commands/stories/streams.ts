@@ -25,12 +25,26 @@ const getPipelineSlot = (): Sema => {
   return _pipelineSlot;
 };
 
+/**
+ * Reads a positive-integer pagination header.
+ *
+ * MAPI always sends `Total` and `Per-Page`, but if missing it would
+ * make `Number(null)`/`Number("")` collapse the page count to `0`/`NaN` and
+ * silently truncate the result set to the first page. Falling back to the
+ * caller's default keeps a missing header from looking like "no more data".
+ */
+const readPositiveIntHeader = (headers: Headers, name: string): number | undefined => {
+  const value = Number(headers.get(name));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
 export const fetchStoriesStream = ({
   spaceId,
   params = {},
   setTotalStories,
   setTotalPages,
   onIncrement,
+  onStoryListed,
   onPageSuccess,
   onPageError,
 }: {
@@ -38,7 +52,10 @@ export const fetchStoriesStream = ({
   params?: StoriesQueryParams;
   setTotalStories?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
+  /** Called once per fetched page, on success and on failure alike. */
   onIncrement?: () => void;
+  /** Called for every story the list endpoint yields, before it enters the pipeline. */
+  onStoryListed?: (story: Story) => void;
   onPageSuccess?: (page: number, total: number) => void;
   onPageError?: (error: Error, page: number, total: number) => void;
 }) => {
@@ -62,14 +79,15 @@ export const fetchStoriesStream = ({
         }
 
         const { headers } = result;
-        const total = Number(headers.get("Total"));
-        perPage = Number(headers.get("Per-Page"));
+        const total = readPositiveIntHeader(headers, "Total") ?? 0;
+        perPage = readPositiveIntHeader(headers, "Per-Page") ?? perPage;
         totalPages = Math.ceil(total / perPage);
         setTotalStories?.(total);
         setTotalPages?.(totalPages);
         onPageSuccess?.(page, totalPages);
 
         for (const story of result.stories) {
+          onStoryListed?.(story);
           yield story;
         }
 
@@ -217,25 +235,25 @@ export type AppendToManifestTransport = (
 
 export const makeAppendToManifestFSTransport =
   ({ manifestFile }: { manifestFile: string }): AppendToManifestTransport =>
-  async (entry, remoteStory) => {
-    const createdAt = new Date().toISOString();
-    await appendToFile(
-      manifestFile,
-      JSON.stringify({
-        old_id: entry.uuid,
-        new_id: remoteStory.uuid,
-        created_at: createdAt,
-      }),
-    );
-    await appendToFile(
-      manifestFile,
-      JSON.stringify({
-        old_id: entry.id,
-        new_id: remoteStory.id,
-        created_at: createdAt,
-      }),
-    );
-  };
+    async (entry, remoteStory) => {
+      const createdAt = new Date().toISOString();
+      await appendToFile(
+        manifestFile,
+        JSON.stringify({
+          old_id: entry.uuid,
+          new_id: remoteStory.uuid,
+          created_at: createdAt,
+        }),
+      );
+      await appendToFile(
+        manifestFile,
+        JSON.stringify({
+          old_id: entry.id,
+          new_id: remoteStory.id,
+          created_at: createdAt,
+        }),
+      );
+    };
 
 /**
  * Scans all local `.json` story files and returns a lightweight index
@@ -471,24 +489,24 @@ export type WriteStoryTransport = (story: Story) => Promise<Story>;
 
 export const makeWriteStoryFSTransport =
   ({ directoryPath }: { directoryPath: string }): WriteStoryTransport =>
-  async (story) => {
-    await saveToFile(
-      resolve(directoryPath, getStoryFilename(story)),
-      JSON.stringify(story, null, 2),
-    );
-    return story;
-  };
+    async (story) => {
+      await saveToFile(
+        resolve(directoryPath, getStoryFilename(story)),
+        JSON.stringify(story, null, 2),
+      );
+      return story;
+    };
 
 export const makeWriteStoryAPITransport =
   ({ spaceId, publish }: { spaceId: string; publish?: number }): WriteStoryTransport =>
-  (mappedLocalStory) =>
-    updateStory(spaceId, mappedLocalStory.id, {
-      story: {
-        ...mappedLocalStory,
-        parent_id: mappedLocalStory.parent_id ?? undefined,
-      },
-      publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
-    });
+    (mappedLocalStory) =>
+      updateStory(spaceId, mappedLocalStory.id, {
+        story: {
+          ...mappedLocalStory,
+          parent_id: mappedLocalStory.parent_id ?? undefined,
+        },
+        publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
+      });
 
 export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;
 

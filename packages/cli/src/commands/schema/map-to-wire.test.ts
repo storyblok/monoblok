@@ -81,6 +81,86 @@ describe("mapFieldToWire", () => {
       restrict_type: "",
     });
   });
+
+  it("should rename deny to component_denylist and activate the restriction on bloks fields", () => {
+    const { value } = mapFieldToWire({ name: "body", type: "bloks", pos: 0, deny: ["banner"] });
+    expect(value).toEqual({
+      type: "bloks",
+      pos: 0,
+      component_denylist: ["banner"],
+      restrict_components: true,
+      restrict_type: "",
+    });
+  });
+
+  it("should never leave a raw deny key on the wire payload", () => {
+    // Regression: `deny` used to fall through into the spread rest and reach the
+    // Management API verbatim, persisting a junk key in the remote schema.
+    const { value } = mapFieldToWire({ name: "body", type: "bloks", deny: ["banner"] });
+    expect(value).not.toHaveProperty("deny");
+  });
+
+  it("should map folder deny entries to a group denylist with slug paths", () => {
+    const { value } = mapFieldToWire({
+      name: "body",
+      type: "bloks",
+      deny: [{ folder: "My Layout/Heros" }],
+    });
+    expect(value).toMatchObject({
+      component_group_denylist: ["my-layout/heros"],
+      restrict_components: true,
+      restrict_type: "groups",
+    });
+    expect(value).not.toHaveProperty("component_denylist");
+  });
+
+  it("should emit both lists when allow and deny restrict by block name", () => {
+    const { value } = mapFieldToWire({
+      name: "body",
+      type: "bloks",
+      allow: ["teaser", "banner"],
+      deny: ["banner"],
+    });
+    expect(value).toEqual({
+      type: "bloks",
+      component_whitelist: ["teaser", "banner"],
+      component_denylist: ["banner"],
+      restrict_components: true,
+      restrict_type: "",
+    });
+  });
+
+  it("should emit both group lists when allow and deny restrict by folder", () => {
+    const { value } = mapFieldToWire({
+      name: "body",
+      type: "bloks",
+      allow: [{ folder: "Layout" }],
+      deny: [{ folder: "Layout/Legacy" }],
+    });
+    expect(value).toEqual({
+      type: "bloks",
+      component_group_whitelist: ["layout"],
+      component_group_denylist: ["layout/legacy"],
+      restrict_components: true,
+      restrict_type: "groups",
+    });
+  });
+
+  it("should activate the block-name restriction for richtext fields too", () => {
+    // The editor ignores a bare list: without `restrict_components` the picker
+    // offers every block, so a richtext name restriction would be inert.
+    const { value } = mapFieldToWire({ name: "text", type: "richtext", deny: ["banner"] });
+    expect(value).toMatchObject({
+      component_denylist: ["banner"],
+      restrict_components: true,
+      restrict_type: "",
+    });
+  });
+
+  it("should not add restriction flags to a deny on other field types", () => {
+    const { value } = mapFieldToWire({ name: "link", type: "multilink", pos: 0, deny: ["page"] });
+    expect(value).toEqual({ type: "multilink", pos: 0, component_denylist: ["page"] });
+  });
 });
 
 describe("mapBlockToWire", () => {

@@ -221,20 +221,20 @@ export function resolveFolders(folders: ComponentFolder[]): ResolvedFolder[] {
 }
 
 /**
- * Resolves a field's `component_group_whitelist` uuids to `defineFolder` ref
- * identifiers when every uuid maps to a known folder var, returning the ordered
- * {@link RawCode} refs. Returns `undefined` when there is nothing to resolve or
- * any uuid is unknown, so the caller keeps the raw wire form (still round-trips
- * via the diff's uuid↔path translation) rather than emitting a broken ref.
+ * Resolves a field's group list uuids to `defineFolder` ref identifiers when
+ * every uuid maps to a known folder var, returning the ordered {@link RawCode}
+ * refs. Returns `undefined` when there is nothing to resolve or any uuid is
+ * unknown, so the caller keeps the raw wire form (still round-trips via the
+ * diff's uuid↔path translation) rather than emitting a broken ref.
  */
-function resolveGroupWhitelistRefs(
-  whitelist: unknown,
+function resolveGroupRefs(
+  groupList: unknown,
   folderVarByUuid?: Map<string, string>,
 ): RawCode[] | undefined {
-  if (!folderVarByUuid || !Array.isArray(whitelist) || whitelist.length === 0) {
+  if (!folderVarByUuid || !Array.isArray(groupList) || groupList.length === 0) {
     return undefined;
   }
-  const vars = whitelist.map((uuid) =>
+  const vars = groupList.map((uuid) =>
     typeof uuid === "string" ? folderVarByUuid.get(uuid) : undefined,
   );
   if (!vars.every((v): v is string => typeof v === "string")) {
@@ -243,29 +243,99 @@ function resolveGroupWhitelistRefs(
   return vars.map((v) => new RawCode(v));
 }
 
+/** Whether a wire restriction list holds entries (an absent or empty list is no restriction). */
+function isNonEmptyList(list: unknown): boolean {
+  return Array.isArray(list) && list.length > 0;
+}
+
+/**
+ * How a field's wire restriction keys map back to the DSL, resolved once so
+ * {@link toDslField} and {@link collectRestrictionFolderVars} can never disagree
+ * about whether a field's folder refs are emitted (and therefore imported).
+ *
+ * - `disabled` — `restrict_components: false`: the flag round-trips, the lists do not.
+ * - `names` — restricted by block name: `allow`/`deny` hold plain names.
+ * - `folders` — restricted by folder, every uuid resolved to a `defineFolder` ref.
+ * - `raw` — restricted by folder, but at least one uuid is unknown: keep the wire keys.
+ * - `none` — no restriction in force.
+ */
+type FieldRestriction =
+  | { kind: "disabled" }
+  | { kind: "names"; allow?: unknown; deny?: unknown }
+  | { kind: "folders"; allow?: RawCode[]; deny?: RawCode[] }
+  | { kind: "raw" }
+  | { kind: "none" };
+
+/**
+ * Classifies a field's wire restriction keys. The block-name and folder
+ * dimensions are mutually exclusive in the editor, which clears one dimension's
+ * lists when you switch to the other, so a field restricted by folder carries an
+ * empty `component_whitelist: []` alongside its group list. Non-emptiness is
+ * therefore what picks the dimension, and block names win the (unreachable
+ * through the editor) tie so a name restriction is never silently dropped.
+ */
+function resolveFieldRestriction(
+  field: Record<string, unknown>,
+  folderVarByUuid?: Map<string, string>,
+): FieldRestriction {
+  if (field.restrict_components === false) {
+    return { kind: "disabled" };
+  }
+  const hasNameAllow = isNonEmptyList(field.component_whitelist);
+  const hasNameDeny = isNonEmptyList(field.component_denylist);
+  if (hasNameAllow || hasNameDeny) {
+    return {
+      kind: "names",
+      allow: hasNameAllow ? field.component_whitelist : undefined,
+      deny: hasNameDeny ? field.component_denylist : undefined,
+    };
+  }
+  const hasGroupAllow = isNonEmptyList(field.component_group_whitelist);
+  const hasGroupDeny = isNonEmptyList(field.component_group_denylist);
+  if (hasGroupAllow || hasGroupDeny) {
+    const allow = hasGroupAllow
+      ? resolveGroupRefs(field.component_group_whitelist, folderVarByUuid)
+      : undefined;
+    const deny = hasGroupDeny
+      ? resolveGroupRefs(field.component_group_denylist, folderVarByUuid)
+      : undefined;
+    // Partial resolution is not good enough: emitting the resolvable list as DSL
+    // refs while dropping the other would lose a restriction that is in force.
+    return (!hasGroupAllow || allow) && (!hasGroupDeny || deny)
+      ? { kind: "folders", allow, deny }
+      : { kind: "raw" };
+  }
+  if (
+    field.component_group_whitelist !== undefined ||
+    field.component_group_denylist !== undefined
+  ) {
+    return { kind: "raw" };
+  }
+  return { kind: "none" };
+}
+
 /**
  * Reverse of the push-time DSL→wire field mapping: renames the wire reference
- * keys back to their DSL form (`component_whitelist`→`allow`,
- * `component_group_whitelist`→`allow` with folder refs, `datasource_slug`→`datasource`).
- * The `source` selector is left untouched.
+ * keys back to their DSL form (`component_whitelist`/`component_group_whitelist`
+ * → `allow`, `component_denylist`/`component_group_denylist` → `deny`, either as
+ * plain block names or as `defineFolder` refs, and `datasource_slug` →
+ * `datasource`). The `source` selector is left untouched.
  *
  * `restrict_components: true` and `restrict_type` are dropped alongside a
- * resolved `allow` — they're the wire byproduct `defineField`'s `allow`
- * re-derives on push, not independent DSL state. A group whitelist that cannot
- * be fully resolved to folder refs keeps its raw wire form.
- *
- * A field restricted to a component *group* carries both a `component_group_whitelist`
- * and an empty `component_whitelist: []` on the wire; the group whitelist takes
- * precedence, so `allow` is only sourced from `component_whitelist` when it holds
- * actual block names — otherwise the resolved folder refs win.
+ * resolved `allow`/`deny` — they're the wire byproduct `defineField` re-derives on
+ * push, not independent DSL state. Group lists that cannot be fully resolved to
+ * folder refs keep their raw wire form.
  *
  * `restrict_components: false` disables the restriction while the space may still
- * store a stale whitelist. Emitting that inactive list as `allow` would make
+ * store stale lists. Emitting an inactive list as `allow`/`deny` would make
  * `schema push` re-derive `restrict_components: true` and silently switch the
  * restriction back on, changing what editors may insert. So a disabled
- * restriction keeps its flag and drops the whitelist: the flag round-trips
- * losslessly, at the cost of discarding a list that is not in force anyway. An
+ * restriction keeps its flag and drops the lists: the flag round-trips
+ * losslessly, at the cost of discarding lists that are not in force anyway. An
  * absent `restrict_components` counts as active, matching backend enforcement.
+ *
+ * See {@link resolveFieldRestriction} for how the block-name and folder
+ * dimensions are told apart.
  */
 function toDslField(
   field: Record<string, unknown>,
@@ -273,42 +343,54 @@ function toDslField(
 ): Record<string, unknown> {
   const {
     component_whitelist,
+    component_denylist,
     component_group_whitelist,
+    component_group_denylist,
     datasource_slug,
     restrict_components,
     restrict_type,
     ...rest
   } = field;
   const out: Record<string, unknown> = { ...rest };
-  const restrictionDisabled = restrict_components === false;
-  const groupRefs = restrictionDisabled
-    ? undefined
-    : resolveGroupWhitelistRefs(component_group_whitelist, folderVarByUuid);
-  const hasBlockNames =
-    !restrictionDisabled && Array.isArray(component_whitelist) && component_whitelist.length > 0;
-  if (restrictionDisabled) {
-    out.restrict_components = false;
-    if (restrict_type !== undefined) {
-      out.restrict_type = restrict_type;
-    }
-  } else if (hasBlockNames) {
-    out.allow = component_whitelist;
-  } else if (groupRefs) {
-    out.allow = groupRefs;
-  } else if (component_group_whitelist !== undefined) {
-    // A group whitelist we could not resolve to folder refs: keep the raw wire
-    // form (whitelist + restrict flags) so it still round-trips on push.
-    out.component_group_whitelist = component_group_whitelist;
-    if (restrict_components !== undefined) {
-      out.restrict_components = restrict_components;
-    }
-    if (restrict_type !== undefined) {
-      out.restrict_type = restrict_type;
-    }
+  const restriction = resolveFieldRestriction(field, folderVarByUuid);
+
+  switch (restriction.kind) {
+    case "disabled":
+      out.restrict_components = false;
+      if (restrict_type !== undefined) {
+        out.restrict_type = restrict_type;
+      }
+      break;
+    case "names":
+    case "folders":
+      if (restriction.allow !== undefined) {
+        out.allow = restriction.allow;
+      }
+      if (restriction.deny !== undefined) {
+        out.deny = restriction.deny;
+      }
+      break;
+    case "raw":
+      if (component_group_whitelist !== undefined) {
+        out.component_group_whitelist = component_group_whitelist;
+      }
+      if (component_group_denylist !== undefined) {
+        out.component_group_denylist = component_group_denylist;
+      }
+      if (restrict_components !== undefined) {
+        out.restrict_components = restrict_components;
+      }
+      if (restrict_type !== undefined) {
+        out.restrict_type = restrict_type;
+      }
+      break;
+    case "none":
+      // No restriction is in force (lists absent or empty);
+      // `restrict_components`/`restrict_type` are byproducts `allow`/`deny`
+      // re-derive on push, so they are dropped rather than emitted as orphaned
+      // DSL state.
+      break;
   }
-  // Otherwise there is no allow list (name whitelist absent or empty, no groups);
-  // `restrict_components`/`restrict_type` are byproducts `allow` re-derives on
-  // push, so they are dropped rather than emitted as orphaned DSL state.
   if (datasource_slug !== undefined) {
     out.datasource = datasource_slug;
   }
@@ -350,10 +432,11 @@ function generateFieldCode(
 
 /**
  * Collects the sorted, unique `defineFolder` var names a component's fields
- * reference through fully-resolvable group whitelists, so the generated file can
- * import them.
+ * reference through fully-resolvable group lists, so the generated file can
+ * import them. Shares {@link resolveFieldRestriction} with {@link toDslField} so
+ * only folders that actually reach the emitted `allow`/`deny` are imported.
  */
-function collectWhitelistFolderVars(
+function collectRestrictionFolderVars(
   schema: Record<string, Record<string, unknown>>,
   folderVarByUuid?: Map<string, string>,
 ): string[] {
@@ -362,14 +445,12 @@ function collectWhitelistFolderVars(
     if (!isRecord(field)) {
       continue;
     }
-    // Mirrors `toDslField`: a disabled restriction emits no `allow`, so its
-    // folders must not be imported either.
-    if (field.restrict_components === false) {
+    const restriction = resolveFieldRestriction(field, folderVarByUuid);
+    if (restriction.kind !== "folders") {
       continue;
     }
-    const refs = resolveGroupWhitelistRefs(field.component_group_whitelist, folderVarByUuid);
-    if (refs) {
-      refs.forEach((ref) => vars.add(ref.code));
+    for (const ref of [...(restriction.allow ?? []), ...(restriction.deny ?? [])]) {
+      vars.add(ref.code);
     }
   }
   return [...vars].sort();
@@ -443,7 +524,7 @@ export function generateComponentFile(
   const folderVars = [
     ...new Set([
       ...(folderRef ? [folderRef.varName] : []),
-      ...collectWhitelistFolderVars(schema, folderVarByUuid),
+      ...collectRestrictionFolderVars(schema, folderVarByUuid),
     ]),
   ].sort();
   if (folderVars.length > 0) {

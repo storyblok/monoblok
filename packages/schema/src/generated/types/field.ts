@@ -227,21 +227,44 @@ type ApplyAllow<TField, TBlocks> = TField extends {
       : never
     : never;
 
+/** The folder paths named by the `{ folder: path }` entries of an `allow`/`deny` union. */
+type FolderOf<T> =
+  Extract<T, { folder: string }> extends { folder: infer F extends string } ? F : never;
+
 /**
- * Removes the registry blocks named in `deny`, the `Exclude` counterpart to
- * {@link ApplyAllow}. The wire `component_denylist` denies by block name only,
- * so folder refs are not accepted. A `deny` entry naming no known block is
- * inert: it removes nothing rather than collapsing the field.
+ * Removes the registry blocks in `TFolders` (or any nested folder), the
+ * {@link MatchesFolder} counterpart for `deny`. A `never` folder set removes
+ * nothing, so a block-name-only `deny` leaves the union untouched.
+ */
+type DenyFolders<TBlocks, TFolders extends string> = [TFolders] extends [never]
+  ? TBlocks
+  : TBlocks extends any
+    ? [MatchesFolder<TBlocks, TFolders>] extends [never]
+      ? TBlocks
+      : never
+    : never;
+
+/**
+ * Removes the registry blocks named in `deny`, or living in a folder it names,
+ * the `Exclude` counterpart to {@link ApplyAllow}. A `deny` entry naming no known
+ * block or folder is inert: it removes nothing rather than collapsing the field.
+ *
+ * `TDenied` is split with `Extract` rather than a `TDenied extends string`
+ * conditional, because that conditional would distribute over the deny union and
+ * union the per-entry `Exclude` results back together — re-admitting every denied
+ * block. Names and folders are therefore removed in one pass each.
  */
 type ApplyDeny<TField, TBlocks> = TField extends {
-  deny: ReadonlyArray<infer TDenied extends string>;
+  deny: ReadonlyArray<infer TDenied extends AllowEntry>;
 }
-  ? Exclude<TBlocks, { name: TDenied }>
+  ? DenyFolders<Exclude<TBlocks, { name: Extract<TDenied, string> }>, FolderOf<TDenied>>
   : TBlocks;
 
 /**
  * Resolves the block union a `bloks` field accepts: `allow` narrows the registry
- * first, then `deny` removes from what is left, so the two compose.
+ * first, then `deny` removes from what is left, so the two compose. The editor
+ * instead gives a non-empty `allow` precedence and ignores `deny` beside it, so on
+ * a field carrying both these types are the stricter of the two views.
  */
 type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
 

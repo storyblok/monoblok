@@ -223,6 +223,33 @@ describe("defineField type inference", () => {
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
   });
 
+  it("should leave foldered blocks alone when `deny` names only block names", () => {
+    // Regression: deriving the denied folder set with `Extract<...> extends
+    // { folder: infer F extends string }` resolved to `string` rather than `never`
+    // for a name-only deny, because `never` takes the true branch and `F` fell back
+    // to its constraint. Every block with a `folder` was then denied.
+    const layout = defineFolder({ name: "Layout" });
+    const _heroBlock = defineBlock({ name: "hero", folder: layout, is_nestable: true, fields: [] });
+    const _bannerBlock = defineBlock({
+      name: "banner",
+      folder: layout,
+      is_nestable: true,
+      fields: [],
+    });
+    const _teaserBlock = defineBlock({ name: "teaser", is_nestable: true, fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: ["banner"] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _bannerBlock | typeof _teaserBlock
+    >;
+    // Only `banner` is denied; `hero` keeps its place despite sharing a folder.
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
+  });
+
   it("should treat a `deny` entry naming an unknown block as inert", () => {
     const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
     const _teaserBlock = defineBlock({ name: "teaser", is_nestable: true, fields: [] });

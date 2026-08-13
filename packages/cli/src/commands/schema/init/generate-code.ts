@@ -254,6 +254,7 @@ function isNonEmptyList(list: unknown): boolean {
  * about whether a field's folder refs are emitted (and therefore imported).
  *
  * - `disabled` — `restrict_components: false`: the flag round-trips, the lists do not.
+ * - `tags` — restricted by block tag: the tag lists and their flags keep their wire form.
  * - `names` — restricted by block name: `allow`/`deny` hold plain names.
  * - `folders` — restricted by folder, every uuid resolved to a `defineFolder` ref.
  * - `raw` — restricted by folder, but at least one uuid is unknown: keep the wire keys.
@@ -261,6 +262,7 @@ function isNonEmptyList(list: unknown): boolean {
  */
 type FieldRestriction =
   | { kind: "disabled" }
+  | { kind: "tags" }
   | { kind: "names"; allow?: unknown; deny?: unknown }
   | { kind: "folders"; allow?: RawCode[]; deny?: RawCode[] }
   | { kind: "raw" }
@@ -280,6 +282,9 @@ type FieldRestriction =
  * a round-trip hazard either way. The editor cannot author it (switching dimension
  * clears all six lists) and the Management API only backstops that for `bloks`
  * fields, so reaching it takes a `richtext` written through the API.
+ *
+ * The tag dimension is picked by `restrict_type` instead, because it is the key
+ * that puts the tag lists in force and the only one `allow`/`deny` cannot express.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -287,6 +292,12 @@ function resolveFieldRestriction(
 ): FieldRestriction {
   if (field.restrict_components === false) {
     return { kind: "disabled" };
+  }
+  if (
+    field.restrict_type === "tags" &&
+    (isNonEmptyList(field.component_tag_whitelist) || isNonEmptyList(field.component_tag_denylist))
+  ) {
+    return { kind: "tags" };
   }
   const hasNameAllow = isNonEmptyList(field.component_whitelist);
   const hasNameDeny = isNonEmptyList(field.component_denylist);
@@ -348,6 +359,12 @@ function resolveFieldRestriction(
  * matches the list's apparent intent, and the alternative is discarding a list
  * someone wrote on purpose, but it does change what editors may insert.
  *
+ * A tag restriction (`restrict_type: 'tags'`) keeps its wire form, flags included:
+ * the tag dimension has no `allow`/`deny` equivalent, so dropping `restrict_type`
+ * would leave the tag lists inert on the next push, and emitting the field's
+ * (stale, not-in-force) name or group lists as DSL refs would switch it back to
+ * restricting by name.
+ *
  * See {@link resolveFieldRestriction} for how the block-name and folder
  * dimensions are told apart.
  */
@@ -374,6 +391,12 @@ function toDslField(
       if (restrict_type !== undefined) {
         out.restrict_type = restrict_type;
       }
+      break;
+    case "tags":
+      if (restrict_components !== undefined) {
+        out.restrict_components = restrict_components;
+      }
+      out.restrict_type = restrict_type;
       break;
     case "names":
     case "folders":

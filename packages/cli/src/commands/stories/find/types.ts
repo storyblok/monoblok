@@ -9,7 +9,7 @@ export interface FindOptions {
   entryType?: EntryType;
   startsWith?: string;
   containerBlock?: string;
-  containsBlock?: string;
+  includesBlock?: string;
   query?: string;
   where?: string[];
   publishStatus?: PublishStatus;

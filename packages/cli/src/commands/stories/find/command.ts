@@ -45,7 +45,7 @@ const findCmd = storiesCommand
   )
   .option("--starts-with <path>", "scope to story subtree")
   .option("--container-block <name>", "filter by container block type (server-side)")
-  .option("--contains-block <name>", "block presence at any depth (server-side, comma-separated)")
+  .option("--includes-block <name>", "block presence at any depth (server-side, comma-separated)")
   .option(
     "-q, --query <query>",
     "filter by root-level content attributes (server-side, MAPI filter_query)",
@@ -122,7 +122,7 @@ type FindContext = {
 };
 
 /** Widest label, so every bar's `[` lines up. */
-const PROGRESS_LABEL_WIDTH = "Fetching server-side filtered stories".length;
+const PROGRESS_LABEL_WIDTH = "Applying client-side filters".length;
 const label = (text: string): string => text.padEnd(PROGRESS_LABEL_WIDTH);
 
 type PhaseCounters = {
@@ -202,9 +202,7 @@ async function runStoryPipeline({
   onListed?: (story: Story) => void;
   onMatch: (story: Story) => void;
 }): Promise<void> {
-  const listProgress = ui.createProgressBar({
-    title: label("Fetching server-side filtered stories"),
-  });
+  const listProgress = ui.createProgressBar({ title: label("Fetching stories") });
   const contentProgress = ui.createProgressBar({ title: label("Fetching stories content") });
   const processProgress = ui.createProgressBar({ title: label(processLabel) });
 

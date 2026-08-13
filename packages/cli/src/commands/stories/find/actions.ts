@@ -52,8 +52,8 @@ export function buildQueryParams(
   }
 
   // Contains block (server-side contain_component)
-  if (options.containsBlock) {
-    params.contain_component = options.containsBlock;
+  if (options.includesBlock) {
+    params.contain_component = options.includesBlock;
   }
 
   // Publish status (server-side part)

@@ -32,6 +32,16 @@ import { prefetchTargetStoriesByKeys } from "../actions";
 import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from "../validate-story";
 import { FailureCollector } from "./failure-report";
 
+/**
+ * A fatal credential failure stops a phase mid-run, leaving stories the CLI deliberately
+ * never tried. Spelling those out keeps every phase line adding up to its total instead of
+ * leaving a silent shortfall between "succeeded" and the denominator.
+ */
+function formatNotAttempted(total: number, ...accounted: number[]): string {
+  const remaining = total - accounted.reduce((sum, count) => sum + count, 0);
+  return remaining > 0 ? `, ${remaining} not attempted` : "";
+}
+
 const pushCmd = storiesCommand
   .command("push")
   .option("-s, --space <space>", "space ID")
@@ -99,10 +109,14 @@ pushCmd.action(async (options, command) => {
       resolveCommandPath(directories.components, fromSpace, basePath),
     );
     if (Object.keys(schemas).length === 0) {
-      const message =
-        "No components found. Please run `storyblok components pull` to fetch the latest components.";
-      ui.error(message);
-      logger.error(message);
+      // `handleError` rather than a bare `ui.error`: bailing on a precondition is still a
+      // failed push, and CI must see a non-zero exit for it.
+      handleError(
+        new CommandError(
+          "No components found. Please run `storyblok components pull` to fetch the latest components.",
+        ),
+        verbose,
+      );
       return;
     }
 
@@ -116,9 +130,8 @@ pushCmd.action(async (options, command) => {
       schemas,
     });
     if (hasSchemaIssues(schemaIssues)) {
-      const message = formatSchemaIssues(schemaIssues);
-      ui.error(message);
-      logger.error(message);
+      // See the components precondition above: this aborts the push, so it must exit non-zero.
+      handleError(new CommandError(formatSchemaIssues(schemaIssues)), verbose);
       // Surface the failure in the run summary so the report status is
       // FAILURE rather than a trivial zero-counts SUCCESS.
       const total = Math.max(schemaIssues.total, 1);
@@ -446,9 +459,9 @@ pushCmd.action(async (options, command) => {
       `Push results: ${pushedCount} ${pushedCount === 1 ? "story" : "stories"} pushed, ${failedCount} ${failedCount === 1 ? "story" : "stories"} failed`,
     );
     ui.list([
-      `Creating stories: ${summary.creationResults.succeeded}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed, ${summary.creationResults.skipped} skipped.`,
-      `Processing stories: ${summary.processResults.succeeded}/${summary.processResults.total} succeeded, ${summary.processResults.failed} failed.`,
-      `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed.`,
+      `Creating stories: ${summary.creationResults.succeeded}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed, ${summary.creationResults.skipped} skipped${formatNotAttempted(summary.creationResults.total, summary.creationResults.succeeded, summary.creationResults.failed, summary.creationResults.skipped)}.`,
+      `Processing stories: ${summary.processResults.succeeded}/${summary.processResults.total} succeeded, ${summary.processResults.failed} failed${formatNotAttempted(summary.processResults.total, summary.processResults.succeeded, summary.processResults.failed)}.`,
+      `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed${formatNotAttempted(summary.updateResults.total, summary.updateResults.succeeded, summary.updateResults.failed)}.`,
     ]);
 
     if (pendingWarnings.length > 0 || !failures.isEmpty) {

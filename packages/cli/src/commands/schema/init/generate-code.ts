@@ -293,8 +293,14 @@ type FieldRestriction =
  * of enforcement, because it was never enforced; push replaces the whole field, so
  * the stray key is cleared from the space on the way through.
  *
- * The tag dimension is picked by `restrict_type` instead, because it is the key
- * that puts the tag lists in force and the only one `allow`/`deny` cannot express.
+ * The tag dimension is picked by `restrict_type` alone, because it is the key that
+ * puts the tag lists in force and the only one `allow`/`deny` cannot express. It
+ * deliberately does not also require a non-empty tag list: `restrict_type: 'tags'`
+ * with both lists empty still restricts by tags in the editor, and falling through
+ * to the name dimension would drop `restrict_type` and `restrict_components` with
+ * nothing left to re-derive them, silently unrestricting the field on the next
+ * push. The Management API clears the name and group lists when `restrict_type` is
+ * `'tags'`, so there is no stale list here to mistake for a name restriction.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -303,10 +309,7 @@ function resolveFieldRestriction(
   if (field.restrict_components === false) {
     return { kind: "disabled" };
   }
-  if (
-    field.restrict_type === "tags" &&
-    (isNonEmptyList(field.component_tag_whitelist) || isNonEmptyList(field.component_tag_denylist))
-  ) {
+  if (field.restrict_type === "tags") {
     return { kind: "tags" };
   }
   // A denylist is only in force where the editor reads one: on a field type that

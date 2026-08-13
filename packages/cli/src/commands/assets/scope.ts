@@ -56,7 +56,7 @@ export async function listLibraries(spaceId: string): Promise<Library[]> {
             ?.access_level ?? "read",
       }));
   } catch (maybeError) {
-    handleAPIError("pull_shared_asset_folders", toError(maybeError));
+    handleAPIError("list_shared_asset_folders", toError(maybeError));
   }
 }
 
@@ -113,7 +113,7 @@ export async function buildLibraryRootResolver(
     });
     folders = data?.shared_asset_folders ?? [];
   } catch (maybeError) {
-    handleAPIError("pull_shared_asset_folders", toError(maybeError));
+    handleAPIError("list_shared_asset_folders", toError(maybeError));
   }
   const parentById = new Map<number, number | null>();
   for (const folder of folders) {

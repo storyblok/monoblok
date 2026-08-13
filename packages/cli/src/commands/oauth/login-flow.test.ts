@@ -15,7 +15,10 @@ vi.mock("./pkce", () => ({
   generateState: () => "state-abc",
 }));
 vi.mock("./server", () => ({
-  waitForCallback: vi.fn(async () => ({ code: "auth-code", state: "state-abc" })),
+  startCallbackServer: vi.fn(async () => ({
+    callback: Promise.resolve({ code: "auth-code", state: "state-abc" }),
+    close: vi.fn(),
+  })),
 }));
 vi.mock("./token-endpoint", () => ({
   exchangeToken: vi.fn(async () => ({ access_token: "at", refresh_token: "rt", expires_in: 900 })),
@@ -24,6 +27,7 @@ vi.mock("./grant", () => ({ introspectGrant: vi.fn() }));
 
 const { introspectGrant } = await import("./grant");
 const { resolveOAuthClient } = await import("./client");
+const { startCallbackServer } = await import("./server");
 
 describe("buildAuthorizeUrl", () => {
   it("should build an /oauth/init URL with PKCE and space-safe params", () => {
@@ -92,6 +96,21 @@ describe("performOAuthLogin", () => {
     const params = new URL(authorizeUrl).searchParams;
     expect(params.get("client_id")).toBe("env-cid");
     expect(params.get("scope")).toBe(OAUTH_LOGIN_SCOPES.join(" "));
+  });
+
+  it("should not open a browser when the callback port cannot be bound", async () => {
+    vi.mocked(startCallbackServer).mockRejectedValueOnce(
+      new Error("Port 4900 is already in use by nc (PID 1)"),
+    );
+    const openBrowser = vi.fn(async () => {});
+
+    await expect(performOAuthLogin({ region: "eu", openBrowser })).rejects.toThrow(
+      "already in use",
+    );
+
+    // Sending a user through consent whose redirect can never be received is worse than
+    // failing before the tab opens.
+    expect(openBrowser).not.toHaveBeenCalled();
   });
 
   it("should not persist tokens when introspection fails", async () => {

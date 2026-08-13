@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/management-api-client",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": false,
   "description": "Storyblok Management API Client",
   "keywords": [],

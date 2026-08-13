@@ -16,13 +16,33 @@ const ERROR_PAGE = page(
   "Authorization failed. You can close this tab and return to the terminal.",
 );
 
-export const waitForCallback = (
+export interface CallbackListener {
+  /** Settles when the browser hits the redirect URI, or the wait times out. */
+  callback: Promise<{ code: string; state: string }>;
+  /** Stops listening. Safe to call after `callback` has already settled. */
+  close: () => void;
+}
+
+/**
+ * Binds the loopback callback server and resolves only once it is actually listening, so a
+ * caller can confirm the port is free *before* sending the user to the consent screen. A bind
+ * failure (typically `EADDRINUSE`) rejects this promise rather than the callback promise —
+ * otherwise a doomed run would still open a browser tab it can never collect a code from.
+ */
+export const startCallbackServer = (
   port: number,
   path: string,
   timeoutMs = 300_000,
-): Promise<{ code: string; state: string }> => {
-  return new Promise((resolve, reject) => {
+): Promise<CallbackListener> => {
+  return new Promise((ready, failToStart) => {
+    let listening = false;
     let timer: NodeJS.Timeout;
+    let settleCallback: (result: { code: string; state: string }) => void;
+    let failCallback: (error: Error) => void;
+    const callback = new Promise<{ code: string; state: string }>((resolve, reject) => {
+      settleCallback = resolve;
+      failCallback = reject;
+    });
 
     const server = createServer((req, res) => {
       const url = new URL(req.url ?? "/", `http://localhost:${port}`);
@@ -38,7 +58,7 @@ export const waitForCallback = (
       const fail = (error: CommandError): void => {
         res.writeHead(400, { "Content-Type": "text/html" });
         res.end(ERROR_PAGE);
-        reject(error);
+        failCallback(error);
       };
 
       const error = url.searchParams.get("error");
@@ -59,17 +79,12 @@ export const waitForCallback = (
 
       res.writeHead(200, { "Content-Type": "text/html" });
       res.end(SUCCESS_PAGE);
-      resolve({ code, state });
+      settleCallback({ code, state });
     });
-
-    timer = setTimeout(() => {
-      server.close();
-      reject(new CommandError("Timed out waiting for the browser authorization callback."));
-    }, timeoutMs);
-    timer.unref?.();
 
     server.on("error", (err) => {
       clearTimeout(timer);
+      const reject = listening ? failCallback : failToStart;
       if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
         describePortConflict(port).then(
           (message) => reject(new CommandError(message)),
@@ -79,6 +94,23 @@ export const waitForCallback = (
       }
       reject(err);
     });
+
+    server.on("listening", () => {
+      listening = true;
+      timer = setTimeout(() => {
+        server.close();
+        failCallback(new CommandError("Timed out waiting for the browser authorization callback."));
+      }, timeoutMs);
+      timer.unref?.();
+      ready({
+        callback,
+        close: () => {
+          clearTimeout(timer);
+          server.close();
+        },
+      });
+    });
+
     // Bind to loopback only so the authorization code is never accepted from other hosts.
     server.listen(port, "127.0.0.1");
   });

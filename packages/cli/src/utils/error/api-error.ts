@@ -42,7 +42,9 @@ export const API_ACTIONS = {
   transfer_asset: "Failed to transfer asset",
   pull_shared_assets: "Failed to pull library assets",
   pull_shared_asset: "Failed to pull library asset",
-  pull_shared_asset_folders: "Failed to pull library folders",
+  // Folder discovery runs on both the pull and the push path, so this stays verb-neutral:
+  // a push must not report a failure to "pull" anything.
+  list_shared_asset_folders: "Failed to list library folders",
   pull_shared_asset_folder: "Failed to pull library folder",
   pull_shared_internal_tags: "Failed to pull library tags",
   push_shared_asset_create: "Failed to create library asset",

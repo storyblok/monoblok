@@ -345,3 +345,151 @@ describe("defineField type inference", () => {
     });
   });
 });
+
+describe("defineField field option checking", () => {
+  it("should reject a key no field type owns", () => {
+    // @ts-expect-error 'totally_bogus_key' is not a field option
+    void defineField("body", { type: "bloks", totally_bogus_key: 123 });
+  });
+
+  it("should reject a typo in a key the field type does own", () => {
+    // Regression: this compiled clean and was pushed to the Management API
+    // verbatim, where it silently did nothing.
+    // @ts-expect-error 'component_group_whitlist' is a typo for 'component_group_whitelist'
+    void defineField("body", { type: "bloks", component_group_whitlist: ["a"] });
+  });
+
+  it("should reject a key belonging to a different field type", () => {
+    // @ts-expect-error group whitelists are meaningless on 'text'
+    void defineField("title", { type: "text", component_group_whitelist: ["x"] });
+    // @ts-expect-error component restrictions are meaningless on 'asset'
+    void defineField("hero", { type: "asset", restrict_components: true });
+    // @ts-expect-error 'max_length' is a text option, not a bloks one
+    void defineField("body", { type: "bloks", max_length: 10 });
+  });
+
+  it("should accept the DSL keys on every field type", () => {
+    void defineField("title", { type: "text", max_length: 10, required: true });
+    void defineField("theme", { type: "option", source: "internal", datasource: "colors" });
+    // `required` is not declared on the layout-only variants, but the DSL takes it
+    void defineField("divider", { type: "section", required: false });
+  });
+
+  it("should accept arbitrary plugin option keys on `custom` fields", () => {
+    // `type: 'custom'` extras pass through to the Management API verbatim, so
+    // there is no known-key set to check against.
+    void defineField("map", {
+      type: "custom",
+      field_type: "my-plugin",
+      whatever_the_plugin_needs: 123,
+      nested: { deeply: true },
+    });
+  });
+
+  it("should accept the wire restriction keys on the field types that own them", () => {
+    void defineField("body", { type: "bloks", component_whitelist: ["teaser"] });
+    void defineField("body", {
+      type: "bloks",
+      component_whitelist: ["teaser"],
+      component_group_whitelist: ["Heros"],
+      component_denylist: ["banner"],
+      component_group_denylist: ["Legacy"],
+      restrict_components: true,
+      restrict_type: "",
+    });
+    void defineField("body", { type: "richtext", component_group_whitelist: ["Heros"] });
+    // A multilink `component_whitelist` selects linkable story content types
+    void defineField("link", { type: "multilink", component_whitelist: ["page"] });
+  });
+
+  it("should keep `restrict_components: false` legal", () => {
+    // Deprecated, but it is how `schema init` represents a legacy space that
+    // stored a whitelist with the restriction switched off.
+    void defineField("body", { type: "bloks", restrict_components: false });
+  });
+
+  it("should keep the tag restriction dimension legal", () => {
+    // `restrict_type: 'tags'` is the only way to activate the tag lists, and has
+    // no `allow` / `deny` equivalent.
+    void defineField("body", {
+      type: "bloks",
+      restrict_type: "tags",
+      component_tag_whitelist: [1, 2],
+      component_tag_denylist: [3],
+    });
+  });
+
+  it("should reject tag lists on a field type that does not own them", () => {
+    // @ts-expect-error tag lists are meaningless on 'text'
+    void defineField("title", { type: "text", component_tag_whitelist: [1] });
+  });
+
+  it("should still check the value types of known keys", () => {
+    // @ts-expect-error 'component_group_whitelist' takes a list, not a string
+    void defineField("body", { type: "bloks", component_group_whitelist: "nope" });
+    // @ts-expect-error 'component_tag_whitelist' takes tag ids, not names
+    void defineField("body", { type: "bloks", component_tag_whitelist: ["one"] });
+  });
+});
+
+describe("defineField `allow`/`deny` versus the wire restriction keys", () => {
+  it("should reject `allow` alongside a wire whitelist key", () => {
+    // `schema push` derives the wire keys from `allow`, overwriting whatever was
+    // set by hand, so setting both is always a mistake.
+    // @ts-expect-error 'component_whitelist' is derived from 'allow'
+    void defineField("body", { type: "bloks", allow: ["teaser"], component_whitelist: ["teaser"] });
+    const heros = defineFolder({ name: "Heros" });
+    void defineField("body", {
+      type: "bloks",
+      allow: [heros],
+      // @ts-expect-error 'component_group_whitelist' is derived from 'allow'
+      component_group_whitelist: ["Heros"],
+    });
+  });
+
+  it("should reject `deny` alongside a wire denylist key", () => {
+    // @ts-expect-error 'component_denylist' is derived from 'deny'
+    void defineField("body", { type: "bloks", deny: ["banner"], component_denylist: ["banner"] });
+    const legacy = defineFolder({ name: "Legacy" });
+    void defineField("body", {
+      type: "bloks",
+      deny: [legacy],
+      // @ts-expect-error 'component_group_denylist' is derived from 'deny'
+      component_group_denylist: ["Legacy"],
+    });
+  });
+
+  it("should reject `restrict_components` alongside either DSL key", () => {
+    // @ts-expect-error 'restrict_components' is derived from 'allow'
+    void defineField("body", { type: "bloks", allow: ["teaser"], restrict_components: true });
+    // @ts-expect-error 'restrict_components' is derived from 'deny'
+    void defineField("body", { type: "bloks", deny: ["banner"], restrict_components: false });
+  });
+
+  it("should reject mixing the two dimensions across the DSL and wire keys", () => {
+    // @ts-expect-error the wire denylist is still derived from 'deny'
+    void defineField("body", { type: "bloks", allow: ["teaser"], component_denylist: ["banner"] });
+  });
+
+  it("should accept either branch on its own", () => {
+    void defineField("body", { type: "bloks", allow: ["teaser"], deny: ["banner"] });
+    void defineField("body", {
+      type: "bloks",
+      component_whitelist: ["teaser"],
+      component_denylist: ["banner"],
+      restrict_components: true,
+      restrict_type: "",
+    });
+  });
+
+  it("should accept the tag keys and `restrict_type` beside the DSL keys", () => {
+    // Neither has a DSL replacement, so neither is part of the exclusivity.
+    void defineField("body", {
+      type: "bloks",
+      allow: ["teaser"],
+      restrict_type: "",
+      component_tag_whitelist: [1],
+      component_tag_denylist: [2],
+    });
+  });
+});

@@ -1,5 +1,6 @@
 import type { SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
+import { DERIVED_RESTRICTION_KEYS } from "../helpers/define-field";
 import { isRecord, toValues } from "./shapes";
 
 /**
@@ -7,7 +8,8 @@ import { isRecord, toValues } from "./shapes";
  * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every `custom` field's `field_type`
- * resolves to a registered field plugin).
+ * resolves to a registered field plugin; no field mixes `allow`/`deny` with the
+ * wire restriction keys they derive).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -190,6 +192,25 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
             path: ["blocks", blockKey, fieldName ?? index, "deny"],
             entity: blockEntity,
             message: `Field "${fieldName}" denies unknown block "${denied}".`,
+          });
+        }
+      }
+
+      // `schema push` derives the wire restriction keys from `allow`/`deny` and
+      // overwrites anything set by hand, so setting both silently drops one of
+      // the two. `defineField` rejects this at compile time; repeat it here for
+      // consumers authoring schemas in plain JavaScript.
+      if (field.allow !== undefined || field.deny !== undefined) {
+        for (const key of DERIVED_RESTRICTION_KEYS) {
+          if (field[key] === undefined) {
+            continue;
+          }
+          issues.push({
+            severity: "error",
+            code: "conflicting_restriction",
+            path: ["blocks", blockKey, fieldName ?? index, key],
+            entity: blockEntity,
+            message: `Field "${fieldName}" sets "${key}" alongside "allow"/"deny", which derives it. Keep one of the two.`,
           });
         }
       }

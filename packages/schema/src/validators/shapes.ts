@@ -26,6 +26,20 @@ export interface SchemaFieldLike {
   deny?: readonly (string | { folder: string })[];
   /** Normalized datasource slug for option/options fields. */
   datasource?: string;
+  // The wire restriction keys `allow`/`deny` replace. Legal on their own, but
+  // `schema push` derives them, so setting both is reported as a conflict.
+  /** `bloks`/`richtext`/`multilink`: allowed block (or content type) names. */
+  component_whitelist?: readonly string[];
+  /** `bloks`/`richtext`: allowed component group references. */
+  component_group_whitelist?: readonly string[];
+  /** `bloks`/`richtext`: denied block names. */
+  component_denylist?: readonly string[];
+  /** `bloks`/`richtext`: denied component group references. */
+  component_group_denylist?: readonly string[];
+  /** `bloks`/`richtext`: whether the block restriction lists are in force. */
+  restrict_components?: boolean;
+  /** `bloks`/`richtext`: which restriction dimension the editor reads. */
+  restrict_type?: string;
   /** `option`/`options`: the self-sourced selectable options. */
   options?: readonly { name?: string; value?: string }[];
   /**

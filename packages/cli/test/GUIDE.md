@@ -82,13 +82,42 @@ it, and `logout` revokes the grant server-side.
   `PATH` swallows the launch. The authorize URL is also printed to stderr, so you can paste it into
   a browser yourself to finish consent.
 - **Occupy port 4900 with `nc -l 127.0.0.1 4900`, not `nc -l 4900`.** The wildcard bind does not
-  conflict with the CLI's loopback bind under `SO_REUSEADDR`, so the CLI starts normally and hangs
-  for the full 5 minute callback timeout instead of reporting the conflict.
+  conflict with the CLI's loopback bind under `SO_REUSEADDR`, so the CLI never notices it. Against a
+  loopback bind the CLI fails before it opens a browser, naming the blocking process and its PID.
 
 Worth checking manually: port 4900 occupied, denied consent, out-of-grant space (restrict
 `permitted_space_ids` via `PUT /v1/oauth_clients/<id>`), and refresh (set `expires_at` to the past,
 then run any command). Manage apps through `/v1/oauth_clients` with a Personal Access Token, where
 `client_id` is `oauth_identifier` and `client_secret` is `oauth_secret`.
+
+### Headless consent
+
+Consent needs a logged-in `app.storyblok.com` session, but that session can be minted from a
+Personal Access Token instead of a browser, which makes the whole flow scriptable:
+
+1. `POST /oauth/init` with `Authorization: <PAT>` sets `session[:user_id]` and returns a
+   `_storyrails_session` cookie. Keep it in a cookie jar.
+2. `GET /oauth/authorize?<query>` with that cookie renders the consent page. Take the query string
+   from the authorize URL the CLI prints to stderr, and swap `/oauth/init` for `/oauth/authorize`
+   (`/oauth/init` only bounces to the SPA, which primes the session step 1 already did).
+3. Parse the page for `authenticity_token`, the hidden OAuth params, the `scope[]` values, and the
+   `space_ids[]` checkbox values. `POST /oauth/authorize` with those plus `approve=true`, or
+   `deny=true` to test a refused grant.
+4. Follow the `Location` header, which points at `http://localhost:4900/oauth/callback`, to hand the
+   code to the waiting CLI.
+
+Drop scopes or space IDs from that POST to produce a genuinely narrow grant, which is the only way
+to exercise the scoped-credential errors against the real API:
+
+- **Space restriction.** Post a single `space_ids[]`. Any other space then trips the pre-flight
+  guard in `program.ts`, and the API answers
+  `403 {"error":"This token does not have access to this space"}`.
+- **Insufficient scope.** Dropping `stories:write` alone is not enough: `covers_scope?` in
+  `token_scopeable.rb` treats `publish` as implying `write`, and `write` as implying `read`. Drop
+  `stories:write` **and** `stories:publish` to get
+  `403 {"error":"Insufficient scope: stories:write is required"}`.
+
+Combine this with the browser stub above to run the entire login end to end with no browser at all.
 
 ## Shared asset libraries
 

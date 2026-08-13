@@ -14,7 +14,10 @@ vi.mock("node:fs/promises");
 // Avoid opening a real browser and a real socket in tests.
 vi.mock("open", () => ({ default: vi.fn(async () => undefined) }));
 vi.mock("../../lib/oauth/server", () => ({
-  waitForCallback: vi.fn(async () => ({ code: "auth-code", state: "ignored" })),
+  startCallbackServer: vi.fn(async () => ({
+    callback: Promise.resolve({ code: "auth-code", state: "ignored" }),
+    close: vi.fn(),
+  })),
 }));
 // Force the state check to pass by returning the same state generatePkce/generateState produced.
 vi.mock("../../lib/oauth/pkce", async (importOriginal) => {

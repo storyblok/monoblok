@@ -144,7 +144,7 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("restrict_type");
   });
 
-  it("should keep restrict_components and restrict_type for group/tag restrictions", () => {
+  it("should keep restrict_components and restrict_type for an unresolvable group restriction", () => {
     const component = {
       id: 1,
       name: "page",
@@ -165,6 +165,90 @@ describe("generateComponentFile", () => {
 
     expect(result).toContain("restrict_components: true,");
     expect(result).toContain("restrict_type: 'groups',");
+  });
+
+  // Regression: `restrict_type` was dropped for tag restrictions too, so the
+  // round-trip pushed back a field whose tag lists the editor never reads. The
+  // tag dimension has no `allow`/`deny` equivalent, so nothing re-derives it.
+  it("should keep the tag lists and their flags for a tag restriction", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [1, 2],
+          component_tag_denylist: [3],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_components: true,");
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).toContain("component_tag_whitelist: [");
+    expect(result).toContain("component_tag_denylist: [");
+    expect(result).not.toContain("allow: [");
+  });
+
+  // Switching dimensions in the editor leaves the old lists behind. Emitting them
+  // as `allow` would make the next push re-derive `restrict_type: ''` and restrict
+  // the field by block name instead.
+  it("should drop a stale name list rather than emit allow when the tag dimension is in force", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [1],
+          component_whitelist: ["hero"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).not.toContain("allow: [");
+    expect(result).not.toContain("component_whitelist");
+  });
+
+  it("should not treat tag lists as a restriction when restrict_type does not select them", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "",
+          component_tag_whitelist: [1],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    // The lists pass through verbatim, but nothing puts them in force, so the
+    // flags are the byproducts they always were.
+    expect(result).toContain("component_tag_whitelist: [");
+    expect(result).not.toContain("restrict_type");
+    expect(result).not.toContain("restrict_components");
   });
 
   it("should resolve a group whitelist to allow: [folderVar] and import the folder when uuids are known", () => {

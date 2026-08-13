@@ -32,6 +32,16 @@ import { prefetchTargetStoriesByKeys } from "../actions";
 import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from "../validate-story";
 import { FailureCollector } from "./failure-report";
 
+/**
+ * A fatal credential failure stops a phase mid-run, leaving stories the CLI deliberately
+ * never tried. Spelling those out keeps every phase line adding up to its total instead of
+ * leaving a silent shortfall between "succeeded" and the denominator.
+ */
+function formatNotAttempted(total: number, ...accounted: number[]): string {
+  const remaining = total - accounted.reduce((sum, count) => sum + count, 0);
+  return remaining > 0 ? `, ${remaining} not attempted` : "";
+}
+
 const pushCmd = storiesCommand
   .command("push")
   .option("-s, --space <space>", "space ID")
@@ -99,10 +109,14 @@ pushCmd.action(async (options, command) => {
       resolveCommandPath(directories.components, fromSpace, basePath),
     );
     if (Object.keys(schemas).length === 0) {
-      const message =
-        "No components found. Please run `storyblok components pull` to fetch the latest components.";
-      ui.error(message);
-      logger.error(message);
+      // `handleError` rather than a bare `ui.error`: bailing on a precondition is still a
+      // failed push, and CI must see a non-zero exit for it.
+      handleError(
+        new CommandError(
+          "No components found. Please run `storyblok components pull` to fetch the latest components.",
+        ),
+        verbose,
+      );
       return;
     }
 
@@ -116,9 +130,8 @@ pushCmd.action(async (options, command) => {
       schemas,
     });
     if (hasSchemaIssues(schemaIssues)) {
-      const message = formatSchemaIssues(schemaIssues);
-      ui.error(message);
-      logger.error(message);
+      // See the components precondition above: this aborts the push, so it must exit non-zero.
+      handleError(new CommandError(formatSchemaIssues(schemaIssues)), verbose);
       // Surface the failure in the run summary so the report status is
       // FAILURE rather than a trivial zero-counts SUCCESS.
       const total = Math.max(schemaIssues.total, 1);
@@ -177,6 +190,8 @@ pushCmd.action(async (options, command) => {
         scanProgress.increment();
       },
       onError(error, filename) {
+        // No `hasFatal` guard here: a local filesystem/parse error can never
+        // be an `APIError`, so it can never be fatal — nothing to short-circuit.
         if (failures.record({ filename }, error)) {
           summary.creationResults.failed += 1;
         }
@@ -273,6 +288,12 @@ pushCmd.action(async (options, command) => {
           creationProgress.increment();
         },
         onStoryError(error, entry) {
+          // A credential-level failure is identical for every remaining story, so
+          // once one is recorded, treat any already-queued concurrent entry as a
+          // no-op instead of repeating the same failure per story.
+          if (failures.hasFatal) {
+            return;
+          }
           if (failures.record(entry, error)) {
             summary.creationResults.failed += 1;
             summary.processResults.total -= 1;
@@ -284,6 +305,12 @@ pushCmd.action(async (options, command) => {
           logOnlyError(error, { storyId: entry.uuid });
         },
       });
+      // A credential failure inside this level was recorded; the same
+      // failure would repeat for every remaining level, so stop creating
+      // placeholders rather than issuing more doomed requests.
+      if (failures.hasFatal) {
+        break;
+      }
     }
 
     if (summary.creationResults.failed > 0) {
@@ -304,6 +331,7 @@ pushCmd.action(async (options, command) => {
       // Read local stories from `.json` files.
       readLocalStoriesStream({
         directoryPath: storiesDirectoryPath,
+        shouldStop: () => failures.hasFatal,
         fileFilter({ filename }) {
           // Only load files that were successfully created and mapped.
           const uuid = uuidByFilename.get(filename);
@@ -316,6 +344,11 @@ pushCmd.action(async (options, command) => {
           updateProgress.setTotal(total);
         },
         onStoryError(error, filename) {
+          // See the creation-phase `onStoryError` above: a credential-level
+          // failure is identical for every remaining story, so stop repeating it.
+          if (failures.hasFatal) {
+            return;
+          }
           if (failures.record({ filename }, error)) {
             summary.processResults.failed += 1;
           } else {
@@ -333,6 +366,7 @@ pushCmd.action(async (options, command) => {
       mapReferencesStream({
         schemas,
         maps,
+        shouldStop: () => failures.hasFatal,
         onIncrement() {
           processProgress.increment();
         },
@@ -344,8 +378,15 @@ pushCmd.action(async (options, command) => {
         onStoryError(error, localStory) {
           // Always keep the audit trail — even when we suppress the
           // user-facing summary entry for stories that already failed
-          // creation, the file log should retain the full per-phase error.
+          // creation (or that are skipped below because a credential
+          // failure was already recorded), the file log should retain the
+          // full per-phase error.
           logOnlyError(error, { storyId: localStory.uuid });
+          // See the creation-phase `onStoryError` above: a credential-level
+          // failure is identical for every remaining story, so stop repeating it.
+          if (failures.hasFatal) {
+            return;
+          }
           if (failures.record(localStory, error)) {
             summary.processResults.failed += 1;
           } else {
@@ -358,6 +399,7 @@ pushCmd.action(async (options, command) => {
       }),
       // Update remote stories with correct references.
       writeStoryStream({
+        shouldStop: () => failures.hasFatal,
         transports: {
           writeStory: options.dryRun
             ? async (story: Story) => story
@@ -378,6 +420,11 @@ pushCmd.action(async (options, command) => {
           summary.updateResults.succeeded += 1;
         },
         onStoryError(error, localStory) {
+          // See the creation-phase `onStoryError` above: a credential-level
+          // failure is identical for every remaining story, so stop repeating it.
+          if (failures.hasFatal) {
+            return;
+          }
           logOnlyError(error, { storyId: localStory.uuid });
           if (failures.record(localStory, error)) {
             summary.updateResults.failed += 1;
@@ -398,13 +445,23 @@ pushCmd.action(async (options, command) => {
     ui.br();
 
     const failedCount = failures.size;
+    // A story's content is only actually written to the remote during the
+    // update phase (creation only reserves a placeholder id, and a
+    // newly-created story still goes through update to receive its real
+    // content). So `updateResults.succeeded` alone is "stories actually
+    // pushed" — summing it with `creationResults.succeeded` would double
+    // count every newly-created story that also updated successfully.
+    // `skipped` creations still proceed to update and are counted there, so
+    // they are neither a success nor a failure of their own and get no
+    // separate weight in this headline.
+    const pushedCount = summary.updateResults.succeeded;
     ui.info(
-      `Push results: ${summary.creationResults.total} ${summary.creationResults.total === 1 ? "story" : "stories"} pushed, ${failedCount} ${failedCount === 1 ? "story" : "stories"} failed`,
+      `Push results: ${pushedCount} ${pushedCount === 1 ? "story" : "stories"} pushed, ${failedCount} ${failedCount === 1 ? "story" : "stories"} failed`,
     );
     ui.list([
-      `Creating stories: ${summary.creationResults.succeeded + summary.creationResults.skipped}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed.`,
-      `Processing stories: ${summary.processResults.succeeded}/${summary.processResults.total} succeeded, ${summary.processResults.failed} failed.`,
-      `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed.`,
+      `Creating stories: ${summary.creationResults.succeeded}/${summary.creationResults.total} succeeded, ${summary.creationResults.failed} failed, ${summary.creationResults.skipped} skipped${formatNotAttempted(summary.creationResults.total, summary.creationResults.succeeded, summary.creationResults.failed, summary.creationResults.skipped)}.`,
+      `Processing stories: ${summary.processResults.succeeded}/${summary.processResults.total} succeeded, ${summary.processResults.failed} failed${formatNotAttempted(summary.processResults.total, summary.processResults.succeeded, summary.processResults.failed)}.`,
+      `Updating stories: ${summary.updateResults.succeeded}/${summary.updateResults.total} succeeded, ${summary.updateResults.failed} failed${formatNotAttempted(summary.updateResults.total, summary.updateResults.succeeded, summary.updateResults.failed)}.`,
     ]);
 
     if (pendingWarnings.length > 0 || !failures.isEmpty) {
@@ -428,5 +485,14 @@ pushCmd.action(async (options, command) => {
       reporter.addMeta("failedStories", failures.toReporterMeta());
     }
     reporter.finalize();
+
+    // Per-story failures (including a credential-level one) go through
+    // `logOnlyError`, not `handleError`, so they never touch `process.exitCode`
+    // on their own — without this, a push that failed every story would still
+    // exit 0. Guarded so we never downgrade an exit code a thrown error
+    // already set via `handleError` in the `catch` block above.
+    if (process.exitCode === undefined) {
+      process.exitCode = failures.isEmpty ? 0 : 1;
+    }
   }
 });

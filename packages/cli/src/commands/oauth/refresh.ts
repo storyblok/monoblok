@@ -2,7 +2,7 @@ import type { RegionCode } from "../../constants";
 import { CommandError } from "../../utils";
 import { resolveOAuthClient } from "./client";
 import { getOAuthEntry, updateOAuthEntry } from "./store";
-import type { OAuthTokens } from "./store";
+import type { OAuthClientCredentials, OAuthTokens } from "./store";
 import { exchangeToken } from "./token-endpoint";
 
 export const computeExpiresAt = (expiresInSeconds: number, nowMs: number = Date.now()): string => {
@@ -20,7 +20,15 @@ const doRefresh = async (region: RegionCode): Promise<OAuthTokens> => {
     throw new CommandError("No OAuth refresh token stored. Run `storyblok login` to authenticate.");
   }
 
-  const client = resolveOAuthClient();
+  let client: OAuthClientCredentials;
+  try {
+    client = resolveOAuthClient();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new CommandError(
+      `Your OAuth session cannot be refreshed: ${message} Log in with a Personal Access Token (\`storyblok login --token <token>\`).`,
+    );
+  }
 
   let response;
   try {

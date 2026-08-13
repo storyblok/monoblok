@@ -6,6 +6,7 @@ import { setupServer } from "msw/node";
 import "../../index";
 import { logoutCommand } from "./index";
 import { getOAuthEntry } from "../oauth/store";
+import { getUI } from "../../lib/ui";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
@@ -98,5 +99,17 @@ describe("logout with an oauth session", () => {
 
     expect(revokeRequests).toHaveLength(0);
     expect(await getOAuthEntry("eu")).toEqual({});
+  });
+
+  it("should not advise a login flag while logging out", async () => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+    const warnSpy = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
+
+    await logoutCommand.parseAsync(["node", "test"]);
+
+    const warned = warnSpy.mock.calls.flat().join("\n");
+    expect(warned).toContain("Could not revoke the OAuth session server-side");
+    expect(warned).not.toContain("--oauth");
   });
 });

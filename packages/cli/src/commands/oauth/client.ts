@@ -12,11 +12,9 @@ export const resolveOAuthClient = (): OAuthClientCredentials => {
   }
 
   if (OAUTH_CLIENT_ID.startsWith(OAUTH_CLIENT_PLACEHOLDER_PREFIX)) {
-    throw new CommandError(
-      `This build of the CLI ships without OAuth client credentials, so \`--oauth\` cannot be used yet.\n` +
-        `Log in with a Personal Access Token (\`storyblok login --token <token>\`), or set the ` +
-        `STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET environment variables to use your own OAuth app.`,
-    );
+    // Cause only. Each caller appends the consequence and remedy, because only the caller
+    // knows whether the user was logging in, refreshing a session, or revoking one.
+    throw new CommandError("This build of the CLI ships without OAuth client credentials.");
   }
 
   return { client_id: OAUTH_CLIENT_ID, client_secret: OAUTH_CLIENT_SECRET };

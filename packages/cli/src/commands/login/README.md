@@ -66,6 +66,9 @@ own OAuth app instead, for example while developing against a self-hosted instan
 - If you're already logged in, you'll need to logout first to switch accounts
 - For CI environments, it's recommended to use the `--token` option
 - The CLI supports two-factor authentication (2FA) when using email login
+- If a command reports a missing permission, the message names the scope and the fix. For an OAuth
+  login, re-run `storyblok login` and grant it at the consent screen. For a personal access token,
+  create a new token with that scope.
 
 > If you sign in with SSO (e.g., Google, GitHub, Azure AD), you must use a Personal Access Token.
 > Generate one in your account settings:

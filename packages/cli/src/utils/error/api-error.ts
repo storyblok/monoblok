@@ -1,3 +1,5 @@
+import { getCredentialContext } from "./credential-context";
+import { matchCredentialError } from "./credential-hint";
 import { FetchError } from "../fetch";
 
 export const API_ACTIONS = {
@@ -40,7 +42,9 @@ export const API_ACTIONS = {
   transfer_asset: "Failed to transfer asset",
   pull_shared_assets: "Failed to pull library assets",
   pull_shared_asset: "Failed to pull library asset",
-  pull_shared_asset_folders: "Failed to pull library folders",
+  // Folder discovery runs on both the pull and the push path, so this stays verb-neutral:
+  // a push must not report a failure to "pull" anything.
+  list_shared_asset_folders: "Failed to list library folders",
   pull_shared_asset_folder: "Failed to pull library folder",
   pull_shared_internal_tags: "Failed to pull library tags",
   push_shared_asset_create: "Failed to create library asset",
@@ -69,6 +73,8 @@ export const API_ERRORS = {
   not_found: "The requested resource was not found",
   unprocessable_entity:
     "The request was well-formed but was unable to be followed due to semantic errors",
+  forbidden: "The user is not allowed to perform this action",
+  insufficient_scope: "The credential is missing a required permission",
 } as const;
 
 function getErrorId(status: number): keyof typeof API_ERRORS {
@@ -79,6 +85,8 @@ function getErrorId(status: number): keyof typeof API_ERRORS {
       return "not_found";
     case 422:
       return "unprocessable_entity";
+    case 403:
+      return "forbidden";
     default:
       return status >= 500 ? "server_error" : "generic";
   }
@@ -180,6 +188,15 @@ export class APIError extends Error {
   messageStack: string[];
   error: FetchError | undefined;
   response: FetchError["response"] | undefined;
+  /** True when the failure is credential-level, so bulk loops should stop instead of retrying. */
+  fatal: boolean;
+  /**
+   * The raw `data.error`/`data.message` string extracted from the response, before any
+   * rewrite. Undefined when a `customMessage` suppressed extraction, or none was present.
+   * Callers that need to distinguish specific server signatures (e.g. the unsupported-token-type
+   * 403) beyond the generic `errorId`/`fatal` classification should match on this.
+   */
+  serverError: string | undefined;
   constructor(
     errorId: keyof typeof API_ERRORS,
     action: keyof typeof API_ACTIONS,
@@ -194,6 +211,8 @@ export class APIError extends Error {
     this.messageStack = [];
     this.error = error;
     this.response = error?.response;
+    this.fatal = false;
+    this.serverError = undefined;
 
     if (!customMessage) {
       this.messageStack.push(API_ACTIONS[action]);
@@ -206,6 +225,7 @@ export class APIError extends Error {
     const serverMessage = customMessage
       ? undefined
       : extractServerString(responseData ?? {}, this.code, statusText);
+    this.serverError = serverMessage;
 
     const stackLengthBefore422 = this.messageStack.length;
 
@@ -242,6 +262,20 @@ export class APIError extends Error {
         this.message = stripBasePrefix(this.messageStack[stackLengthBefore422]);
         this.cause = this.message;
       }
+    }
+
+    // A credential-level 401/403 gets a rewritten, actionable message. This runs last so it
+    // wins over the raw server string, and replaces only the final stack entry so the
+    // `API_ACTIONS[action]` context line above it survives.
+    const hint = customMessage
+      ? undefined
+      : matchCredentialError(this.code, serverMessage, getCredentialContext());
+    if (hint) {
+      this.errorId = hint.errorId;
+      this.message = hint.message;
+      this.cause = hint.message;
+      this.fatal = hint.fatal;
+      this.messageStack[this.messageStack.length - 1] = hint.message;
     }
   }
 

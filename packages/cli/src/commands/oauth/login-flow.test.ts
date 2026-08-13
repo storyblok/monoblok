@@ -15,7 +15,10 @@ vi.mock("./pkce", () => ({
   generateState: () => "state-abc",
 }));
 vi.mock("./server", () => ({
-  waitForCallback: vi.fn(async () => ({ code: "auth-code", state: "state-abc" })),
+  startCallbackServer: vi.fn(async () => ({
+    callback: Promise.resolve({ code: "auth-code", state: "state-abc" }),
+    close: vi.fn(),
+  })),
 }));
 vi.mock("./token-endpoint", () => ({
   exchangeToken: vi.fn(async () => ({ access_token: "at", refresh_token: "rt", expires_in: 900 })),
@@ -24,6 +27,7 @@ vi.mock("./grant", () => ({ introspectGrant: vi.fn() }));
 
 const { introspectGrant } = await import("./grant");
 const { resolveOAuthClient } = await import("./client");
+const { startCallbackServer } = await import("./server");
 
 describe("buildAuthorizeUrl", () => {
   it("should build an /oauth/init URL with PKCE and space-safe params", () => {
@@ -94,6 +98,21 @@ describe("performOAuthLogin", () => {
     expect(params.get("scope")).toBe(OAUTH_LOGIN_SCOPES.join(" "));
   });
 
+  it("should not open a browser when the callback port cannot be bound", async () => {
+    vi.mocked(startCallbackServer).mockRejectedValueOnce(
+      new Error("Port 4900 is already in use by nc (PID 1)"),
+    );
+    const openBrowser = vi.fn(async () => {});
+
+    await expect(performOAuthLogin({ region: "eu", openBrowser })).rejects.toThrow(
+      "already in use",
+    );
+
+    // Sending a user through consent whose redirect can never be received is worse than
+    // failing before the tab opens.
+    expect(openBrowser).not.toHaveBeenCalled();
+  });
+
   it("should not persist tokens when introspection fails", async () => {
     vi.mocked(introspectGrant).mockRejectedValueOnce(new Error("introspection failed"));
 
@@ -103,5 +122,34 @@ describe("performOAuthLogin", () => {
 
     expect(await getOAuthEntry("eu")).toEqual({});
     expect(await getOAuthActiveRegion()).toBeUndefined();
+  });
+});
+
+// This suite's top-level `vi.mock("./client", ...)` stubs resolveOAuthClient for every other
+// test above so they don't trip the placeholder-client guard. Here we unmock it for real, so
+// performOAuthLogin runs against the actual resolveOAuthClient() and its thrown cause, letting
+// this test verify the login-specific remedy the catch block in login-flow.ts appends.
+describe("performOAuthLogin when no oauth client credentials are available", () => {
+  afterEach(() => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+    vi.doMock("./client", () => ({
+      resolveOAuthClient: vi.fn(() => ({ client_id: "cid", client_secret: "sec" })),
+    }));
+    vi.resetModules();
+  });
+
+  it("should surface the login remedy naming a token login and the client env vars", async () => {
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+    vi.doUnmock("./client");
+    vi.resetModules();
+    const { performOAuthLogin: performOAuthLoginWithRealClient } = await import("./login-flow");
+
+    await expect(
+      performOAuthLoginWithRealClient({ region: "eu", openBrowser: async () => {} }),
+    ).rejects.toThrow(
+      "or set STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET to use your own OAuth app",
+    );
   });
 });

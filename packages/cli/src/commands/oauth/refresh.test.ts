@@ -123,4 +123,16 @@ describe("refreshOAuthTokens", () => {
     });
     await expect(refreshOAuthTokens("eu")).rejects.toThrow();
   });
+
+  it("should surface the refresh remedy when no oauth client credentials are available", async () => {
+    // Override this suite's beforeEach, which sets these so refreshes normally resolve their
+    // credentials through the env-var override; deleting them here reaches the placeholder
+    // guard in resolveOAuthClient() and exercises the catch block's refresh-specific remedy.
+    delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
+    delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
+
+    await expect(refreshOAuthTokens("eu")).rejects.toThrow(
+      "Your OAuth session cannot be refreshed:",
+    );
+  });
 });

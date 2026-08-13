@@ -13,9 +13,9 @@ import {
 import { introspectGrant } from "./grant";
 import { generatePkce, generateState } from "./pkce";
 import { computeExpiresAt } from "./refresh";
-import { waitForCallback } from "./server";
+import { startCallbackServer } from "./server";
 import { setOAuthActiveRegion, updateOAuthEntry } from "./store";
-import type { OAuthGrantSpace, OAuthTokens } from "./store";
+import type { OAuthClientCredentials, OAuthGrantSpace, OAuthTokens } from "./store";
 import { exchangeToken } from "./token-endpoint";
 
 export interface OAuthLoginResult {
@@ -51,13 +51,23 @@ export const performOAuthLogin = async (options: {
   const openBrowser = options.openBrowser ?? ((url) => open(url));
   const ui = getUI();
 
-  const client = resolveOAuthClient();
+  let client: OAuthClientCredentials;
+  try {
+    client = resolveOAuthClient();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new CommandError(
+      `${message} Log in with a Personal Access Token (\`storyblok login --token <token>\`), or set STORYBLOK_OAUTH_CLIENT_ID and STORYBLOK_OAUTH_CLIENT_SECRET to use your own OAuth app.`,
+    );
+  }
   const scopes = OAUTH_LOGIN_SCOPES;
   const { verifier, challenge } = generatePkce();
   const state = generateState();
 
-  // Start listening before opening the browser so no callback is missed.
-  const callbackPromise = waitForCallback(OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH);
+  // Bind the callback port before opening the browser: no callback can be missed, and a port
+  // conflict fails here rather than after sending the user through a consent screen whose
+  // redirect the CLI could never have received.
+  const listener = await startCallbackServer(OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH);
 
   const authorizeUrl = buildAuthorizeUrl({
     region,
@@ -69,9 +79,14 @@ export const performOAuthLogin = async (options: {
   ui.info(
     `Opening your browser to authorize the Storyblok CLI.\nIf it does not open, visit:\n${authorizeUrl}`,
   );
-  await openBrowser(authorizeUrl);
+  try {
+    await openBrowser(authorizeUrl);
+  } catch (error) {
+    listener.close();
+    throw error;
+  }
 
-  const { code, state: returnedState } = await callbackPromise;
+  const { code, state: returnedState } = await listener.callback;
   if (returnedState !== state) {
     throw new CommandError(
       "OAuth state mismatch; aborting for your safety. Please try `storyblok login` again.",

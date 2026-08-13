@@ -2,6 +2,7 @@ import type { Component } from "../components/constants";
 import type { Story } from "./constants";
 import type { AssetMap } from "../assets/types";
 import { normalizeAssetUrl } from "@storyblok/management-api-client";
+import { baseFieldName, isInternalStoriesSource } from "./content-fields";
 
 export interface RefMaps {
   assets?: AssetMap;
@@ -47,7 +48,7 @@ const traverseAndMapBySchema = (
   const dataNew = { ...data };
 
   for (const [fieldName, fieldValue] of Object.entries(data)) {
-    const fieldSchema = schema[fieldName.replace(/__i18n__.*/, "")];
+    const fieldSchema = schema[baseFieldName(fieldName)];
     const fieldType =
       fieldSchema && typeof fieldSchema === "object" && "type" in fieldSchema
         ? fieldSchema.type
@@ -219,12 +220,7 @@ const multiassetFieldRefMapper: RefMapper = (data, options) => {
  * Options field reference mapper.
  */
 const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
-  if (
-    !schema ||
-    !("source" in schema) ||
-    schema.source !== "internal_stories" ||
-    !Array.isArray(data)
-  ) {
+  if (!isInternalStoriesSource(schema) || !Array.isArray(data)) {
     return data;
   }
 

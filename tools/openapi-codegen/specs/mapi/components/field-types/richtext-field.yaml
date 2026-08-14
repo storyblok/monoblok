@@ -128,3 +128,12 @@ allOf:
       allow_custom_attributes:
         type: boolean
         description: Whether to allow custom link attributes
+      link_scope:
+        type: string
+        description: Path of the folder internal links are restricted to
+      max_length:
+        type: integer
+        description: Maximum length of the input text
+      rtl:
+        type: boolean
+        description: Whether to enable right-to-left text direction

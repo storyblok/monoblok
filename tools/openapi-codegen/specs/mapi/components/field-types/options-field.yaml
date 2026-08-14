@@ -51,6 +51,9 @@ allOf:
       use_uuid:
         type: boolean
         description: Whether to use UUID for the option values
+      exclude_empty_option:
+        type: boolean
+        description: Whether to exclude the empty option
       is_reference_type:
         type: boolean
         description: Whether this Multi-Options field is a References field

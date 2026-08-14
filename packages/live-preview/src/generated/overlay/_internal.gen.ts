@@ -154,6 +154,18 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Whether to allow custom link attributes
      */
     allow_custom_attributes?: boolean;
+    /**
+     * Path of the folder internal links are restricted to
+     */
+    link_scope?: string;
+    /**
+     * Maximum length of the input text
+     */
+    max_length?: number;
+    /**
+     * Whether to enable right-to-left text direction
+     */
+    rtl?: boolean;
 };
 
 export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -362,6 +374,10 @@ export type OptionsFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Whether to use UUID for the option values
      */
     use_uuid?: boolean;
+    /**
+     * Whether to exclude the empty option
+     */
+    exclude_empty_option?: boolean;
     /**
      * Whether this Multi-Options field is a References field
      */

@@ -224,6 +224,7 @@ export const zOptionsFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.objec
     folder_slug: z.optional(z.string()),
     filter_content_type: z.optional(z.array(z.string())),
     use_uuid: z.optional(z.boolean()),
+    exclude_empty_option: z.optional(z.boolean()),
     is_reference_type: z.optional(z.boolean()),
     entry_appearance: z.optional(z.string()),
     allow_advanced_search: z.optional(z.boolean()),
@@ -304,7 +305,10 @@ export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
     component_group_whitelist: z.optional(z.array(z.string())),
     component_group_denylist: z.optional(z.array(z.string())),
     allow_target_blank: z.optional(z.boolean()),
-    allow_custom_attributes: z.optional(z.boolean())
+    allow_custom_attributes: z.optional(z.boolean()),
+    link_scope: z.optional(z.string()),
+    max_length: z.optional(z.int()),
+    rtl: z.optional(z.boolean())
 }));
 
 export const zTableFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({

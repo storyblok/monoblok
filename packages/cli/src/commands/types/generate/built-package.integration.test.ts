@@ -36,6 +36,25 @@ const createCliWorkspace = async () => {
   return directory;
 };
 
+const runTypesGenerate = async (workspace: string) => {
+  const fs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+  // Resolved through `bin` rather than hardcoded: a build-output rename is exactly the
+  // failure this test guards against, so the test must not restate the layout.
+  const packageRoot = resolve(import.meta.dirname, "../../../..");
+  const { bin } = JSON.parse(await fs.readFile(resolve(packageRoot, "package.json"), "utf8"));
+
+  return execFileAsync(process.execPath, [
+    resolve(packageRoot, bin.storyblok),
+    "types",
+    "generate",
+    "--space",
+    "12345",
+    "--path",
+    workspace,
+    "--verbose",
+  ]);
+};
+
 afterEach(async () => {
   const fs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
   await Promise.all(
@@ -52,18 +71,8 @@ describe("types generate built package", () => {
   it("should generate declarations using the packaged CLI types", async () => {
     const fs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
     const workspace = await createCliWorkspace();
-    const cliPath = resolve(import.meta.dirname, "../../../../dist/index.mjs");
 
-    await execFileAsync(process.execPath, [
-      cliPath,
-      "types",
-      "generate",
-      "--space",
-      "12345",
-      "--path",
-      workspace,
-      "--verbose",
-    ]);
+    await runTypesGenerate(workspace);
 
     const storyblokTypes = await fs.readFile(resolve(workspace, "types/storyblok.d.ts"), "utf8");
     const componentTypes = await fs.readFile(
@@ -73,10 +82,29 @@ describe("types generate built package", () => {
 
     expect(storyblokTypes).toContain("interface StoryblokAsset");
     expect(storyblokTypes).toContain("export { StoryblokAsset");
-    expect(storyblokTypes).not.toContain('import "dotenv/config"');
-    expect(storyblokTypes).not.toContain('from "commander"');
-    expect(storyblokTypes).not.toContain("sourceMappingURL");
     expect(componentTypes).toContain("export interface Hero");
     expect(componentTypes).toContain("title: string");
+  });
+
+  it("should generate a self-contained storyblok.d.ts", async () => {
+    const fs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    const workspace = await createCliWorkspace();
+
+    await runTypesGenerate(workspace);
+
+    const storyblokTypes = await fs.readFile(resolve(workspace, "types/storyblok.d.ts"), "utf8");
+
+    // The file lands in the user's project, where nothing the CLI bundle exposes is
+    // resolvable. Enumerating the imports beats denying known offenders one by one:
+    // it also covers whatever a future bundler decides to hoist.
+    const imports = [
+      ...storyblokTypes.matchAll(/^(?:import|export)\b[^;]*\bfrom\s*["']([^"']+)/gm),
+    ];
+
+    expect(imports.map(([, specifier]) => specifier)).toEqual(["@storyblok/js"]);
+    expect(storyblokTypes).not.toMatch(/^import\s*["']/m);
+    expect(storyblokTypes).not.toContain("sourceMappingURL");
+    expect(storyblokTypes).not.toContain("//#region");
+    expect(storyblokTypes).not.toContain("//#endregion");
   });
 });

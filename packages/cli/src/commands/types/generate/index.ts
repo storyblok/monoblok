@@ -76,9 +76,16 @@ generateCmd.action(async (options: GenerateTypesOptions, command: Command) => {
         throw error;
       }
     }
-    await generateStoryblokTypes({
+    // Component types reference the Storyblok field types, so carrying on after this
+    // fails would report success over a stale or missing storyblok.d.ts.
+    const storyblokTypesGenerated = await generateStoryblokTypes({
       path,
     });
+
+    if (!storyblokTypesGenerated) {
+      spinner.failed("Type generation failed");
+      return;
+    }
 
     // Add empty datasources array to match expected type for generateTypes
     const spaceDataWithComponentsAndDatasources: ComponentsData & SpaceDatasourcesData = {

@@ -36,10 +36,6 @@ vi.mock("../../../utils/filesystem", () => ({
   resolvePath: vi.fn().mockReturnValue("/mocked/resolved/path"),
 }));
 
-vi.mock("../../../utils/package", () => ({
-  getPackageJson: vi.fn().mockReturnValue({ types: "./dist/index.d.mts" }),
-}));
-
 // Mock the fs module
 vi.mock("node:fs", () => ({
   readFileSync: vi.fn().mockReturnValue(""),
@@ -1219,7 +1215,7 @@ describe("generateStoryblokTypes", () => {
 
     // Verify that readFileSync was called with the correct path
     expect(readFileSync).toHaveBeenCalledWith("/mocked/path", "utf-8");
-    expect(resolve).toHaveBeenCalledWith(expect.any(String), "..", "./dist/index.d.mts");
+    expect(resolve).toHaveBeenCalledWith(expect.any(String), "storyblok-types.d.mts");
     expect(join).toHaveBeenCalledWith(expect.any(String), "storyblok.d.ts");
 
     // Verify that saveToFile was called with the correct parameters
@@ -1271,7 +1267,7 @@ describe("extractBundledTypeDefinitions", () => {
     expect(extractBundledTypeDefinitions(content)).toBe(content);
   });
 
-  it("should remove runtime imports and source maps from bundled declarations", () => {
+  it("should remove unreferenced imports, region markers and source maps", () => {
     const content = [
       'import "dotenv/config";',
       'import { Command } from "commander";',
@@ -1283,12 +1279,38 @@ describe("extractBundledTypeDefinitions", () => {
     ].join("\n");
 
     expect(extractBundledTypeDefinitions(content)).toBe(
-      [
-        "//#region src/types/storyblok.d.ts",
-        "interface StoryblokAsset { id: number }",
-        "//#endregion",
-        "export { StoryblokAsset };",
-      ].join("\n"),
+      ["interface StoryblokAsset { id: number }", "export { StoryblokAsset };"].join("\n"),
+    );
+  });
+
+  it("should throw when the declarations reference an imported binding", () => {
+    // rolldown-plugin-dts splits shared declarations into a hashed chunk and imports
+    // them back with a renamed binding, indistinguishable from a value import. Dropping
+    // one of those would emit a dangling type reference into the user's project.
+    const content = [
+      'import { a as StoryblokAsset } from "./constants-FGOZXcwP.mjs";',
+      "//#region src/types/storyblok.d.ts",
+      "interface StoryblokMultiasset extends Array<StoryblokAsset> {}",
+      "//#endregion",
+      "export { StoryblokMultiasset };",
+    ].join("\n");
+
+    expect(() => extractBundledTypeDefinitions(content)).toThrow(
+      /resolve StoryblokAsset through an import/,
+    );
+  });
+
+  it("should not treat a substring of a declared name as a leaked binding", () => {
+    const content = [
+      'import { Command } from "commander";',
+      "//#region src/types/storyblok.d.ts",
+      "interface CommandOptions { id: number }",
+      "//#endregion",
+      "export { CommandOptions };",
+    ].join("\n");
+
+    expect(extractBundledTypeDefinitions(content)).toBe(
+      ["interface CommandOptions { id: number }", "export { CommandOptions };"].join("\n"),
     );
   });
 });

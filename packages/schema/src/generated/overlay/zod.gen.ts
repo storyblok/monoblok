@@ -113,6 +113,30 @@ export const zDatetimeFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
     disable_time: z.optional(z.boolean())
 }));
 
+export const zFileFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['file']),
+    default_value: z.optional(z.string()),
+    add_https: z.optional(z.boolean()),
+    asset_folder_id: z.optional(z.int())
+}));
+
+export const zImageFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['image']),
+    default_value: z.optional(z.string()),
+    add_https: z.optional(z.boolean()),
+    image_crop: z.optional(z.boolean()),
+    image_width: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
+    image_height: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
+    keep_image_size: z.optional(z.boolean()),
+    asset_folder_id: z.optional(z.int())
+}));
+
 export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['markdown']),
     default_value: z.optional(z.string()),
@@ -353,6 +377,8 @@ export const zComponentSchemaField = z.union([
     zOptionsFieldRoot,
     zAssetFieldRoot,
     zMultiassetFieldRoot,
+    zImageFieldRoot,
+    zFileFieldRoot,
     zMultilinkFieldRoot,
     zBloksFieldRoot,
     zTableFieldRoot,

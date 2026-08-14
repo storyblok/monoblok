@@ -43,6 +43,8 @@ components:
         - $ref: ./mapi/components/field-types/options-field.yaml
         - $ref: ./mapi/components/field-types/asset-field.yaml
         - $ref: ./mapi/components/field-types/multiasset-field.yaml
+        - $ref: ./mapi/components/field-types/image-field.yaml
+        - $ref: ./mapi/components/field-types/file-field.yaml
         - $ref: ./mapi/components/field-types/multilink-field.yaml
         - $ref: ./mapi/components/field-types/bloks-field.yaml
         - $ref: ./mapi/components/field-types/table-field.yaml

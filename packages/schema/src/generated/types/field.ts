@@ -154,6 +154,12 @@ interface FieldTypeValueMap {
   options: string[];
   asset: AssetFieldValue;
   multiasset: AssetFieldValue[];
+  /**
+   * The legacy `image`/`file` types predate the asset object: they store the
+   * bare, protocol-relative URL (`//a.storyblok.com/…`) as a string.
+   */
+  image: string;
+  file: string;
   multilink: MultilinkFieldValue;
   bloks: BlockContentBase[];
   table: TableFieldValue;

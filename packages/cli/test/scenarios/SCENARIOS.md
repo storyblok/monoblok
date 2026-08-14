@@ -14,13 +14,19 @@ For basic story testing, use the global `has-stories` scenario instead:
 bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-stories
 ```
 
-| Scenario                   | Seeds                                                                                                                                                                                                                                                       |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `has-nested-stories`       | 2 story folders, each holding 2 nested stories with the same slugs (4 components, 6 stories). Exercises duplicate slugs across folders.                                                                                                                     |
-| `has-private-assets`       | 1 public asset and 1 private asset (4 components, 2 assets).                                                                                                                                                                                                |
-| `has-nested-asset-folders` | 2 nested asset folders (A → B) and 3 assets: 1 at root, 1 in Folder A, 1 in Folder B (4 components, 2 folders, 3 assets).                                                                                                                                   |
-| `has-diverse-components`   | 6 components (1 root, 5 nestable) covering every field type: text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, image, file, multilink, bloks, table, section, tab, custom, plus 1 datasource with entries. |
-| `has-restrictions`         | 5 components, 2 nested component groups and 1 component tag, covering all eight `bloks` restriction shapes and four `richtext` ones. Baseline for `schema init`/`push` round trips over restrictions.                                                       |
+| Scenario                   | Seeds                                                                                                                                                                                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `has-nested-stories`       | 2 story folders, each holding 2 nested stories with the same slugs (4 components, 6 stories). Exercises duplicate slugs across folders.                                                                                                             |
+| `has-private-assets`       | 1 public asset and 1 private asset (4 components, 2 assets).                                                                                                                                                                                        |
+| `has-nested-asset-folders` | 2 nested asset folders (A → B) and 3 assets: 1 at root, 1 in Folder A, 1 in Folder B (4 components, 2 folders, 3 assets).                                                                                                                           |
+| `has-diverse-components`   | 6 components (1 root, 5 nestable) covering every field type: text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, image, file, multilink, bloks, table, section, tab, plus 1 datasource with entries. |
+| `has-restrictions`         | 5 components, 2 nested component groups and 1 component tag, covering all eight `bloks` restriction shapes and four `richtext` ones. Baseline for `schema init`/`push` round trips over restrictions.                                               |
+
+`has-diverse-components` deliberately has no `custom` field. The Management API rejects a component
+whose `custom` field names a field-type plugin the space has not installed, with
+`422 The following field-type plugin(s) are not available in this space`, so a `custom` field cannot
+be seeded into an arbitrary QA space. The type is covered by the `@storyblok/schema` type tests
+instead.
 
 ## `has-restrictions`
 

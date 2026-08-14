@@ -6,6 +6,42 @@
 import * as z from 'zod';
 
 /**
+ * A conditional rule attached to a field: when `rule_conditions` match the
+ * block's content, the editor applies `modifications` to this field.
+ *
+ * Nothing here is required. The editor writes a setting the moment the operator
+ * adds a rule row, before any of it is filled in, so a saved block can hold a
+ * half-configured setting.
+ *
+ */
+export const zConditionalSettingRoot = z.object({
+    rule_match: z.optional(z.enum(['all', 'any'])),
+    rule_conditions: z.optional(z.array(z.object({
+        validated_object: z.optional(z.union([
+            z.object({
+                type: z.optional(z.enum(['field'])),
+                field_key: z.optional(z.string()),
+                field_attr: z.optional(z.enum(['value']))
+            }),
+            z.null()
+        ])),
+        validation: z.optional(z.nullable(z.enum([
+            'equals',
+            'not_equals',
+            'empty',
+            'not_empty',
+            'gt',
+            'lt'
+        ]))),
+        value: z.optional(z.unknown())
+    }))),
+    modifications: z.optional(z.array(z.object({
+        display: z.optional(z.enum(['hide'])),
+        required: z.optional(z.boolean())
+    })))
+});
+
+/**
  * Universal identity and display properties shared by every field type
  */
 export const zBaseFieldRoot = z.object({
@@ -15,7 +51,7 @@ export const zBaseFieldRoot = z.object({
     description: z.optional(z.string()),
     tooltip: z.optional(z.boolean()),
     pos: z.optional(z.int()),
-    conditional_settings: z.optional(z.array(z.record(z.string(), z.unknown())))
+    conditional_settings: z.optional(z.array(zConditionalSettingRoot))
 });
 
 export const zSectionFieldRoot = zBaseFieldRoot.and(z.object({

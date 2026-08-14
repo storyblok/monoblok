@@ -21,6 +21,8 @@ properties:
     description: Position of the field within the block
   conditional_settings:
     type: array
-    description: Conditions set on the field for conditional visibility
+    description: |
+      Conditions set on the field for conditional visibility. The editor writes
+      one setting and evaluates only the first, so further entries are inert.
     items:
-      type: object
+      $ref: ./conditional-setting.yaml

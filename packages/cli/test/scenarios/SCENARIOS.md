@@ -22,6 +22,11 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh --scenario has-s
 | `has-diverse-components`   | 6 components (1 root, 5 nestable) covering every field type: text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, image, file, multilink, bloks, table, section, tab, plus 1 datasource with entries. |
 | `has-restrictions`         | 5 components, 2 nested component groups and 1 component tag, covering all eight `bloks` restriction shapes and four `richtext` ones. Baseline for `schema init`/`push` round trips over restrictions.                                               |
 
+`kitchen_sink` carries the only `conditional_settings` in the corpus: `gallery` hides when `related`
+is empty (one condition, `display` modification) and `legacy_file` becomes required when both
+`notes` and `related` are filled (two conditions under `rule_match: 'all'`, `required`
+modification). Between them they cover both modification kinds and both rule matches.
+
 `has-diverse-components` deliberately has no `custom` field. The Management API rejects a component
 whose `custom` field names a field-type plugin the space has not installed, with
 `422 The following field-type plugin(s) are not available in this space`, so a `custom` field cannot

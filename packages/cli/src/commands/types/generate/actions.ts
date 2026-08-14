@@ -285,9 +285,9 @@ const getComponentPropertiesTypeAnnotations = async (
       }
 
       if (Array.from(storyblokSchemas.keys()).includes(propertyType as StoryblokPropertyType)) {
-        // For Storyblok property types, don't apply the prefix
-        const componentType = toPascalCase(propertyType);
-        propertyTypeAnnotation[key].tsType = `Storyblok${componentType}`;
+        // For Storyblok property types, don't apply the prefix. Resolve the name through
+        // storyblokTypeName so the annotation always matches the generated import.
+        propertyTypeAnnotation[key].tsType = storyblokTypeName(propertyType);
       }
       if (
         spaceData.datasources.length > 0 &&

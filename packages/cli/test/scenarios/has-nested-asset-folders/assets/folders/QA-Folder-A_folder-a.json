@@ -1,6 +1,7 @@
 {
   "id": 1,
-  "uuid": "folder-a",
+  "uuid": "eaf8e81e-5fe1-4070-8b3d-6982940f17a7",
   "name": "QA Folder A",
-  "parent_id": null
+  "parent_id": null,
+  "parent_uuid": null
 }

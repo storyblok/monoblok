@@ -8,7 +8,7 @@
   "schema": {
     "title": { "type": "text", "pos": 0 },
     "body": { "type": "bloks", "pos": 1 },
-    "hero_image": { "type": "asset", "pos": 2 },
+    "hero_image": { "type": "asset", "pos": 2, "allow_external_url": true },
     "cta_link": { "type": "multilink", "pos": 3 },
     "content": { "type": "richtext", "pos": 4 }
   },

@@ -1,25 +1,39 @@
 {
   "id": 7,
-  "uuid": "7",
+  "uuid": "07182836-37d7-4f80-8192-60b324354657",
   "name": "Color Theory for Teams",
   "slug": "blog-color-theory",
   "full_slug": "blog-index/blog-color-theory",
   "parent_id": 3,
   "content": {
+    "_uid": "7ba46cc6-0afe-4aab-866b-9b479d0157ea",
     "component": "blog",
     "title": "Color Theory for Teams",
     "featured_image": {
       "id": 2,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/bbbbbbbbbb/blog-cover.png",
+      "alt": "Color theory",
+      "title": "Blog Cover",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/blog-cover.png",
-      "alt": "Color theory"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "Color theory",
+        "title": "Blog Cover",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "author": "QA Bot",
     "category": "design",
     "related_post": {
       "fieldtype": "multilink",
       "linktype": "story",
-      "id": "5",
+      "id": "e5f80614-55b5-4d6e-8f70-4e91a2132435",
       "url": "",
       "cached_url": "blog-index/blog-design-tips"
     },

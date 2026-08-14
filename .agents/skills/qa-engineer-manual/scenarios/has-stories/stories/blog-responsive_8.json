@@ -1,25 +1,39 @@
 {
   "id": 8,
-  "uuid": "8",
+  "uuid": "18293947-28e8-4091-92a3-71c435465768",
   "name": "Responsive Patterns",
   "slug": "blog-responsive",
   "full_slug": "blog-index/blog-responsive",
   "parent_id": 3,
   "content": {
+    "_uid": "41bf1ce3-92d7-4d75-834e-a7688a688889",
     "component": "blog",
     "title": "Responsive Patterns",
     "featured_image": {
       "id": 1,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/aaaaaaaaaa/hero.png",
+      "alt": "Responsive",
+      "title": "Hero",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/hero.png",
-      "alt": "Responsive"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "Responsive",
+        "title": "Hero",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "author": "QA Bot",
     "category": "design",
     "related_post": {
       "fieldtype": "multilink",
       "linktype": "story",
-      "id": "7",
+      "id": "07182836-37d7-4f80-8192-60b324354657",
       "url": "",
       "cached_url": "blog-index/blog-color-theory"
     },

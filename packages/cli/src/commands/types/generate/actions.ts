@@ -10,8 +10,7 @@ import {
   toPascalCase,
 } from "../../../utils";
 import type { GenerateTypesOptions } from "./constants";
-import type { StoryblokPropertyType } from "../../../types/storyblok";
-import { storyblokSchemas } from "../../../utils/storyblok-schemas";
+import { isStoryblokPropertyType } from "../../../utils/storyblok-property-types";
 import { getLogger } from "../../../lib/logger/logger";
 import { join, resolve } from "pathe";
 import { pathToFileURL } from "node:url";
@@ -117,7 +116,7 @@ export const extractBundledTypeDefinitions = (content: string) => {
 
 const getPropertyTypeAnnotation = (property: FieldSchema, prefix?: string, suffix?: string) => {
   // If a property type is one of the ones provided by Storyblok, return that type
-  if (Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)) {
+  if (isStoryblokPropertyType(property.type)) {
     return { type: property.type };
   }
 
@@ -284,7 +283,7 @@ const getComponentPropertiesTypeAnnotations = async (
         };
       }
 
-      if (Array.from(storyblokSchemas.keys()).includes(propertyType as StoryblokPropertyType)) {
+      if (isStoryblokPropertyType(propertyType)) {
         // For Storyblok property types, don't apply the prefix. Resolve the name through
         // storyblokTypeName so the annotation always matches the generated import.
         propertyTypeAnnotation[key].tsType = storyblokTypeName(propertyType);
@@ -470,14 +469,11 @@ export const generateTypes = async (
         ["component", "_uid"] as string[],
       );
 
-      // Check if any property has a type that's in storyblokSchemas.keys()
+      // Collect the Storyblok field types used by this component, so only those get imported
       if (componentPropertiesTypeAnnotations) {
         Object.entries(componentPropertiesTypeAnnotations).forEach(([_, property]) => {
-          if (
-            property.type &&
-            Array.from(storyblokSchemas.keys()).includes(property.type as StoryblokPropertyType)
-          ) {
-            storyblokPropertyTypes.add(property.type as StoryblokPropertyType);
+          if (property.type && isStoryblokPropertyType(property.type)) {
+            storyblokPropertyTypes.add(property.type);
           }
           // Check if the property uses ISbStoryData
           if (property.tsType && property.tsType.includes(STORY_TYPE)) {

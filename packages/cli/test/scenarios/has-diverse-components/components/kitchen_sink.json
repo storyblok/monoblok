@@ -33,7 +33,24 @@
       "pos": 4,
       "filetypes": ["images"],
       "maximum_entries": 4,
-      "minimum_entries": 1
+      "minimum_entries": 1,
+      "conditional_settings": [
+        {
+          "modifications": [{ "display": "hide" }],
+          "rule_match": "any",
+          "rule_conditions": [
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "related",
+                "field_attr": "value"
+              },
+              "validation": "empty",
+              "value": null
+            }
+          ]
+        }
+      ]
     },
     "legacy_image": {
       "type": "image",
@@ -47,7 +64,33 @@
     "legacy_file": {
       "type": "file",
       "pos": 6,
-      "add_https": true
+      "add_https": true,
+      "conditional_settings": [
+        {
+          "modifications": [{ "required": true }],
+          "rule_match": "all",
+          "rule_conditions": [
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "notes",
+                "field_attr": "value"
+              },
+              "validation": "not_empty",
+              "value": null
+            },
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "related",
+                "field_attr": "value"
+              },
+              "validation": "not_empty",
+              "value": null
+            }
+          ]
+        }
+      ]
     },
     "related": {
       "type": "options",

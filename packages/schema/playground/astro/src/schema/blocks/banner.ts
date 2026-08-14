@@ -18,11 +18,38 @@ export const bannerBlock = defineBlock({
     defineField("cta_label", {
       type: "text",
       max_length: 40,
-      conditional_settings: [{ field: "show_cta", value: true }],
+      // The editor has no "show when" rule: it hides a field when the rule
+      // matches. An unchecked boolean counts as empty, so this keeps the CTA
+      // fields hidden until `show_cta` is on.
+      conditional_settings: [
+        {
+          modifications: [{ display: "hide" }],
+          rule_match: "all",
+          rule_conditions: [
+            {
+              validated_object: { type: "field", field_key: "show_cta", field_attr: "value" },
+              validation: "empty",
+              value: null,
+            },
+          ],
+        },
+      ],
     }),
     defineField("cta_link", {
       type: "multilink",
-      conditional_settings: [{ field: "show_cta", value: true }],
+      conditional_settings: [
+        {
+          modifications: [{ display: "hide" }],
+          rule_match: "all",
+          rule_conditions: [
+            {
+              validated_object: { type: "field", field_key: "show_cta", field_attr: "value" },
+              validation: "empty",
+              value: null,
+            },
+          ],
+        },
+      ],
     }),
     defineField("background_image", { type: "asset", filetypes: ["images"] }),
   ],

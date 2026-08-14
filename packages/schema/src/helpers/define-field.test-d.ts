@@ -398,15 +398,59 @@ describe("defineField field option checking", () => {
     void defineField("title", { type: "text", component_tag_whitelist: [1] });
   });
 
+  // Regression: `FieldInput` grafted every wire restriction key onto every
+  // variant while the option check runs against the matched `Field` variant, so
+  // `FieldInput`'s own `text` member failed that check and `defineField`
+  // rejected its own documented input type. The old suite only ever passed fresh
+  // object literals, which are checked against the matched variant directly and
+  // never go through `FieldInput` at all, so nothing exercised the exported type.
+  //
+  // `FieldInput` is now assembled one variant at a time, so a regression can hit
+  // a single variant. Every one is asserted.
+  // The annotation on the const is what makes this bite: `defineField` sees a
+  // value whose declared type is `FieldInput` itself, so the check runs against
+  // the exported union rather than against a fresh literal. Passing the same
+  // value through a `(f: FieldInput) => ...` parameter does *not* reproduce the
+  // failure, so do not "simplify" these into a helper.
   it("should accept a value typed as the exported `FieldInput`", () => {
-    // Regression: `FieldInput` grafted every wire restriction key onto every
-    // variant while the option check runs against the matched `Field` variant, so
-    // `FieldInput`'s own `text` member failed that check and `defineField`
-    // rejected its own documented input type.
-    const title: FieldInput = { type: "text", max_length: 10 };
-    void defineField("title", title);
-    const body: FieldInput = { type: "bloks", component_whitelist: ["teaser"] };
-    void defineField("body", body);
+    const text: FieldInput = { type: "text", max_length: 10 };
+    void defineField("f", text);
+    const textarea: FieldInput = { type: "textarea", max_length: 10 };
+    void defineField("f", textarea);
+    const richtext: FieldInput = { type: "richtext", component_whitelist: ["teaser"] };
+    void defineField("f", richtext);
+    const markdown: FieldInput = { type: "markdown", rich_markdown: true };
+    void defineField("f", markdown);
+    const number: FieldInput = { type: "number", decimals: 2 };
+    void defineField("f", number);
+    const datetime: FieldInput = { type: "datetime", disable_time: true };
+    void defineField("f", datetime);
+    const boolean: FieldInput = { type: "boolean", inline_label: true };
+    void defineField("f", boolean);
+    const option: FieldInput = { type: "option", exclude_empty_option: true };
+    void defineField("f", option);
+    const options: FieldInput = { type: "options", is_reference_type: true };
+    void defineField("f", options);
+    const asset: FieldInput = { type: "asset", allow_external_url: true };
+    void defineField("f", asset);
+    const multiasset: FieldInput = { type: "multiasset", maximum_entries: 3 };
+    void defineField("f", multiasset);
+    const image: FieldInput = { type: "image", image_crop: true };
+    void defineField("f", image);
+    const file: FieldInput = { type: "file", add_https: true };
+    void defineField("f", file);
+    const multilink: FieldInput = { type: "multilink", component_whitelist: ["page"] };
+    void defineField("f", multilink);
+    const bloks: FieldInput = { type: "bloks", component_whitelist: ["teaser"] };
+    void defineField("f", bloks);
+    const table: FieldInput = { type: "table", required: true };
+    void defineField("f", table);
+    const section: FieldInput = { type: "section", keys: ["a"] };
+    void defineField("f", section);
+    const tab: FieldInput = { type: "tab", keys: ["a"] };
+    void defineField("f", tab);
+    const custom: FieldInput = { type: "custom", field_type: "unregistered" };
+    void defineField("f", custom);
   });
 
   // Fixture-driven guard for the overlay spec: every option the Storyblok editor

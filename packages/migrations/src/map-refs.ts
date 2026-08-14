@@ -3,9 +3,6 @@ import type { Component, Story } from "./types";
 export interface RefMaps {
   assets?: Map<unknown, string | number>;
   stories?: Map<unknown, string | number>;
-  users?: Map<unknown, string | number>;
-  tags?: Map<unknown, string | number>;
-  datasources?: Map<unknown, string | number>;
 }
 
 export type ComponentSchemas = Record<string, Record<string, { type: string; source?: string }>>;
@@ -236,24 +233,30 @@ const multiassetFieldRefMapper: RefMapper = (data, options) => {
   return data.map((d) => assetFieldRefMapper(d, options));
 };
 
+/**
+ * An option field only holds a cross-space reference when its source is
+ * `internal_stories`: the value is then a story uuid (or id, with `use_uuid`
+ * off), which differs per space. Every other source is space-independent —
+ * `self` holds the inline option's own `value`, `internal` and `external` hold
+ * a datasource entry's `value`, and `internal_languages` holds a language
+ * code — so those pass through untouched.
+ */
+function mapOptionValue(value: unknown, schema: FieldSchema, maps: RefMaps): unknown {
+  if (schema.source !== "internal_stories") {
+    return value;
+  }
+  return maps.stories?.get(value) ?? value;
+}
+
+const optionFieldRefMapper: RefMapper = (data, { schema, maps }) =>
+  mapOptionValue(data, schema, maps);
+
 const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
   if (!Array.isArray(data)) {
     return data;
   }
 
-  const sourceMapBySchema: Record<string, Map<unknown, string | number> | undefined> = {
-    internal_stories: maps.stories,
-    internal_users: maps.users,
-    internal_tags: maps.tags,
-    internal_datasources: maps.datasources,
-  };
-
-  const sourceMap = sourceMapBySchema[schema.source ?? ""];
-  if (!sourceMap) {
-    return data;
-  }
-
-  return data.map((d) => sourceMap.get(d) ?? d);
+  return data.map((d) => mapOptionValue(d, schema, maps));
 };
 
 const fieldRefMappers = {
@@ -261,6 +264,7 @@ const fieldRefMappers = {
   bloks: bloksFieldRefMapper,
   multiasset: multiassetFieldRefMapper,
   multilink: multilinkFieldRefMapper,
+  option: optionFieldRefMapper,
   options: optionsFieldRefMapper,
   richtext: richtextFieldRefMapper,
 } as const;

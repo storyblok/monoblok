@@ -625,6 +625,72 @@ describe("getStoryType", () => {
   });
 });
 
+describe("Storyblok type references", () => {
+  // The annotation and the import used to derive the type name independently, so a
+  // renamed export (richtext -> StoryblokRichTextDoc) left component files referencing
+  // a name they never imported. That only surfaces in the user's project, and only
+  // without skipLibCheck, so assert the two agree for every Storyblok field type.
+  it("should import every Storyblok type it annotates", async () => {
+    const componentWithEveryStoryblokType: Component = {
+      name: "field_showcase",
+      display_name: "Field Showcase",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        body: { type: "richtext" },
+        cover: { type: "asset" },
+        gallery: { type: "multiasset" },
+        link: { type: "multilink" },
+        specs: { type: "table" },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const result = await generateTypes(
+      { ...mockSpaceData, components: [componentWithEveryStoryblokType] },
+      { strict: false },
+    );
+
+    expect(result).toBeTypeOf("string");
+    const content = result as string;
+
+    const imported = new Set(
+      [...content.matchAll(/import type \{([^}]*)\} from/g)].flatMap((match) =>
+        match[1].split(",").map((name) => name.trim()),
+      ),
+    );
+    const referenced = new Set(
+      [...content.matchAll(/\bStoryblok[A-Za-z]+\b/g)].map((match) => match[0]),
+    );
+
+    expect(referenced.size).toBeGreaterThan(0);
+    expect([...referenced].filter((name) => !imported.has(name))).toEqual([]);
+  });
+
+  it("should annotate richtext fields with the exported richtext type name", async () => {
+    const componentWithRichtext: Component = {
+      name: "article",
+      display_name: "Article",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: { body: { type: "richtext" } },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const result = await generateTypes(
+      { ...mockSpaceData, components: [componentWithRichtext] },
+      { strict: false },
+    );
+
+    expect(result).toContain("body?: StoryblokRichTextDoc");
+    expect(result).not.toContain("StoryblokRichtext;");
+  });
+});
+
 describe("component property type annotations", () => {
   it("should handle text property type", async () => {
     // Create a component with text property type

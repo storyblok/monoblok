@@ -455,7 +455,9 @@ describe("defineField field option checking", () => {
       filetypes: ["images"],
       maximum_entries: 5,
     });
-    // The legacy `image`/`file` types own the crop options.
+    // The legacy `image`/`file` types own the crop options. The editor no longer
+    // offers them when adding a field, but existing spaces hold them and
+    // `schema init` has to emit something that compiles.
     void defineField("imageold", {
       type: "image",
       add_https: true,

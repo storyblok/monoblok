@@ -296,14 +296,26 @@ const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
  * clears all six lists) and the Management API only backstops that for `bloks`
  * fields, so reaching it takes a `richtext` written through the API.
  *
- * The tag dimension is picked by `restrict_type` alone, because it is the key that
- * puts the tag lists in force and the only one `allow`/`deny` cannot express. It
- * deliberately does not also require a non-empty tag list: `restrict_type: 'tags'`
- * with both lists empty still restricts by tags in the editor, and falling through
- * to the name dimension would drop `restrict_type` and `restrict_components` with
- * nothing left to re-derive them, silently unrestricting the field on the next
- * push. The Management API clears the name and group lists when `restrict_type` is
- * `'tags'`, so there is no stale list here to mistake for a name restriction.
+ * Within a dimension the editor offers allow or block, never both, so a field
+ * whose allow and deny lists are both non-empty is legacy or API-written as well.
+ * Both are kept: `defineField` accepts the pair, and dropping either would change
+ * what the space allows.
+ *
+ * The tag dimension needs `restrict_type: 'tags'` and a non-empty tag list. The
+ * `restrict_type` check alone is not enough to claim the field, because a list the
+ * editor cannot produce still has to be handled: switching dimension in the editor
+ * clears all six lists, and the Management API only backstops that for `bloks`
+ * fields (it strips the name lists, keeping the group ones), so on `richtext` a
+ * legacy or API-written `restrict_type: 'tags'` can survive next to a live
+ * `component_whitelist`. Claiming that field for the tag dimension would drop the
+ * name list on the round trip.
+ *
+ * A `restrict_type: 'tags'` that no tag list backs still never falls through to
+ * `none`: it ends up in `raw`, which keeps `restrict_type` and
+ * `restrict_components` verbatim. `restrict_type: 'tags'` with both lists empty
+ * still restricts by tags in the editor, and dropping the two flags would leave
+ * nothing to re-derive them from, silently unrestricting the field on the next
+ * push.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -312,7 +324,10 @@ function resolveFieldRestriction(
   if (field.restrict_components === false) {
     return { kind: "disabled" };
   }
-  if (field.restrict_type === "tags") {
+  if (
+    field.restrict_type === "tags" &&
+    (isNonEmptyList(field.component_tag_whitelist) || isNonEmptyList(field.component_tag_denylist))
+  ) {
     return { kind: "tags" };
   }
   const hasNameAllow = isNonEmptyList(field.component_whitelist);
@@ -340,6 +355,7 @@ function resolveFieldRestriction(
       : { kind: "raw" };
   }
   if (
+    field.restrict_type === "tags" ||
     field.component_group_whitelist !== undefined ||
     field.component_group_denylist !== undefined
   ) {
@@ -371,15 +387,15 @@ function resolveFieldRestriction(
  * narrowing rather than a faithful read. The editor treats the flag's absence as
  * "no restriction at all", so a legacy field carrying a bare `component_whitelist`
  * accepts anything today. Emitting it as `allow` makes push re-derive
- * `restrict_components: true` and the restriction starts being enforced. That
+ * `restrict_components: true`, and the restriction starts being enforced. That
  * matches the list's apparent intent, and the alternative is discarding a list
  * someone wrote on purpose, but it does change what editors may insert.
  *
- * A tag restriction (`restrict_type: 'tags'`) keeps its wire form, flags included:
- * the tag dimension has no `allow`/`deny` equivalent, so dropping `restrict_type`
- * would leave the tag lists inert on the next push, and emitting the field's
- * (stale, not-in-force) name or group lists as DSL refs would switch it back to
- * restricting by name.
+ * A tag restriction (`restrict_type: 'tags'` with a tag list in force) keeps its
+ * wire form, flags included: the tag dimension has no `allow`/`deny` equivalent,
+ * so dropping `restrict_type` would leave the tag lists inert on the next push,
+ * and emitting the field's (stale, not-in-force) name or group lists as DSL refs
+ * would switch it back to restricting by name.
  *
  * `restrict_components: true` with no list in force is kept too, for the same
  * reason: with no `allow`/`deny` emitted there is nothing to re-derive it from, so

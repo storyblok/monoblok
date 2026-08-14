@@ -255,6 +255,36 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("allow: [");
   });
 
+  // The editor clears all six lists when you switch dimension, and the Management
+  // API only strips stale name lists on `bloks` fields, so a `richtext` can carry
+  // `restrict_type: 'tags'` next to a live name list. With no tag selected the tag
+  // dimension restricts nothing, so claiming the field for it would drop the only
+  // list actually in force.
+  it("should keep a name list on a richtext whose tag dimension selects nothing", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "richtext",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [],
+          component_whitelist: ["hero"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("allow: [");
+    expect(result).toContain("'hero'");
+    expect(result).not.toContain("component_whitelist");
+  });
+
   it("should not treat tag lists as a restriction when restrict_type does not select them", () => {
     const component = {
       id: 1,

@@ -1,4 +1,5 @@
 import {
+  extractBundledTypeDefinitions,
   generateStoryblokTypes,
   generateTypes,
   getComponentType,
@@ -33,6 +34,10 @@ const mockDatasource: SpaceDatasource = {
 vi.mock("../../../utils/filesystem", () => ({
   saveToFile: vi.fn().mockResolvedValue(undefined),
   resolvePath: vi.fn().mockReturnValue("/mocked/resolved/path"),
+}));
+
+vi.mock("../../../utils/package", () => ({
+  getPackageJson: vi.fn().mockReturnValue({ types: "./dist/index.d.mts" }),
 }));
 
 // Mock the fs module
@@ -1214,6 +1219,7 @@ describe("generateStoryblokTypes", () => {
 
     // Verify that readFileSync was called with the correct path
     expect(readFileSync).toHaveBeenCalledWith("/mocked/path", "utf-8");
+    expect(resolve).toHaveBeenCalledWith(expect.any(String), "..", "./dist/index.d.mts");
     expect(join).toHaveBeenCalledWith(expect.any(String), "storyblok.d.ts");
 
     // Verify that saveToFile was called with the correct parameters
@@ -1255,6 +1261,35 @@ describe("generateStoryblokTypes", () => {
     expect(savedContent).toContain("export interface StoryblokMultilink");
     expect(savedContent).toContain("export interface StoryblokBloks");
     expect(savedContent).toContain("export interface StoryblokCustom");
+  });
+});
+
+describe("extractBundledTypeDefinitions", () => {
+  it("should preserve legacy declaration files without bundled regions", () => {
+    const content = "export interface StoryblokAsset { id: number }\n";
+
+    expect(extractBundledTypeDefinitions(content)).toBe(content);
+  });
+
+  it("should remove runtime imports and source maps from bundled declarations", () => {
+    const content = [
+      'import "dotenv/config";',
+      'import { Command } from "commander";',
+      "//#region src/types/storyblok.d.ts",
+      "interface StoryblokAsset { id: number }",
+      "//#endregion",
+      "export { StoryblokAsset };",
+      "//# sourceMappingURL=index.d.mts.map",
+    ].join("\n");
+
+    expect(extractBundledTypeDefinitions(content)).toBe(
+      [
+        "//#region src/types/storyblok.d.ts",
+        "interface StoryblokAsset { id: number }",
+        "//#endregion",
+        "export { StoryblokAsset };",
+      ].join("\n"),
+    );
   });
 });
 

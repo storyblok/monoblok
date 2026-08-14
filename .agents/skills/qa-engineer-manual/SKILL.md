@@ -42,6 +42,32 @@ You seed Storyblok QA spaces with predefined test scenarios. Packages might defi
 - **Trust the seed's exit status, not just its log.** The seed now verifies each staged resource
   actually landed remotely and exits non-zero with a `Verification FAILED` message when a push
   reports success but creates nothing, so check the exit status.
+- **A green seed proves the API accepted your JSON, not that the JSON is shaped like something the
+  editor would produce.** The Management API stores component schemas and story content as opaque
+  blobs: it takes almost any structure and echoes it back. Seeding a fixture and reading it back is
+  circular, because you authored the input, so it can never validate a shape. It is still a useful
+  fixed-point check, and it can prove server-side _transformation_ (normalization, defaults,
+  rejection) - just never correctness.
+
+### Grounding a shape
+
+When you need to know what a field option or content value really looks like, work down this list
+and stop at the first step that answers it:
+
+1. **Existing seeds.** Check the scenario fixtures for a field or value of that type. The corpus is
+   kept aligned with real wire formats, so a shape already in there is usually your answer.
+2. **`../storyrails`.** The backend truth for what is stored, normalized, and enforced.
+   `spec/integration/openapi/` is the source of truth for schemas and error shapes.
+3. **`../storyfront`.** The editor is what writes component schemas and content values:
+   `packages/openapi/src/FieldType.ts` declares the shapes, `Schema/*/index.vue` is what it
+   **writes**, `EditorForm/FieldType*/` is what it **reads**.
+4. **Ask the user to author it in the UI.** Last resort, when the source does not settle it. Ask
+   them to create the field or story by hand in a QA space and give you the id, then read it back
+   via MAPI (`curl` the component or story) and copy the result into the fixture verbatim. This is
+   the only empirical evidence that exists - everything you push yourself is circular.
+
+Never infer a shape from the schema form alone: the editor offers options it does not write, and
+spaces hold keys the editor no longer offers.
 
 ### Prerequisites
 

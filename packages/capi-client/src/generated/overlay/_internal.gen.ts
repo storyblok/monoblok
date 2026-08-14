@@ -3,7 +3,7 @@
 /**
  * A component schema field. Discriminated by the literal `type` enum on each variant.
  */
-export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | MultilinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | CustomFieldRoot;
+export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | ImageFieldRoot | FileFieldRoot | MultilinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | CustomFieldRoot;
 
 export type AssetFieldValue = AssetFieldValueRoot;
 
@@ -488,6 +488,66 @@ export type MultiassetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Minimum number of entries
      */
     minimum_entries?: number;
+};
+
+export type ImageFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'image';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
+     * Whether to prepend `https:` to the asset URL
+     */
+    add_https?: boolean;
+    /**
+     * Whether to force editors to crop the image to a fixed size
+     */
+    image_crop?: boolean;
+    /**
+     * Crop width in pixels, applied when `image_crop` is true. The editor
+     * writes an empty string when the input is cleared, so the value is not
+     * always numeric.
+     *
+     */
+    image_width?: number | string;
+    /**
+     * Crop height in pixels, applied when `image_crop` is true. The editor
+     * writes an empty string when the input is cleared, so the value is not
+     * always numeric.
+     *
+     */
+    image_height?: number | string;
+    /**
+     * Whether to keep the original image size when `image_crop` is true
+     */
+    keep_image_size?: boolean;
+    /**
+     * Numeric ID of the allowed asset folder
+     */
+    asset_folder_id?: number;
+};
+
+export type FileFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'file';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
+     * Whether to prepend `https:` to the asset URL
+     */
+    add_https?: boolean;
+    /**
+     * Numeric ID of the allowed asset folder
+     */
+    asset_folder_id?: number;
 };
 
 export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {

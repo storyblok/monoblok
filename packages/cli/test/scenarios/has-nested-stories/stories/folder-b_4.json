@@ -1,8 +1,12 @@
 {
   "id": 4,
-  "uuid": "4",
+  "uuid": "1d997b40-3927-40aa-8a36-6e53bb3dd69c",
   "name": "QA Folder B",
   "slug": "qa-folder-b",
   "full_slug": "qa-folder-b",
-  "is_folder": true
+  "is_folder": true,
+  "content": {
+    "content_types": ["page"]
+  },
+  "default_root": "page"
 }

@@ -1,0 +1,12 @@
+{
+  "id": 208901538656810,
+  "name": "qa_gamma",
+  "display_name": null,
+  "component_group_uuid": "41c9ccc5-313b-4bc4-a23e-3e1b3b18ce9b",
+  "is_root": false,
+  "is_nestable": true,
+  "internal_tag_ids": ["208901878932724"],
+  "schema": {},
+  "created_at": "2026-08-14T07:02:32.210Z",
+  "updated_at": "2026-08-14T07:06:18.855Z"
+}

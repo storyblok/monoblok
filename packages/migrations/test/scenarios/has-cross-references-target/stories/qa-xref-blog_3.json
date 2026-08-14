@@ -1,10 +1,11 @@
 {
   "id": 3,
-  "uuid": "3",
+  "uuid": "fd709a55-cd88-4132-8b0a-5401515541b0",
   "name": "QA XRef Blog Target",
   "slug": "qa-xref-blog",
   "full_slug": "qa-xref-blog",
   "content": {
+    "_uid": "0f789dc8-3766-4e47-8411-6ff52fb3fe91",
     "component": "qa_xref_page",
     "title": "Blog (target)"
   }

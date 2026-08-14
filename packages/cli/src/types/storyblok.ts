@@ -10,7 +10,10 @@ export type StoryblokPropertyType = "asset" | "multiasset" | "multilink" | "tabl
 export interface StoryblokAsset {
   alt: string | null;
   fieldtype: "asset";
-  id: number;
+  // Null for assets that are not stored in Storyblok, most visibly external URLs.
+  // Matches `id` in the asset field value spec, which the OpenAPI-derived
+  // AssetFieldValueRoot already types as nullable.
+  id: number | null;
   filename: string | null;
   name: string;
   title: string | null;

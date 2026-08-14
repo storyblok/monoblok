@@ -107,4 +107,20 @@ describe("types generate built package", () => {
     expect(storyblokTypes).not.toContain("//#region");
     expect(storyblokTypes).not.toContain("//#endregion");
   });
+
+  it("should type the asset id as nullable in the shipped declarations", async () => {
+    const fs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    const workspace = await createCliWorkspace();
+
+    await runTypesGenerate(workspace);
+
+    const storyblokTypes = await fs.readFile(resolve(workspace, "types/storyblok.d.ts"), "utf8");
+    const storyblokAsset = storyblokTypes.slice(storyblokTypes.indexOf("interface StoryblokAsset"));
+
+    // Assets that are not stored in Storyblok (external URLs) come back with a null id,
+    // and the asset field value spec types it as nullable. Asserted on the generated
+    // file rather than in a type test because tsconfig excludes *.test.ts from
+    // `test:types`, so a type assertion in a test would never be checked.
+    expect(storyblokAsset).toMatch(/^\s*id: number \| null;$/m);
+  });
 });

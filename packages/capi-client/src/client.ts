@@ -289,28 +289,56 @@ export const createApiClientBase = <
   ];
 
   /**
+   * Flush the in-memory cache and reset the tracked cv.
+   *
+   * Call this explicitly when `cache.flush` is set to `'manual'`, e.g. after
+   * receiving a Storyblok webhook event that signals content has changed.
+   */
+  const flushCache = async (): Promise<void> => {
+    await cacheProvider.flush();
+    currentCv = undefined;
+  };
+
+  /**
    * `/cdn/spaces/me` carries no `cv`, only the space's raw `version`. It is cached
    * for two seconds while the content endpoints are cached for a week, which makes
    * it the cheapest way to notice that content changed. Track it separately and use
    * it purely as a flush signal: the `cv` attached to requests keeps coming from
    * content responses, because the two values diverge for tokens with a Minimum
    * Cache TTL.
+   *
+   * `storyblok-js-client` implements the same heuristic in `cacheResponse` — keep the
+   * two in sync when changing the flush rules here.
+   *
+   * @param cvBefore the tracked cv as of before this response was processed.
    */
-  const updateSpaceVersion = async (result: ApiResponse): Promise<void> => {
+  const updateSpaceVersion = async (
+    result: ApiResponse,
+    cvBefore: number | undefined,
+  ): Promise<void> => {
     const nextSpaceVersion = extractSpaceVersion(result.data);
     if (nextSpaceVersion === undefined) {
       return;
     }
 
     // On the very first sighting there is no previous space version to compare
-    // against. Flush once anyway if content has already been served, because it may
-    // have been published between that request and this first poll.
-    const isFirstSighting = currentSpaceVersion === undefined && currentCv !== undefined;
+    // against, so compare against the cv instead. Without a Minimum Cache TTL — the
+    // default — the API floors nothing and both values report the same raw version,
+    // so an equal pair proves that nothing was published between the content request
+    // and this first poll and there is nothing to flush. An unequal pair means either
+    // a publish landed in between or a TTL is flooring the cv, and neither can be
+    // told apart from here, so flush once defensively.
+    const isFirstSighting =
+      currentSpaceVersion === undefined && cvBefore !== undefined && cvBefore !== nextSpaceVersion;
     const hasSpaceVersionChanged =
       currentSpaceVersion !== undefined && currentSpaceVersion !== nextSpaceVersion;
 
     if (cacheFlush === "auto" && (isFirstSighting || hasSpaceVersionChanged)) {
-      await cacheProvider.flush();
+      // Reset the tracked cv along with the cache: the edge keeps serving the old
+      // object for `?cv=<old>` for up to a week, so reusing it would refill the cache
+      // with the very content that was just flushed. Dropping it makes the next
+      // published request omit `cv` and take the origin's 301 to the current one.
+      await flushCache();
     }
 
     currentSpaceVersion = nextSpaceVersion;
@@ -319,7 +347,6 @@ export const createApiClientBase = <
   const updateCv = async (result: ApiResponse): Promise<boolean> => {
     const nextCv = extractCv(result.data);
     if (nextCv === undefined) {
-      await updateSpaceVersion(result);
       return true;
     }
 
@@ -330,6 +357,8 @@ export const createApiClientBase = <
     }
 
     if (cacheFlush === "auto" && currentCv !== undefined && currentCv !== nextCv) {
+      // Only the local cache is flushed here: the cv is replaced by `nextCv` right
+      // below, so — unlike the space-version path — no stale cv is left behind.
       await cacheProvider.flush();
     }
 
@@ -337,11 +366,27 @@ export const createApiClientBase = <
     return true;
   };
 
+  /**
+   * Tracks both version signals carried by a response and flushes the cache when
+   * either one reports that content changed.
+   *
+   * The space version is handled first so that a response carrying both signals (only
+   * `/cdn/spaces/me` reports a space version today, and it carries no `cv`) still ends
+   * up with the cv taken from that same response rather than dropped by the flush.
+   *
+   * @returns whether the result may be cached.
+   */
+  const trackResponseVersions = async (result: ApiResponse): Promise<boolean> => {
+    const cvBefore = currentCv;
+    await updateSpaceVersion(result, cvBefore);
+    return updateCv(result);
+  };
+
   const cacheSuccessResult = async <TResponse extends ApiResponse>(
     key: string,
     result: TResponse,
   ) => {
-    const shouldCacheResult = await updateCv(result);
+    const shouldCacheResult = await trackResponseVersions(result);
     if (result.error === undefined && shouldCacheResult) {
       await cacheProvider.set(key, {
         value: result,
@@ -390,7 +435,7 @@ export const createApiClientBase = <
     if (!cacheEnabled) {
       const networkResult = await fetchFn(query);
       throttleManager.adaptToResponse(networkResult.response);
-      await updateCv(networkResult);
+      await trackResponseVersions(networkResult);
       return networkResult;
     }
 
@@ -448,17 +493,6 @@ export const createApiClientBase = <
     ...resourceDeps,
     inlineRelations,
   });
-
-  /**
-   * Flush the in-memory cache and reset the tracked cv.
-   *
-   * Call this explicitly when `cache.flush` is set to `'manual'`, e.g. after
-   * receiving a Storyblok webhook event that signals content has changed.
-   */
-  const flushCache = async (): Promise<void> => {
-    await cacheProvider.flush();
-    currentCv = undefined;
-  };
 
   return {
     datasourceEntries: createDatasourceEntriesResource(resourceDeps),

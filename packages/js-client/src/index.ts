@@ -51,8 +51,17 @@ let memory: Partial<IMemoryType> = {};
 const cacheVersions = {} as CachedVersions;
 
 /**
+ * The only endpoint that reports the space's raw `version`, and the one endpoint whose
+ * responses must never enter the content cache.
+ */
+const SPACES_ME_PATH = "/cdn/spaces/me";
+
+/**
  * Last `space.version` seen per token, tracked separately from {@link cacheVersions}.
  * It is a change signal only and is never sent as a `cv` — see `cacheResponse`.
+ *
+ * Module-level and never reset, like {@link cacheVersions}: tests that exercise the
+ * space-version signal must each use a unique token to stay isolated.
  */
 const spaceVersions = {} as CachedVersions;
 
@@ -716,7 +725,7 @@ export class Storyblok {
 
     // Check in-memory cache first for published content
     // If cached, skip API call and rate limiting entirely
-    if (params.version === "published" && url !== "/cdn/spaces/me") {
+    if (params.version === "published" && url !== SPACES_ME_PATH) {
       const cache = await provider.get(cacheKey);
       if (cache) {
         return Promise.resolve(cache);
@@ -765,7 +774,7 @@ export class Storyblok {
           response = await this.processInlineAssets(response);
         }
 
-        if (params.version === "published" && url !== "/cdn/spaces/me") {
+        if (params.version === "published" && url !== SPACES_ME_PATH) {
           await provider.set(cacheKey, response);
         }
 
@@ -791,19 +800,35 @@ export class Storyblok {
         // content responses. The two are not interchangeable: for tokens with a
         // Minimum Cache TTL the API floors the `cv` into TTL-sized buckets, while
         // `space.version` always reflects the latest change.
-        const spaceVersion = response.data.space?.version;
+        //
+        // `@storyblok/api-client` implements the same heuristic in
+        // `updateSpaceVersion` — keep the two in sync when changing the flush rules.
+        //
+        // `response.data` is untyped, so narrow the version before tracking it: a
+        // value of another type would never compare equal to the numbers already in
+        // `spaceVersions` and would flush on every poll.
+        const rawSpaceVersion = url === SPACES_ME_PATH ? response.data.space?.version : undefined;
+        const spaceVersion = typeof rawSpaceVersion === "number" ? rawSpaceVersion : undefined;
 
-        if (params.token && spaceVersion) {
+        if (params.token && spaceVersion !== undefined) {
           const lastSpaceVersion = spaceVersions[params.token];
+          const lastCv = cacheVersions[params.token];
           // On the very first sighting there is no previous space version to compare
-          // against. Flush once anyway if content has already been served, because it
-          // may have been published between that request and this first poll.
+          // against, so compare against the cv instead. Without a Minimum Cache TTL —
+          // the default — the API floors nothing and both values report the same raw
+          // version, so an equal pair proves that nothing was published between the
+          // content request and this first poll and there is nothing to flush. An
+          // unequal pair means either a publish landed in between or a TTL is flooring
+          // the cv, and neither can be told apart from here, so flush once defensively.
           const isFirstSighting =
-            lastSpaceVersion === undefined && Boolean(cacheVersions[params.token]);
+            lastSpaceVersion === undefined && lastCv !== undefined && lastCv !== spaceVersion;
           const hasSpaceVersionChanged =
             lastSpaceVersion !== undefined && lastSpaceVersion !== spaceVersion;
 
           if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
+            // `flushCache` also clears the tracked cv, which matters here: the edge
+            // keeps serving the old object for `?cv=<old>` for up to a week, so
+            // reusing it would refill the cache with the content just flushed.
             await this.flushCache();
           }
           spaceVersions[params.token] = spaceVersion;

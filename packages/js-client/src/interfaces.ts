@@ -226,6 +226,17 @@ export interface ICacheProvider {
 
 export interface ISbCache {
   type?: "none" | "memory" | "custom";
+  /**
+   * Controls when the cache is cleared.
+   *
+   * - `'auto'`: clear whenever a response reports that content changed.
+   * - `'manual'` (default): never clear automatically; call `flushCache()` yourself.
+   * - `'onpreview'`: clear on draft requests only.
+   *
+   * Polling `/cdn/spaces/me` to pick up publishes requires `'auto'`. With
+   * `'onpreview'` a published poll never clears the cache, because only draft
+   * requests are considered clearable.
+   */
   clear?: "auto" | "manual" | "onpreview";
   custom?: ICacheProvider;
   /**

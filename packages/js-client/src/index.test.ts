@@ -275,9 +275,10 @@ describe("storyblokClient", () => {
       expect(flushCache).toHaveBeenCalledTimes(1);
     });
 
-    it("should flush on the first poll when content was already served", async () => {
+    it("should flush on the first poll when the cv does not match the space version", async () => {
       // Content may have been published between that first content request and this
-      // first poll, and there is no earlier space version to detect it with.
+      // first poll. There is no earlier space version to detect it with, but a cv that
+      // no longer matches the space version gives it away.
       const token = "space-version-first-poll";
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
@@ -350,6 +351,63 @@ describe("storyblokClient", () => {
       await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
 
       expect(manualCvFlushCache).toHaveBeenCalledTimes(2);
+    });
+
+    it("should not flush on the first poll when the cv already matches the space version", async () => {
+      // Without a Minimum Cache TTL — the default — a content response's `cv` and a
+      // poll's `space.version` are the same number. An equal pair proves that nothing
+      // was published in between, so the defensive first flush is not needed.
+      const token = "space-version-first-poll-equal";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+
+      // A later change is still detected.
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should ignore a space.version that is not a number", async () => {
+      // `response.data` is untyped. A version of another type would never compare equal
+      // to the numbers already tracked and would flush on every single poll.
+      const token = "space-version-not-a-number";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue({
+        data: { space: { id: 1, name: "Test", version: "2000" } },
+        headers: {},
+        status: 200,
+      });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not flush on a published poll when clear is onpreview", async () => {
+      // `onpreview` only clears on draft requests, so polling with a public token never
+      // flushes. Consumers that want the polling pattern need `clear: 'auto'`.
+      const token = "space-version-onpreview";
+      const onPreviewClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "onpreview" },
+      });
+      const onPreviewFlushCache = vi.spyOn(onPreviewClient, "flushCache");
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await onPreviewClient.get("cdn/stories", { version: "published", token });
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
+
+      expect(onPreviewFlushCache).not.toHaveBeenCalled();
     });
 
     it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {

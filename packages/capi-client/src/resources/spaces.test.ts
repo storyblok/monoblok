@@ -224,6 +224,41 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(linkRequests).toBe(1);
   });
 
+  it("should still flush on a space version change when cv is manual", async () => {
+    // With `cv: 'manual'` the cv is tracked but never attached to requests, so behind
+    // an edge cache a content response can keep carrying a stale cv indefinitely.
+    // `space.version` is then the only signal left to notice that content changed.
+    let spaceVersion = 1000;
+    const linkUrls: string[] = [];
+    server.use(
+      spaceHandler(() => spaceVersion),
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        linkUrls.push(request.url);
+        return HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      cache: { cv: "manual" },
+    });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get(); // first sighting, content already served
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkUrls).toHaveLength(2); // cache was flushed once defensively
+
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkUrls).toHaveLength(2); // unchanged version, still cached
+
+    spaceVersion = 2000; // content was published
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkUrls).toHaveLength(3); // cache was flushed, content re-fetched
+
+    expect(linkUrls.every((url) => !url.includes("cv="))).toBe(true);
+  });
+
   it("should not auto-flush on a space version change when flush is manual", async () => {
     let spaceVersion = 1000;
     let linkRequests = 0;

@@ -317,6 +317,41 @@ describe("storyblokClient", () => {
       expect(autoClearClient.cacheVersions()[token]).toBe(1000);
     });
 
+    it("should still flush on a space version change when cv is manual", async () => {
+      // With `cv: 'manual'` the cv is tracked but never attached to requests, so behind
+      // an edge cache a content response can keep carrying a stale cv indefinitely.
+      // `space.version` is then the only signal left to notice that content changed.
+      const token = "space-version-cv-manual";
+      const manualCvClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "auto", cv: "manual" },
+      });
+      const manualCvFlushCache = vi.spyOn(manualCvClient, "flushCache");
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      manualCvClient.throttleManager.execute = execute;
+      await manualCvClient.get("cdn/stories", { version: "draft", token });
+      await manualCvClient.get("cdn/stories", { version: "draft", token });
+
+      // The cv keeps being tracked from content responses, it is just not sent.
+      expect(manualCvClient.cacheVersions()[token]).toBe(1000);
+      expect(execute.mock.calls[1][3].cv).toBeUndefined();
+
+      manualCvClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+
+      // First sighting with content already served: flush once defensively.
+      expect(manualCvFlushCache).toHaveBeenCalledTimes(1);
+
+      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(manualCvFlushCache).toHaveBeenCalledTimes(1); // unchanged version
+
+      manualCvClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(3000));
+      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(manualCvFlushCache).toHaveBeenCalledTimes(2);
+    });
+
     it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {
       // Tokens with a Minimum Cache TTL receive a `cv` floored into TTL-sized buckets,
       // while `space.version` keeps reporting the raw latest version. The two values

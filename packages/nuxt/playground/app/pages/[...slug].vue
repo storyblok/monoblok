@@ -6,7 +6,6 @@ const { story } = await useAsyncStoryblok(slug && slug.length > 0 ? slug.join("/
     language: "en",
     resolve_relations: ["popular-articles.articles"],
   },
-  bridge: {},
 });
 </script>
 

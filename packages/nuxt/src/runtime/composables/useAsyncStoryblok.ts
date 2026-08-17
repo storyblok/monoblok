@@ -24,8 +24,13 @@ export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
    * (e.g. `watch: [version]`), which Nuxt's `useAsyncData` re-runs on.
    */
   api: MaybeRefOrGetter<ISbStoriesParams>;
-  /** Storyblok Bridge configuration for live preview */
-  bridge: StoryblokBridgeConfigV2;
+  /**
+   * Storyblok Bridge configuration for live preview.
+   *
+   * Optional: when omitted, the bridge is still registered and inherits
+   * `resolve_relations` and `resolve_links` from the `api` options.
+   */
+  bridge?: StoryblokBridgeConfigV2;
 }
 
 interface AsyncDataExecuteOptions {
@@ -114,7 +119,6 @@ const stableStringify = (obj: Record<string, any>): string => {
  * const version = ref('draft')
  * const { story, refresh } = await useAsyncStoryblok('home', {
  *   api: () => ({ version: version.value }),
- *   bridge: {},
  *   // re-fetch automatically when `version` changes
  *   watch: [version],
  * })

@@ -1053,6 +1053,109 @@ describe("component property type annotations", () => {
     expect(result).not.toContain("tab-content");
   });
 
+  it("should skip group properties", async () => {
+    // The management API represents the editor's "Group" field as a `section`. It only
+    // arranges the fields listed in `keys`, so it never holds a value of its own.
+    const componentWithGroup: Component = {
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        contact_details: {
+          type: "section",
+          keys: ["title"],
+        },
+        title: {
+          type: "text",
+          required: true,
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithGroup],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const result = await generateTypes(spaceData, { strict: false });
+
+    expect(result).toContain("title: string");
+    expect(result).not.toContain("contact_details");
+  });
+
+  it("should keep a regular field whose name starts with tab-", async () => {
+    // Tabs are identified by their type, not by their key. A content field that merely
+    // happens to be named `tab-...` still holds a value and belongs in the types.
+    const componentWithTabPrefixedField: Component = {
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        "tab-title": {
+          type: "text",
+          required: true,
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithTabPrefixedField],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const result = await generateTypes(spaceData, { strict: false });
+
+    expect(result).toContain('"tab-title": string');
+  });
+
+  it("should skip malformed schema entries instead of failing", async () => {
+    // The management API types every schema entry as an object, but malformed spaces
+    // do occur. A single bad entry must not take down the whole command.
+    const componentWithMalformedEntry: Component = {
+      name: "test_component",
+      display_name: "Test Component",
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      id: 1,
+      schema: {
+        broken: null as unknown as Component["schema"][string],
+        title: {
+          type: "text",
+          required: true,
+        },
+      },
+      internal_tags_list: [],
+      internal_tag_ids: [],
+    };
+
+    const spaceData: SpaceComponentsData = {
+      components: [componentWithMalformedEntry],
+      datasources: [],
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
+
+    const result = await generateTypes(spaceData, { strict: false });
+
+    expect(result).toContain("title: string");
+    expect(result).not.toContain("broken");
+  });
+
   it("should handle custom property type with customFieldsParser", async () => {
     // Create a component with custom property type
     const componentWithCustomType: Component = {

@@ -16,7 +16,7 @@ import { join, resolve } from "pathe";
 import { pathToFileURL } from "node:url";
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import { readFileSync } from "node:fs";
-import type { ComponentPropertySchema } from "../../../types/schemas";
+import type { ComponentPropertySchema, ComponentPropertySchemaType } from "../../../types/schemas";
 import {
   createComponentFile,
   createContentTypesFile,
@@ -66,6 +66,11 @@ const SOURCE_MAP_START = "//# sourceMappingURL=";
 // Bundled declarations hoist every import to the top as a single line each. Binding
 // lists are normalized by the bundler, so a regex is sufficient to enumerate them.
 const IMPORT_STATEMENT = /^import\s+(?:(.+?)\s+from\s+)?["'][^"']+["'];?[ \t]*$/gm;
+// Field types that exist purely to arrange other fields in the editor. They carry no
+// value of their own, so a story never stores anything under their key. The management
+// API calls the editor's "Group" field a `section`.
+const LAYOUT_FIELD_TYPES = new Set<ComponentPropertySchemaType>(["section", "tab"]);
+const isLayoutFieldType = (type: ComponentPropertySchemaType) => LAYOUT_FIELD_TYPES.has(type);
 const getDatasourceTypeTitle = (slug: string) => `${toPascalCase(slug)}DataSource`;
 
 const getImportedBindings = (content: string) =>
@@ -256,11 +261,6 @@ const getComponentPropertiesTypeAnnotations = async (
     async (accPromise, [key, value]) => {
       const acc = await accPromise;
 
-      // Skip tabbed properties
-      if (key.startsWith("tab-") || value.type === "section") {
-        return acc;
-      }
-
       // Type guard to ensure value is ComponentPropertySchema
       if (!value || typeof value !== "object" || !("type" in value)) {
         return acc;
@@ -268,6 +268,13 @@ const getComponentPropertiesTypeAnnotations = async (
 
       const schema = value as FieldSchema;
       const propertyType = schema.type;
+
+      // Tabs and groups only arrange fields in the editor, so they never reach the
+      // story content and must not show up in the generated types.
+      if (isLayoutFieldType(propertyType)) {
+        return acc;
+      }
+
       const propertyTypeAnnotation: JSONSchema = {
         [key]: getPropertyTypeAnnotation(schema, options.typePrefix, options.typeSuffix),
       };

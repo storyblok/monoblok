@@ -223,7 +223,7 @@ describe("spaces.get() as a cache invalidation signal", () => {
     await client.spaces.get();
     await client.get("v2/cdn/links", { query: { version: "published" } });
 
-    const lastUrl = linkUrls.at(-1) as string;
+    const lastUrl = linkUrls[linkUrls.length - 1];
     expect(new URL(lastUrl).searchParams.get("cv")).toBeNull();
   });
 

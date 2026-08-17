@@ -236,6 +236,112 @@ describe("storyblokClient", () => {
     });
   });
 
+  describe("cache invalidation via cdn/spaces/me", () => {
+    // `/cdn/spaces/me` reports `space.version` and no `cv`. It is the cheapest way to
+    // notice that content changed, because it is only cached for two seconds.
+    const spaceResponse = (version: number) => ({
+      data: { space: { id: 1, name: "Test", version } },
+      headers: {},
+      status: 200,
+    });
+
+    const storiesResponse = (cv: number) => ({
+      data: { stories: [{ id: 1, title: "Update" }], cv },
+      headers: {},
+      status: 200,
+    });
+
+    let autoClearClient: any;
+    let flushCache: any;
+
+    beforeEach(() => {
+      autoClearClient = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "auto" },
+      });
+      flushCache = vi.spyOn(autoClearClient, "flushCache");
+    });
+
+    it("should flush the cache when the space reports a new version", async () => {
+      const token = "space-version-changed";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled(); // nothing served yet, nothing to flush
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should flush on the first poll when content was already served", async () => {
+      // Content may have been published between that first content request and this
+      // first poll, and there is no earlier space version to detect it with.
+      const token = "space-version-first-poll";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+
+      // …but only once: further polls at the same version must not flush again.
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not flush the cache when the space version is unchanged", async () => {
+      const token = "space-version-unchanged";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not track space.version as the cv sent with requests", async () => {
+      const token = "space-version-not-a-cv";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      // The cv keeps coming from content responses; the space version never overwrites it.
+      expect(autoClearClient.cacheVersions()[token]).toBe(1000);
+    });
+
+    it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {
+      // Tokens with a Minimum Cache TTL receive a `cv` floored into TTL-sized buckets,
+      // while `space.version` keeps reporting the raw latest version. The two values
+      // differ permanently, and must not be compared against each other.
+      const token = "space-version-min-cache";
+      const flooredCv = 1786950000;
+      const rawSpaceVersion = 1786950860;
+
+      for (let i = 0; i < 3; i++) {
+        autoClearClient.throttleManager.execute = vi
+          .fn()
+          .mockResolvedValue(spaceResponse(rawSpaceVersion));
+        await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+        autoClearClient.throttleManager.execute = vi
+          .fn()
+          .mockResolvedValue(storiesResponse(flooredCv));
+        await autoClearClient.get("cdn/stories", { version: "draft", token });
+      }
+
+      expect(flushCache).not.toHaveBeenCalled();
+      expect(autoClearClient.cacheVersions()[token]).toBe(flooredCv);
+    });
+  });
+
   describe("retry behaviour on 429", () => {
     beforeEach(() => {
       vi.useFakeTimers();

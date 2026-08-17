@@ -4,7 +4,7 @@ import { createMemoryCacheProvider, createStrategy } from "./utils/cache";
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
-import { applyCvToQuery, extractCv } from "./utils/cv";
+import { applyCvToQuery, extractCv, extractSpaceVersion } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, shouldUseCache } from "./utils/request";
 import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
@@ -248,6 +248,7 @@ export const createApiClientBase = <
   const cacheFlush = cache.flush ?? "auto";
   const cvMode = cache.cv ?? "auto";
   let currentCv: number | undefined;
+  let currentSpaceVersion: number | undefined;
 
   const client: Client = createClient(
     createConfig({
@@ -287,9 +288,38 @@ export const createApiClientBase = <
     },
   ];
 
+  /**
+   * `/cdn/spaces/me` carries no `cv`, only the space's raw `version`. It is cached
+   * for two seconds while the content endpoints are cached for a week, which makes
+   * it the cheapest way to notice that content changed. Track it separately and use
+   * it purely as a flush signal: the `cv` attached to requests keeps coming from
+   * content responses, because the two values diverge for tokens with a Minimum
+   * Cache TTL.
+   */
+  const updateSpaceVersion = async (result: ApiResponse): Promise<void> => {
+    const nextSpaceVersion = extractSpaceVersion(result.data);
+    if (nextSpaceVersion === undefined) {
+      return;
+    }
+
+    // On the very first sighting there is no previous space version to compare
+    // against. Flush once anyway if content has already been served, because it may
+    // have been published between that request and this first poll.
+    const isFirstSighting = currentSpaceVersion === undefined && currentCv !== undefined;
+    const hasSpaceVersionChanged =
+      currentSpaceVersion !== undefined && currentSpaceVersion !== nextSpaceVersion;
+
+    if (cacheFlush === "auto" && (isFirstSighting || hasSpaceVersionChanged)) {
+      await cacheProvider.flush();
+    }
+
+    currentSpaceVersion = nextSpaceVersion;
+  };
+
   const updateCv = async (result: ApiResponse): Promise<boolean> => {
     const nextCv = extractCv(result.data);
     if (nextCv === undefined) {
+      await updateSpaceVersion(result);
       return true;
     }
 

@@ -50,6 +50,12 @@ let memory: Partial<IMemoryType> = {};
 
 const cacheVersions = {} as CachedVersions;
 
+/**
+ * Last `space.version` seen per token, tracked separately from {@link cacheVersions}.
+ * It is a change signal only and is never sent as a `cv` — see `cacheResponse`.
+ */
+const spaceVersions = {} as CachedVersions;
+
 interface CachedVersions {
   [key: string]: number;
 }
@@ -767,18 +773,40 @@ export class Storyblok {
           (this.cache.clear === "onpreview" && params.version === "draft") ||
           this.cache.clear === "auto";
 
-        // Get cv from story or space
-        const cv = response.data.cv ?? response.data.space?.version;
-
-        if (params.token && cv) {
+        if (params.token && response.data.cv) {
           if (
             isCacheClearable &&
             cacheVersions[params.token] && // there is a cache
-            cacheVersions[params.token] !== cv // a new cv is incoming
+            cacheVersions[params.token] !== response.data.cv // a new cv is incoming
           ) {
             await this.flushCache();
           }
-          cacheVersions[params.token] = cv;
+          cacheVersions[params.token] = response.data.cv;
+        }
+
+        // `/cdn/spaces/me` is the cheapest way to notice that content changed: it is
+        // only cached for two seconds, while the content endpoints are cached for a
+        // week. It reports the space's raw `version` and no `cv`, so it is used purely
+        // as a change signal — the `cv` sent along with requests keeps coming from
+        // content responses. The two are not interchangeable: for tokens with a
+        // Minimum Cache TTL the API floors the `cv` into TTL-sized buckets, while
+        // `space.version` always reflects the latest change.
+        const spaceVersion = response.data.space?.version;
+
+        if (params.token && spaceVersion) {
+          const lastSpaceVersion = spaceVersions[params.token];
+          // On the very first sighting there is no previous space version to compare
+          // against. Flush once anyway if content has already been served, because it
+          // may have been published between that request and this first poll.
+          const isFirstSighting =
+            lastSpaceVersion === undefined && Boolean(cacheVersions[params.token]);
+          const hasSpaceVersionChanged =
+            lastSpaceVersion !== undefined && lastSpaceVersion !== spaceVersion;
+
+          if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
+            await this.flushCache();
+          }
+          spaceVersions[params.token] = spaceVersion;
         }
 
         return resolve(response);

@@ -33,7 +33,8 @@ done
 
 require_space_id
 
-api="https://mapi.storyblok.com/v1/spaces/${space_id}"
+mapi_base_url="${STORYBLOK_MAPI_URL:-https://mapi.storyblok.com/v1}"
+api="${mapi_base_url}/spaces/${space_id}"
 
 current="$(curl -sS -H "Authorization: ${STORYBLOK_TOKEN}" "${api}" \
   | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const s=JSON.parse(d).space;console.log(s.domain ?? '')})")"

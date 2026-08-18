@@ -55,6 +55,12 @@ one fails, you have found a setup problem — fix it before reading anything int
 - [ ] Note which link in the chain each failure sat at. A bare timeout on a preview assertion is
       indistinguishable between six causes; naming the link is the finding.
 
+## 5. Teardown
+
+- [ ] **The space's preview domain was restored to what it was before you started.** You wrote it
+      down in step 1; put it back. Nothing does this for you, and the next person to open the space
+      in the editor gets a blank preview with no error if you skip it.
+
 ## Package harness contract
 
 A package is covered when it provides all four:

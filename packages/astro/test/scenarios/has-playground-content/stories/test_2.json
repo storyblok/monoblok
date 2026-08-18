@@ -1,0 +1,21 @@
+{
+  "id": 2,
+  "uuid": "2",
+  "name": "Test",
+  "slug": "test",
+  "full_slug": "test",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 0,
+  "content": {
+    "component": "page",
+    "body": [
+      {
+        "_uid": "teaser-test-1",
+        "component": "teaser",
+        "headline": "Live preview disabled teaser",
+        "text": { "type": "doc", "content": [{ "type": "paragraph" }] }
+      }
+    ]
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": 1,
+  "uuid": "1",
+  "name": "Home",
+  "slug": "home",
+  "full_slug": "home",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 0,
+  "content": {
+    "component": "page",
+    "body": [
+      {
+        "_uid": "teaser-home-1",
+        "component": "teaser",
+        "headline": "QA teaser headline",
+        "text": {
+          "type": "doc",
+          "content": [
+            { "type": "paragraph", "content": [{ "type": "text", "text": "QA teaser body" }] }
+          ]
+        }
+      },
+      {
+        "_uid": "grid-home-1",
+        "component": "grid",
+        "columns": [
+          { "_uid": "feature-home-1", "component": "feature", "name": "Feature 1" },
+          { "_uid": "feature-home-2", "component": "feature", "name": "Feature 2" }
+        ]
+      },
+      {
+        "_uid": "featured-articles-home-1",
+        "component": "featured-articles",
+        "heading": "Featured articles",
+        "posts": ["4", "5"]
+      }
+    ]
+  }
+}

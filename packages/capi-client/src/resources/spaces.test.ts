@@ -176,6 +176,38 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(linkRequests).toBe(2); // cache was flushed, content re-fetched
   });
 
+  it("should ignore a space.version reported by another endpoint", async () => {
+    // The signal is gated on the path, not only on the response shape: a `space.version`
+    // that a content response happens to embed must never flush the cache.
+    let spaceVersion = 2000;
+    let linkRequests = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        linkRequests++;
+        return HttpResponse.json({
+          links: {},
+          cv: 1000,
+          space: { id: 1, name: "Test Space", version: spaceVersion },
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkRequests).toBe(1);
+
+    // A second, differently keyed request reports a moved space version.
+    spaceVersion = 3000;
+    await client.get("v2/cdn/links", { query: { version: "published", starts_with: "blog" } });
+    expect(linkRequests).toBe(2);
+
+    // The first entry must still be cached: nothing reported a new cv, and a content
+    // response's `space.version` is not a flush signal.
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    expect(linkRequests).toBe(2);
+  });
+
   it("should not attach a cv to the poll request", async () => {
     // The `cv` is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
     // fragments the edge cache of the endpoint the polling pattern depends on.

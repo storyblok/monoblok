@@ -1,11 +1,21 @@
 export const CACHEABLE_METHODS = new Set(["GET"]);
-export const NON_CACHEABLE_PATHS = new Set(["/v2/cdn/spaces/me"]);
+
+/**
+ * The only endpoint that reports the space's raw `version`, and the one endpoint whose
+ * responses must never enter the content cache.
+ */
+export const SPACES_ME_PATH = "/v2/cdn/spaces/me";
+
+export const NON_CACHEABLE_PATHS = new Set([SPACES_ME_PATH]);
 
 /** Returns `true` when the query targets draft content (`version: 'draft'`). Draft requests bypass the cache. */
 export const isDraftRequest = (query: Record<string, unknown>) => query.version === "draft";
 
 /** Ensures a path always starts with a leading slash for consistent comparisons and cache keys. */
 const normalizePath = (path: string) => (path.startsWith("/") ? path : `/${path}`);
+
+/** Returns `true` when the path targets the endpoint that reports the space version. */
+export const isSpacesMeRequest = (path: string) => normalizePath(path) === SPACES_ME_PATH;
 
 /**
  * Recursively normalizes query values by sorting object keys.

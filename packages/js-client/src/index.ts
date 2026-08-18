@@ -185,12 +185,16 @@ export class Storyblok {
     });
   }
 
-  private parseParams(params: ISbStoriesParams): ISbStoriesParams {
+  private parseParams(params: ISbStoriesParams, url = ""): ISbStoriesParams {
     if (!params.token) {
       params.token = this.getToken();
     }
 
-    if (!params.cv && this.cvMode === "auto") {
+    // The cv is a cache buster, so it only belongs on requests that are cached.
+    // `/cdn/spaces/me` is excluded from the cache below in `cacheResponse`, reports no
+    // cv of its own, and is cached for two seconds at the edge — it is the endpoint the
+    // polling pattern relies on for freshness, and a cv only fragments its edge cache.
+    if (!params.cv && this.cvMode === "auto" && url !== SPACES_ME_PATH) {
       params.cv = cacheVersions[params.token];
     }
 
@@ -211,7 +215,7 @@ export class Storyblok {
 
   private factoryParamOptions(url: string, params: ISbStoriesParams): ISbStoriesParams {
     if (isCDNUrl(url)) {
-      return this.parseParams(params);
+      return this.parseParams(params, url);
     }
 
     return params;
@@ -782,17 +786,6 @@ export class Storyblok {
           (this.cache.clear === "onpreview" && params.version === "draft") ||
           this.cache.clear === "auto";
 
-        if (params.token && response.data.cv) {
-          if (
-            isCacheClearable &&
-            cacheVersions[params.token] && // there is a cache
-            cacheVersions[params.token] !== response.data.cv // a new cv is incoming
-          ) {
-            await this.flushCache();
-          }
-          cacheVersions[params.token] = response.data.cv;
-        }
-
         // `/cdn/spaces/me` is the cheapest way to notice that content changed: it is
         // only cached for two seconds, while the content endpoints are cached for a
         // week. It reports the space's raw `version` and no `cv`, so it is used purely
@@ -802,7 +795,10 @@ export class Storyblok {
         // `space.version` always reflects the latest change.
         //
         // `@storyblok/api-client` implements the same heuristic in
-        // `updateSpaceVersion` — keep the two in sync when changing the flush rules.
+        // `updateSpaceVersion` — keep the two in sync when changing the flush rules,
+        // including the order: the space version is handled before the cv so that a
+        // response carrying both signals still ends up with the cv taken from that same
+        // response, rather than dropped by the flush.
         //
         // `response.data` is untyped, so narrow the version before tracking it: a
         // value of another type would never compare equal to the numbers already in
@@ -832,6 +828,17 @@ export class Storyblok {
             await this.flushCache();
           }
           spaceVersions[params.token] = spaceVersion;
+        }
+
+        if (params.token && response.data.cv) {
+          if (
+            isCacheClearable &&
+            cacheVersions[params.token] && // there is a cache
+            cacheVersions[params.token] !== response.data.cv // a new cv is incoming
+          ) {
+            await this.flushCache();
+          }
+          cacheVersions[params.token] = response.data.cv;
         }
 
         return resolve(response);

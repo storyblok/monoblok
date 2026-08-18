@@ -434,6 +434,50 @@ describe("storyblokClient", () => {
       expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
     });
 
+    it("should not attach a cv to the poll request", async () => {
+      // The cv is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
+      // fragments the edge cache of the endpoint the polling pattern relies on.
+      const token = "space-version-no-cv-on-poll";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      const execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      autoClearClient.throttleManager.execute = execute;
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(execute.mock.calls[0][3].cv).toBeUndefined();
+    });
+
+    it("should keep the cv of a response that also reports a space version", async () => {
+      // Only `/cdn/spaces/me` reports a space version today, and it carries no cv. If it
+      // ever reported both, the flush triggered by the space version must not drop the
+      // cv that arrived in that same response — which is why the space version is
+      // tracked before the cv, matching `trackResponseVersions` in
+      // `@storyblok/api-client`. The token is the client's own access token so that
+      // `flushCache` clears the cv this test tracks.
+      const token = "space-version-and-cv-in-one-response";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+      const bothSignals = (value: number) => ({
+        data: { space: { id: 1, name: "Test", version: value }, cv: value },
+        headers: {},
+        status: 200,
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(bothSignals(2000));
+      await client.get("cdn/spaces/me", { version: "draft" });
+      expect(client.cacheVersions()[token]).toBe(2000);
+
+      // A publish landed: both signals move together, the cache is flushed, and the cv
+      // from this very response has to survive it.
+      client.throttleManager.execute = vi.fn().mockResolvedValue(bothSignals(3000));
+      await client.get("cdn/spaces/me", { version: "draft" });
+
+      expect(client.cacheVersions()[token]).toBe(3000);
+    });
+
     it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {
       // Tokens with a Minimum Cache TTL receive a `cv` floored into TTL-sized buckets,
       // while `space.version` keeps reporting the raw latest version. The two values

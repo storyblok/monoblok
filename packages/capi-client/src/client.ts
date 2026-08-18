@@ -6,7 +6,7 @@ import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
 import { applyCvToQuery, extractCv, extractSpaceVersion } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
-import { createCacheKey, shouldUseCache } from "./utils/request";
+import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
 import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
 import type { Block as Component } from "./generated/types/block";
 import type { RetryOptions } from "ky";
@@ -109,6 +109,13 @@ export interface CacheConfig {
    *
    * - `'auto'` (default): automatically flush the cache whenever the API returns a new cv value.
    * - `'manual'`: never auto-flush; call `client.flushCache()` explicitly (e.g. on webhook trigger).
+   *
+   * The tracked versions live on the client instance. With `'auto'`, a `provider` shared
+   * across clients, and a token that has a Minimum Cache TTL, every newly created client
+   * flushes that shared cache once on its first `spaces.get()`: the TTL-floored cv it
+   * tracks never equals the raw `space.version`, so each instance takes the defensive
+   * first-sighting flush. Reuse one long-lived client, or use `'manual'`, when creating a
+   * client per request against a shared provider.
    */
   flush?: "auto" | "manual";
   /**
@@ -310,12 +317,21 @@ export const createApiClientBase = <
    * `storyblok-js-client` implements the same heuristic in `cacheResponse` — keep the
    * two in sync when changing the flush rules here.
    *
+   * Gated on the path as well as on the response shape: a `space.version` is only a
+   * change signal when it comes from the endpoint that reports the space's raw version.
+   * Any other response that happens to embed a numeric `space.version` must not flush.
+   *
    * @param cvBefore the tracked cv as of before this response was processed.
    */
   const updateSpaceVersion = async (
+    path: string,
     result: ApiResponse,
     cvBefore: number | undefined,
   ): Promise<void> => {
+    if (!isSpacesMeRequest(path)) {
+      return;
+    }
+
     const nextSpaceVersion = extractSpaceVersion(result.data);
     if (nextSpaceVersion === undefined) {
       return;
@@ -376,17 +392,18 @@ export const createApiClientBase = <
    *
    * @returns whether the result may be cached.
    */
-  const trackResponseVersions = async (result: ApiResponse): Promise<boolean> => {
+  const trackResponseVersions = async (path: string, result: ApiResponse): Promise<boolean> => {
     const cvBefore = currentCv;
-    await updateSpaceVersion(result, cvBefore);
+    await updateSpaceVersion(path, result, cvBefore);
     return updateCv(result);
   };
 
   const cacheSuccessResult = async <TResponse extends ApiResponse>(
+    path: string,
     key: string,
     result: TResponse,
   ) => {
-    const shouldCacheResult = await trackResponseVersions(result);
+    const shouldCacheResult = await trackResponseVersions(path, result);
     if (result.error === undefined && shouldCacheResult) {
       await cacheProvider.set(key, {
         value: result,
@@ -441,7 +458,7 @@ export const createApiClientBase = <
     if (!cacheEnabled) {
       const networkResult = await fetchFn(query);
       throttleManager.adaptToResponse(networkResult.response);
-      await trackResponseVersions(networkResult);
+      await trackResponseVersions(path, networkResult);
       return networkResult;
     }
 
@@ -455,7 +472,7 @@ export const createApiClientBase = <
     const loadNetwork = async () => {
       const result = await fetchFn(query);
       throttleManager.adaptToResponse(result.response);
-      return cacheSuccessResult(key, result);
+      return cacheSuccessResult(path, key, result);
     };
 
     return strategy({

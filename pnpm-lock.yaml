@@ -136,13 +136,13 @@ importers:
   packages/angular:
     dependencies:
       '@storyblok/api-client':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../capi-client
       '@storyblok/live-preview':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../live-preview
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
       tslib:
         specifier: ^2.3.0
@@ -215,10 +215,10 @@ importers:
   packages/astro:
     dependencies:
       '@storyblok/js':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
       camelcase:
         specifier: ^8.0.0
@@ -418,7 +418,7 @@ importers:
   packages/capi-client:
     dependencies:
       '@storyblok/region-helper':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../region-helper
       ky:
         specifier: ^1.14.3
@@ -482,16 +482,16 @@ importers:
         specifier: ^7.5.1
         version: 7.10.1(@types/node@24.11.0)
       '@storyblok/js':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js
       '@storyblok/management-api-client':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../mapi-client
       '@storyblok/region-helper':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../region-helper
       '@storyblok/schema':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../schema
       '@topcli/spinner':
         specifier: ^2.1.2
@@ -545,7 +545,7 @@ importers:
         specifier: ^11.0.0
         version: 11.0.0
       storyblok-js-client:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js-client
     devDependencies:
       '@release-it/conventional-changelog':
@@ -639,10 +639,10 @@ importers:
         specifier: ^2.1.6
         version: 2.1.6
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
       storyblok-js-client:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js-client
     devDependencies:
       '@storyblok/lint-config':
@@ -861,7 +861,7 @@ importers:
   packages/mapi-client:
     dependencies:
       '@storyblok/region-helper':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../region-helper
       ky:
         specifier: ^1.14.3
@@ -916,10 +916,10 @@ importers:
   packages/migrations:
     dependencies:
       '@storyblok/management-api-client':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../mapi-client
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
       pathe:
         specifier: 'catalog:'
@@ -950,7 +950,7 @@ importers:
   packages/nuxt:
     dependencies:
       '@storyblok/vue':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../vue
     devDependencies:
       '@cypress/vite-dev-server':
@@ -999,10 +999,10 @@ importers:
   packages/react:
     dependencies:
       '@storyblok/js':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
       next:
         specifier: ^13 || ^14 || ^15 || ^16
@@ -1562,10 +1562,10 @@ importers:
   packages/svelte:
     dependencies:
       '@storyblok/js':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
     devDependencies:
       '@cypress/svelte':
@@ -1660,10 +1660,10 @@ importers:
   packages/vue:
     dependencies:
       '@storyblok/js':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../js
       '@storyblok/richtext':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../richtext
     devDependencies:
       '@rollup/plugin-typescript':

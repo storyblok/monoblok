@@ -42,7 +42,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/region-helper": "workspace:*",
+    "@storyblok/region-helper": "workspace:^",
     "ky": "^1.14.3"
   },
   "devDependencies": {

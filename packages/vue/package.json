@@ -54,8 +54,8 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*",
-    "@storyblok/richtext": "workspace:*"
+    "@storyblok/js": "workspace:^",
+    "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.1.2",

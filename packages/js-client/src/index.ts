@@ -800,6 +800,13 @@ export class Storyblok {
         // response carrying both signals still ends up with the cv taken from that same
         // response, rather than dropped by the flush.
         //
+        // One rule differs deliberately. On an ambiguous first sighting the api-client
+        // defers to a revalidation rather than flushing, because its tracked versions
+        // live on the client instance: with a shared `cache.provider` and a client per
+        // request, a flush there would empty that shared cache once per instance. The
+        // maps here are module-level, so an ambiguous sighting happens once per process
+        // and the flush stays bounded.
+        //
         // `response.data` is untyped, so narrow the version before tracking it: a
         // value of another type would never compare equal to the numbers already in
         // `spaceVersions` and would flush on every poll.

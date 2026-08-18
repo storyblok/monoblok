@@ -109,13 +109,6 @@ export interface CacheConfig {
    *
    * - `'auto'` (default): automatically flush the cache whenever the API returns a new cv value.
    * - `'manual'`: never auto-flush; call `client.flushCache()` explicitly (e.g. on webhook trigger).
-   *
-   * The tracked versions live on the client instance. With `'auto'`, a `provider` shared
-   * across clients, and a token that has a Minimum Cache TTL, every newly created client
-   * flushes that shared cache once on its first `spaces.get()`: the TTL-floored cv it
-   * tracks never equals the raw `space.version`, so each instance takes the defensive
-   * first-sighting flush. Reuse one long-lived client, or use `'manual'`, when creating a
-   * client per request against a shared provider.
    */
   flush?: "auto" | "manual";
   /**
@@ -256,6 +249,12 @@ export const createApiClientBase = <
   const cvMode = cache.cv ?? "auto";
   let currentCv: number | undefined;
   let currentSpaceVersion: number | undefined;
+  /**
+   * Set when a first `space.version` sighting was ambiguous, carrying the cv tracked at
+   * that moment. The next cacheable request revalidates against the origin and the cv it
+   * returns settles whether anything was actually published. See {@link updateSpaceVersion}.
+   */
+  let pendingRevalidation: { cvBefore: number } | undefined;
 
   const client: Client = createClient(
     createConfig({
@@ -314,8 +313,11 @@ export const createApiClientBase = <
    * content responses, because the two values diverge for tokens with a Minimum
    * Cache TTL.
    *
-   * `storyblok-js-client` implements the same heuristic in `cacheResponse` — keep the
-   * two in sync when changing the flush rules here.
+   * `storyblok-js-client` implements the same heuristic in `cacheResponse`, with one
+   * deliberate difference: it flushes on an ambiguous first sighting where this client
+   * revalidates instead. Its tracked versions are module-level, so an ambiguous sighting
+   * happens once per process rather than once per client, and there is no shared provider
+   * for the flush to empty. Keep the rest of the rules in sync.
    *
    * Gated on the path as well as on the response shape: a `space.version` is only a
    * change signal when it comes from the endpoint that reports the space's raw version.
@@ -337,24 +339,37 @@ export const createApiClientBase = <
       return;
     }
 
-    // On the very first sighting there is no previous space version to compare
-    // against, so compare against the cv instead. Without a Minimum Cache TTL — the
-    // default — the API floors nothing and both values report the same raw version,
-    // so an equal pair proves that nothing was published between the content request
-    // and this first poll and there is nothing to flush. An unequal pair means either
-    // a publish landed in between or a TTL is flooring the cv, and neither can be
-    // told apart from here, so flush once defensively.
-    const isFirstSighting =
-      currentSpaceVersion === undefined && cvBefore !== undefined && cvBefore !== nextSpaceVersion;
     const hasSpaceVersionChanged =
       currentSpaceVersion !== undefined && currentSpaceVersion !== nextSpaceVersion;
 
-    if (cacheFlush === "auto" && (isFirstSighting || hasSpaceVersionChanged)) {
+    if (cacheFlush === "auto" && hasSpaceVersionChanged) {
       // Reset the tracked cv along with the cache: the edge keeps serving the old
       // object for `?cv=<old>` for up to a week, so reusing it would refill the cache
       // with the very content that was just flushed. Dropping it makes the next
       // published request omit `cv` and take the origin's 301 to the current one.
       await flushCache();
+    }
+
+    // On the very first sighting there is no previous space version to compare against,
+    // so compare against the cv instead. Without a Minimum Cache TTL — the default —
+    // the API floors nothing and both values report the same raw version, so an equal
+    // pair proves that nothing was published between the content request and this first
+    // poll and there is nothing to do. An unequal pair means either a publish landed in
+    // between or a TTL is flooring the cv, and neither can be told apart from here.
+    //
+    // Rather than flush on that ambiguity, defer it: drop the tracked cv so the next
+    // cacheable request goes out without one and takes the origin's 301 to the current
+    // cv, and let the cv that comes back decide. This keeps the cost of an ambiguous
+    // sighting to one revalidation by this client, instead of a flush that also empties
+    // a `cache.provider` shared with every other client.
+    if (
+      cacheFlush === "auto" &&
+      currentSpaceVersion === undefined &&
+      cvBefore !== undefined &&
+      cvBefore !== nextSpaceVersion
+    ) {
+      pendingRevalidation = { cvBefore };
+      currentCv = undefined;
     }
 
     currentSpaceVersion = nextSpaceVersion;
@@ -466,14 +481,35 @@ export const createApiClientBase = <
     const key = cacheOptions?.cacheKeyPrefix
       ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
       : baseKey;
-    const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
-    const cachedResult = cachedEntry?.value;
-
     const loadNetwork = async () => {
       const result = await fetchFn(query);
       throttleManager.adaptToResponse(result.response);
       return cacheSuccessResult(path, key, result);
     };
+
+    // An ambiguous `space.version` sighting is settled here rather than by a flush: this
+    // request bypasses the cache and, with the tracked cv already dropped, goes out
+    // without a `cv`, so the origin redirects it to the current one. A cv that moved
+    // means content really was published and the cache is emptied — before this fresh
+    // response is stored. An unchanged cv means a Minimum Cache TTL was flooring it all
+    // along and every cached entry is still valid.
+    if (pendingRevalidation !== undefined) {
+      const { cvBefore } = pendingRevalidation;
+      pendingRevalidation = undefined;
+
+      const result = await fetchFn(query);
+      throttleManager.adaptToResponse(result.response);
+
+      const nextCv = extractCv(result.data);
+      if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== cvBefore) {
+        await cacheProvider.flush();
+      }
+
+      return cacheSuccessResult(path, key, result);
+    }
+
+    const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
+    const cachedResult = cachedEntry?.value;
 
     return strategy({
       key,

@@ -232,6 +232,206 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(new URL(spaceUrls[0]).searchParams.has("cv")).toBe(false);
   });
 
+  it("should revalidate on the first poll when the cv does not match the space version", async () => {
+    // A publish may have landed between the first content request and this first poll.
+    // There is no earlier space version to detect it with, and a cv that no longer
+    // matches the space version could equally be a Minimum Cache TTL flooring it. The
+    // ambiguity is settled by one revalidation against the origin, not by a flush.
+    let linkRequests = 0;
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        linkRequests++;
+        return HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkRequests).toBe(2);
+
+    // …but only once: further polls at the same version must not revalidate again.
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkRequests).toBe(2);
+  });
+
+  it("should send the revalidation without a cv", async () => {
+    // The tracked cv is dropped before the revalidation so the origin redirects it to
+    // the current cv. Reusing the old one could be served from a warm `?cv=<old>` edge
+    // object and report the very cv it was sent with, hiding a real publish.
+    const linkUrls: string[] = [];
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        linkUrls.push(request.url);
+        return HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    expect(linkUrls).toHaveLength(2);
+    expect(new URL(linkUrls[1]).searchParams.has("cv")).toBe(false);
+  });
+
+  it("should keep every other cached entry when the revalidated cv is unchanged", async () => {
+    // A Minimum Cache TTL floors the cv permanently, so the pair never matches and the
+    // sighting is ambiguous on every fresh client. The revalidation proves nothing was
+    // published, and entries this client never revalidated have to survive it.
+    let tagRequests = 0;
+    server.use(
+      spaceHandler(() => 1786950860),
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        HttpResponse.json({ links: {}, cv: 1786950000 }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => {
+        tagRequests++;
+        return HttpResponse.json({ tags: [], cv: 1786950000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "ttl-token" });
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(tagRequests).toBe(1);
+
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } }); // revalidates
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    expect(tagRequests).toBe(1); // still cached, nothing was published
+  });
+
+  it("should flush every cached entry when the revalidated cv moved", async () => {
+    // Without a TTL the two values report the same raw version, so an unequal pair means
+    // a publish really did land. The revalidation returns the new cv and the whole cache
+    // has to go — including entries for other keys.
+    let cv = 1000;
+    let tagRequests = 0;
+    server.use(
+      spaceHandler(() => cv),
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        HttpResponse.json({ links: {}, cv }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => {
+        tagRequests++;
+        return HttpResponse.json({ tags: [], cv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(tagRequests).toBe(1);
+
+    cv = 2000; // content published between the content requests and the first poll
+    await client.spaces.get();
+    await client.get("v2/cdn/links", { query: { version: "published" } }); // revalidates
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    expect(tagRequests).toBe(2); // cache was flushed, the stale entry is gone
+  });
+
+  it("should not empty a shared provider once per client instance", async () => {
+    // The tracked versions live on the client, so with a provider shared across clients
+    // and a TTL-floored cv every newly created client sees the same ambiguous pair. A
+    // flush there would empty the shared cache once per instance; a revalidation is
+    // scoped to the instance that made it, and a warm shared entry answers it.
+    let linkRequests = 0;
+    server.use(
+      spaceHandler(() => 1786950860),
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        linkRequests++;
+        return HttpResponse.json({ links: {}, cv: 1786950000 });
+      }),
+    );
+    const store = new Map<string, { value: unknown; ttlMs?: number }>();
+    const sharedProvider = {
+      get: async (key: string) => store.get(key) as never,
+      set: async (key: string, entry: { value: unknown; ttlMs?: number }) => {
+        store.set(key, entry);
+      },
+      flush: async () => {
+        store.clear();
+      },
+    };
+
+    // One client per request, as in SSR or serverless.
+    for (let i = 0; i < 3; i++) {
+      const client = createApiClient({
+        accessToken: "ttl-token",
+        cache: { provider: sharedProvider, ttlMs: 3_600_000 },
+      });
+      await client.get("v2/cdn/links", { query: { version: "published" } });
+      await client.spaces.get();
+    }
+
+    expect(linkRequests).toBe(1);
+    expect(store.size).toBe(1);
+  });
+
+  it("should ignore a space.version reported by another endpoint", async () => {
+    // The signal is gated on the path, not only on the response shape: a `space.version`
+    // that a content response happens to embed must never flush the cache.
+    let spaceVersion = 2000;
+    let linkRequests = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        linkRequests++;
+        return HttpResponse.json({
+          links: {},
+          cv: 1000,
+          space: { id: 1, name: "Test Space", version: spaceVersion },
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkRequests).toBe(1);
+
+    // A second, differently keyed request reports a moved space version.
+    spaceVersion = 3000;
+    await client.get("v2/cdn/links", { query: { version: "published", starts_with: "blog" } });
+    expect(linkRequests).toBe(2);
+
+    // The first entry must still be cached: nothing reported a new cv, and a content
+    // response's `space.version` is not a flush signal.
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    expect(linkRequests).toBe(2);
+  });
+
+  it("should not attach a cv to the poll request", async () => {
+    // The `cv` is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
+    // fragments the edge cache of the endpoint the polling pattern depends on.
+    const spaceUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", ({ request }) => {
+        spaceUrls.push(request.url);
+        return HttpResponse.json({
+          space: { id: 1, name: "Test Space", version: 1000, language_codes: [] },
+        });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        return HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+
+    expect(spaceUrls).toHaveLength(1);
+    expect(new URL(spaceUrls[0]).searchParams.has("cv")).toBe(false);
+  });
+
   it("should flush on the first poll when the cv does not match the space version", async () => {
     // A publish may have landed between the first content request and this first poll.
     // There is no earlier space version to detect it with, but a cv that no longer

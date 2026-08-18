@@ -1,0 +1,20 @@
+{
+  "id": 6,
+  "uuid": "aaaaaaaa-0000-4000-8000-000000000006",
+  "name": "First Article",
+  "slug": "first-article",
+  "full_slug": "vue/articles/first-article",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 5,
+  "content": {
+    "component": "article",
+    "title": "First article",
+    "content": {
+      "type": "doc",
+      "content": [
+        { "type": "paragraph", "content": [{ "type": "text", "text": "This is my first article" }] }
+      ]
+    }
+  }
+}

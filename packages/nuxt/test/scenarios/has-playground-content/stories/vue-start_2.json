@@ -1,0 +1,51 @@
+{
+  "id": 2,
+  "uuid": "aaaaaaaa-0000-4000-8000-000000000002",
+  "name": "Vue Start",
+  "slug": "vue",
+  "full_slug": "vue/",
+  "is_folder": false,
+  "is_startpage": true,
+  "parent_id": 1,
+  "content": {
+    "component": "page",
+    "headline": "Vue",
+    "resolveRels": "",
+    "richText": { "type": "doc", "content": [{ "type": "paragraph" }] },
+    "body": [
+      {
+        "_uid": "bbbbbbbb-0000-4000-8000-000000000001",
+        "component": "teaser",
+        "headline": "QA teaser"
+      },
+      {
+        "_uid": "bbbbbbbb-0000-4000-8000-000000000002",
+        "component": "grid",
+        "columns": [
+          {
+            "_uid": "bbbbbbbb-0000-4000-8000-000000000003",
+            "component": "feature",
+            "name": "Feature 1",
+            "description": ""
+          },
+          {
+            "_uid": "bbbbbbbb-0000-4000-8000-000000000004",
+            "component": "feature",
+            "name": "Feature 2",
+            "description": ""
+          }
+        ]
+      },
+      {
+        "_uid": "bbbbbbbb-0000-4000-8000-000000000005",
+        "component": "popular-articles",
+        "articles": []
+      },
+      {
+        "_uid": "bbbbbbbb-0000-4000-8000-000000000006",
+        "component": "emoji-randomizer",
+        "label": "Randomize"
+      }
+    ]
+  }
+}

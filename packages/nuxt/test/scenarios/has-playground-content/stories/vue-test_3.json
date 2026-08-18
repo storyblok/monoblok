@@ -1,0 +1,41 @@
+{
+  "id": 3,
+  "uuid": "aaaaaaaa-0000-4000-8000-000000000003",
+  "name": "Test",
+  "slug": "test",
+  "full_slug": "vue/test",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 1,
+  "content": {
+    "component": "page",
+    "headline": "",
+    "resolveRels": "",
+    "richText": { "type": "doc", "content": [{ "type": "paragraph" }] },
+    "body": [
+      {
+        "_uid": "cccccccc-0000-4000-8000-000000000001",
+        "component": "teaser",
+        "headline": "hello"
+      },
+      {
+        "_uid": "cccccccc-0000-4000-8000-000000000002",
+        "component": "grid",
+        "columns": [
+          {
+            "_uid": "cccccccc-0000-4000-8000-000000000003",
+            "component": "feature",
+            "name": "feature 1",
+            "description": ""
+          },
+          {
+            "_uid": "cccccccc-0000-4000-8000-000000000004",
+            "component": "feature",
+            "name": "feature 2",
+            "description": ""
+          }
+        ]
+      }
+    ]
+  }
+}

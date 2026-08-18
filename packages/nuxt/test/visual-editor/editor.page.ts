@@ -60,12 +60,22 @@ export class StoryblokEditor {
    * `page.headline` changes nothing the playground renders.
    */
   async selectBlock(dataTest: string, expectFieldName: string): Promise<void> {
+    const field = this.textField(expectFieldName);
+    // The story-level form carries fields with the same technical names as its
+    // blocks (`page.headline` and `teaser.headline` both exist), so asserting
+    // the field is merely visible proves nothing — it is visible either way,
+    // and a click that failed to switch forms then edits the STORY field, which
+    // the playground does not render. The input id encodes the owning block:
+    // `<storyId>__<fieldName>-<blokUid>`. Assert it changed; that is the only
+    // evidence the editor moved to this block's own form.
+    const idBefore = (await field.count()) > 0 ? await field.getAttribute("id") : null;
     await this.block(dataTest).first().click();
-    // Assert a field that only THIS block's form contains. Asserting the
-    // generic `editor-form` container instead would pass trivially: openStory
-    // already made it visible for the story-level form, so a click that failed
-    // to switch forms would look identical to one that worked.
-    await expect(this.textField(expectFieldName)).toBeVisible();
+    await expect
+      .poll(async () => ((await field.count()) > 0 ? await field.getAttribute("id") : null), {
+        timeout: 15_000,
+        message: `Clicking [data-test="${dataTest}"] did not switch the editor to that block's form`,
+      })
+      .not.toBe(idBefore);
   }
 
   /**

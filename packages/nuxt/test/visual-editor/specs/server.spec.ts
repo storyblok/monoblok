@@ -12,12 +12,17 @@ test("server.vue renders the server-fetched story", async ({ page }) => {
   await expect(page.locator('[data-test="page"], [data-test="teaser"]').first()).toBeVisible();
 });
 
-test("the /api/test route reports why the server client is unavailable", async ({ request }) => {
+test("the /api/test route fails before it can report a useful reason", async ({ request }) => {
   const response = await request.get(`${QA_CONFIG.previewBaseUrl}/api/test`);
   const body = await response.json();
 
-  // Asserts the observed state, so the day the module is fixed this test fails
-  // and someone deletes it along with the test.fail() above.
-  expect(body.success).toBe(false);
-  expect(body.error).toContain("access token is not configured");
+  // Asserts the OBSERVED failure, which is worse than the module intends.
+  // `serverStoryblokClient` destructures `config.storyblok` before checking the
+  // token, so with `enableServerClient` unset that key is undefined and the
+  // destructure throws — the module's own "access token is not configured"
+  // message is unreachable. The playground route also calls the helper outside
+  // its try/catch, so the request 500s instead of returning { success: false }.
+  // The day either is fixed, this test fails and should be rewritten.
+  expect(response.status()).toBe(500);
+  expect(body.message).toContain("config.storyblok");
 });

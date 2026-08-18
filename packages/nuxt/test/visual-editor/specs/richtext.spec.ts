@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { QA_CONFIG } from "../config";
-import { resolveStoryId, StoryblokEditor } from "../editor.page";
 
 test("richtext.vue maps story links and url links differently", async ({ page }) => {
   await page.goto(`${QA_CONFIG.previewBaseUrl}/richtext`);
@@ -21,11 +20,9 @@ test("richtext.vue maps story links and url links differently", async ({ page })
 // Live editing of a richtext field is NOT covered by this harness: driving the
 // editor's contenteditable richtext toolbar is brittle, so this test covers
 // in-editor rendering only, not that an edit propagates through the bridge.
-test("richtext.vue renders inside the editor preview", async ({ page, request }) => {
-  const editor = new StoryblokEditor(page);
-  await editor.openStory(await resolveStoryId(request, "vue/test-richtext"));
-
-  await expect(editor.preview.getByRole("heading", { name: "Headline 1" })).toBeVisible({
-    timeout: 60_000,
-  });
-});
+// There is deliberately no in-editor test for richtext. The editor previews a
+// story at its `full_slug` (/vue/test-richtext), which the catch-all route
+// serves through Page.vue — and Page.vue renders `body`, not `richText`. So the
+// richtext output is not reachable from the editor without changing what the
+// playground renders. Live editing of a richtext field is out of scope anyway:
+// driving the editor's contenteditable is brittle. Standalone coverage above.

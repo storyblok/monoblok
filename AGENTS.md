@@ -36,6 +36,11 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 
 These sibling repos may not be available; ignore them if absent.
 
+- **IMPORTANT:** `../storyrails` and `../storyfront` are private. Never reference them, their paths,
+  file names, or internal implementation details in commit messages, PR titles and descriptions,
+  issue comments, code comments, or any other public-facing text. Describe the observable API or
+  behavior instead.
+
 ## Conventions
 
 - **Naming:** Files `kebab-case.ts`, functions/variables `camelCase`, classes/types `PascalCase`,

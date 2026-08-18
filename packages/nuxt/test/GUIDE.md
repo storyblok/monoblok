@@ -56,6 +56,10 @@ For a check the specs do not cover, write a throwaway script instead of adding o
 
 ## Known quirks
 
+- **Save and publish need `editor.save()` / `editor.publish()`, not a bare button click.** Both wait
+  for the preview reload, because live-updating means the preview already shows the new text before
+  the save: asserting the text alone passes with a dead reload path. `publish()` also dismisses the
+  "Unpublished linked story" modal that a fresh seed always triggers.
 - **The specs edit fields without ever saving.** They rely on the seeded text being intact when a
   run starts. If you click Save while debugging in the editor, later runs fail on the seeded-text
   assertions with no hint why. Re-seed.

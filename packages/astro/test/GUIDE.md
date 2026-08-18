@@ -45,8 +45,9 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
   `data-blok-uid="<storyId>-<uid>"` on every one of them anyway.
 - The editor previews a story at its `full_slug`, so it loads `/home`, which `[...slug].astro`
   serves.
-- `article` has no Astro component on purpose. The two article stories exist only as relation targets
-  that `FeaturedArticles.astro` renders from the resolved story object (`name`, `full_slug`).
+- `article` has no Astro component on purpose. The two article stories exist only as relation
+  targets that `FeaturedArticles.astro` renders from the resolved story object (`name`,
+  `full_slug`).
 - The `test` slug is special: `[...slug].astro` renders
   `<meta name="storyblok-live-preview" content="disabled">` for `test`, `about-us`, and `contact`.
 - Every app-side selector lives in `test/visual-editor/editor.page.ts`. When a Storyblok release
@@ -56,14 +57,14 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
 ## Known quirks
 
 - **`astro dev` daemonizes whenever stdout is not a TTY.** It prints a JSON banner with a pid and
-  exits, so `nohup … &`, `start-server-and-test`, and Playwright's `webServer` all see a process that
-  exited immediately. Control it with `astro dev status` / `astro dev logs` / `astro dev stop`, never
-  by killing a pid you captured yourself. `qa:dev` starts the daemon and then follows its logs so
-  Playwright has something long-running to wait on.
-- **`--port` is a request, not a guarantee.** When the port is taken, `astro dev` silently serves the
-  next free one and only the banner says so. The space's preview domain must match exactly, and a
-  mismatch yields a blank preview frame with no error, identical to a dead bridge. If the preview is
-  blank, check `astro dev status` before suspecting the plugin.
+  exits, so `nohup … &`, `start-server-and-test`, and Playwright's `webServer` all see a process
+  that exited immediately. Control it with `astro dev status` / `astro dev logs` / `astro dev stop`,
+  never by killing a pid you captured yourself. `qa:dev` starts the daemon and then follows its logs
+  so Playwright has something long-running to wait on.
+- **`--port` is a request, not a guarantee.** When the port is taken, `astro dev` silently serves
+  the next free one and only the banner says so. The space's preview domain must match exactly, and
+  a mismatch yields a blank preview frame with no error, identical to a dead bridge. If the preview
+  is blank, check `astro dev status` before suspecting the plugin.
 - **A stale background server serves stale code.** It survives every `qa:editor` run, so a
   `qa:editor` after a code change can silently test the old build. `qa:stop` between changes.
 - **The specs edit fields, and the last two save and publish.** A run therefore leaves the space

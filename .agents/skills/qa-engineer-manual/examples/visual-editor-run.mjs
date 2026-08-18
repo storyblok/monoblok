@@ -9,9 +9,13 @@
 // fields, and asserts the preview changed. Every assertion is an observed
 // change: a broken bridge throws nothing, so "no error" proves nothing.
 //
-// The selectors below are duplicated from packages/nuxt/test/visual-editor/
+// The selectors below are duplicated from packages/<package>/test/visual-editor/
 // editor.page.ts, which is the maintained copy. Check there first when a
 // Storyblok release breaks this.
+//
+// Blocks are addressed by the `_uid` the scenario seeded: storyblokEditable
+// emits data-blok-uid="<storyId>-<uid>" on every editable block, so this needs
+// nothing added to the app's components.
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { chromium, expect } from "@playwright/test";
@@ -19,7 +23,7 @@ import { chromium, expect } from "@playwright/test";
 // --- CONSTANTS: edit these ------------------------------------------------
 const FULL_SLUG = "vue"; // the story to open
 const PREVIEW_URL = "https://localhost:3200"; // where the local app is served
-const BLOCK = "teaser"; // [data-test="..."] of the block to click
+const BLOCK = "teaser-start-1"; // the block's seeded `_uid`
 const FIELD = "headline"; // the block field's *technical* name
 const NEW_VALUE = "edited by a one-off check";
 // -------------------------------------------------------------------------
@@ -51,6 +55,11 @@ if (!story) {
   fail(`Story "${FULL_SLUG}" is not in space ${spaceId}. Seed it first.`);
 }
 
+// Live preview morphs new text in before you save, so after a save/publish
+// "the preview shows the new text" is already true when the reload path is
+// dead. Count navigations of the preview frame and assert the count rose.
+let previewLoads = 0;
+
 const browser = await chromium.launch({
   // The editor is served from a public origin and embeds the app from
   // localhost. Chrome's Local Network Access policy blocks that iframe and
@@ -60,22 +69,32 @@ const browser = await chromium.launch({
 // ignoreHTTPSErrors covers the preview iframe's self-signed certificate too.
 const context = await browser.newContext({ storageState, ignoreHTTPSErrors: true });
 const page = await context.newPage();
+page.on("framenavigated", (frame) => {
+  if (frame.url().startsWith(PREVIEW_URL)) {
+    previewLoads++;
+  }
+});
 
 try {
   // Link 1 of the chain: the app serves the story standalone. When this fails,
   // the seed or the access token is wrong, not the bridge.
   await page.goto(`${PREVIEW_URL}/${FULL_SLUG}`);
-  await expect(page.locator(`[data-test="${BLOCK}"]`).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(`[data-blok-uid$="-${BLOCK}"]`).first()).toBeVisible({
+    timeout: 30_000,
+  });
 
   await page.goto(`${appBaseUrl}/#/me/spaces/${spaceId}/stories/0/0/${story.id}`, {
     waitUntil: "domcontentloaded",
   });
+  // If you open a second story later in the same tab, the URL differs only in
+  // its hash: the app swaps the form and the iframe keeps the previous story.
+  // Force a page.reload() there, or every assertion times out on the wrong page.
   // Assert the editor itself loaded, so a later preview failure cannot be
   // confused with the app never rendering.
   await expect(page.getByTestId("editor-form")).toBeVisible({ timeout: 60_000 });
 
   const preview = page.frameLocator("#storyblok-preview");
-  const block = preview.locator(`[data-test="${BLOCK}"]`).first();
+  const block = preview.locator(`[data-blok-uid$="-${BLOCK}"]`).first();
   await expect(block).toBeVisible({ timeout: 60_000 });
 
   // The input id encodes the owning block (`<storyId>__<field>-<blokUid>`).
@@ -111,7 +130,7 @@ try {
     JSON.stringify({
       outcome: "PASS",
       function: "live-update",
-      details: `${FULL_SLUG} → ${BLOCK}`,
+      details: `${FULL_SLUG} > ${BLOCK}, preview loads: ${previewLoads}`,
     }),
   );
 } catch (error) {

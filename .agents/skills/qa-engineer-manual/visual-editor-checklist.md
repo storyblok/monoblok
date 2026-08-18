@@ -31,7 +31,9 @@ None of these are about content, and every one of them blocks the whole test if 
 
 ## 2. Per-run setup
 
-Every step writes to the QA space. Confirm it is free first.
+Every step writes to the QA space. Confirm it is free first: **one space is shared across packages,
+and seeding wipes it**, so a run for one package destroys another package's seeded content. Say in
+your report which package's content the space now holds.
 
 ```bash
 set -a && source ./.env.qa-engineer-manual && set +a
@@ -76,7 +78,15 @@ one fails, you have found a setup problem. Fix it before reading anything into t
 - [ ] **An explicitly configured empty relation list stays empty.** An explicit value must win over
       any inherited fallback.
 - [ ] **Saving and publishing re-renders with the saved content**, and the preview does not revert
-      to the pre-edit version.
+      to the pre-edit version. **Assert the reload, not the text.** Live preview has already morphed
+      the new text into the page before you click Save, so `expect(preview).toContainText(saved)`
+      passes even with a completely dead reload path. Count preview-frame navigations
+      (`page.on("framenavigated")`) and assert the count rose, then confirm the space itself over
+      MAPI/CAPI (`story.published`, the draft's field value). Two traps sit in here: clicking Save
+      the instant after `fill()` persists the _previous_ value, because the app's own model lags the
+      input; and publishing a story whose relations point at unpublished stories opens an
+      "Unpublished linked story" modal, so nothing publishes until you dismiss it, and a bare
+      `count()` on that button races its render.
 
 ## 5. Teardown
 
@@ -99,14 +109,33 @@ edit the constants at the top, run it. It has the launch args, the saved session
 lookup, and the block-selection retry already wired up, and it prints the standard `{ outcome, … }`
 JSON.
 
-Two things about the editor's DOM that are not guessable, and that the example encodes:
+Four things about the editor's DOM that are not guessable, and that the example encodes:
 
+- **Address blocks by the `_uid` the scenario seeded, not by a test attribute.** `storyblokEditable`
+  emits `data-blok-uid="<storyId>-<uid>"` on every editable block, so
+  `[data-blok-uid$="-teaser-home-1"]` works in any framework and needs nothing added to the app's
+  components. Fall back to `[data-test]` only where the app already has it.
+- **Opening a second story in the same tab does not reload the preview.** The editor URL differs
+  only in its hash, so the app swaps the form while the iframe keeps the previous story. Every later
+  assertion times out against the wrong page and reads as a dead bridge. Force a `page.reload()`.
 - **Address fields by their technical name, not their label.** Labels are translated and re-worded.
   The input id is `<storyId>__<fieldName>-<blokUid>`, so `input[id*="headline"]` is stable.
 - **A click must be proven to have switched forms.** The story-level form carries fields with the
   same technical names as its blocks, so a swallowed click silently edits the story field instead.
   Assert the input's id changed; that is the only evidence the editor moved to the block's own form.
 
+Check the dev server too, before you read anything into a blank preview:
+
+- A dev server that **daemonizes** (Astro 7's `astro dev` does whenever stdout is not a TTY) exits
+  immediately after printing a banner, so `nohup … &` and Playwright's `webServer` both see an early
+  exit, and killing a pid you captured leaves the real server running. Use the tool's own
+  `status`/`logs`/`stop` commands.
+- A **`--port` request is not a guarantee**: a taken port silently becomes the next free one, and
+  the space then previews a port nothing serves. Read the port back from the banner and set the
+  preview domain from that, never from what you asked for.
+- A **stale server from an earlier run serves stale code**, which makes a fixed bug look unfixed.
+
 Where a package already keeps a harness, reuse its page object rather than the example: it is the
-maintained copy of these selectors. `@storyblok/nuxt` keeps one in
-`packages/nuxt/test/visual-editor/editor.page.ts`.
+maintained copy of these selectors. `@storyblok/nuxt` and `@storyblok/astro` both keep one in
+`packages/<package>/test/visual-editor/editor.page.ts`; the Astro one also has `save()` and
+`publish()` with the reload assertion and the modal handling.

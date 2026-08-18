@@ -33,16 +33,34 @@ export const resolveStoryId = async (
  */
 export class StoryblokEditor {
   readonly preview: FrameLocator;
+  /**
+   * Counts loads of the preview iframe. The bridge replaces the story in place
+   * before you save, so "the preview shows the new text" is already true when
+   * the save/publish reload path is dead. Only a navigation proves the reload.
+   */
+  private previewLoads = 0;
 
   constructor(private readonly page: Page) {
     this.preview = page.frameLocator("#storyblok-preview");
+    page.on("framenavigated", (frame) => {
+      if (frame.url().startsWith(QA_CONFIG.previewBaseUrl)) {
+        this.previewLoads++;
+      }
+    });
   }
 
   async openStory(storyId: number): Promise<void> {
+    const alreadyInApp = this.page.url().startsWith(QA_CONFIG.appBaseUrl);
     await this.page.goto(
       `${QA_CONFIG.appBaseUrl}/#/me/spaces/${QA_CONFIG.spaceId}/stories/0/0/${storyId}`,
       { waitUntil: "domcontentloaded" },
     );
+    // A hash-only change is an SPA route change: the app swaps the form but the
+    // preview iframe keeps the previously opened story, and every later
+    // assertion times out against the wrong page and reads as a dead bridge.
+    if (alreadyInApp) {
+      await this.page.reload({ waitUntil: "domcontentloaded" });
+    }
     // Assert the app rendered the frame, so a later preview failure cannot be
     // confused with the editor never loading.
     await expect(this.page.getByTestId("editor-form")).toBeVisible({ timeout: 60_000 });
@@ -98,5 +116,39 @@ export class StoryblokEditor {
    */
   textField(fieldName: string): Locator {
     return this.page.locator(".sb-textfield").locator(`input[id*="${fieldName}"]`);
+  }
+
+  /** Saves, and waits for the reload the bridge's `change` handler triggers. */
+  async save(): Promise<void> {
+    const before = this.previewLoads;
+    // The app takes the field's value from its own model, which lags `fill()`.
+    // Clicking Save the same instant persists the PREVIOUS value, and the
+    // reloaded preview then looks stale for no visible reason.
+    await this.page.waitForTimeout(2000);
+    await this.page.getByTestId("editor-header-save").click();
+    await this.expectPreviewReload(before);
+  }
+
+  /** Publishes, dismissing the unpublished-relations confirmation, and waits for the reload. */
+  async publish(): Promise<void> {
+    const before = this.previewLoads;
+    await this.page.waitForTimeout(2000);
+    await this.page.getByTestId("editor-header-publish").click();
+    // A story whose relations point at unpublished stories, which every fresh
+    // seed does, gets a confirmation modal. It takes a moment to render, so a
+    // bare `count()` here races it, the publish never happens, and the missing
+    // reload reads as a broken bridge.
+    const anyway = this.page.getByRole("button", { name: /Publish anyway/i }).first();
+    try {
+      await anyway.waitFor({ timeout: 10_000 });
+      await anyway.click();
+    } catch {
+      // No confirmation: the publish went straight through.
+    }
+    await this.expectPreviewReload(before);
+  }
+
+  private async expectPreviewReload(before: number): Promise<void> {
+    await expect.poll(() => this.previewLoads, { timeout: 60_000 }).toBeGreaterThan(before);
   }
 }

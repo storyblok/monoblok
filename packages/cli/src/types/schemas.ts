@@ -13,6 +13,8 @@ export type ComponentPropertySchemaType =
   | "number"
   | "option"
   | "options"
+  | "section"
+  | "tab"
   | "text"
   | "textarea";
 

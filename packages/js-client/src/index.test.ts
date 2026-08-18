@@ -393,7 +393,7 @@ describe("storyblokClient", () => {
 
     it("should not flush on a published poll when clear is onpreview", async () => {
       // `onpreview` only clears on draft requests, so polling with a public token never
-      // flushes. Consumers that want the polling pattern need `clear: 'auto'`.
+      // flushes. Consumers polling published content need `clear: 'auto'`.
       const token = "space-version-onpreview";
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
@@ -408,6 +408,30 @@ describe("storyblokClient", () => {
       await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
 
       expect(onPreviewFlushCache).not.toHaveBeenCalled();
+    });
+
+    it("should flush on a draft poll when clear is onpreview", async () => {
+      // The published poll above is not flushed because of the request's version, not
+      // because of the endpoint: `onpreview` considers every draft request clearable,
+      // so polling with a preview token does pick publishes up.
+      const token = "space-version-onpreview-draft";
+      const onPreviewClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "onpreview" },
+      });
+      const onPreviewFlushCache = vi.spyOn(onPreviewClient, "flushCache");
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await onPreviewClient.get("cdn/stories", { version: "published", token });
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(onPreviewFlushCache).not.toHaveBeenCalled(); // equal pair, nothing published
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
     });
 
     it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {

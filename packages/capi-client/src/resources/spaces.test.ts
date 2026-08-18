@@ -176,6 +176,30 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(linkRequests).toBe(2); // cache was flushed, content re-fetched
   });
 
+  it("should not attach a cv to the poll request", async () => {
+    // The `cv` is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
+    // fragments the edge cache of the endpoint the polling pattern depends on.
+    const spaceUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", ({ request }) => {
+        spaceUrls.push(request.url);
+        return HttpResponse.json({
+          space: { id: 1, name: "Test Space", version: 1000, language_codes: [] },
+        });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        return HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+
+    expect(spaceUrls).toHaveLength(1);
+    expect(new URL(spaceUrls[0]).searchParams.has("cv")).toBe(false);
+  });
+
   it("should flush on the first poll when the cv does not match the space version", async () => {
     // A publish may have landed between the first content request and this first poll.
     // There is no earlier space version to detect it with, but a cv that no longer

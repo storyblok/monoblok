@@ -428,9 +428,15 @@ export const createApiClientBase = <
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
     cacheOptions?: RequestWithCacheOptions,
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
-    const query =
-      cvMode === "auto" && currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
+    // The `cv` is a cache buster, so it only belongs on requests that are cacheable in
+    // the first place. `/cdn/spaces/me` carries no `cv` of its own and is only cached
+    // for two seconds; attaching one there fragments the edge cache of the endpoint the
+    // polling pattern depends on, for no gain.
+    const query =
+      cacheEnabled && cvMode === "auto" && currentCv !== undefined
+        ? applyCvToQuery(rawQuery, currentCv)
+        : rawQuery;
 
     if (!cacheEnabled) {
       const networkResult = await fetchFn(query);

@@ -59,3 +59,8 @@ DOCS.md
 # Locally-trusted certs for Visual Editor QA
 packages/nuxt/test/visual-editor/certs/*
 !packages/nuxt/test/visual-editor/certs/.gitkeep
+
+# Visual Editor QA session state and reports
+packages/nuxt/test/visual-editor/.auth/
+packages/nuxt/test/visual-editor/playwright-report/
+packages/nuxt/test/visual-editor/test-results/

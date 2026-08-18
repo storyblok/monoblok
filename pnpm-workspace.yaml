@@ -7,6 +7,7 @@ packages:
 # Shared toolchain. Every package that uses one of these should reference it as
 # `catalog:` so a bump is a one-line change here instead of a repo-wide sweep.
 catalog:
+  "@playwright/test": 1.62.1
   "@types/node": ^24.11.0
   "@vitest/coverage-v8": ^4.1.10
   dotenv: ^17.3.1

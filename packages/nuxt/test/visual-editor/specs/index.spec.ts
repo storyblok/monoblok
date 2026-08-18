@@ -24,7 +24,7 @@ test.describe("index.vue — useAsyncStoryblok with an explicit bridge", () => {
 
     // Select the teaser block. Its `headline` is what Teaser.vue renders;
     // the story-level `page.headline` is not rendered at all.
-    await editor.selectBlock("teaser");
+    await editor.selectBlock("teaser", "headline");
 
     const edited = "QA teaser edited";
     await editor.textField("headline").fill(edited);

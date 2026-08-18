@@ -53,11 +53,13 @@ export class StoryblokEditor {
    * Without this, `textField` addresses the story-level fields, and editing
    * `page.headline` changes nothing the playground renders.
    */
-  async selectBlock(dataTest: string): Promise<void> {
+  async selectBlock(dataTest: string, expectFieldName: string): Promise<void> {
     await this.block(dataTest).first().click();
-    // The block's own form replaced the story form. Assert it, so a failed
-    // selection cannot be mistaken for a bridge that never fired.
-    await expect(this.page.getByTestId("editor-form")).toBeVisible();
+    // Assert a field that only THIS block's form contains. Asserting the
+    // generic `editor-form` container instead would pass trivially: openStory
+    // already made it visible for the story-level form, so a click that failed
+    // to switch forms would look identical to one that worked.
+    await expect(this.textField(expectFieldName)).toBeVisible();
   }
 
   /**

@@ -27,6 +27,8 @@ the Storyblok API.
    - Consider possible edge cases.
 3. If the feature holds state, keeps working after it has responded, or ships to more than one
    runtime, load [Runtime and lifetime checks](./runtime-checklist.md).
+4. If the feature renders Storyblok content that an editor can change while the page is open, or
+   registers the Storyblok Bridge, load [Visual Editor checks](./visual-editor-checklist.md).
 
 ## Seeding
 

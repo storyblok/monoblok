@@ -51,7 +51,7 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario <scenario> --scenario-dir packages/<package>/test/scenarios
 ```
 
-The package's `test/GUIDE.md` names its port, its scenario, and any linking step the seed needs.
+The package's `test/GUIDE.md` names its port, its scenario, and anything else the seed needs.
 
 ## 3. The chain, one link at a time
 

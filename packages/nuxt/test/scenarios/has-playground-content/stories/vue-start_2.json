@@ -39,7 +39,7 @@
       {
         "_uid": "popular-articles-start-1",
         "component": "popular-articles",
-        "articles": []
+        "articles": ["6", "7"]
       },
       {
         "_uid": "emoji-randomizer-start-1",

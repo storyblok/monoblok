@@ -6,19 +6,18 @@ only what is specific to this package.
 
 ## Values this package uses
 
-| What            | Value                                                      |
-| --------------- | ---------------------------------------------------------- |
-| Preview domain  | `https://localhost:3200/`                                  |
-| Scenario        | `has-playground-content` in `test/scenarios`               |
-| Extra seed step | `node packages/nuxt/test/visual-editor/link-relations.mjs` |
+| What           | Value                                        |
+| -------------- | -------------------------------------------- |
+| Preview domain | `https://localhost:3200/`                    |
+| Scenario       | `has-playground-content` in `test/scenarios` |
 
-`link-relations.mjs` fills the seeded `popular-articles` relation field with the UUIDs the CLI
-assigned on push. Run it after every seed; the harness fails a preflight if you forget.
+No extra seed step: the seed is everything the harness needs.
 
 ## Run
 
 ```bash
-export NUXT_PUBLIC_STORYBLOK_ACCESS_TOKEN="<the space API key whose access is 'private'>"
+set -a && source ./.env.qa-engineer-manual && set +a
+export NUXT_PUBLIC_STORYBLOK_ACCESS_TOKEN="$STORYBLOK_PREVIEW_TOKEN"
 pnpm --filter @storyblok/nuxt qa:editor
 ```
 
@@ -59,7 +58,7 @@ For a check the specs do not cover, write a throwaway script instead of adding o
 
 - **The specs edit fields without ever saving.** They rely on the seeded text being intact when a
   run starts. If you click Save while debugging in the editor, later runs fail on the seeded-text
-  assertions with no hint why. Re-seed and re-run `link-relations.mjs`.
+  assertions with no hint why. Re-seed.
 - **`Cannot find package 'vue'` on the first `qa:dev`.** A stale `playground/.nuxt` cache, not an
   https problem. Delete `packages/nuxt/playground/.nuxt` and start again; the directory is
   gitignored and regenerates. Confirm it is the cache and not your change by starting `dev:e2e` on

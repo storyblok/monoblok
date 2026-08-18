@@ -59,9 +59,10 @@ setup("the space is seeded", async ({ request }) => {
 });
 
 setup("the seeded relation field references the articles", async ({ request }) => {
-  // The scenario seeds `popular-articles.articles` empty, because the CLI
-  // assigns story UUIDs on push. Without the linking step the relation spec
-  // fails on an empty list, which reads like a broken bridge.
+  // The scenario seeds `popular-articles.articles` with the local story UUIDs
+  // and the CLI remaps them to the remote ones on push. If that mapping ever
+  // regresses, the relation spec fails on an empty list, which reads like a
+  // broken bridge.
   const storyId = await resolveStoryId(request, "vue");
   const response = await request.get(
     `${QA_CONFIG.mapiBaseUrl}/spaces/${QA_CONFIG.spaceId}/stories/${storyId}`,
@@ -76,6 +77,6 @@ setup("the seeded relation field references the articles", async ({ request }) =
 
   expect(
     block?.articles ?? [],
-    "popular-articles has no references. Run: node packages/nuxt/test/visual-editor/link-relations.mjs",
+    "popular-articles has no references. Re-seed has-playground-content.",
   ).toHaveLength(2);
 });

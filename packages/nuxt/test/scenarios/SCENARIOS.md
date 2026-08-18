@@ -9,6 +9,6 @@ The playground's slugs are hardcoded (`useAsyncStoryblok("vue", ...)`, `` `vue/a
 change. Point it at the QA space with `NUXT_PUBLIC_STORYBLOK_ACCESS_TOKEN`, which overrides the
 committed demo token because the module assigns `runtimeConfig.public.storyblok` wholesale.
 
-The `popular-articles` block's `articles` field is seeded **empty**. Story UUIDs are assigned by the
-CLI on push, so run `node test/visual-editor/link-relations.mjs` after seeding to fill it with the
-real UUIDs.
+The `popular-articles` block's `articles` field holds the _local_ story UUIDs. The field is an
+`options` field with `source: internal_stories`, so `storyblok stories push` remaps those to the
+UUIDs it assigns remotely; no post-seed linking step is needed.

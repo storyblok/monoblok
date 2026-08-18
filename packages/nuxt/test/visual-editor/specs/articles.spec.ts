@@ -18,7 +18,9 @@ test("an article story updates its title on input", async ({ page, request }) =>
   // under test is what Article.vue renders, not that page's markup.
   await expect(editor.block("article")).toContainText("First article", { timeout: 60_000 });
 
-  await editor.selectBlock("article", "title");
+  // No selectBlock here: `article` is the story's ROOT component, so the
+  // story-level form already edits it. There is no nested block to select, and
+  // clicking the preview would never change which form is open.
   await editor.textField("title").fill("First article edited");
   await expect(editor.block("article")).toContainText("First article edited", {
     timeout: 30_000,

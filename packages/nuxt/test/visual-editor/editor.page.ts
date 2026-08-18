@@ -68,14 +68,27 @@ export class StoryblokEditor {
     // the playground does not render. The input id encodes the owning block:
     // `<storyId>__<fieldName>-<blokUid>`. Assert it changed; that is the only
     // evidence the editor moved to this block's own form.
-    const idBefore = (await field.count()) > 0 ? await field.getAttribute("id") : null;
-    await this.block(dataTest).first().click();
-    await expect
-      .poll(async () => ((await field.count()) > 0 ? await field.getAttribute("id") : null), {
-        timeout: 15_000,
-        message: `Clicking [data-test="${dataTest}"] did not switch the editor to that block's form`,
-      })
-      .not.toBe(idBefore);
+    const currentFieldId = async (): Promise<string | null> =>
+      (await field.count()) > 0 ? field.getAttribute("id") : null;
+    const idBefore = await currentFieldId();
+
+    // The bridge's click handler is not ready the instant the preview paints, so
+    // the first click is sometimes swallowed. Retry rather than sleep: a fixed
+    // wait is either too short on a cold start or wasted on a warm one.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await this.block(dataTest).first().click();
+      try {
+        await expect.poll(currentFieldId, { timeout: 5000, intervals: [250] }).not.toBe(idBefore);
+        return;
+      } catch {
+        if (attempt === 3) {
+          throw new Error(
+            `Clicking [data-test="${dataTest}"] did not switch the editor to that block's form ` +
+              `after 3 attempts (field "${expectFieldName}" still owned by ${idBefore}).`,
+          );
+        }
+      }
+    }
   }
 
   /**

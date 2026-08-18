@@ -13,8 +13,11 @@ import { writeFileSync } from "node:fs";
 const output = process.env.FIND_PROBE_OUT;
 const records = [];
 
-/** Distinguishes the two very different things that reach `stories.list`. */
+/** Distinguishes the very different things that reach one method. */
 const tagFor = (group, method, args) => {
+  if (group === "capi") {
+    return args?.[0]?.by_uuids ? "by_uuids" : "";
+  }
   if (group === "stories" && method === "list" && args?.[0]?.query?.by_uuids) {
     return "by_uuids";
   }
@@ -23,7 +26,14 @@ const tagFor = (group, method, args) => {
 
 function timeCall(group, method, args, invoke) {
   const start = performance.now();
-  const done = () => records.push({ group, method, tag: tagFor(group, method, args), start, end: performance.now() });
+  const done = () =>
+    records.push({
+      group,
+      method,
+      tag: tagFor(group, method, args),
+      start,
+      end: performance.now(),
+    });
 
   try {
     const result = invoke();
@@ -100,3 +110,26 @@ process.on("exit", () => {
   }
   writeFileSync(output, records.map((record) => JSON.stringify(record)).join("\n"));
 });
+
+/**
+ * Wraps the CDN client class so every `client.get(slug, params)` is timed.
+ *
+ * A construct trap rather than a subclass, so the wrapper stays indifferent to
+ * the constructor's shape. Records land under the `capi` group, which is what
+ * tells the CDN batches apart from the MAPI requests in the same run.
+ */
+export function wrapCapiClientClass(RealClass) {
+  return new Proxy(RealClass, {
+    construct(target, args, newTarget) {
+      const client = Reflect.construct(target, args, newTarget);
+      const realGet = client.get.bind(client);
+
+      client.get = (slug, params, fetchOptions) =>
+        timeCall("capi", String(slug).split("/").pop(), [params], () =>
+          realGet(slug, params, fetchOptions),
+        );
+
+      return client;
+    },
+  });
+}

@@ -17,7 +17,8 @@
 #   bash packages/cli/playground/find/scenarios.sh --keep-output    # keep the JSONL + report
 #   bash packages/cli/playground/find/scenarios.sh --no-build       # skip the CLI build
 #
-# Requires `storyblok login` for the space, plus `jq`.
+# Requires `storyblok login` for the space, plus `jq`, plus `VITE_CLI_FIND_SPACE_ID`
+# set in the repository `.env` (or exported, or passed as `--space`).
 
 set -uo pipefail
 
@@ -26,11 +27,21 @@ REPO_ROOT="$(cd "$HARNESS_DIR/../../../.." && pwd)"
 CLI_DIR="$REPO_ROOT/packages/cli"
 CLI_ENTRY="$CLI_DIR/dist/index.mjs"
 
-# Reference space: "Storyblok Website clone", 3,951 stories + 65 folders, 176
+# The reference space id is read from `VITE_CLI_FIND_SPACE_ID`, picked up from the
+# repository `.env` when it is not already exported, so the id lives in one place
+# outside the repository history. `--space` still overrides it for a single run.
+#
+# That space is "Storyblok Website clone", 3,951 stories + 65 folders, 176
 # components, real broken and stale references. The scopes below are sized
 # against it, each landing between 160 and 210 server-side matches: enough work
 # to measure, still ~30s per scenario at the default 6 req/s.
-SPACE="294494468878388"
+if [[ -z "${VITE_CLI_FIND_SPACE_ID:-}" && -f "$REPO_ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091  # path is only known at runtime
+  source "$REPO_ROOT/.env"
+  set +a
+fi
+SPACE="${VITE_CLI_FIND_SPACE_ID:-}"
 
 DO_BUILD=1
 LIST_ONLY=0
@@ -59,6 +70,10 @@ RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; CYAN=$'\033[36m'
 ON_CYAN=$'\033[46;30;1m'; ON_GREY=$'\033[47;30;1m'
 
 command -v jq >/dev/null || { echo "${RED}jq is required${RESET}" >&2; exit 1; }
+[[ -n "$SPACE" ]] || {
+  echo "${RED}no space id: set VITE_CLI_FIND_SPACE_ID in $REPO_ROOT/.env, or pass --space${RESET}" >&2
+  exit 1
+}
 
 # The written report lands in the gitignored cache directory unless asked otherwise,
 # so a sweep never leaves the repository dirty.
@@ -306,14 +321,14 @@ run() {
 #        `enterprise_page` stories. The faq subtree has almost no references, so
 #        the reference check uses this scope rather than one where it finds nothing.
 scenarios() {
-  run "server-scope" \
-    "Server-side filters only: one subtree, stories without folders. Every listed story is fetched and kept. Expect 178 listed, 178 matched." \
-    --entry-type story --starts-with faq
+  # run "server-scope" \
+  #   "Server-side filters only: one subtree, stories without folders. Every listed story is fetched and kept. Expect 178 listed, 178 matched." \
+  #   --entry-type story --starts-with faq
 
-  run "where-block" \
-    "Same subtree, same fetch cost, narrowed client-side to stories nesting a 'hint' block at any depth. Expect 178 fetched, 34 matched." \
-    --entry-type story --starts-with faq \
-    --where "\$..[?(@.component == 'hint')]"
+  # run "where-block" \
+  #   "Same subtree, same fetch cost, narrowed client-side to stories nesting a 'hint' block at any depth. Expect 178 fetched, 34 matched." \
+  #   --entry-type story --starts-with faq \
+  #   --where "\$..[?(@.component == 'hint')]"
 
   run "client-filters" \
     "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
@@ -330,6 +345,30 @@ scenarios() {
     "Reference integrity: loads the component schema, extracts every link and relation, resolves the targets it has not already listed, then reports the stories with issues. --where runs after that enrichment, which is what lets it select one kind of issue out of the \`_ref_issues\` the check attached. Expect 210 checked, ~274 external targets resolved, 27 with issues, 25 of them stale URLs." \
     --check-references --starts-with lp \
     --where "\$._ref_issues[?(@.type == 'stale_url')]"
+
+  # ── The two optimizations ───────────────────────────────────────────────────
+  # Both are measured against a scenario above rather than a scope of their own,
+  # so the interesting number is the comparison: "skip-content" against
+  # "includes-block", which lists the same 167 stories and fetches every one of
+  # them, and "capi-filter" against "client-filters", which asks the same
+  # question over the same subtree and must return the same 21 stories.
+
+  run "skip-content" \
+    "The same server-side scope as includes-block with the per-story content fetch dropped, which leaves one page walk and nothing else. Expect 167 listed, 0 fetched, 167 emitted as list metadata, in ~4s against the ~29s the same scope takes with content." \
+    --includes-block customers_logos --skip-content
+
+  run "capi-filter" \
+    "The same question as client-filters, answered by reading content from the CDN 25 stories at a time and fetching from MAPI only what matched. The CDN serves the same draft content MAPI does, so the answer is the same 21 stories. Expect 197 listed, 6 skipped before fetch, 170 pruned by CAPI over 8 batches, 21 fetched from MAPI, 21 matched — in ~5s against client-filters' ~32s." \
+    --starts-with lp --publish-status published --capi-filter \
+    --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
+    --where "\$..[?match(@.component, 'card_with_.*')]" \
+    --where "\$[?(\$.content.component == 'enterprise_page')]"
+
+  run "capi-params" \
+    "--capi-params reaching the CDN request: published content only, so the CAPI filter reads what is live rather than the draft it defaults to. Expect 178 listed, 139 pruned, 39 fetched from MAPI (31 matched by the CAPI filter, plus 8 the CDN had no published version of), and 34 matched: the 31 plus 3 of those 8, with the other 5 dropped once their content arrived. The same 34 a full MAPI pass returns on this scope, but filtering on published content can in principle miss a draft-only match, which is why draft is the default." \
+    --entry-type story --starts-with faq --capi-filter \
+    --capi-params "{version: published}" \
+    --where "\$..[?(@.component == 'hint')]"
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────

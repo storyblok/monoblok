@@ -15,6 +15,9 @@ export interface FindOptions {
   publishStatus?: PublishStatus;
   references?: string;
   checkReferences?: boolean;
+  skipContent?: boolean;
+  capiFilter?: boolean;
+  capiParams?: string;
 }
 
 export type ClientFilter = (story: Story) => boolean;

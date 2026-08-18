@@ -19,10 +19,11 @@ export const QA_CONFIG = {
   mapiBaseUrl: process.env.STORYBLOK_MAPI_URL ?? "https://mapi.storyblok.com/v1",
   spaceId: requireEnv("STORYBLOK_SPACE_ID"),
   managementToken: requireEnv("STORYBLOK_TOKEN"),
-  // Relative to the package root. Every `qa:*` script runs with `packages/nuxt`
-  // as its cwd, because that is where pnpm --filter puts it. Avoids
-  // `import.meta.dirname`, which breaks if Playwright transpiles this to CJS.
-  storageStatePath: "test/visual-editor/.auth/storyblok.json",
+  // One saved session per repo, shared with one-off scripts. Relative to the
+  // package root: every `qa:*` script runs with `packages/nuxt` as its cwd,
+  // because that is where pnpm --filter puts it. Avoids `import.meta.dirname`,
+  // which breaks if Playwright transpiles this to CJS.
+  storageStatePath: process.env.STORYBLOK_QA_SESSION ?? "../../.storyblok-qa/session.json",
 } as const;
 
 /** Slugs the `has-playground-content` scenario must have seeded. */

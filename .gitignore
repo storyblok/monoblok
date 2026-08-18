@@ -56,11 +56,8 @@ tmp
 docs/superpowers
 DOCS.md
 
-# Locally-trusted certs for Visual Editor QA
-packages/nuxt/test/visual-editor/certs/*
-!packages/nuxt/test/visual-editor/certs/.gitkeep
+# Saved app session for Visual Editor QA
+/.storyblok-qa/
 
-# Visual Editor QA session state and reports
-packages/nuxt/test/visual-editor/.auth/
-packages/nuxt/test/visual-editor/playwright-report/
+# Playwright artifacts from the Visual Editor QA harness
 packages/nuxt/test/visual-editor/test-results/

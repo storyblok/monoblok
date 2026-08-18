@@ -12,9 +12,3 @@ committed demo token because the module assigns `runtimeConfig.public.storyblok`
 The `popular-articles` block's `articles` field is seeded **empty**. Story UUIDs are assigned by the
 CLI on push, so run `node test/visual-editor/link-relations.mjs` after seeding to fill it with the
 real UUIDs.
-
-Verify the scenario still covers every component the playground renders:
-
-```bash
-node packages/nuxt/test/scenarios/has-playground-content/verify-covers-playground.mjs
-```

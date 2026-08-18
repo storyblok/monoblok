@@ -16,10 +16,11 @@ None of these are about content, and every one of them blocks the whole test if 
 - [ ] **The space's preview domain points at your local app.** Read it before you change it, and
       change it only in a space you have confirmed nobody else is using.
 - [ ] **The local app is served over https.** The editor runs on `https://app.storyblok.com`;
-      Chromium blocks an http iframe as mixed content and you get a blank preview with no error in
+      browsers block an http iframe as mixed content and you get a blank preview with no error in
       the app.
-- [ ] **The certificate is locally trusted.** A self-signed cert fails inside an iframe with no
-      visible prompt. Use `mkcert`, whose root CA is installed in the system trust store.
+- [ ] **The certificate is accepted.** A self-signed cert fails inside an iframe with no visible
+      prompt. Playwright's `ignoreHTTPSErrors: true` covers it; a browser you drive yourself needs
+      the cert trusted, e.g. with `mkcert`.
 - [ ] **The browser will actually load a local app inside the editor's iframe.** Chrome blocks a
       public origin from embedding a private one (`net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`)
       and renders a `chrome-error` page in the frame, which looks identical to a dead bridge. Check
@@ -28,10 +29,34 @@ None of these are about content, and every one of them blocks the whole test if 
 - [ ] **The app session already exists.** Log in once by hand in a headed browser and save the
       session state; do not automate a login form, and never put a password in the harness.
 
-## 2. The chain, one link at a time
+## 2. Per-run setup
+
+Every step writes to the QA space. Confirm it is free first.
+
+```bash
+set -a && source ./.env.qa-engineer-manual && set +a
+
+# Once per machine: log in by hand, the session saves itself.
+node .agents/skills/qa-engineer-manual/scripts/save-storyblok-session.mjs
+
+# Read and RECORD the `current:` domain this prints; you restore it in step 5.
+bash .agents/skills/qa-engineer-manual/scripts/configure-space.sh
+
+# Point the preview at the local app (read-only without --confirm).
+bash .agents/skills/qa-engineer-manual/scripts/configure-space.sh \
+  --domain https://localhost:<port>/ --confirm
+
+# Seed the content tree the app expects. This wipes the space first.
+bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
+  --scenario <scenario> --scenario-dir packages/<package>/test/scenarios
+```
+
+The package's `test/GUIDE.md` names its port, its scenario, and any linking step the seed needs.
+
+## 3. The chain, one link at a time
 
 When the last box fails and the earlier ones pass, you have found a product defect. When an earlier
-one fails, you have found a setup problem — fix it before reading anything into the later boxes.
+one fails, you have found a setup problem. Fix it before reading anything into the later boxes.
 
 - [ ] **The story exists and renders standalone.** Open the app's URL directly, outside the editor.
       If this fails, the seed or the token is wrong, not the bridge.
@@ -39,12 +64,12 @@ one fails, you have found a setup problem — fix it before reading anything int
 - [ ] **The rendered content matches the story you opened.** A stale or wrong story here means story
       identification is broken, not live updates.
 
-## 3. Live updates
+## 4. Live updates
 
 - [ ] **Typing in a field changes the preview before any save.** This is the `input` event. Assert
       the new text is visible in the preview, not that no error appeared.
 - [ ] **Clicking an editable block in the preview selects it in the editor.** This proves the
-      `v-editable` markers survived rendering.
+      `data-blok-c` / `data-blok-uid` attributes survived rendering.
 - [ ] **A relation field stays resolved after an edit.** Bridge payloads resolve relations
       separately from the API call; a page can fetch resolved relations correctly and then lose them
       on the first keystroke.
@@ -53,24 +78,35 @@ one fails, you have found a setup problem — fix it before reading anything int
 - [ ] **Saving and publishing re-renders with the saved content**, and the preview does not revert
       to the pre-edit version.
 
-## 4. What to record
+## 5. Teardown
+
+- [ ] **The space's preview domain was restored to what it was before you started.** You recorded it
+      in step 2; put it back with the same script. Nothing does this for you, and the next person to
+      open the space in the editor gets a blank preview with no error if you skip it.
+
+## 6. What to record
 
 - [ ] Note every point where you had to read the source, hand-build something internal, or work
       around the API. Each one is a finding.
 - [ ] Note which link in the chain each failure sat at. A bare timeout on a preview assertion is
       indistinguishable between six causes; naming the link is the finding.
 
-## 5. Teardown
+## Driving it
 
-- [ ] **The space's preview domain was restored to what it was before you started.** You wrote it
-      down in step 1; put it back. Nothing does this for you, and the next person to open the space
-      in the editor gets a blank preview with no error if you skip it.
+Write a one-off script, run it, throw it away. Start from
+[`examples/visual-editor-run.mjs`](./examples/visual-editor-run.mjs): copy it to `.claude/tmp/`,
+edit the constants at the top, run it. It has the launch args, the saved session, the story-id
+lookup, and the block-selection retry already wired up, and it prints the standard `{ outcome, … }`
+JSON.
 
-## Package harness contract
+Two things about the editor's DOM that are not guessable, and that the example encodes:
 
-A package is covered when it provides all four:
+- **Address fields by their technical name, not their label.** Labels are translated and re-worded.
+  The input id is `<storyId>__<fieldName>-<blokUid>`, so `input[id*="headline"]` is stable.
+- **A click must be proven to have switched forms.** The story-level form carries fields with the
+  same technical names as its blocks, so a swallowed click silently edits the story field instead.
+  Assert the input's id changed; that is the only evidence the editor moved to the block's own form.
 
-1. A seed scenario mirroring the content tree its own demo/playground app expects.
-2. An https dev target on a port that does not collide with existing ones.
-3. An auth setup that fails fast with the command to regenerate the session.
-4. One spec per rendered page, each asserting an observed change in the preview.
+Where a package already keeps a harness, reuse its page object rather than the example: it is the
+maintained copy of these selectors. `@storyblok/nuxt` keeps one in
+`packages/nuxt/test/visual-editor/editor.page.ts`.

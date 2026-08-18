@@ -9,11 +9,15 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   outputDir: "test-results",
-  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
+  reporter: [["list"]],
   use: {
     baseURL: QA_CONFIG.appBaseUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // The playground serves a self-signed certificate. An untrusted cert fails
+    // inside the preview iframe with no visible prompt, which reads as a dead
+    // bridge; accepting it here is what makes a locally-trusted cert unnecessary.
+    ignoreHTTPSErrors: true,
   },
   projects: [
     { name: "auth", testMatch: /auth\.setup\.ts/ },
@@ -44,7 +48,8 @@ export default defineConfig({
     url: QA_CONFIG.previewBaseUrl,
     reuseExistingServer: true,
     timeout: 120_000,
-    // The dev server's cert is locally trusted; this only covers the health check.
-    ignoreHTTPSErrors: false,
+    // Node's TLS stack is separate from Chromium's, so the health check needs
+    // its own opt-in to the self-signed cert.
+    ignoreHTTPSErrors: true,
   },
 });

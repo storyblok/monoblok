@@ -1,17 +1,26 @@
-// Opens a headed browser so a human can log in to Storyblok once, 2FA and all,
-// then saves the session for the Playwright harness to reuse. No credential is
-// read, stored, or transmitted by this script.
+// Opens a headed browser so a human can log in to app.storyblok.com once, 2FA
+// and all, then saves the session for Playwright to reuse. No credential is
+// read, stored, or transmitted by this script, only the resulting session
+// state, which is gitignored.
+//
+// The state is written to <repo root>/.storyblok-qa/session.json, so every
+// package harness and every one-off script in .claude/tmp/ reuses one login.
 //
 // Completion is detected from the BROWSER, not from the terminal: the script
 // polls for a session cookie and a URL that is no longer the login screen. That
 // means an agent can start this while a person only interacts with the browser
-// window — a terminal prompt would need a TTY the agent does not have.
+// window; a terminal prompt would need a TTY the agent does not have.
+//
+// Usage:
+//   node .agents/skills/qa-engineer-manual/scripts/save-storyblok-session.mjs
+import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { chromium } from "@playwright/test";
 
 const appBaseUrl = process.env.STORYBLOK_APP_URL ?? "https://app.storyblok.com";
-const statePath = resolve(import.meta.dirname, ".auth/storyblok.json");
+const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
+const statePath = process.env.STORYBLOK_QA_SESSION ?? join(repoRoot, ".storyblok-qa/session.json");
 const TIMEOUT_MS = 15 * 60 * 1000;
 const POLL_MS = 2000;
 

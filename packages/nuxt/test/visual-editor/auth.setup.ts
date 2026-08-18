@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { expect, test as setup } from "@playwright/test";
 import { QA_CONFIG } from "./config";
 
-const REGENERATE = "pnpm --filter @storyblok/nuxt qa:auth";
+const REGENERATE = "node .agents/skills/qa-engineer-manual/scripts/save-storyblok-session.mjs";
 
 setup("a valid app session exists", async ({ page }) => {
   expect(

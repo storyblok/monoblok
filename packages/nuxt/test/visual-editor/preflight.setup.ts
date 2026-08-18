@@ -1,5 +1,6 @@
 import { expect, test as setup } from "@playwright/test";
 import { EXPECTED_SLUGS, QA_CONFIG } from "./config";
+import { resolveStoryId } from "./editor.page";
 
 setup(
   "the playground serves the seeded space, not a stale or misconfigured one",
@@ -55,4 +56,26 @@ setup("the space is seeded", async ({ request }) => {
     "Missing seeded stories. Seed with: bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh " +
       "--scenario has-playground-content --scenario-dir packages/nuxt/test/scenarios",
   ).toEqual([]);
+});
+
+setup("the seeded relation field references the articles", async ({ request }) => {
+  // The scenario seeds `popular-articles.articles` empty, because the CLI
+  // assigns story UUIDs on push. Without the linking step the relation spec
+  // fails on an empty list, which reads like a broken bridge.
+  const storyId = await resolveStoryId(request, "vue");
+  const response = await request.get(
+    `${QA_CONFIG.mapiBaseUrl}/spaces/${QA_CONFIG.spaceId}/stories/${storyId}`,
+    { headers: { Authorization: QA_CONFIG.managementToken } },
+  );
+  expect(response.ok(), "Could not read the start page over MAPI").toBe(true);
+
+  const { story } = await response.json();
+  const block = (story.content.body ?? []).find(
+    (entry: { component: string }) => entry.component === "popular-articles",
+  );
+
+  expect(
+    block?.articles ?? [],
+    "popular-articles has no references. Run: node packages/nuxt/test/visual-editor/link-relations.mjs",
+  ).toHaveLength(2);
 });

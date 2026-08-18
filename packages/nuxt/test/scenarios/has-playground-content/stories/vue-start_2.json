@@ -1,6 +1,6 @@
 {
   "id": 2,
-  "uuid": "aaaaaaaa-0000-4000-8000-000000000002",
+  "uuid": "2",
   "name": "Vue Start",
   "slug": "vue",
   "full_slug": "vue/",
@@ -14,22 +14,22 @@
     "richText": { "type": "doc", "content": [{ "type": "paragraph" }] },
     "body": [
       {
-        "_uid": "bbbbbbbb-0000-4000-8000-000000000001",
+        "_uid": "teaser-start-1",
         "component": "teaser",
         "headline": "QA teaser"
       },
       {
-        "_uid": "bbbbbbbb-0000-4000-8000-000000000002",
+        "_uid": "grid-start-1",
         "component": "grid",
         "columns": [
           {
-            "_uid": "bbbbbbbb-0000-4000-8000-000000000003",
+            "_uid": "feature-start-1",
             "component": "feature",
             "name": "Feature 1",
             "description": ""
           },
           {
-            "_uid": "bbbbbbbb-0000-4000-8000-000000000004",
+            "_uid": "feature-start-2",
             "component": "feature",
             "name": "Feature 2",
             "description": ""
@@ -37,12 +37,12 @@
         ]
       },
       {
-        "_uid": "bbbbbbbb-0000-4000-8000-000000000005",
+        "_uid": "popular-articles-start-1",
         "component": "popular-articles",
         "articles": []
       },
       {
-        "_uid": "bbbbbbbb-0000-4000-8000-000000000006",
+        "_uid": "emoji-randomizer-start-1",
         "component": "emoji-randomizer",
         "label": "Randomize"
       }

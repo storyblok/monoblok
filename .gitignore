@@ -55,3 +55,7 @@ tmp
 /.storyblok
 docs/superpowers
 DOCS.md
+
+# Locally-trusted certs for Visual Editor QA
+packages/nuxt/test/visual-editor/certs/*
+!packages/nuxt/test/visual-editor/certs/.gitkeep

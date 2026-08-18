@@ -37,6 +37,8 @@
     "dev:build": "nuxi build playground",
     "dev:preview": "nuxi preview playground --port 3100",
     "dev:e2e": "nuxi dev playground --port 3100",
+    "qa:certs": "mkcert -cert-file test/visual-editor/certs/localhost.pem -key-file test/visual-editor/certs/localhost-key.pem localhost 127.0.0.1",
+    "qa:dev": "nuxi dev playground --port 3200 --https --https.cert=test/visual-editor/certs/localhost.pem --https.key=test/visual-editor/certs/localhost-key.pem",
     "prepare:playground": "nuxi prepare playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxi prepare playground",
     "cy:open": "cypress open",

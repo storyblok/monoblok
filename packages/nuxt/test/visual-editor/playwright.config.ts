@@ -8,7 +8,8 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   retries: 0,
-  reporter: [["list"], ["html", { open: "never" }]],
+  outputDir: "test-results",
+  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   use: {
     baseURL: QA_CONFIG.appBaseUrl,
     trace: "retain-on-failure",

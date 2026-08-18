@@ -19,6 +19,7 @@ const STAGES = {
   "stories.list": ["list requests", "server-side (MAPI)", "page"],
   "stories.get": ["content fetch", "server-side (MAPI)", "story"],
   "stories.list.by_uuids": ["target lookups", "server-side (MAPI)", "batch"],
+  "capi.stories.by_uuids": ["content prefetch", "server-side (CAPI)", "batch"],
   "jsonpath.match": ["--where filters", "client-side (local)", "evaluation"],
 };
 
@@ -97,6 +98,7 @@ const report = JSON.parse(readFileSync(reportPath, "utf8"));
 const summary = report.summary ?? {};
 const listed = summary.listStoriesResults ?? {};
 const fetched = summary.fetchContentResults ?? {};
+const capiFiltered = summary.capiFilterResults;
 const isCheck = summary.referenceCheckResults !== undefined;
 const final = summary.filterResults ?? summary.referenceCheckResults ?? {};
 
@@ -142,6 +144,9 @@ if (final.skipped) {
 }
 if (listed.skipped) {
   counts.push({ value: listed.skipped, label: "skipped before fetch", tone: "warn", sep: " · " });
+}
+if (capiFiltered?.skipped) {
+  counts.push({ value: capiFiltered.skipped, label: "pruned by CAPI", tone: "warn", sep: " · " });
 }
 const failures = (listed.failed ?? 0) + (fetched.failed ?? 0);
 if (failures) {

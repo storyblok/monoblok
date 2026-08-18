@@ -2,7 +2,12 @@ import { expect, test } from "@playwright/test";
 import { QA_CONFIG } from "../config";
 import { resolveStoryId, StoryblokEditor } from "../editor.page";
 
-test.describe("index.vue — useAsyncStoryblok with an explicit bridge", () => {
+// This route ([...slug].vue) configures `bridge: {}` and inherits
+// `resolveRelations` from `api.resolve_relations` via the composable's
+// `bridge.resolveRelations ?? toValue(api).resolve_relations` fallback. That
+// inheritance path is deliberately the one under test here; see
+// index-route.spec.ts for a page that configures `bridge` explicitly.
+test.describe("[...slug].vue — bridge options inherited from api", () => {
   test("renders the story standalone, outside the editor", async ({ page }) => {
     await page.goto(`${QA_CONFIG.previewBaseUrl}/vue`);
     await expect(page.locator('[data-test="teaser"]')).toContainText("QA teaser");

@@ -2,11 +2,15 @@
 // articles. Story UUIDs are assigned by the CLI on push, so they cannot be
 // hardcoded in the scenario. Idempotent: safe to re-run after a re-seed.
 //
+// Output is asymmetric: on success this prints one JSON line; on failure it
+// prints a human-readable message and exits non-zero.
+//
 // Usage:
 //   set -a && source ./.env.qa-engineer-manual && set +a \
 //     && node packages/nuxt/test/visual-editor/link-relations.mjs
 const token = process.env.STORYBLOK_TOKEN;
 const spaceId = process.env.STORYBLOK_SPACE_ID;
+const mapiBaseUrl = process.env.STORYBLOK_MAPI_URL ?? "https://mapi.storyblok.com/v1";
 
 if (!token || !spaceId) {
   console.error(
@@ -15,7 +19,7 @@ if (!token || !spaceId) {
   process.exit(1);
 }
 
-const mapi = `https://mapi.storyblok.com/v1/spaces/${spaceId}`;
+const mapi = `${mapiBaseUrl}/spaces/${spaceId}`;
 const headers = { Authorization: token, "Content-Type": "application/json" };
 
 const request = async (path, init) => {
@@ -70,9 +74,11 @@ if (alreadyLinked) {
 
 block.articles = articleUuids;
 
+// No `publish: 1`: the space stays consistently draft, matching the rest of
+// the seed. The playground requests `version: "draft"` anyway.
 await request(`/stories/${story.id}`, {
   method: "PUT",
-  body: JSON.stringify({ story: { content: story.content }, publish: 1 }),
+  body: JSON.stringify({ story: { content: story.content } }),
 });
 
 console.log(

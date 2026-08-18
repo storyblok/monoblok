@@ -27,6 +27,9 @@ above; nothing else in the run proceeds.
 ```bash
 set -a && source ./.env.qa-engineer-manual && set +a
 
+# Read and record the `current:` domain this prints, you restore it below.
+bash .agents/skills/qa-engineer-manual/scripts/configure-space.sh
+
 # Point the space's preview at the local playground (read-only without --confirm).
 bash .agents/skills/qa-engineer-manual/scripts/configure-space.sh \
   --domain https://localhost:3200/ --confirm
@@ -38,6 +41,16 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 # Fill the relation references with the UUIDs the CLI just assigned.
 node packages/nuxt/test/visual-editor/link-relations.mjs
 ```
+
+When you're done, restore the domain you recorded, with the same script:
+
+```bash
+bash .agents/skills/qa-engineer-manual/scripts/configure-space.sh \
+  --domain <the recorded current: value> --confirm
+```
+
+Nothing does this automatically. Leaving the space pointed at the playground means the next person
+to open it in the editor gets a blank preview with no error.
 
 ## Run
 
@@ -66,8 +79,17 @@ look like product defects.
   breaks the harness, that is the file to repair.
 - The `feature` component in the shared demo space has a `native-color-picker` field. The seed omits
   it deliberately: the playground never reads it, and a plugin field adds an install dependency.
+- `pnpm --filter @storyblok/nuxt qa:verify-scenario` catches scenario drift: it asserts the
+  `has-playground-content` scenario defines a component for every component the playground can
+  render. Nothing runs it automatically; run it yourself after editing the scenario or the
+  playground's components.
 
-## Two traps found while building this
+## Three traps found while building this
+
+- **The editor specs edit fields without ever saving.** They rely on the seeded text being intact
+  when a run starts. If you click Save while debugging in the editor, later runs fail on the
+  seeded-text assertions with no hint why. Re-seed with `seed-scenario.sh` (see Per-run setup) if
+  this happens.
 
 - **`Cannot find package 'vue'` on the first `qa:dev`.** A stale `playground/.nuxt` cache, not an
   https problem. Delete `packages/nuxt/playground/.nuxt` and start again; the directory is

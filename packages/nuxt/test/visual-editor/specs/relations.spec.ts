@@ -11,9 +11,14 @@ test.describe("resolveRelations survives a live edit", () => {
     // to survive anything.
     const storyId = await resolveStoryId(request, "vue");
     const response = await request.get(
-      `https://mapi.storyblok.com/v1/spaces/${QA_CONFIG.spaceId}/stories/${storyId}`,
+      `${QA_CONFIG.mapiBaseUrl}/spaces/${QA_CONFIG.spaceId}/stories/${storyId}`,
       { headers: { Authorization: QA_CONFIG.managementToken } },
     );
+    expect(
+      response.ok(),
+      `Could not read story ${storyId} over MAPI (status ${response.status()}). The token likely ` +
+        "expired or does not have access to this space.",
+    ).toBe(true);
     const { story } = await response.json();
     const block = story.content.body.find(
       (entry: { component: string }) => entry.component === "popular-articles",

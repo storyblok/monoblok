@@ -41,6 +41,7 @@
     "qa:dev": "nuxi dev playground --port 3200 --https --https.cert=test/visual-editor/certs/localhost.pem --https.key=test/visual-editor/certs/localhost-key.pem",
     "qa:auth": "node test/visual-editor/save-session.mjs",
     "qa:editor": "NODE_EXTRA_CA_CERTS=\"$(mkcert -CAROOT)/rootCA.pem\" playwright test --config test/visual-editor/playwright.config.ts",
+    "qa:verify-scenario": "node test/scenarios/has-playground-content/verify-covers-playground.mjs",
     "prepare:playground": "nuxi prepare playground",
     "dev:prepare": "nuxt-module-build build --stub && nuxi prepare playground",
     "cy:open": "cypress open",

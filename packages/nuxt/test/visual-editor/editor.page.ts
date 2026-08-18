@@ -8,9 +8,15 @@ export const resolveStoryId = async (
   fullSlug: string,
 ): Promise<number> => {
   const response = await request.get(
-    `https://mapi.storyblok.com/v1/spaces/${QA_CONFIG.spaceId}/stories?per_page=100`,
+    `${QA_CONFIG.mapiBaseUrl}/spaces/${QA_CONFIG.spaceId}/stories?per_page=100`,
     { headers: { Authorization: QA_CONFIG.managementToken } },
   );
+  if (!response.ok()) {
+    throw new Error(
+      `Could not list stories over MAPI (status ${response.status()}). ` +
+        "The token likely expired or does not have access to this space.",
+    );
+  }
   const { stories } = await response.json();
   const story = stories.find(
     (entry: { full_slug: string }) => entry.full_slug.replace(/\/$/, "") === fullSlug,

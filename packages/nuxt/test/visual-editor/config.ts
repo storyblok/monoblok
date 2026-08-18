@@ -9,8 +9,14 @@ const requireEnv = (name: string): string => {
 export const QA_CONFIG = {
   /** The Storyblok app. The editor and its preview iframe live here. */
   appBaseUrl: process.env.STORYBLOK_APP_URL ?? "https://app.storyblok.com",
-  /** The playground, served over trusted https by the `qa:dev` script. */
-  previewBaseUrl: process.env.QA_PREVIEW_URL ?? "https://localhost:3200",
+  /**
+   * The playground, served over trusted https by the `qa:dev` script.
+   * Not overridable: `qa:dev` pins port 3200, so any other value would only
+   * make Playwright's `webServer.url` wait on a port nothing serves.
+   */
+  previewBaseUrl: "https://localhost:3200",
+  /** The Management API host. Non-EU spaces need a region-specific host. */
+  mapiBaseUrl: process.env.STORYBLOK_MAPI_URL ?? "https://mapi.storyblok.com/v1",
   spaceId: requireEnv("STORYBLOK_SPACE_ID"),
   managementToken: requireEnv("STORYBLOK_TOKEN"),
   // Relative to the package root. Every `qa:*` script runs with `packages/nuxt`

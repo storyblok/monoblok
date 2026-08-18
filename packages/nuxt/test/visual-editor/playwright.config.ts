@@ -22,7 +22,21 @@ export default defineConfig({
       name: "editor",
       testMatch: /.*\.spec\.ts/,
       dependencies: ["auth", "preflight"],
-      use: { ...devices["Desktop Chrome"], storageState: QA_CONFIG.storageStatePath },
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: QA_CONFIG.storageStatePath,
+        launchOptions: {
+          // The editor is served from a public origin and embeds the playground
+          // from localhost. Chrome's Local Network Access policy blocks that
+          // iframe with net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS, and the
+          // preview frame silently renders a chrome-error page instead of the
+          // app — indistinguishable from a dead bridge unless you look at the
+          // frame's URL. Disabling the checks is required for local QA.
+          args: [
+            "--disable-features=LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights",
+          ],
+        },
+      },
     },
   ],
   webServer: {

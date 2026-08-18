@@ -20,6 +20,11 @@ None of these are about content, and every one of them blocks the whole test if 
       the app.
 - [ ] **The certificate is locally trusted.** A self-signed cert fails inside an iframe with no
       visible prompt. Use `mkcert`, whose root CA is installed in the system trust store.
+- [ ] **The browser will actually load a local app inside the editor's iframe.** Chrome blocks a
+      public origin from embedding a private one (`net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`)
+      and renders a `chrome-error` page in the frame, which looks identical to a dead bridge. Check
+      the preview frame's URL, not just its emptiness. Automated runs need the checks disabled via
+      launch args.
 - [ ] **The app session already exists.** Log in once by hand in a headed browser and save the
       session state; do not automate a login form, and never put a password in the harness.
 

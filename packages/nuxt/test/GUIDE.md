@@ -17,6 +17,11 @@ pnpm --filter @storyblok/nuxt qa:certs
 pnpm --filter @storyblok/nuxt qa:auth
 ```
 
+`qa:auth` watches the browser, not the terminal: it polls for a session cookie and saves as soon as
+you are logged in, then closes the window by itself. Nothing to confirm at the prompt, so an agent
+can start it for you while you only touch the browser. It waits 15 minutes, then gives up. Your
+credentials are never read or stored — only the resulting session state, which is gitignored.
+
 The session expires. When it does, the harness fails in its `auth` project and names the command
 above; nothing else in the run proceeds.
 
@@ -95,6 +100,12 @@ look like product defects.
   https problem. Delete `packages/nuxt/playground/.nuxt` and start again; the directory is
   gitignored and regenerates. Confirm it is the cache and not your change by starting `dev:e2e` on
   3100 — if that works, the cache is the culprit.
+- **A blank preview frame is usually Chrome, not the bridge.** The editor is served from a public
+  origin and embeds the playground from localhost, which Chrome's Local Network Access policy blocks
+  with `net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`. The frame then renders a `chrome-error`
+  page that looks exactly like a dead bridge. The harness disables those checks via Chromium launch
+  args in `playwright.config.ts`; if you drive the editor in your own browser instead, expect to hit
+  this and to have to allow it.
 - **Killing `qa:dev` by its top PID leaves orphans.** The `pnpm` parent exits while the nuxi, nuxt,
   and nitro children keep port 3200 bound, so the next run reuses a server built from stale code.
   Kill the whole process tree, and check the port is actually free before re-running:

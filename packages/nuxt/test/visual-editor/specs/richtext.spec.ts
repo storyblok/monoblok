@@ -18,7 +18,10 @@ test("richtext.vue maps story links and url links differently", async ({ page })
   );
 });
 
-test("richtext.vue updates the rendered document on input", async ({ page, request }) => {
+// Live editing of a richtext field is NOT covered by this harness: driving the
+// editor's contenteditable richtext toolbar is brittle, so this test covers
+// in-editor rendering only, not that an edit propagates through the bridge.
+test("richtext.vue renders inside the editor preview", async ({ page, request }) => {
   const editor = new StoryblokEditor(page);
   await editor.openStory(await resolveStoryId(request, "vue/test-richtext"));
 

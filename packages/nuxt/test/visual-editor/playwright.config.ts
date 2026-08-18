@@ -17,11 +17,11 @@ export default defineConfig({
   },
   projects: [
     { name: "auth", testMatch: /auth\.setup\.ts/ },
-    { name: "preflight", testMatch: /preflight\.setup\.ts/, dependencies: ["auth"] },
+    { name: "preflight", testMatch: /preflight\.setup\.ts/ },
     {
       name: "editor",
       testMatch: /.*\.spec\.ts/,
-      dependencies: ["preflight"],
+      dependencies: ["auth", "preflight"],
       use: { ...devices["Desktop Chrome"], storageState: QA_CONFIG.storageStatePath },
     },
   ],

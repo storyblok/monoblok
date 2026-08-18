@@ -1,6 +1,7 @@
 import { Option } from "commander";
 import { pipeline } from "node:stream/promises";
 import { colorPalette, commands } from "../../../constants";
+import type { RegionCode } from "../../../constants";
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
 import { getUI } from "../../../lib/ui";
@@ -19,7 +20,14 @@ import {
   buildWhereFilters,
   resolveReferenceTargets,
 } from "./actions";
-import { createJsonlWriter, filterListedStoriesStream, filterStoriesStream } from "./streams";
+import {
+  capiFilterStream,
+  createJsonlWriter,
+  filterListedStoriesStream,
+  filterStoriesStream,
+} from "./streams";
+import { CAPI_BATCH_SIZE, createCapiContentFetcher, parseCapiParams } from "./capi";
+import type { CapiContentFetcher } from "./capi";
 import { buildRelationFieldMap, detectIssues, extractReferences, toTargetMeta } from "./references";
 import type { RefEntry, RefIssue, TargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
@@ -64,7 +72,19 @@ const findCmd = storiesCommand
     ]),
   )
   .option("--references <uuid>", "find stories referencing this UUID (server-side)")
-  .option("--check-references", "detect broken references and stale cached_url (client-side)");
+  .option("--check-references", "detect broken references and stale cached_url (client-side)")
+  .option(
+    "--skip-content",
+    "skip the per-story content fetch and emit list metadata only (no content-dependent filters)",
+  )
+  .option(
+    "--capi-filter",
+    "evaluate --where against bulk CAPI content and fetch only the matches (requires --where)",
+  )
+  .option(
+    "--capi-params <params>",
+    "extra CAPI query params for --capi-filter, e.g. '{version: published, language: de}'",
+  );
 
 findCmd.action(async (text: string | undefined, options: FindOptions, command) => {
   const ui = getUI();
@@ -105,12 +125,62 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
         ...context,
         preContentFilters: publishStatusFilters,
         filters: whereFilters,
+        skipContent: options.skipContent === true,
+        capi: options.capiFilter
+          ? await prepareCapiFilter({
+              spaceId: space,
+              region: state.region,
+              capiParams: options.capiParams,
+              filters: whereFilters,
+              ui,
+            })
+          : undefined,
       });
     }
   } catch (maybeError) {
     handleError(toError(maybeError), verbose);
   }
 });
+
+/** Everything the CAPI filter stage needs, resolved before the first page is listed. */
+type CapiFilter = {
+  fetchContent: CapiContentFetcher;
+  filters: ClientFilter[];
+};
+
+/**
+ * Resolves the CDN token and builds the batch fetcher.
+ *
+ * Done before the pipeline starts so a space without a usable token fails as a
+ * usage error, rather than after a few thousand stories have been listed.
+ */
+async function prepareCapiFilter({
+  spaceId,
+  region,
+  capiParams,
+  filters,
+  ui,
+}: {
+  spaceId: string;
+  region: RegionCode | undefined;
+  capiParams: string | undefined;
+  filters: ClientFilter[];
+  ui: ReturnType<typeof getUI>;
+}): Promise<CapiFilter> {
+  const spinner = ui.createSpinner("Preparing the CAPI filter...");
+  try {
+    const fetchContent = await createCapiContentFetcher({
+      spaceId,
+      region,
+      params: parseCapiParams(capiParams),
+    });
+    spinner.succeed(`CAPI filter ready (${CAPI_BATCH_SIZE} stories per request)`);
+    return { fetchContent, filters };
+  } catch (error) {
+    spinner.failed("Failed to prepare the CAPI filter");
+    throw error;
+  }
+}
 
 type FindContext = {
   spaceId: string;
@@ -127,12 +197,20 @@ const label = (text: string): string => text.padEnd(PROGRESS_LABEL_WIDTH);
 
 type PhaseCounters = {
   list: { total: number; succeeded: number; skipped: number; failed: number };
+  capiFilter: {
+    total: number;
+    candidates: number;
+    pruned: number;
+    unresolved: number;
+    failed: number;
+  };
   content: { total: number; succeeded: number; failed: number };
   process: { total: number; succeeded: number; skipped: number; failed: number };
 };
 
 const createCounters = (): PhaseCounters => ({
   list: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
+  capiFilter: { total: 0, candidates: 0, pruned: 0, unresolved: 0, failed: 0 },
   content: { total: 0, succeeded: 0, failed: 0 },
   process: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
 });
@@ -147,6 +225,7 @@ const createCounters = (): PhaseCounters => ({
 type PhaseTimings = {
   startedAt: number;
   list: number;
+  capiFilter: number;
   content: number;
   process: number;
 };
@@ -154,6 +233,7 @@ type PhaseTimings = {
 const createTimings = (): PhaseTimings => ({
   startedAt: Date.now(),
   list: 0,
+  capiFilter: 0,
   content: 0,
   process: 0,
 });
@@ -168,15 +248,21 @@ const createTimings = (): PhaseTimings => ({
 const formatMark = (ms: number): string => `done @${(ms / 1000).toFixed(1)}s`;
 
 /**
- * Streams the three fetch/filter phases and reports each with its own bar.
+ * Streams the fetch/filter phases and reports each with its own bar.
  *
  * The list endpoint omits `content`, so every story has to be re-fetched
  * individually. `fetchStoryStream` does that in parallel behind the shared
  * pipeline backpressure lock, and the MAPI client paces the requests with the
  * globally configured rate limit — there is no per-command concurrency knob.
  *
- * `processStories` is the terminal stage; it decides what each matched story
- * turns into (JSONL now, a buffered reference candidate for `--check-references`).
+ * Two stages are optional, and both exist to avoid that per-story fetch:
+ * `capi` inserts a bulk CAPI filter ahead of it, and `skipContent` drops it
+ * entirely. Neither changes what the terminal stage receives, only how much of
+ * the space reaches it.
+ *
+ * `filterStoriesStream` is that terminal stage; it decides what each matched
+ * story turns into (JSONL now, a buffered reference candidate for
+ * `--check-references`).
  */
 async function runStoryPipeline({
   spaceId,
@@ -188,6 +274,8 @@ async function runStoryPipeline({
   timings,
   onListed,
   onMatch,
+  capi,
+  skipContent = false,
   ui,
   logger,
   verbose,
@@ -201,25 +289,58 @@ async function runStoryPipeline({
   /** Called for every listed story, before its content is fetched. */
   onListed?: (story: Story) => void;
   onMatch: (story: Story) => void;
+  /** Prunes candidates with bulk CAPI content before the per-story MAPI fetch. */
+  capi?: CapiFilter;
+  /** Emits list metadata without fetching content at all. */
+  skipContent?: boolean;
 }): Promise<void> {
   const listProgress = ui.createProgressBar({ title: label("Fetching stories") });
-  const contentProgress = ui.createProgressBar({ title: label("Fetching stories content") });
+  const capiFilterProgress = capi
+    ? ui.createProgressBar({ title: label("Filtering via CAPI") })
+    : undefined;
+  const contentProgress = skipContent
+    ? undefined
+    : ui.createProgressBar({ title: label("Fetching stories content") });
   const processProgress = ui.createProgressBar({ title: label(processLabel) });
 
-  await pipeline(
+  /**
+   * Ids the CAPI filter matched, so the terminal stage does not test them again.
+   *
+   * Holding only the survivors keeps this small — it is the same set that reaches
+   * the content fetch, and every entry leaves the pipeline as a result.
+   */
+  const matchedByCapiFilter = capi ? new Set<Story["id"]>() : undefined;
+
+  /**
+   * Re-derives every downstream total from the counts so far.
+   *
+   * Re-derived rather than adjusted in place, because the page total arrives
+   * again with every page: assigning would reset the totals back to the full
+   * count and un-subtract everything already dropped. Each subtrahend is a story
+   * that can never reach the stage below it — dropped from the list response,
+   * pruned by the CAPI filter, or lost to a failed content fetch — so the bars
+   * still land on 100% instead of stalling short.
+   */
+  const syncDownstreamTotals = (): void => {
+    const listed = Math.max(counters.list.total - counters.list.skipped, 0);
+    counters.capiFilter.total = listed;
+    counters.content.total = skipContent ? 0 : listed - counters.capiFilter.pruned;
+    counters.process.total = skipContent
+      ? listed
+      : counters.content.total - counters.content.failed;
+    capiFilterProgress?.setTotal(counters.capiFilter.total);
+    contentProgress?.setTotal(counters.content.total);
+    processProgress.setTotal(counters.process.total);
+  };
+
+  const stages = [
     fetchStoriesStream({
       spaceId,
       params,
       setTotalStories: (total) => {
-        // Fires once per page, so it has to re-derive rather than assign: stories
-        // already dropped before their content fetch must stay subtracted, or each
-        // page boundary would reset the downstream totals back to the full count.
         counters.list.total = total;
-        counters.content.total = total - counters.list.skipped;
-        counters.process.total = total - counters.list.skipped;
         listProgress.setTotal(total);
-        contentProgress.setTotal(counters.content.total);
-        processProgress.setTotal(counters.process.total);
+        syncDownstreamTotals();
       },
       onStoryListed: (story) => {
         counters.list.succeeded += 1;
@@ -238,35 +359,63 @@ async function runStoryPipeline({
     filterListedStoriesStream({
       filters: preContentFilters,
       onDropped: () => {
-        // Never fetched, never processed: shrink both downstream totals so the
-        // bars still land on 100% instead of stalling short.
         counters.list.skipped += 1;
-        counters.content.total -= 1;
-        counters.process.total -= 1;
-        contentProgress.setTotal(counters.content.total);
-        processProgress.setTotal(counters.process.total);
+        syncDownstreamTotals();
       },
     }),
-    fetchStoryStream({
-      spaceId,
-      onIncrement: () => {
-        timings.content = Date.now() - timings.startedAt;
-        contentProgress.increment();
-      },
-      onStorySuccess: () => {
-        counters.content.succeeded += 1;
-      },
-      onStoryError: (error, story) => {
-        counters.content.failed += 1;
-        // A story that never arrived can never be processed; keep the last bar's
-        // total honest so it still reaches 100%.
-        counters.process.total -= 1;
-        processProgress.setTotal(counters.process.total);
-        handleError(error, verbose, { storyId: story.id });
-      },
-    }),
+    ...(capi
+      ? [
+          capiFilterStream({
+            fetchContent: capi.fetchContent,
+            filters: capi.filters,
+            onCandidate: (story) => {
+              counters.capiFilter.candidates += 1;
+              matchedByCapiFilter?.add(story.id);
+            },
+            onPruned: () => {
+              counters.capiFilter.pruned += 1;
+              syncDownstreamTotals();
+            },
+            onUnresolved: () => {
+              counters.capiFilter.unresolved += 1;
+            },
+            onBatchSettled: (size) => {
+              timings.capiFilter = Date.now() - timings.startedAt;
+              capiFilterProgress?.increment(size);
+            },
+            onBatchError: (error, size) => {
+              counters.capiFilter.failed += 1;
+              handleError(error, verbose, { batchSize: size });
+            },
+          }),
+        ]
+      : []),
+    ...(skipContent
+      ? []
+      : [
+          fetchStoryStream({
+            spaceId,
+            onIncrement: () => {
+              timings.content = Date.now() - timings.startedAt;
+              contentProgress?.increment();
+            },
+            onStorySuccess: () => {
+              counters.content.succeeded += 1;
+            },
+            onStoryError: (error, story) => {
+              counters.content.failed += 1;
+              syncDownstreamTotals();
+              handleError(error, verbose, { storyId: story.id });
+            },
+          }),
+        ]),
     filterStoriesStream({
       filters,
+      // A story the CAPI filter matched is a match: the same expressions have
+      // already been evaluated against its content, upstream.
+      isAlreadyMatched: matchedByCapiFilter
+        ? (story) => matchedByCapiFilter.has(story.id)
+        : undefined,
       onIncrement: () => {
         timings.process = Date.now() - timings.startedAt;
         processProgress.increment();
@@ -283,7 +432,9 @@ async function runStoryPipeline({
         handleError(error, verbose, { storyId: story.id });
       },
     }),
-  );
+  ];
+
+  await pipeline(stages);
 }
 
 async function runFind({
@@ -291,11 +442,18 @@ async function runFind({
   params,
   preContentFilters,
   filters,
+  skipContent = false,
+  capi,
   ui,
   logger,
   reporter,
   verbose,
-}: FindContext & { preContentFilters: ClientFilter[]; filters: ClientFilter[] }): Promise<void> {
+}: FindContext & {
+  preContentFilters: ClientFilter[];
+  filters: ClientFilter[];
+  skipContent?: boolean;
+  capi?: CapiFilter;
+}): Promise<void> {
   const counters = createCounters();
   const timings = createTimings();
   const output = createJsonlWriter({ write: (line) => ui.writeMachineOutput(line) });
@@ -306,10 +464,19 @@ async function runFind({
       params,
       preContentFilters,
       filters,
-      processLabel: "Applying client-side filters",
+      // What the last stage still decides depends on the stages before it: with
+      // no content fetch it only writes, and under the CAPI filter it tests just
+      // the stories the CDN could not settle.
+      processLabel: skipContent
+        ? "Writing results"
+        : capi
+          ? "Collecting matches"
+          : "Applying client-side filters",
       counters,
       timings,
       onMatch: (story) => output.push(story),
+      capi,
+      skipContent,
       ui,
       logger,
       verbose,
@@ -318,28 +485,55 @@ async function runFind({
     ui.stopAllProgressBars();
     output.flush();
 
-    const { list, content, process: filtered } = counters;
+    const { list, capiFilter, content, process: filtered } = counters;
     ui.br();
-    ui.info(
-      filters.length > 0
-        ? `Results: ${filtered.succeeded} stories matched (${content.succeeded} fetched, ${list.skipped + filtered.skipped} filtered out client-side)`
-        : `Results: ${filtered.succeeded} stories found`,
-    );
-    ui.list([
-      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${formatMark(timings.list)})`,
-      `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
-      `Applying filters: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${formatMark(timings.process)})`,
-    ]);
+    ui.info(resultsHeadline({ counters, filters, skipContent, capi: capi !== undefined }));
 
-    logger.info("Finding stories finished", { ...counters, timings });
+    const lines = [
+      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${formatMark(timings.list)})`,
+    ];
+    if (capi) {
+      lines.push(
+        `Filtering via CAPI: ${capiFilter.candidates}/${capiFilter.total} candidates, ${capiFilter.pruned} pruned before fetch, ${capiFilter.unresolved} undecided, ${capiFilter.failed} batch(es) failed. (${formatMark(timings.capiFilter)})`,
+      );
+    }
+    if (!skipContent) {
+      lines.push(
+        `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
+      );
+    }
+    const processName = skipContent
+      ? "Writing results"
+      : capi
+        ? "Collecting matches"
+        : "Applying filters";
+    lines.push(
+      `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${formatMark(timings.process)})`,
+    );
+    ui.list(lines);
+
+    logger.info("Finding stories finished", { ...counters, timings, skipContent, capi: !!capi });
     reporter.addMeta("phaseTimingsMs", {
       list: timings.list,
-      content: timings.content,
+      ...(capi ? { capiFilter: timings.capiFilter } : {}),
+      ...(skipContent ? {} : { content: timings.content }),
       filter: timings.process,
       total: Date.now() - timings.startedAt,
     });
     reporter.addSummary("listStoriesResults", list);
-    reporter.addSummary("fetchContentResults", content);
+    if (capi) {
+      // `succeeded` is what survived to a MAPI fetch, `skipped` what the
+      // CAPI filter saved: the two numbers the optimization is judged on.
+      reporter.addSummary("capiFilterResults", {
+        total: capiFilter.total,
+        succeeded: capiFilter.candidates + capiFilter.unresolved,
+        skipped: capiFilter.pruned,
+        failed: capiFilter.failed,
+      });
+    }
+    if (!skipContent) {
+      reporter.addSummary("fetchContentResults", content);
+    }
     reporter.addSummary("filterResults", {
       total: filtered.total,
       succeeded: filtered.succeeded,
@@ -348,6 +542,32 @@ async function runFind({
     });
     reporter.finalize();
   }
+}
+
+/** One line naming what the run cost and what it saved, per optimization in play. */
+function resultsHeadline({
+  counters,
+  filters,
+  skipContent,
+  capi,
+}: {
+  counters: PhaseCounters;
+  filters: ClientFilter[];
+  skipContent: boolean;
+  capi: boolean;
+}): string {
+  const { list, capiFilter, content, process: filtered } = counters;
+
+  if (skipContent) {
+    return `Results: ${filtered.succeeded} stories found (metadata only, no content fetched)`;
+  }
+  if (capi) {
+    return `Results: ${filtered.succeeded} stories matched (${content.succeeded} of ${list.succeeded} listed fetched from MAPI, ${capiFilter.pruned} pruned by the CAPI filter)`;
+  }
+  if (filters.length > 0) {
+    return `Results: ${filtered.succeeded} stories matched (${content.succeeded} fetched, ${list.skipped + filtered.skipped} filtered out client-side)`;
+  }
+  return `Results: ${filtered.succeeded} stories found`;
 }
 
 type ReferenceCandidate = {

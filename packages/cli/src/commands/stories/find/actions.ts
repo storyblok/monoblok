@@ -11,6 +11,7 @@ import type { TargetMeta } from "./references";
 import { toTargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
 import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
+import { parseCapiParams } from "./capi";
 
 /**
  * Rejects options the command accepts on the surface but cannot honour yet.
@@ -23,6 +24,47 @@ export function assertSupportedOptions(options: FindOptions): void {
     throw new CommandError(
       `Search mode "${options.searchMode}" is not supported yet. Only "fulltext" is available.`,
     );
+  }
+
+  // Both optimizations trade away something a filter might need, so a
+  // combination that cannot answer the question asked is rejected here rather
+  // than answering a different one.
+  if (options.skipContent) {
+    if (options.where?.length) {
+      throw new CommandError(
+        "--skip-content cannot be combined with --where: a JSONPath filter is evaluated against the story content it skips fetching.",
+      );
+    }
+    if (options.checkReferences) {
+      throw new CommandError(
+        "--skip-content cannot be combined with --check-references: references live in the story content it skips fetching.",
+      );
+    }
+    if (options.capiFilter) {
+      throw new CommandError(
+        "--skip-content cannot be combined with --capi-filter: one skips fetching content, the other fetches it in bulk to filter on.",
+      );
+    }
+  }
+
+  if (options.capiParams && !options.capiFilter) {
+    throw new CommandError("--capi-params has no effect without --capi-filter.");
+  }
+
+  if (options.capiFilter) {
+    if (options.checkReferences) {
+      throw new CommandError(
+        "--capi-filter cannot be combined with --check-references: the reference scan reads the content of every story in scope, so there is nothing for the CAPI filter to prune.",
+      );
+    }
+    if (!options.where?.length) {
+      throw new CommandError(
+        "--capi-filter needs at least one --where filter: without one, every listed story is a match and none can be pruned.",
+      );
+    }
+    // Parsed here as well as at build time so a malformed value fails as a usage
+    // error, next to the flags it belongs with.
+    parseCapiParams(options.capiParams);
   }
 }
 

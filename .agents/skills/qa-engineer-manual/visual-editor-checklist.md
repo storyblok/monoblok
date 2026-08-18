@@ -135,7 +135,7 @@ Check the dev server too, before you read anything into a blank preview:
   preview domain from that, never from what you asked for.
 - A **stale server from an earlier run serves stale code**, which makes a fixed bug look unfixed.
 
-Where a package already keeps a harness, reuse its page object rather than the example: it is the
-maintained copy of these selectors. `@storyblok/nuxt` and `@storyblok/astro` both keep one in
-`packages/<package>/test/visual-editor/editor.page.ts`; the Astro one also has `save()` and
-`publish()` with the reload assertion and the modal handling.
+Where a package already keeps a harness, reuse it rather than the example. The page object, the
+preflight checks, and the Playwright config are shared across packages in `tools/visual-editor-qa/`;
+a package supplies only its `test/visual-editor/qa.config.ts` and its specs. Its `test/GUIDE.md`
+says whether it has a harness at all.

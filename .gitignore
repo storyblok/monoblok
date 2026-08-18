@@ -60,5 +60,3 @@ DOCS.md
 /.storyblok-qa/
 
 # Playwright artifacts from the Visual Editor QA harness
-packages/nuxt/test/visual-editor/test-results/
-packages/astro/test/visual-editor/test-results/

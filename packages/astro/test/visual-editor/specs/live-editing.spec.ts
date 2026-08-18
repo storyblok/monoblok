@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { QA_CONFIG } from "../config";
-import { resolveStoryId, StoryblokEditor } from "../editor.page";
+import { resolveStoryId, StoryblokEditor } from "@storyblok/visual-editor-qa";
+import { QA_CONFIG } from "../qa.config";
 
 const SEEDED_HEADLINE = "QA teaser headline";
 
@@ -12,8 +12,8 @@ const SEEDED_HEADLINE = "QA teaser headline";
 // the same URL and morphdom patches the response into the page.
 test.describe("the Visual Editor live-updates the SSR playground", () => {
   test("the story renders inside the preview frame", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
-    await editor.openStory(await resolveStoryId(request, "home"));
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
 
     await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE, { timeout: 60_000 });
     await expect(editor.block("feature-home-1")).toContainText("Feature 1");
@@ -21,8 +21,8 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
   });
 
   test("typing in a field updates the preview, before any save", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
-    await editor.openStory(await resolveStoryId(request, "home"));
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE, { timeout: 60_000 });
 
     await editor.selectBlock("teaser-home-1", "headline");
@@ -35,8 +35,8 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
   });
 
   test("a nested block updates live and its siblings survive", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
-    await editor.openStory(await resolveStoryId(request, "home"));
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     await expect(editor.block("feature-home-2")).toContainText("Feature 2", { timeout: 60_000 });
 
     // A block inside `grid.columns`, which takes the focused-element path: the
@@ -51,8 +51,8 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
   });
 
   test("a resolved relation and server data survive a live edit", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
-    await editor.openStory(await resolveStoryId(request, "home"));
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     const posts = editor.preview.locator(".post-title");
     await expect(posts.first()).toContainText("First Article", { timeout: 60_000 });
 
@@ -74,8 +74,8 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
     page,
     request,
   }) => {
-    const editor = new StoryblokEditor(page);
-    await editor.openStory(await resolveStoryId(request, "home"));
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE, { timeout: 60_000 });
 
     await editor.selectBlock("teaser-home-1", "headline");
@@ -102,10 +102,10 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
   });
 
   test("the disable meta tag suppresses live updates", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
+    const editor = new StoryblokEditor(page, QA_CONFIG);
     // `[...slug].astro` renders <meta name="storyblok-live-preview"
     // content="disabled"> for this slug.
-    await editor.openStory(await resolveStoryId(request, "test"));
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "test"));
     const teaser = editor.block("teaser-test-1");
     await expect(teaser).toContainText("Live preview disabled teaser", { timeout: 60_000 });
 
@@ -121,8 +121,8 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
 // preflight tells the next run to re-seed.
 test.describe("saving and publishing re-render the preview", () => {
   test("save reloads the preview with the saved content", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
-    await editor.openStory(await resolveStoryId(request, "home"));
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
     await expect(editor.block("teaser-home-1")).toContainText(SEEDED_HEADLINE, { timeout: 60_000 });
 
     await editor.selectBlock("teaser-home-1", "headline");
@@ -138,8 +138,8 @@ test.describe("saving and publishing re-render the preview", () => {
   });
 
   test("publish reloads the preview with the published content", async ({ page, request }) => {
-    const editor = new StoryblokEditor(page);
-    const storyId = await resolveStoryId(request, "home");
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    const storyId = await resolveStoryId(QA_CONFIG, request, "home");
     await editor.openStory(storyId);
     await expect(editor.block("teaser-home-1")).toBeVisible({ timeout: 60_000 });
 

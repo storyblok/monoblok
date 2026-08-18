@@ -43,12 +43,18 @@ For a check the specs do not cover, write a throwaway script instead of adding o
   `playground/nuxt.config.ts`, because the module assigns `runtimeConfig.public.storyblok`
   wholesale. The playground needs no edit.
 - The playground's slugs are hardcoded under `vue/`, which is why the seed mirrors that tree.
+- Blocks are addressed by the `_uid` the scenario seeded (`editor.block("teaser-start-1")`), not by
+  the playground's `data-test` attributes: `v-editable` emits `data-blok-uid="<storyId>-<uid>"`,
+  which every framework's harness can share. The story's own root `_uid` is assigned remotely, so
+  there is no stable selector for the page component itself; assert its blocks instead.
 - Don't add an `en` language to the space. The playground requests `language: "en"` and CAPI falls
   back to default-language content; the shared demo space configures only `es` and works fine.
 - The editor previews a story at its `full_slug`, so it loads `/vue/articles/first-article`, which
   the catch-all route serves, not the playground's own `/articles/:slug`.
-- Every app-side selector lives in `test/visual-editor/editor.page.ts`. When a Storyblok release
-  breaks the harness, that is the file to repair.
+- Every app-side selector lives in `tools/visual-editor-qa/src/editor.page.ts`, which this package
+  shares with the other framework harnesses. When a Storyblok release breaks the harness, that is
+  the file to repair, and the fix lands for every package at once. This package supplies only its
+  own `test/visual-editor/qa.config.ts` and its specs.
 - The `feature` component in the shared demo space has a `native-color-picker` field. The seed omits
   it deliberately: the playground never reads it, and a plugin field adds an install dependency.
 - No live-editing coverage for richtext. Driving the editor's contenteditable is brittle, and the

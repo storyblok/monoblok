@@ -1,0 +1,28 @@
+{
+  "name": "@storyblok/visual-editor-qa",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Internal: the shared Playwright harness for manual Visual Editor QA. Consumed by the framework packages' test/visual-editor directories. Source-only, not built, not published.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@playwright/test": "catalog:"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "nx": {
+    "tags": [
+      "type:tool"
+    ]
+  }
+}

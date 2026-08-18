@@ -50,8 +50,10 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
   `full_slug`).
 - The `test` slug is special: `[...slug].astro` renders
   `<meta name="storyblok-live-preview" content="disabled">` for `test`, `about-us`, and `contact`.
-- Every app-side selector lives in `test/visual-editor/editor.page.ts`. When a Storyblok release
-  breaks the harness, that is the file to repair.
+- Every app-side selector lives in `tools/visual-editor-qa/src/editor.page.ts`, which this package
+  shares with the other framework harnesses. When a Storyblok release breaks the harness, that is
+  the file to repair, and the fix lands for every package at once. This package supplies only its
+  own `test/visual-editor/qa.config.ts` and its specs.
 - No live-editing coverage for richtext. Driving the editor's contenteditable is brittle.
 
 ## Known quirks

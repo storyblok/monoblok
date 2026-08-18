@@ -62,6 +62,7 @@
     "@nuxt/test-utils": "^3.23.0",
     "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/visual-editor-qa": "workspace:*",
     "@types/node": "catalog:",
     "cypress": "^14.3.3",
     "nuxt": "^4.2.2",

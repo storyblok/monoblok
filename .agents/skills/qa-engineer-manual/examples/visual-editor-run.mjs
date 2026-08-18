@@ -9,9 +9,9 @@
 // fields, and asserts the preview changed. Every assertion is an observed
 // change: a broken bridge throws nothing, so "no error" proves nothing.
 //
-// The selectors below are duplicated from packages/<package>/test/visual-editor/
-// editor.page.ts, which is the maintained copy. Check there first when a
-// Storyblok release breaks this.
+// The selectors below are duplicated from tools/visual-editor-qa/src/
+// editor.page.ts, which is the maintained copy shared by every package's
+// harness. Check there first when a Storyblok release breaks this.
 //
 // Blocks are addressed by the `_uid` the scenario seeded: storyblokEditable
 // emits data-blok-uid="<storyId>-<uid>" on every editable block, so this needs

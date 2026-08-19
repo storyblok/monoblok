@@ -3,13 +3,14 @@
  * @type {import('lint-staged').Configuration}
  */
 export default {
-  "{packages,tools}/**/*.{js,ts,jsx,tsx,astro,json}": [
-    (filenames) =>
-      `pnpm exec nx affected -t=lint --exclude="@storyblok/playground-*" --files=${filenames.join(",")} -- --fix`,
-    // `oxlint --fix` rewrites code but does not reformat it, so an autofix lands
-    // unformatted (wrong indentation, dropped trailing commas) unless the
-    // formatter runs afterwards. Repo-wide, because `nx affected` fixes whole
-    // projects and can therefore touch files that are not staged.
-    () => "pnpm exec vp fmt",
-  ],
+  // No globs, and no file list passed on: both scripts run repo-wide because
+  // they already know which files they own. Narrowing them here would duplicate
+  // that knowledge and let through everything the glob forgot: root
+  // scripts, `.agents/`, `.vue`, markdown. Nx caches the lint run, so it costs a couple
+  // of seconds when nothing changed.
+  //
+  // `oxlint --fix` rewrites code but does not reformat it, so an autofix lands
+  // unformatted (wrong indentation, dropped trailing commas) unless the
+  // formatter runs afterwards. `--concurrent=false` in the hook keeps that order.
+  "*": [() => "pnpm lint:fix", () => "pnpm format"],
 };

@@ -64,12 +64,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm format:check
 
-      # Every project lints itself in the `Check` step below. This one covers
-      # what no project owns: repo config, the release scripts, the agent
-      # scripts. Same command the root `lint` script runs.
-      #
-      # `oxlint.config.ts` imports the built `@storyblok/lint-config`, so that
-      # project has to be built first: this step runs before `Check`.
+      # Projects lint themselves in `Check` below. This covers what no project
+      # owns: repo config, the release scripts, the agent scripts. The build is
+      # needed because `oxlint.config.ts` imports `@storyblok/lint-config`.
       - name: Check root lint
         if: matrix.os == 'ubuntu-latest'
         run: pnpm nx build @storyblok/lint-config && pnpm exec oxlint --disable-nested-config

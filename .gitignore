@@ -58,5 +58,3 @@ DOCS.md
 
 # Saved app session for Visual Editor QA
 /.storyblok-qa/
-
-# Playwright artifacts from the Visual Editor QA harness

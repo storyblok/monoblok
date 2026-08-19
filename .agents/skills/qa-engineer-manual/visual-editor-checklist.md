@@ -104,10 +104,10 @@ one fails, you have found a setup problem. Fix it before reading anything into t
 ## Driving it
 
 Write a one-off script, run it, throw it away. Start from
-[`examples/visual-editor-run.mjs`](./examples/visual-editor-run.mjs) and make it your own: copy it to
-`.claude/tmp/`, point the constants at the story and app you are testing, then rewrite the body to
-assert what your feature actually does. It is a starting point, not a suite to run as it stands. What
-it saves you is the plumbing: the launch args, the saved session, the story-id lookup, the
+[`examples/visual-editor-run.mjs`](./examples/visual-editor-run.mjs) and make it your own: copy it
+to `.claude/tmp/`, point the constants at the story and app you are testing, then rewrite the body
+to assert what your feature actually does. It is a starting point, not a suite to run as it stands.
+What it saves you is the plumbing: the launch args, the saved session, the story-id lookup, the
 block-selection retry, and the standard `{ outcome, … }` JSON.
 
 Four things about the editor's DOM that are not guessable, and that the example encodes:

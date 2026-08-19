@@ -3,9 +3,10 @@
  * @type {import('lint-staged').Configuration}
  */
 export default {
-  // No glob: every staged file goes through. A glob restated what the commands
-  // below already know, and let root scripts, `.agents/`, `.vue`, and markdown
-  // slip past both the linter and the formatter.
+  // No glob: the commands below already decide which files they handle, so a
+  // path or extension filter here can only take files away from them, and
+  // whatever it leaves out (root scripts, `.agents/`, `.vue`, markdown) is
+  // linted and formatted by nothing.
   "*": [
     // Covers what no project owns, and so nothing else lints: repo config, the
     // release scripts, the agent scripts.

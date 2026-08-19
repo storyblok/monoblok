@@ -323,6 +323,14 @@ export const createApiClientBase = <
    * change signal when it comes from the endpoint that reports the space's raw version.
    * Any other response that happens to embed a numeric `space.version` must not flush.
    *
+   * Both tracked versions live on the client instance, so this signal only works for a
+   * client that outlives a single request. A client created per request starts with
+   * both `undefined`: `currentSpaceVersion` is unset so a change cannot be seen, and
+   * `cvBefore` is unset so the ambiguous-sighting path below cannot fire either — a
+   * read served from a shared `cache.provider` is a cache hit and never tracks a `cv`.
+   * Polling from per-request clients therefore never invalidates a shared provider;
+   * its staleness is bounded by `cache.ttlMs` alone. Reuse one client to poll.
+   *
    * @param cvBefore the tracked cv as of before this response was processed.
    */
   const updateSpaceVersion = async (
@@ -361,7 +369,9 @@ export const createApiClientBase = <
     // cacheable request goes out without one and takes the origin's 301 to the current
     // cv, and let the cv that comes back decide. This keeps the cost of an ambiguous
     // sighting to one revalidation by this client, instead of a flush that also empties
-    // a `cache.provider` shared with every other client.
+    // a `cache.provider` shared with every other client. Note this only narrows the
+    // cost for clients that do reach here — see the caveat above on why a per-request
+    // client never does.
     if (
       cacheFlush === "auto" &&
       currentSpaceVersion === undefined &&

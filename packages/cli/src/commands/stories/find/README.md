@@ -80,9 +80,9 @@ storyblok stories find --space 12345 --container-block product | jq -r '.full_sl
 # How many matched
 storyblok stories find --space 12345 --container-block product | wc -l
 
-# Just the fields you need
+# Just the fields you need saved in JSONL
 storyblok stories find --space 12345 --container-block product \
-  | jq '{id, name, component: .content.component}'
+  | jq '{id, name, component: .content.component}' > mystories.jsonl
 
 # CSV for a spreadsheet
 storyblok stories find --space 12345 --skip-content \

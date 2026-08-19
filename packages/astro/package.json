@@ -77,13 +77,13 @@
     "morphdom": "^2.7.8"
   },
   "devDependencies": {
-    "@cypress/vite-dev-server": "^6.0.3",
+    "@cypress/vite-dev-server": "^7.3.4",
     "@rollup/plugin-dynamic-import-vars": "^2.1.5",
     "@storyblok/lint-config": "workspace:*",
     "@types/lodash.mergewith": "^4.6.9",
     "@types/node": "catalog:",
     "astro": "^7.0.0",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "oxlint": "catalog:",
     "start-server-and-test": "^2.0.11",
     "typescript": "catalog:",

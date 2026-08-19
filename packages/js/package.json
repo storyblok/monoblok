@@ -64,7 +64,7 @@
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "catalog:",
     "@vitest/ui": "^4.1.10",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "jsdom": "catalog:",
     "oxlint": "catalog:",
     "pathe": "catalog:",

@@ -834,7 +834,14 @@ export class Storyblok {
             // reusing it would refill the cache with the content just flushed.
             await this.flushCache();
           }
-          spaceVersions[params.token] = spaceVersion;
+          // Only record the version when this request could have acted on it. Under
+          // `clear: 'onpreview'` a published request is not clearable, and recording
+          // from it would consume the change signal: the next draft poll would compare
+          // against the already-updated version, find it unchanged, and never flush —
+          // leaving the published cache stale for good.
+          if (isCacheClearable) {
+            spaceVersions[params.token] = spaceVersion;
+          }
         }
 
         if (params.token && response.data.cv) {

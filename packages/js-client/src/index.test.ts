@@ -434,6 +434,32 @@ describe("storyblokClient", () => {
       expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
     });
 
+    it("should not let a published poll consume the signal a draft poll needs", async () => {
+      // A non-clearable request must observe the space version without recording it.
+      // If it recorded it, the draft poll below would compare against the already
+      // updated version, find it unchanged, and leave the published cache stale for
+      // good — the exact failure the space-version signal exists to prevent.
+      const token = "space-version-onpreview-interleaved";
+      const onPreviewClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "onpreview" },
+      });
+      const onPreviewFlushCache = vi.spyOn(onPreviewClient, "flushCache");
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await onPreviewClient.get("cdn/stories", { version: "published", token });
+
+      // Published poll: sees the new version but must not flush, nor record it.
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
+      expect(onPreviewFlushCache).not.toHaveBeenCalled();
+
+      // Draft poll: still a first sighting, and 2000 !== the tracked cv of 1000.
+      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
+    });
+
     it("should not attach a cv to the poll request", async () => {
       // The cv is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
       // fragments the edge cache of the endpoint the polling pattern relies on.

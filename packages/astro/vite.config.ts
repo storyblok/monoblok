@@ -1,27 +1,4 @@
 import { defineConfig } from "vite-plus";
-import fs from "node:fs";
-import path from "node:path";
-
-const REFERENCE_LINE = `/// <reference path="./public.d.ts" />`;
-
-/**
- * `src/public.d.ts` declares the ambient `astro:*` module shims consumers need.
- * A `///` reference is the only way to pull it in from the entry declaration,
- * and no bundler emits one, so it is prepended after the build.
- */
-function prependPublicReference() {
-  const entryDts = path.resolve(import.meta.dirname, "dist/index.d.mts");
-
-  if (!fs.existsSync(entryDts)) {
-    return;
-  }
-
-  const contents = fs.readFileSync(entryDts, "utf-8");
-
-  if (!contents.includes(REFERENCE_LINE)) {
-    fs.writeFileSync(entryDts, `${REFERENCE_LINE}\n${contents}`);
-  }
-}
 
 export default defineConfig({
   pack: [
@@ -34,6 +11,13 @@ export default defineConfig({
         level: "error",
         profile: "esm-only",
       },
+      // `src/public.d.ts` declares the ambient `astro:*` module shims consumers
+      // need. A `///` reference is the only way to pull it in from the entry
+      // declaration, and no bundler emits one, so it is banner-injected into
+      // the declaration output (a `dts`-scoped banner, so the JavaScript stays
+      // untouched). Doing it here rather than in a post-build hook keeps the
+      // line inside the tarball that attw and publint inspect.
+      banner: { dts: `/// <reference path="./public.d.ts" />` },
       // The `.astro` components and the three entry points Astro compiles from
       // source are published as-is, so they are copied rather than bundled.
       copy: [
@@ -46,7 +30,6 @@ export default defineConfig({
       dts: true,
       entry: { index: "./src/index.ts" },
       format: ["esm"],
-      hooks: { "build:done": prependPublicReference },
       outDir: "./dist",
       publint: true,
     },

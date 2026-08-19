@@ -18,16 +18,8 @@ export default defineConfig({
       // Declarations come from vue-tsc so that `.vue` imports resolve.
       dts: { vue: true },
       entry: { index: "./src/index.ts" },
-      format: ["esm", "cjs", "umd"],
-      globalName: "storyblokVue",
+      format: ["esm", "cjs"],
       outDir: "./dist",
-      outputOptions: {
-        globals: {
-          "@storyblok/js": "storyblok",
-          "@storyblok/richtext": "StoryblokRichtext",
-          vue: "Vue",
-        },
-      },
       plugins: [Vue({ isProduction: true })],
       publint: true,
     },

@@ -460,6 +460,44 @@ describe("storyblokClient", () => {
       expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
     });
 
+    it("should not flush when polled before any content request", async () => {
+      // Polling before the first content request is the recommended startup shape:
+      // there is no tracked cv and nothing cached yet, so there is nothing to flush.
+      const token = "space-version-poll-first";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not flush on a space version change when clear is manual", async () => {
+      // `clear: 'manual'` — the default — hands cache invalidation to the caller. No
+      // request is clearable, so no space version ever triggers a flush by itself.
+      const token = "space-version-clear-manual";
+      const manualClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "manual" },
+      });
+      const manualFlushCache = vi.spyOn(manualClient, "flushCache");
+
+      manualClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await manualClient.get("cdn/stories", { version: "draft", token });
+
+      manualClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
+      await manualClient.get("cdn/spaces/me", { version: "draft", token });
+
+      manualClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await manualClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(manualFlushCache).not.toHaveBeenCalled();
+    });
+
     it("should not attach a cv to the poll request", async () => {
       // The cv is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
       // fragments the edge cache of the endpoint the polling pattern relies on.

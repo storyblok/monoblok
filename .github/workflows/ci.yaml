@@ -64,6 +64,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm format:check
 
+      # Published packages must reference each other with `workspace:^`, so the
+      # range `pnpm publish` writes into the tarball is a floor and not a pin.
+      - name: Check workspace protocol
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm check:workspace-protocol
+
       - name: Check
         run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}"
         env:

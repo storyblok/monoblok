@@ -1,5 +1,5 @@
-// A starting point for a one-off Visual Editor check, not a suite to run as it
-// stands. Copy it to .claude/tmp/, make it your own, run it, throw it away:
+// A starting point for a one-off Visual Editor check. Copy it to .claude/tmp/,
+// make it your own, run it, throw it away:
 //
 //   node .agents/skills/qa-engineer-manual/scripts/save-storyblok-session.mjs  # once
 //   set -a && source ./.env.qa-engineer-manual && set +a

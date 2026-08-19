@@ -63,7 +63,7 @@
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.10",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "kolorist": "^1.8.0",
     "oxlint": "catalog:",
     "pathe": "catalog:",

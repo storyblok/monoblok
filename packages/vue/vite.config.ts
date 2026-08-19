@@ -42,9 +42,11 @@ export default defineConfig({
       output: {
         globals: {
           vue: "Vue",
+          "@storyblok/js": "storyblok",
+          "@storyblok/richtext": "StoryblokRichtext",
         },
       },
-      external: ["vue"],
+      external: ["vue", "@storyblok/js", "@storyblok/richtext"],
     },
   },
   optimizeDeps: {

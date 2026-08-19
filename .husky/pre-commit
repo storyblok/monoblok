@@ -1,1 +1,2 @@
-pnpm exec lint-staged --relative
+# --concurrent=false: the tasks are ordered, `vp fmt` has to run last.
+pnpm exec lint-staged --relative --concurrent=false

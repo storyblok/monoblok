@@ -1,13 +1,21 @@
-// A one-off Visual Editor check. Copy to .claude/tmp/, edit the CONSTANTS
-// block, run it, throw it away:
+// A starting point for a one-off Visual Editor check, not a suite to run as it
+// stands. Copy it to .claude/tmp/, make it your own, run it, throw it away:
 //
 //   node .agents/skills/qa-engineer-manual/scripts/save-storyblok-session.mjs  # once
 //   set -a && source ./.env.qa-engineer-manual && set +a
 //   node .claude/tmp/my-check.mjs
 //
-// It opens a story in the editor, selects a block, types into one of its
-// fields, and asserts the preview changed. Every assertion is an observed
-// change: a broken bridge throws nothing, so "no error" proves nothing.
+// As written it opens a story in the editor, selects a block, types into one of
+// its fields, and asserts the preview changed. Adapt it to whatever you are
+// actually checking: the CONSTANTS block covers a different story, app, block, or
+// field, and past that, edit the body. Assert the thing your feature does, be it
+// a relation that stays resolved, a block that keeps its state through an update,
+// or a save that reloads the preview.
+//
+// Whatever you assert, assert an observed change. A broken bridge throws nothing,
+// so "no error" proves nothing, and after a save or publish the live-updating
+// preview already shows the new text: there, count preview-frame navigations and
+// confirm the space over MAPI or CAPI.
 //
 // The selectors below are duplicated from tools/visual-editor-qa/src/
 // editor.page.ts, which is the maintained copy shared by every package's

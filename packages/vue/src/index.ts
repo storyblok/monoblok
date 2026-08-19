@@ -66,7 +66,7 @@ export const useStoryblok = async (
   url: string,
   apiOptions: ISbStoriesParams = {},
   bridgeOptions: StoryblokBridgeConfigV2 = {},
-) => {
+): Promise<Ref<ISbStoryData | null>> => {
   const story: Ref<ISbStoryData | null> = ref(null);
 
   bridgeOptions.resolveRelations = bridgeOptions.resolveRelations ?? apiOptions.resolve_relations;

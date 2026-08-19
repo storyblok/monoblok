@@ -47,9 +47,9 @@
     "test:types": "tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
-    "@storyblok/api-client": "workspace:*",
-    "@storyblok/live-preview": "workspace:*",
-    "@storyblok/richtext": "workspace:*",
+    "@storyblok/api-client": "workspace:^",
+    "@storyblok/live-preview": "workspace:^",
+    "@storyblok/richtext": "workspace:^",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

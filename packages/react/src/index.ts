@@ -11,7 +11,7 @@ export const useStoryblok = (
   slug: string,
   apiOptions: ISbStoriesParams = {},
   bridgeOptions: StoryblokBridgeConfigV2 = {},
-) => {
+): ISbStoryData | null => {
   const [story, setStory] = useState<ISbStoryData>({} as ISbStoryData);
 
   const isBridgeEnable =

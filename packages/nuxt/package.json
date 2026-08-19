@@ -50,7 +50,7 @@
     "test:e2e:static": "start-server-and-test dev:preview http://localhost:3100 cy:run"
   },
   "dependencies": {
-    "@storyblok/vue": "workspace:*"
+    "@storyblok/vue": "workspace:^"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^6.0.3",

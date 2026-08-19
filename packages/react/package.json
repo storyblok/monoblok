@@ -79,8 +79,8 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*",
-    "@storyblok/richtext": "workspace:*"
+    "@storyblok/js": "workspace:^",
+    "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",

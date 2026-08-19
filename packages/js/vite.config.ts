@@ -2,7 +2,7 @@ import { defineConfig } from "vite-plus";
 
 import pkg from "./package.json" with { type: "json" };
 
-const banner = `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n */`;
+const banner = `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n * author: ${pkg.author}\n */`;
 
 export default defineConfig({
   pack: [
@@ -11,16 +11,8 @@ export default defineConfig({
       banner,
       dts: true,
       entry: { index: "./src/index.ts" },
-      format: ["esm", "cjs", "umd"],
-      globalName: "storyblok",
+      format: ["esm", "cjs"],
       outDir: "./dist",
-      outputOptions: {
-        globals: {
-          "@storyblok/preview-bridge": "StoryblokBridge",
-          "@storyblok/richtext": "StoryblokRichtext",
-          "storyblok-js-client": "StoryblokClient",
-        },
-      },
       publint: true,
     },
   ],

@@ -626,9 +626,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should retry the revalidation after it failed with an error response", async () => {
-    // The pending sighting must survive a failed revalidation. `currentSpaceVersion` has
-    // already advanced, so if the signal were consumed before the response came back,
-    // nothing could settle it and the cache would stay stale until the next publish.
+    // `currentSpaceVersion` has already advanced, so a signal consumed before the
+    // response arrives leaves nothing able to settle it — stale until the next publish.
     let cv = 1000;
     let linksFail = false;
     let tagRequests = 0;
@@ -653,9 +652,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
     cv = 2000; // content published between the content requests and the first poll
     await client.spaces.get();
 
-    // The revalidation that would settle the ambiguity fails. The caller still gets the
-    // cached entry: settling a sighting must not surface an error on a read that would
-    // otherwise have been a cache hit.
+    // The caller still gets the cached entry: settling a sighting must not surface an
+    // error on a read that would otherwise have been a cache hit.
     linksFail = true;
     const failed = await client.get("v2/cdn/links", { query: { version: "published" } });
     expect(failed.error).toBeUndefined();
@@ -706,9 +704,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   it.each(["cache-first", "network-first", "swr"] as const)(
     "should keep serving the cached entry when the revalidation fails with the %s strategy",
     async (strategy) => {
-      // The revalidation goes through a strategy rather than calling `fetch` directly, so
-      // a failing origin cannot cost `network-first` its documented cached fallback or
-      // turn a `cache-first` hit into a thrown error.
+      // The revalidation goes through a strategy, so a failing origin cannot cost
+      // `network-first` its cached fallback or turn a `cache-first` hit into a throw.
       let cv = 1000;
       let linksFail = false;
       server.use(

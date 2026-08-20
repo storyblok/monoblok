@@ -66,10 +66,9 @@ const SPACES_ME_PATH = "/cdn/spaces/me";
 const spaceVersions = {} as CachedVersions;
 
 /**
- * Builds the request path from a caller-supplied slug. Slugs arrive with or without a
- * leading slash (`'cdn/stories'`, `'/cdn/stories'`) and both have to produce the same
- * path: paths are compared by equality against {@link SPACES_ME_PATH}, and they are part
- * of the cache key. `@storyblok/api-client` normalizes for the same reason.
+ * Builds the request path from a slug, which may or may not already start with a slash.
+ * Both spellings have to produce the same path: it is compared against
+ * {@link SPACES_ME_PATH} and it is part of the cache key.
  */
 const toPath = (slug: string): string => `/${slug.replace(/^\/+/, "")}`;
 

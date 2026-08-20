@@ -248,8 +248,7 @@ export const createApiClientBase = <
       ? createStrategy(cache.strategy, swrOptions)
       : cache.strategy
     : createStrategy("cache-first");
-  // Used for the one request that settles an ambiguous `space.version` sighting, in
-  // place of the configured strategy — see `requestWithCache`.
+  // Settles an ambiguous `space.version` sighting — see `requestWithCache`.
   const revalidationStrategy = createNetworkFirstStrategy();
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   const cacheFlush = cache.flush ?? "auto";
@@ -502,11 +501,8 @@ export const createApiClientBase = <
     const cachedResult = cachedEntry?.value;
 
     const loadNetwork = async () => {
-      // Capture the pending sighting instead of consuming it: it has to survive a failed
-      // request. `currentSpaceVersion` has already advanced in `updateSpaceVersion`, so
-      // this record is the only thing left that can settle the ambiguity — dropping it
-      // before a response is in hand would strand the cache until the next unrelated
-      // publish moves the space version again.
+      // Consumed only once a response comes back. `currentSpaceVersion` has already
+      // advanced, so this record is the only thing that can still settle the ambiguity.
       const revalidation = pendingRevalidation;
 
       const result = await fetchFn(query);
@@ -514,22 +510,18 @@ export const createApiClientBase = <
 
       if (revalidation !== undefined) {
         if (result.error !== undefined) {
-          // Leave the signal pending so the next cacheable request retries it. While the
-          // origin keeps failing this costs one network attempt per request instead of a
-          // cache hit, which is the right trade against staying stale for good. Serving
-          // the cached entry keeps that cost invisible to the caller: settling an
-          // ambiguous sighting must not turn a read that would have been a cache hit
-          // into an error.
+          // The signal stays pending so the next cacheable request retries it. Serving
+          // the cached entry keeps that retry invisible: settling a sighting must never
+          // turn a cache hit into an error.
           if (cachedResult !== undefined) {
             return cachedResult;
           }
         } else {
           pendingRevalidation = undefined;
 
-          // The cv this response carries settles the ambiguity. A cv that moved means
-          // content really was published, so the cache is emptied — before the fresh
-          // response is stored just below. An unchanged cv means a Minimum Cache TTL was
-          // flooring it all along and every cached entry is still valid.
+          // A cv that moved means content was published, so the cache is emptied before
+          // the fresh response is stored. An unchanged cv means a Minimum Cache TTL was
+          // flooring it and every cached entry is still valid.
           const nextCv = extractCv(result.data);
           if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== revalidation.cvBefore) {
             await cacheProvider.flush();
@@ -540,14 +532,11 @@ export const createApiClientBase = <
       return cacheSuccessResult(path, key, result);
     };
 
-    // Settling an ambiguous `space.version` sighting has to reach the network, so that
-    // one request does not take the configured strategy's cache-hit shortcut. It uses
-    // network-first semantics instead — try the origin, fall back to the cached entry —
-    // rather than calling `fetchFn` directly: a poll must not cost `network-first` its
-    // documented fallback, turn a `cache-first` hit into a thrown error, or bypass a
-    // caller-supplied strategy altogether. With the tracked cv already dropped the
-    // request goes out without a `cv`, so the origin redirects it to the current one.
-    // For `swr` this is deliberately blocking: stale is what is in question here.
+    // A revalidation has to reach the network, so it skips the configured strategy's
+    // cache-hit shortcut and uses network-first semantics instead: try the origin, fall
+    // back to the cached entry. With the tracked cv dropped it carries no `cv`, so the
+    // origin redirects it to the current one. Blocking under `swr` is intended — whether
+    // the stale entry is still valid is exactly what is being settled.
     const requestStrategy = pendingRevalidation !== undefined ? revalidationStrategy : strategy;
 
     return requestStrategy({

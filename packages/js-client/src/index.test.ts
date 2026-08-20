@@ -237,8 +237,8 @@ describe("storyblokClient", () => {
   });
 
   describe("cache invalidation via cdn/spaces/me", () => {
-    // `/cdn/spaces/me` reports `space.version` and no `cv`. It is the cheapest way to
-    // notice that content changed, because it is only cached for two seconds.
+    // `/cdn/spaces/me` reports `space.version` and no `cv`, and is only cached for two
+    // seconds — the cheapest way to notice a publish.
     const spaceResponse = (version: number) => ({
       data: { space: { id: 1, name: "Test", version } },
       headers: {},
@@ -276,9 +276,8 @@ describe("storyblokClient", () => {
     });
 
     it("should flush on the first poll when the cv does not match the space version", async () => {
-      // Content may have been published between that first content request and this
-      // first poll. There is no earlier space version to detect it with, but a cv that
-      // no longer matches the space version gives it away.
+      // A publish may have landed between the first content request and this poll. A cv
+      // that no longer matches the space version gives it away.
       const token = "space-version-first-poll";
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
@@ -319,9 +318,9 @@ describe("storyblokClient", () => {
     });
 
     it("should still flush on a space version change when cv is manual", async () => {
-      // With `cv: 'manual'` the cv is tracked but never attached to requests, so behind
-      // an edge cache a content response can keep carrying a stale cv indefinitely.
-      // `space.version` is then the only signal left to notice that content changed.
+      // With `cv: 'manual'` the cv is tracked but never sent, so behind an edge cache a
+      // content response can carry a stale cv forever. `space.version` is the only
+      // signal left.
       const token = "space-version-cv-manual";
       const manualCvClient: any = new StoryblokClient({
         accessToken: "test-token",
@@ -354,9 +353,8 @@ describe("storyblokClient", () => {
     });
 
     it("should not flush on the first poll when the cv already matches the space version", async () => {
-      // Without a Minimum Cache TTL — the default — a content response's `cv` and a
-      // poll's `space.version` are the same number. An equal pair proves that nothing
-      // was published in between, so the defensive first flush is not needed.
+      // Without a Minimum Cache TTL the two report the same number, so an equal pair
+      // proves nothing was published and the defensive first flush is not needed.
       const token = "space-version-first-poll-equal";
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
@@ -392,8 +390,8 @@ describe("storyblokClient", () => {
     });
 
     it("should not flush on a published poll when clear is onpreview", async () => {
-      // `onpreview` only clears on draft requests, so polling with a public token never
-      // flushes. Consumers polling published content need `clear: 'auto'`.
+      // `onpreview` only clears on draft requests, so polling published content needs
+      // `clear: 'auto'`.
       const token = "space-version-onpreview";
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
@@ -411,9 +409,8 @@ describe("storyblokClient", () => {
     });
 
     it("should flush on a draft poll when clear is onpreview", async () => {
-      // The published poll above is not flushed because of the request's version, not
-      // because of the endpoint: `onpreview` considers every draft request clearable,
-      // so polling with a preview token does pick publishes up.
+      // What decides it is the request's version, not the endpoint: `onpreview` treats
+      // every draft request as clearable, so a draft poll does pick publishes up.
       const token = "space-version-onpreview-draft";
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
@@ -436,9 +433,8 @@ describe("storyblokClient", () => {
 
     it("should not let a published poll consume the signal a draft poll needs", async () => {
       // A non-clearable request must observe the space version without recording it.
-      // If it recorded it, the draft poll below would compare against the already
-      // updated version, find it unchanged, and leave the published cache stale for
-      // good — the exact failure the space-version signal exists to prevent.
+      // Recording would consume the signal: the draft poll below would find the version
+      // unchanged and leave the published cache stale for good.
       const token = "space-version-onpreview-interleaved";
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
@@ -461,8 +457,8 @@ describe("storyblokClient", () => {
     });
 
     it("should not flush when polled before any content request", async () => {
-      // Polling before the first content request is the recommended startup shape:
-      // there is no tracked cv and nothing cached yet, so there is nothing to flush.
+      // The recommended startup shape: no tracked cv and nothing cached yet, so there
+      // is nothing to flush.
       const token = "space-version-poll-first";
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
       await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
@@ -499,8 +495,8 @@ describe("storyblokClient", () => {
     });
 
     it("should not attach a cv to the poll request", async () => {
-      // The cv is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
-      // fragments the edge cache of the endpoint the polling pattern relies on.
+      // The cv is a cache buster and `/cdn/spaces/me` is not cached: one there would
+      // only fragment the edge cache of the endpoint polling relies on.
       const token = "space-version-no-cv-on-poll";
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
@@ -513,12 +509,10 @@ describe("storyblokClient", () => {
     });
 
     it("should keep the cv of a response that also reports a space version", async () => {
-      // Only `/cdn/spaces/me` reports a space version today, and it carries no cv. If it
-      // ever reported both, the flush triggered by the space version must not drop the
-      // cv that arrived in that same response — which is why the space version is
-      // tracked before the cv, matching `trackResponseVersions` in
-      // `@storyblok/api-client`. The token is the client's own access token so that
-      // `flushCache` clears the cv this test tracks.
+      // Only `/cdn/spaces/me` reports a space version today and it carries no cv, but if
+      // one response ever reported both, the space-version flush must not drop the cv
+      // that arrived with it — hence space version before cv. The token is the client's
+      // own access token so `flushCache` clears the cv this test tracks.
       const token = "space-version-and-cv-in-one-response";
       const client: any = new StoryblokClient({
         accessToken: token,
@@ -543,8 +537,8 @@ describe("storyblokClient", () => {
     });
 
     it("should treat a slug with a leading slash the same as one without", async () => {
-      // `get()` prefixes the slug with a slash, so `'/cdn/spaces/me'` must not end up as
-      // `//cdn/spaces/me`: that fails every path comparison at once, leaving the poll
+      // `get()` prefixes the slug with a slash, so `'/cdn/spaces/me'` must not become
+      // `//cdn/spaces/me` — that fails every path comparison at once, leaving the poll
       // carrying a cv, its response cached, and the space version never read.
       const poll = async (slug: string, token: string) => {
         const client: any = new StoryblokClient({
@@ -585,9 +579,8 @@ describe("storyblokClient", () => {
     });
 
     it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {
-      // Tokens with a Minimum Cache TTL receive a `cv` floored into TTL-sized buckets,
-      // while `space.version` keeps reporting the raw latest version. The two values
-      // differ permanently, and must not be compared against each other.
+      // A Minimum Cache TTL floors the cv into buckets while `space.version` reports the
+      // raw version: they differ permanently and must never be compared to each other.
       const token = "space-version-min-cache";
       const flooredCv = 1786950000;
       const rawSpaceVersion = 1786950860;

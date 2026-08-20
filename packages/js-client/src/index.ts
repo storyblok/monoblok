@@ -57,11 +57,11 @@ const cacheVersions = {} as CachedVersions;
 const SPACES_ME_PATH = "/cdn/spaces/me";
 
 /**
- * Last `space.version` seen per token, tracked separately from {@link cacheVersions}.
- * It is a change signal only and is never sent as a `cv` — see `cacheResponse`.
+ * Last `space.version` seen per token, tracked separately from {@link cacheVersions}. A
+ * change signal only, never sent as a `cv` — see `cacheResponse`.
  *
- * Module-level and never reset, like {@link cacheVersions}: tests that exercise the
- * space-version signal must each use a unique token to stay isolated.
+ * Module level and never reset, like {@link cacheVersions}, so each test exercising this
+ * signal needs its own token.
  */
 const spaceVersions = {} as CachedVersions;
 
@@ -197,10 +197,9 @@ export class Storyblok {
       params.token = this.getToken();
     }
 
-    // The cv is a cache buster, so it only belongs on requests that are cached.
-    // `/cdn/spaces/me` is excluded from the cache below in `cacheResponse`, reports no
-    // cv of its own, and is cached for two seconds at the edge — it is the endpoint the
-    // polling pattern relies on for freshness, and a cv only fragments its edge cache.
+    // The cv is a cache buster, so it only belongs on cached requests. On
+    // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
+    // relies on for freshness.
     if (!params.cv && this.cvMode === "auto" && url !== SPACES_ME_PATH) {
       params.cv = cacheVersions[params.token];
     }
@@ -793,59 +792,46 @@ export class Storyblok {
           (this.cache.clear === "onpreview" && params.version === "draft") ||
           this.cache.clear === "auto";
 
-        // `/cdn/spaces/me` is the cheapest way to notice that content changed: it is
-        // only cached for two seconds, while the content endpoints are cached for a
-        // week. It reports the space's raw `version` and no `cv`, so it is used purely
-        // as a change signal — the `cv` sent along with requests keeps coming from
-        // content responses. The two are not interchangeable: for tokens with a
-        // Minimum Cache TTL the API floors the `cv` into TTL-sized buckets, while
-        // `space.version` always reflects the latest change.
+        // `/cdn/spaces/me` is cached for two seconds where content is cached for a
+        // week, which makes it the cheapest way to notice a publish. It reports no `cv`,
+        // and its `space.version` is not one: a Minimum Cache TTL floors the `cv` into
+        // TTL-sized buckets while `space.version` reports the raw version. Change signal
+        // only — the `cv` sent with requests still comes from content responses.
         //
-        // `@storyblok/api-client` implements the same heuristic in
-        // `updateSpaceVersion` — keep the two in sync when changing the flush rules,
-        // including the order: the space version is handled before the cv so that a
-        // response carrying both signals still ends up with the cv taken from that same
-        // response, rather than dropped by the flush.
+        // `@storyblok/api-client` implements the same heuristic in `updateSpaceVersion`;
+        // keep the flush rules in sync, including the order — the space version is
+        // handled before the cv so a response carrying both keeps the cv from that same
+        // response. It differs in one way on purpose: on an ambiguous first sighting it
+        // revalidates rather than flushing, because its tracked versions are per client
+        // while these maps are module level, so a flush here is bounded to once per
+        // process anyway.
         //
-        // One rule differs deliberately. On an ambiguous first sighting the api-client
-        // defers to a revalidation rather than flushing, because its tracked versions
-        // live on the client instance: with a shared `cache.provider` and a client per
-        // request, a flush there would empty that shared cache once per instance. The
-        // maps here are module-level, so an ambiguous sighting happens once per process
-        // and the flush stays bounded.
-        //
-        // `response.data` is untyped, so narrow the version before tracking it: a
-        // value of another type would never compare equal to the numbers already in
-        // `spaceVersions` and would flush on every poll.
+        // `response.data` is untyped, so narrow the version first: another type would
+        // never compare equal to the tracked numbers and would flush on every poll.
         const rawSpaceVersion = url === SPACES_ME_PATH ? response.data.space?.version : undefined;
         const spaceVersion = typeof rawSpaceVersion === "number" ? rawSpaceVersion : undefined;
 
         if (params.token && spaceVersion !== undefined) {
           const lastSpaceVersion = spaceVersions[params.token];
           const lastCv = cacheVersions[params.token];
-          // On the very first sighting there is no previous space version to compare
-          // against, so compare against the cv instead. Without a Minimum Cache TTL —
-          // the default — the API floors nothing and both values report the same raw
-          // version, so an equal pair proves that nothing was published between the
-          // content request and this first poll and there is nothing to flush. An
-          // unequal pair means either a publish landed in between or a TTL is flooring
-          // the cv, and neither can be told apart from here, so flush once defensively.
+          // A first sighting has no previous space version, so compare against the cv.
+          // Without a Minimum Cache TTL both report the same raw version, so an equal
+          // pair proves nothing was published. An unequal pair is either a publish or a
+          // TTL flooring the cv — indistinguishable here, so flush once defensively.
           const isFirstSighting =
             lastSpaceVersion === undefined && lastCv !== undefined && lastCv !== spaceVersion;
           const hasSpaceVersionChanged =
             lastSpaceVersion !== undefined && lastSpaceVersion !== spaceVersion;
 
           if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
-            // `flushCache` also clears the tracked cv, which matters here: the edge
-            // keeps serving the old object for `?cv=<old>` for up to a week, so
-            // reusing it would refill the cache with the content just flushed.
+            // `flushCache` also clears the tracked cv: the edge serves `?cv=<old>` for
+            // up to a week, so keeping it would refill the cache with what was flushed.
             await this.flushCache();
           }
-          // Only record the version when this request could have acted on it. Under
-          // `clear: 'onpreview'` a published request is not clearable, and recording
-          // from it would consume the change signal: the next draft poll would compare
-          // against the already-updated version, find it unchanged, and never flush —
-          // leaving the published cache stale for good.
+          // Only record when this request could have acted on it. Under `'onpreview'` a
+          // published request is not clearable, and recording from it would consume the
+          // signal: the next draft poll would find the version unchanged and never
+          // flush.
           if (isCacheClearable) {
             spaceVersions[params.token] = spaceVersion;
           }

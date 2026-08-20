@@ -131,9 +131,8 @@ describe("spaces.get()", () => {
 });
 
 describe("spaces.get() as a cache invalidation signal", () => {
-  // `/cdn/spaces/me` carries no `cv`, only the space's raw `version`. It is cached for
-  // two seconds while content endpoints are cached for a week, which makes polling it
-  // the cheapest way to notice that content changed.
+  // `/cdn/spaces/me` reports the space's raw `version` and no `cv`, and is cached for two
+  // seconds where content is cached for a week — the cheapest way to notice a publish.
   const spaceHandler = (version: () => number) =>
     http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {
       return HttpResponse.json({
@@ -177,8 +176,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should ignore a space.version reported by another endpoint", async () => {
-    // The signal is gated on the path, not only on the response shape: a `space.version`
-    // that a content response happens to embed must never flush the cache.
+    // Gated on the path, not just the response shape: a `space.version` embedded in a
+    // content response must never flush.
     let spaceVersion = 2000;
     let linkRequests = 0;
     server.use(
@@ -201,16 +200,16 @@ describe("spaces.get() as a cache invalidation signal", () => {
     await client.get("v2/cdn/links", { query: { version: "published", starts_with: "blog" } });
     expect(linkRequests).toBe(2);
 
-    // The first entry must still be cached: nothing reported a new cv, and a content
-    // response's `space.version` is not a flush signal.
+    // Still cached: nothing reported a new cv, and a content response's `space.version`
+    // is not a flush signal.
     await client.get("v2/cdn/links", { query: { version: "published" } });
 
     expect(linkRequests).toBe(2);
   });
 
   it("should not attach a cv to the poll request", async () => {
-    // The `cv` is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
-    // fragments the edge cache of the endpoint the polling pattern depends on.
+    // The cv is a cache buster and `/cdn/spaces/me` is not cached: one there would only
+    // fragment the edge cache of the endpoint polling depends on.
     const spaceUrls: string[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/spaces/me", ({ request }) => {
@@ -233,10 +232,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should revalidate on the first poll when the cv does not match the space version", async () => {
-    // A publish may have landed between the first content request and this first poll.
-    // There is no earlier space version to detect it with, and a cv that no longer
-    // matches the space version could equally be a Minimum Cache TTL flooring it. The
-    // ambiguity is settled by one revalidation against the origin, not by a flush.
+    // A publish may have landed between the first content request and this poll, but so
+    // could a Minimum Cache TTL flooring the cv. One revalidation settles it, no flush.
     let linkRequests = 0;
     server.use(
       spaceHandler(() => 2000),
@@ -259,9 +256,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should send the revalidation without a cv", async () => {
-    // The tracked cv is dropped before the revalidation so the origin redirects it to
-    // the current cv. Reusing the old one could be served from a warm `?cv=<old>` edge
-    // object and report the very cv it was sent with, hiding a real publish.
+    // A warm `?cv=<old>` edge object reports the very cv it was sent with, which would
+    // hide a real publish — so the revalidation must carry none.
     const linkUrls: string[] = [];
     server.use(
       spaceHandler(() => 2000),
@@ -281,9 +277,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should keep every other cached entry when the revalidated cv is unchanged", async () => {
-    // A Minimum Cache TTL floors the cv permanently, so the pair never matches and the
-    // sighting is ambiguous on every fresh client. The revalidation proves nothing was
-    // published, and entries this client never revalidated have to survive it.
+    // A Minimum Cache TTL floors the cv permanently, so every fresh client sees an
+    // ambiguous pair. The revalidation proves nothing was published; other keys survive.
     let tagRequests = 0;
     server.use(
       spaceHandler(() => 1786950860),
@@ -309,9 +304,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should flush every cached entry when the revalidated cv moved", async () => {
-    // Without a TTL the two values report the same raw version, so an unequal pair means
-    // a publish really did land. The revalidation returns the new cv and the whole cache
-    // has to go — including entries for other keys.
+    // Without a TTL both report the same raw version, so an unequal pair means a publish
+    // really landed. The whole cache goes, including entries for other keys.
     let cv = 1000;
     let tagRequests = 0;
     server.use(
@@ -339,10 +333,9 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should not empty a shared provider once per client instance", async () => {
-    // The tracked versions live on the client, so with a provider shared across clients
-    // and a TTL-floored cv every newly created client sees the same ambiguous pair. A
-    // flush there would empty the shared cache once per instance; a revalidation is
-    // scoped to the instance that made it, and a warm shared entry answers it.
+    // With a shared provider and a TTL-floored cv, every new client sees the same
+    // ambiguous pair. A flush would empty the shared cache once per instance; a
+    // revalidation is scoped to the client that made it.
     let linkRequests = 0;
     server.use(
       spaceHandler(() => 1786950860),
@@ -377,8 +370,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should ignore a space.version reported by another endpoint", async () => {
-    // The signal is gated on the path, not only on the response shape: a `space.version`
-    // that a content response happens to embed must never flush the cache.
+    // Gated on the path, not just the response shape: a `space.version` embedded in a
+    // content response must never flush.
     let spaceVersion = 2000;
     let linkRequests = 0;
     server.use(
@@ -401,16 +394,16 @@ describe("spaces.get() as a cache invalidation signal", () => {
     await client.get("v2/cdn/links", { query: { version: "published", starts_with: "blog" } });
     expect(linkRequests).toBe(2);
 
-    // The first entry must still be cached: nothing reported a new cv, and a content
-    // response's `space.version` is not a flush signal.
+    // Still cached: nothing reported a new cv, and a content response's `space.version`
+    // is not a flush signal.
     await client.get("v2/cdn/links", { query: { version: "published" } });
 
     expect(linkRequests).toBe(2);
   });
 
   it("should not attach a cv to the poll request", async () => {
-    // The `cv` is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
-    // fragments the edge cache of the endpoint the polling pattern depends on.
+    // The cv is a cache buster and `/cdn/spaces/me` is not cached: one there would only
+    // fragment the edge cache of the endpoint polling depends on.
     const spaceUrls: string[] = [];
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/spaces/me", ({ request }) => {
@@ -433,9 +426,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should flush on the first poll when the cv does not match the space version", async () => {
-    // A publish may have landed between the first content request and this first poll.
-    // There is no earlier space version to detect it with, but a cv that no longer
-    // matches the space version gives it away, so flush once defensively.
+    // A publish may have landed between the first content request and this poll. A cv
+    // that no longer matches the space version gives it away, so flush once defensively.
     let linkRequests = 0;
     server.use(
       spaceHandler(() => 2000),
@@ -458,9 +450,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should omit the stale cv on the request that follows a space version flush", async () => {
-    // The edge keeps serving the old object for `?cv=<old>` for up to a week, so the
-    // refetch after a flush must not carry the cv it was just flushed for. Dropping it
-    // makes the request go out without `cv` and take the origin's 301 to the current one.
+    // The edge serves `?cv=<old>` for up to a week, so the refetch after a flush must
+    // not carry the cv it was flushed for; without one it takes the origin's 301.
     let spaceVersion = 1000;
     const linkUrls: string[] = [];
     server.use(
@@ -505,9 +496,8 @@ describe("spaces.get() as a cache invalidation signal", () => {
   });
 
   it("should not flush the cache when a Minimum Cache TTL floors the cv", async () => {
-    // Tokens with a Minimum Cache TTL receive a `cv` floored into TTL-sized buckets,
-    // while `space.version` keeps reporting the raw latest version. The two values
-    // differ permanently and must never be compared against each other.
+    // A Minimum Cache TTL floors the cv into buckets while `space.version` reports the
+    // raw version: they differ permanently and must never be compared to each other.
     const flooredCv = 1_786_950_000;
     const rawSpaceVersion = 1_786_950_860;
     let linkRequests = 0;

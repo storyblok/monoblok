@@ -256,9 +256,9 @@ export const createApiClientBase = <
   let currentCv: number | undefined;
   let currentSpaceVersion: number | undefined;
   /**
-   * Set when a first `space.version` sighting was ambiguous, carrying the cv tracked at
-   * that moment. The next cacheable request revalidates against the origin and the cv it
-   * returns settles whether anything was actually published. See {@link updateSpaceVersion}.
+   * An ambiguous first `space.version` sighting, with the cv tracked at that moment. The
+   * next cacheable request revalidates and the cv it returns settles it.
+   * See {@link updateSpaceVersion}.
    */
   let pendingRevalidation: { cvBefore: number } | undefined;
 
@@ -312,30 +312,24 @@ export const createApiClientBase = <
   };
 
   /**
-   * `/cdn/spaces/me` carries no `cv`, only the space's raw `version`. It is cached
-   * for two seconds while the content endpoints are cached for a week, which makes
-   * it the cheapest way to notice that content changed. Track it separately and use
-   * it purely as a flush signal: the `cv` attached to requests keeps coming from
-   * content responses, because the two values diverge for tokens with a Minimum
-   * Cache TTL.
+   * Tracks `space.version` from `/cdn/spaces/me` and flushes when it moves.
    *
-   * `storyblok-js-client` implements the same heuristic in `cacheResponse`, with one
-   * deliberate difference: it flushes on an ambiguous first sighting where this client
-   * revalidates instead. Its tracked versions are module-level, so an ambiguous sighting
-   * happens once per process rather than once per client, and there is no shared provider
-   * for the flush to empty. Keep the rest of the rules in sync.
+   * That endpoint is cached for two seconds where content is cached for a week, which
+   * makes it the cheapest way to notice a publish. It reports no `cv`, and its
+   * `space.version` is not one: a Minimum Cache TTL floors the `cv` into TTL-sized
+   * buckets while `space.version` keeps reporting the raw version. Change signal only —
+   * the `cv` sent with requests still comes from content responses.
    *
-   * Gated on the path as well as on the response shape: a `space.version` is only a
-   * change signal when it comes from the endpoint that reports the space's raw version.
-   * Any other response that happens to embed a numeric `space.version` must not flush.
+   * Gated on the path, not just the response shape: another response that embeds a
+   * numeric `space.version` must not flush.
    *
-   * Both tracked versions live on the client instance, so this signal only works for a
-   * client that outlives a single request. A client created per request starts with
-   * both `undefined`: `currentSpaceVersion` is unset so a change cannot be seen, and
-   * `cvBefore` is unset so the ambiguous-sighting path below cannot fire either — a
-   * read served from a shared `cache.provider` is a cache hit and never tracks a `cv`.
-   * Polling from per-request clients therefore never invalidates a shared provider;
-   * its staleness is bounded by `cache.ttlMs` alone. Reuse one client to poll.
+   * Both tracked versions live on the client instance, so polling only works from a
+   * client that outlives a request. A per-request client starts with both `undefined`,
+   * and a read served from a shared `cache.provider` never tracks a `cv` — so neither
+   * branch below can fire, and staleness is bounded by `cache.ttlMs` alone.
+   *
+   * `storyblok-js-client` implements the same heuristic in `cacheResponse`; keep the
+   * flush rules in sync.
    *
    * @param cvBefore the tracked cv as of before this response was processed.
    */
@@ -357,27 +351,20 @@ export const createApiClientBase = <
       currentSpaceVersion !== undefined && currentSpaceVersion !== nextSpaceVersion;
 
     if (cacheFlush === "auto" && hasSpaceVersionChanged) {
-      // Reset the tracked cv along with the cache: the edge keeps serving the old
-      // object for `?cv=<old>` for up to a week, so reusing it would refill the cache
-      // with the very content that was just flushed. Dropping it makes the next
-      // published request omit `cv` and take the origin's 301 to the current one.
+      // Also drops the tracked cv: the edge serves `?cv=<old>` for up to a week, so
+      // keeping it would refill the cache with the content just flushed. Without a cv the
+      // next request takes the origin's 301 to the current one.
       await flushCache();
     }
 
-    // On the very first sighting there is no previous space version to compare against,
-    // so compare against the cv instead. Without a Minimum Cache TTL — the default —
-    // the API floors nothing and both values report the same raw version, so an equal
-    // pair proves that nothing was published between the content request and this first
-    // poll and there is nothing to do. An unequal pair means either a publish landed in
-    // between or a TTL is flooring the cv, and neither can be told apart from here.
+    // A first sighting has no previous space version to compare against, so compare
+    // against the cv. Without a Minimum Cache TTL both report the same raw version, so an
+    // equal pair proves nothing was published. An unequal pair is either a publish or a
+    // TTL flooring the cv, and the two cannot be told apart here.
     //
-    // Rather than flush on that ambiguity, defer it: drop the tracked cv so the next
-    // cacheable request goes out without one and takes the origin's 301 to the current
-    // cv, and let the cv that comes back decide. This keeps the cost of an ambiguous
-    // sighting to one revalidation by this client, instead of a flush that also empties
-    // a `cache.provider` shared with every other client. Note this only narrows the
-    // cost for clients that do reach here — see the caveat above on why a per-request
-    // client never does.
+    // So defer instead of flushing: drop the tracked cv and let the next cacheable
+    // request revalidate without one and settle it. That costs one request by this
+    // client, rather than a flush that also empties a shared `cache.provider`.
     if (
       cacheFlush === "auto" &&
       currentSpaceVersion === undefined &&
@@ -404,8 +391,8 @@ export const createApiClientBase = <
     }
 
     if (cacheFlush === "auto" && currentCv !== undefined && currentCv !== nextCv) {
-      // Only the local cache is flushed here: the cv is replaced by `nextCv` right
-      // below, so — unlike the space-version path — no stale cv is left behind.
+      // Only the cache is flushed: `nextCv` replaces the cv right below, so unlike the
+      // space-version path no stale cv is left behind.
       await cacheProvider.flush();
     }
 
@@ -414,12 +401,9 @@ export const createApiClientBase = <
   };
 
   /**
-   * Tracks both version signals carried by a response and flushes the cache when
-   * either one reports that content changed.
-   *
-   * The space version is handled first so that a response carrying both signals (only
-   * `/cdn/spaces/me` reports a space version today, and it carries no `cv`) still ends
-   * up with the cv taken from that same response rather than dropped by the flush.
+   * Tracks both version signals a response carries and flushes when either reports a
+   * change. The space version goes first, so a response carrying both keeps the cv from
+   * that same response instead of having it dropped by the flush.
    *
    * @returns whether the result may be cached.
    */
@@ -477,10 +461,9 @@ export const createApiClientBase = <
     cacheOptions?: RequestWithCacheOptions,
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
-    // The `cv` is a cache buster, so it only belongs on requests that are cacheable in
-    // the first place. `/cdn/spaces/me` carries no `cv` of its own and is only cached
-    // for two seconds; attaching one there fragments the edge cache of the endpoint the
-    // polling pattern depends on, for no gain.
+    // The cv is a cache buster, so it only belongs on cacheable requests. On
+    // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
+    // depends on.
     const query =
       cacheEnabled && cvMode === "auto" && currentCv !== undefined
         ? applyCvToQuery(rawQuery, currentCv)

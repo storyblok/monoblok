@@ -11,9 +11,8 @@ export const extractCv = (maybeData: unknown) => {
 /**
  * Reads `space.version` from a `/cdn/spaces/me` response.
  *
- * This is *not* a `cv` and must never be sent as one: for tokens with a Minimum
- * Cache TTL the API floors the `cv` into TTL-sized buckets, while `space.version`
- * always reports the latest raw version. It is only useful as a change signal.
+ * Not a `cv`, and must never be sent as one: a Minimum Cache TTL floors the `cv` into
+ * TTL-sized buckets while `space.version` reports the raw version. Change signal only.
  */
 export const extractSpaceVersion = (maybeData: unknown) => {
   if (!maybeData || typeof maybeData !== "object" || !("space" in maybeData)) {

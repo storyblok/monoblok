@@ -313,8 +313,28 @@ describe("storyblokClient", () => {
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
       await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
 
-      // The cv keeps coming from content responses; the space version never overwrites it.
-      expect(autoClearClient.cacheVersions()[token]).toBe(1000);
+      // The flush drops the tracked cv rather than replacing it with the space version;
+      // the cv only ever comes from a content response.
+      expect(autoClearClient.cacheVersions()[token]).toBe(0);
+    });
+
+    it("should drop the cv for the token that reported the space version", async () => {
+      // The signal is keyed by `params.token`, which a request may override, while
+      // `flushCache` clears the cv of the client's own token. A cv left behind refills the
+      // cache from the edge, which serves `?cv=<old>` for up to a week.
+      const token = "space-version-request-token";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(flushCache).toHaveBeenCalledTimes(1);
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(3000));
+      autoClearClient.throttleManager.execute = execute;
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      expect(execute.mock.calls[0][3].cv).toBeFalsy();
     });
 
     it("should still flush on a space version change when cv is manual", async () => {

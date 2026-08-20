@@ -824,9 +824,11 @@ export class Storyblok {
             lastSpaceVersion !== undefined && lastSpaceVersion !== spaceVersion;
 
           if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
-            // `flushCache` also clears the tracked cv: the edge serves `?cv=<old>` for
-            // up to a week, so keeping it would refill the cache with what was flushed.
             await this.flushCache();
+            // `flushCache` clears the cv of the client's own token, which `params.token`
+            // may override — and unlike the cv path below, no incoming cv arrives here to
+            // overwrite a stale one. The edge serves `?cv=<old>` for up to a week.
+            cacheVersions[params.token] = 0;
           }
           // Only record when this request could have acted on it. Under `'onpreview'` a
           // published request is not clearable, and recording from it would consume the

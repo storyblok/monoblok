@@ -20,23 +20,22 @@ The command will:
 
 ## Options
 
-| Option                      | Description                                                                   | Default               |
-| --------------------------- | ----------------------------------------------------------------------------- | --------------------- |
-| `-t, --template <template>` | Technology starter template (react, vue, svelte, astro, nuxt, next, eleventy) | Interactive selection |
-| `--skip-space`              | Skip space creation and only generate the project                             | `false`               |
-| `--token`                   | Skip space creation and generate the project with this `token`                | `false`               |
+| Option                      | Description                                                         | Default               |
+| --------------------------- | ------------------------------------------------------------------- | --------------------- |
+| `-t, --template <template>` | Technology starter template (react, vue, svelte, astro, nuxt, next) | Interactive selection |
+| `--skip-space`              | Skip space creation and only generate the project                   | `false`               |
+| `--token`                   | Skip space creation and generate the project with this `token`      | `false`               |
 
 ## Available Templates
 
-| Template   | Technology                |
-| ---------- | ------------------------- |
-| `react`    | React with TypeScript     |
-| `vue`      | Vue 3 with TypeScript     |
-| `svelte`   | SvelteKit with TypeScript |
-| `astro`    | Astro with TypeScript     |
-| `nuxt`     | Nuxt 3 with TypeScript    |
-| `next`     | Next.js with TypeScript   |
-| `eleventy` | Eleventy with JavaScript  |
+| Template | Technology                |
+| -------- | ------------------------- |
+| `react`  | React with TypeScript     |
+| `vue`    | Vue 3 with TypeScript     |
+| `svelte` | SvelteKit with TypeScript |
+| `astro`  | Astro with TypeScript     |
+| `nuxt`   | Nuxt 3 with TypeScript    |
+| `next`   | Next.js with TypeScript   |
 
 ## Examples
 
@@ -72,7 +71,7 @@ storyblok create ./projects/my-awesome-app --template astro
 5. **Create with absolute path**:
 
 ```bash
-storyblok create /Users/john/projects/my-app --template eleventy
+storyblok create /Users/john/projects/my-app --template astro
 ```
 
 ## Interactive Mode
@@ -89,7 +88,6 @@ When you don't specify a template or project path, the CLI will guide you throug
   Astro
   Nuxt 3
   Next.js
-  Eleventy
 ```
 
 ### Project Path Input
@@ -196,7 +194,7 @@ interactive mode:
 
 ```bash
 storyblok create my-project --template invalid-name
-# ⚠ Invalid template "invalid-name". Valid options are: react, vue, svelte, astro, nuxt, next, eleventy
+# ⚠ Invalid template "invalid-name". Valid options are: react, vue, svelte, astro, nuxt, next
 ```
 
 ### Directory Already Exists

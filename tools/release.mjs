@@ -9,7 +9,7 @@ import * as readline from "readline";
 import { getBranchEligiblePackages } from "./release-branches.mjs";
 
 const MAIN_BRANCH = "main";
-const RELEASE_BRANCHES = ["main", "alpha", "beta", "next"];
+const RELEASE_BRANCHES = ["main", "alpha", "beta", "next", "rc"];
 
 // Parse command line arguments
 const args = argv.slice(2);

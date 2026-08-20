@@ -1,6 +1,10 @@
 import { createClient, createConfig } from "./generated/capi/client";
 import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
-import { createMemoryCacheProvider, createStrategy } from "./utils/cache";
+import {
+  createMemoryCacheProvider,
+  createNetworkFirstStrategy,
+  createStrategy,
+} from "./utils/cache";
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
@@ -244,6 +248,9 @@ export const createApiClientBase = <
       ? createStrategy(cache.strategy, swrOptions)
       : cache.strategy
     : createStrategy("cache-first");
+  // Used for the one request that settles an ambiguous `space.version` sighting, in
+  // place of the configured strategy — see `requestWithCache`.
+  const revalidationStrategy = createNetworkFirstStrategy();
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   const cacheFlush = cache.flush ?? "auto";
   const cvMode = cache.cv ?? "auto";
@@ -491,37 +498,59 @@ export const createApiClientBase = <
     const key = cacheOptions?.cacheKeyPrefix
       ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
       : baseKey;
-    const loadNetwork = async () => {
-      const result = await fetchFn(query);
-      throttleManager.adaptToResponse(result.response);
-      return cacheSuccessResult(path, key, result);
-    };
-
-    // An ambiguous `space.version` sighting is settled here rather than by a flush: this
-    // request bypasses the cache and, with the tracked cv already dropped, goes out
-    // without a `cv`, so the origin redirects it to the current one. A cv that moved
-    // means content really was published and the cache is emptied — before this fresh
-    // response is stored. An unchanged cv means a Minimum Cache TTL was flooring it all
-    // along and every cached entry is still valid.
-    if (pendingRevalidation !== undefined) {
-      const { cvBefore } = pendingRevalidation;
-      pendingRevalidation = undefined;
-
-      const result = await fetchFn(query);
-      throttleManager.adaptToResponse(result.response);
-
-      const nextCv = extractCv(result.data);
-      if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== cvBefore) {
-        await cacheProvider.flush();
-      }
-
-      return cacheSuccessResult(path, key, result);
-    }
-
     const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
     const cachedResult = cachedEntry?.value;
 
-    return strategy({
+    const loadNetwork = async () => {
+      // Capture the pending sighting instead of consuming it: it has to survive a failed
+      // request. `currentSpaceVersion` has already advanced in `updateSpaceVersion`, so
+      // this record is the only thing left that can settle the ambiguity — dropping it
+      // before a response is in hand would strand the cache until the next unrelated
+      // publish moves the space version again.
+      const revalidation = pendingRevalidation;
+
+      const result = await fetchFn(query);
+      throttleManager.adaptToResponse(result.response);
+
+      if (revalidation !== undefined) {
+        if (result.error !== undefined) {
+          // Leave the signal pending so the next cacheable request retries it. While the
+          // origin keeps failing this costs one network attempt per request instead of a
+          // cache hit, which is the right trade against staying stale for good. Serving
+          // the cached entry keeps that cost invisible to the caller: settling an
+          // ambiguous sighting must not turn a read that would have been a cache hit
+          // into an error.
+          if (cachedResult !== undefined) {
+            return cachedResult;
+          }
+        } else {
+          pendingRevalidation = undefined;
+
+          // The cv this response carries settles the ambiguity. A cv that moved means
+          // content really was published, so the cache is emptied — before the fresh
+          // response is stored just below. An unchanged cv means a Minimum Cache TTL was
+          // flooring it all along and every cached entry is still valid.
+          const nextCv = extractCv(result.data);
+          if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== revalidation.cvBefore) {
+            await cacheProvider.flush();
+          }
+        }
+      }
+
+      return cacheSuccessResult(path, key, result);
+    };
+
+    // Settling an ambiguous `space.version` sighting has to reach the network, so that
+    // one request does not take the configured strategy's cache-hit shortcut. It uses
+    // network-first semantics instead — try the origin, fall back to the cached entry —
+    // rather than calling `fetchFn` directly: a poll must not cost `network-first` its
+    // documented fallback, turn a `cache-first` hit into a thrown error, or bypass a
+    // caller-supplied strategy altogether. With the tracked cv already dropped the
+    // request goes out without a `cv`, so the origin redirects it to the current one.
+    // For `swr` this is deliberately blocking: stale is what is in question here.
+    const requestStrategy = pendingRevalidation !== undefined ? revalidationStrategy : strategy;
+
+    return requestStrategy({
       key,
       cachedResult,
       loadNetwork,

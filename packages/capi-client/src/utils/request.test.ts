@@ -86,4 +86,8 @@ describe("shouldUseCache", () => {
   it("should return false for non-cacheable paths without leading slash", () => {
     expect(shouldUseCache("GET", "v2/cdn/spaces/me", { version: "published" })).toBe(false);
   });
+
+  it("should return false for non-cacheable paths with a doubled leading slash", () => {
+    expect(shouldUseCache("GET", "//v2/cdn/spaces/me", { version: "published" })).toBe(false);
+  });
 });

@@ -624,4 +624,114 @@ describe("spaces.get() as a cache invalidation signal", () => {
 
     expect(linkRequests).toBe(1);
   });
+
+  it("should retry the revalidation after it failed with an error response", async () => {
+    // The pending sighting must survive a failed revalidation. `currentSpaceVersion` has
+    // already advanced, so if the signal were consumed before the response came back,
+    // nothing could settle it and the cache would stay stale until the next publish.
+    let cv = 1000;
+    let linksFail = false;
+    let tagRequests = 0;
+    server.use(
+      spaceHandler(() => cv),
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        linksFail
+          ? HttpResponse.json({ error: "Server error" }, { status: 500 })
+          : HttpResponse.json({ links: {}, cv }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => {
+        tagRequests++;
+        return HttpResponse.json({ tags: [], cv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token", retry: { limit: 0 } });
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(tagRequests).toBe(1);
+
+    cv = 2000; // content published between the content requests and the first poll
+    await client.spaces.get();
+
+    // The revalidation that would settle the ambiguity fails. The caller still gets the
+    // cached entry: settling a sighting must not surface an error on a read that would
+    // otherwise have been a cache hit.
+    linksFail = true;
+    const failed = await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(failed.error).toBeUndefined();
+    expect(failed.data).toEqual({ links: {}, cv: 1000 });
+
+    // The signal survived, so the next cacheable request retries it and settles it.
+    linksFail = false;
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    expect(tagRequests).toBe(2); // cache was flushed, the stale entry is gone
+  });
+
+  it("should retry the revalidation after it failed with a network error", async () => {
+    let cv = 1000;
+    let linksFail = false;
+    let tagRequests = 0;
+    server.use(
+      spaceHandler(() => cv),
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        linksFail ? HttpResponse.error() : HttpResponse.json({ links: {}, cv }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => {
+        tagRequests++;
+        return HttpResponse.json({ tags: [], cv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token", retry: { limit: 0 } });
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    cv = 2000;
+    await client.spaces.get();
+
+    linksFail = true;
+    await expect(
+      client.get("v2/cdn/links", { query: { version: "published" } }),
+    ).resolves.toMatchObject({ data: { cv: 1000 } });
+
+    linksFail = false;
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    expect(tagRequests).toBe(2);
+  });
+
+  it.each(["cache-first", "network-first", "swr"] as const)(
+    "should keep serving the cached entry when the revalidation fails with the %s strategy",
+    async (strategy) => {
+      // The revalidation goes through a strategy rather than calling `fetch` directly, so
+      // a failing origin cannot cost `network-first` its documented cached fallback or
+      // turn a `cache-first` hit into a thrown error.
+      let cv = 1000;
+      let linksFail = false;
+      server.use(
+        spaceHandler(() => cv),
+        http.get("https://api.storyblok.com/v2/cdn/links", () =>
+          linksFail ? HttpResponse.error() : HttpResponse.json({ links: {}, cv }),
+        ),
+      );
+      const client = createApiClient({
+        accessToken: "test-token",
+        retry: { limit: 0 },
+        cache: { strategy },
+      });
+
+      await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      cv = 2000;
+      await client.spaces.get();
+
+      linksFail = true;
+      await expect(
+        client.get("v2/cdn/links", { query: { version: "published" } }),
+      ).resolves.toMatchObject({ data: { cv: 1000 } });
+    },
+  );
 });

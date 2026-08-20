@@ -65,6 +65,14 @@ const SPACES_ME_PATH = "/cdn/spaces/me";
  */
 const spaceVersions = {} as CachedVersions;
 
+/**
+ * Builds the request path from a caller-supplied slug. Slugs arrive with or without a
+ * leading slash (`'cdn/stories'`, `'/cdn/stories'`) and both have to produce the same
+ * path: paths are compared by equality against {@link SPACES_ME_PATH}, and they are part
+ * of the cache key. `@storyblok/api-client` normalizes for the same reason.
+ */
+const toPath = (slug: string): string => `/${slug.replace(/^\/+/, "")}`;
+
 interface CachedVersions {
   [key: string]: number;
 }
@@ -253,7 +261,7 @@ export class Storyblok {
     if (!params) {
       params = {} as ISbStoriesParams;
     }
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     // Only add/keep version parameter for CDN URLs — strip it from MAPI requests
     if (isCDNUrl(url)) {
@@ -274,7 +282,7 @@ export class Storyblok {
     fetchOptions?: ISbCustomFetch,
   ): Promise<any[]> {
     const perPage = params?.per_page || 25;
-    const url = `/${slug}`.replace(/\/$/, "");
+    const url = toPath(slug).replace(/\/$/, "");
     const e = entity ?? url.substring(url.lastIndexOf("/") + 1);
     params.version = params.version || this.version;
 
@@ -294,7 +302,7 @@ export class Storyblok {
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResponse> {
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -316,7 +324,7 @@ export class Storyblok {
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResponse> {
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -338,7 +346,7 @@ export class Storyblok {
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResponse> {
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -363,7 +371,7 @@ export class Storyblok {
     if (!params) {
       params = {} as ISbStoriesParams;
     }
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,

@@ -236,7 +236,15 @@ describe("storyblokClient", () => {
     });
   });
 
-  describe("cache invalidation via cdn/spaces/me", () => {
+  // Run the whole suite against both spellings a caller may pass. `get()` prefixes the
+  // slug with a slash, so a slug that already has one used to produce `//cdn/spaces/me`
+  // and silently fail every path comparison — no flush, a cv on the poll, and the
+  // response cached. The tracked versions are module level, so each spelling needs its
+  // own tokens to stay isolated.
+  describe.each([
+    ["cdn/spaces/me", "bare"],
+    ["/cdn/spaces/me", "leading-slash"],
+  ])("cache invalidation via %s", (pollSlug, spelling) => {
     // `/cdn/spaces/me` reports `space.version` and no `cv`. It is the cheapest way to
     // notice that content changed, because it is only cached for two seconds.
     const spaceResponse = (version: number) => ({
@@ -263,14 +271,14 @@ describe("storyblokClient", () => {
     });
 
     it("should flush the cache when the space reports a new version", async () => {
-      const token = "space-version-changed";
+      const token = `space-version-changed-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).not.toHaveBeenCalled(); // nothing served yet, nothing to flush
 
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).toHaveBeenCalledTimes(1);
     });
@@ -279,40 +287,40 @@ describe("storyblokClient", () => {
       // Content may have been published between that first content request and this
       // first poll. There is no earlier space version to detect it with, but a cv that
       // no longer matches the space version gives it away.
-      const token = "space-version-first-poll";
+      const token = `space-version-first-poll-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
 
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).toHaveBeenCalledTimes(1);
 
       // …but only once: further polls at the same version must not flush again.
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).toHaveBeenCalledTimes(1);
     });
 
     it("should not flush the cache when the space version is unchanged", async () => {
-      const token = "space-version-unchanged";
+      const token = `space-version-unchanged-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
 
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).not.toHaveBeenCalled();
     });
 
     it("should not track space.version as the cv sent with requests", async () => {
-      const token = "space-version-not-a-cv";
+      const token = `space-version-not-a-cv-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
 
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       // The cv keeps coming from content responses; the space version never overwrites it.
       expect(autoClearClient.cacheVersions()[token]).toBe(1000);
@@ -322,7 +330,7 @@ describe("storyblokClient", () => {
       // With `cv: 'manual'` the cv is tracked but never attached to requests, so behind
       // an edge cache a content response can keep carrying a stale cv indefinitely.
       // `space.version` is then the only signal left to notice that content changed.
-      const token = "space-version-cv-manual";
+      const token = `space-version-cv-manual-${spelling}`;
       const manualCvClient: any = new StoryblokClient({
         accessToken: "test-token",
         cache: { type: "memory", clear: "auto", cv: "manual" },
@@ -339,16 +347,16 @@ describe("storyblokClient", () => {
       expect(execute.mock.calls[1][3].cv).toBeUndefined();
 
       manualCvClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+      await manualCvClient.get(pollSlug, { version: "draft", token });
 
       // First sighting with content already served: flush once defensively.
       expect(manualCvFlushCache).toHaveBeenCalledTimes(1);
 
-      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+      await manualCvClient.get(pollSlug, { version: "draft", token });
       expect(manualCvFlushCache).toHaveBeenCalledTimes(1); // unchanged version
 
       manualCvClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(3000));
-      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+      await manualCvClient.get(pollSlug, { version: "draft", token });
 
       expect(manualCvFlushCache).toHaveBeenCalledTimes(2);
     });
@@ -357,18 +365,18 @@ describe("storyblokClient", () => {
       // Without a Minimum Cache TTL — the default — a content response's `cv` and a
       // poll's `space.version` are the same number. An equal pair proves that nothing
       // was published in between, so the defensive first flush is not needed.
-      const token = "space-version-first-poll-equal";
+      const token = `space-version-first-poll-equal-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
 
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).not.toHaveBeenCalled();
 
       // A later change is still detected.
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).toHaveBeenCalledTimes(1);
     });
@@ -376,7 +384,7 @@ describe("storyblokClient", () => {
     it("should ignore a space.version that is not a number", async () => {
       // `response.data` is untyped. A version of another type would never compare equal
       // to the numbers already tracked and would flush on every single poll.
-      const token = "space-version-not-a-number";
+      const token = `space-version-not-a-number-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
 
@@ -385,8 +393,8 @@ describe("storyblokClient", () => {
         headers: {},
         status: 200,
       });
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).not.toHaveBeenCalled();
     });
@@ -394,7 +402,7 @@ describe("storyblokClient", () => {
     it("should not flush on a published poll when clear is onpreview", async () => {
       // `onpreview` only clears on draft requests, so polling with a public token never
       // flushes. Consumers polling published content need `clear: 'auto'`.
-      const token = "space-version-onpreview";
+      const token = `space-version-onpreview-${spelling}`;
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
         cache: { type: "memory", clear: "onpreview" },
@@ -405,7 +413,7 @@ describe("storyblokClient", () => {
       await onPreviewClient.get("cdn/stories", { version: "published", token });
 
       onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
+      await onPreviewClient.get(pollSlug, { version: "published", token });
 
       expect(onPreviewFlushCache).not.toHaveBeenCalled();
     });
@@ -414,7 +422,7 @@ describe("storyblokClient", () => {
       // The published poll above is not flushed because of the request's version, not
       // because of the endpoint: `onpreview` considers every draft request clearable,
       // so polling with a preview token does pick publishes up.
-      const token = "space-version-onpreview-draft";
+      const token = `space-version-onpreview-draft-${spelling}`;
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
         cache: { type: "memory", clear: "onpreview" },
@@ -425,11 +433,11 @@ describe("storyblokClient", () => {
       await onPreviewClient.get("cdn/stories", { version: "published", token });
 
       onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
-      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+      await onPreviewClient.get(pollSlug, { version: "draft", token });
       expect(onPreviewFlushCache).not.toHaveBeenCalled(); // equal pair, nothing published
 
       onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+      await onPreviewClient.get(pollSlug, { version: "draft", token });
 
       expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
     });
@@ -439,7 +447,7 @@ describe("storyblokClient", () => {
       // If it recorded it, the draft poll below would compare against the already
       // updated version, find it unchanged, and leave the published cache stale for
       // good — the exact failure the space-version signal exists to prevent.
-      const token = "space-version-onpreview-interleaved";
+      const token = `space-version-onpreview-interleaved-${spelling}`;
       const onPreviewClient: any = new StoryblokClient({
         accessToken: "test-token",
         cache: { type: "memory", clear: "onpreview" },
@@ -451,11 +459,11 @@ describe("storyblokClient", () => {
 
       // Published poll: sees the new version but must not flush, nor record it.
       onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
+      await onPreviewClient.get(pollSlug, { version: "published", token });
       expect(onPreviewFlushCache).not.toHaveBeenCalled();
 
       // Draft poll: still a first sighting, and 2000 !== the tracked cv of 1000.
-      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+      await onPreviewClient.get(pollSlug, { version: "draft", token });
 
       expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
     });
@@ -463,15 +471,15 @@ describe("storyblokClient", () => {
     it("should not flush when polled before any content request", async () => {
       // Polling before the first content request is the recommended startup shape:
       // there is no tracked cv and nothing cached yet, so there is nothing to flush.
-      const token = "space-version-poll-first";
+      const token = `space-version-poll-first-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
 
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(flushCache).not.toHaveBeenCalled();
     });
@@ -479,7 +487,7 @@ describe("storyblokClient", () => {
     it("should not flush on a space version change when clear is manual", async () => {
       // `clear: 'manual'` — the default — hands cache invalidation to the caller. No
       // request is clearable, so no space version ever triggers a flush by itself.
-      const token = "space-version-clear-manual";
+      const token = `space-version-clear-manual-${spelling}`;
       const manualClient: any = new StoryblokClient({
         accessToken: "test-token",
         cache: { type: "memory", clear: "manual" },
@@ -490,10 +498,10 @@ describe("storyblokClient", () => {
       await manualClient.get("cdn/stories", { version: "draft", token });
 
       manualClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
-      await manualClient.get("cdn/spaces/me", { version: "draft", token });
+      await manualClient.get(pollSlug, { version: "draft", token });
 
       manualClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
-      await manualClient.get("cdn/spaces/me", { version: "draft", token });
+      await manualClient.get(pollSlug, { version: "draft", token });
 
       expect(manualFlushCache).not.toHaveBeenCalled();
     });
@@ -501,13 +509,13 @@ describe("storyblokClient", () => {
     it("should not attach a cv to the poll request", async () => {
       // The cv is a cache buster and `/cdn/spaces/me` is not cached: attaching one only
       // fragments the edge cache of the endpoint the polling pattern relies on.
-      const token = "space-version-no-cv-on-poll";
+      const token = `space-version-no-cv-on-poll-${spelling}`;
       autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
       await autoClearClient.get("cdn/stories", { version: "draft", token });
 
       const execute = vi.fn().mockResolvedValue(spaceResponse(1000));
       autoClearClient.throttleManager.execute = execute;
-      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get(pollSlug, { version: "draft", token });
 
       expect(execute.mock.calls[0][3].cv).toBeUndefined();
     });
@@ -519,7 +527,7 @@ describe("storyblokClient", () => {
       // tracked before the cv, matching `trackResponseVersions` in
       // `@storyblok/api-client`. The token is the client's own access token so that
       // `flushCache` clears the cv this test tracks.
-      const token = "space-version-and-cv-in-one-response";
+      const token = `space-version-and-cv-in-one-response-${spelling}`;
       const client: any = new StoryblokClient({
         accessToken: token,
         cache: { type: "memory", clear: "auto" },
@@ -531,13 +539,13 @@ describe("storyblokClient", () => {
       });
 
       client.throttleManager.execute = vi.fn().mockResolvedValue(bothSignals(2000));
-      await client.get("cdn/spaces/me", { version: "draft" });
+      await client.get(pollSlug, { version: "draft" });
       expect(client.cacheVersions()[token]).toBe(2000);
 
       // A publish landed: both signals move together, the cache is flushed, and the cv
       // from this very response has to survive it.
       client.throttleManager.execute = vi.fn().mockResolvedValue(bothSignals(3000));
-      await client.get("cdn/spaces/me", { version: "draft" });
+      await client.get(pollSlug, { version: "draft" });
 
       expect(client.cacheVersions()[token]).toBe(3000);
     });
@@ -546,7 +554,7 @@ describe("storyblokClient", () => {
       // Tokens with a Minimum Cache TTL receive a `cv` floored into TTL-sized buckets,
       // while `space.version` keeps reporting the raw latest version. The two values
       // differ permanently, and must not be compared against each other.
-      const token = "space-version-min-cache";
+      const token = `space-version-min-cache-${spelling}`;
       const flooredCv = 1786950000;
       const rawSpaceVersion = 1786950860;
 
@@ -554,7 +562,7 @@ describe("storyblokClient", () => {
         autoClearClient.throttleManager.execute = vi
           .fn()
           .mockResolvedValue(spaceResponse(rawSpaceVersion));
-        await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+        await autoClearClient.get(pollSlug, { version: "draft", token });
 
         autoClearClient.throttleManager.execute = vi
           .fn()

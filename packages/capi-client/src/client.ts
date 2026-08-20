@@ -27,6 +27,9 @@ import { createExperimentsResource } from "./resources/experiments";
 // Client types (co-located with runtime)
 // ---------------------------------------------------------------------------
 
+/** See {@link createApiClientBase}'s `pendingRevalidation`. */
+type PendingRevalidation = { cvBefore: number; inFlight?: Promise<void> };
+
 export type ApiResponse<
   Data = unknown,
   ThrowOnError extends boolean = false,
@@ -257,10 +260,11 @@ export const createApiClientBase = <
   let currentSpaceVersion: number | undefined;
   /**
    * An ambiguous first `space.version` sighting, with the cv tracked at that moment. The
-   * next cacheable request revalidates and the cv it returns settles it.
-   * See {@link updateSpaceVersion}.
+   * next cacheable request revalidates and the cv it returns settles it. `inFlight` is
+   * set while that request is out, so concurrent requests wait for it instead of each
+   * settling the same sighting. See {@link updateSpaceVersion}.
    */
-  let pendingRevalidation: { cvBefore: number } | undefined;
+  let pendingRevalidation: PendingRevalidation | undefined;
 
   const client: Client = createClient(
     createConfig({
@@ -363,8 +367,9 @@ export const createApiClientBase = <
     // TTL flooring the cv, and the two cannot be told apart here.
     //
     // So defer instead of flushing: drop the tracked cv and let the next cacheable
-    // request revalidate without one and settle it. That costs one request by this
-    // client, rather than a flush that also empties a shared `cache.provider`.
+    // request revalidate without one and settle it. That costs one request by this client
+    // — concurrent ones wait for it, see `requestWithCache` — rather than a flush that
+    // also empties a shared `cache.provider`.
     if (
       cacheFlush === "auto" &&
       currentSpaceVersion === undefined &&
@@ -461,72 +466,107 @@ export const createApiClientBase = <
     cacheOptions?: RequestWithCacheOptions,
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
-    // The cv is a cache buster, so it only belongs on cacheable requests. On
-    // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
-    // depends on.
-    const query =
-      cacheEnabled && cvMode === "auto" && currentCv !== undefined
-        ? applyCvToQuery(rawQuery, currentCv)
-        : rawQuery;
 
-    if (!cacheEnabled) {
-      const networkResult = await fetchFn(query);
-      throttleManager.adaptToResponse(networkResult.response);
-      await trackResponseVersions(path, networkResult);
-      return networkResult;
+    // Exactly one request settles a sighting, claimed before the first `await` so the
+    // check and the mark cannot interleave. The rest wait: settling can flush and it
+    // recovers the tracked cv, so the cv and the cached entry read below are the ones it
+    // is about to replace. Waiting costs the batch one round trip, or as long as the
+    // settle's retries and timeout when the origin is unwell — a waiter still never takes
+    // over a settle that failed, or one dead request becomes a chain of them. Only
+    // cacheable requests take part: a poll must not block behind the request it
+    // triggered.
+    let revalidation: PendingRevalidation | undefined;
+    let settled: (() => void) | undefined;
+    let waitForSettle: Promise<void> | undefined;
+    if (cacheEnabled && pendingRevalidation !== undefined) {
+      if (pendingRevalidation.inFlight === undefined) {
+        revalidation = pendingRevalidation;
+        revalidation.inFlight = new Promise<void>((resolve) => {
+          settled = resolve;
+        });
+      } else {
+        waitForSettle = pendingRevalidation.inFlight;
+      }
     }
 
-    const baseKey = createCacheKey(method, path, rawQuery);
-    const key = cacheOptions?.cacheKeyPrefix
-      ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
-      : baseKey;
-    const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
-    const cachedResult = cachedEntry?.value;
-
-    const loadNetwork = async () => {
-      // Consumed only once a response comes back. `currentSpaceVersion` has already
-      // advanced, so this record is the only thing that can still settle the ambiguity.
-      const revalidation = pendingRevalidation;
-
-      const result = await fetchFn(query);
-      throttleManager.adaptToResponse(result.response);
-
-      if (revalidation !== undefined) {
-        if (result.error !== undefined) {
-          // The signal stays pending so the next cacheable request retries it. Serving
-          // the cached entry keeps that retry invisible: settling a sighting must never
-          // turn a cache hit into an error.
-          if (cachedResult !== undefined) {
-            return cachedResult;
-          }
-        } else {
-          pendingRevalidation = undefined;
-
-          // A cv that moved means content was published, so the cache is emptied before
-          // the fresh response is stored. An unchanged cv means a Minimum Cache TTL was
-          // flooring it and every cached entry is still valid.
-          const nextCv = extractCv(result.data);
-          if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== revalidation.cvBefore) {
-            await cacheProvider.flush();
-          }
-        }
+    try {
+      if (waitForSettle !== undefined) {
+        await waitForSettle;
       }
 
-      return cacheSuccessResult(path, key, result);
-    };
+      // The cv is a cache buster, so it only belongs on cacheable requests. On
+      // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
+      // depends on.
+      const query =
+        cacheEnabled && cvMode === "auto" && currentCv !== undefined
+          ? applyCvToQuery(rawQuery, currentCv)
+          : rawQuery;
 
-    // A revalidation has to reach the network, so it skips the configured strategy's
-    // cache-hit shortcut and uses network-first semantics instead: try the origin, fall
-    // back to the cached entry. With the tracked cv dropped it carries no `cv`, so the
-    // origin redirects it to the current one. Blocking under `swr` is intended — whether
-    // the stale entry is still valid is exactly what is being settled.
-    const requestStrategy = pendingRevalidation !== undefined ? revalidationStrategy : strategy;
+      if (!cacheEnabled) {
+        const networkResult = await fetchFn(query);
+        throttleManager.adaptToResponse(networkResult.response);
+        await trackResponseVersions(path, networkResult);
+        return networkResult;
+      }
 
-    return requestStrategy({
-      key,
-      cachedResult,
-      loadNetwork,
-    });
+      const baseKey = createCacheKey(method, path, rawQuery);
+      const key = cacheOptions?.cacheKeyPrefix
+        ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
+        : baseKey;
+      const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
+      const cachedResult = cachedEntry?.value;
+
+      const loadNetwork = async () => {
+        const result = await fetchFn(query);
+        throttleManager.adaptToResponse(result.response);
+
+        // `currentSpaceVersion` has already advanced, so the claimed record is all that
+        // can still settle the ambiguity.
+        if (revalidation !== undefined) {
+          if (result.error !== undefined) {
+            // The signal stays pending for a later request to retry. Serving the cached
+            // entry keeps that retry invisible: settling must never turn a cache hit into
+            // an error.
+            if (cachedResult !== undefined) {
+              return cachedResult;
+            }
+          } else {
+            // A cv that moved means content was published, so the cache is emptied before
+            // the fresh response is stored. An unchanged cv means a Minimum Cache TTL was
+            // flooring it and every cached entry is still valid.
+            const nextCv = extractCv(result.data);
+            if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== revalidation.cvBefore) {
+              await cacheProvider.flush();
+            }
+
+            // Consumed only once the flush it implies has run, so a provider that throws
+            // leaves the signal pending rather than dropping it.
+            pendingRevalidation = undefined;
+          }
+        }
+
+        return cacheSuccessResult(path, key, result);
+      };
+
+      if (revalidation === undefined) {
+        return await strategy({ key, cachedResult, loadNetwork });
+      }
+
+      // A revalidation has to reach the network, so it skips the configured strategy's
+      // cache-hit shortcut and uses network-first semantics instead: try the origin, fall
+      // back to the cached entry. With the tracked cv dropped it carries no `cv`, so the
+      // origin redirects it to the current one. Blocking under `swr` is intended —
+      // whether the stale entry is still valid is exactly what is being settled.
+      return await revalidationStrategy({ key, cachedResult, loadNetwork });
+    } finally {
+      // Released only once any flush has run, so the waiters read the cache the settle
+      // left behind. The mark goes either way: a signal still pending here is one whose
+      // settle failed, and dropping the mark is what lets a later request retry it.
+      if (revalidation !== undefined) {
+        revalidation.inFlight = undefined;
+        settled?.();
+      }
+    }
   };
 
   const request = async (

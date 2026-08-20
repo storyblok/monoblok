@@ -535,6 +535,158 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(linkRequests).toBe(1);
   });
 
+  it("should let one concurrent request settle the sighting", async () => {
+    // One settle for the whole batch. A flush per sibling would each drop what the
+    // earlier ones had just stored, so those entries come back empty on the next read.
+    let flushes = 0;
+    const store = new Map<string, { value: unknown; ttlMs?: number }>();
+    const provider = {
+      get: async (key: string) => store.get(key) as never,
+      set: async (key: string, entry: { value: unknown; ttlMs?: number }) => {
+        store.set(key, entry);
+      },
+      flush: async () => {
+        flushes++;
+        store.clear();
+      },
+    };
+    // Staggered so a later sibling's flush would land after an earlier one stored its
+    // entry.
+    const delays: Record<string, number> = { a: 5, b: 15, c: 25, d: 35 };
+    const linkRequests: Record<string, number> = {};
+    let cv = 1000;
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/links", async ({ request }) => {
+        const startsWith = new URL(request.url).searchParams.get("starts_with") ?? "root";
+        linkRequests[startsWith] = (linkRequests[startsWith] ?? 0) + 1;
+        await new Promise((resolve) => setTimeout(resolve, delays[startsWith] ?? 0));
+        return HttpResponse.json({ links: {}, cv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "concurrent-token", cache: { provider } });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get(); // ambiguous: the cv does not match the space version
+
+    cv = 2000; // the revalidation finds a cv that moved, so the cache is emptied once
+    const keys = ["a", "b", "c", "d"];
+    await Promise.all(
+      keys.map((startsWith) =>
+        client.get("v2/cdn/links", { query: { version: "published", starts_with: startsWith } }),
+      ),
+    );
+
+    expect(flushes).toBe(1);
+
+    // Every sibling's entry survived, so a second read of all of them hits the cache.
+    const requestsBefore = { ...linkRequests };
+    await Promise.all(
+      keys.map((startsWith) =>
+        client.get("v2/cdn/links", { query: { version: "published", starts_with: startsWith } }),
+      ),
+    );
+
+    expect(linkRequests).toEqual(requestsBefore);
+  });
+
+  it("should keep serving concurrent cache hits while the sighting is settled", async () => {
+    // The settle needs the network; the requests behind it do not. Once it has stored
+    // its response, the siblings sharing its key are cache hits again.
+    let linkRequests = 0;
+    let cv = 1000;
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/links", async () => {
+        linkRequests++;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return HttpResponse.json({ links: {}, cv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "concurrent-hit-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+    expect(linkRequests).toBe(1);
+
+    cv = 2000;
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        client.get("v2/cdn/links", { query: { version: "published" } }),
+      ),
+    );
+
+    expect(linkRequests).toBe(2); // one settle, five cache hits
+    // Every sibling carries the response the settle stored, not the entry its flush
+    // dropped — a request count alone cannot tell those two apart.
+    expect(results.map((result) => result.data)).toEqual(
+      Array.from({ length: 6 }, () => ({ links: {}, cv: 2000 })),
+    );
+  });
+
+  it("should not retry a failed settle once per concurrent sibling", async () => {
+    // A waiter must not take over a settle that failed, or one dead request becomes a
+    // chain of them.
+    let linkRequests = 0;
+    let failing = false;
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/links", async () => {
+        linkRequests++;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return failing
+          ? new HttpResponse(null, { status: 500 })
+          : HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "failed-settle-token", retry: { limit: 0 } });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+
+    failing = true;
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        client.get("v2/cdn/links", { query: { version: "published" } }),
+      ),
+    );
+
+    expect(linkRequests).toBe(2); // one attempt for the batch, not one per sibling
+    expect(results.every((result) => result.error === undefined)).toBe(true);
+
+    // The signal is still pending, so a later request retries it.
+    failing = false;
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(linkRequests).toBe(3);
+  });
+
+  it("should not make a poll wait for the settle it triggered", async () => {
+    // `/cdn/spaces/me` is not cacheable and so never waits: a poll stuck behind a
+    // content request would stall the interval driving it.
+    const order: string[] = [];
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/links", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return HttpResponse.json({ links: {}, cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "poll-not-blocked-token" });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    await client.spaces.get();
+
+    const settling = client
+      .get("v2/cdn/links", { query: { version: "published", starts_with: "blog" } })
+      .then(() => order.push("settle"));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await client.spaces.get();
+    order.push("poll");
+    await settling;
+
+    expect(order).toEqual(["poll", "settle"]);
+  });
+
   it("should retry the revalidation after it failed with an error response", async () => {
     // `currentSpaceVersion` has already advanced, so a signal consumed before the
     // response arrives leaves nothing able to settle it — stale until the next publish.

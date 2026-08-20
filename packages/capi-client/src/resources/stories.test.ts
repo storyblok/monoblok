@@ -1032,6 +1032,34 @@ describe("cache and cv", () => {
     expect(requestCount).toBe(1);
   });
 
+  it("should report a background swr revalidation that came back 5xx", async () => {
+    // The revalidation resolves with an error result rather than throwing, so without
+    // recognising it the entry would go stale with no signal to the caller at all.
+    let fail = false;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        fail
+          ? HttpResponse.json({ error: "Nope" }, { status: 503 })
+          : HttpResponse.json({ links: {}, cv: 1 }),
+      ),
+    );
+    const onRevalidationError = vi.fn();
+    const client = createApiClient({
+      accessToken: "test-token",
+      retry: { limit: 0 },
+      cache: { strategy: "swr", onRevalidationError },
+    });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    fail = true;
+    const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    // The cached entry is still served — reporting must not make swr blocking.
+    expect(result.error).toBeUndefined();
+    await vi.waitFor(() => expect(onRevalidationError).toHaveBeenCalledTimes(1));
+  });
+
   it("should return cached response and revalidate in background with swr strategy", async () => {
     let requestCount = 0;
     server.use(

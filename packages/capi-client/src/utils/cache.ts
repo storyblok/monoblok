@@ -158,13 +158,22 @@ export const createSwrStrategy = (options: SwrStrategyOptions = {}): CacheStrate
   const { onRevalidationError = defaultOnRevalidationError } = options;
   const revalidations = new Map<string, Promise<unknown>>();
 
-  return async <TData>({ key, cachedResult, loadNetwork }: StrategyContext<TData>) => {
+  return async <TData>({ key, cachedResult, loadNetwork, getFailure }: StrategyContext<TData>) => {
     if (cachedResult !== undefined) {
       if (!revalidations.has(key)) {
         const revalidation = loadNetwork()
+          .then((value) => {
+            // A revalidation that came back 5xx resolved rather than threw, so reporting
+            // only from `catch` would drop it silently and leave the entry to go stale
+            // with no signal at all. Every failure reaches the callback, transient or
+            // not: the caller decides what is worth acting on.
+            const failure = getFailure?.(value);
+            if (failure !== undefined) {
+              onRevalidationError(failure.error);
+            }
+          })
           .catch((error: unknown) => {
             onRevalidationError(error);
-            return undefined;
           })
           .finally(() => {
             revalidations.delete(key);

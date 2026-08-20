@@ -351,6 +351,59 @@ describe("cache strategies", () => {
     );
   });
 
+  it("should report a swr revalidation that resolved with a failure", async () => {
+    // The revalidation came back 5xx, which resolves rather than throws, so reporting
+    // only from `catch` would drop it silently.
+    const onRevalidationError = vi.fn();
+    const strategy = createSwrStrategy({ onRevalidationError });
+    const loadNetwork = vi.fn().mockResolvedValue("failed");
+
+    const result = await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork,
+      getFailure: (value) => (value === "failed" ? { transient: true, error: "boom" } : undefined),
+    });
+
+    expect(result).toBe("cached");
+    await vi.waitFor(() => expect(onRevalidationError).toHaveBeenCalledTimes(1));
+    expect(onRevalidationError).toHaveBeenCalledWith("boom");
+  });
+
+  it("should report a definitive swr revalidation failure too", async () => {
+    // Unlike the fallback in `network-first`, reporting is not limited to transient
+    // failures: a revalidation that 404s is worth surfacing to the caller as well.
+    const onRevalidationError = vi.fn();
+    const strategy = createSwrStrategy({ onRevalidationError });
+    const loadNetwork = vi.fn().mockResolvedValue("gone");
+
+    await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork,
+      getFailure: () => ({ transient: false, error: "not found" }),
+    });
+
+    await vi.waitFor(() => expect(onRevalidationError).toHaveBeenCalledTimes(1));
+    expect(onRevalidationError).toHaveBeenCalledWith("not found");
+  });
+
+  it("should not report a successful swr revalidation", async () => {
+    const onRevalidationError = vi.fn();
+    const strategy = createSwrStrategy({ onRevalidationError });
+    const loadNetwork = vi.fn().mockResolvedValue("fresh");
+
+    await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork,
+      getFailure: () => undefined,
+    });
+
+    await vi.waitFor(() => expect(loadNetwork).toHaveBeenCalledTimes(1));
+    expect(onRevalidationError).not.toHaveBeenCalled();
+  });
+
   it("should call console.warn by default when swr revalidation fails", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const strategy = createSwrStrategy();

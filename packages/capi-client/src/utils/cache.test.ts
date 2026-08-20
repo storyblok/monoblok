@@ -4,6 +4,7 @@ import {
   createCacheFirstStrategy,
   createMemoryCacheProvider,
   createNetworkFirstStrategy,
+  isTransientStatus,
   createSwrStrategy,
 } from "./cache";
 
@@ -258,6 +259,52 @@ describe("cache strategies", () => {
     expect(result).toBe("cached");
   });
 
+  it("should fall back to cached result with network-first on a transient error result", async () => {
+    // With `throwOnError` disabled an HTTP error resolves instead of rejecting, so the
+    // fallback cannot live in `catch` alone.
+    const strategy = createNetworkFirstStrategy();
+    const loadNetwork = vi.fn().mockResolvedValue("failed");
+
+    const result = await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork,
+      getFailure: (value) => (value === "failed" ? { transient: true, error: "boom" } : undefined),
+    });
+
+    expect(result).toBe("cached");
+  });
+
+  it("should return a definitive error result with network-first instead of the cache", async () => {
+    // A 404 or 401 is an answer, not an outage: serving a cached copy would mask a
+    // deleted story or a revoked token.
+    const strategy = createNetworkFirstStrategy();
+    const loadNetwork = vi.fn().mockResolvedValue("not-found");
+
+    const result = await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork,
+      getFailure: () => ({ transient: false, error: "gone" }),
+    });
+
+    expect(result).toBe("not-found");
+  });
+
+  it("should return the network result with network-first when no failure reporter is given", async () => {
+    // The reporter is optional, so custom handlers and callers that omit it are unchanged.
+    const strategy = createNetworkFirstStrategy();
+    const loadNetwork = vi.fn().mockResolvedValue("network");
+
+    const result = await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork,
+    });
+
+    expect(result).toBe("network");
+  });
+
   it("should throw with network-first when no cached result exists", async () => {
     const strategy = createNetworkFirstStrategy();
     const loadNetwork = vi.fn().mockRejectedValue(new Error("boom"));
@@ -362,5 +409,15 @@ describe("cache strategies", () => {
 
     resolveRefresh?.();
     await refreshPromise;
+  });
+});
+
+describe("isTransientStatus", () => {
+  it.each([408, 413, 429, 500, 502, 503, 504])("should treat %i as transient", (status) => {
+    expect(isTransientStatus(status)).toBe(true);
+  });
+
+  it.each([200, 301, 400, 401, 403, 404, 422])("should treat %i as definitive", (status) => {
+    expect(isTransientStatus(status)).toBe(false);
   });
 });

@@ -4,6 +4,26 @@ interface StrategyContext<TData> {
   key: string;
   cachedResult: TData | undefined;
   loadNetwork: () => Promise<TData>;
+  /**
+   * Describes the failure a value `loadNetwork` resolved with represents, or `undefined`
+   * when it succeeded.
+   *
+   * A failed request does not always reject: with `throwOnError` disabled — the default —
+   * an HTTP error arrives as a resolved response carrying `error`. A strategy that reacts
+   * to failure has to recognise those, and `network-first` also has to tell a temporary
+   * failure apart from a definitive one.
+   *
+   * Optional: a context without it behaves as if every resolved value succeeded, so
+   * custom strategy handlers and callers that do not supply it keep working.
+   */
+  getFailure?: (value: TData) => StrategyFailure | undefined;
+}
+
+export interface StrategyFailure {
+  /** `true` for a failure worth retrying — an outage rather than an answer. */
+  transient: boolean;
+  /** The failure itself, for reporting. */
+  error: unknown;
 }
 
 export type CacheStrategyHandler = <TData>(context: StrategyContext<TData>) => Promise<TData>;
@@ -78,6 +98,17 @@ export const createMemoryCacheProvider = (
   };
 };
 
+/**
+ * Statuses that mean "try again later" rather than "here is your answer". Mirrors the set
+ * the client retries, so one of these only reaches a strategy once the retries are spent
+ * and the failure is a real outage.
+ */
+const TRANSIENT_STATUS_CODES = new Set([408, 413, 429]);
+
+/** Returns `true` for a status that reflects a temporary failure rather than an answer. */
+export const isTransientStatus = (status: number): boolean =>
+  status >= 500 || TRANSIENT_STATUS_CODES.has(status);
+
 export const createCacheFirstStrategy = (): CacheStrategyHandler => {
   return async <TData>({ cachedResult, loadNetwork }: StrategyContext<TData>) => {
     if (cachedResult !== undefined) {
@@ -89,9 +120,20 @@ export const createCacheFirstStrategy = (): CacheStrategyHandler => {
 };
 
 export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
-  return async <TData>({ cachedResult, loadNetwork }: StrategyContext<TData>) => {
+  return async <TData>({ cachedResult, loadNetwork, getFailure }: StrategyContext<TData>) => {
     try {
-      return await loadNetwork();
+      const result = await loadNetwork();
+
+      // An HTTP error is a resolved value rather than a rejection unless `throwOnError`
+      // is enabled, so falling back only in `catch` would miss the most common outage:
+      // the origin answering 5xx. A transient failure is treated exactly like a thrown
+      // network error. A definitive one — 404, 401 — is returned as it is: serving a
+      // cached copy there would mask a deletion or a revoked token.
+      if (cachedResult !== undefined && getFailure?.(result)?.transient === true) {
+        return cachedResult;
+      }
+
+      return result;
     } catch (error) {
       // network-first: try network, fall back to cached data if available.
       if (cachedResult !== undefined) {

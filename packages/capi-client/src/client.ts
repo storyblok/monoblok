@@ -8,7 +8,7 @@ import {
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
-import { applyCvToQuery, extractCv, extractSpaceVersion } from "./utils/cv";
+import { applyCvToQuery, extractCv, extractSpaceVersion, stripCvFromQuery } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
 import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
@@ -265,6 +265,12 @@ export const createApiClientBase = <
    * settling the same sighting. See {@link updateSpaceVersion}.
    */
   let pendingRevalidation: PendingRevalidation | undefined;
+  /**
+   * Bumped on every flush. A response that was already in flight when the cache was
+   * emptied belongs to the previous epoch: it may carry the very cv that was just
+   * dropped, so it must neither be cached nor restore the tracked cv.
+   */
+  let cacheEpoch = 0;
 
   const client: Client = createClient(
     createConfig({
@@ -313,6 +319,10 @@ export const createApiClientBase = <
   const flushCache = async (): Promise<void> => {
     await cacheProvider.flush();
     currentCv = undefined;
+    cacheEpoch++;
+    // A signal still pending here is answered by this flush; leaving it armed would force
+    // the next request onto network-first and flush a shared provider a second time.
+    pendingRevalidation = undefined;
   };
 
   /**
@@ -376,8 +386,19 @@ export const createApiClientBase = <
       cvBefore !== undefined &&
       cvBefore !== nextSpaceVersion
     ) {
-      pendingRevalidation = { cvBefore };
-      currentCv = undefined;
+      if (cvMode === "auto") {
+        // The tracked cv is kept, not dropped: the settling request strips the cv from
+        // its own query, so it still reaches the origin's current version, while
+        // `updateCv` keeps a baseline to reject a stale edge node answering with a lower
+        // cv. Dropping it here would disarm that guard for exactly that response.
+        pendingRevalidation = { cvBefore };
+      } else {
+        // Under `cv: 'manual'` requests never carry a cv, so a revalidation would be
+        // byte-identical to the request before it and a warm edge object would answer it
+        // with the same cv — settling the sighting falsely. Flush defensively instead,
+        // like `storyblok-js-client`; it is bounded to once per client instance.
+        await flushCache();
+      }
     }
 
     currentSpaceVersion = nextSpaceVersion;
@@ -422,7 +443,12 @@ export const createApiClientBase = <
     path: string,
     key: string,
     result: TResponse,
+    epochAtRequest: number,
   ) => {
+    // Stale by construction: the cache was emptied while this was in flight.
+    if (epochAtRequest !== cacheEpoch) {
+      return result;
+    }
     const shouldCacheResult = await trackResponseVersions(path, result);
     if (result.error === undefined && shouldCacheResult) {
       await cacheProvider.set(key, {
@@ -497,15 +523,27 @@ export const createApiClientBase = <
       // The cv is a cache buster, so it only belongs on cacheable requests. On
       // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
       // depends on.
+      // A settle must reach the origin's current version, so it carries no cv at all --
+      // not the tracked one (a request in flight when the sighting was armed can have
+      // restored it) and not a caller-supplied one.
       const query =
-        cacheEnabled && cvMode === "auto" && currentCv !== undefined
-          ? applyCvToQuery(rawQuery, currentCv)
-          : rawQuery;
+        revalidation !== undefined
+          ? stripCvFromQuery(rawQuery)
+          : cacheEnabled && cvMode === "auto" && currentCv !== undefined
+            ? applyCvToQuery(rawQuery, currentCv)
+            : rawQuery;
 
       if (!cacheEnabled) {
+        const epochAtRequest = cacheEpoch;
         const networkResult = await fetchFn(query);
         throttleManager.adaptToResponse(networkResult.response);
-        await trackResponseVersions(path, networkResult);
+        if (epochAtRequest === cacheEpoch) {
+          await trackResponseVersions(path, networkResult);
+        } else {
+          // Still let `/cdn/spaces/me` record its version: it carries no cv, so it cannot
+          // resurrect a flushed one, and dropping it would re-arm the same sighting.
+          await updateSpaceVersion(path, networkResult, currentCv);
+        }
         return networkResult;
       }
 
@@ -517,6 +555,10 @@ export const createApiClientBase = <
       const cachedResult = cachedEntry?.value;
 
       const loadNetwork = async () => {
+        // Re-synced after a flush this request performs itself: the epoch guard is meant
+        // to drop responses invalidated by *someone else*, not the fresh one that just
+        // emptied the cache and is about to refill it.
+        let epochAtRequest = cacheEpoch;
         const result = await fetchFn(query);
         throttleManager.adaptToResponse(result.response);
 
@@ -535,8 +577,23 @@ export const createApiClientBase = <
             // the fresh response is stored. An unchanged cv means a Minimum Cache TTL was
             // flooring it and every cached entry is still valid.
             const nextCv = extractCv(result.data);
-            if (cacheFlush === "auto" && nextCv !== undefined && nextCv !== revalidation.cvBefore) {
-              await cacheProvider.flush();
+            if (nextCv === undefined) {
+              // The settle landed on an endpoint that reports no cv (`/cdn/tags`,
+              // `/cdn/links`), so the sighting cannot be disambiguated from the response.
+              // Flush defensively rather than consume the signal unchecked: bounded to
+              // once per client instance, and matching `storyblok-js-client`.
+              if (cacheFlush === "auto") {
+                await flushCache();
+                epochAtRequest = cacheEpoch;
+              }
+            } else {
+              // Only a cv that moved FORWARD means content was published. A lower cv is a
+              // stale edge node answering; flushing on it would empty the cache and drag
+              // the tracked cv backwards.
+              if (cacheFlush === "auto" && nextCv > revalidation.cvBefore) {
+                await flushCache();
+                epochAtRequest = cacheEpoch;
+              }
             }
 
             // Consumed only once the flush it implies has run, so a provider that throws
@@ -545,7 +602,7 @@ export const createApiClientBase = <
           }
         }
 
-        return cacheSuccessResult(path, key, result);
+        return cacheSuccessResult(path, key, result, epochAtRequest);
       };
 
       if (revalidation === undefined) {

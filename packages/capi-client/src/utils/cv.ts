@@ -41,3 +41,12 @@ export const applyCvToQuery = (query: Record<string, unknown>, cv: number) => {
     cv,
   };
 };
+
+/** Returns the query without any `cv`, so a revalidation reaches the origin's current version. */
+export const stripCvFromQuery = (query: Record<string, unknown>) => {
+  if (!("cv" in query)) {
+    return query;
+  }
+  const { cv: _cv, ...rest } = query;
+  return rest;
+};

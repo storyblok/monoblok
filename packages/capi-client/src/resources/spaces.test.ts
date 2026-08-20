@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
+import type { CacheEntry, CacheEntryInput, CacheProvider } from "../utils/cache";
 
 const server = setupServer();
 
@@ -146,6 +147,38 @@ describe("spaces.get() as a cache invalidation signal", () => {
       });
     });
 
+  /**
+   * A `Map`-backed provider that also reports how many times it was flushed. A request
+   * count alone cannot tell a flush from a revalidation: both reach the network.
+   */
+  const countingProvider = () => {
+    const store = new Map<string, CacheEntry>();
+    const stats = { flushes: 0 };
+    const provider: CacheProvider = {
+      // The store is heterogeneous; the caller names the expected type via the generic,
+      // exactly as `createMemoryCacheProvider` does.
+      get: async <TValue = unknown>(key: string) =>
+        store.get(key) as CacheEntry<TValue> | undefined,
+      set: async <TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) => {
+        store.set(key, { storedAt: Date.now(), ...entry } as CacheEntry);
+      },
+      flush: async () => {
+        stats.flushes++;
+        store.clear();
+      },
+    };
+    return { store, stats, provider };
+  };
+
+  /** A promise plus its resolver, to hold a response in flight across another request. */
+  const deferred = () => {
+    let resolve!: () => void;
+    const promise = new Promise<void>((settle) => {
+      resolve = settle;
+    });
+    return { promise, resolve };
+  };
+
   it("should flush the cache when the space reports a new version", async () => {
     let spaceVersion = 1000;
     let linkRequests = 0;
@@ -276,6 +309,60 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(new URL(linkUrls[1]).searchParams.has("cv")).toBe(false);
   });
 
+  it("should send the revalidation without a cv restored by a request in flight", async () => {
+    // Dropping the tracked cv is not enough on its own: a content request that was
+    // already out when the sighting was armed restores it on the way back, and the
+    // revalidation would then carry the very cv whose edge object hides the publish.
+    const gate = deferred();
+    const storyUrls: string[] = [];
+    let storyRequests = 0;
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/stories", async ({ request }) => {
+        storyUrls.push(request.url);
+        storyRequests++;
+        if (storyRequests === 2) {
+          await gate.promise;
+        }
+        return HttpResponse.json({ stories: [], cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "inflight-cv-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } }); // tracks cv 1000
+    const inFlight = client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    await client.spaces.get(); // arms the sighting while that request is still out
+    gate.resolve();
+    await inFlight;
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: "3" } });
+
+    const lastUrl = storyUrls[storyUrls.length - 1];
+    expect(new URL(lastUrl).searchParams.has("cv")).toBe(false);
+  });
+
+  it("should strip a caller-supplied cv from the revalidation", async () => {
+    // A cv passed by the caller is normally honoured, but a revalidation exists to reach
+    // the origin's current version — any cv at all defeats it.
+    const storyUrls: string[] = [];
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: 1000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "caller-cv-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.spaces.get();
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 1000 } });
+
+    const lastUrl = storyUrls[storyUrls.length - 1];
+    expect(new URL(lastUrl).searchParams.has("cv")).toBe(false);
+  });
   it("should keep every other cached entry when the revalidated cv is unchanged", async () => {
     // A Minimum Cache TTL floors the cv permanently, so every fresh client sees an
     // ambiguous pair. The revalidation proves nothing was published; other keys survive.
@@ -332,6 +419,61 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(tagRequests).toBe(2); // cache was flushed, the stale entry is gone
   });
 
+  it("should flush when the settling response reports no cv", async () => {
+    // `/cdn/tags` and `/cdn/links` report no cv, so a sighting settled by one of them
+    // cannot be disambiguated from the response. Consuming the signal there would hide a
+    // publish until the entry expired; flushing costs one extra flush per client instead.
+    const flooredCv = 1_786_950_000;
+    let storyCv = flooredCv;
+    let storyRequests = 0;
+    server.use(
+      spaceHandler(() => 1_786_950_860),
+      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+        storyRequests++;
+        return HttpResponse.json({ stories: [], cv: storyCv });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => HttpResponse.json({ tags: [] })),
+    );
+    const client = createApiClient({ accessToken: "cv-less-settle-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyRequests).toBe(1);
+
+    storyCv = 1_786_960_000; // a publish lands
+    await client.spaces.get(); // ambiguous first sighting
+    await client.get("v2/cdn/tags", { query: { version: "published" } }); // settles it
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyRequests).toBe(2); // the stale entry is gone, not served
+  });
+
+  it("should ignore a lower cv reported by a stale edge node while settling", async () => {
+    // Only a cv that moved forward means content was published. A lower one is an older
+    // edge object answering: flushing for it would empty a shared provider, and tracking
+    // it would send `?cv=<older>` on every request after.
+    let storyCv = 1000;
+    const storyUrls: string[] = [];
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: storyCv });
+      }),
+    );
+    const { stats, provider } = countingProvider();
+    const client = createApiClient({ accessToken: "stale-edge-token", cache: { provider } });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } }); // tracks cv 1000
+    storyCv = 900; // an older edge node answers the revalidation
+    await client.spaces.get();
+    await client.get("v2/cdn/stories", { query: { version: "published" } }); // settles
+
+    expect(stats.flushes).toBe(0);
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+    const lastUrl = storyUrls[storyUrls.length - 1];
+    expect(new URL(lastUrl).searchParams.get("cv")).toBe("1000"); // never moved backward
+  });
   it("should not empty a shared provider once per client instance", async () => {
     // With a shared provider and a TTL-floored cv, every new client sees the same
     // ambiguous pair. A flush would empty the shared cache once per instance; a
@@ -344,16 +486,7 @@ describe("spaces.get() as a cache invalidation signal", () => {
         return HttpResponse.json({ links: {}, cv: 1786950000 });
       }),
     );
-    const store = new Map<string, { value: unknown; ttlMs?: number }>();
-    const sharedProvider = {
-      get: async (key: string) => store.get(key) as never,
-      set: async (key: string, entry: { value: unknown; ttlMs?: number }) => {
-        store.set(key, entry);
-      },
-      flush: async () => {
-        store.clear();
-      },
-    };
+    const { store, provider: sharedProvider } = countingProvider();
 
     // One client per request, as in SSR or serverless.
     for (let i = 0; i < 3; i++) {
@@ -394,6 +527,39 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(new URL(lastUrl).searchParams.get("cv")).toBeNull();
   });
 
+  it("should not cache a response that was in flight when the cache was flushed", async () => {
+    // A response that left before the flush carries the cv the flush just dropped.
+    // Storing it would refill the cache it emptied and resurrect that cv, so the content
+    // published a moment ago stays invisible for a full `ttlMs`.
+    const gate = deferred();
+    let spaceVersion = 1000;
+    let storyRequests = 0;
+    server.use(
+      spaceHandler(() => spaceVersion),
+      http.get("https://api.storyblok.com/v2/cdn/stories", async () => {
+        storyRequests++;
+        if (storyRequests === 2) {
+          await gate.promise;
+        }
+        return HttpResponse.json({ stories: [], cv: 1000 }); // pre-publish body and cv
+      }),
+    );
+    const client = createApiClient({ accessToken: "inflight-flush-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.spaces.get(); // cv already matches, nothing ambiguous
+
+    const inFlight = client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    spaceVersion = 2000; // content was published
+    await client.spaces.get(); // flushes while that request is still out
+    gate.resolve();
+    await inFlight;
+
+    await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+    expect(storyRequests).toBe(3); // refetched rather than served from a refilled cache
+  });
   it("should not flush the cache while the space version is unchanged", async () => {
     let linkRequests = 0;
     server.use(
@@ -469,6 +635,33 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(linkUrls.every((url) => !url.includes("cv="))).toBe(true);
   });
 
+  it("should flush an ambiguous first sighting when cv is manual", async () => {
+    // Deferring works by dropping the cv so the revalidation reaches the origin's current
+    // version. Under `cv: 'manual'` requests carry no cv to begin with, so the
+    // revalidation is byte-identical to the request before it and a warm edge object
+    // answers with the same cv — settling the sighting falsely. Flush instead.
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ stories: [], cv: 1000 }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () => HttpResponse.json({ tags: [] })),
+    );
+    const { stats, provider } = countingProvider();
+    const client = createApiClient({
+      accessToken: "manual-cv-sighting-token",
+      cache: { cv: "manual", provider },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    expect(stats.flushes).toBe(0);
+
+    await client.spaces.get(); // ambiguous first sighting
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+
+    expect(stats.flushes).toBe(1);
+  });
   it("should not flush when polled before any content request", async () => {
     // Polling before the first content request is the recommended startup shape: there
     // is no cv and no cache yet, so there is nothing to flush.
@@ -535,21 +728,34 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(linkRequests).toBe(1);
   });
 
+  it("should not flush again for a sighting already answered by flushCache", async () => {
+    // An explicit flush answers whatever a pending sighting was about to ask. Leaving the
+    // signal armed forces the next request onto the network and empties the provider a
+    // second time — which every other client sharing it pays for.
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ stories: [], cv: 1000 }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/tags", () =>
+        HttpResponse.json({ tags: [], cv: 3000 }),
+      ),
+    );
+    const { stats, provider } = countingProvider();
+    const client = createApiClient({ accessToken: "flush-disarm-token", cache: { provider } });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.spaces.get(); // arms an ambiguous sighting
+    await client.flushCache(); // e.g. a webhook: this already answers it
+    expect(stats.flushes).toBe(1);
+
+    await client.get("v2/cdn/tags", { query: { version: "published" } });
+    expect(stats.flushes).toBe(1);
+  });
   it("should let one concurrent request settle the sighting", async () => {
     // One settle for the whole batch. A flush per sibling would each drop what the
     // earlier ones had just stored, so those entries come back empty on the next read.
-    let flushes = 0;
-    const store = new Map<string, { value: unknown; ttlMs?: number }>();
-    const provider = {
-      get: async (key: string) => store.get(key) as never,
-      set: async (key: string, entry: { value: unknown; ttlMs?: number }) => {
-        store.set(key, entry);
-      },
-      flush: async () => {
-        flushes++;
-        store.clear();
-      },
-    };
+    const { stats, provider } = countingProvider();
     // Staggered so a later sibling's flush would land after an earlier one stored its
     // entry.
     const delays: Record<string, number> = { a: 5, b: 15, c: 25, d: 35 };
@@ -577,7 +783,7 @@ describe("spaces.get() as a cache invalidation signal", () => {
       ),
     );
 
-    expect(flushes).toBe(1);
+    expect(stats.flushes).toBe(1);
 
     // Every sibling's entry survived, so a second read of all of them hits the cache.
     const requestsBefore = { ...linkRequests };

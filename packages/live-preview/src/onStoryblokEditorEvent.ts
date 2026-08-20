@@ -3,7 +3,8 @@ import type { Prettify } from "./generated/types/_utils";
 import type { Story } from "./generated/types/story";
 
 import { loadStoryblokBridge } from "./loadStoryblokBridge";
-import { canUseStoryblokBridge } from "./utils/canUseStoryblokBridge";
+import { isBrowser } from "./utils/isBrowser";
+import { isInEditor } from "./utils/isInEditor";
 
 /**
  * The story payload delivered by the Visual Editor `input` event.
@@ -24,76 +25,17 @@ export type LivePreviewStory<TStory extends Story = Story> = Prettify<
 >;
 
 /**
- * Internal listener registry for Storyblok `input` events.
- * Each listener receives the updated story data from the Visual Editor.
- */
-const inputListeners = new Set<(story: LivePreviewStory) => void>();
-
-/**
- * Tracks whether the Storyblok Preview Bridge event listeners
- * have already been registered.
- */
-let bridgeInitPromise: Promise<void> | undefined;
-
-/**
- * Initializes the Storyblok Preview Bridge and attaches event listeners.
- *
- * This function ensures that the bridge is only initialized once per page.
- *
- * Registered events:
- * - `input` → Dispatches updated story data to all registered listeners.
- * - `change` → Forces a full page reload.
- * - `published` → Forces a full page reload.
- *
- * @param bridgeOptions Optional configuration for the Preview Bridge.
- */
-async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
-  if (!canUseStoryblokBridge()) {
-    return;
-  }
-
-  // If initialization already started, reuse it
-  if (bridgeInitPromise) {
-    return bridgeInitPromise;
-  }
-
-  bridgeInitPromise = (async () => {
-    const bridge = await loadStoryblokBridge(bridgeOptions);
-
-    bridge.on(["input", "change", "published"], (event) => {
-      if (!event) {
-        return;
-      }
-
-      if (event.action === "input" && event.story) {
-        for (const listener of inputListeners) {
-          listener(event.story as LivePreviewStory);
-        }
-        return;
-      }
-
-      if (event.action === "change" || event.action === "published") {
-        window.location.reload();
-      }
-    });
-  })();
-
-  return bridgeInitPromise;
-}
-
-/**
  * Registers a callback for Storyblok Visual Editor live preview updates.
  *
- * This utility connects to the Storyblok Preview Bridge and listens
- * for Visual Editor events.
+ * Loads the Preview Bridge with the supplied config, attaches event
+ * listeners, and returns a cleanup function. Each call is self-contained —
+ * no shared module-level state, so config is always respected and multiple
+ * independent subscriptions can coexist on the same page.
  *
  * Behavior:
  * - **input** → Calls the provided callback with the updated story data.
  * - **change** → Reloads the page.
  * - **published** → Reloads the page.
- *
- * Multiple listeners can be registered simultaneously. Each call returns
- * a cleanup function that removes the registered listener.
  *
  * @typeParam TStory - The schema-aware {@link Story} type to type the payload against.
  *
@@ -101,19 +43,19 @@ async function initializeBridge(bridgeOptions?: BridgeParams): Promise<void> {
  * Callback executed when the Visual Editor sends an `input` event.
  *
  * @param bridgeOptions
- * Optional configuration for the Storyblok Preview Bridge.
- * This configuration is applied **only during the first initialization**.
+ * Optional configuration forwarded to the Preview Bridge constructor.
  *
  * @returns
- * A cleanup function that removes the registered listener.
+ * A cleanup function that silences the callback. Call it when the
+ * subscribing component is destroyed to prevent stale updates.
  *
  * @example
  * ```ts
  * const cleanup = await onStoryblokEditorEvent((story) => {
  *   console.log('Live updated story:', story)
- * })
+ * }, { resolveRelations: ['featured.articles'] })
  *
- * // later
+ * // later — e.g. component teardown
  * cleanup()
  * ```
  */
@@ -121,15 +63,29 @@ export async function onStoryblokEditorEvent<TStory extends Story = Story>(
   callback: (story: LivePreviewStory<TStory>) => void,
   bridgeOptions?: BridgeParams,
 ): Promise<() => void> {
-  await initializeBridge(bridgeOptions);
+  if (!isBrowser() || !isInEditor(new URL(window.location.href))) {
+    return () => {};
+  }
 
-  const listener = (story: LivePreviewStory<TStory>) => {
-    callback(story);
-  };
+  let active = true;
+  const bridge = await loadStoryblokBridge(bridgeOptions);
 
-  inputListeners.add(listener);
+  bridge.on(["input", "change", "published"], (event) => {
+    if (!active || !event) {
+      return;
+    }
+
+    if (event.action === "input" && event.story) {
+      callback(event.story as LivePreviewStory<TStory>);
+      return;
+    }
+
+    if (event.action === "change" || event.action === "published") {
+      window.location.reload();
+    }
+  });
 
   return () => {
-    inputListeners.delete(listener);
+    active = false;
   };
 }

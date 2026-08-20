@@ -5,5 +5,6 @@ export type { Story } from "./generated/types/story";
 export { loadStoryblokBridge } from "./loadStoryblokBridge";
 export { onStoryblokEditorEvent } from "./onStoryblokEditorEvent";
 export type { LivePreviewStory } from "./onStoryblokEditorEvent";
+export { isBrowser } from "./utils/isBrowser";
 export { isInEditor } from "./utils/isInEditor";
 export type { BridgeParams } from "@storyblok/preview-bridge";

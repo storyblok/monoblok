@@ -66,6 +66,18 @@ const SPACES_ME_PATH = "/cdn/spaces/me";
 const spaceVersions = {} as CachedVersions;
 
 /**
+ * Bumped on every flush. A response already in flight when the cache was emptied belongs
+ * to the previous epoch: caching it would refill the cache with the pre-publish content
+ * the flush just dropped, and adopting its `cv` would re-pin the very `?cv=<old>` the
+ * flush cleared — making those entries reachable again, with the space-version signal
+ * already consumed and no later poll left to re-raise it.
+ *
+ * Module level like {@link memory} and {@link cacheVersions}, so client instances sharing
+ * the cache share the epoch. `@storyblok/api-client` calls this `cacheEpoch`.
+ */
+let flushEpoch = 0;
+
+/**
  * Builds the request path from a slug, which may or may not already start with a slash.
  * Both spellings have to produce the same path: it is compared against
  * {@link SPACES_ME_PATH} and it is part of the cache key.
@@ -200,7 +212,12 @@ export class Storyblok {
     // The cv is a cache buster, so it only belongs on cached requests. On
     // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
     // relies on for freshness.
-    if (!params.cv && this.cvMode === "auto" && url !== SPACES_ME_PATH) {
+    if (url === SPACES_ME_PATH) {
+      // `parseParams` stamps the cv onto the caller's object, so a params object reused
+      // across calls arrives here already carrying one. Skipping the assignment is not
+      // enough — it has to be removed.
+      delete params.cv;
+    } else if (!params.cv && this.cvMode === "auto") {
       params.cv = cacheVersions[params.token];
     }
 
@@ -748,6 +765,10 @@ export class Storyblok {
     const defaultLimit = isMapi ? MANAGEMENT_API_DEFAULT_RATE_LIMIT : undefined;
     const rateLimit = determineRateLimit(url, params, this.rateLimitConfig, defaultLimit);
 
+    // Re-synced after a flush this request performs itself: the guard exists to drop
+    // responses invalidated by *another* request, not the fresh one doing the flushing.
+    let epochAtRequest = flushEpoch;
+
     return new Promise(async (resolve, reject) => {
       try {
         // Execute through the appropriate throttle queue based on rate limit
@@ -784,7 +805,12 @@ export class Storyblok {
           response = await this.processInlineAssets(response);
         }
 
-        if (params.version === "published" && url !== SPACES_ME_PATH) {
+        if (
+          params.version === "published" &&
+          url !== SPACES_ME_PATH &&
+          // Stale by construction: the cache was emptied while this was in flight.
+          epochAtRequest === flushEpoch
+        ) {
           await provider.set(cacheKey, response);
         }
 
@@ -818,13 +844,19 @@ export class Storyblok {
           // Without a Minimum Cache TTL both report the same raw version, so an equal
           // pair proves nothing was published. An unequal pair is either a publish or a
           // TTL flooring the cv — indistinguishable here, so flush once defensively.
+          // `lastCv` is checked for truthiness, not for `undefined`: a flush or an
+          // explicit `clearCacheVersion()` records the sentinel `0`, which carries no cv
+          // information and can never equal a space version — treating it as a tracked cv
+          // would make every first poll after a clear flush the whole cache again. Same
+          // convention as the cv block below.
           const isFirstSighting =
-            lastSpaceVersion === undefined && lastCv !== undefined && lastCv !== spaceVersion;
+            lastSpaceVersion === undefined && Boolean(lastCv) && lastCv !== spaceVersion;
           const hasSpaceVersionChanged =
             lastSpaceVersion !== undefined && lastSpaceVersion !== spaceVersion;
 
           if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
             await this.flushCache();
+            epochAtRequest = flushEpoch;
             // `flushCache` clears the cv of the client's own token, which `params.token`
             // may override — and unlike the cv path below, no incoming cv arrives here to
             // overwrite a stale one. The edge serves `?cv=<old>` for up to a week.
@@ -839,13 +871,19 @@ export class Storyblok {
           }
         }
 
-        if (params.token && response.data.cv) {
+        // A cv from before a flush is never adopted: it would send `?cv=<old>` again and
+        // make the entries the flush dropped reachable at the edge, with the
+        // space-version signal already consumed and no poll left to re-raise it. Leaving
+        // the sentinel `0` in place sends the next request out without a cv, which takes
+        // the origin's redirect to the current one.
+        if (params.token && response.data.cv && epochAtRequest === flushEpoch) {
           if (
             isCacheClearable &&
             cacheVersions[params.token] && // there is a cache
             cacheVersions[params.token] !== response.data.cv // a new cv is incoming
           ) {
             await this.flushCache();
+            epochAtRequest = flushEpoch;
           }
           cacheVersions[params.token] = response.data.cv;
         }
@@ -942,6 +980,7 @@ export class Storyblok {
   public async flushCache(): Promise<this> {
     await this.cacheProvider().flush();
     this.clearCacheVersion();
+    flushEpoch++;
     return this;
   }
 

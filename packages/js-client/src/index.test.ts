@@ -514,6 +514,92 @@ describe("storyblokClient", () => {
       expect(manualFlushCache).not.toHaveBeenCalled();
     });
 
+    it("should not attach a cv to the poll request from a reused params object", async () => {
+      // `parseParams` stamps the cv onto the caller's object, so a params object reused
+      // across calls arrives at the poll already carrying one. The endpoint polling
+      // relies on must not have its edge cache fragmented by a cache buster.
+      const token = "space-version-reused-params";
+      const execute = vi.fn(async (_rl: any, _m: any, url: string) =>
+        url === "/cdn/spaces/me" ? spaceResponse(1000) : storiesResponse(1000),
+      );
+      autoClearClient.throttleManager.execute = execute;
+
+      const params = { version: "draft", token };
+      await autoClearClient.get("cdn/stories", params); // tracks cv 1000
+      await autoClearClient.get("cdn/stories", params); // stamps params.cv = 1000
+      await autoClearClient.get("cdn/spaces/me", params);
+
+      const poll = execute.mock.calls.find((call) => call[2] === "/cdn/spaces/me");
+      expect((poll?.[3] as any).cv).toBeUndefined();
+    });
+
+    it("should not treat the cleared cv sentinel as a tracked cv on the first poll", async () => {
+      // `flushCache` and `clearCacheVersion` record the sentinel `0`, which carries no cv
+      // information. Comparing it against a space version can only ever be unequal, so
+      // the first poll after a clear would flush the whole module-level cache for nothing.
+      const token = "space-version-cleared-sentinel";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories", { version: "draft", token });
+      client.clearCacheVersion();
+
+      const clearedFlushCache = vi.spyOn(client, "flushCache");
+      // The space version equals the cv tracked before the clear: nothing was published.
+      client.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await client.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(clearedFlushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not let a response in flight across a flush re-pin the cv it dropped", async () => {
+      // A published request answered for the version before the flush must not refill the
+      // cache it emptied, and must not restore the cv the flush dropped: the cv is part of
+      // the cache key, so restoring it makes those stale entries reachable again — with
+      // the space version already recorded and no later poll left to notice the publish.
+      const token = "space-version-inflight-race";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories/warm", { version: "published", token });
+      expect(client.cacheVersion()).toBe(1000);
+
+      // A request for a not-yet-cached key goes out carrying cv 1000 and is held there.
+      let releaseRaced: (value: unknown) => void = () => {};
+      const inFlight = new Promise((resolve) => {
+        releaseRaced = resolve;
+      });
+      client.throttleManager.execute = vi.fn(async (_rl: any, _m: any, url: string) =>
+        url === "/cdn/spaces/me" ? spaceResponse(2000) : inFlight,
+      );
+      const racedRequest = client.get("cdn/stories/raced", { version: "published", token });
+
+      // The poll notices the publish and flushes, dropping the tracked cv.
+      await client.get("cdn/spaces/me", { version: "draft", token });
+      expect(client.cacheVersion()).toBe(0);
+
+      // The held request now resolves with its pre-publish body and the old cv.
+      releaseRaced(storiesResponse(1000));
+      await racedRequest;
+      expect(client.cacheVersion()).toBe(0); // not re-pinned to 1000
+
+      // So the next read of that key reaches the network and gets the published content.
+      client.throttleManager.execute = vi.fn().mockResolvedValue({
+        data: { stories: [{ id: 1, title: "Published" }], cv: 2000 },
+        headers: {},
+        status: 200,
+      });
+      const after = await client.get("cdn/stories/raced", { version: "published", token });
+
+      expect(after.data.stories[0].title).toBe("Published");
+    });
+
     it("should not attach a cv to the poll request", async () => {
       // The cv is a cache buster and `/cdn/spaces/me` is not cached: one there would
       // only fragment the edge cache of the endpoint polling relies on.

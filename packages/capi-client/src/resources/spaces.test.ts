@@ -474,6 +474,50 @@ describe("spaces.get() as a cache invalidation signal", () => {
     const lastUrl = storyUrls[storyUrls.length - 1];
     expect(new URL(lastUrl).searchParams.get("cv")).toBe("1000"); // never moved backward
   });
+  it("should not let a cv-less response in flight refill the cache a cv flush emptied", async () => {
+    // A cv that moved empties the cache, but a request already in flight was answered for
+    // the version before it. `/cdn/links` and `/cdn/tags` report no cv, so the regression
+    // guard that rejects a stale cv cannot see them — and the cache key carries no cv, so
+    // the entry they store is the one every later request reads.
+    let releaseLinks: (() => void) | undefined;
+    const linksInFlight = new Promise<void>((resolve) => {
+      releaseLinks = resolve;
+    });
+    let linksRequests = 0;
+    let storyCv = 1000;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", async () => {
+        linksRequests++;
+        if (linksRequests === 1) {
+          await linksInFlight;
+          return HttpResponse.json({ links: { a: { id: 1, slug: "pre-publish" } } });
+        }
+        return HttpResponse.json({ links: { a: { id: 1, slug: "post-publish" } } });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ stories: [], cv: storyCv }),
+      ),
+    );
+    const client = createApiClient({ accessToken: "inflight-cv-flush-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } }); // tracks cv 1000
+
+    // The links request goes out for cv 1000 and is held there.
+    const linksRequest = client.get("v2/cdn/links", { query: { version: "published" } });
+
+    // A publish lands: the next content response reports a moved cv and empties the cache.
+    storyCv = 2000;
+    await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+
+    releaseLinks?.();
+    await linksRequest;
+
+    const links = await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect((links.data as { links: Record<string, { slug: string }> }).links.a.slug).toBe(
+      "post-publish",
+    );
+  });
+
   it("should not empty a shared provider once per client instance", async () => {
     // With a shared provider and a TTL-floored cv, every new client sees the same
     // ambiguous pair. A flush would empty the shared cache once per instance; a

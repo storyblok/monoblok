@@ -418,8 +418,12 @@ export const createApiClientBase = <
 
     if (cacheFlush === "auto" && currentCv !== undefined && currentCv !== nextCv) {
       // Only the cache is flushed: `nextCv` replaces the cv right below, so unlike the
-      // space-version path no stale cv is left behind.
+      // space-version path no stale cv is left behind. The epoch still has to move: the
+      // cache key carries no cv, so a response already in flight would refill the entry
+      // this just dropped. `flushCache` is not reused here — it would clear the cv this
+      // function is about to set, and answer a pending sighting this cv cannot settle.
       await cacheProvider.flush();
+      cacheEpoch++;
     }
 
     currentCv = nextCv;

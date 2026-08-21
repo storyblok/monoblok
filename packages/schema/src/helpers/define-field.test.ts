@@ -59,6 +59,21 @@ describe("defineField", () => {
     );
   });
 
+  it("should throw when deny is used on a field type with no denylist", () => {
+    expect(() => defineField("link", { type: "multilink", deny: ["page"] })).toThrow(
+      'defineField: "deny" on field "link" has no effect on a "multilink" field; only bloks and richtext fields have a block denylist',
+    );
+  });
+
+  it("should allow deny on richtext as well as bloks", () => {
+    expect(defineField("prose", { type: "richtext", deny: ["banner"] }).deny).toEqual(["banner"]);
+    expect(defineField("body", { type: "bloks", deny: ["banner"] }).deny).toEqual(["banner"]);
+  });
+
+  it("should not throw on an empty deny list, whatever the field type", () => {
+    expect(() => defineField("title", { type: "text", deny: [] })).not.toThrow();
+  });
+
   it("should not treat an empty allow list as a conflicting dimension", () => {
     const heros = defineFolder({ name: "Heros" });
     const field = defineField("body", { type: "bloks", allow: [], deny: [heros] });

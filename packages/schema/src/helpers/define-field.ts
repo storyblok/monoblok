@@ -61,6 +61,17 @@ const isFolderList = (entries: readonly unknown[]): boolean =>
   entries.some((entry) => isRecord(entry) && typeof entry.folder === "string");
 
 /**
+ * The field types whose nested-block picker reads the restriction lists, and so
+ * the only ones a `deny` can mean anything on.
+ *
+ * `allow` is deliberately not limited to these: `component_whitelist` is also
+ * real on `multilink`, where it selects story content types rather than blocks.
+ * There is no denylist counterpart to that, so a `deny` anywhere else writes a
+ * key nothing reads.
+ */
+export const DENIABLE_FIELD_TYPES: readonly string[] = ["bloks", "richtext"];
+
+/**
  * Normalizes an `allow`/`deny` input to plain block names and `{ folder: path }`
  * entries. The editor restricts by either blocks or folders, not both, so a list
  * mixing the two would leave part of itself inert and throws instead.
@@ -96,12 +107,18 @@ export type FieldInput = Field & {
   /**
    * Blocks this field must not accept, by block ref/name or `defineFolder` ref.
    * The `Exclude` counterpart to `allow`: it narrows the field's content type and
-   * `schema push` applies the matching editor restriction.
+   * `schema push` applies the matching editor restriction. Only `bloks` and
+   * `richtext` fields have a denylist; anywhere else this throws.
    *
    * The editor restricts by either blocks or folders, never both, so `allow` and
    * `deny` on one field must not disagree on which. Where they agree, the editor
    * gives `allow` precedence: a non-empty allow list decides on its own and
    * leaves `deny` inert, so reach for `deny` when you mean "everything except".
+   *
+   * A denial governs the block picker, not the stored content. Pasting a block
+   * from the clipboard is checked against the allow list only, so a denied block
+   * can still be pasted in. Treat `deny` as authoring guidance rather than a
+   * boundary, and use `allow` where a block genuinely must never appear.
    */
   deny?: BlockRef | FolderRef | readonly (BlockRef | FolderRef)[];
   datasource?: DatasourceRef;
@@ -151,6 +168,14 @@ export function defineField(name: string, field: Record<string, unknown>): Recor
   if (allowList?.length && denyList?.length && isFolderList(allowList) !== isFolderList(denyList)) {
     throw new Error(
       `defineField: "allow" and "deny" on field "${name}" mix block and folder references; the editor restricts by either blocks or folders, not both`,
+    );
+  }
+  // Rejected rather than dropped: a `deny` the editor cannot read is the bug this
+  // key was added to fix, so failing loudly beats writing a dead wire key that
+  // round-trips and looks intentional.
+  if (denyList?.length && !DENIABLE_FIELD_TYPES.includes(String(rest.type))) {
+    throw new Error(
+      `defineField: "deny" on field "${name}" has no effect on a "${String(rest.type)}" field; only ${DENIABLE_FIELD_TYPES.join(" and ")} fields have a block denylist`,
     );
   }
   if (allowList !== undefined) {

@@ -157,9 +157,19 @@ describe("mapFieldToWire", () => {
     });
   });
 
-  it("should not add restriction flags to a deny on other field types", () => {
+  it("should drop a deny on a field type that has no denylist", () => {
+    // Only `bloks` and `richtext` read the restriction lists. Writing a
+    // `component_denylist` on a `multilink` would store a key nothing reads,
+    // which is the defect this mapping exists to fix.
     const { value } = mapFieldToWire({ name: "link", type: "multilink", pos: 0, deny: ["page"] });
-    expect(value).toEqual({ type: "multilink", pos: 0, component_denylist: ["page"] });
+    expect(value).toEqual({ type: "multilink", pos: 0 });
+  });
+
+  it("should keep an allow on a field type whose whitelist is real", () => {
+    // `component_whitelist` on a `multilink` selects story content types, so it
+    // is not the denylist's mirror image and stays.
+    const { value } = mapFieldToWire({ name: "link", type: "multilink", pos: 0, allow: ["page"] });
+    expect(value).toEqual({ type: "multilink", pos: 0, component_whitelist: ["page"] });
   });
 });
 

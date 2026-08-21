@@ -1,3 +1,5 @@
+import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+
 import type { Component, Datasource, Field } from "../../types";
 import { isRecord } from "./utils";
 import { slugifyPath } from "./folders";
@@ -42,14 +44,18 @@ function splitRestriction(input: unknown): SplitRestriction | undefined {
  * - `datasource` → `datasource_slug` (the `source` selector passes through)
  *
  * A bare list is ignored by the editor, so a restriction from either key also
- * activates `restrict_components: true` on `bloks` and `richtext` fields — the two
- * types whose nested-block picker consults these lists — with `restrict_type:
+ * activates `restrict_components: true` on `bloks` and `richtext` fields, the two
+ * types whose nested-block picker consults these lists, with `restrict_type:
  * 'groups'` for folder entries and `''` (the editor's v1-compatible spelling of
  * "by block name") otherwise. `defineField` rejects an `allow`/`deny` pair that
  * disagrees on which of the two dimensions to restrict by, so the folder dimension
- * of either key settles it for both. Other field types (e.g. a `multilink`
- * `component_whitelist`, which selects story content types) keep the plain list
- * with no restriction flags.
+ * of either key settles it for both.
+ *
+ * On any other field type a `deny` is dropped: those types have no denylist, so
+ * writing one would leave a key nothing reads. `allow` still passes through,
+ * because `component_whitelist` is real on `multilink`, where it selects story
+ * content types rather than blocks, and it keeps the plain list with no
+ * restriction flags.
  *
  * Every other key (`type`, `pos`, `source`, `required`, validation options, and
  * `type: 'custom'` plugin extras) is preserved verbatim.
@@ -68,14 +74,19 @@ export function mapFieldToWire(field: Record<string, unknown>): { name: string; 
       value.component_whitelist = allowed.names;
     }
   }
-  if (denied) {
+  // Only `bloks` and `richtext` have a denylist, so a `deny` elsewhere is
+  // dropped rather than written. `defineField` rejects it outright; this is the
+  // backstop for a schema authored in plain JavaScript, which never goes through
+  // that guard.
+  const isDeniable = DENIABLE_FIELD_TYPES.includes(String(rest.type));
+  if (denied && isDeniable) {
     if (denied.folderPaths.length > 0) {
       value.component_group_denylist = denied.folderPaths;
     } else {
       value.component_denylist = denied.names;
     }
   }
-  if ((allowed || denied) && (rest.type === "bloks" || rest.type === "richtext")) {
+  if ((allowed || denied) && isDeniable) {
     const byFolder = Boolean(allowed?.folderPaths.length || denied?.folderPaths.length);
     value.restrict_components = true;
     value.restrict_type = byFolder ? "groups" : "";

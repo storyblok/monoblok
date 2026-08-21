@@ -984,7 +984,12 @@ export class Storyblok {
             // eslint-disable-next-line no-console
             console.log(`Hit rate limit. Retrying in ${this.retriesDelay / 1000} seconds.`);
             await delay(this.retriesDelay);
-            return this.cacheResponse(url, params, retries).then(resolve).catch(reject);
+            // `fetchOptions` is passed on: a retry that dropped it would reach the network
+            // with different credentials, headers or framework caching hints than the
+            // request the caller made.
+            return this.cacheResponse(url, params, retries, fetchOptions)
+              .then(resolve)
+              .catch(reject);
           }
         }
         reject(error);

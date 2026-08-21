@@ -1085,6 +1085,49 @@ describe("storyblokClient", () => {
       expect(mockGet).toHaveBeenCalledTimes(2);
     });
 
+    it("should keep the caller's fetch options on a retried request", async () => {
+      client = new StoryblokClient({
+        retriesDelay: 500,
+        maxRetries: 3,
+      });
+
+      const mockGet = vi
+        .fn()
+        .mockRejectedValueOnce({
+          status: 429,
+          statusText: "Too Many Requests",
+          response: {},
+        })
+        .mockResolvedValueOnce({
+          data: { story: { id: 1 } },
+          headers: {},
+          status: 200,
+        });
+      const setFetchOptions = vi.fn();
+
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions,
+        baseURL: "https://api.storyblok.com/v2",
+      };
+
+      const fetchOptions = { cache: "no-store" as const };
+      const promise = client.cacheResponse(
+        "/cdn/stories",
+        { token: "test-token" },
+        undefined,
+        fetchOptions,
+      );
+      await vi.advanceTimersByTimeAsync(500);
+      await promise;
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      // Both attempts, not just the first: the retry is the same request.
+      expect(setFetchOptions).toHaveBeenNthCalledWith(1, fetchOptions);
+      expect(setFetchOptions).toHaveBeenNthCalledWith(2, fetchOptions);
+    });
+
     it("should give up after maxRetries 429 responses", async () => {
       client = new StoryblokClient({
         retriesDelay: 10,

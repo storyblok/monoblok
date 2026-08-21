@@ -1,0 +1,24 @@
+---
+// The second route into both dependencies: the app imports them itself, the way
+// any app with a transitive `camelcase` or `morphdom` already does.
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>inlined-third-party</title>
+  </head>
+  <body>
+    <main id="app">inlined-third-party probe</main>
+    <script>
+      import camelCase from "camelcase";
+      import morphdom from "morphdom";
+
+      const target = document.querySelector("#app");
+      const replacement = document.createElement("main");
+      replacement.id = "app";
+      replacement.textContent = `inlined-third-party probe: ${camelCase("field name")}`;
+      morphdom(target, replacement);
+    </script>
+  </body>
+</html>

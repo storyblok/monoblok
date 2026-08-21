@@ -1,0 +1,16 @@
+{
+  "name": "@storyblok/fixture-inlined-third-party",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.4",
+    "@storyblok/astro": "workspace:*",
+    "astro": "^7.0.0",
+    "camelcase": "^8.0.0",
+    "morphdom": "^2.7.8"
+  }
+}

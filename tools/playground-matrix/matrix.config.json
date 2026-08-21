@@ -199,6 +199,35 @@
       }
     },
     {
+      "id": "inlined-third-party",
+      "$why": [
+        "`@storyblok/astro` inlines `camelcase` and `morphdom` on main: both sit",
+        "inside its bundled `dist/index.js`. This fixture reaches each of them by a",
+        "second route \u2014 the app imports them directly, the way an app with any",
+        "transitive dependency on them already does \u2014 so the copies become countable.",
+        "`covers` is empty on purpose: an externalization assertion would fail the",
+        "run on main before the interesting measurement happens."
+      ],
+      "dist": "dist",
+      "covers": [],
+      "stageRoot": "tools/playground-matrix/fixtures/inlined-third-party",
+      "appDir": ".",
+      "build": "build",
+      "fingerprints": {
+        "camelcase copies": "[_.\\- ]+",
+        "morphdom copies": "http://www.w3.org/1999/xhtml"
+      },
+      "serve": {
+        "type": "node",
+        "entry": "dist/server/entry.mjs",
+        "port": 4321
+      },
+      "smoke": {
+        "expectText": ["inlined-third-party probe"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
       "id": "js-vanilla",
       "dist": "dist",
       "covers": ["@storyblok/js"],

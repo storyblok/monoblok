@@ -213,6 +213,37 @@ describe("classifyExports folders", () => {
     expect(data.folders).toEqual([{ name: "Marketing", path: "marketing", parentPath: null }]);
   });
 
+  it("should materialize folders from deny entries", () => {
+    // Without this the folder never reaches `local.folders`, so push resolves the
+    // group denylist against nothing and writes a slug path where a uuid belongs.
+    const data = classifyExports({
+      page: {
+        name: "page",
+        fields: [{ name: "body", type: "bloks", deny: [{ folder: "Legacy" }] }],
+      },
+    });
+    expect(data.folders).toEqual([{ name: "Legacy", path: "legacy", parentPath: null }]);
+  });
+
+  it("should materialize folders from both restriction lists on one field", () => {
+    const data = classifyExports({
+      page: {
+        name: "page",
+        fields: [
+          { name: "body", type: "bloks", allow: [{ folder: "Marketing" }] },
+          { name: "aside", type: "bloks", deny: [{ folder: "Legacy/Archive" }] },
+        ],
+      },
+    });
+    // Order comes from `buildLocalFolders` (parents before children), so assert
+    // membership rather than coupling this to its sort.
+    expect(data.folders.map((f) => f.path).sort()).toEqual([
+      "legacy",
+      "legacy/archive",
+      "marketing",
+    ]);
+  });
+
   it("should dedupe by slug path with registered display name winning", () => {
     const data = classifyExports({
       myLayout: folder("My Layout"),

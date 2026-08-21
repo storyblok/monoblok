@@ -34,7 +34,8 @@ export interface CacheEntryInput<TValue = unknown> {
  * Reads and writes cache entries.
  *
  * Entries are opaque to the provider: it must round-trip whatever it is given, including
- * the optional `cv` tag. One reserved key (`sb:versions:v1:<accessToken>`) holds the
+ * the optional `cv` tag. One reserved key (`sb:versions:v1:<tokenId>`, where the id is the
+ * non-cryptographic hash of the access token produced by `createTokenId`) holds the
  * client's version watermarks rather than a response, so it participates in `flush()`
  * like any other entry.
  */

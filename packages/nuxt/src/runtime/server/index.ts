@@ -1,6 +1,6 @@
 import { StoryblokClient } from "@storyblok/vue";
 import { useRuntimeConfig } from "#imports";
-import type { H3Event } from "h3";
+import { createError, type H3Event } from "h3";
 import type { AllModuleOptions } from "../../types";
 
 export const serverStoryblokClient = (event: H3Event) => {
@@ -9,9 +9,11 @@ export const serverStoryblokClient = (event: H3Event) => {
   const { apiOptions = {} } = config.public.storyblok;
 
   if (!accessToken) {
-    throw new Error(
-      `Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts and enable storyblok.enableServerClient = true to use the server-side client.`,
-    );
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Storyblok access token is not configured.",
+      message: `Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts and enable storyblok.enableServerClient = true to use the server-side client.`,
+    });
   }
 
   if (!event.context._storyblokClient) {

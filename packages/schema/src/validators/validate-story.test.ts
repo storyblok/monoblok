@@ -1159,3 +1159,107 @@ describe("validateStory — subsumed issues", () => {
     ]);
   });
 });
+
+describe("validateStory — deny entries", () => {
+  const legacy = defineFolder({ name: "Legacy" });
+  const legacyArchive = defineFolder({ name: "Archive", parent: legacy });
+  const banner = defineBlock({
+    name: "banner",
+    fields: [defineField("text", { type: "text" })],
+  });
+  const oldBanner = defineBlock({
+    name: "old_banner",
+    folder: legacyArchive,
+    fields: [defineField("text", { type: "text" })],
+  });
+  const teaserBlock = defineBlock({
+    name: "teaser",
+    fields: [defineField("text", { type: "text" })],
+  });
+
+  const storyWith = (component: string) => ({
+    content: { component: "page", body: [{ component, text: "hi" }] },
+  });
+
+  it("rejects a component named in deny", () => {
+    const page = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: ["banner"] })],
+    });
+    const result = validateStory(storyWith("banner"), {
+      blocks: { page, banner, teaser: teaserBlock },
+    });
+    const disallowed = result.issues.find((i) => i.code === "disallowed_component");
+    expect(disallowed?.message).toBe(
+      'Component "banner" is denied in field "body"; denied: banner.',
+    );
+  });
+
+  it("accepts a component the deny list does not name", () => {
+    const page = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: ["banner"] })],
+    });
+    const result = validateStory(storyWith("teaser"), {
+      blocks: { page, banner, teaser: teaserBlock },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects a component in a nested subfolder of a denied folder", () => {
+    const page = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: [legacy] })],
+    });
+    const result = validateStory(storyWith("old_banner"), {
+      blocks: { page, old_banner: oldBanner, teaser: teaserBlock },
+    });
+    const disallowed = result.issues.find((i) => i.code === "disallowed_component");
+    expect(disallowed?.message).toBe(
+      'Component "old_banner" is denied in field "body"; denied: folder:Legacy.',
+    );
+  });
+
+  it("lets a non-empty allow list decide on its own, matching the editor", () => {
+    // The editor never consults the denylist while the allow list has entries.
+    // Enforcing both would be stricter than the runtime it is validating for.
+    const page = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", allow: ["banner"], deny: ["banner"] })],
+    });
+    const result = validateStory(storyWith("banner"), {
+      blocks: { page, banner, teaser: teaserBlock },
+    });
+    expect(result.issues.find((i) => i.code === "disallowed_component")).toBeUndefined();
+  });
+
+  it("enforces deny on bloks embedded in richtext", () => {
+    const page = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "richtext", deny: ["banner"] })],
+    });
+    const result = validateStory(
+      {
+        content: {
+          component: "page",
+          body: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: { id: "x", body: [{ _uid: "uid-1", component: "banner", text: "hi" }] },
+              },
+            ],
+          },
+        },
+      },
+      { blocks: { page, banner } },
+    );
+    expect(result.issues.find((i) => i.code === "disallowed_component")).toBeDefined();
+  });
+});

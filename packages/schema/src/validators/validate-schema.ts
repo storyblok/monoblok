@@ -178,6 +178,22 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         }
       }
 
+      // A misspelled `deny` entry is worse than a misspelled `allow` one: the
+      // allow list still restricts, so the mistake shows up as blocks going
+      // missing from the picker, while a deny list that matches nothing silently
+      // restricts nothing at all.
+      for (const denied of field.deny ?? []) {
+        if (typeof denied === "string" && !blockNames.has(denied)) {
+          issues.push({
+            severity: "error",
+            code: "unresolved_deny",
+            path: ["blocks", blockKey, fieldName ?? index, "deny"],
+            entity: blockEntity,
+            message: `Field "${fieldName}" denies unknown block "${denied}".`,
+          });
+        }
+      }
+
       const datasource = field.datasource;
       if (typeof datasource === "string" && !datasourceSlugs.has(datasource)) {
         issues.push({

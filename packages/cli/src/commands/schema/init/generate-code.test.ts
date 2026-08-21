@@ -17,6 +17,49 @@ import {
 } from "./generate-code";
 
 describe("generateComponentFile", () => {
+  it("should omit component metadata that is already at its reset value", () => {
+    // Push always sends these keys with their reset value, so a space that never
+    // had them set comes back holding `""` rather than `null`. Emitting that back
+    // would make a second `init` differ from the first for a field nobody set.
+    const component = {
+      id: 1,
+      name: "page",
+      display_name: "",
+      description: "",
+      color: "",
+      icon: "",
+      preview_field: "",
+      internal_tag_ids: [],
+      created_at: "",
+      updated_at: "",
+      schema: { title: { type: "text", pos: 0 } },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("  name: 'page',");
+    for (const key of ["display_name", "description", "color", "icon", "preview_field"]) {
+      expect(result).not.toContain(`${key}:`);
+    }
+  });
+
+  it("should keep component metadata that holds a real value", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      display_name: "Page",
+      color: "#fff",
+      created_at: "",
+      updated_at: "",
+      schema: { title: { type: "text", pos: 0 } },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("  display_name: 'Page',");
+    expect(result).toContain("color: '#fff',");
+  });
+
   it("should generate a defineBlock() file with a fields array", () => {
     const component = {
       id: 1,

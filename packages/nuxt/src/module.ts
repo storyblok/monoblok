@@ -48,6 +48,12 @@ export default defineNuxtModule<AllModuleOptions>({
     addImportsDir(resolver.resolve("./runtime/composables"));
 
     if (options.enableServerClient) {
+      if (!options.accessToken) {
+        throw new Error(
+          "Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts when storyblok.enableServerClient = true.",
+        );
+      }
+
       const { accessToken, ...publicOptions } = options;
       nuxt.options.runtimeConfig.storyblok = { accessToken };
       (nuxt.options.runtimeConfig.public.storyblok as unknown as PublicModuleOptions) =

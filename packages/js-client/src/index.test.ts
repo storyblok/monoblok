@@ -789,6 +789,119 @@ describe("storyblokClient", () => {
       expect(autoClearClient.cacheVersions()[token]).toBe(2000);
     });
 
+    it("should flush a shared provider once per process, not once per instance", async () => {
+      // The serverless shape: a client per request, one external provider, and a token
+      // with a Minimum Cache TTL so the floored cv never equals the raw space version.
+      // Keying the signal per instance made every fresh client see an ambiguous first
+      // sighting and empty the shared cache on its own first poll.
+      const token = "space-version-shared-provider";
+      const flooredCv = 1786950000;
+      const rawSpaceVersion = 1786950860;
+      const store: Record<string, any> = {};
+      const flush = vi.fn(async () => {
+        for (const key of Object.keys(store)) {
+          delete store[key];
+        }
+      });
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush,
+      };
+      const newClient = (): any =>
+        new StoryblokClient({
+          accessToken: "test-token",
+          cache: { clear: "auto", type: "custom", custom: provider },
+        });
+
+      let storyRequests = 0;
+      const execute = vi.fn(async (_rateLimit: any, _method: any, url: string) => {
+        if (url.includes("spaces/me")) {
+          return spaceResponse(rawSpaceVersion);
+        }
+        storyRequests++;
+        return storiesResponse(flooredCv);
+      });
+
+      const warm = newClient();
+      warm.throttleManager.execute = execute;
+      await warm.get("cdn/stories", { version: "published", token });
+
+      for (let i = 0; i < 4; i++) {
+        const client = newClient();
+        client.throttleManager.execute = execute;
+        await client.get("cdn/spaces/me", { version: "draft", token });
+        await client.get("cdn/stories", { version: "published", token });
+      }
+
+      // One ambiguous first sighting for the whole process, then steady state.
+      expect(flush).toHaveBeenCalledTimes(1);
+      // The warm read, the read after that one flush, and one more because the cv enters
+      // the cache key, so the cv-less entry the flush left behind is never read again.
+      // From there the cache holds and the remaining rounds add nothing.
+      expect(storyRequests).toBe(3);
+    });
+
+    it("should share the flush epoch between instances writing to the same provider", async () => {
+      // A response in flight when another instance flushed the same cache belongs to the
+      // version that flush dropped, so it must not be stored — while a flush of an
+      // unrelated provider must not stall this one's cache fill.
+      const token = "flush-epoch-per-provider";
+      const store: Record<string, any> = {};
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush: async () => {
+          for (const key of Object.keys(store)) {
+            delete store[key];
+          }
+        },
+      };
+      const shared = (): any =>
+        new StoryblokClient({
+          accessToken: "test-token",
+          cache: { clear: "auto", type: "custom", custom: provider },
+        });
+
+      const reader = shared();
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      reader.throttleManager.execute = vi.fn(async () => {
+        await held;
+        return storiesResponse(1000);
+      });
+      const inFlight = reader.get("cdn/stories", { version: "published", token });
+
+      // Another instance flushes the very cache that request is about to write to.
+      await shared().flushCache();
+      release();
+      await inFlight;
+
+      expect(Object.keys(store)).toHaveLength(0);
+
+      // A flush of a different provider leaves this one alone.
+      const other: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { clear: "auto", type: "memory" },
+      });
+      const second = shared();
+      second.throttleManager.execute = vi.fn(async () => {
+        await other.flushCache();
+        return storiesResponse(1000);
+      });
+      await second.get("cdn/stories", { version: "published", token });
+
+      expect(Object.keys(store)).toHaveLength(1);
+    });
+
     it("should flush at most once per keyspace after the cv was cleared", async () => {
       // The baseline outliving a flush must not make the sighting recur: it fires until
       // the keyspace has recorded a space version, which the first poll does whether it

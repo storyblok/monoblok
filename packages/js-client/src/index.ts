@@ -56,49 +56,67 @@ const cacheVersions = {} as CachedVersions;
  */
 const SPACES_ME_PATH = "/cdn/spaces/me";
 
-/**
- * Last `space.version` seen per token *and cache keyspace*, tracked separately from
- * {@link cacheVersions}. A change signal only, never sent as a `cv` — see
- * `cacheResponse`.
- *
- * Keyed by keyspace as well as token because the signal is consumed once: instances
- * sharing the module-level {@link memory} cache share it, while an instance with its own
- * `type: 'custom'` provider must not have its only chance to flush that provider consumed
- * by another instance's poll.
- *
- * Module level and never reset, like {@link cacheVersions}, so each test exercising this
- * signal needs its own token.
- */
-const spaceVersions = {} as CachedVersions;
+/** The invalidation state of one cache, shared by every client instance writing to it. */
+interface CacheKeyspaceState {
+  /**
+   * Last `space.version` seen per token, tracked separately from {@link cacheVersions}. A
+   * change signal only, never sent as a `cv` — see `cacheResponse`.
+   */
+  spaceVersions: CachedVersions;
+  /**
+   * Bumped on every flush of this cache. A response already in flight when the cache was
+   * emptied belongs to the previous epoch: caching it would refill the cache with the
+   * pre-publish content the flush just dropped, and adopting its `cv` would re-pin the
+   * very `?cv=<old>` the flush cleared — making those entries reachable again, with the
+   * space-version signal already consumed and no later poll left to re-raise it.
+   */
+  flushEpoch: number;
+}
 
-/** Distinguishes the cache keyspace of instances with their own `type: 'custom'` provider. */
-let customCacheKeyspaces = 0;
+/**
+ * The invalidation state of every cache in use, keyed by the identity of the cache itself.
+ *
+ * Identity, not instance: a signal is consumed once per cache, so instances writing to
+ * the same cache have to share it, while an instance with its own provider must not have
+ * its only chance to flush that provider consumed by another instance's poll. Keying per
+ * instance breaks the first half of that — per-request clients over one external provider
+ * would each see a fresh state, and under a Minimum Cache TTL each flush the shared cache
+ * on its first poll. Both halves hold when the provider object is the key.
+ *
+ * A `WeakMap`, so state is collected along with a provider nobody uses any more.
+ */
+const cacheKeyspaces = new WeakMap<object, CacheKeyspaceState>();
+
+/** Stands in for the module-level {@link memory} cache, which has no provider object. */
+const MEMORY_KEYSPACE = {};
+
+/** Stands in for the no-op default provider, which caches nothing. */
+const NO_CACHE_KEYSPACE = {};
+
+const keyspaceState = (keyspace: object): CacheKeyspaceState => {
+  const state = cacheKeyspaces.get(keyspace);
+  if (state) {
+    return state;
+  }
+
+  const created: CacheKeyspaceState = { spaceVersions: {}, flushEpoch: 0 };
+  cacheKeyspaces.set(keyspace, created);
+  return created;
+};
 
 /**
  * Highest `cv` ever seen per token, and unlike {@link cacheVersions} never cleared. It is
  * the baseline a first `space.version` sighting is compared against.
  *
  * {@link cacheVersions} cannot serve that purpose: a flush records the sentinel `0` there,
- * which erases the comparison for every keyspace that has not polled yet, not just for
- * the one that flushed. An instance with its own provider would then find no baseline,
- * skip its own first sighting, and serve pre-publish content for good.
+ * which erases the comparison for every cache that has not polled yet, not just for the
+ * one that flushed. An instance with its own provider would then find no baseline, skip
+ * its own first sighting, and serve pre-publish content for good.
  *
  * Never sent anywhere: a `cv` is only ever attached to a request from
  * {@link cacheVersions}.
  */
 const highestCvs = {} as CachedVersions;
-
-/**
- * Bumped on every flush. A response already in flight when the cache was emptied belongs
- * to the previous epoch: caching it would refill the cache with the pre-publish content
- * the flush just dropped, and adopting its `cv` would re-pin the very `?cv=<old>` the
- * flush cleared — making those entries reachable again, with the space-version signal
- * already consumed and no later poll left to re-raise it.
- *
- * Module level like {@link memory} and {@link cacheVersions}, so client instances sharing
- * the cache share the epoch.
- */
-let flushEpoch = 0;
 
 /**
  * Builds the request path from a slug, whichever way the caller spelled it. Every
@@ -152,8 +170,8 @@ export class Storyblok {
   public resolveNestedRelations: boolean;
   private stringifiedStoriesCache: Record<string, string>;
   private inlineAssets: boolean;
-  /** See {@link spaceVersions}. */
-  private cacheKeyspace: string;
+  /** Identifies the cache this instance writes to. See {@link cacheKeyspaces}. */
+  private cacheKeyspace: object;
 
   /**
    *
@@ -213,12 +231,14 @@ export class Storyblok {
     this.relations = {} as RelationsType;
     this.links = {} as LinksType;
     this.cache = config.cache || { clear: "manual" };
-    // `type: 'memory'` reads and writes the module-level cache, so those instances share
-    // one keyspace; a custom provider is per instance as far as this client can tell.
+    // Mirrors `cacheProvider()`: a custom provider identifies its own cache, `'memory'`
+    // means the module-level one, and everything else caches nothing.
     this.cacheKeyspace =
-      this.cache.type === "custom"
-        ? `custom:${++customCacheKeyspaces}`
-        : (this.cache.type ?? "none");
+      this.cache.type === "custom" && this.cache.custom
+        ? this.cache.custom
+        : this.cache.type === "memory"
+          ? MEMORY_KEYSPACE
+          : NO_CACHE_KEYSPACE;
     this.cvMode = config.cache?.cv ?? "auto";
     this.resolveCounter = 0;
     this.resolveNestedRelations = config.resolveNestedRelations || true;
@@ -807,7 +827,8 @@ export class Storyblok {
 
     // Re-synced after a flush this request performs itself: the guard exists to drop
     // responses invalidated by *another* request, not the fresh one doing the flushing.
-    let epochAtRequest = flushEpoch;
+    const keyspace = keyspaceState(this.cacheKeyspace);
+    let epochAtRequest = keyspace.flushEpoch;
 
     return new Promise(async (resolve, reject) => {
       try {
@@ -868,8 +889,7 @@ export class Storyblok {
         const spaceVersion = typeof rawSpaceVersion === "number" ? rawSpaceVersion : undefined;
 
         if (params.token && spaceVersion !== undefined) {
-          const signalKey = `${this.cacheKeyspace}:${params.token}`;
-          const lastSpaceVersion = spaceVersions[signalKey];
+          const lastSpaceVersion = keyspace.spaceVersions[params.token];
           // The highest cv ever seen, not the currently tracked one: this comparison must
           // survive another instance's flush, which zeroes the tracked cv for the whole
           // token. See {@link highestCvs}.
@@ -891,7 +911,7 @@ export class Storyblok {
 
           if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
             await this.flushCache();
-            epochAtRequest = flushEpoch;
+            epochAtRequest = keyspace.flushEpoch;
             // `flushCache` clears the cv of the client's own token, which `params.token`
             // may override — and unlike the cv path below, no incoming cv arrives here to
             // overwrite a stale one. The edge serves `?cv=<old>` for up to a week.
@@ -905,7 +925,7 @@ export class Storyblok {
             // Recorded as a maximum, for the same reason the comparison uses `>`: a
             // version from an edge node that has not caught up must not become the
             // baseline, or the next poll back at the current version flushes for nothing.
-            spaceVersions[signalKey] =
+            keyspace.spaceVersions[params.token] =
               lastSpaceVersion === undefined
                 ? spaceVersion
                 : Math.max(lastSpaceVersion, spaceVersion);
@@ -922,7 +942,7 @@ export class Storyblok {
         // already moved past. Such a response is not cached at all — the entry it would
         // write is known to be stale the moment it is written.
         let isStaleCvResponse = false;
-        if (params.token && response.data.cv && epochAtRequest === flushEpoch) {
+        if (params.token && response.data.cv && epochAtRequest === keyspace.flushEpoch) {
           const lastCv = cacheVersions[params.token];
           if (lastCv && response.data.cv < lastCv) {
             isStaleCvResponse = true;
@@ -933,7 +953,7 @@ export class Storyblok {
               lastCv !== response.data.cv // a new cv is incoming
             ) {
               await this.flushCache();
-              epochAtRequest = flushEpoch;
+              epochAtRequest = keyspace.flushEpoch;
             }
             cacheVersions[params.token] = response.data.cv;
             // A maximum, because the tracked cv above may have been cleared by a flush:
@@ -950,7 +970,7 @@ export class Storyblok {
           url !== SPACES_ME_PATH &&
           !isStaleCvResponse &&
           // Stale by construction: the cache was emptied while this was in flight.
-          epochAtRequest === flushEpoch
+          epochAtRequest === keyspace.flushEpoch
         ) {
           await provider.set(cacheKey, response);
         }
@@ -1051,7 +1071,7 @@ export class Storyblok {
   public async flushCache(): Promise<this> {
     await this.cacheProvider().flush();
     this.clearCacheVersion();
-    flushEpoch++;
+    keyspaceState(this.cacheKeyspace).flushEpoch++;
     return this;
   }
 

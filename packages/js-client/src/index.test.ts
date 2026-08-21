@@ -729,13 +729,13 @@ describe("storyblokClient", () => {
 
       expect(execute.mock.calls[0][3]).not.toHaveProperty("cv");
 
-      // The cv this response reported is attached from here on, and the entry stored
-      // under it is the one every later read finds.
+      // The cv this response reported is attached from here on, and the response was
+      // stored under it rather than under the cv it was issued with — so every later read
+      // finds it and none of them reaches the network.
       await autoClearClient.get("cdn/stories", { version: "published", token });
       await autoClearClient.get("cdn/stories", { version: "published", token });
 
-      expect(execute).toHaveBeenCalledTimes(2);
-      expect(execute.mock.calls[1][3].cv).toBe(2000);
+      expect(execute).toHaveBeenCalledTimes(1);
     });
 
     it("should keep the response that triggered the flush in the cache", async () => {
@@ -839,10 +839,10 @@ describe("storyblokClient", () => {
 
       // One ambiguous first sighting for the whole process, then steady state.
       expect(flush).toHaveBeenCalledTimes(1);
-      // The warm read, the read after that one flush, and one more because the cv enters
-      // the cache key, so the cv-less entry the flush left behind is never read again.
-      // From there the cache holds and the remaining rounds add nothing.
-      expect(storyRequests).toBe(3);
+      // The warm read and the read after that one flush. The second one is stored under
+      // the cv it settled on rather than the one it was issued with, so it is the entry
+      // every later round reads and the remaining rounds add nothing.
+      expect(storyRequests).toBe(2);
     });
 
     it("should share the flush epoch between instances writing to the same provider", async () => {

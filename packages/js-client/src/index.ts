@@ -84,6 +84,12 @@ interface CacheKeyspaceState {
  * on its first poll. Both halves hold when the provider object is the key.
  *
  * A `WeakMap`, so state is collected along with a provider nobody uses any more.
+ *
+ * The provider object therefore has to outlive the client for per-request clients to
+ * share the signal: a handler that builds its provider inline on every request
+ * (`cache: { type: 'custom', custom: makeProvider() }`) hands over a new key each time and
+ * gets a fresh state, so no space version is ever compared against a previous one. Build
+ * the provider once, at module scope, and pass the same object to every client.
  */
 const cacheKeyspaces = new WeakMap<object, CacheKeyspaceState>();
 
@@ -972,7 +978,19 @@ export class Storyblok {
           // Stale by construction: the cache was emptied while this was in flight.
           epochAtRequest === keyspace.flushEpoch
         ) {
-          await provider.set(cacheKey, response);
+          // Stored under the key the next read will build, not the one this request was
+          // issued with. The cv is part of the key, and a flush this very response
+          // triggered has since moved the tracked cv — so keeping the request's own key
+          // would leave an entry no later request ever looks up, and the content would be
+          // fetched again on the next read. Mirrors how `parseParams` attaches the cv:
+          // only a truthy one is sent, so a flushed cv drops out of the key entirely.
+          const settledCv = params.token ? cacheVersions[params.token] : undefined;
+          const { cv: _issuedCv, ...paramsWithoutCv } = params;
+          const settledKey = stringify({
+            url,
+            params: settledCv ? { ...paramsWithoutCv, cv: settledCv } : paramsWithoutCv,
+          });
+          await provider.set(settledKey, response);
         }
 
         return resolve(response);

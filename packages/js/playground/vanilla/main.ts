@@ -7,7 +7,7 @@ import {
   storyblokInit,
   useStoryblokBridge,
 } from "@storyblok/js";
-import richTextFixture from "../../src/fixtures/richTextObject.json";
+import richTextFixture from "./fixtures/richTextObject.json";
 
 declare global {
   interface Window {

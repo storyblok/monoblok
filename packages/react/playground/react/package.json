@@ -20,6 +20,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "@vitejs/plugin-basic-ssl": "^2.0.0",
+    "@vitejs/plugin-react": "^5.1.0",
     "tailwindcss": "^4.1.10",
     "vite": "^6.4.3"
   },

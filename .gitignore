@@ -55,3 +55,6 @@ tmp
 /.storyblok
 docs/superpowers
 DOCS.md
+
+# playground-matrix run artifacts
+.matrix/

@@ -10,7 +10,7 @@
     "@storyblok/js": "workspace:*",
     "@vitejs/plugin-basic-ssl": "^1.1.0",
     "@vitejs/plugin-vue": "^5.1.4",
-    "@vue/tsconfig": "^0.7.0",
+    "@vue/tsconfig": "^0.9.1",
     "typescript": "catalog:",
     "vite": "^6.4.3",
     "vite-plugin-qrcode": "^0.2.3",

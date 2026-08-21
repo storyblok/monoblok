@@ -1,0 +1,413 @@
+{
+  "$comment": [
+    "Declarative matrix for the packaged-consumer test suite.",
+    "`versions.latest` entries are resolved against the npm registry at prepare",
+    "time and pinned into the run report, so a run is reproducible after the fact.",
+    "`lts` entries are pinned by hand to the line that ships with / is recommended",
+    "for the Node LTS release."
+  ],
+  "node": [
+    {
+      "id": "22",
+      "version": "22",
+      "channel": "lts"
+    },
+    {
+      "id": "24",
+      "version": "24",
+      "channel": "current"
+    }
+  ],
+  "packageManagers": [
+    {
+      "id": "npm-lts",
+      "pm": "npm",
+      "channel": "lts",
+      "version": "10",
+      "linker": "hoisted"
+    },
+    {
+      "id": "npm-latest",
+      "pm": "npm",
+      "channel": "latest",
+      "version": "latest",
+      "linker": "hoisted"
+    },
+    {
+      "id": "pnpm-lts",
+      "pm": "pnpm",
+      "channel": "lts",
+      "version": "10",
+      "linker": "isolated"
+    },
+    {
+      "id": "pnpm-latest",
+      "pm": "pnpm",
+      "channel": "latest",
+      "version": "latest",
+      "linker": "isolated"
+    },
+    {
+      "id": "yarn-lts-nm",
+      "pm": "yarn",
+      "channel": "lts",
+      "version": "4",
+      "linker": "node-modules"
+    },
+    {
+      "id": "yarn-latest-nm",
+      "pm": "yarn",
+      "channel": "latest",
+      "version": "latest",
+      "linker": "node-modules"
+    },
+    {
+      "id": "yarn-latest-pnp",
+      "pm": "yarn",
+      "channel": "latest",
+      "version": "latest",
+      "linker": "pnp"
+    }
+  ],
+  "$tiers": [
+    "`smoke` is the default: one Node, one version of each package manager, every",
+    "playground. `full` is the whole cross product and is what you run before",
+    "merging a packaging change."
+  ],
+  "tiers": {
+    "smoke": {
+      "node": ["24"],
+      "packageManagers": ["npm-latest", "pnpm-latest", "yarn-latest-nm"]
+    },
+    "full": {
+      "node": ["22", "24"],
+      "packageManagers": [
+        "npm-lts",
+        "npm-latest",
+        "pnpm-lts",
+        "pnpm-latest",
+        "yarn-lts-nm",
+        "yarn-latest-nm",
+        "yarn-latest-pnp"
+      ]
+    }
+  },
+  "$playgrounds": [
+    "`stageRoot` is the directory copied into the image; `appDir` is the path",
+    "inside it that gets installed and built. They differ when a playground reads",
+    "sibling files (the Astro ones share a `../shared` component directory).",
+    "`serve.type: none` means build-only, recorded as such in the report rather",
+    "than silently skipped.",
+    "`dist` is the directory the build writes, measured for the size report.",
+    "`covers` lists only the packages the app depends on *directly*. Under pnpm's",
+    "isolated layout a transitive dependency is deliberately not resolvable from",
+    "the app root, so naming one here reports a correct install as broken."
+  ],
+  "playgrounds": [
+    {
+      "id": "duplicate-dependency",
+      "dist": "dist",
+      "$why": [
+        "Two routes to @storyblok/preview-bridge in one app: the fixture imports",
+        "it directly, and @storyblok/js reaches it through loadStoryblokBridge().",
+        "`storyblok-bridge-stylesheet` is the DOM id the bridge injects and appears",
+        "once per bundled copy. `offsetWidth` appears only in 2.1.6, which switched",
+        "to getBoundingClientRect() sizing in 2.2.0."
+      ],
+      "covers": ["@storyblok/js"],
+      "stageRoot": "tools/playground-matrix/fixtures/duplicate-dependency",
+      "appDir": ".",
+      "build": "build",
+      "fingerprints": {
+        "preview-bridge copies": "storyblok-bridge-stylesheet",
+        "stale 2.1.6 sizing": "offsetWidth"
+      },
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectText": ["duplicate-dependency probe"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "duplicate-dependency-stress",
+      "dist": "dist",
+      "$why": [
+        "Three shared dependencies, each reached by more than one route.",
+        "@storyblok/preview-bridge: direct import, @storyblok/js, @storyblok/live-preview.",
+        "@storyblok/richtext: direct import, @storyblok/js, @storyblok/vue.",
+        "storyblok-js-client: direct import and the @storyblok/js api plugin.",
+        "Fingerprints are string literals rather than identifiers, because",
+        "identifiers get mangled and the two sides are minified differently:",
+        "`storyblok-bridge-stylesheet` is the DOM id the bridge injects,",
+        "`noopener noreferrer nofollow` is emitted by the richtext link renderer,",
+        "and `api-ap.storyblok.com` is in the client's region table. `offsetWidth`",
+        "narrows the bridge count to the stale 2.1.6 copy, which sized the overlay",
+        "with offsetWidth before 2.2.0 moved to getBoundingClientRect().",
+        "`covers` is empty on purpose: the externalization assertions run in the",
+        "other playgrounds, and gating on them here would stop the run before the",
+        "browser probe, which is the part that only means something on the base."
+      ],
+      "covers": [],
+      "stageRoot": "tools/playground-matrix/fixtures/duplicate-dependency-stress",
+      "appDir": ".",
+      "build": "build",
+      "fingerprints": {
+        "preview-bridge copies": "storyblok-bridge-stylesheet",
+        "stale 2.1.6 sizing": "offsetWidth",
+        "richtext copies": "noopener noreferrer nofollow",
+        "js-client copies": "api-ap.storyblok.com"
+      },
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectText": ["duplicate-dependency-stress probe"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "duplicate-dependency-drift",
+      "dist": "dist",
+      "$why": [
+        "The same dependency at two versions, because the install happened over",
+        "time rather than all at once. `vendor/stale-sdk` pins",
+        "@storyblok/preview-bridge at an exact 2.1.6, the way a lockfile entry",
+        "written months ago would, while the app itself asks for ^2.2.0. No",
+        "package manager can collapse that without an override, so both sides",
+        "carry two versions in node_modules and the question is how many end up",
+        "in the bundle, and whether an override can still fix it."
+      ],
+      "covers": [],
+      "stageRoot": "tools/playground-matrix/fixtures/duplicate-dependency-drift",
+      "appDir": ".",
+      "build": "build",
+      "fingerprints": {
+        "preview-bridge copies": "storyblok-bridge-stylesheet",
+        "stale 2.1.6 sizing": "offsetWidth"
+      },
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectText": ["duplicate-dependency-drift probe"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "inlined-third-party",
+      "$why": [
+        "`@storyblok/astro` inlines `camelcase` and `morphdom` on main: both sit",
+        "inside its bundled `dist/index.js`. This fixture reaches each of them by a",
+        "second route \u2014 the app imports them directly, the way an app with any",
+        "transitive dependency on them already does \u2014 so the copies become countable.",
+        "`covers` is empty on purpose: an externalization assertion would fail the",
+        "run on main before the interesting measurement happens."
+      ],
+      "dist": "dist",
+      "covers": [],
+      "stageRoot": "tools/playground-matrix/fixtures/inlined-third-party",
+      "appDir": ".",
+      "build": "build",
+      "fingerprints": {
+        "camelcase copies": "[_.\\- ]+",
+        "morphdom copies": "http://www.w3.org/1999/xhtml"
+      },
+      "serve": {
+        "type": "node",
+        "entry": "dist/server/entry.mjs",
+        "port": 4321
+      },
+      "smoke": {
+        "expectText": ["inlined-third-party probe"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "js-vanilla",
+      "dist": "dist",
+      "covers": ["@storyblok/js"],
+      "stageRoot": "packages/js/playground/vanilla",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectText": ["Storyblok"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "js-vue",
+      "dist": "dist",
+      "covers": ["@storyblok/js"],
+      "stageRoot": "packages/js/playground/vue",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectSelector": ["#app"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "react-vite",
+      "dist": "dist",
+      "covers": ["@storyblok/react", "@storyblok/richtext"],
+      "stageRoot": "packages/react/playground/react",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectSelector": ["#root"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "react-next-13-app-router",
+      "dist": ".next",
+      "covers": ["@storyblok/react"],
+      "stageRoot": "packages/react/playground/next-13-app-router",
+      "appDir": ".",
+      "build": "build:demo",
+      "serve": {
+        "type": "script",
+        "script": "start",
+        "port": 3000
+      },
+      "smoke": {
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "react-next-13-pages-router",
+      "dist": ".next",
+      "covers": ["@storyblok/react"],
+      "stageRoot": "packages/react/playground/next-13-pages-router",
+      "appDir": ".",
+      "build": "build:demo",
+      "serve": {
+        "type": "script",
+        "script": "start",
+        "port": 3000
+      },
+      "smoke": {
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "react-next-latest",
+      "dist": ".next",
+      "covers": ["@storyblok/react"],
+      "stageRoot": "packages/react/playground/next-latest",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "script",
+        "script": "start",
+        "port": 3000
+      },
+      "smoke": {
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "react-next-latest-static",
+      "dist": "out",
+      "covers": ["@storyblok/react"],
+      "stageRoot": "packages/react/playground/next-latest-static",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "static",
+        "dir": "out"
+      },
+      "smoke": {
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "astro-ssg",
+      "dist": "dist",
+      "covers": ["@storyblok/astro"],
+      "stageRoot": "packages/astro/playground",
+      "appDir": "ssg",
+      "build": "build:demo",
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "astro-ssr",
+      "dist": ".vercel/output",
+      "covers": ["@storyblok/astro"],
+      "stageRoot": "packages/astro/playground",
+      "appDir": "ssr",
+      "build": "build",
+      "$serve": "Vercel adapter output; no runnable local server, so build-only.",
+      "serve": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "vue",
+      "dist": "dist",
+      "covers": ["@storyblok/vue"],
+      "stageRoot": "packages/vue/playground/vue",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "static",
+        "dir": "dist"
+      },
+      "smoke": {
+        "expectSelector": ["#app"],
+        "allowConsoleErrors": false
+      }
+    },
+    {
+      "id": "svelte-kit",
+      "dist": ".svelte-kit/output",
+      "covers": ["@storyblok/svelte"],
+      "stageRoot": "packages/svelte/playground/sveltekit",
+      "appDir": ".",
+      "build": "build",
+      "$serve": "adapter-auto emits no runnable output off a recognised host, so build-only.",
+      "serve": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "nuxt",
+      "dist": ".output",
+      "covers": ["@storyblok/nuxt"],
+      "stageRoot": "packages/nuxt/playground",
+      "appDir": ".",
+      "build": "build",
+      "serve": {
+        "type": "node",
+        "entry": ".output/server/index.mjs",
+        "port": 3000
+      },
+      "smoke": {
+        "allowConsoleErrors": false
+      }
+    }
+  ]
+}

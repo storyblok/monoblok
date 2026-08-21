@@ -6,9 +6,6 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "paths": {
-      "@storyblok/react": ["../../src"]
-    },
     "resolveJsonModule": true,
     "strict": true,
     "noEmit": true,

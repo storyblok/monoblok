@@ -20,7 +20,9 @@
     "format:check": "vp fmt --check",
     "test": "nx run-many --target=test",
     "test:types": "nx run-many --target=test:types",
-    "test:coverage": "nx run-many --target=test:coverage"
+    "test:coverage": "nx run-many --target=test:coverage",
+    "matrix": "pnpm --filter @storyblok/playground-matrix matrix",
+    "matrix:compare": "pnpm --filter @storyblok/playground-matrix compare"
   },
   "dependencies": {
     "cypress": "^14.3.3"

@@ -12,12 +12,14 @@
     "@storyblok/react": "workspace:*"
   },
   "devDependencies": {
+    "@types/react": "catalog:react18",
     "eslint": "catalog:next13",
     "eslint-config-next": "catalog:next13",
     "next": "catalog:next13",
     "react": "catalog:react18",
     "react-dom": "catalog:react18",
-    "swr": "^2.2.5"
+    "swr": "^2.2.5",
+    "typescript": "catalog:"
   },
   "nx": {
     "projectType": "application"

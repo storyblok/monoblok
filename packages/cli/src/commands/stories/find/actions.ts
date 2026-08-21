@@ -26,25 +26,14 @@ export function assertSupportedOptions(options: FindOptions): void {
     );
   }
 
-  // Both optimizations trade away something a filter might need, so a
-  // combination that cannot answer the question asked is rejected here rather
-  // than answering a different one.
-  if (options.skipContent) {
-    if (options.where?.length) {
-      throw new CommandError(
-        "--skip-content cannot be combined with --where: a JSONPath filter is evaluated against the story content it skips fetching.",
-      );
-    }
-    if (options.checkReferences) {
-      throw new CommandError(
-        "--skip-content cannot be combined with --check-references: references live in the story content it skips fetching.",
-      );
-    }
-    if (options.capiFilter) {
-      throw new CommandError(
-        "--skip-content cannot be combined with --capi-filter: one skips fetching content, the other fetches it in bulk to filter on.",
-      );
-    }
+  // `--skip-content` is about what the run *emits* and what it fetches per
+  // story, not a ban on reading content anywhere: `--capi-filter` still reads it
+  // in bulk to decide matches, and the output stays list metadata. Only a check
+  // that has no other source for content is refused.
+  if (options.skipContent && options.checkReferences) {
+    throw new CommandError(
+      "--skip-content cannot be combined with --check-references: references live in the story content it skips fetching.",
+    );
   }
 
   if (options.capiParams && !options.capiFilter) {
@@ -52,12 +41,11 @@ export function assertSupportedOptions(options: FindOptions): void {
   }
 
   if (options.capiFilter) {
-    if (options.checkReferences) {
-      throw new CommandError(
-        "--capi-filter cannot be combined with --check-references: the reference scan reads the content of every story in scope, so there is nothing for the CAPI filter to prune.",
-      );
-    }
-    if (!options.where?.length) {
+    // With `--check-references` there is nothing to prune, because the scan reads
+    // every story in scope. The flag still pays off there as a *content source*:
+    // the CDN serves the same draft content in bulk that the per-story MAPI fetch
+    // returns one at a time, so `--where` is not required for it to do anything.
+    if (!options.where?.length && !options.checkReferences) {
       throw new CommandError(
         "--capi-filter needs at least one --where filter: without one, every listed story is a match and none can be pruned.",
       );
@@ -122,7 +110,10 @@ export function buildQueryParams(
  * Client-side half of `--publish-status`.
  *
  * The server can only narrow to `is_published`; telling `published` from
- * `changed` needs `unpublished_changes`, which is only on the fetched story.
+ * `changed` needs `unpublished_changes`, which the list response already
+ * carries. That is what lets these run as `preContentFilters`, before the
+ * content fetch and before the CAPI filter, so a non-matching story costs
+ * nothing beyond the page it was listed on.
  * `draft` is fully server-side, so it contributes no filter.
  */
 export function buildPublishStatusFilters(options: FindOptions): ClientFilter[] {

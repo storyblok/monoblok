@@ -118,23 +118,29 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
 
     const context = { spaceId: space, params, ui, logger, reporter, verbose };
 
+    const capi = options.capiFilter
+      ? await prepareCapiFilter({
+          spaceId: space,
+          region: state.region,
+          capiParams: options.capiParams,
+          // The reference scan reads every story in scope, so there is nothing to
+          // prune for: the stage runs purely as a bulk content source.
+          filters: options.checkReferences ? [] : whereFilters,
+          attachContent: options.checkReferences === true,
+          checkReferences: options.checkReferences === true,
+          ui,
+        })
+      : undefined;
+
     if (options.checkReferences) {
-      await runCheckReferences({ ...context, publishStatusFilters, whereFilters });
+      await runCheckReferences({ ...context, publishStatusFilters, whereFilters, capi });
     } else {
       await runFind({
         ...context,
         preContentFilters: publishStatusFilters,
         filters: whereFilters,
         skipContent: options.skipContent === true,
-        capi: options.capiFilter
-          ? await prepareCapiFilter({
-              spaceId: space,
-              region: state.region,
-              capiParams: options.capiParams,
-              filters: whereFilters,
-              ui,
-            })
-          : undefined,
+        capi,
       });
     }
   } catch (maybeError) {
@@ -146,6 +152,8 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
 type CapiFilter = {
   fetchContent: CapiContentFetcher;
   filters: ClientFilter[];
+  /** Read content in bulk for the stage below instead of only pruning for it. */
+  attachContent?: boolean;
 };
 
 /**
@@ -159,25 +167,31 @@ async function prepareCapiFilter({
   region,
   capiParams,
   filters,
+  attachContent = false,
+  checkReferences = false,
   ui,
 }: {
   spaceId: string;
   region: RegionCode | undefined;
   capiParams: string | undefined;
   filters: ClientFilter[];
+  attachContent?: boolean;
+  /** Only changes how the stage is described, since it prunes nothing there. */
+  checkReferences?: boolean;
   ui: ReturnType<typeof getUI>;
 }): Promise<CapiFilter> {
-  const spinner = ui.createSpinner("Preparing the CAPI filter...");
+  const role = checkReferences ? "CAPI content source" : "CAPI filter";
+  const spinner = ui.createSpinner(`Preparing the ${role}...`);
   try {
     const fetchContent = await createCapiContentFetcher({
       spaceId,
       region,
       params: parseCapiParams(capiParams),
     });
-    spinner.succeed(`CAPI filter ready (${CAPI_BATCH_SIZE} stories per request)`);
-    return { fetchContent, filters };
+    spinner.succeed(`${role} ready (${CAPI_BATCH_SIZE} stories per request)`);
+    return { fetchContent, filters, attachContent };
   } catch (error) {
-    spinner.failed("Failed to prepare the CAPI filter");
+    spinner.failed(`Failed to prepare the ${role}`);
     throw error;
   }
 }
@@ -324,9 +338,12 @@ async function runStoryPipeline({
   const syncDownstreamTotals = (): void => {
     const listed = Math.max(counters.list.total - counters.list.skipped, 0);
     counters.capiFilter.total = listed;
-    counters.content.total = skipContent ? 0 : listed - counters.capiFilter.pruned;
+    // What survives the CAPI filter is what reaches the stages below it, whether
+    // or not a content fetch sits in between.
+    const survivedCapiFilter = listed - counters.capiFilter.pruned;
+    counters.content.total = skipContent ? 0 : survivedCapiFilter;
     counters.process.total = skipContent
-      ? listed
+      ? survivedCapiFilter
       : counters.content.total - counters.content.failed;
     capiFilterProgress?.setTotal(counters.capiFilter.total);
     contentProgress?.setTotal(counters.content.total);
@@ -368,6 +385,7 @@ async function runStoryPipeline({
           capiFilterStream({
             fetchContent: capi.fetchContent,
             filters: capi.filters,
+            attachContent: capi.attachContent,
             onCandidate: (story) => {
               counters.capiFilter.candidates += 1;
               matchedByCapiFilter?.add(story.id);
@@ -465,13 +483,9 @@ async function runFind({
       preContentFilters,
       filters,
       // What the last stage still decides depends on the stages before it: with
-      // no content fetch it only writes, and under the CAPI filter it tests just
-      // the stories the CDN could not settle.
-      processLabel: skipContent
-        ? "Writing results"
-        : capi
-          ? "Collecting matches"
-          : "Applying client-side filters",
+      // no content fetch and no filter it only writes, and under the CAPI filter
+      // it tests just the stories the CDN could not settle.
+      processLabel: processStageName({ skipContent, capi: capi !== undefined, filters }),
       counters,
       timings,
       onMatch: (story) => output.push(story),
@@ -489,6 +503,30 @@ async function runFind({
     ui.br();
     ui.info(resultsHeadline({ counters, filters, skipContent, capi: capi !== undefined }));
 
+    // An empty result under a bare `--skip-content` is ambiguous: the filters
+    // genuinely matched nothing, or they were written against the content that
+    // was never fetched. Only the user can tell the two apart, so name the
+    // possibility exactly when it applies rather than rejecting the combination.
+    if (skipContent && !capi && filters.length > 0 && filtered.succeeded === 0) {
+      ui.warn(
+        "--where cannot match on story content while --skip-content is set: the listing carries " +
+          "story metadata only (full_slug, updated_at, content_type, tag_list, published, …). " +
+          "If the expression reads content, drop --skip-content, and add --capi-filter to keep the run fast.",
+      );
+    }
+
+    // Under `--capi-filter` alone an undecided story still gets fetched and
+    // tested; with `--skip-content` there is no fetch left to settle it, so it
+    // is dropped on metadata alone. Silent loss is the one outcome that would
+    // make the result set wrong without saying so.
+    if (skipContent && capi && capiFilter.unresolved > 0) {
+      ui.warn(
+        `${capiFilter.unresolved} stor${capiFilter.unresolved === 1 ? "y" : "ies"} could not be decided from CDN content ` +
+          "(folders, stories the CDN holds no content for, or a failed batch) and were tested on list metadata only. " +
+          "Drop --skip-content to fetch and test those from MAPI instead.",
+      );
+    }
+
     const lines = [
       `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${formatMark(timings.list)})`,
     ];
@@ -502,11 +540,7 @@ async function runFind({
         `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
       );
     }
-    const processName = skipContent
-      ? "Writing results"
-      : capi
-        ? "Collecting matches"
-        : "Applying filters";
+    const processName = processStageName({ skipContent, capi: capi !== undefined, filters });
     lines.push(
       `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${formatMark(timings.process)})`,
     );
@@ -544,6 +578,31 @@ async function runFind({
   }
 }
 
+/**
+ * Names the terminal stage after the work it is actually left with.
+ *
+ * `--skip-content` usually leaves it nothing to decide, but a metadata-only
+ * `--where` is still evaluated there, so the stage is only "writing" when no
+ * filter reaches it.
+ */
+function processStageName({
+  skipContent,
+  capi,
+  filters,
+}: {
+  skipContent: boolean;
+  capi: boolean;
+  filters: ClientFilter[];
+}): string {
+  if (skipContent) {
+    if (capi) {
+      return "Collecting matches";
+    }
+    return filters.length > 0 ? "Applying client-side filters" : "Writing results";
+  }
+  return capi ? "Collecting matches" : "Applying client-side filters";
+}
+
 /** One line naming what the run cost and what it saved, per optimization in play. */
 function resultsHeadline({
   counters,
@@ -559,7 +618,12 @@ function resultsHeadline({
   const { list, capiFilter, content, process: filtered } = counters;
 
   if (skipContent) {
-    return `Results: ${filtered.succeeded} stories found (metadata only, no content fetched)`;
+    if (capi) {
+      return `Results: ${filtered.succeeded} stories matched (${list.succeeded} listed, decided on CDN content, no story fetched from MAPI)`;
+    }
+    return filters.length > 0
+      ? `Results: ${filtered.succeeded} stories matched (${filtered.total} listed, no content fetched)`
+      : `Results: ${filtered.succeeded} stories found (metadata only, no content fetched)`;
   }
   if (capi) {
     return `Results: ${filtered.succeeded} stories matched (${content.succeeded} of ${list.succeeded} listed fetched from MAPI, ${capiFilter.pruned} pruned by the CAPI filter)`;
@@ -580,6 +644,7 @@ async function runCheckReferences({
   params,
   publishStatusFilters,
   whereFilters,
+  capi,
   ui,
   logger,
   reporter,
@@ -587,6 +652,8 @@ async function runCheckReferences({
 }: FindContext & {
   publishStatusFilters: ClientFilter[];
   whereFilters: ClientFilter[];
+  /** Bulk content source in place of the per-story MAPI fetch. */
+  capi?: CapiFilter;
 }): Promise<void> {
   // Relation fields are only recognisable from the block schema, so the
   // component list has to be loaded before any story is inspected.
@@ -627,6 +694,10 @@ async function runCheckReferences({
       processLabel: "Checking references",
       counters,
       timings,
+      // The CAPI stage already carries each story's content, so the per-story
+      // MAPI fetch has nothing left to add and is dropped entirely.
+      capi,
+      skipContent: capi !== undefined,
       // Index from the list phase: it already carries `full_slug` and
       // `published`, it covers every story in scope rather than only the
       // filtered ones, and it stays complete even if a content fetch fails —
@@ -694,21 +765,35 @@ async function runCheckReferences({
     ui.stopAllProgressBars();
     output.flush();
 
-    const { list, content } = counters;
+    const { list, capiFilter, content } = counters;
     ui.br();
     ui.info(
       `Results: ${matched} stories with reference issues (${checked} checked, ${externalTargets} external targets resolved)`,
     );
+
+    // A story the CDN holds no content for is checked with nothing in hand, so
+    // it can only ever report "no references". Saying how many keeps a clean
+    // report from reading as a clean space.
+    if (capi && capiFilter.unresolved > 0) {
+      ui.warn(
+        `${capiFilter.unresolved} stor${capiFilter.unresolved === 1 ? "y" : "ies"} had no CDN content ` +
+          "(folders, stories the CDN holds none for, or a failed batch) and were checked without content. " +
+          "Drop --capi-filter to read every story from MAPI instead.",
+      );
+    }
+
     ui.list([
       `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${formatMark(timings.list)})`,
-      `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
+      capi
+        ? `Reading content via CAPI: ${capiFilter.candidates}/${capiFilter.total} resolved, ${capiFilter.unresolved} without content, ${capiFilter.failed} batch(es) failed. (${formatMark(timings.capiFilter)})`
+        : `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
       `Checking references: ${checked} checked, ${candidates.length} with references, ${matched} with issues. (${formatMark(timings.process)})`,
       `Resolving + detecting: ${externalTargets} external targets. (done @${((Date.now() - timings.startedAt) / 1000).toFixed(1)}s)`,
     ]);
 
     reporter.addMeta("phaseTimingsMs", {
       list: timings.list,
-      content: timings.content,
+      ...(capi ? { capiContent: timings.capiFilter } : { content: timings.content }),
       check: timings.process,
       total: Date.now() - timings.startedAt,
     });
@@ -721,7 +806,16 @@ async function runCheckReferences({
       externalTargets,
     });
     reporter.addSummary("listStoriesResults", list);
-    reporter.addSummary("fetchContentResults", content);
+    reporter.addSummary(
+      "fetchContentResults",
+      capi
+        ? {
+            total: capiFilter.total,
+            succeeded: capiFilter.candidates,
+            failed: capiFilter.unresolved,
+          }
+        : content,
+    );
     reporter.addSummary("referenceCheckResults", {
       total: checked,
       succeeded: checked - matched,

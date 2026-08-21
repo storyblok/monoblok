@@ -140,8 +140,8 @@ export async function useAsyncStoryblok(
   // This ensures the bridge resolves the same relations during live preview updates
   const bridgeOptions: StoryblokBridgeConfigV2 = {
     ...(bridge || {}),
-    resolveRelations: (bridge && bridge.resolveRelations) ?? toValue(api).resolve_relations,
-    resolveLinks: (bridge && bridge.resolveLinks) ?? toValue(api).resolve_links,
+    resolveRelations: (bridge ? bridge.resolveRelations : undefined) ?? toValue(api).resolve_relations,
+    resolveLinks: (bridge ? bridge.resolveLinks : undefined) ?? toValue(api).resolve_links,
   };
 
   const result = (await useAsyncData(

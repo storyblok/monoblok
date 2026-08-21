@@ -30,16 +30,19 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
 - `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need
   information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+- `../storyblok-bridge` (Storyblok Bridge) - Consult when verifying bridge behavior: the
+  `postMessage` protocol between the editor and a preview iframe, the editable-block attributes it
+  writes into the page, the overlay/click-to-edit UI, or the bridge lifecycle.
 - `../storyblok-docs-platform` (docs site) - Consult when publishing or updating package reference
   docs; see `docs/docs-platform.md` for the monoblok-side conventions. User-facing documentation
   lives there, not here: package READMEs stay minimal and link to the docs site.
 
 These sibling repos may not be available; ignore them if absent.
 
-- **IMPORTANT:** `../storyrails` and `../storyfront` are private. Never reference them, their paths,
-  file names, or internal implementation details in commit messages, PR titles and descriptions,
-  issue comments, code comments, or any other public-facing text. Describe the observable API or
-  behavior instead.
+- **IMPORTANT:** `../storyrails`, `../storyfront` and `../storyblok-bridge` are private. Never
+  reference them, their paths, file names, or internal implementation details in commit messages, PR
+  titles and descriptions, issue comments, code comments, or any other public-facing text. Describe
+  the observable API or behavior instead.
 
 ## Conventions
 

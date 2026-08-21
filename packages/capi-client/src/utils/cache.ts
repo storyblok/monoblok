@@ -67,6 +67,12 @@ export const createMemoryCacheProvider = (
         return undefined;
       }
 
+      // A read counts as use, so eviction is LRU rather than least-recently-written.
+      // The client reads its version watermarks on every cacheable request, and evicting
+      // that record while the entries it governs survive would cost a refetch of each.
+      cache.delete(key);
+      cache.set(key, entry);
+
       return entry;
     },
     async set<TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) {

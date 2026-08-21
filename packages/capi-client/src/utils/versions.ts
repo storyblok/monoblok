@@ -20,14 +20,15 @@ export interface VersionWatermarks {
 }
 
 /**
- * The reserved cache key holding the watermarks for one access token.
+ * The reserved cache key holding the watermarks for one access token, identified by its
+ * `createTokenId` hash rather than the token itself.
  *
  * They live in the cache provider rather than on the client instance so that they share
  * fate with the entries they govern: every client and every process sharing a provider
  * shares the watermarks, which is what makes the publish signal work for per-request
  * clients talking to an external provider.
  */
-export const versionsKey = (accessToken: string) => `sb:versions:v1:${accessToken}`;
+export const versionsKey = (tokenId: string) => `sb:versions:v1:${tokenId}`;
 
 /**
  * How long a watermark record is kept. Matches the edge's maximum content lifetime: an

@@ -9,9 +9,9 @@ import {
 } from "./versions";
 
 describe("versionsKey", () => {
-  it("should namespace the record per access token", () => {
-    expect(versionsKey("token-a")).toBe("sb:versions:v1:token-a");
-    expect(versionsKey("token-a")).not.toBe(versionsKey("token-b"));
+  it("should namespace the record per token id", () => {
+    expect(versionsKey("tid-a")).toBe("sb:versions:v1:tid-a");
+    expect(versionsKey("tid-a")).not.toBe(versionsKey("tid-b"));
   });
 });
 

@@ -23,52 +23,72 @@ describe("isDraftRequest", () => {
 
 describe("createCacheKey", () => {
   it("should produce consistent key for same inputs", () => {
-    const first = createCacheKey("GET", "/v2/cdn/stories", { a: 1, b: 2 });
-    const second = createCacheKey("GET", "/v2/cdn/stories", { b: 2, a: 1 });
+    const first = createCacheKey("GET", "/v2/cdn/stories", { a: 1, b: 2 }, "tid");
+    const second = createCacheKey("GET", "/v2/cdn/stories", { b: 2, a: 1 }, "tid");
 
     expect(first).toBe(second);
   });
 
   it("should produce different keys for different methods", () => {
-    const getKey = createCacheKey("GET", "/v2/cdn/stories", { a: 1 });
-    const postKey = createCacheKey("POST", "/v2/cdn/stories", { a: 1 });
+    const getKey = createCacheKey("GET", "/v2/cdn/stories", { a: 1 }, "tid");
+    const postKey = createCacheKey("POST", "/v2/cdn/stories", { a: 1 }, "tid");
 
     expect(getKey).not.toBe(postKey);
   });
 
   it("should produce different keys for different paths", () => {
-    const first = createCacheKey("GET", "/v2/cdn/stories", { a: 1 });
-    const second = createCacheKey("GET", "/v2/cdn/links", { a: 1 });
+    const first = createCacheKey("GET", "/v2/cdn/stories", { a: 1 }, "tid");
+    const second = createCacheKey("GET", "/v2/cdn/links", { a: 1 }, "tid");
 
     expect(first).not.toBe(second);
   });
 
   it("should produce the same key regardless of leading slash", () => {
-    const withSlash = createCacheKey("GET", "/v2/cdn/stories", { version: "published" });
-    const withoutSlash = createCacheKey("GET", "v2/cdn/stories", { version: "published" });
+    const withSlash = createCacheKey("GET", "/v2/cdn/stories", { version: "published" }, "tid");
+    const withoutSlash = createCacheKey("GET", "v2/cdn/stories", { version: "published" }, "tid");
 
     expect(withSlash).toBe(withoutSlash);
   });
 
   it("should handle nested objects with sorted keys", () => {
-    const first = createCacheKey("GET", "/v2/cdn/stories", {
-      filter_query: {
-        author: {
-          in: "a,b",
+    const first = createCacheKey(
+      "GET",
+      "/v2/cdn/stories",
+      {
+        filter_query: {
+          author: {
+            in: "a,b",
+          },
+        },
+        sort_by: "name:asc",
+      },
+      "tid",
+    );
+    const second = createCacheKey(
+      "GET",
+      "/v2/cdn/stories",
+      {
+        sort_by: "name:asc",
+        filter_query: {
+          author: {
+            in: "a,b",
+          },
         },
       },
-      sort_by: "name:asc",
-    });
-    const second = createCacheKey("GET", "/v2/cdn/stories", {
-      sort_by: "name:asc",
-      filter_query: {
-        author: {
-          in: "a,b",
-        },
-      },
-    });
+      "tid",
+    );
 
     expect(first).toBe(second);
+  });
+});
+
+describe("createCacheKey token scoping", () => {
+  it("should produce different keys for different tokens", () => {
+    // The token selects the space and travels outside `query`, so two clients sharing one
+    // provider would otherwise read each other's content.
+    expect(createCacheKey("GET", "/v2/cdn/stories", { version: "published" }, "tid-a")).not.toBe(
+      createCacheKey("GET", "/v2/cdn/stories", { version: "published" }, "tid-b"),
+    );
   });
 });
 
@@ -134,8 +154,8 @@ describe("shouldUseCache with a trailing slash", () => {
 
 describe("createCacheKey with a trailing slash", () => {
   it("should produce the same key regardless of a trailing slash", () => {
-    expect(createCacheKey("GET", "/v2/cdn/stories/", { version: "published" })).toBe(
-      createCacheKey("GET", "/v2/cdn/stories", { version: "published" }),
+    expect(createCacheKey("GET", "/v2/cdn/stories/", { version: "published" }, "tid")).toBe(
+      createCacheKey("GET", "/v2/cdn/stories", { version: "published" }, "tid"),
     );
   });
 });

@@ -7,6 +7,7 @@ import { createThrottleManager } from "./utils/rate-limit";
 import { applyCvToQuery, extractCv, extractSpaceVersion } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
+import { createTokenId } from "./utils/token-id";
 import {
   haveVersionsChanged,
   mergeVersions,
@@ -97,9 +98,13 @@ export interface CacheConfig {
   /**
    * Custom cache provider. Defaults to an in-memory LRU cache (1 000 entries).
    *
+   * Sharing one provider between clients is supported and is what makes the publish
+   * signal work for per-request clients: entry keys are scoped to a hash of the access
+   * token, so clients for different spaces cannot read each other's content.
+   *
    * The client keeps its version watermarks in the provider under the reserved key
-   * `sb:versions:v1:<accessToken>`, so clients and processes sharing a provider share
-   * them. Do not store anything else under that key.
+   * `sb:versions:v1:<tokenId>`, so clients and processes sharing a provider share them.
+   * Do not store anything else under that key: dropping it costs one refetch per entry.
    */
   provider?: CacheProvider;
   /** Cache strategy for published requests. @default 'cache-first' */
@@ -123,8 +128,11 @@ export interface CacheConfig {
    * - `'auto'` (default): entries stop being served as soon as the API reports a version
    *   newer than the one they were served under. The provider is not emptied — entries
    *   that are no longer served expire by TTL or eviction.
-   * - `'manual'`: version changes are tracked but never invalidate anything; call
-   *   `client.flushCache()` explicitly (e.g. on webhook trigger).
+   * - `'manual'`: a version change never invalidates a cached entry; call
+   *   `client.flushCache()` explicitly (e.g. on webhook trigger). Versions are still
+   *   tracked, and a response answered for a version that has since been superseded is
+   *   still not cached in either mode: that keeps known-stale content out of the cache
+   *   rather than invalidating what is already in it.
    */
   flush?: "auto" | "manual";
   /**
@@ -267,7 +275,9 @@ export const createApiClientBase = <
    * Where the version watermarks live. In the provider, not on this closure, so that
    * every client sharing the provider — including a fresh one per request — shares them.
    */
-  const watermarksKey = versionsKey(accessToken);
+  /** Identifies the space in cache keys without putting the token itself in them. */
+  const tokenId = createTokenId(accessToken);
+  const watermarksKey = versionsKey(tokenId);
 
   const client: Client = createClient(
     createConfig({
@@ -444,7 +454,7 @@ export const createApiClientBase = <
       return networkResult;
     }
 
-    const baseKey = createCacheKey(method, path, rawQuery);
+    const baseKey = createCacheKey(method, path, rawQuery, tokenId);
     const key = cacheOptions?.cacheKeyPrefix
       ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
       : baseKey;
@@ -457,12 +467,15 @@ export const createApiClientBase = <
     // A caller asking for one specific snapshot gets that snapshot: its entry lives under
     // its own key, is immune to publishes, expires by TTL alone, and never teaches a `cv`.
     const isCvPinnedByCaller = rawQuery.cv !== undefined;
+    // A missing watermark record counts as "cv unknown", so a tagged entry is stale: the
+    // record shares the provider with the entries it governs and can be evicted while
+    // they survive, and reading a tagged entry against no known version at all would
+    // silently fall back to TTL-only invalidation. One refetch rewrites the record.
     const isStaleByCv =
       cacheFlush === "auto" &&
       !isCvPinnedByCaller &&
-      versions !== undefined &&
       cachedEntry?.cv !== undefined &&
-      cachedEntry.cv !== versions.knownCv;
+      cachedEntry.cv !== versions?.knownCv;
     const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;
 
     // With a known cv the request is pinned to that snapshot; without one it goes out bare

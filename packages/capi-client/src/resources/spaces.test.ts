@@ -904,6 +904,59 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(storyRequests).toBe(2);
   });
 
+  it("should refetch when the watermark record is gone but the entry is not", async () => {
+    // The record shares the provider with the entries it governs, so an eviction or a
+    // provider that drops it can leave a tagged entry with nothing to check against.
+    // Reading it then would silently fall back to TTL-only invalidation.
+    let storyRequests = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+        storyRequests++;
+        return HttpResponse.json({ stories: [], cv: 1000 });
+      }),
+    );
+    const { store, provider } = countingProvider();
+    const client = createApiClient({ accessToken: "lost-record-token", cache: { provider } });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyRequests).toBe(1);
+
+    for (const key of store.keys()) {
+      if (key.startsWith("sb:versions:")) {
+        store.delete(key);
+      }
+    }
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyRequests).toBe(2);
+
+    // …and the refetch rewrote the record, so the cache holds again.
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyRequests).toBe(2);
+  });
+
+  it("should not serve one space's content to a client for another", async () => {
+    // The access token selects the space and travels outside the query, so it has to be
+    // part of the cache key: two clients sharing one provider must not read each other's
+    // entries, and neither may consume the other's version watermarks.
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const token = new URL(request.url).searchParams.get("token");
+        return HttpResponse.json({ stories: [], cv: 1000, space: token });
+      }),
+    );
+    const { provider } = countingProvider();
+    const first = createApiClient({ accessToken: "space-one", cache: { provider } });
+    const second = createApiClient({ accessToken: "space-two", cache: { provider } });
+
+    const firstResult = await first.get("v2/cdn/stories", { query: { version: "published" } });
+    const secondResult = await second.get("v2/cdn/stories", { query: { version: "published" } });
+
+    expect((firstResult.data as { space: string }).space).toBe("space-one");
+    expect((secondResult.data as { space: string }).space).toBe("space-two");
+  });
+
   it("should not serve another client's in-flight pre-publish response", async () => {
     // Two clients, one provider: the entry carries the cv it was served under, so the
     // client that stored it does not have to be the one that notices the publish.

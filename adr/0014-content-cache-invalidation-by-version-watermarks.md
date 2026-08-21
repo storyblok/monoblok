@@ -53,29 +53,38 @@ the cache provider. Invalidation is a mismatch, not a flush.**
    only, so a stale edge read never moves them. They are never compared to each other, except once:
    on the very first sighting, a `space.version` ahead of `knownCv` is treated as a possible
    publish, because there is no earlier space version to compare against.
-3. **They live in the cache provider**, under the reserved key `sb:versions:v1:<accessToken>`, so
-   they share fate with the entries they govern. Every client and process sharing a provider shares
-   the watermarks — which is what makes the publish signal work for a per-request client in a
-   serverless deployment, where instance state does not survive.
-4. **A read is a hit when the entry is TTL-fresh and its tag equals `knownCv`.** A publish sets
+3. **They live in the cache provider**, under the reserved key `sb:versions:v1:<tokenId>`, so they
+   share fate with the entries they govern. Every client and process sharing a provider shares the
+   watermarks — which is what makes the publish signal work for a per-request client in a serverless
+   deployment, where instance state does not survive. A missing record reads as "cv unknown", so a
+   tagged entry is treated as stale rather than falling back to TTL alone: the record can be evicted
+   while the entries it governs survive, and one refetch rewrites it.
+4. **Entry keys are scoped to the space.** The access token selects the space and travels in the
+   request's `token` parameter rather than in the query, so without it two clients sharing one
+   provider read each other's content. Both the entry keys and the watermark key carry a
+   non-cryptographic hash of the token, not the token, since keys reach listings, `MONITOR` output
+   and metrics labels.
+5. **A read is a hit when the entry is TTL-fresh and its tag equals `knownCv`.** A publish sets
    `knownCv` to undefined, which makes every tagged entry unreachable at once and sends the next
    request out without a `cv`, taking the origin's redirect to the current version. Nothing is
    flushed: unreachable entries expire by TTL and LRU, and flushing would also empty a provider
    other clients keep their own entries in.
-5. **A response is discarded when the `cv` it was issued under is no longer the known one.** That is
+6. **A response is discarded when the `cv` it was issued under is no longer the known one.** That is
    the entire in-flight problem: the response was answered for a version that has since been
    superseded, so it neither teaches a `cv` nor gets stored. No epoch counter, and it holds across
    clients and processes because the comparison is against shared state.
-6. **A caller-pinned `cv` is honoured literally.** Such a request is keyed by its own `cv`, is
+7. **A caller-pinned `cv` is honoured literally.** Such a request is keyed by its own `cv`, is
    immune to publishes, expires by TTL alone, and never teaches a watermark: it describes the
    caller's choice, not the space's current state.
-7. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`: it
+8. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`: it
    empties the provider and resets the watermark record.
 
 `storyblok-js-client` keeps its flush-based mechanism — it is widely deployed and its custom cache
 providers observe its key shapes — but adopts the same semantics: no falsy `cv` on the wire,
 monotonic comparisons in both directions, the entry stored after any flush its own response
-triggered, and the signal scoped to the cache keyspace that would act on it.
+triggered, and the signal scoped to the cache that would act on it, identified by the provider
+object rather than by the client instance so that per-request clients sharing one provider share the
+signal.
 
 ## Consequences
 
@@ -85,7 +94,8 @@ triggered, and the signal scoped to the cache keyspace that would act on it.
 - `cache.flush: 'auto'` no longer calls `provider.flush()`. Invalidated entries linger until TTL or
   LRU eviction, bounded by the existing 1 000-entry cap — the trade for not emptying a shared
   provider on someone else's behalf. `CacheEntry` gains an optional `cv`; custom providers store
-  entries opaquely and need no change, but they must not use the reserved key.
+  entries opaquely and need no change, but they must not use the reserved key. Entry keys change
+  shape, so an external provider carried across the upgrade refills once.
 - Each cacheable request reads the watermark record in addition to its entry, issued in parallel:
   free for the in-memory provider, one extra round trip for an external one — still far cheaper than
   the origin fetch it prevents.

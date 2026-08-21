@@ -46,11 +46,25 @@ const normalizeQuery = (value: unknown): unknown => {
   return value;
 };
 
-export const createCacheKey = (method: string, path: string, query: Record<string, unknown>) => {
+/**
+ * Builds the cache key identifying one response.
+ *
+ * `tokenId` is part of the identity, not decoration: the access token selects the space,
+ * and it travels in the request's `token` query parameter rather than in `query`, so
+ * without it two clients for different spaces sharing one provider would read each
+ * other's content. It is a `createTokenId` hash, so no token reaches a key listing.
+ */
+export const createCacheKey = (
+  method: string,
+  path: string,
+  query: Record<string, unknown>,
+  tokenId: string,
+) => {
   return JSON.stringify({
     method,
     path: normalizePath(path),
     query: normalizeQuery(query),
+    tokenId,
   });
 };
 

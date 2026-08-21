@@ -43,11 +43,13 @@ You seed Storyblok QA spaces with predefined test scenarios. Packages might defi
   actually landed remotely and exits non-zero with a `Verification FAILED` message when a push
   reports success but creates nothing, so check the exit status.
 - **A green seed proves the API accepted your JSON, not that the JSON is shaped like something the
-  editor would produce.** The Management API stores component schemas and story content as opaque
-  blobs: it takes almost any structure and echoes it back. Seeding a fixture and reading it back is
-  circular, because you authored the input, so it can never validate a shape. It is still a useful
-  fixed-point check, and it can prove server-side _transformation_ (normalization, defaults,
-  rejection) - just never correctness.
+  editor would produce.** The Management API checks a component schema field's `type` against a
+  closed list and 422s on an unknown one, but everything past that is an opaque blob: the rest of
+  the schema always, and story content unless the space enables field constraints. Seeding a fixture
+  and reading it back is circular, because you authored the input, so it can never validate a shape.
+  It is still a useful fixed-point check, and whatever the API enforces it can prove: a bogus `type`
+  returns a 422 listing the permitted values, and normalization and server-set defaults show up the
+  same way.
 
 ### Grounding a shape
 

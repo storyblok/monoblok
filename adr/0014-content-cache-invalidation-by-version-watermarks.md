@@ -16,7 +16,9 @@ The behaviour of the API these signals describe was verified against the live CD
 - A published request with any `cv` the edge does not hold — `0`, a stale one, even a future one —
   gets the same redirect to the current version.
 - A published request with an **old `cv` the edge still holds** is served that old snapshot for up
-  to a week. This is the only path to stale content.
+  to a week. This is the only path to stale content. Such a response is indistinguishable on the
+  wire from one a caller pinned deliberately: same status, same old body, same old `cv`. Only
+  whether the caller asked for that `cv` separates a stale read from an intended one.
 - A response body's `cv` identifies the snapshot that was actually served.
 - Draft requests ignore `cv` entirely and are never redirected.
 - Without a Minimum Cache TTL, `space.version` and `cv` report the same raw version. With one, the
@@ -45,46 +47,60 @@ price of one redirect.
 **Cache entries carry the version they belong to, and the client tracks two monotonic watermarks in
 the cache provider. Invalidation is a mismatch, not a flush.**
 
-1. **Entries are tagged.** `CacheEntry.cv` records the `cv` the response reported, or — for
+1. **Only a positive `cv` is a version.** `0` is not one the API knows — it is redirected like any
+   `cv` the edge does not hold — so it is rejected where the body is read, not just where the
+   watermark is written, which is what keeps the "no numeric sentinel" property true end to end.
+2. **Entries are tagged.** `CacheEntry.cv` records the `cv` the response reported, or — for
    endpoints that report none, like `/cdn/tags` and `/cdn/links` — the `cv` the request was issued
    under.
-2. **Two watermarks, one per signal.** `knownCv` (highest `cv` seen in a body) and
+3. **Two watermarks, one per signal.** `knownCv` (highest `cv` seen in a body) and
    `knownSpaceVersion` (highest version seen from `/cdn/spaces/me`). Both advance by monotonic max
    only, so a stale edge read never moves them. They are never compared to each other, except once:
    on the very first sighting, a `space.version` ahead of `knownCv` is treated as a possible
    publish, because there is no earlier space version to compare against.
-3. **They live in the cache provider**, under the reserved key `sb:versions:v1:<tokenId>`, so they
+4. **They live in the cache provider**, under the reserved key `sb:versions:v1:<tokenId>`, so they
    share fate with the entries they govern. Every client and process sharing a provider shares the
    watermarks — which is what makes the publish signal work for a per-request client in a serverless
    deployment, where instance state does not survive. A missing record reads as "cv unknown", so a
    tagged entry is treated as stale rather than falling back to TTL alone: the record can be evicted
    while the entries it governs survive, and one refetch rewrites it.
-4. **Entry keys are scoped to the space.** The access token selects the space and travels in the
+5. **Entry keys are scoped to the space.** The access token selects the space and travels in the
    request's `token` parameter rather than in the query, so without it two clients sharing one
    provider read each other's content. Both the entry keys and the watermark key carry a
    non-cryptographic hash of the token, not the token, since keys reach listings, `MONITOR` output
    and metrics labels.
-5. **A read is a hit when the entry is TTL-fresh and its tag equals `knownCv`.** A publish sets
+6. **A read is a hit when the entry is TTL-fresh and its tag equals `knownCv`.** A publish sets
    `knownCv` to undefined, which makes every tagged entry unreachable at once and sends the next
    request out without a `cv`, taking the origin's redirect to the current version. Nothing is
    flushed: unreachable entries expire by TTL and LRU, and flushing would also empty a provider
    other clients keep their own entries in.
-6. **A response is discarded when the `cv` it was issued under is no longer the known one.** That is
-   the entire in-flight problem: the response was answered for a version that has since been
-   superseded, so it neither teaches a `cv` nor gets stored. No epoch counter, and it holds across
-   clients and processes because the comparison is against shared state.
-7. **A caller-pinned `cv` is honoured literally.** Such a request is keyed by its own `cv`, is
+7. **A response is discarded when the `cv` it was issued under is no longer the known one — unless
+   its own body reports the `cv` that superseded it.** That is the entire in-flight problem: the
+   response was answered for a version that has since been superseded, so it neither teaches a `cv`
+   nor gets stored. No epoch counter, and it holds across clients and processes because the
+   comparison is against shared state. The exception keeps a response that merely lost a race: its
+   body proves it carries the current snapshot, so discarding it would make a publish cost a refetch
+   of every key that happened to be in flight. The issued-under comparison cannot be dropped in
+   favour of the body alone — under a Minimum Cache TTL a late pre-publish response and a fresh
+   floored refetch report the same `cv`, and only issue time tells them apart.
+8. **A caller-pinned `cv` is honoured literally.** Such a request is keyed by its own `cv`, is
    immune to publishes, expires by TTL alone, and never teaches a watermark: it describes the
-   caller's choice, not the space's current state.
-8. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`: it
+   caller's choice, not the space's current state. Because the snapshot it receives looks exactly
+   like a stale edge read, the stale-read rule is gated on caller intent rather than on the
+   response: without that gate a pinned entry is never stored at all, and every read past its TTL
+   returns to the network for good.
+9. **`flushCache()` stays** for webhook-driven invalidation under `cache.flush: 'manual'`: it
    empties the provider and resets the watermark record.
 
 `storyblok-js-client` keeps its flush-based mechanism — it is widely deployed and its custom cache
 providers observe its key shapes — but adopts the same semantics: no falsy `cv` on the wire,
 monotonic comparisons in both directions, the entry stored after any flush its own response
-triggered, and the signal scoped to the cache that would act on it, identified by the provider
-object rather than by the client instance so that per-request clients sharing one provider share the
-signal.
+triggered _and under the key the next read will build_ — the tracked `cv` is part of that key, so a
+flush moves it and an entry filed under the pre-flush `cv` is never looked up again — and the signal
+scoped to the cache that would act on it, identified by the provider object rather than by the
+client instance so that per-request clients sharing one provider share the signal. That last point
+holds only while the provider object outlives the client: a handler that builds its provider inline
+per request hands over a new identity each time and never compares two space versions.
 
 ## Consequences
 

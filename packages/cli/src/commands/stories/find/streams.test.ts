@@ -40,6 +40,68 @@ const collect = (received: Story[]) =>
 const isPage: ClientFilter = (story) => story.content?.component === "page";
 
 describe("capiFilterStream", () => {
+  it("discards the CAPI content by default, leaving the story as listed", async () => {
+    const { fetchContent } = fetcherFor({ 1: { component: "page" } });
+    const received: Story[] = [];
+
+    await pipeline(
+      Readable.from([makeStory(1)]),
+      capiFilterStream({ fetchContent, filters: [isPage] }),
+      collect(received),
+    );
+
+    expect(received).toHaveLength(1);
+    expect(received[0]?.content).toBeUndefined();
+  });
+
+  it("forwards the CAPI content on the story when asked to attach it", async () => {
+    const { fetchContent } = fetcherFor({ 1: { component: "page", headline: "Hi" } });
+    const received: Story[] = [];
+
+    await pipeline(
+      Readable.from([makeStory(1)]),
+      capiFilterStream({ fetchContent, filters: [isPage], attachContent: true }),
+      collect(received),
+    );
+
+    expect(received[0]?.content).toEqual({ component: "page", headline: "Hi" });
+  });
+
+  it("strips editor markers from attached content, but still filters on it", async () => {
+    const { fetchContent } = fetcherFor({
+      1: { component: "page", _editable: "<!--#storyblok#{}-->" },
+    });
+    const received: Story[] = [];
+    const matchesEditable: ClientFilter = (story) =>
+      typeof (story.content as { _editable?: string } | undefined)?._editable === "string";
+
+    await pipeline(
+      Readable.from([makeStory(1)]),
+      capiFilterStream({ fetchContent, filters: [matchesEditable], attachContent: true }),
+      collect(received),
+    );
+
+    // Matched on `_editable`, so the filter saw the content as served...
+    expect(received).toHaveLength(1);
+    // ...but what it forwarded no longer carries it.
+    expect(received[0]?.content).toEqual({ component: "page" });
+  });
+
+  it("forwards a story the CDN has no content for without inventing any", async () => {
+    const { fetchContent } = fetcherFor({});
+    const received: Story[] = [];
+    const onUnresolved = vi.fn();
+
+    await pipeline(
+      Readable.from([makeStory(1)]),
+      capiFilterStream({ fetchContent, filters: [isPage], attachContent: true, onUnresolved }),
+      collect(received),
+    );
+
+    expect(onUnresolved).toHaveBeenCalledTimes(1);
+    expect(received[0]?.content).toBeUndefined();
+  });
+
   it("passes candidates through and prunes the rest", async () => {
     const { fetchContent } = fetcherFor({
       1: { component: "page" },

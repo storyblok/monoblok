@@ -58,6 +58,34 @@ export type StoryContent = NonNullable<Story["content"]>;
 export type CapiContentFetcher = (uuids: string[]) => Promise<Map<string, StoryContent>>;
 
 /**
+ * Removes the editor markers draft CAPI content carries and MAPI content does not.
+ *
+ * `_editable` is what the Visual Editor uses to map a rendered block back to its
+ * source, and it is pure noise in a story that gets printed. Stripping it is what
+ * lets CAPI content stand in for a MAPI fetch without the substitution showing up
+ * in the output.
+ */
+export function stripEditorMarkers(content: StoryContent): StoryContent {
+  const walk = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+      return value.map(walk);
+    }
+    if (value === null || typeof value !== "object") {
+      return value;
+    }
+    const result: Record<string, unknown> = {};
+    for (const [key, nested] of Object.entries(value)) {
+      if (key !== "_editable") {
+        result[key] = walk(nested);
+      }
+    }
+    return result;
+  };
+
+  return walk(content) as StoryContent;
+}
+
+/**
  * Parses `--capi-params` into CDN query parameters.
  *
  * Accepts a JSON object (`{"version":"published"}`), the same thing without the

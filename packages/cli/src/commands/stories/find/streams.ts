@@ -3,7 +3,7 @@ import { toError } from "../../../utils/error/error";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import type { Story } from "../constants";
 import { applyClientFilters } from "./actions";
-import { CAPI_BATCH_SIZE, CAPI_MAX_IN_FLIGHT_BATCHES } from "./capi";
+import { CAPI_BATCH_SIZE, CAPI_MAX_IN_FLIGHT_BATCHES, stripEditorMarkers } from "./capi";
 import type { CapiContentFetcher, StoryContent } from "./capi";
 import type { ClientFilter } from "./types";
 
@@ -89,15 +89,20 @@ export interface JsonlWriter {
 /**
  * Emits one JSON document per line on stdout.
  *
- * Progress bars redraw in place on stderr. When stdout points at the same
- * terminal, writing a result mid-render scrolls the bars out of position and
- * garbles both streams, so results are buffered and flushed once the bars have
- * stopped. When stdout is piped or redirected the two never share a device, so
- * results stream out as they match and `… | head -5` stays responsive.
+ * Buffering keys off **stderr**, because that is where the progress bars redraw
+ * in place: while they are live on a terminal, anything else written to that
+ * terminal lands mid-render and garbles both. Keying off stdout instead would
+ * miss the common case, since `… | jq` makes stdout a pipe while `jq` keeps
+ * printing to the very terminal the bars are on.
+ *
+ * So results are held until `flush()` runs, after the bars have stopped, and
+ * stream out as they match only when no bars are drawing — a redirected stderr,
+ * a CI log, `--no-color`-style non-interactive use — where `… | head -5` stays
+ * responsive and nothing can be garbled.
  */
 export function createJsonlWriter({
   write,
-  buffered = process.stdout.isTTY === true,
+  buffered = process.stderr.isTTY === true,
 }: {
   write: (line: string) => void;
   buffered?: boolean;
@@ -136,10 +141,18 @@ export function createJsonlWriter({
  * List metadata is merged under the CAPI content before filtering, so a
  * story-level expression (`$[?($.updated_at > …)]`) decides here too rather than
  * falling through to a fetch.
+ *
+ * `attachContent` turns the stage into a bulk content *source* rather than a
+ * filter: the content it already holds rides along on the story instead of being
+ * discarded, so a consumer that would otherwise fetch each story individually can
+ * read it here. Off by default, because `find` re-fetches every match from MAPI
+ * and emits that, and CAPI draft content carries editor metadata (`_editable`)
+ * the Management API does not.
  */
 export const capiFilterStream = ({
   fetchContent,
   filters,
+  attachContent = false,
   batchSize = CAPI_BATCH_SIZE,
   maxInFlightBatches = CAPI_MAX_IN_FLIGHT_BATCHES,
   onCandidate,
@@ -150,6 +163,8 @@ export const capiFilterStream = ({
 }: {
   fetchContent: CapiContentFetcher;
   filters: ClientFilter[];
+  /** Forward the CAPI content on the story instead of discarding it. */
+  attachContent?: boolean;
   batchSize?: number;
   maxInFlightBatches?: number;
   /** Matched here, so its MAPI content is still fetched for the output. */
@@ -192,9 +207,12 @@ export const capiFilterStream = ({
       }
 
       try {
-        if (applyClientFilters({ ...story, content }, filters)) {
+        const withContent = { ...story, content };
+        if (applyClientFilters(withContent, filters)) {
           onCandidate?.(story);
-          push(story);
+          // Filters run against the content as served, so `_editable` is only
+          // stripped from what is forwarded, never from what is tested.
+          push(attachContent ? { ...story, content: stripEditorMarkers(content) } : story);
         } else {
           onPruned?.(story);
         }

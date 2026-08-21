@@ -1,7 +1,12 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { CAPI_BATCH_SIZE, createCapiContentFetcher, parseCapiParams } from "./capi";
+import {
+  CAPI_BATCH_SIZE,
+  createCapiContentFetcher,
+  parseCapiParams,
+  stripEditorMarkers,
+} from "./capi";
 import { getMapiClient } from "../../../api";
 import { CommandError } from "../../../utils/error/command-error";
 
@@ -169,5 +174,31 @@ describe("createCapiContentFetcher", () => {
     await expect(
       createCapiContentFetcher({ spaceId: "12345", region: "eu", params: {} }),
     ).rejects.toThrow(CommandError);
+  });
+});
+
+describe("stripEditorMarkers", () => {
+  it("removes _editable at every depth", () => {
+    const content = {
+      component: "page",
+      _editable: "<!--#storyblok#{}-->",
+      body: [
+        { component: "hero", _editable: "<!--#storyblok#{}-->", headline: "Hi" },
+        { component: "grid", items: [{ component: "card", _editable: "<!--#-->" }] },
+      ],
+    } as never;
+
+    expect(stripEditorMarkers(content)).toEqual({
+      component: "page",
+      body: [
+        { component: "hero", headline: "Hi" },
+        { component: "grid", items: [{ component: "card" }] },
+      ],
+    });
+  });
+
+  it("leaves content without markers untouched", () => {
+    const content = { component: "page", body: [], count: 0, flag: false, empty: null } as never;
+    expect(stripEditorMarkers(content)).toEqual(content);
   });
 });

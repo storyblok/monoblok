@@ -337,13 +337,21 @@ scenarios() {
     --where "\$..[?match(@.component, 'card_with_.*')]" \
     --where "\$[?(\$.content.component == 'enterprise_page')]"
 
-  run "includes-block" \
-    "Server-side --includes-block: matches a block used anywhere inside the story, space-wide and resolved by MAPI rather than by fetching content. Expect 167 listed." \
-    --includes-block customers_logos
+  run "client-filters (optimized)" \
+    "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
+    --starts-with lp --publish-status published --includes-block customers_logos --capi-filter \
+    --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
+    --where "\$..[?match(@.component, 'card_with_.*')]" \
+    --where "\$[?(\$.content.component == 'enterprise_page')]"
 
   run "check-references" \
     "Reference integrity: loads the component schema, extracts every link and relation, resolves the targets it has not already listed, then reports the stories with issues. --where runs after that enrichment, which is what lets it select one kind of issue out of the \`_ref_issues\` the check attached. Expect 210 checked, ~274 external targets resolved, 27 with issues, 25 of them stale URLs." \
     --check-references --starts-with lp \
+    --where "\$._ref_issues[?(@.type == 'stale_url')]"
+
+  run "check-references (optimized)" \
+    "Reference integrity: loads the component schema, extracts every link and relation, resolves the targets it has not already listed, then reports the stories with issues. --where runs after that enrichment, which is what lets it select one kind of issue out of the \`_ref_issues\` the check attached. Expect 210 checked, ~274 external targets resolved, 27 with issues, 25 of them stale URLs." \
+    --check-references --starts-with lp --capi-filter \
     --where "\$._ref_issues[?(@.type == 'stale_url')]"
 
   # ── The two optimizations ───────────────────────────────────────────────────
@@ -357,18 +365,6 @@ scenarios() {
     "The same server-side scope as includes-block with the per-story content fetch dropped, which leaves one page walk and nothing else. Expect 167 listed, 0 fetched, 167 emitted as list metadata, in ~4s against the ~29s the same scope takes with content." \
     --includes-block customers_logos --skip-content
 
-  run "capi-filter" \
-    "The same question as client-filters, answered by reading content from the CDN 25 stories at a time and fetching from MAPI only what matched. The CDN serves the same draft content MAPI does, so the answer is the same 21 stories. Expect 197 listed, 6 skipped before fetch, 170 pruned by CAPI over 8 batches, 21 fetched from MAPI, 21 matched — in ~5s against client-filters' ~32s." \
-    --starts-with lp --publish-status published --capi-filter \
-    --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
-    --where "\$..[?match(@.component, 'card_with_.*')]" \
-    --where "\$[?(\$.content.component == 'enterprise_page')]"
-
-  run "capi-params" \
-    "--capi-params reaching the CDN request: published content only, so the CAPI filter reads what is live rather than the draft it defaults to. Expect 178 listed, 139 pruned, 39 fetched from MAPI (31 matched by the CAPI filter, plus 8 the CDN had no published version of), and 34 matched: the 31 plus 3 of those 8, with the other 5 dropped once their content arrived. The same 34 a full MAPI pass returns on this scope, but filtering on published content can in principle miss a draft-only match, which is why draft is the default." \
-    --entry-type story --starts-with faq --capi-filter \
-    --capi-params "{version: published}" \
-    --where "\$..[?(@.component == 'hint')]"
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────

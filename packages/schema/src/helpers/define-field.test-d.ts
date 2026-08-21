@@ -1,7 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest";
 import type { FieldValue } from "../generated/types/field";
 import { defineBlock } from "./define-block";
-import { defineField, type FieldInput } from "./define-field";
+import { type CheckedField, defineField, type FieldInput } from "./define-field";
 import { defineFolder } from "./define-folder";
 
 describe("defineField type inference", () => {
@@ -475,8 +475,60 @@ describe("defineField field option checking", () => {
     void defineField("f", section);
     const tab: FieldInput = { type: "tab", keys: ["a"] };
     void defineField("f", tab);
+    const link: FieldInput = { type: "link", default_value: "//example.com" };
+    void defineField("f", link);
+    const group: FieldInput = { type: "group", display_name: "Group" };
+    void defineField("f", group);
+    const commerce: FieldInput = { type: "commerce", required: true };
+    void defineField("f", commerce);
     const custom: FieldInput = { type: "custom", field_type: "unregistered" };
     void defineField("f", custom);
+  });
+
+  it("should reject a DSL reference key on a field type with no wire key behind it", () => {
+    // `allow`/`deny`/`datasource` map onto `component_whitelist`,
+    // `component_denylist` and `datasource_slug`. On a variant that declares none
+    // of them the key is a dead wire key, which is the defect this check exists
+    // to catch, so it must not be exempted everywhere.
+    // @ts-expect-error `text` has no denylist
+    void defineField("f", { type: "text", deny: ["teaser"] });
+    // @ts-expect-error `asset` has no whitelist
+    void defineField("f", { type: "asset", allow: ["teaser"] });
+    // @ts-expect-error `bloks` has no datasource
+    void defineField("f", { type: "bloks", datasource: "colors" });
+  });
+
+  it("should accept each DSL reference key on the variants that own its wire key", () => {
+    void defineField("f", { type: "bloks", deny: ["banner"] });
+    void defineField("f", { type: "richtext", deny: ["banner"] });
+    // `multilink` uses `component_whitelist` for story content types, so `allow`
+    // is real there even though there is no denylist to pair it with.
+    void defineField("f", { type: "multilink", allow: ["page"] });
+    void defineField("f", { type: "option", source: "internal", datasource: "colors" });
+    void defineField("f", { type: "options", source: "internal", datasource: "colors" });
+  });
+
+  it("should not treat a possibly-undefined allow as conflicting with a raw wire key", () => {
+    // A present-but-`undefined` `allow` derives nothing at runtime, so the raw
+    // key it would otherwise overwrite is not in conflict with it.
+    const maybeAllow: string[] | undefined = undefined;
+    void defineField("f", {
+      type: "bloks",
+      allow: maybeAllow,
+      component_whitelist: ["teaser"],
+    });
+  });
+
+  it("should let a wrapper forward a generic field via CheckedField", () => {
+    // The checks are mapped types over the type parameter, which TypeScript
+    // cannot prove an unresolved `T` satisfies, so a bare generic cannot be
+    // forwarded. `CheckedField` moves the check out to the wrapper's call site.
+    function wrap<const T extends FieldInput>(name: string, field: CheckedField<T>) {
+      return defineField(name, field);
+    }
+    expectTypeOf(wrap("f", { type: "text", max_length: 10 }).type).toEqualTypeOf<"text">();
+    // @ts-expect-error the check still fires, now at the wrapper's call site
+    void wrap("f", { type: "text", totally_bogus_key: 1 });
   });
 
   // Fixture-driven guard for the overlay spec: every option the Storyblok editor

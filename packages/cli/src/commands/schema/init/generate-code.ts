@@ -316,6 +316,12 @@ const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
  * still restricts by tags in the editor, and dropping the two flags would leave
  * nothing to re-derive them from, silently unrestricting the field on the next
  * push.
+ *
+ * Claiming the field for the tag dimension drops any group list it also holds,
+ * and the editor would have read the group list instead: it evaluates groups
+ * before tags, and its group arm does not gate the denylist on `restrict_type`.
+ * Same round-trip hazard as the name/group tie below, in the same direction, and
+ * reachable the same way, through the API rather than the editor.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -485,10 +491,17 @@ function toDslField(
     case "none":
       // No list is in force, so there is no `allow`/`deny` here to re-derive the
       // flags from on the next push. `restrict_components: true` is still real
-      // state — the editor restriction is switched on with nothing selected — and
-      // dropping it silently unrestricted the field on the round-trip, so it is
-      // kept along with the dimension selector it applies to. An absent flag has
-      // nothing to preserve, and `false` is classified as `disabled` instead.
+      // state, so it is kept along with the dimension selector it applies to. An
+      // absent flag has nothing to preserve, and `false` is classified as
+      // `disabled` instead.
+      //
+      // Two shapes land here and they lose different things. A field with the
+      // restriction on and no list keys at all reads as unrestricted in the editor
+      // either way, so keeping the flag costs nothing and buys a byte-identical
+      // round trip, which is what makes a second push report `unchanged`. A field
+      // whose only list is a tag denylist is genuinely restricted, because the
+      // editor's tag arm does not gate the denylist on `restrict_type`, and
+      // dropping the flag there really did unrestrict it.
       if (restrictable && restrict_components === true) {
         out.restrict_components = restrict_components;
         if (restrict_type !== undefined) {

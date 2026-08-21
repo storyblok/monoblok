@@ -188,8 +188,11 @@ type WireRestrictionDocs = {
   restrict_type?: string;
 };
 
-/** The DSL reference keys {@link defineField} adds to every field type. */
-type DslInput = {
+/**
+ * Every DSL reference key. Scoped to the keys a given variant can act on by
+ * {@link DslInputFor}, so this type is never used whole.
+ */
+type DslInputAll = {
   allow?: BlockRef | FolderRef | readonly (BlockRef | FolderRef)[];
   /**
    * Blocks this field must not accept, by block ref/name or `defineFolder` ref.
@@ -211,6 +214,34 @@ type DslInput = {
   datasource?: DatasourceRef;
   required?: boolean;
 };
+
+/**
+ * The DSL reference keys the matched variant can act on.
+ *
+ * Derived from the wire keys each one replaces rather than from a hand-kept list
+ * of field types, so a spec change cannot leave the two out of step. `allow`
+ * needs a `component_whitelist` to map onto, which `bloks` and `richtext` have
+ * for nested blocks and `multilink` has for story content types. `deny` needs a
+ * `component_denylist`, which only the two block-picker types have. `datasource`
+ * needs a `datasource_slug`.
+ *
+ * Scoping them matters: a reference key on a field type that has no wire key to
+ * map it onto is exactly the dead-key defect this helper exists to reject, so
+ * exempting all three on every variant would leave a hole in the middle of the
+ * check.
+ *
+ * `name` and `required` stay universal. `defineField` stamps `name` itself, and
+ * the layout-only `section`/`tab` variants do not declare `required`.
+ */
+type DslKeysFor<TVariant> =
+  | "name"
+  | "required"
+  | ("component_whitelist" extends keyof TVariant ? "allow" : never)
+  | ("component_denylist" extends keyof TVariant ? "deny" : never)
+  | ("datasource_slug" extends keyof TVariant ? "datasource" : never);
+
+/** {@link DslInputAll} narrowed to the keys `TVariant` can act on. */
+type DslInputFor<TVariant> = Pick<DslInputAll, Extract<DslKeysFor<TVariant>, keyof DslInputAll>>;
 
 /**
  * Field config accepted by {@link defineField}: the content-shape field plus the
@@ -235,7 +266,7 @@ export type FieldInput = FieldInputOf<Field>;
 type FieldInputOf<T> = T extends any
   ? Omit<T, WireRestrictionKeys> &
       Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
-      DslInput
+      DslInputFor<T>
   : never;
 
 declare const invalidKey: unique symbol;
@@ -245,13 +276,6 @@ declare const invalidKey: unique symbol;
  * exported, so nothing can construct a value that satisfies it.
  */
 type Invalid<TReason extends string> = { readonly [invalidKey]: TReason };
-
-/**
- * Keys {@link defineField} accepts on every field type: the DSL reference keys,
- * plus `name` and `required`, which the layout-only `section` / `tab` variants do
- * not declare.
- */
-type DslKeys = "allow" | "deny" | "datasource" | "required" | "name";
 
 /**
  * Wire restriction keys that `allow` / `deny` replace and derive the flags for.
@@ -286,21 +310,47 @@ type MemberFor<T> = T extends { type: infer TType } ? Extract<Field, { type: TTy
 type NoExtraKeys<T> = T extends { type: "custom" }
   ? unknown
   : {
-      [K in Exclude<keyof T, keyof MemberFor<T> | DslKeys>]: Invalid<`unknown option "${K &
-        string}" for this field type`>;
+      [K in Exclude<
+        keyof T,
+        keyof MemberFor<T> | DslKeysFor<MemberFor<T>>
+      >]: Invalid<`unknown option "${K & string}" for this field type`>;
     };
 
 /**
  * Rejects the wire restriction keys on a field that also uses `allow` / `deny`.
  * `schema push` derives them from the DSL keys and overwrites whatever was set by
  * hand, so setting both is always a mistake: pick the DSL keys or the raw ones.
+ *
+ * Matched against `{}` rather than `unknown`, because a present-but-`undefined`
+ * property satisfies `{ allow: unknown }`. A conditionally-built `allow` that
+ * resolves to `undefined` derives nothing at runtime, so it must not make the raw
+ * key a conflict.
  */
-type NoRestrictionConflict<T> = T extends { allow: unknown } | { deny: unknown }
+type NoRestrictionConflict<T> = T extends { allow: {} } | { deny: {} }
   ? {
       [K in Extract<keyof T, DerivedRestrictionKeys>]: Invalid<`"${K &
         string}" is derived from "allow"/"deny": set one or the other, not both`>;
     }
   : unknown;
+
+/**
+ * A field literal plus the two option checks {@link defineField} applies.
+ *
+ * Needed to write a wrapper around `defineField`. The checks are mapped types
+ * over the type parameter, and TypeScript cannot prove `T` satisfies a mapped
+ * type of itself for an unresolved `T`, so forwarding a still-generic field is a
+ * compile error. Declaring the wrapper's own parameter as `CheckedField<T>`
+ * fixes that, and moves the check out to the wrapper's call site, which is where
+ * the literal is actually written and where the error belongs.
+ *
+ * @example
+ * function textField<const T extends FieldInput>(name: string, field: CheckedField<T>) {
+ *   return defineField(name, field);
+ * }
+ */
+export type CheckedField<TField extends FieldInput> = TField &
+  NoExtraKeys<TField> &
+  NoRestrictionConflict<TField>;
 
 /** Result of {@link defineField}: the field stamped with `name`, with refs normalized to strings. */
 export type DefinedField<TName extends string, TField extends FieldInput> = Prettify<
@@ -324,7 +374,8 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
  * the wire restriction keys they derive (see {@link NoRestrictionConflict}).
  *
  * Use inside a {@link defineBlock} `fields` array — `pos` is injected from the
- * array index by `defineBlock`.
+ * array index by `defineBlock`. To wrap this function in one of your own, type
+ * its field parameter as {@link CheckedField}; a bare generic cannot be forwarded.
  *
  * @example
  * defineField('headline', { type: 'text', max_length: 100, required: true });
@@ -335,7 +386,7 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
  */
 export function defineField<const TName extends string, const TField extends FieldInput>(
   name: TName,
-  field: TField & NoExtraKeys<TField> & NoRestrictionConflict<TField>,
+  field: CheckedField<TField>,
 ): DefinedField<TName, TField>;
 export function defineField(name: string, field: Record<string, unknown>): Record<string, unknown> {
   const { allow, deny, datasource, ...rest } = field;

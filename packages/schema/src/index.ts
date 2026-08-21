@@ -28,6 +28,7 @@ export type {
   BlockContent,
   BlockContentInput,
   BlocksFieldValue,
+  CheckedField,
   DefinedField,
   Field,
   FieldInput,

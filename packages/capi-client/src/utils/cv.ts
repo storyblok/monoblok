@@ -1,11 +1,18 @@
 import { isDraftRequest } from "./request";
 
+/**
+ * Reads the `cv` a response body reports — the snapshot it was actually served from.
+ *
+ * Only a positive `cv` is a version: the API redirects `cv=0` (like any `cv` the edge
+ * does not hold) to the current snapshot, so adopting `0` as a watermark would put a
+ * value on the wire that only ever costs an extra hop.
+ */
 export const extractCv = (maybeData: unknown) => {
-  return maybeData && typeof maybeData === "object" && "cv" in maybeData
-    ? typeof maybeData.cv === "number"
-      ? maybeData.cv
-      : undefined
-    : undefined;
+  if (!maybeData || typeof maybeData !== "object" || !("cv" in maybeData)) {
+    return undefined;
+  }
+
+  return typeof maybeData.cv === "number" && maybeData.cv > 0 ? maybeData.cv : undefined;
 };
 
 /**

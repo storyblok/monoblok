@@ -782,6 +782,90 @@ describe("spaces.get() as a cache invalidation signal", () => {
     expect(storyUrls).toHaveLength(2); // the pinned snapshot is immune to publishes
   });
 
+  it("should cache a caller-pinned cv that the space has already moved past", async () => {
+    // The edge answers a pinned cv it still holds with that old snapshot and its old cv —
+    // indistinguishable on the wire from a stale edge read, and told apart only by the
+    // caller having asked for it. Treating it as stale means the pinned entry is never
+    // stored, so every read past the TTL goes back to the network for good.
+    const storyUrls: string[] = [];
+    server.use(
+      spaceHandler(() => 2000),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        const cv = new URL(request.url).searchParams.get("cv");
+        // The edge still holds the pinned snapshot, so it serves it rather than redirecting.
+        return HttpResponse.json({ stories: [], cv: cv ? Number(cv) : 2000 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "pinned-below-known-token" });
+
+    // Learn a cv first, so the pinned one below it looks like a stale read.
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyUrls).toHaveLength(1);
+
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 900 } });
+    await client.get("v2/cdn/stories", { query: { version: "published", cv: 900 } });
+
+    expect(storyUrls).toHaveLength(2); // the second pinned read came from the cache
+    expect(new URL(storyUrls[1]).searchParams.get("cv")).toBe("900");
+  });
+
+  it("should keep a response that reports the cv which superseded it", async () => {
+    // Concurrent reads are all issued under the cv known at the time. The first one back
+    // advances the watermark, which leaves the others answered for a cv that is no longer
+    // the known one — but their bodies report the new one, so they carry the current
+    // snapshot and only lost a race. Discarding them costs a refetch of every key that
+    // happened to be in flight during a publish.
+    let releaseSlow: () => void = () => {};
+    const slow = new Promise<void>((resolve) => (releaseSlow = resolve));
+    let currentCv = 1000;
+    let slowRequests = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ stories: [], cv: currentCv }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/links", async () => {
+        slowRequests++;
+        await slow;
+        return HttpResponse.json({ links: {}, cv: currentCv });
+      }),
+    );
+    const client = createApiClient({ accessToken: "superseded-but-current-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } }); // learns 1000
+
+    const inFlight = client.get("v2/cdn/links", { query: { version: "published" } });
+    currentCv = 2000; // published while that request is in flight
+    await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+    releaseSlow();
+    await inFlight;
+
+    // Its body reported 2000, the cv now known, so the entry is valid and readable.
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+    expect(slowRequests).toBe(1);
+  });
+
+  it("should never put a zero cv on the wire", async () => {
+    // `cv=0` is not a version the API knows: it is redirected like any unheld cv, so
+    // adopting a `0` from a response body only ever costs an extra hop.
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: 0 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "zero-cv-token" });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.get("v2/cdn/stories", { query: { version: "published", page: "2" } });
+
+    expect(storyUrls).toHaveLength(2);
+    for (const url of storyUrls) {
+      expect(new URL(url).searchParams.get("cv")).toBeNull();
+    }
+  });
+
   it("should keep the invalidation in place when the refetch after a publish fails", async () => {
     // Nothing consumes the signal but a successful response: a failed refetch leaves the
     // entry unreadable, so the next request tries again instead of serving stale content.

@@ -357,6 +357,9 @@ export const createApiClientBase = <
    * @param learnCv whether this response's `cv` may advance the watermark. Draft
    * responses bypass the cache and a caller-pinned `cv` describes the caller's choice
    * rather than the space's current state, so neither may teach one.
+   * @param honourOlderSnapshot keep a response whose body reports a `cv` below the known
+   * one. Only a caller-pinned `cv` may: it asked for that snapshot, where an unpinned
+   * request got it from an edge node that had not caught up.
    * @param knownCvAtIssue the `cv` this request was issued under. A response is discarded
    * when that `cv` is no longer the known one: it was answered for a version that has
    * since been superseded, so caching it would refill the cache with pre-publish content
@@ -365,18 +368,34 @@ export const createApiClientBase = <
   const applyResponseVersions = async (
     path: string,
     result: ApiResponse,
-    { learnCv, knownCvAtIssue }: { learnCv: boolean; knownCvAtIssue?: number },
+    {
+      learnCv,
+      honourOlderSnapshot = false,
+      knownCvAtIssue,
+    }: { learnCv: boolean; honourOlderSnapshot?: boolean; knownCvAtIssue?: number },
   ): Promise<{ mayCache: boolean; cv?: number }> => {
     const bodyCv = extractCv(result.data);
     const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(result.data) : undefined;
     const current = await readVersions(cacheProvider, watermarksKey);
 
-    const isSuperseded = knownCvAtIssue !== undefined && current?.knownCv !== knownCvAtIssue;
+    // A response answered for a `cv` that is no longer the known one was superseded while
+    // in flight — unless its own body reports the very `cv` that superseded it, in which
+    // case it carries the current snapshot and only lost a race. Discarding those makes a
+    // publish cost a refetch of every key that happened to be in flight.
+    const carriesKnownCv = bodyCv !== undefined && bodyCv === current?.knownCv;
+    const isSuperseded =
+      knownCvAtIssue !== undefined && current?.knownCv !== knownCvAtIssue && !carriesKnownCv;
     // A response reporting a `cv` below the known one came from an edge node still holding
     // an older snapshot. Stale by construction, so it must neither teach a `cv` nor be
-    // stored over the newer entry that may already be there.
+    // stored over the newer entry that may already be there — but a caller who pinned that
+    // `cv` asked for exactly this snapshot. The two are identical on the wire (the edge
+    // answers both with the old body and its old `cv`), so only the caller's intent tells
+    // them apart.
     const isStaleEdgeRead =
-      bodyCv !== undefined && current?.knownCv !== undefined && bodyCv < current.knownCv;
+      !honourOlderSnapshot &&
+      bodyCv !== undefined &&
+      current?.knownCv !== undefined &&
+      bodyCv < current.knownCv;
     const mayCache = !isSuperseded && !isStaleEdgeRead;
 
     let next = mergeVersions(current, {
@@ -492,6 +511,7 @@ export const createApiClientBase = <
       const knownCvAtIssue = isCvPinnedByCaller ? undefined : versions?.knownCv;
       const { mayCache, cv } = await applyResponseVersions(path, result, {
         learnCv: !isCvPinnedByCaller,
+        honourOlderSnapshot: isCvPinnedByCaller,
         knownCvAtIssue,
       });
 

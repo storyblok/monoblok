@@ -124,6 +124,28 @@ describe("validateSchema", () => {
     expect(codesFor(result)).toContain("unresolved_allow");
   });
 
+  it("warns on a restrict_type the editor does not recognize", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [defineField("body", { type: "bloks", restrict_type: "tag" })],
+    });
+    const result = validateSchema({ blocks: [block] });
+    // A warning, not an error: the API never validates this key, so a real space
+    // can hand back a value nothing recognizes.
+    expect(result.ok).toBe(true);
+    expect(codesFor(result)).toContain("unknown_restrict_type");
+  });
+
+  it("accepts every restrict_type the editor writes", () => {
+    for (const restrict_type of ["", "components", "groups", "tags"]) {
+      const block = defineBlock({
+        name: "page",
+        fields: [defineField("body", { type: "bloks", restrict_type })],
+      });
+      expect(codesFor(validateSchema({ blocks: [block] }))).not.toContain("unknown_restrict_type");
+    }
+  });
+
   it("flags a deny reference to an unknown block", () => {
     const block = defineBlock({
       name: "page",

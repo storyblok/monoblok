@@ -1,6 +1,6 @@
 import type { SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
-import { DERIVED_RESTRICTION_KEYS } from "../restrictions";
+import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 /**
@@ -213,6 +213,23 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
             message: `Field "${fieldName}" sets "${key}" alongside "allow"/"deny", which derives it. Keep one of the two.`,
           });
         }
+      }
+
+      // `restrict_type` selects which restriction dimension the editor reads, and
+      // it is the one restriction key the DSL tells authors to set by hand, for
+      // the tag dimension. A typo silently unrestricts the field, so it is worth
+      // flagging. A warning rather than an error: the API never validates this
+      // key, so a space can legitimately hand back a value nothing recognizes,
+      // and failing a build over what a space already stores would be wrong.
+      const restrictType = field.restrict_type;
+      if (typeof restrictType === "string" && !EDITOR_RESTRICT_TYPES.includes(restrictType)) {
+        issues.push({
+          severity: "warning",
+          code: "unknown_restrict_type",
+          path: ["blocks", blockKey, fieldName ?? index, "restrict_type"],
+          entity: blockEntity,
+          message: `Field "${fieldName}" sets "restrict_type" to "${restrictType}", which the editor does not recognize; the field's restriction lists are ignored. Expected one of ${EDITOR_RESTRICT_TYPES.map((value) => `"${value}"`).join(", ")}.`,
+        });
       }
 
       const datasource = field.datasource;

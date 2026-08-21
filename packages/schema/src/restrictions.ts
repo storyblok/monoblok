@@ -35,3 +35,17 @@ export type DerivedRestrictionKey = (typeof DERIVED_RESTRICTION_KEYS)[number];
  * key nothing reads.
  */
 export const DENIABLE_FIELD_TYPES: readonly string[] = ["bloks", "richtext"];
+
+/**
+ * The values the editor's restriction-dimension selector writes: `'groups'` for
+ * the component group lists, `'tags'` for the tag lists, and `''` or
+ * `'components'` for the block-name lists.
+ *
+ * Not a type. The Management API stores `restrict_type` without validating it, so
+ * a space can hold anything there and `schema init` has to be able to emit
+ * whatever it finds. Narrowing the declared type would buy typo protection by
+ * making a real stored value untypeable, which is the failure this whole area
+ * exists to remove. `validateSchema` warns on an unrecognized value instead: it
+ * catches the typo without breaking the read path.
+ */
+export const EDITOR_RESTRICT_TYPES: readonly string[] = ["", "components", "groups", "tags"];

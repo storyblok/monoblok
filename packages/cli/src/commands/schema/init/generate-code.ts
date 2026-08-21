@@ -271,8 +271,15 @@ type FieldRestriction =
  * dimensions are mutually exclusive in the editor, which clears one dimension's
  * lists when you switch to the other, so a field restricted by folder carries an
  * empty `component_whitelist: []` alongside its group list. Non-emptiness is
- * therefore what picks the dimension, and block names win the (unreachable
- * through the editor) tie so a name restriction is never silently dropped.
+ * therefore what picks the dimension.
+ *
+ * When both dimensions somehow hold a list, block names win here while the editor
+ * would evaluate the folder list and ignore the names. The orders disagree on
+ * purpose: whichever one loses gets dropped from the emitted DSL, and dropping a
+ * name list is the more visible loss. Neither reading is faithful, so the shape is
+ * a round-trip hazard either way. The editor cannot author it (switching dimension
+ * clears all six lists) and the Management API only backstops that for `bloks`
+ * fields, so reaching it takes a `richtext` written through the API.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -331,8 +338,15 @@ function resolveFieldRestriction(
  * `schema push` re-derive `restrict_components: true` and silently switch the
  * restriction back on, changing what editors may insert. So a disabled
  * restriction keeps its flag and drops the lists: the flag round-trips
- * losslessly, at the cost of discarding lists that are not in force anyway. An
- * absent `restrict_components` counts as active, matching backend enforcement.
+ * losslessly, at the cost of discarding lists that are not in force anyway.
+ *
+ * An absent `restrict_components` counts as active, which is a deliberate
+ * narrowing rather than a faithful read. The editor treats the flag's absence as
+ * "no restriction at all", so a legacy field carrying a bare `component_whitelist`
+ * accepts anything today. Emitting it as `allow` makes push re-derive
+ * `restrict_components: true` and the restriction starts being enforced. That
+ * matches the list's apparent intent, and the alternative is discarding a list
+ * someone wrote on purpose, but it does change what editors may insert.
  *
  * See {@link resolveFieldRestriction} for how the block-name and folder
  * dimensions are told apart.

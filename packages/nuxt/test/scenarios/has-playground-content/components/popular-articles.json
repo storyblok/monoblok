@@ -1,0 +1,15 @@
+{
+  "name": "popular-articles",
+  "display_name": "Popular Articles",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "articles": {
+      "type": "options",
+      "pos": 0,
+      "source": "internal_stories",
+      "filter_content_type": ["article"]
+    }
+  }
+}

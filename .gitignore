@@ -55,3 +55,6 @@ tmp
 /.storyblok
 docs/superpowers
 DOCS.md
+
+# Saved app session for Visual Editor QA
+/.storyblok-qa/

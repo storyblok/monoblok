@@ -216,6 +216,23 @@ if [ "${skip_components}" = false ] && [ -d "${scenario_dir}/components" ]; then
   cp -r "${scenario_dir}/components/"* "${staging_dir}/components/${FAKE_ID}/"
 fi
 
+# Every staged component must carry component_group_uuid, or the CLI's
+# findComponentSchemas check skips it silently: the push reports success, the
+# component never lands, and the stories that use it render nothing.
+if [ "${skip_components}" = false ] && [ -d "${staging_dir}/components/${FAKE_ID}" ]; then
+  for component_file in "${staging_dir}/components/${FAKE_ID}"/*.json; do
+    [ -f "${component_file}" ] || continue
+    if ! node -e "
+      const json = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+      process.exit('component_group_uuid' in json ? 0 : 1);
+    " "${component_file}"; then
+      printf "Refusing to seed: %s lacks \"component_group_uuid\": null\n" \
+        "$(basename "${component_file}")" >&2
+      exit 1
+    fi
+  done
+fi
+
 # Stage scenario-specific data: either run generate.sh or copy static files
 if [ -f "${scenario_dir}/generate.sh" ]; then
   bash "${scenario_dir}/generate.sh" "${staging_dir}" "${FAKE_ID}"

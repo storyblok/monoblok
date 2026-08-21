@@ -1,0 +1,8 @@
+{
+  "name": "iframe-embed",
+  "display_name": "Iframe Embed",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": { "url": { "type": "multilink", "pos": 0 } }
+}

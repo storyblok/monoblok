@@ -75,7 +75,7 @@ pnpm release
 
 This script will:
 
-- Check that you're on a release branch (`main`, `alpha`, `beta`, or `next`)
+- Check that you're on a release branch (`main`, `alpha`, `beta`, `next`, or `rc`)
 - Check for uncommitted changes
 - Fetch the latest changes from remote
 - Verify you're up to date with the remote branch
@@ -98,7 +98,7 @@ To release a pre-release version (e.g., for testing before stable release):
 1. **Create or switch to a pre-release branch**:
 
    ```bash
-   git checkout -b alpha   # or beta, next
+   git checkout -b alpha   # or beta, next, rc
    # Or if branch exists:
    git checkout alpha
    ```
@@ -117,7 +117,7 @@ To release a pre-release version (e.g., for testing before stable release):
    pnpm release
    ```
 
-   This will bump versions with the pre-release suffix (e.g., `1.0.0-alpha.0`).
+   This will bump versions with the pre-release suffix (e.g., `1.0.0-alpha.0`, `1.0.0-rc.0`).
 
 4. **Publish via GitHub Actions**:
    - Go to **Actions** → **Publish** workflow
@@ -149,6 +149,7 @@ alpha-only package to stable, add `"main"` back.
 | ----------------------- | --------------------------------------------- |
 | `@storyblok/astro`      | `main`, `alpha`, `next`                       |
 | `@storyblok/nuxt`       | `main`, `next`                                |
+| `@storyblok/react`      | `main`, `rc`                                  |
 | `storyblok-js-client`   | `main`, `beta`, `next`                        |
 | `@storyblok/migrations` | `alpha` only — stable disabled until promoted |
 
@@ -274,6 +275,7 @@ The publish workflow will:
   - `next` branch → `next` tag
   - `beta` branch → `beta` tag
   - `alpha` branch → `alpha` tag
+  - `rc` branch → `rc` tag
 
 ## Distribution Tags
 
@@ -291,6 +293,9 @@ npm install @storyblok/package@beta
 
 # Alpha version
 npm install @storyblok/package@alpha
+
+# RC version
+npm install @storyblok/package@rc
 ````
 
 ## Release Branches
@@ -301,6 +306,7 @@ The repository uses different branches for different types of releases:
 - `next`: Next version releases
 - `beta`: Beta releases
 - `alpha`: Alpha releases
+- `rc`: Release candidate releases
 
 Each branch corresponds to a specific npm distribution tag, ensuring users can install the
 appropriate version for their needs.
@@ -429,7 +435,7 @@ git push origin main
 
 ### Common Error Messages
 
-- **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, or `next` branch
+- **"You must be on a release branch"**: Switch to `main`, `alpha`, `beta`, `next`, or `rc` branch
 - **"GITHUB_TOKEN not found"**: Set up your GitHub token as described in Prerequisites
 - **"No commits since last release"**: Ensure you have commits following conventional commit format
 - **"Authentication failed"**: Check your NPM_TOKEN and GITHUB_TOKEN credentials

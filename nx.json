@@ -50,7 +50,7 @@
   "release": {
     "projectsRelationship": "independent",
     "projects": ["packages/*"],
-    "releaseTagPatternCheckAllBranchesWhen": ["alpha", "beta", "next"],
+    "releaseTagPatternCheckAllBranchesWhen": ["alpha", "beta", "next", "rc"],
     "version": {
       "conventionalCommits": true,
       "updateDependents": "never",

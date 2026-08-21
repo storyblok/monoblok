@@ -789,6 +789,77 @@ describe("storyblokClient", () => {
       expect(autoClearClient.cacheVersions()[token]).toBe(2000);
     });
 
+    it("should flush at most once per keyspace after the cv was cleared", async () => {
+      // The baseline outliving a flush must not make the sighting recur: it fires until
+      // the keyspace has recorded a space version, which the first poll does whether it
+      // flushed or not.
+      const token = "space-version-cleared-cv-bound";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      autoClearClient.clearCacheVersion(token);
+
+      for (let i = 0; i < 4; i++) {
+        autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+        await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      }
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should still flush a custom provider when another instance already flushed", async () => {
+      // The narrower shape of the case below, and the one that used to slip through: the
+      // instance that polls first flushes and clears the tracked cv, so the second
+      // instance found no cv to compare its own first sighting against and never flushed.
+      // One token, two instances, one publish, and only the first instance recovered.
+      const token = "space-version-custom-after-flush";
+      const store: Record<string, any> = {};
+      const customFlush = vi.fn(async () => {
+        for (const key of Object.keys(store)) {
+          delete store[key];
+        }
+      });
+      const customClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: {
+          clear: "auto",
+          cv: "manual",
+          type: "custom",
+          custom: {
+            get: async (key: string) => store[key],
+            getAll: async () => store,
+            set: async (key: string, content: any) => {
+              store[key] = content;
+            },
+            flush: customFlush,
+          },
+        },
+      });
+      const memoryClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { clear: "auto", cv: "manual", type: "memory" },
+      });
+
+      // Both instances serve the same pre-publish content.
+      for (const instance of [customClient, memoryClient]) {
+        instance.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+        await instance.get("cdn/stories", { version: "published", token });
+      }
+
+      // The memory instance polls first: it flushes, and clears the tracked cv with it.
+      memoryClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await memoryClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(memoryClient.cacheVersions()[token]).toBe(0);
+
+      // The custom instance has still never seen a space version, and its provider still
+      // holds the pre-publish entry.
+      customClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await customClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(customFlush).toHaveBeenCalledTimes(1);
+      expect(Object.keys(store)).toHaveLength(0);
+    });
+
     it("should not let another instance consume the signal for a custom provider", async () => {
       // The signal is consumed once per keyspace. An instance with its own provider has
       // to flush it itself, so an instance on the module-level memory cache must not

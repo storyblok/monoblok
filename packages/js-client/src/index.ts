@@ -75,6 +75,20 @@ const spaceVersions = {} as CachedVersions;
 let customCacheKeyspaces = 0;
 
 /**
+ * Highest `cv` ever seen per token, and unlike {@link cacheVersions} never cleared. It is
+ * the baseline a first `space.version` sighting is compared against.
+ *
+ * {@link cacheVersions} cannot serve that purpose: a flush records the sentinel `0` there,
+ * which erases the comparison for every keyspace that has not polled yet, not just for
+ * the one that flushed. An instance with its own provider would then find no baseline,
+ * skip its own first sighting, and serve pre-publish content for good.
+ *
+ * Never sent anywhere: a `cv` is only ever attached to a request from
+ * {@link cacheVersions}.
+ */
+const highestCvs = {} as CachedVersions;
+
+/**
  * Bumped on every flush. A response already in flight when the cache was emptied belongs
  * to the previous epoch: caching it would refill the cache with the pre-publish content
  * the flush just dropped, and adopting its `cv` would re-pin the very `?cv=<old>` the
@@ -856,7 +870,10 @@ export class Storyblok {
         if (params.token && spaceVersion !== undefined) {
           const signalKey = `${this.cacheKeyspace}:${params.token}`;
           const lastSpaceVersion = spaceVersions[signalKey];
-          const lastCv = cacheVersions[params.token];
+          // The highest cv ever seen, not the currently tracked one: this comparison must
+          // survive another instance's flush, which zeroes the tracked cv for the whole
+          // token. See {@link highestCvs}.
+          const baselineCv = highestCvs[params.token];
           // A first sighting has no previous space version, so compare against the cv.
           // Without a Minimum Cache TTL both report the same raw version, so an equal
           // pair proves nothing was published. A space version AHEAD of the cv is either
@@ -864,12 +881,11 @@ export class Storyblok {
           // defensively. A space version BEHIND it is neither: `space.version` is
           // monotonic at the origin, so only an edge node that has not caught up reports
           // one, and flushing for it would empty the cache for no reason.
-          // `lastCv` is checked for truthiness, not for `undefined`: a flush or an
-          // explicit `clearCacheVersion()` records the sentinel `0`, which carries no cv
-          // information — treating it as a tracked cv would make every first poll after a
-          // clear flush the whole cache again. Same convention as the cv block below.
+          // Checked for truthiness rather than for `undefined`, like the cv block below,
+          // so the sentinel `0` never reads as a version. The branch fires at most once
+          // per keyspace and token: from the next poll on, `lastSpaceVersion` is set.
           const isFirstSighting =
-            lastSpaceVersion === undefined && Boolean(lastCv) && spaceVersion > lastCv;
+            lastSpaceVersion === undefined && Boolean(baselineCv) && spaceVersion > baselineCv;
           const hasSpaceVersionChanged =
             lastSpaceVersion !== undefined && spaceVersion > lastSpaceVersion;
 
@@ -920,6 +936,9 @@ export class Storyblok {
               epochAtRequest = flushEpoch;
             }
             cacheVersions[params.token] = response.data.cv;
+            // A maximum, because the tracked cv above may have been cleared by a flush:
+            // a lower cv is legitimate to track again, but must not lower the baseline.
+            highestCvs[params.token] = Math.max(highestCvs[params.token] ?? 0, response.data.cv);
           }
         }
 
@@ -974,6 +993,10 @@ export class Storyblok {
   public setCacheVersion(cv: number): void {
     if (this.accessToken) {
       cacheVersions[this.accessToken] = cv;
+      // A caller-supplied cv is evidence too, so it may serve as the sighting baseline.
+      if (cv > (highestCvs[this.accessToken] ?? 0)) {
+        highestCvs[this.accessToken] = cv;
+      }
     }
   }
 

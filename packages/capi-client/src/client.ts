@@ -4,9 +4,17 @@ import { createMemoryCacheProvider, createStrategy } from "./utils/cache";
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
-import { applyCvToQuery, extractCv } from "./utils/cv";
+import { applyCvToQuery, extractCv, extractSpaceVersion } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
-import { createCacheKey, shouldUseCache } from "./utils/request";
+import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
+import { createTokenId } from "./utils/token-id";
+import {
+  haveVersionsChanged,
+  mergeVersions,
+  readVersions,
+  versionsKey,
+  writeVersions,
+} from "./utils/versions";
 import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
 import type { Block as Component } from "./generated/types/block";
 import type { RetryOptions } from "ky";
@@ -87,7 +95,17 @@ export interface ResourceDeps<DefaultThrowOnError extends boolean = false> {
  * of the configured strategy. Only published content is cached.
  */
 export interface CacheConfig {
-  /** Custom cache provider. Defaults to an in-memory LRU cache (1 000 entries). */
+  /**
+   * Custom cache provider. Defaults to an in-memory LRU cache (1 000 entries).
+   *
+   * Sharing one provider between clients is supported and is what makes the publish
+   * signal work for per-request clients: entry keys are scoped to a hash of the access
+   * token, so clients for different spaces cannot read each other's content.
+   *
+   * The client keeps its version watermarks in the provider under the reserved key
+   * `sb:versions:v1:<tokenId>`, so clients and processes sharing a provider share them.
+   * Do not store anything else under that key: dropping it costs one refetch per entry.
+   */
   provider?: CacheProvider;
   /** Cache strategy for published requests. @default 'cache-first' */
   strategy?: CacheStrategy | CacheStrategyHandler;
@@ -99,16 +117,22 @@ export interface CacheConfig {
    * - `'auto'` (default): automatically attach the tracked `cv` to
    *   subsequent published requests for cache busting.
    * - `'manual'`: do not attach `cv` to outgoing requests. The client still
-   *   tracks cv internally for cache invalidation (flushing when cv changes),
-   *   but the query parameter is not sent. Useful for SSR with edge caching
-   *   where stable URLs are required.
+   *   tracks the cv for cache invalidation, but the query parameter is not sent.
+   *   Useful for SSR with edge caching where stable URLs are required.
    */
   cv?: "auto" | "manual";
   /**
-   * Controls when the cache is flushed on cv change.
+   * Controls whether the client invalidates cached entries on its own when it notices a
+   * new content version.
    *
-   * - `'auto'` (default): automatically flush the cache whenever the API returns a new cv value.
-   * - `'manual'`: never auto-flush; call `client.flushCache()` explicitly (e.g. on webhook trigger).
+   * - `'auto'` (default): entries stop being served as soon as the API reports a version
+   *   newer than the one they were served under. The provider is not emptied — entries
+   *   that are no longer served expire by TTL or eviction.
+   * - `'manual'`: a version change never invalidates a cached entry; call
+   *   `client.flushCache()` explicitly (e.g. on webhook trigger). Versions are still
+   *   tracked, and a response answered for a version that has since been superseded is
+   *   still not cached in either mode: that keeps known-stale content out of the cache
+   *   rather than invalidating what is already in it.
    */
   flush?: "auto" | "manual";
   /**
@@ -247,7 +271,13 @@ export const createApiClientBase = <
   const cacheTtlMs = cache.ttlMs ?? 60_000;
   const cacheFlush = cache.flush ?? "auto";
   const cvMode = cache.cv ?? "auto";
-  let currentCv: number | undefined;
+  /**
+   * Where the version watermarks live. In the provider, not on this closure, so that
+   * every client sharing the provider — including a fresh one per request — shares them.
+   */
+  /** Identifies the space in cache keys without putting the token itself in them. */
+  const tokenId = createTokenId(accessToken);
+  const watermarksKey = versionsKey(tokenId);
 
   const client: Client = createClient(
     createConfig({
@@ -287,38 +317,126 @@ export const createApiClientBase = <
     },
   ];
 
-  const updateCv = async (result: ApiResponse): Promise<boolean> => {
-    const nextCv = extractCv(result.data);
-    if (nextCv === undefined) {
-      return true;
-    }
-
-    // Guard against cv regression: SWR background revalidation may carry a
-    // stale cv from a prior request; never move cv backward.
-    if (currentCv !== undefined && nextCv < currentCv) {
-      return false;
-    }
-
-    if (cacheFlush === "auto" && currentCv !== undefined && currentCv !== nextCv) {
-      await cacheProvider.flush();
-    }
-
-    currentCv = nextCv;
-    return true;
+  /**
+   * Empty the cache and reset the tracked versions.
+   *
+   * Call this explicitly when `cache.flush` is set to `'manual'`, e.g. after
+   * receiving a Storyblok webhook event that signals content has changed.
+   */
+  const flushCache = async (): Promise<void> => {
+    await cacheProvider.flush();
+    // The watermarks describe entries that no longer exist. Recording an empty record
+    // rather than relying on `flush()` having removed it also invalidates anything a
+    // partial provider implementation left behind.
+    await writeVersions(cacheProvider, watermarksKey, {});
   };
 
-  const cacheSuccessResult = async <TResponse extends ApiResponse>(
-    key: string,
-    result: TResponse,
-  ) => {
-    const shouldCacheResult = await updateCv(result);
-    if (result.error === undefined && shouldCacheResult) {
-      await cacheProvider.set(key, {
-        value: result,
-        ttlMs: cacheTtlMs,
-      });
+  /**
+   * Records the versions a response reports, applies the publish signal, and decides
+   * whether the response may be cached.
+   *
+   * Two signals arrive: the `cv` in a content response body identifies the published
+   * snapshot that response belongs to, and `space.version` from `/cdn/spaces/me` reports
+   * the space's raw version. That endpoint is cached for two seconds where content is
+   * cached for a week, which makes polling it the cheapest way to notice a publish.
+   *
+   * The two are not interchangeable — a Minimum Cache TTL floors the `cv` into TTL-sized
+   * buckets while `space.version` keeps reporting the raw version — so each only ever
+   * advances its own watermark, and a publish is recognised by `space.version` moving
+   * forward against itself.
+   *
+   * Noticing a publish drops `knownCv`, which makes every entry tagged with the old `cv`
+   * unreachable and sends the next request out without a `cv` so the origin redirects it
+   * to the current one. The provider is not flushed: unreachable entries expire on their
+   * own, and flushing would also empty a provider shared with clients that keep their own
+   * entries in it.
+   *
+   * The space version is gated on the path, not just the response shape: another response
+   * that happens to embed a numeric `space.version` must not invalidate anything.
+   *
+   * Known limitation: the record is read, merged and written back without a lock, and
+   * `CacheProvider` offers no compare-and-swap to build one from. Two concurrent requests
+   * can therefore write over each other — a poll that dropped `knownCv` for a publish can
+   * lose that drop to a content response that read the record before it, and with it the
+   * space-version watermark can fall back to the value that response had read. It costs
+   * one repeated round of invalidation: the next poll compares against the older
+   * watermark, recognises the same publish again and drops `knownCv` again. No entry is
+   * served past its version in the meantime, because the `cv` the losing write records is
+   * the newer one. The window is a provider round trip wide, so it is wider for an
+   * external provider than for the in-memory one.
+   *
+   * @param learnCv whether this response's `cv` may advance the watermark. Draft
+   * responses bypass the cache and a caller-pinned `cv` describes the caller's choice
+   * rather than the space's current state, so neither may teach one.
+   * @param honourOlderSnapshot keep a response whose body reports a `cv` below the known
+   * one. Only a caller-pinned `cv` may: it asked for that snapshot, where an unpinned
+   * request got it from an edge node that had not caught up.
+   * @param knownCvAtIssue the `cv` this request was issued under. A response is discarded
+   * when that `cv` is no longer the known one: it was answered for a version that has
+   * since been superseded, so caching it would refill the cache with pre-publish content
+   * and teach back the `cv` the publish dropped.
+   */
+  const applyResponseVersions = async (
+    path: string,
+    result: ApiResponse,
+    {
+      learnCv,
+      honourOlderSnapshot = false,
+      knownCvAtIssue,
+    }: { learnCv: boolean; honourOlderSnapshot?: boolean; knownCvAtIssue?: number },
+  ): Promise<{ mayCache: boolean; cv?: number }> => {
+    const bodyCv = extractCv(result.data);
+    const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(result.data) : undefined;
+    const current = await readVersions(cacheProvider, watermarksKey);
+
+    // A response answered for a `cv` that is no longer the known one was superseded while
+    // in flight — unless its own body reports the very `cv` that superseded it, in which
+    // case it carries the current snapshot and only lost a race. Discarding those makes a
+    // publish cost a refetch of every key that happened to be in flight.
+    const carriesKnownCv = bodyCv !== undefined && bodyCv === current?.knownCv;
+    const isSuperseded =
+      knownCvAtIssue !== undefined && current?.knownCv !== knownCvAtIssue && !carriesKnownCv;
+    // A response reporting a `cv` below the known one came from an edge node still holding
+    // an older snapshot. Stale by construction, so it must neither teach a `cv` nor be
+    // stored over the newer entry that may already be there — but a caller who pinned that
+    // `cv` asked for exactly this snapshot. The two are identical on the wire (the edge
+    // answers both with the old body and its old `cv`), so only the caller's intent tells
+    // them apart.
+    const isStaleEdgeRead =
+      !honourOlderSnapshot &&
+      bodyCv !== undefined &&
+      current?.knownCv !== undefined &&
+      bodyCv < current.knownCv;
+    const mayCache = !isSuperseded && !isStaleEdgeRead;
+
+    let next = mergeVersions(current, {
+      knownCv: learnCv && mayCache ? bodyCv : undefined,
+      knownSpaceVersion: spaceVersion,
+    });
+
+    if (spaceVersion !== undefined && cacheFlush === "auto") {
+      const lastSpaceVersion = current?.knownSpaceVersion;
+      // Only a version that moved FORWARD is a publish. A lower one is a stale read from
+      // a POP whose two-second cache has not caught up.
+      const isPublish = lastSpaceVersion !== undefined && spaceVersion > lastSpaceVersion;
+      // A first sighting has no previous space version to compare against, so compare
+      // against the known `cv`. Without a Minimum Cache TTL both report the same raw
+      // version, so a version ahead of the `cv` means content was published between the
+      // first content response and this poll. With one, the `cv` lags by design and this
+      // costs a single needless revalidation per watermark record.
+      const isAheadOfKnownCv =
+        lastSpaceVersion === undefined && next.knownCv !== undefined && spaceVersion > next.knownCv;
+
+      if (isPublish || isAheadOfKnownCv) {
+        next = { ...next, knownCv: undefined };
+      }
     }
-    return result;
+
+    if (haveVersionsChanged(current, next)) {
+      await writeVersions(cacheProvider, watermarksKey, next);
+    }
+
+    return { mayCache, cv: bodyCv };
   };
 
   const requestNetwork = async (
@@ -353,35 +471,79 @@ export const createApiClientBase = <
     fetchFn: (query: Record<string, unknown>) => Promise<ApiResponse<TData, ThrowOnError>>,
     cacheOptions?: RequestWithCacheOptions,
   ): Promise<ApiResponse<TData, ThrowOnError>> => {
-    const query =
-      cvMode === "auto" && currentCv !== undefined ? applyCvToQuery(rawQuery, currentCv) : rawQuery;
     const cacheEnabled = shouldUseCache(method, path, rawQuery);
 
     if (!cacheEnabled) {
-      const networkResult = await fetchFn(query);
+      // No cv is attached: it is a cache buster, and on `/cdn/spaces/me` it would only
+      // fragment the edge cache of the endpoint polling depends on. Draft requests ignore
+      // it altogether.
+      const networkResult = await fetchFn(rawQuery);
       throttleManager.adaptToResponse(networkResult.response);
-      await updateCv(networkResult);
+      await applyResponseVersions(path, networkResult, { learnCv: false });
+
       return networkResult;
     }
 
-    const baseKey = createCacheKey(method, path, rawQuery);
+    const baseKey = createCacheKey(method, path, rawQuery, tokenId);
     const key = cacheOptions?.cacheKeyPrefix
       ? `${cacheOptions.cacheKeyPrefix}:${baseKey}`
       : baseKey;
-    const cachedEntry = await cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key);
-    const cachedResult = cachedEntry?.value;
+
+    const [cachedEntry, versions] = await Promise.all([
+      cacheProvider.get<ApiResponse<TData, ThrowOnError>>(key),
+      readVersions(cacheProvider, watermarksKey),
+    ]);
+
+    // A caller asking for one specific snapshot gets that snapshot: its entry lives under
+    // its own key, is immune to publishes, expires by TTL alone, and never teaches a `cv`.
+    const isCvPinnedByCaller = rawQuery.cv !== undefined;
+    // A missing watermark record counts as "cv unknown", so a tagged entry is stale: the
+    // record shares the provider with the entries it governs and can be evicted while
+    // they survive, and reading a tagged entry against no known version at all would
+    // silently fall back to TTL-only invalidation. One refetch rewrites the record.
+    const isStaleByCv =
+      cacheFlush === "auto" &&
+      !isCvPinnedByCaller &&
+      cachedEntry?.cv !== undefined &&
+      cachedEntry.cv !== versions?.knownCv;
+    const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;
+
+    // With a known cv the request is pinned to that snapshot; without one it goes out bare
+    // and the origin redirects it to the current version, at the cost of one extra hop.
+    const query =
+      cvMode === "auto" && versions?.knownCv !== undefined
+        ? applyCvToQuery(rawQuery, versions.knownCv)
+        : rawQuery;
 
     const loadNetwork = async () => {
       const result = await fetchFn(query);
       throttleManager.adaptToResponse(result.response);
-      return cacheSuccessResult(key, result);
+
+      const knownCvAtIssue = isCvPinnedByCaller ? undefined : versions?.knownCv;
+      const { mayCache, cv } = await applyResponseVersions(path, result, {
+        learnCv: !isCvPinnedByCaller,
+        honourOlderSnapshot: isCvPinnedByCaller,
+        knownCvAtIssue,
+      });
+
+      if (result.error === undefined && mayCache) {
+        // Tagged with the `cv` it was served under, so it stops being readable the moment
+        // a newer one is known — including for entries stored by another client or
+        // process sharing the provider. Endpoints that report no `cv` of their own
+        // (`/cdn/tags`, `/cdn/links`) are tagged with the `cv` they were requested under,
+        // which is the version they were answered for; only a request issued while no
+        // `cv` was known stays untagged and falls back to TTL alone.
+        await cacheProvider.set(key, {
+          value: result,
+          ttlMs: cacheTtlMs,
+          cv: cv ?? knownCvAtIssue,
+        });
+      }
+
+      return result;
     };
 
-    return strategy({
-      key,
-      cachedResult,
-      loadNetwork,
-    });
+    return strategy({ key, cachedResult, loadNetwork });
   };
 
   const request = async (
@@ -418,17 +580,6 @@ export const createApiClientBase = <
     ...resourceDeps,
     inlineRelations,
   });
-
-  /**
-   * Flush the in-memory cache and reset the tracked cv.
-   *
-   * Call this explicitly when `cache.flush` is set to `'manual'`, e.g. after
-   * receiving a Storyblok webhook event that signals content has changed.
-   */
-  const flushCache = async (): Promise<void> => {
-    await cacheProvider.flush();
-    currentCv = undefined;
-  };
 
   return {
     datasourceEntries: createDatasourceEntriesResource(resourceDeps),

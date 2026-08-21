@@ -1,5 +1,6 @@
 import {
   asyncMap,
+  createCacheKey,
   decodeIfEncoded,
   delay,
   flatMap,
@@ -7,7 +8,6 @@ import {
   getRegionURL,
   isCDNUrl,
   range,
-  stringify,
 } from "./utils";
 import SbFetch from "./sbFetch";
 import type Method from "./constants";
@@ -49,6 +49,94 @@ export * from "./interfaces";
 let memory: Partial<IMemoryType> = {};
 
 const cacheVersions = {} as CachedVersions;
+
+/**
+ * The only endpoint that reports the space's raw `version`, and the one endpoint whose
+ * responses must never enter the content cache.
+ */
+const SPACES_ME_PATH = "/cdn/spaces/me";
+
+/** The invalidation state of one cache, shared by every client instance writing to it. */
+interface CacheKeyspaceState {
+  /**
+   * Last `space.version` seen per token, tracked separately from {@link cacheVersions}. A
+   * change signal only, never sent as a `cv` — see `cacheResponse`.
+   */
+  spaceVersions: CachedVersions;
+  /**
+   * Bumped on every flush of this cache. A response already in flight when the cache was
+   * emptied belongs to the previous epoch: caching it would refill the cache with the
+   * pre-publish content the flush just dropped, and adopting its `cv` would re-pin the
+   * very `?cv=<old>` the flush cleared — making those entries reachable again, with the
+   * space-version signal already consumed and no later poll left to re-raise it.
+   */
+  flushEpoch: number;
+}
+
+/**
+ * The invalidation state of every cache in use, keyed by the identity of the cache itself.
+ *
+ * Identity, not instance: a signal is consumed once per cache, so instances writing to
+ * the same cache have to share it, while an instance with its own provider must not have
+ * its only chance to flush that provider consumed by another instance's poll. Keying per
+ * instance breaks the first half of that — per-request clients over one external provider
+ * would each see a fresh state, and under a Minimum Cache TTL each flush the shared cache
+ * on its first poll. Both halves hold when the provider object is the key.
+ *
+ * A `WeakMap`, so state is collected along with a provider nobody uses any more.
+ *
+ * The provider object therefore has to outlive the client for per-request clients to
+ * share the signal: a handler that builds its provider inline on every request
+ * (`cache: { type: 'custom', custom: makeProvider() }`) hands over a new key each time and
+ * gets a fresh state, so no space version is ever compared against a previous one. Build
+ * the provider once, at module scope, and pass the same object to every client.
+ */
+const cacheKeyspaces = new WeakMap<object, CacheKeyspaceState>();
+
+/** Stands in for the module-level {@link memory} cache, which has no provider object. */
+const MEMORY_KEYSPACE = {};
+
+/**
+ * Stands in for the no-op default provider, which caches nothing.
+ *
+ * Shared by every client without one, deliberately: there are no entries to keep apart,
+ * so the only thing they share is a flush epoch guarding a cache that holds nothing. The
+ * cost is that one such client's `flushCache()` can stop another's in-flight response
+ * from teaching a `cv`, which costs that request the origin's redirect and nothing more.
+ */
+const NO_CACHE_KEYSPACE = {};
+
+const keyspaceState = (keyspace: object): CacheKeyspaceState => {
+  const state = cacheKeyspaces.get(keyspace);
+  if (state) {
+    return state;
+  }
+
+  const created: CacheKeyspaceState = { spaceVersions: {}, flushEpoch: 0 };
+  cacheKeyspaces.set(keyspace, created);
+  return created;
+};
+
+/**
+ * Highest `cv` ever seen per token, and unlike {@link cacheVersions} never cleared. It is
+ * the baseline a first `space.version` sighting is compared against.
+ *
+ * {@link cacheVersions} cannot serve that purpose: a flush records the sentinel `0` there,
+ * which erases the comparison for every cache that has not polled yet, not just for the
+ * one that flushed. An instance with its own provider would then find no baseline, skip
+ * its own first sighting, and serve pre-publish content for good.
+ *
+ * Never sent anywhere: a `cv` is only ever attached to a request from
+ * {@link cacheVersions}.
+ */
+const highestCvs = {} as CachedVersions;
+
+/**
+ * Builds the request path from a slug, whichever way the caller spelled it. Every
+ * spelling has to produce the same path: it is compared against {@link SPACES_ME_PATH}
+ * and it is part of the cache key. The API serves `cdn/spaces/me/` like `cdn/spaces/me`.
+ */
+const toPath = (slug: string): string => `/${slug.replace(/^\/+/, "").replace(/\/+$/, "")}`;
 
 interface CachedVersions {
   [key: string]: number;
@@ -95,6 +183,8 @@ export class Storyblok {
   public resolveNestedRelations: boolean;
   private stringifiedStoriesCache: Record<string, string>;
   private inlineAssets: boolean;
+  /** Identifies the cache this instance writes to. See {@link cacheKeyspaces}. */
+  private cacheKeyspace: object;
 
   /**
    *
@@ -154,6 +244,14 @@ export class Storyblok {
     this.relations = {} as RelationsType;
     this.links = {} as LinksType;
     this.cache = config.cache || { clear: "manual" };
+    // Mirrors `cacheProvider()`: a custom provider identifies its own cache, `'memory'`
+    // means the module-level one, and everything else caches nothing.
+    this.cacheKeyspace =
+      this.cache.type === "custom" && this.cache.custom
+        ? this.cache.custom
+        : this.cache.type === "memory"
+          ? MEMORY_KEYSPACE
+          : NO_CACHE_KEYSPACE;
     this.cvMode = config.cache?.cv ?? "auto";
     this.resolveCounter = 0;
     this.resolveNestedRelations = config.resolveNestedRelations || true;
@@ -170,13 +268,29 @@ export class Storyblok {
     });
   }
 
-  private parseParams(params: ISbStoriesParams): ISbStoriesParams {
+  private parseParams(params: ISbStoriesParams, url = ""): ISbStoriesParams {
     if (!params.token) {
       params.token = this.getToken();
     }
 
-    if (!params.cv && this.cvMode === "auto") {
-      params.cv = cacheVersions[params.token];
+    // The cv is a cache buster, so it only belongs on cached requests. On
+    // `/cdn/spaces/me` it would only fragment the edge cache of the endpoint polling
+    // relies on for freshness.
+    if (url === SPACES_ME_PATH) {
+      // `parseParams` stamps the cv onto the caller's object, so a params object reused
+      // across calls arrives here already carrying one. Skipping the assignment is not
+      // enough — it has to be removed.
+      delete params.cv;
+    } else if (!params.cv && this.cvMode === "auto") {
+      // Only a truthy cv is serialized. A flush or an explicit `clearCacheVersion()`
+      // records the sentinel `0`, which is not a version the API knows: sending `cv=0`
+      // would add an edge redirect and cache the response under a key no later request
+      // reads. Without a cv the request takes that redirect to the current version
+      // directly.
+      const trackedCv = cacheVersions[params.token];
+      if (trackedCv) {
+        params.cv = trackedCv;
+      }
     }
 
     if (Array.isArray(params.resolve_relations)) {
@@ -196,7 +310,7 @@ export class Storyblok {
 
   private factoryParamOptions(url: string, params: ISbStoriesParams): ISbStoriesParams {
     if (isCDNUrl(url)) {
-      return this.parseParams(params);
+      return this.parseParams(params, url);
     }
 
     return params;
@@ -209,9 +323,10 @@ export class Storyblok {
     page: number,
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResult> {
+    const cvPinnedByCaller = params.cv !== undefined;
     const query = this.factoryParamOptions(url, getOptionsPage(params, per_page, page));
 
-    return this.cacheResponse(url, query, undefined, fetchOptions);
+    return this.cacheResponse(url, query, undefined, fetchOptions, cvPinnedByCaller);
   }
 
   public get(
@@ -231,21 +346,24 @@ export class Storyblok {
     params: ISbStoriesParams | ISbLinksParams = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResult | ISbLinksResult> {
-    if (!params) {
-      params = {} as ISbStoriesParams;
-    }
-    const url = `/${slug}`;
+    // A copy, because everything below stamps request state onto it — the version, the
+    // token, the cv. A caller reusing one params object across calls would otherwise
+    // carry a stale cv into the next request and see its own object change underneath it.
+    const requestParams: ISbStoriesParams = { ...params };
+    const url = toPath(slug);
 
     // Only add/keep version parameter for CDN URLs — strip it from MAPI requests
     if (isCDNUrl(url)) {
-      params.version = params.version || this.version;
-    } else if (params.version) {
-      delete params.version;
+      requestParams.version = requestParams.version || this.version;
+    } else if (requestParams.version) {
+      delete requestParams.version;
     }
 
-    const query = this.factoryParamOptions(url, params);
+    // Read before `parseParams` stamps the tracked cv onto the copy.
+    const cvPinnedByCaller = requestParams.cv !== undefined;
+    const query = this.factoryParamOptions(url, requestParams);
 
-    return this.cacheResponse(url, query, undefined, fetchOptions);
+    return this.cacheResponse(url, query, undefined, fetchOptions, cvPinnedByCaller);
   }
 
   public async getAll(
@@ -255,7 +373,7 @@ export class Storyblok {
     fetchOptions?: ISbCustomFetch,
   ): Promise<any[]> {
     const perPage = params?.per_page || 25;
-    const url = `/${slug}`.replace(/\/$/, "");
+    const url = toPath(slug).replace(/\/$/, "");
     const e = entity ?? url.substring(url.lastIndexOf("/") + 1);
     params.version = params.version || this.version;
 
@@ -275,7 +393,7 @@ export class Storyblok {
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResponse> {
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -297,7 +415,7 @@ export class Storyblok {
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResponse> {
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -319,7 +437,7 @@ export class Storyblok {
     params: ISbStoriesParams | ISbContentMangmntAPI = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResponse> {
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -344,7 +462,7 @@ export class Storyblok {
     if (!params) {
       params = {} as ISbStoriesParams;
     }
-    const url = `/${slug}`;
+    const url = toPath(slug);
 
     const rateLimit = determineRateLimit(
       undefined,
@@ -704,13 +822,17 @@ export class Storyblok {
     params: ISbStoriesParams,
     retries?: number,
     fetchOptions?: ISbCustomFetch,
+    // Whether the cv on this request came from the caller rather than from the tracked
+    // one. Only the caller's own params can tell the two apart, and by the time they
+    // reach here `parseParams` has already stamped its own cv onto them.
+    cvPinnedByCaller = false,
   ): Promise<ISbResult> {
-    const cacheKey = stringify({ url, params });
+    const cacheKey = createCacheKey(url, params);
     const provider = this.cacheProvider();
 
     // Check in-memory cache first for published content
     // If cached, skip API call and rate limiting entirely
-    if (params.version === "published" && url !== "/cdn/spaces/me") {
+    if (params.version === "published" && url !== SPACES_ME_PATH) {
       const cache = await provider.get(cacheKey);
       if (cache) {
         return Promise.resolve(cache);
@@ -722,6 +844,11 @@ export class Storyblok {
     const isMapi = !isCDNUrl(url) && this.rateLimitConfig.isManagementApi;
     const defaultLimit = isMapi ? MANAGEMENT_API_DEFAULT_RATE_LIMIT : undefined;
     const rateLimit = determineRateLimit(url, params, this.rateLimitConfig, defaultLimit);
+
+    // Re-synced after a flush this request performs itself: the guard exists to drop
+    // responses invalidated by *another* request, not the fresh one doing the flushing.
+    const keyspace = keyspaceState(this.cacheKeyspace);
+    let epochAtRequest = keyspace.flushEpoch;
 
     return new Promise(async (resolve, reject) => {
       try {
@@ -759,23 +886,132 @@ export class Storyblok {
           response = await this.processInlineAssets(response);
         }
 
-        if (params.version === "published" && url !== "/cdn/spaces/me") {
-          await provider.set(cacheKey, response);
-        }
-
         const isCacheClearable =
           (this.cache.clear === "onpreview" && params.version === "draft") ||
           this.cache.clear === "auto";
 
-        if (params.token && response.data.cv) {
-          if (
-            isCacheClearable &&
-            cacheVersions[params.token] && // there is a cache
-            cacheVersions[params.token] !== response.data.cv // a new cv is incoming
-          ) {
+        // `/cdn/spaces/me` is cached for two seconds where content is cached for a
+        // week, which makes it the cheapest way to notice a publish. It reports no `cv`,
+        // and its `space.version` is not one: a Minimum Cache TTL floors the `cv` into
+        // TTL-sized buckets while `space.version` reports the raw version. Change signal
+        // only — the `cv` sent with requests still comes from content responses.
+        //
+        // `@storyblok/api-client` reads the same two signals, with the same rules for
+        // what each one may conclude. It acts on them differently — it tags every cached
+        // entry with the version it was served under instead of flushing — so the shared
+        // part is the reading, not the reaction. The order matters here: the space version
+        // is handled before the cv, so a response carrying both keeps the cv that arrived
+        // with it.
+        //
+        // `response.data` is untyped, so narrow the version first: another type would
+        // never compare equal to the tracked numbers and would flush on every poll.
+        const rawSpaceVersion = url === SPACES_ME_PATH ? response.data.space?.version : undefined;
+        const spaceVersion = typeof rawSpaceVersion === "number" ? rawSpaceVersion : undefined;
+
+        if (params.token && spaceVersion !== undefined) {
+          const lastSpaceVersion = keyspace.spaceVersions[params.token];
+          // The highest cv ever seen, not the currently tracked one: this comparison must
+          // survive another instance's flush, which zeroes the tracked cv for the whole
+          // token. See {@link highestCvs}.
+          const baselineCv = highestCvs[params.token];
+          // A first sighting has no previous space version, so compare against the cv.
+          // Without a Minimum Cache TTL both report the same raw version, so an equal
+          // pair proves nothing was published. A space version AHEAD of the cv is either
+          // a publish or a TTL flooring the cv — indistinguishable here, so flush once
+          // defensively. A space version BEHIND it is neither: `space.version` is
+          // monotonic at the origin, so only an edge node that has not caught up reports
+          // one, and flushing for it would empty the cache for no reason.
+          // Checked for truthiness rather than for `undefined`, like the cv block below,
+          // so the sentinel `0` never reads as a version. The branch fires at most once
+          // per keyspace and token: from the next poll on, `lastSpaceVersion` is set.
+          const isFirstSighting =
+            lastSpaceVersion === undefined && Boolean(baselineCv) && spaceVersion > baselineCv;
+          const hasSpaceVersionChanged =
+            lastSpaceVersion !== undefined && spaceVersion > lastSpaceVersion;
+
+          if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
             await this.flushCache();
+            epochAtRequest = keyspace.flushEpoch;
+            // `flushCache` clears the cv of the client's own token, which `params.token`
+            // may override — and unlike the cv path below, no incoming cv arrives here to
+            // overwrite a stale one. The edge serves `?cv=<old>` for up to a week.
+            cacheVersions[params.token] = 0;
           }
-          cacheVersions[params.token] = response.data.cv;
+          // Only record when this request could have acted on it. Under `'onpreview'` a
+          // published request is not clearable, and recording from it would consume the
+          // signal: the next draft poll would find the version unchanged and never
+          // flush.
+          if (isCacheClearable) {
+            // Recorded as a maximum, for the same reason the comparison uses `>`: a
+            // version from an edge node that has not caught up must not become the
+            // baseline, or the next poll back at the current version flushes for nothing.
+            keyspace.spaceVersions[params.token] =
+              lastSpaceVersion === undefined
+                ? spaceVersion
+                : Math.max(lastSpaceVersion, spaceVersion);
+          }
+        }
+
+        // A cv from before a flush is never adopted: it would send `?cv=<old>` again and
+        // make the entries the flush dropped reachable at the edge, with the
+        // space-version signal already consumed and no poll left to re-raise it. Leaving
+        // the sentinel `0` in place sends the next request out without a cv, which takes
+        // the origin's redirect to the current one.
+        // Never adopted backwards either: a cv below the tracked one is an older edge
+        // object answering, and pinning requests to it would serve content the space has
+        // already moved past. Such a response is not cached at all — the entry it would
+        // write is known to be stale the moment it is written.
+        let isStaleCvResponse = false;
+        if (params.token && response.data.cv && epochAtRequest === keyspace.flushEpoch) {
+          const lastCv = cacheVersions[params.token];
+          if (lastCv && response.data.cv < lastCv) {
+            isStaleCvResponse = true;
+          } else {
+            if (
+              isCacheClearable &&
+              lastCv && // there is a cache
+              lastCv !== response.data.cv // a new cv is incoming
+            ) {
+              await this.flushCache();
+              epochAtRequest = keyspace.flushEpoch;
+            }
+            cacheVersions[params.token] = response.data.cv;
+            // A maximum, because the tracked cv above may have been cleared by a flush:
+            // a lower cv is legitimate to track again, but must not lower the baseline.
+            highestCvs[params.token] = Math.max(highestCvs[params.token] ?? 0, response.data.cv);
+          }
+        }
+
+        // Cached last, after every flush this response may have triggered: writing the
+        // entry first would have it dropped by the flush that the very same response
+        // caused, leaving the cache empty and the content re-fetched on the next read.
+        if (
+          params.version === "published" &&
+          url !== SPACES_ME_PATH &&
+          !isStaleCvResponse &&
+          // Stale by construction: the cache was emptied while this was in flight.
+          epochAtRequest === keyspace.flushEpoch
+        ) {
+          // Stored under the key the next read will build, not the one this request was
+          // issued with. The cv is part of the key, and a flush this very response
+          // triggered has since moved the tracked cv — so keeping the request's own key
+          // would leave an entry no later request ever looks up, and the content would be
+          // fetched again on the next read.
+          //
+          // Only the cv the client attached itself is replaced, and only the way
+          // `parseParams` attaches it: a cv the caller pinned describes the caller's
+          // choice and is part of their key, `'manual'` never puts one in the key at all,
+          // and a flushed cv drops out of it entirely.
+          const settledParams = { ...params };
+          if (!cvPinnedByCaller && this.cvMode === "auto") {
+            const settledCv = params.token ? cacheVersions[params.token] : undefined;
+            if (settledCv) {
+              settledParams.cv = settledCv;
+            } else {
+              delete settledParams.cv;
+            }
+          }
+          await provider.set(createCacheKey(url, settledParams), response);
         }
 
         return resolve(response);
@@ -787,7 +1023,12 @@ export class Storyblok {
             // eslint-disable-next-line no-console
             console.log(`Hit rate limit. Retrying in ${this.retriesDelay / 1000} seconds.`);
             await delay(this.retriesDelay);
-            return this.cacheResponse(url, params, retries).then(resolve).catch(reject);
+            // `fetchOptions` is passed on: a retry that dropped it would reach the network
+            // with different credentials, headers or framework caching hints than the
+            // request the caller made.
+            return this.cacheResponse(url, params, retries, fetchOptions, cvPinnedByCaller)
+              .then(resolve)
+              .catch(reject);
           }
         }
         reject(error);
@@ -816,6 +1057,10 @@ export class Storyblok {
   public setCacheVersion(cv: number): void {
     if (this.accessToken) {
       cacheVersions[this.accessToken] = cv;
+      // A caller-supplied cv is evidence too, so it may serve as the sighting baseline.
+      if (cv > (highestCvs[this.accessToken] ?? 0)) {
+        highestCvs[this.accessToken] = cv;
+      }
     }
   }
 
@@ -870,6 +1115,7 @@ export class Storyblok {
   public async flushCache(): Promise<this> {
     await this.cacheProvider().flush();
     this.clearCacheVersion();
+    keyspaceState(this.cacheKeyspace).flushEpoch++;
     return this;
   }
 

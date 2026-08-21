@@ -12,14 +12,32 @@ export interface CacheEntry<TValue = unknown> {
   value: TValue;
   storedAt: number;
   ttlMs: number;
+  /**
+   * The `cv` the cached response reported, i.e. the published snapshot it belongs to.
+   * Absent for endpoints that report none (`/cdn/tags`, `/cdn/links`), which fall back to
+   * TTL-only invalidation. Entries are invalidated by comparing this against the tracked
+   * `cv`, so a response that was already in flight when content was published cannot be
+   * served afterwards — whichever client or process stored it.
+   */
+  cv?: number;
 }
 
 export interface CacheEntryInput<TValue = unknown> {
   value: TValue;
   storedAt?: number;
   ttlMs: number;
+  /** See {@link CacheEntry.cv}. */
+  cv?: number;
 }
 
+/**
+ * Reads and writes cache entries.
+ *
+ * Entries are opaque to the provider: it must round-trip whatever it is given, including
+ * the optional `cv` tag. One reserved key (`sb:versions:v1:<accessToken>`) holds the
+ * client's version watermarks rather than a response, so it participates in `flush()`
+ * like any other entry.
+ */
 export interface CacheProvider {
   get: <TValue = unknown>(key: string) => Promise<CacheEntry<TValue> | undefined>;
   set: <TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) => Promise<void>;

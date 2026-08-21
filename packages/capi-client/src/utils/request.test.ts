@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createCacheKey, isDraftRequest, shouldUseCache } from "./request";
+import {
+  createCacheKey,
+  isDraftRequest,
+  isSpacesMeRequest,
+  normalizePath,
+  shouldUseCache,
+} from "./request";
 
 describe("isDraftRequest", () => {
   it("should return true when version is draft", () => {
@@ -85,5 +91,51 @@ describe("shouldUseCache", () => {
 
   it("should return false for non-cacheable paths without leading slash", () => {
     expect(shouldUseCache("GET", "v2/cdn/spaces/me", { version: "published" })).toBe(false);
+  });
+});
+
+describe("normalizePath", () => {
+  it("should add a missing leading slash", () => {
+    expect(normalizePath("v2/cdn/stories")).toBe("/v2/cdn/stories");
+  });
+
+  it("should collapse repeated leading slashes", () => {
+    expect(normalizePath("///v2/cdn/stories")).toBe("/v2/cdn/stories");
+  });
+
+  it("should drop trailing slashes", () => {
+    expect(normalizePath("/v2/cdn/spaces/me/")).toBe("/v2/cdn/spaces/me");
+    expect(normalizePath("v2/cdn/spaces/me//")).toBe("/v2/cdn/spaces/me");
+  });
+
+  it("should keep the root path", () => {
+    expect(normalizePath("/")).toBe("/");
+    expect(normalizePath("")).toBe("/");
+  });
+});
+
+describe("isSpacesMeRequest", () => {
+  it("should match every spelling the API serves", () => {
+    expect(isSpacesMeRequest("/v2/cdn/spaces/me")).toBe(true);
+    expect(isSpacesMeRequest("v2/cdn/spaces/me")).toBe(true);
+    expect(isSpacesMeRequest("/v2/cdn/spaces/me/")).toBe(true);
+  });
+
+  it("should not match another endpoint", () => {
+    expect(isSpacesMeRequest("/v2/cdn/stories")).toBe(false);
+  });
+});
+
+describe("shouldUseCache with a trailing slash", () => {
+  it("should keep the spaces endpoint out of the cache", () => {
+    expect(shouldUseCache("GET", "/v2/cdn/spaces/me/", {})).toBe(false);
+  });
+});
+
+describe("createCacheKey with a trailing slash", () => {
+  it("should produce the same key regardless of a trailing slash", () => {
+    expect(createCacheKey("GET", "/v2/cdn/stories/", { version: "published" })).toBe(
+      createCacheKey("GET", "/v2/cdn/stories", { version: "published" }),
+    );
   });
 });

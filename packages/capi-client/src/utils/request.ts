@@ -11,8 +11,15 @@ export const NON_CACHEABLE_PATHS = new Set([SPACES_ME_PATH]);
 /** Returns `true` when the query targets draft content (`version: 'draft'`). Draft requests bypass the cache. */
 export const isDraftRequest = (query: Record<string, unknown>) => query.version === "draft";
 
-/** Ensures a path starts with exactly one leading slash, so comparisons and cache keys agree. */
-const normalizePath = (path: string) => path.replace(/^\/*/, "/");
+/**
+ * Ensures a path starts with exactly one leading slash and carries no trailing one, so
+ * every spelling a caller may pass produces the same path for comparisons and cache keys.
+ * The API serves `/cdn/spaces/me/` exactly like `/cdn/spaces/me`.
+ */
+export const normalizePath = (path: string) => {
+  const withLeadingSlash = path.replace(/^\/*/, "/");
+  return withLeadingSlash.length > 1 ? withLeadingSlash.replace(/\/+$/, "") : withLeadingSlash;
+};
 
 /** Returns `true` when the path targets the endpoint that reports the space version. */
 export const isSpacesMeRequest = (path: string) => normalizePath(path) === SPACES_ME_PATH;

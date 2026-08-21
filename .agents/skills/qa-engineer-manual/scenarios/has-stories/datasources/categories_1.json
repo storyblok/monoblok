@@ -4,7 +4,7 @@
   "slug": "categories",
   "dimensions": [],
   "entries": [
-    { "id": 1, "name": "Technology", "value": "technology", "dimension_value": null },
-    { "id": 2, "name": "Design", "value": "design", "dimension_value": null }
+    { "id": 1, "name": "Technology", "value": "technology", "dimension_value": "" },
+    { "id": 2, "name": "Design", "value": "design", "dimension_value": "" }
   ]
 }

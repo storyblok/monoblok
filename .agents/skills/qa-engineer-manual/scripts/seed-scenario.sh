@@ -144,6 +144,12 @@ trap cleanup EXIT
 
 # Counts staged files for a resource (assets are the non-JSON files; every
 # other resource is one *.json per entity).
+#
+# A components directory may also hold `groups.json` and `tags.json`. The CLI
+# classifies staged items by shape, not by filename, so those become component
+# groups and internal tags rather than components. Counting them here would
+# make `verify_seeded` expect more components than the scenario defines and
+# report a failure for a push that fully succeeded.
 count_staged() {
   local resource="$1"
   local dir="${staging_dir}/${resource}/${FAKE_ID}"
@@ -153,6 +159,9 @@ count_staged() {
   fi
   if [ "${resource}" = "assets" ]; then
     find "${dir}" -maxdepth 1 -type f ! -name '*.json' ! -name '*.jsonl' | wc -l | tr -d ' '
+  elif [ "${resource}" = "components" ]; then
+    find "${dir}" -maxdepth 1 -type f -name '*.json' \
+      ! -name 'groups.json' ! -name 'tags.json' | wc -l | tr -d ' '
   else
     find "${dir}" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' '
   fi

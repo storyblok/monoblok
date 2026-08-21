@@ -29,7 +29,10 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 - `../storyrails` (Storyblok backend) - Consult when verifying REST/MAPI/CAPI schemas, error shapes,
   or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
 - `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need
-  information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+  information about the visual editor, bridge protocol, or rendering in the Storyblok UI, and
+  whenever you need the real shape of a component schema field or a story content value. The editor
+  is what writes them: `packages/openapi/src/FieldType.ts` declares the shapes, `Schema/*/index.vue`
+  is what the editor **writes**, `EditorForm/FieldType*/` is what it **reads**.
 - `../storyblok-docs-platform` (docs site) - Consult when publishing or updating package reference
   docs; see `docs/docs-platform.md` for the monoblok-side conventions. User-facing documentation
   lives there, not here: package READMEs stay minimal and link to the docs site.
@@ -40,6 +43,18 @@ These sibling repos may not be available; ignore them if absent.
   file names, or internal implementation details in commit messages, PR titles and descriptions,
   issue comments, code comments, or any other public-facing text. Describe the observable API or
   behavior instead.
+- **IMPORTANT:** The Management API stores component schemas and story content as opaque blobs. It
+  accepts almost any JSON and echoes it back, so a successful round trip proves storage, not shape.
+  Never treat "I pushed it and read it back" as evidence that a shape is real: you authored the
+  input, so the check could not have failed. Only two things can ground a shape:
+  1. **Sibling-repo source** - `../storyfront` for what the editor writes and reads,
+     `../storyrails` for what the backend normalizes and enforces.
+  2. **Operator-authored data** - ask the user to create it by hand in the Storyblok UI, then read
+     it back via MAPI. You cannot produce this yourself, so treat it as the last resort, for when
+     the source does not settle it.
+
+  The API can still prove server-side *transformation* (normalization, defaults, rejection), just
+  never that a shape is correct.
 
 ## Conventions
 

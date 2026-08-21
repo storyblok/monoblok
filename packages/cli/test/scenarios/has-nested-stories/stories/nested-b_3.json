@@ -1,11 +1,12 @@
 {
   "id": 3,
-  "uuid": "3",
+  "uuid": "b6a9e847-9ca3-4c2f-8f91-7f955bff4832",
   "name": "QA Nested B",
   "slug": "nested-b",
   "full_slug": "qa-folder/nested-b",
   "parent_id": 1,
   "content": {
+    "_uid": "62fdfab1-7e07-4eef-8922-b1fd5ec036fc",
     "component": "page"
   }
 }

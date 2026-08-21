@@ -309,6 +309,12 @@ function validateFieldValue(
       checkDeclaredOption(field, value, path, entity, issues);
       break;
     case "datetime":
+    // The legacy `image`/`file` types predate the asset object and store the
+    // bare, protocol-relative URL as a string. There is nothing further to
+    // constrain: `add_https` and the crop options shape the editor, not the
+    // stored value.
+    case "image":
+    case "file":
       if (typeof value !== "string") {
         pushTypeIssue(value, "string", path, entity, issues);
       }

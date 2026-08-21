@@ -15,7 +15,25 @@ export const featureCardBlock = defineBlock({
       type: "text",
       max_length: 7,
       description: "Hex color code",
-      conditional_settings: [{ field: "is_highlighted", value: true }],
+      // The editor hides a field when the rule matches, and an unchecked
+      // boolean counts as empty: hidden until `is_highlighted` is on.
+      conditional_settings: [
+        {
+          modifications: [{ display: "hide" }],
+          rule_match: "all",
+          rule_conditions: [
+            {
+              validated_object: {
+                type: "field",
+                field_key: "is_highlighted",
+                field_attr: "value",
+              },
+              validation: "empty",
+              value: null,
+            },
+          ],
+        },
+      ],
     }),
   ],
 });

@@ -354,6 +354,17 @@ export const createApiClientBase = <
    * The space version is gated on the path, not just the response shape: another response
    * that happens to embed a numeric `space.version` must not invalidate anything.
    *
+   * Known limitation: the record is read, merged and written back without a lock, and
+   * `CacheProvider` offers no compare-and-swap to build one from. Two concurrent requests
+   * can therefore write over each other — a poll that dropped `knownCv` for a publish can
+   * lose that drop to a content response that read the record before it, and with it the
+   * space-version watermark can fall back to the value that response had read. It costs
+   * one repeated round of invalidation: the next poll compares against the older
+   * watermark, recognises the same publish again and drops `knownCv` again. No entry is
+   * served past its version in the meantime, because the `cv` the losing write records is
+   * the newer one. The window is a provider round trip wide, so it is wider for an
+   * external provider than for the in-memory one.
+   *
    * @param learnCv whether this response's `cv` may advance the watermark. Draft
    * responses bypass the cache and a caller-pinned `cv` describes the caller's choice
    * rather than the space's current state, so neither may teach one.

@@ -22,7 +22,7 @@ export type { ConditionOptions, FieldCondition } from "./helpers/define-conditio
 export { defineDatasource } from "./helpers/define-datasource";
 export type { Datasource } from "./helpers/define-datasource";
 // Field
-export { DENIABLE_FIELD_TYPES, defineField } from "./helpers/define-field";
+export { defineField } from "./helpers/define-field";
 export type {
   AssetFieldValue,
   BlockContent,
@@ -55,6 +55,9 @@ export type { BlockFolder } from "./helpers/define-folder";
 export { defineSchema } from "./helpers/define-schema";
 export type { Schema } from "./helpers/schema-type";
 
+// Restrictions
+export { DENIABLE_FIELD_TYPES, DERIVED_RESTRICTION_KEYS } from "./restrictions";
+export type { DerivedRestrictionKey } from "./restrictions";
 // Validators (Zod-powered, non-throwing)
 export { createStoryValidator } from "./validators/create-story-validator";
 // Loose structural input shapes accepted by the validators — exported so

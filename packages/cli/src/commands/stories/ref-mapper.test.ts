@@ -364,4 +364,86 @@ describe("storyRefMapper", () => {
       'Invalid multiasset field: expected an array, but received {"filename":"image.png"}',
     );
   });
+
+  describe("option and options fields", () => {
+    const referencePage = {
+      name: "Reference Page",
+      schema: {
+        picked_story: { type: "option", source: "internal_stories", use_uuid: true },
+        picked_stories: { type: "options", source: "internal_stories", use_uuid: true },
+        picked_language: { type: "option", source: "internal_languages" },
+        picked_entries: { type: "options", source: "internal" },
+      },
+    } as const;
+
+    const makeStory = (content: Record<string, unknown>) => ({
+      name: "Reference Page",
+      id: getID(),
+      uuid: randomUUID(),
+      parent_id: 0,
+      is_folder: false,
+      slug: "reference-page",
+      content: { _uid: randomUUID(), component: "reference_page", ...content },
+    });
+
+    const mapStory = (story: ReturnType<typeof makeStory>, stories: Map<unknown, string>) =>
+      // @ts-expect-error Our types are wrong.
+      storyRefMapper(story, {
+        schemas: { reference_page: referencePage.schema },
+        maps: { assets: new Map(), stories },
+      });
+
+    it("should remap a single option field sourced from stories", () => {
+      const sourceUuid = randomUUID();
+      const targetUuid = randomUUID();
+      const story = makeStory({ picked_story: sourceUuid });
+
+      const mapped = mapStory(story, new Map([[sourceUuid, targetUuid]]));
+
+      expect(mapped.content.picked_story).toBe(targetUuid);
+    });
+
+    it("should remap every entry of a multi option field sourced from stories", () => {
+      const [firstSource, secondSource] = [randomUUID(), randomUUID()];
+      const [firstTarget, secondTarget] = [randomUUID(), randomUUID()];
+      const story = makeStory({ picked_stories: [firstSource, secondSource] });
+
+      const mapped = mapStory(
+        story,
+        new Map([
+          [firstSource, firstTarget],
+          [secondSource, secondTarget],
+        ]),
+      );
+
+      expect(mapped.content.picked_stories).toEqual([firstTarget, secondTarget]);
+    });
+
+    it("should leave option sources that are the same in every space untouched", () => {
+      // A language code and a datasource entry value mean the same thing in the
+      // target space, so a map hit on one is a collision, not a reference.
+      const story = makeStory({ picked_language: "de", picked_entries: ["tech", "design"] });
+
+      const mapped = mapStory(
+        story,
+        new Map([
+          ["de", randomUUID()],
+          ["tech", randomUUID()],
+        ]),
+      );
+
+      expect(mapped.content.picked_language).toBe("de");
+      expect(mapped.content.picked_entries).toEqual(["tech", "design"]);
+    });
+
+    it("should keep a story reference that has no mapping", () => {
+      const unmapped = randomUUID();
+      const story = makeStory({ picked_story: unmapped, picked_stories: [unmapped] });
+
+      const mapped = mapStory(story, new Map());
+
+      expect(mapped.content.picked_story).toBe(unmapped);
+      expect(mapped.content.picked_stories).toEqual([unmapped]);
+    });
+  });
 });

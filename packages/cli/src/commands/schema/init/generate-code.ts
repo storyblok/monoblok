@@ -2,6 +2,7 @@ import type { Component, ComponentFolder, Datasource } from "../../../types";
 import { slugify } from "../../../utils/format";
 import { buildGroupPathByUuid } from "../folders";
 import {
+  COMPONENT_DEFAULTS,
   COMPONENT_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
   formatValue,
@@ -534,6 +535,26 @@ function omitEmptyArrays(obj: Record<string, unknown>): Record<string, unknown> 
 }
 
 /**
+ * Drops the optional component metadata that is already at its reset value.
+ *
+ * Push always sends these keys with their reset value, so that removing one from
+ * the local schema clears it remotely. That turns an unset field from `null` into
+ * `""` in the space, and emitting `""` back would make the second `schema init`
+ * differ from the first for a field nobody ever set. Omitting them keeps `init`
+ * idempotent and costs nothing, because push re-sends the reset value either way.
+ */
+function omitResetMetadata(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (COMPONENT_DEFAULTS[key] === value) {
+      continue;
+    }
+    out[key] = value;
+  }
+  return out;
+}
+
+/**
  * Generates a `defineField('name', {...})` code string for a single schema field.
  * Position is implicit in the array index, so `pos` is stripped from the config.
  */
@@ -655,8 +676,10 @@ export function generateComponentFile(
   const resolvedVarName = varName ?? componentVarName(component.name);
   lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
-  const clean = omitEmptyArrays(
-    stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
+  const clean = omitResetMetadata(
+    omitEmptyArrays(
+      stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
+    ),
   );
 
   // The group is encoded by the directory layout / folder ref, never emitted on the block.

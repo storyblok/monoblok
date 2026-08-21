@@ -1,5 +1,6 @@
 import {
   asyncMap,
+  createCacheKey,
   decodeIfEncoded,
   delay,
   flatMap,
@@ -7,7 +8,6 @@ import {
   getRegionURL,
   isCDNUrl,
   range,
-  stringify,
 } from "./utils";
 import SbFetch from "./sbFetch";
 import type Method from "./constants";
@@ -96,7 +96,14 @@ const cacheKeyspaces = new WeakMap<object, CacheKeyspaceState>();
 /** Stands in for the module-level {@link memory} cache, which has no provider object. */
 const MEMORY_KEYSPACE = {};
 
-/** Stands in for the no-op default provider, which caches nothing. */
+/**
+ * Stands in for the no-op default provider, which caches nothing.
+ *
+ * Shared by every client without one, deliberately: there are no entries to keep apart,
+ * so the only thing they share is a flush epoch guarding a cache that holds nothing. The
+ * cost is that one such client's `flushCache()` can stop another's in-flight response
+ * from teaching a `cv`, which costs that request the origin's redirect and nothing more.
+ */
 const NO_CACHE_KEYSPACE = {};
 
 const keyspaceState = (keyspace: object): CacheKeyspaceState => {
@@ -316,9 +323,10 @@ export class Storyblok {
     page: number,
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResult> {
+    const cvPinnedByCaller = params.cv !== undefined;
     const query = this.factoryParamOptions(url, getOptionsPage(params, per_page, page));
 
-    return this.cacheResponse(url, query, undefined, fetchOptions);
+    return this.cacheResponse(url, query, undefined, fetchOptions, cvPinnedByCaller);
   }
 
   public get(
@@ -351,9 +359,11 @@ export class Storyblok {
       delete requestParams.version;
     }
 
+    // Read before `parseParams` stamps the tracked cv onto the copy.
+    const cvPinnedByCaller = requestParams.cv !== undefined;
     const query = this.factoryParamOptions(url, requestParams);
 
-    return this.cacheResponse(url, query, undefined, fetchOptions);
+    return this.cacheResponse(url, query, undefined, fetchOptions, cvPinnedByCaller);
   }
 
   public async getAll(
@@ -812,8 +822,12 @@ export class Storyblok {
     params: ISbStoriesParams,
     retries?: number,
     fetchOptions?: ISbCustomFetch,
+    // Whether the cv on this request came from the caller rather than from the tracked
+    // one. Only the caller's own params can tell the two apart, and by the time they
+    // reach here `parseParams` has already stamped its own cv onto them.
+    cvPinnedByCaller = false,
   ): Promise<ISbResult> {
-    const cacheKey = stringify({ url, params });
+    const cacheKey = createCacheKey(url, params);
     const provider = this.cacheProvider();
 
     // Check in-memory cache first for published content
@@ -982,15 +996,22 @@ export class Storyblok {
           // issued with. The cv is part of the key, and a flush this very response
           // triggered has since moved the tracked cv — so keeping the request's own key
           // would leave an entry no later request ever looks up, and the content would be
-          // fetched again on the next read. Mirrors how `parseParams` attaches the cv:
-          // only a truthy one is sent, so a flushed cv drops out of the key entirely.
-          const settledCv = params.token ? cacheVersions[params.token] : undefined;
-          const { cv: _issuedCv, ...paramsWithoutCv } = params;
-          const settledKey = stringify({
-            url,
-            params: settledCv ? { ...paramsWithoutCv, cv: settledCv } : paramsWithoutCv,
-          });
-          await provider.set(settledKey, response);
+          // fetched again on the next read.
+          //
+          // Only the cv the client attached itself is replaced, and only the way
+          // `parseParams` attaches it: a cv the caller pinned describes the caller's
+          // choice and is part of their key, `'manual'` never puts one in the key at all,
+          // and a flushed cv drops out of it entirely.
+          const settledParams = { ...params };
+          if (!cvPinnedByCaller && this.cvMode === "auto") {
+            const settledCv = params.token ? cacheVersions[params.token] : undefined;
+            if (settledCv) {
+              settledParams.cv = settledCv;
+            } else {
+              delete settledParams.cv;
+            }
+          }
+          await provider.set(createCacheKey(url, settledParams), response);
         }
 
         return resolve(response);
@@ -1005,7 +1026,7 @@ export class Storyblok {
             // `fetchOptions` is passed on: a retry that dropped it would reach the network
             // with different credentials, headers or framework caching hints than the
             // request the caller made.
-            return this.cacheResponse(url, params, retries, fetchOptions)
+            return this.cacheResponse(url, params, retries, fetchOptions, cvPinnedByCaller)
               .then(resolve)
               .catch(reject);
           }

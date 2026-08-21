@@ -1024,6 +1024,97 @@ describe("storyblokClient", () => {
     });
   });
 
+  describe("cache key of a published response", () => {
+    // A response has to be stored under the key the next identical read builds. The cv is
+    // part of that key, so the entry is written with the cv the client will send next —
+    // but only where the client is the one choosing it, and only in the position
+    // `parseParams` would have put it in. Getting either wrong writes an entry no read
+    // ever looks up, and the content is fetched again on every read for as long as the
+    // cache lives.
+    const storiesResponse = (cv: number) => ({
+      data: { stories: [{ id: 1, title: "Update" }], cv },
+      headers: {},
+      status: 200,
+    });
+
+    const publishedClient = (cache: any) =>
+      new StoryblokClient({ accessToken: "test-token", cache }) as any;
+
+    it("should serve the second identical published request from the cache", async () => {
+      const token = "settled-key-plain";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", token });
+      await client.get("cdn/stories", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should serve a published request carrying resolve_relations from the cache", async () => {
+      // `parseParams` assigns the cv before `resolve_level`, so an entry keyed with the cv
+      // appended last is unreachable for every request that resolves relations.
+      const token = "settled-key-resolve-relations";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      const params = { version: "published", resolve_relations: "blog.author", token };
+      await client.get("cdn/stories", { ...params });
+      await client.get("cdn/stories", { ...params });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should serve a published request from the cache when cv is manual", async () => {
+      // `'manual'` never sends a cv, so no read builds a key containing one. The cv is
+      // still tracked from response bodies, and writing it into the key would take the
+      // whole mode out of the cache.
+      const token = "settled-key-manual";
+      const client = publishedClient({ type: "memory", clear: "auto", cv: "manual" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", token });
+      await client.get("cdn/stories", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(client.cacheVersions()[token]).toBe(1000);
+    });
+
+    it("should serve a published request pinned to a cv from the cache", async () => {
+      // The caller's cv is part of their key. Replacing it with the tracked one files the
+      // snapshot they asked for under a key they never read.
+      const token = "settled-key-pinned";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", cv: 444, token });
+      await client.get("cdn/stories", { version: "published", cv: 444, token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should still store the response under the settled cv after its own flush", async () => {
+      // The case the settled key exists for: a response reports a new cv and flushes the
+      // cache on its way in, so the key the next read builds carries a cv the request it
+      // was issued under did not have.
+      const token = "settled-key-after-flush";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories/first", { version: "published", token });
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+      client.throttleManager.execute = execute;
+      await client.get("cdn/stories/second", { version: "published", token });
+      await client.get("cdn/stories/second", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("get() parameter handling", () => {
     it("should not modify the params object it was given", async () => {
       // Callers reuse one params object across requests. Stamping the version, token and
@@ -1187,6 +1278,7 @@ describe("storyblokClient", () => {
         expect.objectContaining({ version: "published" }),
         undefined,
         undefined,
+        false,
       );
 
       // Reset mock
@@ -1199,6 +1291,7 @@ describe("storyblokClient", () => {
         expect.not.objectContaining({ version: expect.anything() }),
         undefined,
         undefined,
+        false,
       );
     });
 

@@ -31,10 +31,14 @@ export interface SchemaFieldLike {
    */
   source?: string;
   // Value constraints enforced by `validateStory` (all optional).
-  /** `text`/`textarea`/`markdown`: maximum string length. */
-  max_length?: number;
+  /**
+   * `text`/`textarea`/`markdown`/`richtext`: maximum string length. Also a
+   * string on the wire, because the schema form persists the number input's raw
+   * value.
+   */
+  max_length?: number | string;
   /** `text`/`textarea`: legacy alias for `max_length`. */
-  maxlength?: number;
+  maxlength?: number | string;
   /** `text`/`textarea`: minimum string length. */
   minlength?: number;
   /** `number`: inclusive lower bound. */

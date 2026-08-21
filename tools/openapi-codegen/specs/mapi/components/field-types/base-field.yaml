@@ -23,6 +23,9 @@ properties:
     type: array
     description: |
       Conditions set on the field for conditional visibility. The editor writes
-      one setting and evaluates only the first, so further entries are inert.
+      one setting and reads only the first, so an extra entry is invisible to it.
+      It is not inert server-side: the conditional-required check requires every
+      setting to match, so a second entry can only make a field harder to leave
+      empty. Write one setting unless you mean that.
     items:
       $ref: ./conditional-setting.yaml

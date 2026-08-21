@@ -132,8 +132,13 @@ allOf:
         type: string
         description: Path of the folder internal links are restricted to
       max_length:
-        type: integer
-        description: Maximum length of the input text
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Maximum length of the input. The schema form persists the number
+          input's raw value, so a space can hold `"60"` just as legitimately as
+          `60`. Coerce before comparing.
       rtl:
         type: boolean
         description: Whether to enable right-to-left text direction

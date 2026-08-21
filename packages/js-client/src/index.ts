@@ -57,13 +57,22 @@ const cacheVersions = {} as CachedVersions;
 const SPACES_ME_PATH = "/cdn/spaces/me";
 
 /**
- * Last `space.version` seen per token, tracked separately from {@link cacheVersions}. A
- * change signal only, never sent as a `cv` — see `cacheResponse`.
+ * Last `space.version` seen per token *and cache keyspace*, tracked separately from
+ * {@link cacheVersions}. A change signal only, never sent as a `cv` — see
+ * `cacheResponse`.
+ *
+ * Keyed by keyspace as well as token because the signal is consumed once: instances
+ * sharing the module-level {@link memory} cache share it, while an instance with its own
+ * `type: 'custom'` provider must not have its only chance to flush that provider consumed
+ * by another instance's poll.
  *
  * Module level and never reset, like {@link cacheVersions}, so each test exercising this
  * signal needs its own token.
  */
 const spaceVersions = {} as CachedVersions;
+
+/** Distinguishes the cache keyspace of instances with their own `type: 'custom'` provider. */
+let customCacheKeyspaces = 0;
 
 /**
  * Bumped on every flush. A response already in flight when the cache was emptied belongs
@@ -73,16 +82,16 @@ const spaceVersions = {} as CachedVersions;
  * already consumed and no later poll left to re-raise it.
  *
  * Module level like {@link memory} and {@link cacheVersions}, so client instances sharing
- * the cache share the epoch. `@storyblok/api-client` calls this `cacheEpoch`.
+ * the cache share the epoch.
  */
 let flushEpoch = 0;
 
 /**
- * Builds the request path from a slug, which may or may not already start with a slash.
- * Both spellings have to produce the same path: it is compared against
- * {@link SPACES_ME_PATH} and it is part of the cache key.
+ * Builds the request path from a slug, whichever way the caller spelled it. Every
+ * spelling has to produce the same path: it is compared against {@link SPACES_ME_PATH}
+ * and it is part of the cache key. The API serves `cdn/spaces/me/` like `cdn/spaces/me`.
  */
-const toPath = (slug: string): string => `/${slug.replace(/^\/+/, "")}`;
+const toPath = (slug: string): string => `/${slug.replace(/^\/+/, "").replace(/\/+$/, "")}`;
 
 interface CachedVersions {
   [key: string]: number;
@@ -129,6 +138,8 @@ export class Storyblok {
   public resolveNestedRelations: boolean;
   private stringifiedStoriesCache: Record<string, string>;
   private inlineAssets: boolean;
+  /** See {@link spaceVersions}. */
+  private cacheKeyspace: string;
 
   /**
    *
@@ -188,6 +199,12 @@ export class Storyblok {
     this.relations = {} as RelationsType;
     this.links = {} as LinksType;
     this.cache = config.cache || { clear: "manual" };
+    // `type: 'memory'` reads and writes the module-level cache, so those instances share
+    // one keyspace; a custom provider is per instance as far as this client can tell.
+    this.cacheKeyspace =
+      this.cache.type === "custom"
+        ? `custom:${++customCacheKeyspaces}`
+        : (this.cache.type ?? "none");
     this.cvMode = config.cache?.cv ?? "auto";
     this.resolveCounter = 0;
     this.resolveNestedRelations = config.resolveNestedRelations || true;
@@ -218,7 +235,15 @@ export class Storyblok {
       // enough — it has to be removed.
       delete params.cv;
     } else if (!params.cv && this.cvMode === "auto") {
-      params.cv = cacheVersions[params.token];
+      // Only a truthy cv is serialized. A flush or an explicit `clearCacheVersion()`
+      // records the sentinel `0`, which is not a version the API knows: sending `cv=0`
+      // would add an edge redirect and cache the response under a key no later request
+      // reads. Without a cv the request takes that redirect to the current version
+      // directly.
+      const trackedCv = cacheVersions[params.token];
+      if (trackedCv) {
+        params.cv = trackedCv;
+      }
     }
 
     if (Array.isArray(params.resolve_relations)) {
@@ -273,19 +298,20 @@ export class Storyblok {
     params: ISbStoriesParams | ISbLinksParams = {},
     fetchOptions?: ISbCustomFetch,
   ): Promise<ISbResult | ISbLinksResult> {
-    if (!params) {
-      params = {} as ISbStoriesParams;
-    }
+    // A copy, because everything below stamps request state onto it — the version, the
+    // token, the cv. A caller reusing one params object across calls would otherwise
+    // carry a stale cv into the next request and see its own object change underneath it.
+    const requestParams: ISbStoriesParams = { ...params };
     const url = toPath(slug);
 
     // Only add/keep version parameter for CDN URLs — strip it from MAPI requests
     if (isCDNUrl(url)) {
-      params.version = params.version || this.version;
-    } else if (params.version) {
-      delete params.version;
+      requestParams.version = requestParams.version || this.version;
+    } else if (requestParams.version) {
+      delete requestParams.version;
     }
 
-    const query = this.factoryParamOptions(url, params);
+    const query = this.factoryParamOptions(url, requestParams);
 
     return this.cacheResponse(url, query, undefined, fetchOptions);
   }
@@ -805,15 +831,6 @@ export class Storyblok {
           response = await this.processInlineAssets(response);
         }
 
-        if (
-          params.version === "published" &&
-          url !== SPACES_ME_PATH &&
-          // Stale by construction: the cache was emptied while this was in flight.
-          epochAtRequest === flushEpoch
-        ) {
-          await provider.set(cacheKey, response);
-        }
-
         const isCacheClearable =
           (this.cache.clear === "onpreview" && params.version === "draft") ||
           this.cache.clear === "auto";
@@ -824,13 +841,12 @@ export class Storyblok {
         // TTL-sized buckets while `space.version` reports the raw version. Change signal
         // only — the `cv` sent with requests still comes from content responses.
         //
-        // `@storyblok/api-client` implements the same heuristic in `updateSpaceVersion`;
-        // keep the flush rules in sync, including the order — the space version is
-        // handled before the cv so a response carrying both keeps the cv from that same
-        // response. It differs in one way on purpose: on an ambiguous first sighting it
-        // revalidates rather than flushing, because its tracked versions are per client
-        // while these maps are module level, so a flush here is bounded to once per
-        // process anyway.
+        // `@storyblok/api-client` reads the same two signals, with the same rules for
+        // what each one may conclude. It acts on them differently — it tags every cached
+        // entry with the version it was served under instead of flushing — so the shared
+        // part is the reading, not the reaction. The order matters here: the space version
+        // is handled before the cv, so a response carrying both keeps the cv that arrived
+        // with it.
         //
         // `response.data` is untyped, so narrow the version first: another type would
         // never compare equal to the tracked numbers and would flush on every poll.
@@ -838,21 +854,24 @@ export class Storyblok {
         const spaceVersion = typeof rawSpaceVersion === "number" ? rawSpaceVersion : undefined;
 
         if (params.token && spaceVersion !== undefined) {
-          const lastSpaceVersion = spaceVersions[params.token];
+          const signalKey = `${this.cacheKeyspace}:${params.token}`;
+          const lastSpaceVersion = spaceVersions[signalKey];
           const lastCv = cacheVersions[params.token];
           // A first sighting has no previous space version, so compare against the cv.
           // Without a Minimum Cache TTL both report the same raw version, so an equal
-          // pair proves nothing was published. An unequal pair is either a publish or a
-          // TTL flooring the cv — indistinguishable here, so flush once defensively.
+          // pair proves nothing was published. A space version AHEAD of the cv is either
+          // a publish or a TTL flooring the cv — indistinguishable here, so flush once
+          // defensively. A space version BEHIND it is neither: `space.version` is
+          // monotonic at the origin, so only an edge node that has not caught up reports
+          // one, and flushing for it would empty the cache for no reason.
           // `lastCv` is checked for truthiness, not for `undefined`: a flush or an
           // explicit `clearCacheVersion()` records the sentinel `0`, which carries no cv
-          // information and can never equal a space version — treating it as a tracked cv
-          // would make every first poll after a clear flush the whole cache again. Same
-          // convention as the cv block below.
+          // information — treating it as a tracked cv would make every first poll after a
+          // clear flush the whole cache again. Same convention as the cv block below.
           const isFirstSighting =
-            lastSpaceVersion === undefined && Boolean(lastCv) && lastCv !== spaceVersion;
+            lastSpaceVersion === undefined && Boolean(lastCv) && spaceVersion > lastCv;
           const hasSpaceVersionChanged =
-            lastSpaceVersion !== undefined && lastSpaceVersion !== spaceVersion;
+            lastSpaceVersion !== undefined && spaceVersion > lastSpaceVersion;
 
           if (isCacheClearable && (isFirstSighting || hasSpaceVersionChanged)) {
             await this.flushCache();
@@ -867,7 +886,13 @@ export class Storyblok {
           // signal: the next draft poll would find the version unchanged and never
           // flush.
           if (isCacheClearable) {
-            spaceVersions[params.token] = spaceVersion;
+            // Recorded as a maximum, for the same reason the comparison uses `>`: a
+            // version from an edge node that has not caught up must not become the
+            // baseline, or the next poll back at the current version flushes for nothing.
+            spaceVersions[signalKey] =
+              lastSpaceVersion === undefined
+                ? spaceVersion
+                : Math.max(lastSpaceVersion, spaceVersion);
           }
         }
 
@@ -876,16 +901,39 @@ export class Storyblok {
         // space-version signal already consumed and no poll left to re-raise it. Leaving
         // the sentinel `0` in place sends the next request out without a cv, which takes
         // the origin's redirect to the current one.
+        // Never adopted backwards either: a cv below the tracked one is an older edge
+        // object answering, and pinning requests to it would serve content the space has
+        // already moved past. Such a response is not cached at all — the entry it would
+        // write is known to be stale the moment it is written.
+        let isStaleCvResponse = false;
         if (params.token && response.data.cv && epochAtRequest === flushEpoch) {
-          if (
-            isCacheClearable &&
-            cacheVersions[params.token] && // there is a cache
-            cacheVersions[params.token] !== response.data.cv // a new cv is incoming
-          ) {
-            await this.flushCache();
-            epochAtRequest = flushEpoch;
+          const lastCv = cacheVersions[params.token];
+          if (lastCv && response.data.cv < lastCv) {
+            isStaleCvResponse = true;
+          } else {
+            if (
+              isCacheClearable &&
+              lastCv && // there is a cache
+              lastCv !== response.data.cv // a new cv is incoming
+            ) {
+              await this.flushCache();
+              epochAtRequest = flushEpoch;
+            }
+            cacheVersions[params.token] = response.data.cv;
           }
-          cacheVersions[params.token] = response.data.cv;
+        }
+
+        // Cached last, after every flush this response may have triggered: writing the
+        // entry first would have it dropped by the flush that the very same response
+        // caused, leaving the cache empty and the content re-fetched on the next read.
+        if (
+          params.version === "published" &&
+          url !== SPACES_ME_PATH &&
+          !isStaleCvResponse &&
+          // Stale by construction: the cache was emptied while this was in flight.
+          epochAtRequest === flushEpoch
+        ) {
+          await provider.set(cacheKey, response);
         }
 
         return resolve(response);

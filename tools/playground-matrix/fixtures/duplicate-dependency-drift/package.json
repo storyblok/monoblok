@@ -1,0 +1,18 @@
+{
+  "name": "@storyblok/fixture-duplicate-dependency-drift",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@storyblok/js": "workspace:*",
+    "@storyblok/live-preview": "workspace:*",
+    "@storyblok/preview-bridge": "^2.2.0",
+    "stale-sdk": "file:./vendor/stale-sdk-1.0.0.tgz"
+  },
+  "devDependencies": {
+    "vite": "^6.4.3"
+  }
+}

@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { resolve } from "pathe";
 
 import { qrcode } from "vite-plugin-qrcode";
 import basicSsl from "@vitejs/plugin-basic-ssl";
@@ -12,9 +11,4 @@ export default defineConfig({
     vue(),
     qrcode(), // only applies in dev mode
   ],
-  resolve: {
-    alias: {
-      "@storyblok/js": resolve(import.meta.dirname, "../../src/index.ts"),
-    },
-  },
 });

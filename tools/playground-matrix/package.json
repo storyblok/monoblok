@@ -1,0 +1,27 @@
+{
+  "name": "@storyblok/playground-matrix",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Builds and runs the playgrounds from packed tarballs across Node versions and package managers.",
+  "type": "module",
+  "scripts": {
+    "matrix": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/cli.ts",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test:types": "tsc --noEmit",
+    "compare": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/compare.ts"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "playwright": "^1.62.1",
+    "typescript": "catalog:",
+    "yaml": "^2.9.0"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@storyblok/playground-*"
+    ]
+  }
+}

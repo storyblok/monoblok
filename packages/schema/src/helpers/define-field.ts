@@ -84,14 +84,101 @@ function normalizeRestriction(key: string, name: string, input: unknown): unknow
   );
 }
 
+/** The wire restriction keys {@link FieldInput} redeclares, so it owns their docs. */
+type WireRestrictionKeys =
+  | "component_whitelist"
+  | "component_group_whitelist"
+  | "component_denylist"
+  | "component_group_denylist"
+  | "component_tag_whitelist"
+  | "component_tag_denylist"
+  | "restrict_components"
+  | "restrict_type";
+
 /**
- * Field config accepted by {@link defineField}: the content-shape field plus the
- * DSL reference keys. `allow` replaces the wire `component_whitelist` /
- * `component_group_whitelist`, `deny` the wire `component_denylist` /
- * `component_group_denylist`; `datasource` holds the datasource ref/slug (the
- * wire `source` selector still passes through).
+ * The documented declarations of the wire restriction keys, the single site that
+ * carries their `@deprecated` tags.
+ *
+ * Redeclaring them in an intersection while `Field` still declares them would
+ * silently drop those tags: TypeScript reports a property as deprecated only when
+ * *every* declaration of it carries the tag, so the untagged `Field` declaration
+ * would cancel the tagged one out (verified on TS 6.0.3 and 5.8.3, for
+ * intersections and unions alike, in either order). {@link FieldInput} therefore
+ * strips them from each variant with `Omit` and picks them back from here.
  */
-export type FieldInput = Field & {
+type WireRestrictionDocs = {
+  /**
+   * @deprecated Use `allow` instead: it takes block names or `defineBlock` refs
+   * and derives `restrict_components` / `restrict_type` for you. On `bloks` and
+   * `richtext` fields a bare `component_whitelist` without those flags is
+   * ignored by the editor, and if you set both, `allow` wins.
+   *
+   * @example
+   * defineField('body', { type: 'bloks', allow: ['teaser', heroBlock] });
+   */
+  component_whitelist?: string[];
+  /**
+   * @deprecated Use `allow` with `defineFolder` refs instead. Folder paths are
+   * resolved to component group uuids at push time, and the restriction flags
+   * are derived for you.
+   *
+   * @example
+   * const heros = defineFolder({ name: 'Heros', parent: layout });
+   * defineField('body', { type: 'bloks', allow: [heros] });
+   */
+  component_group_whitelist?: string[];
+  /**
+   * @deprecated Use `deny` instead: it takes block names or `defineBlock` refs,
+   * narrows the field's content type, and derives the wire flags for you.
+   *
+   * @example
+   * defineField('body', { type: 'bloks', deny: ['banner'] });
+   */
+  component_denylist?: string[];
+  /**
+   * @deprecated Use `deny` with `defineFolder` refs instead. Folder paths are
+   * resolved to component group uuids at push time, and the restriction flags
+   * are derived for you.
+   *
+   * @example
+   * const legacy = defineFolder({ name: 'Legacy' });
+   * defineField('body', { type: 'bloks', deny: [legacy] });
+   */
+  component_group_denylist?: string[];
+  /**
+   * @deprecated Derived from `allow` / `deny`: you should not set it by hand.
+   *
+   * To leave a field unrestricted, omit `allow` entirely rather than setting
+   * `false`: a field with no whitelist is already unrestricted. This flag only
+   * exists to represent legacy spaces that stored a whitelist with the
+   * restriction switched off; `schema init` drops that stale whitelist, so
+   * deleting this line is safe and behaviourally identical.
+   */
+  restrict_components?: boolean;
+  /**
+   * Ids of the block tags this field accepts. Requires `restrict_type: 'tags'`,
+   * the one restriction dimension with no `allow` equivalent, so this key has no
+   * DSL replacement and is not discouraged.
+   */
+  component_tag_whitelist?: number[];
+  /**
+   * Ids of the block tags this field rejects. Requires `restrict_type: 'tags'`,
+   * the one restriction dimension with no `deny` equivalent, so this key has no
+   * DSL replacement and is not discouraged.
+   */
+  component_tag_denylist?: number[];
+  /**
+   * Selects which restriction dimension the editor reads: `'groups'` for the
+   * component group lists, `'tags'` for the tag lists, and `''` (or
+   * `'components'`) for the block-name lists. `allow` / `deny` derive it for the
+   * group and name dimensions, so set it by hand only for `'tags'`, the one
+   * dimension with no DSL equivalent.
+   */
+  restrict_type?: string;
+};
+
+/** The DSL reference keys {@link defineField} adds to every field type. */
+type DslInput = {
   allow?: BlockRef | FolderRef | readonly (BlockRef | FolderRef)[];
   /**
    * Blocks this field must not accept, by block ref/name or `defineFolder` ref.
@@ -107,6 +194,96 @@ export type FieldInput = Field & {
   datasource?: DatasourceRef;
   required?: boolean;
 };
+
+/**
+ * Field config accepted by {@link defineField}: the content-shape field plus the
+ * DSL reference keys. `allow` replaces the wire `component_whitelist` /
+ * `component_group_whitelist`, `deny` the wire `component_denylist` /
+ * `component_group_denylist`; `datasource` holds the datasource ref/slug (the
+ * wire `source` selector still passes through).
+ *
+ * The wire restriction keys stay legal as a lower-level escape hatch, but they
+ * cannot be combined with `allow` / `deny` on one field: see
+ * {@link NoRestrictionConflict}.
+ *
+ * Built one `Field` variant at a time, re-picking only the wire restriction keys
+ * that variant actually declares. Grafting all of them onto *every* variant would
+ * put `FieldInput` at odds with {@link NoExtraKeys}, which checks against the
+ * matched variant: `FieldInput`'s own `text` member would carry
+ * `component_whitelist`, which `text` does not own, so `FieldInput` would fail its
+ * own check and `defineField` would reject its documented input type.
+ */
+export type FieldInput = FieldInputOf<Field>;
+
+type FieldInputOf<T> = T extends any
+  ? Omit<T, WireRestrictionKeys> &
+      Pick<WireRestrictionDocs, Extract<WireRestrictionKeys, keyof T>> &
+      DslInput
+  : never;
+
+declare const invalidKey: unique symbol;
+/**
+ * Unsatisfiable placeholder whose type argument carries `TReason` into the
+ * compiler error, so a rejected key explains itself at the call site. Not
+ * exported, so nothing can construct a value that satisfies it.
+ */
+type Invalid<TReason extends string> = { readonly [invalidKey]: TReason };
+
+/**
+ * Keys {@link defineField} accepts on every field type: the DSL reference keys,
+ * plus `name` and `required`, which the layout-only `section` / `tab` variants do
+ * not declare.
+ */
+type DslKeys = "allow" | "deny" | "datasource" | "required" | "name";
+
+/**
+ * Wire restriction keys that `allow` / `deny` replace and derive the flags for.
+ * `validateSchema` reports the same conflict {@link NoRestrictionConflict} rejects,
+ * for consumers without type checking, so the two read from one list.
+ */
+export const DERIVED_RESTRICTION_KEYS = [
+  "component_whitelist",
+  "component_group_whitelist",
+  "component_denylist",
+  "component_group_denylist",
+  "restrict_components",
+] as const;
+
+type DerivedRestrictionKeys = (typeof DERIVED_RESTRICTION_KEYS)[number];
+
+/** The {@link Field} union member matching `T`'s `type` discriminant. */
+type MemberFor<T> = T extends { type: infer TType } ? Extract<Field, { type: TType }> : Field;
+
+/**
+ * Rejects keys the matched {@link Field} variant does not own, so a typo or an
+ * option belonging to a different field type is a compile error instead of a
+ * silent no-op on the wire.
+ *
+ * The generic signature alone cannot do this: the field literal is *inferred as*
+ * the type parameter, so excess property checking has no concrete target to fire
+ * against. Intersecting this mapped type supplies one.
+ *
+ * `type: 'custom'` is exempt because plugin option keys pass through to the
+ * Management API verbatim, so arbitrary keys are legitimate there.
+ */
+type NoExtraKeys<T> = T extends { type: "custom" }
+  ? unknown
+  : {
+      [K in Exclude<keyof T, keyof MemberFor<T> | DslKeys>]: Invalid<`unknown option "${K &
+        string}" for this field type`>;
+    };
+
+/**
+ * Rejects the wire restriction keys on a field that also uses `allow` / `deny`.
+ * `schema push` derives them from the DSL keys and overwrites whatever was set by
+ * hand, so setting both is always a mistake: pick the DSL keys or the raw ones.
+ */
+type NoRestrictionConflict<T> = T extends { allow: unknown } | { deny: unknown }
+  ? {
+      [K in Extract<keyof T, DerivedRestrictionKeys>]: Invalid<`"${K &
+        string}" is derived from "allow"/"deny": set one or the other, not both`>;
+    }
+  : unknown;
 
 /** Result of {@link defineField}: the field stamped with `name`, with refs normalized to strings. */
 export type DefinedField<TName extends string, TField extends FieldInput> = Prettify<
@@ -125,6 +302,10 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
  * strongly-typed identity helper: it validates only that `allow` and `deny` pick
  * a single restriction dimension, and otherwise does not check the field.
  *
+ * Options are checked against the field type: a key the given `type` does not own
+ * is a compile error (see {@link NoExtraKeys}), as is mixing `allow` / `deny` with
+ * the wire restriction keys they derive (see {@link NoRestrictionConflict}).
+ *
  * Use inside a {@link defineBlock} `fields` array — `pos` is injected from the
  * array index by `defineBlock`.
  *
@@ -137,7 +318,7 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
  */
 export function defineField<const TName extends string, const TField extends FieldInput>(
   name: TName,
-  field: TField,
+  field: TField & NoExtraKeys<TField> & NoRestrictionConflict<TField>,
 ): DefinedField<TName, TField>;
 export function defineField(name: string, field: Record<string, unknown>): Record<string, unknown> {
   const { allow, deny, datasource, ...rest } = field;

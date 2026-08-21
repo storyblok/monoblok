@@ -254,6 +254,7 @@ function isNonEmptyList(list: unknown): boolean {
  * about whether a field's folder refs are emitted (and therefore imported).
  *
  * - `disabled` — `restrict_components: false`: the flag round-trips, the lists do not.
+ * - `tags` — restricted by block tag: the tag lists and their flags keep their wire form.
  * - `names` — restricted by block name: `allow`/`deny` hold plain names.
  * - `folders` — restricted by folder, every uuid resolved to a `defineFolder` ref.
  * - `raw` — restricted by folder, but at least one uuid is unknown: keep the wire keys.
@@ -261,10 +262,24 @@ function isNonEmptyList(list: unknown): boolean {
  */
 type FieldRestriction =
   | { kind: "disabled" }
+  | { kind: "tags" }
   | { kind: "names"; allow?: unknown; deny?: unknown }
   | { kind: "folders"; allow?: RawCode[]; deny?: RawCode[] }
   | { kind: "raw" }
   | { kind: "none" };
+
+/**
+ * The field types that own the component restriction keys (`restrict_components`,
+ * `restrict_type` and the group lists).
+ *
+ * A space can store those keys on any field type — the Management API takes a
+ * component schema as an opaque blob and stores a stray `restrict_components: true`
+ * on an `asset` field verbatim (verified against the API) — but the editor only
+ * reads them on these two, and `defineField` rejects an option the field type does
+ * not own. Emitting such a stray key would generate code that does not compile, so
+ * the restriction keys are only ever emitted for these types.
+ */
+const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
 
 /**
  * Classifies a field's wire restriction keys. The block-name and folder
@@ -273,6 +288,27 @@ type FieldRestriction =
  * empty `component_whitelist: []` alongside its group list. Non-emptiness is
  * therefore what picks the dimension, and block names win the (unreachable
  * through the editor) tie so a name restriction is never silently dropped.
+ *
+ * Within a dimension the editor offers allow or block, never both, so a field
+ * whose allow and deny lists are both non-empty is legacy or API-written as well.
+ * Both are kept: `defineField` accepts the pair, and dropping either would change
+ * what the space allows.
+ *
+ * The tag dimension needs `restrict_type: 'tags'` and a non-empty tag list. The
+ * `restrict_type` check alone is not enough to claim the field, because a list the
+ * editor cannot produce still has to be handled: switching dimension in the editor
+ * clears all six lists, and the Management API only backstops that for `bloks`
+ * fields (it strips the name lists, keeping the group ones), so on `richtext` a
+ * legacy or API-written `restrict_type: 'tags'` can survive next to a live
+ * `component_whitelist`. Claiming that field for the tag dimension would drop the
+ * name list on the round trip.
+ *
+ * A `restrict_type: 'tags'` that no tag list backs still never falls through to
+ * `none`: it ends up in `raw`, which keeps `restrict_type` and
+ * `restrict_components` verbatim. `restrict_type: 'tags'` with both lists empty
+ * still restricts by tags in the editor, and dropping the two flags would leave
+ * nothing to re-derive them from, silently unrestricting the field on the next
+ * push.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -280,6 +316,12 @@ function resolveFieldRestriction(
 ): FieldRestriction {
   if (field.restrict_components === false) {
     return { kind: "disabled" };
+  }
+  if (
+    field.restrict_type === "tags" &&
+    (isNonEmptyList(field.component_tag_whitelist) || isNonEmptyList(field.component_tag_denylist))
+  ) {
+    return { kind: "tags" };
   }
   const hasNameAllow = isNonEmptyList(field.component_whitelist);
   const hasNameDeny = isNonEmptyList(field.component_denylist);
@@ -306,6 +348,7 @@ function resolveFieldRestriction(
       : { kind: "raw" };
   }
   if (
+    field.restrict_type === "tags" ||
     field.component_group_whitelist !== undefined ||
     field.component_group_denylist !== undefined
   ) {
@@ -331,8 +374,25 @@ function resolveFieldRestriction(
  * `schema push` re-derive `restrict_components: true` and silently switch the
  * restriction back on, changing what editors may insert. So a disabled
  * restriction keeps its flag and drops the lists: the flag round-trips
- * losslessly, at the cost of discarding lists that are not in force anyway. An
- * absent `restrict_components` counts as active, matching backend enforcement.
+ * losslessly, at the cost of discarding lists that are not in force anyway.
+ *
+ * An absent `restrict_components` counts as active. The two runtimes disagree on
+ * that shape — the backend enforces the lists, the editor treats the field as
+ * unrestricted — so the round trip picks the reading that cannot widen what a
+ * space allows.
+ *
+ * A tag restriction (`restrict_type: 'tags'` with a tag list in force) keeps its
+ * wire form, flags included: the tag dimension has no `allow`/`deny` equivalent,
+ * so dropping `restrict_type` would leave the tag lists inert on the next push,
+ * and emitting the field's (stale, not-in-force) name or group lists as DSL refs
+ * would switch it back to restricting by name.
+ *
+ * `restrict_components: true` with no list in force is kept too, for the same
+ * reason: with no `allow`/`deny` emitted there is nothing to re-derive it from, so
+ * dropping it switched the restriction off on the next push.
+ *
+ * None of these flags are emitted for a field type that does not own them; see
+ * {@link RESTRICTABLE_FIELD_TYPES}.
  *
  * See {@link resolveFieldRestriction} for how the block-name and folder
  * dimensions are told apart.
@@ -346,6 +406,8 @@ function toDslField(
     component_denylist,
     component_group_whitelist,
     component_group_denylist,
+    component_tag_whitelist,
+    component_tag_denylist,
     datasource_slug,
     restrict_components,
     restrict_type,
@@ -353,11 +415,35 @@ function toDslField(
   } = field;
   const out: Record<string, unknown> = { ...rest };
   const restriction = resolveFieldRestriction(field, folderVarByUuid);
+  // Stray restriction keys on a field type that does not own them are junk the
+  // editor never wrote and never reads; emitting them would not compile.
+  const restrictable = RESTRICTABLE_FIELD_TYPES.has(field.type as string);
+
+  // The tag lists have no DSL equivalent, so they pass through verbatim whenever
+  // the field type owns them, whichever dimension is actually in force.
+  if (restrictable) {
+    if (component_tag_whitelist !== undefined) {
+      out.component_tag_whitelist = component_tag_whitelist;
+    }
+    if (component_tag_denylist !== undefined) {
+      out.component_tag_denylist = component_tag_denylist;
+    }
+  }
 
   switch (restriction.kind) {
     case "disabled":
-      out.restrict_components = false;
-      if (restrict_type !== undefined) {
+      if (restrictable) {
+        out.restrict_components = false;
+        if (restrict_type !== undefined) {
+          out.restrict_type = restrict_type;
+        }
+      }
+      break;
+    case "tags":
+      if (restrictable) {
+        if (restrict_components !== undefined) {
+          out.restrict_components = restrict_components;
+        }
         out.restrict_type = restrict_type;
       }
       break;
@@ -371,24 +457,34 @@ function toDslField(
       }
       break;
     case "raw":
-      if (component_group_whitelist !== undefined) {
-        out.component_group_whitelist = component_group_whitelist;
-      }
-      if (component_group_denylist !== undefined) {
-        out.component_group_denylist = component_group_denylist;
-      }
-      if (restrict_components !== undefined) {
-        out.restrict_components = restrict_components;
-      }
-      if (restrict_type !== undefined) {
-        out.restrict_type = restrict_type;
+      if (restrictable) {
+        if (component_group_whitelist !== undefined) {
+          out.component_group_whitelist = component_group_whitelist;
+        }
+        if (component_group_denylist !== undefined) {
+          out.component_group_denylist = component_group_denylist;
+        }
+        if (restrict_components !== undefined) {
+          out.restrict_components = restrict_components;
+        }
+        if (restrict_type !== undefined) {
+          out.restrict_type = restrict_type;
+        }
       }
       break;
     case "none":
-      // No restriction is in force (lists absent or empty);
-      // `restrict_components`/`restrict_type` are byproducts `allow`/`deny`
-      // re-derive on push, so they are dropped rather than emitted as orphaned
-      // DSL state.
+      // No list is in force, so there is no `allow`/`deny` here to re-derive the
+      // flags from on the next push. `restrict_components: true` is still real
+      // state — the editor restriction is switched on with nothing selected — and
+      // dropping it silently unrestricted the field on the round-trip, so it is
+      // kept along with the dimension selector it applies to. An absent flag has
+      // nothing to preserve, and `false` is classified as `disabled` instead.
+      if (restrictable && restrict_components === true) {
+        out.restrict_components = restrict_components;
+        if (restrict_type !== undefined) {
+          out.restrict_type = restrict_type;
+        }
+      }
       break;
   }
   if (datasource_slug !== undefined) {

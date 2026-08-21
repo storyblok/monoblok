@@ -529,6 +529,9 @@ importers:
       jiti:
         specifier: 'catalog:'
         version: 2.7.0
+      json-p3:
+        specifier: 2.2.2
+        version: 2.2.2
       json-schema-to-typescript:
         specifier: ^15.0.4
         version: 15.0.4
@@ -1511,7 +1514,7 @@ importers:
         version: 1.76.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.8(@arethetypeswrong/core@0.18.2)(@opentelemetry/api@1.9.0)(@types/node@24.11.0)(@vitest/coverage-v8@4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10))(@vitest/ui@4.1.10(vitest@4.1.10))(esbuild@0.28.1)(happy-dom@20.8.9)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(less@4.6.4)(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(publint@0.3.22)(sass@1.99.0)(svelte@5.55.0)(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.28(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(synckit@0.11.12))(vite@8.1.1(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))(yaml@2.9.0))
       storyblok:
         specifier: workspace:*
-        version: link:../../../cli
+        version: file:packages/cli(@types/node@24.11.0)(magicast@0.5.2)
       tailwindcss:
         specifier: ^4.2.4
         version: 4.2.4
@@ -11442,6 +11445,9 @@ packages:
 
   json-buffer@3.0.1:
     resolution: {integrity: sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==}
+
+  json-p3@2.2.2:
+    resolution: {integrity: sha512-TmTgkx+C1ne8Wdm9dFQ4/jCeYYbSoeYJAkRpvTz6O+zWN1Dc3cKW8Mt52sa8mSRXy/+JykA5I6rmM+k8h+JRRg==}
 
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
@@ -25769,7 +25775,7 @@ snapshots:
       eslint-import-context: 0.1.9(unrs-resolver@1.11.1)
       is-glob: 4.0.3
       minimatch: 10.2.4
-      semver: 7.7.4
+      semver: 7.8.5
       stable-hash-x: 0.2.0
       unrs-resolver: 1.11.1
     optionalDependencies:
@@ -27266,7 +27272,7 @@ snapshots:
       '@babel/parser': 7.29.8
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
-      semver: 7.7.4
+      semver: 7.8.5
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -27429,6 +27435,8 @@ snapshots:
   jsesc@3.1.0: {}
 
   json-buffer@3.0.1: {}
+
+  json-p3@2.2.2: {}
 
   json-parse-even-better-errors@2.3.1: {}
 
@@ -31684,6 +31692,38 @@ snapshots:
 
   storyblok-js-client@file:packages/js-client: {}
 
+  storyblok@file:packages/cli(@types/node@24.11.0)(magicast@0.5.2):
+    dependencies:
+      '@inquirer/prompts': 7.10.1(@types/node@24.11.0)
+      '@storyblok/js': file:packages/js
+      '@storyblok/management-api-client': file:packages/mapi-client
+      '@storyblok/region-helper': file:packages/region-helper
+      '@storyblok/schema': file:packages/schema
+      '@topcli/spinner': 2.1.2
+      async-sema: 3.1.1
+      c12: 3.3.4(magicast@0.5.2)
+      chalk: 5.6.2
+      cli-progress: 3.12.0
+      commander: 13.1.0
+      diff: 8.0.4
+      dotenv: 17.3.1
+      filenamify: 6.0.0
+      jiti: 2.7.0
+      json-p3: 2.2.2
+      json-schema-to-typescript: 15.0.4
+      minimatch: 10.2.4
+      octokit: 5.0.5
+      ohash: 2.0.11
+      open: 10.2.0
+      pathe: 2.0.3
+      read-package-up: 11.0.0
+      storyblok-js-client: file:packages/js-client
+    transitivePeerDependencies:
+      - '@types/node'
+      - bufferutil
+      - magicast
+      - utf-8-validate
+
   storyblok@file:packages/cli(@types/node@25.6.0)(magicast@0.5.2):
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@25.6.0)
@@ -31693,7 +31733,7 @@ snapshots:
       '@storyblok/schema': file:packages/schema
       '@topcli/spinner': 2.1.2
       async-sema: 3.1.1
-      c12: 3.3.3(magicast@0.5.2)
+      c12: 3.3.4(magicast@0.5.2)
       chalk: 5.6.2
       cli-progress: 3.12.0
       commander: 13.1.0
@@ -31701,6 +31741,7 @@ snapshots:
       dotenv: 17.3.1
       filenamify: 6.0.0
       jiti: 2.7.0
+      json-p3: 2.2.2
       json-schema-to-typescript: 15.0.4
       minimatch: 10.2.4
       octokit: 5.0.5

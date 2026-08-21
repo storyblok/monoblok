@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { createTwoFilesPatch } from "diff";
 
 import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from "../types";
-import { applyDefaults, COMPONENT_DEFAULTS, isRecord } from "../utils";
+import { applyDefaults, COMPONENT_DEFAULTS } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
 import { getMapiClient } from "../../../api";
 import { handleAPIError } from "../../../utils";
@@ -15,7 +15,7 @@ import {
   toDatasourceCreate,
   toDatasourceUpdate,
 } from "../transform";
-import { buildGroupPathByUuid } from "../folders";
+import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 
 /** API-assigned fields stripped before sending a rollback create payload to MAPI. */
 const API_ASSIGNED_FIELDS = [
@@ -243,11 +243,10 @@ function parentPathOf(path: string): string | null {
  * Remaps a snapshot's stored component group uuids to their live equivalents.
  *
  * When a rollback recreates a folder the Management API assigns it a *new* uuid,
- * so a component's stored `component_group_uuid` (and any field's
- * `component_group_whitelist`) from the pre-push snapshot would otherwise point
- * at a group that no longer exists. `uuidMap` (old uuid → new uuid) is populated
- * as folders are recreated; entries not in the map (groups this push never
- * touched) are left as-is.
+ * so a component's stored `component_group_uuid` (and any field's group lists)
+ * from the pre-push snapshot would otherwise point at a group that no longer
+ * exists. `uuidMap` (old uuid → new uuid) is populated as folders are recreated;
+ * entries not in the map (groups this push never touched) are left as-is.
  */
 function remapGroupUuids(
   payload: Record<string, unknown>,
@@ -261,22 +260,7 @@ function remapGroupUuids(
     result.component_group_uuid =
       uuidMap.get(result.component_group_uuid) ?? result.component_group_uuid;
   }
-  if (isRecord(result.schema)) {
-    const schema: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(result.schema)) {
-      if (isRecord(field) && Array.isArray(field.component_group_whitelist)) {
-        schema[key] = {
-          ...field,
-          component_group_whitelist: field.component_group_whitelist.map((uuid) =>
-            typeof uuid === "string" ? (uuidMap.get(uuid) ?? uuid) : uuid,
-          ),
-        };
-      } else {
-        schema[key] = field;
-      }
-    }
-    result.schema = schema;
-  }
+  result.schema = mapSchemaGroupLists(result.schema, (uuid) => uuidMap.get(uuid) ?? uuid);
   return result;
 }
 

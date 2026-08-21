@@ -27,12 +27,42 @@ describe("defineField", () => {
     expect(field.deny).toEqual(["hero", "banner"]);
   });
 
-  it("should throw when deny holds a folder reference", () => {
-    // A folder ref carries a `name`, so it structurally passes for a block ref;
-    // the runtime guard is what keeps it from silently denying by folder name.
+  it("should normalize folder refs in deny to tagged path entries", () => {
+    // A folder ref carries a `name` too, so it structurally passes for a block
+    // ref; only the `path` guard tells the two apart.
+    const heros = defineFolder({ name: "Heros", parent: defineFolder({ name: "Layout" }) });
+    const field = defineField("body", { type: "bloks", deny: [heros] });
+    expect(field.deny).toEqual([{ folder: "Layout/Heros" }]);
+  });
+
+  it("should throw when deny mixes blocks and folders", () => {
     const heros = defineFolder({ name: "Heros" });
-    expect(() => defineField("body", { type: "bloks", deny: [heros] })).toThrow(
-      'defineField: "deny" on field "body" does not accept folder references; the editor denies by block name only',
+    expect(() => defineField("body", { type: "bloks", deny: [heros, "teaser"] })).toThrow(
+      'defineField: "deny" on field "body" mixes block and folder references; the editor restricts by either blocks or folders, not both',
     );
+  });
+
+  it("should keep allow and deny that restrict by the same dimension", () => {
+    const field = defineField("body", {
+      type: "bloks",
+      allow: ["teaser", "banner"],
+      deny: ["banner"],
+    });
+    expect(field.allow).toEqual(["teaser", "banner"]);
+    expect(field.deny).toEqual(["banner"]);
+  });
+
+  it("should throw when allow and deny restrict by different dimensions", () => {
+    const heros = defineFolder({ name: "Heros" });
+    expect(() => defineField("body", { type: "bloks", allow: [heros], deny: ["teaser"] })).toThrow(
+      'defineField: "allow" and "deny" on field "body" mix block and folder references; the editor restricts by either blocks or folders, not both',
+    );
+  });
+
+  it("should not treat an empty allow list as a conflicting dimension", () => {
+    const heros = defineFolder({ name: "Heros" });
+    const field = defineField("body", { type: "bloks", allow: [], deny: [heros] });
+    expect(field.allow).toEqual([]);
+    expect(field.deny).toEqual([{ folder: "Heros" }]);
   });
 });

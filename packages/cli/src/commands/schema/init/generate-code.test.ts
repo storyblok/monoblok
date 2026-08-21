@@ -236,6 +236,156 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("component_group_whitelist");
   });
 
+  it("should map a component_denylist back to deny and round-trip it on push", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "",
+          component_denylist: ["banner"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("deny: [");
+    expect(result).toContain("'banner',");
+    expect(result).not.toContain("component_denylist");
+    expect(result).not.toContain("restrict_components");
+
+    // Push the emitted config back: the denylist and its flags must reappear.
+    const { value } = mapFieldToWire({ name: "body", type: "bloks", pos: 0, deny: ["banner"] });
+    expect(value).toEqual({
+      type: "bloks",
+      pos: 0,
+      component_denylist: ["banner"],
+      restrict_components: true,
+      restrict_type: "",
+    });
+  });
+
+  it("should map both a whitelist and a denylist back to allow and deny", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "",
+          component_whitelist: ["teaser", "banner"],
+          component_denylist: ["banner"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("allow: [");
+    expect(result).toContain("deny: [");
+    expect(result).not.toContain("component_whitelist");
+    expect(result).not.toContain("component_denylist");
+  });
+
+  it("should resolve a group denylist to deny: [folderVar] and import the folder", () => {
+    const component = {
+      id: 1,
+      name: "landing",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "groups",
+          component_group_denylist: ["uuid-legacy"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([["uuid-legacy", "legacyFolder"]]),
+    );
+
+    expect(result).toContain("import { legacyFolder } from '../folders';");
+    expect(result).toContain("deny: [");
+    expect(result).toContain("legacyFolder,");
+    expect(result).not.toContain("component_group_denylist");
+    expect(result).not.toContain("restrict_components");
+  });
+
+  it("should keep the raw group lists when only one of the two resolves to folder refs", () => {
+    // Emitting the resolvable half as DSL refs while dropping the other would lose
+    // a restriction that is in force, so the whole field keeps its wire form.
+    const component = {
+      id: 1,
+      name: "landing",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "groups",
+          component_group_whitelist: ["uuid-heros"],
+          component_group_denylist: ["uuid-unknown"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(
+      component as any,
+      undefined,
+      undefined,
+      new Map([["uuid-heros", "herosFolder"]]),
+    );
+
+    expect(result).toContain("component_group_whitelist");
+    expect(result).toContain("component_group_denylist");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).not.toContain("allow");
+    expect(result).not.toContain("deny:");
+    expect(result).not.toContain("herosFolder");
+  });
+
+  it("should keep a disabled restriction disabled instead of mapping a stale denylist to deny", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: false,
+          component_denylist: ["banner"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_components: false,");
+    expect(result).not.toContain("deny");
+    expect(result).not.toContain("component_denylist");
+  });
+
   it("should drop orphaned restrict flags when a restricted field has no names and no groups", () => {
     // `restrict_components: true` with an empty `component_whitelist` and no group
     // whitelist is a wire byproduct that `allow` re-derives on push; without an

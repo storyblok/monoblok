@@ -278,6 +278,51 @@ describe("storyblokClient", () => {
       expect(mockGet).toHaveBeenCalledTimes(2);
     });
 
+    it("should keep the per-request fetchOptions on a retried request", async () => {
+      client = new StoryblokClient({
+        retriesDelay: 500,
+        maxRetries: 3,
+      });
+
+      const mockGet = vi
+        .fn()
+        .mockRejectedValueOnce({
+          status: 429,
+          statusText: "Too Many Requests",
+          response: {},
+        })
+        .mockResolvedValueOnce({
+          data: { story: { id: 1 } },
+          headers: {},
+          status: 200,
+        });
+
+      const mockSetFetchOptions = vi.fn();
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: mockSetFetchOptions,
+        baseURL: "https://api.storyblok.com/v2",
+      };
+
+      const fetchOptions = { cache: "no-store" as RequestCache };
+      const promise = client.cacheResponse(
+        "/cdn/stories",
+        { token: "test-token" },
+        undefined,
+        fetchOptions,
+      );
+      await vi.advanceTimersByTimeAsync(500);
+      await promise;
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      // The two attempts must apply the same fetchOptions. A retry that drops
+      // them loses the cache configuration that the caller supplied.
+      expect(mockSetFetchOptions).toHaveBeenCalledTimes(2);
+      expect(mockSetFetchOptions).toHaveBeenNthCalledWith(1, fetchOptions);
+      expect(mockSetFetchOptions).toHaveBeenNthCalledWith(2, fetchOptions);
+    });
+
     it("should give up after maxRetries 429 responses", async () => {
       client = new StoryblokClient({
         retriesDelay: 10,

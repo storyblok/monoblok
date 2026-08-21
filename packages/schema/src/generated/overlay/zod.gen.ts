@@ -36,7 +36,7 @@ export const zConditionalSettingRoot = z.object({
         value: z.optional(z.unknown())
     }))),
     modifications: z.optional(z.array(z.object({
-        display: z.optional(z.enum(['hide'])),
+        display: z.optional(z.enum(['hide', 'hidden'])),
         required: z.optional(z.boolean())
     })))
 });
@@ -53,6 +53,10 @@ export const zBaseFieldRoot = z.object({
     pos: z.optional(z.int()),
     conditional_settings: z.optional(z.array(zConditionalSettingRoot))
 });
+
+export const zGroupFieldRoot = zBaseFieldRoot.and(z.object({
+    type: z.enum(['group'])
+}));
 
 export const zSectionFieldRoot = zBaseFieldRoot.and(z.object({
     type: z.enum(['section']),
@@ -129,6 +133,10 @@ export const zBooleanFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.objec
     inline_label: z.optional(z.boolean())
 }));
 
+export const zCommerceFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['commerce'])
+}));
+
 export const zCustomFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['custom']),
     default_value: z.optional(z.string()),
@@ -173,6 +181,11 @@ export const zImageFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object(
     asset_folder_id: z.optional(z.int())
 }));
 
+export const zLinkFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['link']),
+    default_value: z.optional(z.string())
+}));
+
 export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['markdown']),
     default_value: z.optional(z.string()),
@@ -204,7 +217,10 @@ export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
         'rtl'
     ]))),
     allow_multiline: z.optional(z.boolean()),
-    max_length: z.optional(z.int())
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ]))
 }));
 
 export const zMultiassetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
@@ -367,7 +383,10 @@ export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
     allow_target_blank: z.optional(z.boolean()),
     allow_custom_attributes: z.optional(z.boolean()),
     link_scope: z.optional(z.string()),
-    max_length: z.optional(z.int()),
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
     rtl: z.optional(z.boolean())
 }));
 
@@ -379,7 +398,10 @@ export const zTableFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object(
 export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['text']),
     default_value: z.optional(z.string()),
-    max_length: z.optional(z.int()),
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
     maxlength: z.optional(z.int()),
     minlength: z.optional(z.int()),
     size: z.optional(z.string()),
@@ -389,7 +411,10 @@ export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
 export const zTextareaFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['textarea']),
     default_value: z.optional(z.string()),
-    max_length: z.optional(z.int()),
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
     maxlength: z.optional(z.int()),
     minlength: z.optional(z.int()),
     size: z.optional(z.string()),
@@ -416,10 +441,13 @@ export const zComponentSchemaField = z.union([
     zImageFieldRoot,
     zFileFieldRoot,
     zMultilinkFieldRoot,
+    zLinkFieldRoot,
     zBloksFieldRoot,
     zTableFieldRoot,
     zSectionFieldRoot,
     zTabFieldRoot,
+    zGroupFieldRoot,
+    zCommerceFieldRoot,
     zCustomFieldRoot
 ]);
 

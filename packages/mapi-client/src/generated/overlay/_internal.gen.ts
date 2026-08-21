@@ -3,7 +3,7 @@
 /**
  * A component schema field. Discriminated by the literal `type` enum on each variant.
  */
-export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | ImageFieldRoot | FileFieldRoot | MultilinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | CustomFieldRoot;
+export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | ImageFieldRoot | FileFieldRoot | MultilinkFieldRoot | LinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | GroupFieldRoot | CommerceFieldRoot | CustomFieldRoot;
 
 export type AssetFieldValue = AssetFieldValueRoot;
 
@@ -29,9 +29,12 @@ export type TextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     default_value?: string;
     /**
-     * Maximum length of the input string
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
     /**
      * Maximum length for text fields (legacy alias for max_length)
      */
@@ -60,9 +63,12 @@ export type TextareaFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     default_value?: string;
     /**
-     * Maximum length of the input string
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
     /**
      * Maximum length for text fields (legacy alias for max_length)
      */
@@ -159,9 +165,12 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     link_scope?: string;
     /**
-     * Maximum length of the input text
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
     /**
      * Whether to enable right-to-left text direction
      */
@@ -198,9 +207,12 @@ export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     allow_multiline?: boolean;
     /**
-     * Maximum length of the input string
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
 };
 
 export type NumberFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -597,6 +609,17 @@ export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     asset_link_type?: boolean;
 };
 
+export type LinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'link';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
+};
+
 export type BloksFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     /**
      * Field type discriminant
@@ -712,6 +735,20 @@ export type TabFieldRoot = BaseFieldRoot & {
      * Field keys that belong to this tab
      */
     keys?: Array<string>;
+};
+
+export type GroupFieldRoot = BaseFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'group';
+};
+
+export type CommerceFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'commerce';
 };
 
 export type CustomFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -941,7 +978,10 @@ export type BaseFieldRoot = {
     pos?: number;
     /**
      * Conditions set on the field for conditional visibility. The editor writes
-     * one setting and evaluates only the first, so further entries are inert.
+     * one setting and reads only the first, so an extra entry is invisible to it.
+     * It is not inert server-side: the conditional-required check requires every
+     * setting to match, so a second entry can only make a field harder to leave
+     * empty. Write one setting unless you mean that.
      *
      */
     conditional_settings?: Array<ConditionalSettingRoot>;
@@ -1108,18 +1148,26 @@ export type ConditionalSettingRoot = {
     }>;
     /**
      * What to apply to this field when the conditions match. The editor writes
-     * one entry and reads only the first, so further entries are inert.
+     * one entry and reads only the first.
      *
      */
     modifications?: Array<{
         /**
-         * Set to `hide` to hide the field
+         * Hides the field. Both spellings are live: the editor writes `hide`
+         * and reads it back, while the server's conditional-required check
+         * recognizes only `hidden`. Neither side accepts the other's value, so
+         * a rule authored through the API with `hidden` hides nothing in the
+         * editor, and one authored in the editor does not relax a required
+         * field on save. Both are declared because real spaces hold both;
+         * prefer `hide` for anything the editor will open.
+         *
          */
-        display?: 'hide';
+        display?: 'hide' | 'hidden';
         /**
          * `true` makes the field required, `false` makes it explicitly not
-         * required. The two modifications are mutually exclusive: `display`
-         * wins when both are set.
+         * required. Setting it alongside `display` is ambiguous rather than
+         * layered: the editor lets `display` win, while the server only skips
+         * the required check for the `hidden` spelling. Set one or the other.
          *
          */
         required?: boolean;

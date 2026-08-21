@@ -1,0 +1,22 @@
+allOf:
+  - $ref: ./base-field.yaml
+  - $ref: ./value-field.yaml
+  - type: object
+    description: |
+      Link field configuration. Legacy predecessor of `multilink`: the value is a
+      bare URL string rather than a link object. The editor neither offers nor
+      renders it any more, so it is modelled for read paths, not for new schemas.
+      Reach for `multilink` instead. It stays a first-class field type because the
+      Management API still permits it and validates its value as a string, so
+      spaces created before `multilink` continue to hold it and `schema init` has
+      to be able to emit it.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [link]
+        description: Field type discriminant
+      default_value:
+        type: string
+        description: Default value for the field

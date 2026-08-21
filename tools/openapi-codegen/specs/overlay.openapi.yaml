@@ -46,8 +46,11 @@ components:
         - $ref: ./mapi/components/field-types/image-field.yaml
         - $ref: ./mapi/components/field-types/file-field.yaml
         - $ref: ./mapi/components/field-types/multilink-field.yaml
+        - $ref: ./mapi/components/field-types/link-field.yaml
         - $ref: ./mapi/components/field-types/bloks-field.yaml
         - $ref: ./mapi/components/field-types/table-field.yaml
         - $ref: ./mapi/components/field-types/section-field.yaml
         - $ref: ./mapi/components/field-types/tab-field.yaml
+        - $ref: ./mapi/components/field-types/group-field.yaml
+        - $ref: ./mapi/components/field-types/commerce-field.yaml
         - $ref: ./mapi/components/field-types/custom-field.yaml

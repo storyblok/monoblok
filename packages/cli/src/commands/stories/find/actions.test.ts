@@ -24,10 +24,20 @@ describe("assertSupportedOptions", () => {
       expect(() => assertSupportedOptions(options({ skipContent: true }))).not.toThrow();
     });
 
-    it("is rejected with --where, which needs the content it skips", () => {
+    it("is accepted with --where, which the story listing can still answer", () => {
       expect(() =>
-        assertSupportedOptions(options({ skipContent: true, where: ["$.content"] })),
-      ).toThrow(/--skip-content cannot be combined with --where/);
+        assertSupportedOptions(
+          options({ skipContent: true, where: ["$[?search($.full_slug, 'blog')]"] }),
+        ),
+      ).not.toThrow();
+    });
+
+    it("is accepted with a --where that reads content, which warns on an empty result instead", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({ skipContent: true, where: ["$..[?(@.component == 'hero')]"] }),
+        ),
+      ).not.toThrow();
     });
 
     it("is rejected with --check-references", () => {
@@ -36,10 +46,16 @@ describe("assertSupportedOptions", () => {
       ).toThrow(/--skip-content cannot be combined with --check-references/);
     });
 
-    it("is rejected with --capi-filter, which exists to fetch content in bulk", () => {
+    it("is accepted with --capi-filter, which reads content in bulk to decide matches", () => {
       expect(() =>
-        assertSupportedOptions(options({ skipContent: true, capiFilter: true })),
-      ).toThrow(/--skip-content cannot be combined with --capi-filter/);
+        assertSupportedOptions(
+          options({
+            skipContent: true,
+            capiFilter: true,
+            where: ["$..[?(@.component == 'hero')]"],
+          }),
+        ),
+      ).not.toThrow();
     });
   });
 
@@ -56,12 +72,10 @@ describe("assertSupportedOptions", () => {
       );
     });
 
-    it("is rejected with --check-references, which reads every story's content", () => {
+    it("does not require --where under --check-references, which prunes nothing", () => {
       expect(() =>
-        assertSupportedOptions(
-          options({ capiFilter: true, checkReferences: true, where: ["$._ref_issues"] }),
-        ),
-      ).toThrow(/--capi-filter cannot be combined with --check-references/);
+        assertSupportedOptions(options({ capiFilter: true, checkReferences: true })),
+      ).not.toThrow();
     });
 
     it("validates --capi-params as a usage error", () => {

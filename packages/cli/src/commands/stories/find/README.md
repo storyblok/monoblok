@@ -51,7 +51,7 @@ storyblok stories find [text] --space <space> [options]
 | `--capi-params <params>` | Extra CDN query parameters for `--capi-filter`, e.g. `'{version: published}'`. |
 
 Both cut how many individual story requests a run has to make, which is what a run actually waits
-on. See [Optimizations](#optimizations).
+on, and they combine. See [Optimizations](#optimizations).
 
 Global options apply as usual, including `--space`, `--path`, `--verbose` and `--api-rate-limit`.
 
@@ -97,9 +97,17 @@ storyblok stories find --space 12345 --query="[archived][is]=true" --skip-conten
   | jq -r '.id' | xargs -I{} storyblok stories delete --space 12345 {}
 ```
 
-Results stream out as they match when stdout is piped or redirected, so `… | head -5` prints
-promptly. When stdout is a terminal they are held back until the progress bars have finished, so the
-two do not overwrite each other.
+Whenever the progress bars are drawing on a terminal, results are held back until they have stopped,
+then written in one go. That covers piping into a tool that prints as it goes:
+`… | jq -r .full_slug` would otherwise have `jq` writing to the same terminal the bars are redrawing
+on, and the two garble each other.
+
+With stderr redirected or in a non-interactive shell there are no bars to protect, so results stream
+out as they match and `… | head -5` prints promptly:
+
+```bash
+storyblok stories find --space 12345 2>/dev/null | head -5
+```
 
 ### Progress on stderr
 
@@ -132,8 +140,12 @@ All filters combine with **AND**, and every one of them runs in one of two place
 | `--query`                | API                           | no                  |
 | `--references`           | API                           | no                  |
 | `--publish-status`       | API, plus a client-side check | no                  |
-| **`--where`**            | **Client-side**               | **yes**             |
+| **`--where`**            | **Client-side**               | **usually**         |
 | **`--check-references`** | **Client-side**               | **yes**             |
+
+`--where` is the one that depends on the expression. Most reach into `content`, but one written
+against story metadata (`full_slug`, `updated_at`, `content_type`, …) is answerable from the listing
+alone, and combines with [`--skip-content`](#--skip-content).
 
 **API filters** are resolved by the Storyblok API. They reduce what is transferred and cost nothing
 locally, so narrow with them first.
@@ -352,6 +364,9 @@ found, and `cached_url` only for reference types that carry one, so a relation p
 # Audit a whole space
 storyblok stories find --space 12345 --check-references
 
+# The same audit, reading content from the CDN in bulk instead of story by story
+storyblok stories find --space 12345 --check-references --capi-filter
+
 # Only dead links
 storyblok stories find --space 12345 --check-references \
   --where "$._ref_issues[?(@.type == 'broken')]"
@@ -374,8 +389,8 @@ Almost all of it goes into fetching content, and a rate limit is the reason. The
 does not include content, so every story a client-side filter has to see needs a request of its own,
 and those requests are paced by `--api-rate-limit` — **six per second** by default.
 
-Here is a real run over a 197-story scope with three `--where` client-side expressions, measured from outside
-the command:
+Here is a real run over a 197-story scope with three `--where` client-side expressions, measured
+from outside the command:
 
 | Stage                | Work            | Time       |
 | -------------------- | --------------- | ---------- |
@@ -415,11 +430,47 @@ storyblok stories find --space 12345 --container-block product --skip-content | 
 storyblok stories find --space 12345 --includes-block hero --skip-content | wc -l
 ```
 
+`--where` still works, as long as the expression stays on metadata. The listing carries every story
+property except `content`, so a filter on `full_slug`, `updated_at`, `content_type`, `tag_list` or
+`published` needs nothing that was skipped:
+
+```bash
+# Every landing page whose slug mentions a partner, in one page walk
+storyblok stories find --space 12345 --starts-with lp --skip-content \
+  --where "$[?search($.full_slug, 'accelerators')]"
+
+# The content type is on the listing too, so this needs no content
+storyblok stories find --space 12345 --skip-content \
+  --where "$[?($.content_type == 'product')]"
+```
+
+An expression that _does_ read content matches nothing, since the content is not there to read. When
+that leaves the run with no results at all, the summary says so:
+
+```
+ℹ Results: 0 stories matched (210 listed, no content fetched)
+⚠️  --where cannot match on story content while --skip-content is set: the listing
+carries story metadata only (full_slug, updated_at, content_type, tag_list,
+published, …). If the expression reads content, drop --skip-content, and add
+--capi-filter to keep the run fast.
+```
+
+Three shapes read content, so none of them survive `--skip-content` on its own:
+
+| Shape                      | Example                            | Why                                                   |
+| -------------------------- | ---------------------------------- | ----------------------------------------------------- |
+| Naming `content`           | `$[?($.content.component == 'x')]` | reads the field directly                              |
+| Recursive descent from `$` | `$..[?(@.component == 'hero')]`    | `..` walks into `content` along with everything else  |
+| `@` anchored at the story  | `$[?(@.component == 'hero')]`      | `@` binds to each story property value, `content` too |
+
+Adding [`--capi-filter`](#--capi-filter) gives those expressions a source of content again, without
+bringing the per-story fetch back. See
+[`--capi-filter` with `--skip-content`](#--capi-filter-with---skip-content).
+
 Good to know:
 
-- **Filters that read content are refused, not ignored.** Combining `--skip-content` with `--where`
-  or `--check-references` fails with an explanatory error, because both are evaluated against
-  content. An explanation is better than a quietly emptier result set.
+- **`--check-references` is refused**, since references live in the content it skips, leaving the
+  check nothing to read.
 - **API filters are unaffected:** free-text search, `--query`, `--container-block`,
   `--includes-block`, `--starts-with`, `--entry-type` and `--references` all still work.
 - **`--publish-status` still works**, since it is decided from the listing.
@@ -506,12 +557,80 @@ Good to know:
   individually just like matches, so a folder-heavy scope saves proportionally less; add
   `--entry-type story` when folders are not the target.
 - **Draft content carries editor metadata** (`_editable`) that the Management API does not. It never
-  reaches the output, but a `--where` expression mentioning `_editable` matches with the flag and
-  not without it.
+  reaches the output — it is stripped from the content the CDN supplies to `--check-references` —
+  but a `--where` expression mentioning `_editable` matches with the flag and not without it.
 - **A failed bulk request costs time, not correctness.** It is reported as a run error, and its
   stories are fetched individually as usual.
-- **`--check-references` is refused**, because that check reads the content of every story in scope,
-  leaving nothing to narrow.
+- **`--check-references` prunes nothing**, because that check reads every story in scope. The flag
+  is still worth passing there: it becomes a bulk content _source_. See
+  [`--capi-filter` with `--check-references`](#--capi-filter-with---check-references).
+
+#### `--capi-filter` with `--check-references`
+
+The reference scan has to read every story in scope, so there is nothing to prune. What the flag
+does instead is swap the content source: the CDN serves the same draft content in bulk that the
+per-story fetch returns one at a time, so the scan reads from there and **no story is fetched from
+MAPI**. `--where` is not required, since it is not filtering anything.
+
+```bash
+storyblok stories find --space 12345 --starts-with lp --check-references --capi-filter
+```
+
+On a 210-story scope that is **2.8s against 36.7s**, reporting the same 27 stories with the same 44
+issues down to the field path.
+
+```
+Listing stories: 210/210 listed.                                       (done @0.8s)
+Reading content via CAPI: 206/210 resolved, 4 without content.         (done @1.5s)
+Checking references: 210 checked, 185 with references, 27 with issues. (done @1.5s)
+```
+
+Two differences from the un-flagged run, neither of which touches the issues found:
+
+- **The emitted story is the listing plus content**, not the single-story response, so envelope
+  fields only that response carries (`breadcrumbs`, `translated_stories`, `preview_token`, `parent`,
+  …) are absent, and list-only fields (`content_type`, `content_summary`) are present. `content` and
+  `_ref_issues` are identical either way.
+- **A story the CDN holds no content for is checked with nothing in hand**, so it reports no
+  references. Folders are the usual case and have none anyway; the run says how many:
+
+  ```
+  ⚠️  4 stories had no CDN content (folders, stories the CDN holds none for, or a failed
+  batch) and were checked without content. Drop --capi-filter to read every story from
+  MAPI instead.
+  ```
+
+CDN staleness applies here as it does to any `--capi-filter` run: a story edited moments ago may
+still serve its previous content, so an audit that has to be exact should drop the flag.
+
+#### `--capi-filter` with `--skip-content`
+
+Combining the two answers a content question and emits list metadata only, which is the fastest
+shape a content filter has: the CDN decides every match in bulk, and **no story is fetched from MAPI
+at all**. Reach for it when the question is "which stories" rather than "what is in them", and the
+answer feeds ids or slugs into something else.
+
+```bash
+# Ids of every story using a customers_logos with six or more logos
+storyblok stories find --space 12345 --starts-with lp --capi-filter --skip-content \
+  --where "$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
+  | jq -r '.id'
+```
+
+On a 210-story scope that is **1.9s against 20s** with the MAPI fetch, for the same 99 stories.
+
+The trade is what happens to the stories the CDN cannot decide. With the fetch in place they are
+settled from MAPI; without it there is nothing left to settle them, so they are tested on list
+metadata alone and a content expression drops them. The run says how many:
+
+```
+⚠️  4 stories could not be decided from CDN content (folders, stories the CDN holds no
+content for, or a failed batch) and were tested on list metadata only. Drop
+--skip-content to fetch and test those from MAPI instead.
+```
+
+Folders are the usual cause and are rarely the target, so `--entry-type story` often makes the
+warning go away on its own.
 
 ### `--capi-params`
 
@@ -706,3 +825,154 @@ storyblok stories find --space 12345 --query="[archived][is]=true" --skip-conten
 # Keep a search's matches for later processing
 storyblok stories find --space 12345 --container-block product > products.jsonl
 ```
+
+## The future
+
+**None of this is implemented.** It is where the command is heading, written down so the constraints
+do not have to be rediscovered every time someone reaches for them.
+
+### `find` as the discovery engine for other commands
+
+`find` exists to answer one question — _which stories_ — and it now answers it faster and more
+precisely than anything else in the CLI. Every other story command answers the same question again,
+worse: `stories pull` and `migrations run` have `--starts-with` and `--query` and nothing else, so
+"the stories using a `hero` with an empty headline" is not expressible to them at all. The work is
+already done one process to the left:
+
+```bash
+storyblok stories find --space 12345 --includes-block hero --capi-filter \
+  --where "$..[?(@.component == 'hero' && @.headline == '')]" \
+  | storyblok migrations run hero --space 12345 -
+```
+
+The prize is not fewer requests downstream. It is none. `find` emits the **full story** per line,
+content included, so a command reading that stream skips both the listing and the per-story content
+fetch and starts at the stage that does the actual work. Today `migrations run` fetches every story
+in scope one at a time and only then discovers that the migration changes nothing in most of them —
+the no-op verdict is reached _after_ the request that paid for it.
+
+On a 3,951-story space where the migration touches 100 stories:
+
+| Approach                                 | Read                          | Write |    Total |
+| ---------------------------------------- | ----------------------------- | ----- | -------: |
+| `migrations run` today                   | 3,951 ÷ 6/s = 659s            | 17s   | **676s** |
+| `find --capi-filter \| migrations run -` | 27s in `find`, **0** after it | 17s   |  **44s** |
+
+Same result, fifteen times faster, and the filter that selected those 100 stories can be anything
+`--where` can express rather than anything `filter_query` can.
+
+`-` is the established convention for "the input is stdin": `git apply -`, `kubectl apply -f -`,
+`docker build -`, `tar -f -`.
+
+### Selecting, then acting
+
+The same shape works for writes. `find` selects, something in the middle decides what changes, and a
+write command applies it:
+
+```bash
+# Retag every story still using the legacy hero
+storyblok stories find --space 12345 --includes-block hero_legacy --skip-content \
+  | ./retag.js \
+  | storyblok stories update --space 12345 -
+
+# Clear out an abandoned campaign subtree
+storyblok stories find --space 12345 --starts-with en/campaigns/2023 --skip-content \
+  | storyblok stories delete --space 12345 --dry-run -
+```
+
+Both sides stay simple, and that is the point: `find` owns the question, the write command owns the
+change, and neither has to learn the other's job. The middle is JSONL in, JSONL out — a `jq` filter,
+a shell one-liner and a Node script are equal citizens there, and none of them needs a token, a rate
+limiter or a progress bar.
+
+`--skip-content` belongs on the left of most of these. A delete needs an `id`, a retag needs
+`tag_list`, a move needs `parent_id` — all of them ride on the listing, so the selection side
+becomes a page walk of seconds rather than minutes, and the run never reads content it was not going
+to touch.
+
+**Run the pipe with `--dry-run` on the right first.** `find` is read-only, so the left side can also
+be truncated at any stage to see exactly what the next one would receive.
+
+Neither `stories update` nor `stories delete` exists yet. The pipe is an argument for building them:
+once selection is somebody else's problem, there is almost nothing left in a write command but the
+write.
+
+Two things a write consumer has to get right, and neither is about the pipe:
+
+- **Deleting a folder deletes its subtree.** The API removes the folder and everything beneath it
+  recursively, so a 12-line selection can remove 400 stories, and a child listed after its parent is
+  already gone when its turn comes. A delete consumer has to report what it removed rather than how
+  many lines it read, and either sort folders last or treat the ids that vanish underneath it as
+  expected. `--entry-type story` sidesteps it when the folders themselves should stay.
+- **A selection is a snapshot.** Between the `find` and the write, a story can be edited or moved.
+  For anything destructive, keep the selection rather than streaming it —
+  `find … > selection.jsonl`, read it, act on the file — so the same set can be re-applied, audited
+  or diffed afterwards.
+
+### Why `-`, and not just detecting a pipe
+
+The obvious shortcut — read stdin whenever something is on it — fails twice.
+
+First, the usual probe cannot see it. `process.stdin.isTTY` is `null` for a pipe, for `< /dev/null`,
+for a file redirect and for a closed descriptor alike, so it cannot tell _piped input_ from _no
+input_: under CI, cron, or `docker` without `-i`, stdin is `/dev/null` and a command that guessed
+from `isTTY` would silently operate on zero stories and exit 0. `fstat` on descriptor 0 does
+distinguish them — a pipe is a FIFO, a redirect is a regular file, and `/dev/null`, a closed
+descriptor and a terminal are all character devices — so the detection is available.
+
+Second, and this is the reason it stays explicit: a command that silently consumes stdin breaks when
+it is a child of a loop sharing that descriptor.
+
+```bash
+cat components.txt | while read component; do
+  storyblok migrations run "$component" --space 12345   # would eat the rest of components.txt
+done
+```
+
+The loop and the command read the same pipe. An auto-detecting `migrations run` would slurp the
+remaining lines as JSONL, parse them as stories, and the loop would run once. This is why `ssh` has
+`-n`. Stdin also cannot express intent when it conflicts with the scope flags — does
+`pull --starts-with en/blog -` intersect them, or does the stream win?
+
+So `-` decides it, and `fstat` is used only for a nudge: when stdin is a pipe, `-` was not passed,
+and the command is about to go space-wide, say so on stderr rather than silently doing the larger
+thing.
+
+### Steps that stand on their own
+
+Each of these is useful before the pipe exists, and none depends on the others.
+
+- **`--by-ids` / `--by-slugs` on the consuming commands.** The cheap half-step:
+  `find … --skip-content | jq -r .id | paste -sd,` feeds it today. One list request per 1,000 ids
+  instead of a full page walk, and it composes with `pull`, `validate` and `delete` as well. Content
+  still gets re-fetched, so it is a fraction of the win, for a fraction of the work.
+- **Larger list pages.** `fetchStoriesStream` asks for 100 stories per page; the Management API
+  accepts **1,000**. The same 3,951-story space is 4 list requests instead of 40, in every command
+  that shares the stream.
+- **The two stages `find` has that nothing else does.** `filterListedStoriesStream` drops stories
+  from list metadata alone, before the expensive stage; `capiFilterStream` reads content in bulk and
+  prunes. Both take a plain `ClientFilter[]` and neither knows anything about `find`. `pull`,
+  `validate` and `migrations run` can all mount them as they are.
+- **`migrations run` as its own filter.** A migration function is a pure predicate on content, so it
+  can run against bulk CDN content first and only the stories whose content actually changes need a
+  Management API read and write. That is `--capi-filter` with the migration in the filter slot.
+
+### What has to be solved first
+
+- **CDN content is not Management API content.** The CDN drops every `field__i18n__<lang>` key from
+  the payload. Harmless for a predicate over untranslated fields, a silent undercount when a
+  **bloks** field is field-level translated — those nested blocks simply are not in the document the
+  filter sees — and never acceptable as the source of a write. The bulk read can decide _which_
+  stories; only the Management API can say _what_ is written back.
+- **Staleness on the write path.** `migrations run` sends `force_update: "1"`, which overrides the
+  server's conflict check. A pipe widens the window between reading a story and writing it, so a
+  concurrent edit is lost without a word. The lines already carry `updated_at` — compare it, or drop
+  `force_update` for piped input.
+- **`find` buffers its output when stderr is a terminal**, so the progress bars cannot be garbled.
+  In `find | migrations run -` at an interactive prompt, stderr is still the terminal, so nothing
+  reaches the consumer until `find` finishes and the two processes do not overlap. Redirecting
+  stderr already fixes it; deciding that a piped consumer outranks the bars would fix it properly.
+- **A stated output contract.** `--skip-content` omits content and `--check-references` adds
+  `_ref_issues`, so the shape depends on the flags. A consumer needs a documented minimum — `id`,
+  `uuid`, `full_slug` — and has to treat `content` as optional, fetching only the lines that lack
+  it.

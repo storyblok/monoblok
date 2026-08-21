@@ -15,6 +15,7 @@ import type {
 } from "../generated/types/field";
 import type { BlockFolder } from "./define-folder";
 import type { Prettify } from "../utils/prettify";
+import { DENIABLE_FIELD_TYPES, type DerivedRestrictionKey } from "../restrictions";
 import { isRecord } from "../utils/is-record";
 
 export type {
@@ -59,17 +60,6 @@ const isFolderRef = (ref: unknown): ref is BlockFolder =>
 /** Whether a normalized `allow`/`deny` list restricts by folder rather than by block name. */
 const isFolderList = (entries: readonly unknown[]): boolean =>
   entries.some((entry) => isRecord(entry) && typeof entry.folder === "string");
-
-/**
- * The field types whose nested-block picker reads the restriction lists, and so
- * the only ones a `deny` can mean anything on.
- *
- * `allow` is deliberately not limited to these: `component_whitelist` is also
- * real on `multilink`, where it selects story content types rather than blocks.
- * There is no denylist counterpart to that, so a `deny` anywhere else writes a
- * key nothing reads.
- */
-export const DENIABLE_FIELD_TYPES: readonly string[] = ["bloks", "richtext"];
 
 /**
  * Normalizes an `allow`/`deny` input to plain block names and `{ folder: path }`
@@ -277,21 +267,6 @@ declare const invalidKey: unique symbol;
  */
 type Invalid<TReason extends string> = { readonly [invalidKey]: TReason };
 
-/**
- * Wire restriction keys that `allow` / `deny` replace and derive the flags for.
- * `validateSchema` reports the same conflict {@link NoRestrictionConflict} rejects,
- * for consumers without type checking, so the two read from one list.
- */
-export const DERIVED_RESTRICTION_KEYS = [
-  "component_whitelist",
-  "component_group_whitelist",
-  "component_denylist",
-  "component_group_denylist",
-  "restrict_components",
-] as const;
-
-type DerivedRestrictionKeys = (typeof DERIVED_RESTRICTION_KEYS)[number];
-
 /** The {@link Field} union member matching `T`'s `type` discriminant. */
 type MemberFor<T> = T extends { type: infer TType } ? Extract<Field, { type: TType }> : Field;
 
@@ -328,7 +303,7 @@ type NoExtraKeys<T> = T extends { type: "custom" }
  */
 type NoRestrictionConflict<T> = T extends { allow: {} } | { deny: {} }
   ? {
-      [K in Extract<keyof T, DerivedRestrictionKeys>]: Invalid<`"${K &
+      [K in Extract<keyof T, DerivedRestrictionKey>]: Invalid<`"${K &
         string}" is derived from "allow"/"deny": set one or the other, not both`>;
     }
   : unknown;

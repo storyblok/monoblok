@@ -1,6 +1,6 @@
 import type { SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
-import { DERIVED_RESTRICTION_KEYS } from "../helpers/define-field";
+import { DERIVED_RESTRICTION_KEYS } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 /**

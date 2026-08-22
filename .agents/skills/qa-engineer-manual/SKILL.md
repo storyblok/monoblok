@@ -1,8 +1,9 @@
 ---
 name: qa-engineer-manual
 description:
-  Use when the user requests manual testing, QA, or reproduction of a bug report for a package
-  against a real Storyblok space
+  Use for manual testing, QA, debugging, or reproducing a bug report. Also for verifying that a
+  feature works, seeding or setting up a space, calling an API with real credentials, or running a
+  built CLI or package for real
 ---
 
 # QA Engineer for Manual Testing

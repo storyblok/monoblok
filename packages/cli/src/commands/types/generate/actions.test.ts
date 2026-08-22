@@ -50,43 +50,33 @@ vi.mock("pathe", async (importOriginal) => {
   };
 });
 
-// Mock pathToFileURL so dynamic imports resolve consistently on all platforms.
-// On Windows, pathToFileURL adds a drive-letter prefix (file:///D:/…) which
-// prevents vi.mock('/mocked/path') from intercepting the import.
-vi.mock("node:url", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:url")>();
+// Create a mock for the custom fields parser and the user module loader that
+// hands it to the code under test. vi.hoisted makes both available inside the
+// hoisted vi.mock factory below.
+const { mockCustomFieldsParser, mockLoadUserModule } = vi.hoisted(() => {
+  const customFieldsParser = vi.fn().mockImplementation((key, field) => {
+    if (field.field_type === "native-color-picker") {
+      return {
+        [key]: {
+          properties: {
+            color: { type: "string" },
+          },
+          required: ["color"],
+          type: "object",
+        },
+      };
+    }
+    return {};
+  });
   return {
-    ...actual,
-    pathToFileURL: (p: string) => ({ href: p }),
+    mockCustomFieldsParser: customFieldsParser,
+    mockLoadUserModule: vi.fn().mockResolvedValue(customFieldsParser),
   };
 });
 
-// Create a mock for the custom fields parser
-const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {
-  if (field.field_type === "native-color-picker") {
-    return {
-      [key]: {
-        properties: {
-          color: { type: "string" },
-        },
-        required: ["color"],
-        type: "object",
-      },
-    };
-  }
-  return {};
-});
-
-// Mock the dynamic import
-vi.mock("/mocked/path", () => ({
-  default: mockCustomFieldsParser,
-}));
-
-// Mock the import function
-vi.mock("node:module", () => ({
-  import: vi.fn().mockResolvedValue({
-    default: mockCustomFieldsParser,
-  }),
+// Mock the loader used for --custom-fields-parser and --compiler-options files
+vi.mock("./load-user-module", () => ({
+  loadUserModule: mockLoadUserModule,
 }));
 
 // Set up the virtual file system with our custom fields parser
@@ -244,8 +234,8 @@ describe("generate types actions", () => {
       expect(result.length).toBeGreaterThan(0);
     }
 
-    // Verify that resolve was called with the customFieldsParser path
-    expect(resolve).toHaveBeenCalledWith("/path/to/custom/parser.ts");
+    // Verify that the parser module was loaded from the customFieldsParser path
+    expect(mockLoadUserModule).toHaveBeenCalledWith("/path/to/custom/parser.ts");
   });
 
   it("should handle compilerOptions option", async () => {
@@ -265,8 +255,8 @@ describe("generate types actions", () => {
       expect(result.length).toBeGreaterThan(0);
     }
 
-    // Verify that resolve was called with the compilerOptions path
-    expect(resolve).toHaveBeenCalledWith("/path/to/compiler/options");
+    // Verify that the options module was loaded from the compilerOptions path
+    expect(mockLoadUserModule).toHaveBeenCalledWith("/path/to/compiler/options");
   });
 
   it("should apply typePrefix to component type names", async () => {

@@ -4,6 +4,7 @@ import {
   inject,
   computed,
   OnInit,
+  OnDestroy,
   linkedSignal,
   input,
 } from "@angular/core";
@@ -32,7 +33,7 @@ import {
     </div>
   `,
 })
-export class CatchAllComponent implements OnInit {
+export class CatchAllComponent implements OnInit, OnDestroy {
   private readonly livePreview = inject(LivePreviewService);
 
   /** SSR source of truth */
@@ -46,11 +47,16 @@ export class CatchAllComponent implements OnInit {
   readonly bridgeConfig: BridgeParams = {
     resolveRelations: ["featured-articles.articles"],
   };
-  ngOnInit(): void {
-    // Enable live preview for real-time editing in the Visual Editor
-    this.livePreview.listen((updatedStory) => {
+
+  private cleanupLivePreview: (() => void) | undefined;
+
+  async ngOnInit(): Promise<void> {
+    this.cleanupLivePreview = await this.livePreview.listen((updatedStory) => {
       this.story.set(updatedStory);
-      console.log(updatedStory);
     }, this.bridgeConfig);
+  }
+
+  ngOnDestroy(): void {
+    this.cleanupLivePreview?.();
   }
 }

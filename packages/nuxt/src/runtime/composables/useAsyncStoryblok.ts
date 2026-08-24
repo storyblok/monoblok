@@ -1,5 +1,5 @@
 import type { AsyncData, AsyncDataOptions, NuxtError } from "#app";
-import { useAsyncData } from "#app";
+import { useAsyncData, useRuntimeConfig } from "#app";
 import {
   type ISbResult,
   type ISbStoriesParams,
@@ -131,6 +131,13 @@ export async function useAsyncStoryblok(
   url: string,
   options: UseAsyncStoryblokOptions,
 ): Promise<UseAsyncStoryblokResult> {
+  const { storyblok } = useRuntimeConfig().public;
+  if (!storyblok?.accessToken) {
+    throw new Error(
+      "Storyblok access token is not available to useAsyncStoryblok. Set storyblok.accessToken in your nuxt.config.ts, and make sure storyblok.enableServerClient is not enabled (it keeps the token server-only, so this client composable can't use it — use the server-side client from '#storyblok/server' instead in that mode).",
+    );
+  }
+
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
   const uniqueKey = (): string => `${stableStringify(toValue(api))}${url}`;

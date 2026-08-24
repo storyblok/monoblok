@@ -30,14 +30,6 @@ export default defineNuxtModule<AllModuleOptions>({
   setup(options: AllModuleOptions, nuxt: Nuxt) {
     const resolver = createResolver(import.meta.url);
 
-    if (!nuxt.options._prepare) {
-      if (!options.accessToken && !process.env.NUXT_STORYBLOK_ACCESS_TOKEN) {
-        throw new Error(
-          "Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts (or the NUXT_STORYBLOK_ACCESS_TOKEN environment variable) when storyblok.enableServerClient = true.",
-        );
-      }
-    }
-
     if (nuxt.options.vite.optimizeDeps) {
       nuxt.options.vite.optimizeDeps.include = nuxt.options.vite.optimizeDeps.include || [];
       nuxt.options.vite.optimizeDeps.include.push("@storyblok/vue");

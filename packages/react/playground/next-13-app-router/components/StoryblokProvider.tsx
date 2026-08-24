@@ -1,8 +1,2 @@
-"use client";
-
-import { getStoryblokApi } from "@/lib/storyblok";
-
-export default function StoryblokProvider({ children }: any) {
-  getStoryblokApi();
-  return children;
-}
+// No longer needed — SDK is initialised via createRegistry in lib/storyblok.ts.
+export {};

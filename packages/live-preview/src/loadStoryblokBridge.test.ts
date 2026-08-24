@@ -92,7 +92,7 @@ describe("loadStoryblokBridge", () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     await loadStoryblokBridge();
-    const _ = (window as any).StoryblokBridge;
+    void (window as any).StoryblokBridge;
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
@@ -114,7 +114,7 @@ describe("loadStoryblokBridge", () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     await loadStoryblokBridge();
-    const _ = window.storyblokRegisterEvent;
+    void window.storyblokRegisterEvent;
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining(

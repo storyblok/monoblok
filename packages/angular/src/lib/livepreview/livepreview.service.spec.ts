@@ -1,4 +1,5 @@
 import { TestBed } from "@angular/core/testing";
+import { DestroyRef } from "@angular/core";
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import {
   LivePreviewService,
@@ -14,6 +15,15 @@ const onStoryblokEditorEventMock = vi.hoisted(() => vi.fn());
 vi.mock("@storyblok/live-preview", () => ({
   onStoryblokEditorEvent: onStoryblokEditorEventMock,
 }));
+
+// ---- helpers ----
+
+/** Minimal DestroyRef stub for testing. */
+function makeDestroyRef(): { ref: DestroyRef; destroy: () => void } {
+  const callbacks: (() => void)[] = [];
+  const ref = { onDestroy: (cb: () => void) => callbacks.push(cb) } as unknown as DestroyRef;
+  return { ref, destroy: () => callbacks.forEach((cb) => cb()) };
+}
 
 describe("LivePreviewService", () => {
   describe("without live preview enabled", () => {
@@ -128,12 +138,84 @@ describe("LivePreviewService", () => {
       const cb = vi.fn();
       await service.listen(cb);
 
-      // Grab the inner callback passed to onStoryblokEditorEvent and invoke it
       const innerCb = onStoryblokEditorEventMock.mock.calls[0][0];
       const story = { id: 1, content: {} };
       innerCb(story);
 
       expect(cb).toHaveBeenCalledWith(story);
+    });
+  });
+
+  /** Flush the microtask queue enough ticks to settle the async chain inside connect(). */
+  async function flush() {
+    for (let i = 0; i < 5; i++) {
+      await Promise.resolve();
+    }
+  }
+
+  describe("connect()", () => {
+    let service: LivePreviewService;
+    const cleanupMock = vi.fn();
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      onStoryblokEditorEventMock.mockResolvedValue(cleanupMock);
+
+      TestBed.configureTestingModule({
+        providers: [
+          LivePreviewService,
+          { provide: LIVE_PREVIEW_ENABLED, useValue: true },
+          { provide: LIVE_PREVIEW_CONFIG, useValue: {} },
+        ],
+      });
+      service = TestBed.inject(LivePreviewService);
+    });
+
+    it("calls onStoryblokEditorEvent after connect()", async () => {
+      const { ref } = makeDestroyRef();
+      service.connect(() => {}, ref);
+      await flush();
+      expect(onStoryblokEditorEventMock).toHaveBeenCalledOnce();
+    });
+
+    it("calls the bridge cleanup when DestroyRef fires after bridge loads", async () => {
+      const { ref, destroy } = makeDestroyRef();
+      service.connect(() => {}, ref);
+      await flush(); // bridge loads, then() runs
+      destroy(); // component destroyed
+      expect(cleanupMock).toHaveBeenCalledOnce();
+    });
+
+    it("calls the bridge cleanup when DestroyRef fires before bridge loads (race condition)", async () => {
+      let resolveBridge!: (fn: () => void) => void;
+      onStoryblokEditorEventMock.mockReturnValue(
+        new Promise<() => void>((resolve) => {
+          resolveBridge = resolve;
+        }),
+      );
+
+      const { ref, destroy } = makeDestroyRef();
+      service.connect(() => {}, ref);
+
+      // Component destroyed before bridge finishes loading
+      destroy();
+      expect(cleanupMock).not.toHaveBeenCalled(); // not loaded yet
+
+      // Bridge finishes loading after destruction
+      resolveBridge(cleanupMock);
+      await flush();
+
+      expect(cleanupMock).toHaveBeenCalledOnce(); // torn down immediately
+    });
+
+    it("forwards options to listen()", async () => {
+      const { ref } = makeDestroyRef();
+      service.connect(() => {}, ref, { resolveRelations: ["a.b"] });
+      await flush();
+      expect(onStoryblokEditorEventMock).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ resolveRelations: ["a.b"] }),
+      );
     });
   });
 });

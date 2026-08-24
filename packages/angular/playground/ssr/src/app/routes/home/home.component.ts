@@ -5,7 +5,7 @@ import {
   signal,
   computed,
   OnInit,
-  OnDestroy,
+  DestroyRef,
 } from "@angular/core";
 import {
   type SbBlokData,
@@ -35,9 +35,10 @@ import {
     </div>
   `,
 })
-export class HomeComponent implements OnInit, OnDestroy {
+export class HomeComponent implements OnInit {
   private readonly storyblok = inject(StoryblokService);
   private readonly livePreview = inject(LivePreviewService);
+  private readonly destroyRef = inject(DestroyRef);
   private client = this.storyblok.getClient();
   readonly story = signal<Story | null>(null);
   readonly loading = signal(true);
@@ -46,8 +47,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     resolveRelations: ["featured-articles.articles"],
     preventClicks: true,
   };
-
-  private cleanupLivePreview: (() => void) | undefined;
 
   async ngOnInit(): Promise<void> {
     try {
@@ -64,13 +63,10 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.loading.set(false);
     }
 
-    // Enable live preview for Visual Editor; store cleanup for ngOnDestroy
-    this.cleanupLivePreview = await this.livePreview.listen((updatedStory) => {
-      this.story.set((updatedStory as Story) || null);
-    }, this.bridgeConfig);
-  }
-
-  ngOnDestroy(): void {
-    this.cleanupLivePreview?.();
+    this.livePreview.connect(
+      (updatedStory) => this.story.set((updatedStory as Story) || null),
+      this.destroyRef,
+      this.bridgeConfig,
+    );
   }
 }

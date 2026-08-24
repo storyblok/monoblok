@@ -1,4 +1,4 @@
-import { InjectionToken, inject, NgZone, Injectable } from "@angular/core";
+import { InjectionToken, inject, NgZone, Injectable, DestroyRef } from "@angular/core";
 import { Story } from "@storyblok/api-client";
 import { type BridgeParams, onStoryblokEditorEvent } from "@storyblok/live-preview";
 
@@ -56,6 +56,17 @@ export class LivePreviewService {
 
   private readonly baseConfig = inject(LIVE_PREVIEW_CONFIG, { optional: true }) ?? {};
 
+  /**
+   * Subscribes to Storyblok Visual Editor live preview updates.
+   *
+   * Returns a cleanup function that destroys the bridge when called.
+   * For automatic cleanup tied to a component or service lifetime, prefer
+   * {@link connect} which accepts a `DestroyRef` and handles teardown for you.
+   *
+   * @param callback Called with the updated story on every `input` event.
+   * @param options Optional bridge configuration; merged over the base config.
+   * @returns A promise that resolves to a cleanup function.
+   */
   async listen(callback: LivePreviewCallback, options?: BridgeParams): Promise<() => void> {
     if (!this.enabledFlag) {
       if (typeof ngDevMode === "undefined" || ngDevMode) {
@@ -74,5 +85,50 @@ export class LivePreviewService {
         callback(story as Story);
       });
     }, mergedConfig);
+  }
+
+  /**
+   * Subscribes to Storyblok Visual Editor live preview updates and
+   * automatically destroys the bridge when the provided `DestroyRef` fires.
+   *
+   * This is the preferred API for component use. It eliminates the need for
+   * a manual cleanup field and an `ngOnDestroy` implementation, and correctly
+   * handles the case where the component is destroyed while the bridge is
+   * still loading.
+   *
+   * @example
+   * ```ts
+   * ngOnInit(): void {
+   *   this.livePreview.connect(
+   *     (story) => this.story.set(story),
+   *     inject(DestroyRef),
+   *     this.bridgeConfig,
+   *   );
+   * }
+   * ```
+   *
+   * @param callback Called with the updated story on every `input` event.
+   * @param destroyRef The `DestroyRef` of the calling component or service.
+   * @param options Optional bridge configuration; merged over the base config.
+   */
+  connect(callback: LivePreviewCallback, destroyRef: DestroyRef, options?: BridgeParams): void {
+    let cleanup: (() => void) | undefined;
+    let destroyed = false;
+
+    // Register teardown synchronously — before the async bridge load — so
+    // that if the component is destroyed while the bridge is still loading,
+    // `destroyed` is set to true and the bridge is torn down as soon as the
+    // promise resolves.
+    destroyRef.onDestroy(() => {
+      destroyed = true;
+      cleanup?.();
+    });
+
+    this.listen(callback, options).then((fn) => {
+      cleanup = fn;
+      if (destroyed) {
+        fn();
+      }
+    });
   }
 }

@@ -4,7 +4,7 @@ import {
   inject,
   computed,
   OnInit,
-  OnDestroy,
+  DestroyRef,
   linkedSignal,
   input,
 } from "@angular/core";
@@ -33,8 +33,9 @@ import {
     </div>
   `,
 })
-export class CatchAllComponent implements OnInit, OnDestroy {
+export class CatchAllComponent implements OnInit {
   private readonly livePreview = inject(LivePreviewService);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** SSR source of truth */
   readonly storyInput = input<Story | null>(null, { alias: "story" });
@@ -48,15 +49,11 @@ export class CatchAllComponent implements OnInit, OnDestroy {
     resolveRelations: ["featured-articles.articles"],
   };
 
-  private cleanupLivePreview: (() => void) | undefined;
-
-  async ngOnInit(): Promise<void> {
-    this.cleanupLivePreview = await this.livePreview.listen((updatedStory) => {
-      this.story.set(updatedStory);
-    }, this.bridgeConfig);
-  }
-
-  ngOnDestroy(): void {
-    this.cleanupLivePreview?.();
+  ngOnInit(): void {
+    this.livePreview.connect(
+      (updatedStory) => this.story.set(updatedStory),
+      this.destroyRef,
+      this.bridgeConfig,
+    );
   }
 }

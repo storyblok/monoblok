@@ -7,7 +7,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "@storyblok/react": ["../../src"]
+      "@storyblok/react": ["../../src"],
+      "@storyblok/react/client": ["../../src/client"]
     },
     "resolveJsonModule": true,
     "strict": true,
@@ -17,11 +18,5 @@
     "skipLibCheck": true
   },
   "references": [{ "path": "./tsconfig.node.json" }],
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.d.ts",
-    "src/**/*.tsx",
-    "auto-imports.d.ts",
-    "components.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.d.ts", "**/*.tsx"]
 }

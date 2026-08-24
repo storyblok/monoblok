@@ -1,41 +1,50 @@
 import type StoryblokBridge from "@storyblok/preview-bridge";
 import type { BridgeParams } from "@storyblok/preview-bridge";
 
-let bridgePromise: Promise<StoryblokBridge> | undefined;
-let storedConfig: BridgeParams | undefined;
-function configsAreEqual(
-  config1: BridgeParams | undefined,
-  config2: BridgeParams | undefined,
-): boolean {
-  return JSON.stringify(config1) === JSON.stringify(config2);
+import { isBrowser } from "./utils/isBrowser";
+import { isInEditor } from "./utils/isInEditor";
+
+declare global {
+  interface Window {
+    storyblokRegisterEvent: (cb: () => void) => void;
+    StoryblokBridge: new (options?: BridgeParams) => StoryblokBridge;
+  }
 }
 
 /**
- * Get or create a StoryblokBridge instance.
- *⚠️ The bridge is a singleton. Configuration is applied only on first load.
+ * Loads the Storyblok Preview Bridge and returns a new instance.
+ *
+ * As a side-effect, exposes the bridge class on `window.StoryblokBridge`
+ * and registers `window.storyblokRegisterEvent` for backward compatibility
+ * with code that uses the legacy window-based bridge pattern.
+ *
+ * The bridge is not a singleton — each call returns a new instance.
+ * The underlying module import is deduplicated automatically by the ES
+ * module cache, so the network request only happens once.
+ *
  * @param config Optional configuration for the StoryblokBridge.
- * @returns A promise that resolves to a StoryblokBridge instance.
+ * @returns A promise that resolves to a new StoryblokBridge instance.
  */
-export function loadStoryblokBridge(config?: BridgeParams) {
-  if (bridgePromise) {
-    if (config && !configsAreEqual(config, storedConfig)) {
-      throw new Error(
-        "[Storyblok] Preview Bridge already initialized with a different configuration. " +
-          "The bridge can only be created once per page and does not support runtime reconfiguration.",
-      );
-    }
-    return bridgePromise;
+export async function loadStoryblokBridge(config?: BridgeParams): Promise<StoryblokBridge> {
+  if (!isBrowser()) {
+    throw new Error("Cannot load Storyblok bridge: window is undefined (server-side environment)");
   }
 
-  storedConfig = config;
+  const { default: StoryblokBridgeClass } = await import("@storyblok/preview-bridge");
 
-  bridgePromise = import("@storyblok/preview-bridge")
-    .then(({ default: StoryblokBridge }) => new StoryblokBridge(config))
-    .catch((error) => {
-      bridgePromise = undefined;
-      storedConfig = undefined;
-      throw error;
-    });
+  // Expose the class on window so legacy code using `new window.StoryblokBridge(opts)`
+  // continues to work. Setting this on every call is intentionally idempotent.
+  window.StoryblokBridge = StoryblokBridgeClass;
 
-  return bridgePromise;
+  // Provide the legacy callback helper. By the time this runs the bridge class
+  // is already loaded, so registered callbacks fire immediately.
+  window.storyblokRegisterEvent = (cb: () => void) => {
+    if (!isInEditor(new URL(window.location.href))) {
+      console.warn("You are not in Draft Mode or in the Visual Editor.");
+      return;
+    }
+    cb();
+  };
+
+  return new StoryblokBridgeClass(config);
 }

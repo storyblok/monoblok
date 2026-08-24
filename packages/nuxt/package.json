@@ -31,7 +31,7 @@
   },
   "scripts": {
     "prepack": "nuxt-module-build build",
-    "build": "nuxt-module-build prepare && nuxt-module-build build",
+    "build": "NUXT_STORYBLOK_ACCESS_TOKEN=123 nuxt-module-build prepare && nuxt-module-build build",
     "test:types": "tsc --noEmit --skipLibCheck",
     "dev": "nuxi dev playground --port 3000",
     "dev:build": "nuxi build playground",

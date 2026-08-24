@@ -18,9 +18,15 @@ vi.mock("@storyblok/preview-bridge", () => {
 });
 
 describe("loadStoryblokBridge", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+
+    // Suppress (and capture) console.warn globally — individual tests assert
+    // specific messages where needed.
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     Object.defineProperty(window, "location", {
       value: {
@@ -32,6 +38,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   afterEach(() => {
+    warnSpy.mockRestore();
     delete (window as any).StoryblokBridge;
     delete (window as any).storyblokRegisterEvent;
   });
@@ -81,12 +88,40 @@ describe("loadStoryblokBridge", () => {
     expect(typeof (window as any).StoryblokBridge).toBe("function");
   });
 
+  it("window.StoryblokBridge emits a deprecation warning on access", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+    const _ = (window as any).StoryblokBridge;
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "`window.StoryblokBridge` is deprecated and will be removed in a future version.",
+      ),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("loadStoryblokBridge"));
+  });
+
   it("sets window.storyblokRegisterEvent", async () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     await loadStoryblokBridge();
 
     expect(typeof window.storyblokRegisterEvent).toBe("function");
+  });
+
+  it("window.storyblokRegisterEvent emits a deprecation warning on access", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+    const _ = window.storyblokRegisterEvent;
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "`window.storyblokRegisterEvent` is deprecated and will be removed in a future version.",
+      ),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("onStoryblokEditorEvent"));
   });
 
   it("storyblokRegisterEvent calls cb immediately when in editor", async () => {
@@ -107,7 +142,6 @@ describe("loadStoryblokBridge", () => {
     });
 
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     await loadStoryblokBridge();
 
@@ -115,7 +149,9 @@ describe("loadStoryblokBridge", () => {
     window.storyblokRegisterEvent(cb);
 
     expect(cb).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith("You are not in Draft Mode or in the Visual Editor.");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[Storyblok] You are not in Draft Mode or in the Visual Editor.",
+    );
   });
 
   it("throws when called in a server-side environment", async () => {

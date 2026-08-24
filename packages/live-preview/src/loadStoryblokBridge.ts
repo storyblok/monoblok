@@ -14,9 +14,11 @@ declare global {
 /**
  * Loads the Storyblok Preview Bridge and returns a new instance.
  *
- * As a side-effect, exposes the bridge class on `window.StoryblokBridge`
- * and registers `window.storyblokRegisterEvent` for backward compatibility
- * with code that uses the legacy window-based bridge pattern.
+ * As a side-effect, exposes deprecated `window.StoryblokBridge` and
+ * `window.storyblokRegisterEvent` getters for backward compatibility with
+ * legacy consumers. Accessing either global emits a deprecation warning
+ * directing users to `loadStoryblokBridge` / `onStoryblokEditorEvent`.
+ * These globals will be removed in a future major version.
  *
  * The bridge is not a singleton — each call returns a new instance.
  * The underlying module import is deduplicated automatically by the ES
@@ -32,19 +34,36 @@ export async function loadStoryblokBridge(config?: BridgeParams): Promise<Storyb
 
   const { default: StoryblokBridgeClass } = await import("@storyblok/preview-bridge");
 
-  // Expose the class on window so legacy code using `new window.StoryblokBridge(opts)`
-  // continues to work. Setting this on every call is intentionally idempotent.
-  window.StoryblokBridge = StoryblokBridgeClass;
+  // Expose legacy globals with a deprecation warning at the point of access.
+  // These shims exist only for backward compatibility and will be removed in a
+  // future major version. Use `loadStoryblokBridge()` instead.
+  const deprecate = (name: string, replacement: string) =>
+    console.warn(
+      `[Storyblok] \`window.${name}\` is deprecated and will be removed in a future version. ` +
+        `Use \`${replacement}\` from \`@storyblok/live-preview\` instead.`,
+    );
 
-  // Provide the legacy callback helper. By the time this runs the bridge class
-  // is already loaded, so registered callbacks fire immediately.
-  window.storyblokRegisterEvent = (cb: () => void) => {
-    if (!isInEditor(new URL(window.location.href))) {
-      console.warn("You are not in Draft Mode or in the Visual Editor.");
-      return;
-    }
-    cb();
-  };
+  Object.defineProperty(window, "StoryblokBridge", {
+    get() {
+      deprecate("StoryblokBridge", "loadStoryblokBridge");
+      return StoryblokBridgeClass;
+    },
+    configurable: true,
+  });
+
+  Object.defineProperty(window, "storyblokRegisterEvent", {
+    get() {
+      deprecate("storyblokRegisterEvent", "onStoryblokEditorEvent");
+      return (cb: () => void) => {
+        if (!isInEditor(new URL(window.location.href))) {
+          console.warn("[Storyblok] You are not in Draft Mode or in the Visual Editor.");
+          return;
+        }
+        cb();
+      };
+    },
+    configurable: true,
+  });
 
   return new StoryblokBridgeClass(config);
 }

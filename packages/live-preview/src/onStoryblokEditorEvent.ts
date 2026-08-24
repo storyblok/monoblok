@@ -46,8 +46,9 @@ export type LivePreviewStory<TStory extends Story = Story> = Prettify<
  * Optional configuration forwarded to the Preview Bridge constructor.
  *
  * @returns
- * A cleanup function that silences the callback. Call it when the
- * subscribing component is destroyed to prevent stale updates.
+ * A cleanup function that destroys the bridge instance, removing all its
+ * event listeners and DOM. Call it when the subscribing component is
+ * destroyed to prevent stale updates and memory leaks.
  *
  * @example
  * ```ts
@@ -87,5 +88,6 @@ export async function onStoryblokEditorEvent<TStory extends Story = Story>(
 
   return () => {
     active = false;
+    bridge.destroy();
   };
 }

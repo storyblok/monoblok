@@ -7,9 +7,10 @@ vi.mock("./utils/isBrowser", () => ({ isBrowser: vi.fn() }));
 vi.mock("./utils/isInEditor", () => ({ isInEditor: vi.fn() }));
 
 const onMock = vi.fn();
+const destroyMock = vi.fn();
 
 vi.mock("./loadStoryblokBridge", () => ({
-  loadStoryblokBridge: vi.fn(async () => ({ on: onMock })),
+  loadStoryblokBridge: vi.fn(async () => ({ on: onMock, destroy: destroyMock })),
 }));
 
 import { isBrowser } from "./utils/isBrowser";
@@ -102,6 +103,15 @@ describe("onStoryblokEditorEvent", () => {
     handler({ action: "input", story: { id: 1 } });
 
     expect(cb).not.toHaveBeenCalled();
+  });
+
+  it("destroys the bridge on cleanup", async () => {
+    inEditor();
+
+    const cleanup = await onStoryblokEditorEvent(vi.fn());
+    cleanup();
+
+    expect(destroyMock).toHaveBeenCalledOnce();
   });
 
   it("reloads page on change event", async () => {

@@ -1,15 +1,23 @@
-import { type SbReactRichTextProps, splitTableRows, StoryblokRichText } from "@storyblok/react";
+import type { StoryblokReactRichTextProps } from "@storyblok/react";
+import { splitTableRows } from "@storyblok/richtext";
+import { createRegistry } from "../../create-registry";
 
-export default function CustomTable({ attrs, content, context }: SbReactRichTextProps<"table">) {
+const { StoryblokRichText } = createRegistry({ components: {} });
+
+export default function CustomTable({
+  attrs,
+  content,
+  context,
+}: StoryblokReactRichTextProps<"table">) {
   const { headerRows, bodyRows } = splitTableRows(content);
 
   return (
     <table {...attrs} className="custom-table">
       <thead>
-        <StoryblokRichText wrapper={false} document={headerRows} {...context} />
+        <StoryblokRichText document={headerRows} {...context} />
       </thead>
       <tbody>
-        <StoryblokRichText wrapper={false} document={bodyRows} {...context} />
+        <StoryblokRichText document={bodyRows} {...context} />
       </tbody>
     </table>
   );

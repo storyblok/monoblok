@@ -30,8 +30,7 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(import.meta.dirname, "src/index.ts"),
-        ssr: resolve(import.meta.dirname, "src/ssr/index.ts"),
-        rsc: resolve(import.meta.dirname, "src/rsc/index.ts"),
+        client: resolve(import.meta.dirname, "src/client/index.ts"),
       },
       name: "storyblokReact",
       fileName: (format, entry) => {
@@ -49,8 +48,9 @@ export default defineConfig({
         "next",
         "next/cache",
         "next/server",
-        "@storyblok/js",
         "@storyblok/richtext",
+        "@storyblok/live-preview",
+        "@storyblok/api-client",
         /^next\//,
       ],
       output: {

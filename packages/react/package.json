@@ -32,24 +32,14 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./ssr": {
+    "./client": {
       "import": {
-        "types": "./dist/ssr.d.ts",
-        "default": "./dist/ssr.mjs"
+        "types": "./dist/client.d.ts",
+        "default": "./dist/client.mjs"
       },
       "require": {
-        "types": "./dist/ssr.d.cts",
-        "default": "./dist/ssr.cjs"
-      }
-    },
-    "./rsc": {
-      "import": {
-        "types": "./dist/rsc.d.ts",
-        "default": "./dist/rsc.mjs"
-      },
-      "require": {
-        "types": "./dist/rsc.d.cts",
-        "default": "./dist/rsc.cjs"
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
       }
     }
   },
@@ -79,7 +69,8 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*",
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/live-preview": "workspace:*",
     "@storyblok/richtext": "workspace:*"
   },
   "devDependencies": {

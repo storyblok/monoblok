@@ -23,7 +23,7 @@ import React, { type ComponentType, type ReactNode } from "react";
 
 /**
  * Props type for React richtext node/mark components.
- * Extends the OpenAPI-sourced StoryblokRichTextCoreProps<T> with a React-specific
+ * Extends the core StoryblokRichTextCoreProps<T> with a React-specific
  * context and ReactNode children (instead of the static renderer's string children).
  */
 export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> = Omit<
@@ -34,30 +34,13 @@ export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> = Om
   children?: ReactNode;
 };
 
-/**
- * @deprecated Use {@link StoryblokReactRichTextProps} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextProps<T extends StoryblokRichTextElement> =
-  StoryblokReactRichTextProps<T>;
-
 export type StoryblokReactRichTextComponent<T extends StoryblokRichTextElement> = ComponentType<
   StoryblokReactRichTextProps<T>
 >;
 
-/**
- * @deprecated Use {@link StoryblokReactRichTextComponent} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextComponent<T extends StoryblokRichTextElement> =
-  StoryblokReactRichTextComponent<T>;
-
 export type StoryblokReactRichTextComponentMap = {
   [K in StoryblokRichTextElement]?: StoryblokReactRichTextComponent<K>;
 };
-
-/**
- * @deprecated Use {@link StoryblokReactRichTextComponentMap} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextComponentMap = StoryblokReactRichTextComponentMap;
 
 export interface StoryblokReactRichTextRenderContext {
   optimizeImage?: boolean | StoryblokRichTextImageOptions;
@@ -65,13 +48,8 @@ export interface StoryblokReactRichTextRenderContext {
   data?: unknown;
 }
 
-/**
- * @deprecated Use {@link StoryblokReactRichTextRenderContext} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextRenderContext = StoryblokReactRichTextRenderContext;
-
-/** Props for the `<StoryblokRichText>` React component. */
-export interface StoryblokReactRichTextComponentProps extends StoryblokReactRichTextRenderContext {
+/** Options for `createRichTextRenderer()` and the `<StoryblokRichText>` component. */
+export interface StoryblokRichTextRendererOptions extends StoryblokReactRichTextRenderContext {
   document?: StoryblokRichTextInput;
 }
 

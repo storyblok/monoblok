@@ -1,8 +1,8 @@
 import type { AsyncData, AsyncDataOptions, NuxtError } from "#app";
 import { useAsyncData } from "#app";
 import {
-  type ISbResult,
   type ISbStoriesParams,
+  type ISbStory,
   type StoryblokBridgeConfigV2,
   useStoryblokApi,
   useStoryblokBridge,
@@ -12,8 +12,10 @@ import { computed, type ComputedRef, type MaybeRefOrGetter, type Ref, toValue, w
 /**
  * Options for the useAsyncStoryblok composable.
  * Extends Nuxt's AsyncDataOptions with Storyblok-specific configuration.
+ *
+ * @typeParam T - The story's `content` shape. Defaults to `any`.
  */
-export interface UseAsyncStoryblokOptions extends AsyncDataOptions<ISbResult> {
+export interface UseAsyncStoryblokOptions<T = any> extends AsyncDataOptions<ISbStory<T>> {
   /**
    * Storyblok API parameters for fetching stories.
    *
@@ -37,10 +39,10 @@ interface AsyncDataExecuteOptions {
   dedupe?: "cancel" | "defer";
 }
 
-export interface UseAsyncStoryblokResult {
-  story: ComputedRef<ISbResult["data"]["story"]>;
+export interface UseAsyncStoryblokResult<T = any> {
+  story: ComputedRef<ISbStory<T>["data"]["story"] | undefined>;
   /** In Nuxt 3: null when not loaded. In Nuxt 4: undefined when not loaded. */
-  data: Ref<ISbResult | null | undefined>;
+  data: Ref<ISbStory<T> | null | undefined>;
   pending: Ref<boolean>;
   /** In Nuxt 3: null when no error. In Nuxt 4: undefined when no error. */
   error: Ref<NuxtError<unknown> | null | undefined>;
@@ -126,10 +128,10 @@ const stableStringify = (obj: Record<string, any>): string => {
  * </script>
  * ```
  */
-export async function useAsyncStoryblok(
+export async function useAsyncStoryblok<T = any>(
   url: string,
-  options: UseAsyncStoryblokOptions,
-): Promise<UseAsyncStoryblokResult> {
+  options: UseAsyncStoryblokOptions<T>,
+): Promise<UseAsyncStoryblokResult<T>> {
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge = {}, ...rest } = options;
   const uniqueKey = (): string => `${stableStringify(toValue(api))}${url}`;
@@ -146,7 +148,7 @@ export async function useAsyncStoryblok(
     uniqueKey,
     () => storyblokApiInstance.get(`cdn/stories/${url}`, { ...toValue(api) }),
     rest,
-  )) as AsyncData<ISbResult, NuxtError<unknown>>;
+  )) as AsyncData<ISbStory<T>, NuxtError<unknown>>;
 
   // Register bridge for live preview updates (client-side only)
   // Use watch instead of onMounted because lifecycle hooks must be registered before the first await

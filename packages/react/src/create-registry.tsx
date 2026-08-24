@@ -1,6 +1,17 @@
 import { type ComponentType, type ReactNode, Suspense } from "react";
-import type { BlockContent } from "@storyblok/live-preview";
 import { createStoryblokRichText } from "./richtext/create-storyblok-richtext";
+
+/**
+ * Minimal shape of a Storyblok block as seen by the registry.
+ * Uses `[key: string]: unknown` so any `Story["content"]` — regardless of
+ * how TypeScript expands the field-value union — is assignable without a cast.
+ */
+export type BlockContent = {
+  _uid: string;
+  component: string;
+  _editable?: string;
+  [key: string]: unknown;
+};
 
 // ─── Internal types ───────────────────────────────────────────────────────────
 

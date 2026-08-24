@@ -1,9 +1,9 @@
 export { createRegistry } from "./create-registry";
+export type { BlockContent } from "./create-registry";
 export { createRichTextRenderer } from "./richtext/renderer";
 export { storyblokEditable } from "@storyblok/live-preview";
-
-export type { BlockContent } from "@storyblok/live-preview";
-export type { Story } from "@storyblok/api-client";
+export { createApiClient, ClientError } from "@storyblok/api-client";
+export type { ContentApiClient, ContentApiClientConfig, Story } from "@storyblok/api-client";
 export type { ComponentEntry, RegistryOptions, RegistryResult } from "./create-registry";
 export type {
   StoryblokReactRichTextComponent,

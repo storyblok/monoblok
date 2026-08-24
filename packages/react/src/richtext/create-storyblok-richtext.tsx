@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import { createRichTextRenderer, type StoryblokRichTextRendererOptions } from "./types";
-import type { BlockContent } from "@storyblok/live-preview";
+import type { BlockContent } from "../create-registry";
 import { createDefaultBlock } from "./create-default-block";
 
 export function createStoryblokRichText(

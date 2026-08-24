@@ -4,8 +4,8 @@ import { client, StoryblokComponent } from "@/lib/storyblok";
 
 // Pages are statically generated at build time — no server-side live preview.
 export default async function Home() {
-  const { data } = await client.get("cdn/stories/react", { version: "draft" });
-  const story = data.story as Story | undefined;
+  const { data } = await client.stories.get("react", { query: { version: "draft" } });
+  const story = data.story;
 
   return (
     <main className="container mx-auto px-4 py-8">

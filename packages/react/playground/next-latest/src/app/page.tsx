@@ -4,8 +4,8 @@ import Link from "next/link";
 import { client, StoryblokComponent } from "@/lib/storyblok";
 
 export default async function Home() {
-  const { data } = await client.get("cdn/stories/react", { version: "draft" });
-  const story = data.story as Story | undefined;
+  const { data } = await client.stories.get("react", { query: { version: "draft" } });
+  const story = data?.story;
 
   async function renderContent(updatedStory: Story) {
     "use server";

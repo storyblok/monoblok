@@ -2,7 +2,7 @@ import type { StoryblokRichTextInput } from "@storyblok/react";
 import { client, StoryblokRichText } from "@/lib/storyblok";
 
 export default async function RichtextPage() {
-  const { data } = await client.get("cdn/stories/richtext", { version: "draft" });
+  const { data } = await client.stories.get("richtext", { query: { version: "draft" } });
   const story = data.story;
   const richText = story?.content?.richText as StoryblokRichTextInput | undefined;
 

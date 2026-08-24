@@ -1,4 +1,3 @@
-import type { Story } from "@storyblok/react";
 import Link from "next/link";
 import { client, StoryblokComponent } from "@/lib/storyblok";
 

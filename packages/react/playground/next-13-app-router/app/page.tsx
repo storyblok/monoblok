@@ -1,22 +1,12 @@
-"use client";
+import type { Story } from "@storyblok/react";
+import { client } from "@/lib/storyblok";
+import { StoryPage } from "@/components/StoryPage";
 
-import { StoryblokPreview } from "@storyblok/react/client";
-import { useStoryblokStory } from "@/lib/use-storyblok-story";
-import { StoryblokComponent } from "@/lib/storyblok";
+export default async function Home() {
+  const { data } = await client.get("cdn/stories/home", { version: "draft" });
+  const story = data.story as Story | undefined;
 
-export default function Home() {
-  const { data: story, isLoading } = useStoryblokStory("home");
+  if (!story) return <div>Story not found</div>;
 
-  if (isLoading || !story) return <div>Loading...</div>;
-
-  return (
-    <StoryblokPreview story={story}>
-      {(live) => (
-        <div>
-          <h1>Story: {live.id}</h1>
-          <StoryblokComponent block={live.content} />
-        </div>
-      )}
-    </StoryblokPreview>
-  );
+  return <StoryPage story={story} />;
 }

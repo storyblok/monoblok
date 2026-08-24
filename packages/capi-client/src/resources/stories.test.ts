@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
+import type { CacheEntry, CacheProvider } from "../index";
 
 const server = setupServer();
 
@@ -1018,6 +1019,63 @@ describe("cache and cv", () => {
     expect(secondResult.data?.marker).toBe("fresh");
     // @ts-expect-error generic get request can have any shape or form
     expect(thirdResult.data?.marker).toBe("fresh");
+  });
+});
+
+describe("cache provider compatibility", () => {
+  it("should invalidate an entry stored by a provider that round-trips the cv", async () => {
+    // Entries are opaque to a provider, but the `cv` on them is load-bearing: it is what
+    // a publish invalidates against. A provider that rebuilds entries field by field and
+    // loses it degrades invalidation to TTL alone.
+    let cv = 1000;
+    let storyRequests = 0;
+    const store = new Map<string, CacheEntry>();
+    const rebuildingProvider: CacheProvider = {
+      async get<TValue>(key: string) {
+        const entry = store.get(key);
+        if (!entry) {
+          return undefined;
+        }
+
+        // A hand-written adapter over a store with its own schema, carrying every field
+        // the contract names.
+        return {
+          value: entry.value as TValue,
+          storedAt: entry.storedAt,
+          ttlMs: entry.ttlMs,
+          cv: entry.cv,
+        };
+      },
+      async set(key, entry) {
+        store.set(key, { ...entry, storedAt: entry.storedAt ?? Date.now() });
+      },
+      async flush() {
+        store.clear();
+      },
+    };
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () =>
+        HttpResponse.json({ space: { id: 1, name: "Test", version: cv } }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/stories", () => {
+        storyRequests++;
+        return HttpResponse.json({ stories: [], cv });
+      }),
+    );
+    const client = createApiClient({
+      accessToken: "round-trip-provider-token",
+      cache: { provider: rebuildingProvider },
+    });
+
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+    expect(storyRequests).toBe(1);
+
+    cv = 2000; // content was published
+    await client.spaces.get();
+    await client.get("v2/cdn/stories", { query: { version: "published" } });
+
+    expect(storyRequests).toBe(2);
   });
 });
 

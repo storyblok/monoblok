@@ -54,7 +54,13 @@ export type { Story } from "./generated/types/story";
 // Resource types
 export type { StoryWithInlinedRelations } from "./resources/stories";
 // Cache types
-export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
+export type {
+  CacheEntry,
+  CacheEntryInput,
+  CacheProvider,
+  CacheStrategy,
+  CacheStrategyHandler,
+} from "./utils/cache";
 
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
 export const createThrottle = createThrottleInternal;

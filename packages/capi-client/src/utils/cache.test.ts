@@ -364,3 +364,19 @@ describe("cache strategies", () => {
     await refreshPromise;
   });
 });
+
+describe("memory cache provider eviction", () => {
+  it("should keep a recently read entry and evict the least recently used one", async () => {
+    const provider = createMemoryCacheProvider({ maxEntries: 2 });
+
+    await provider.set("a", { value: "a", ttlMs: 60_000 });
+    await provider.set("b", { value: "b", ttlMs: 60_000 });
+    // Reading "a" makes "b" the least recently used entry.
+    await provider.get("a");
+    await provider.set("c", { value: "c", ttlMs: 60_000 });
+
+    expect(await provider.get("a")).toMatchObject({ value: "a" });
+    expect(await provider.get("c")).toMatchObject({ value: "c" });
+    expect(await provider.get("b")).toBeUndefined();
+  });
+});

@@ -558,6 +558,45 @@ describe("fetchBlueprintRepositories", () => {
     });
   });
 
+  it("should exclude archived repositories", async () => {
+    const mockRepos = [
+      {
+        name: "blueprint-core-react",
+        archived: false,
+        topics: [],
+        clone_url: "https://github.com/storyblok/blueprint-core-react.git",
+        description: "A React starter",
+        updated_at: "2024-01-01T00:00:00Z",
+        stargazers_count: 75,
+      },
+      {
+        name: "blueprint-core-eleventy",
+        archived: true,
+        topics: [],
+        clone_url: "https://github.com/storyblok/blueprint-core-eleventy.git",
+        description: "An Eleventy starter",
+        updated_at: "2024-01-01T00:00:00Z",
+        stargazers_count: 10,
+      },
+    ];
+
+    const mockOctokit = {
+      rest: {
+        search: {
+          repos: vi.fn().mockResolvedValue({ data: { items: mockRepos } }),
+        },
+      },
+    };
+
+    mockedCreateOctokit.mockReturnValue(mockOctokit as any);
+
+    const blueprints = await fetchBlueprintRepositories();
+
+    expect(blueprints).toHaveLength(1);
+    expect(blueprints[0]?.value).toBe("react");
+    expect(blueprints.some((bp) => bp.value === "eleventy")).toBe(false);
+  });
+
   it("should handle errors and call show warning", async () => {
     const octokitError = new Error("GitHub API error");
     mockedCreateOctokit.mockImplementation(() => {

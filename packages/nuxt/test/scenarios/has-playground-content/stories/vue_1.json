@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "uuid": "1",
+  "name": "Vue",
+  "slug": "vue",
+  "full_slug": "vue",
+  "is_folder": true,
+  "is_startpage": false,
+  "parent_id": 0,
+  "content": {}
+}

@@ -1,0 +1,11 @@
+{
+  "id": 4,
+  "uuid": "4",
+  "name": "First Article",
+  "slug": "first-article",
+  "full_slug": "articles/first-article",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 3,
+  "content": { "component": "article", "title": "First article" }
+}

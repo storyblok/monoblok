@@ -1,0 +1,61 @@
+{
+  "id": 4,
+  "uuid": "4",
+  "name": "Test Richtext",
+  "slug": "test-richtext",
+  "full_slug": "vue/test-richtext",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 1,
+  "content": {
+    "component": "page",
+    "headline": "Test Richtext",
+    "resolveRels": "",
+    "body": [],
+    "richText": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "heading",
+          "attrs": { "level": 1 },
+          "content": [{ "type": "text", "text": "Headline 1", "marks": [{ "type": "bold" }] }]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            { "type": "text", "text": "A story link: " },
+            {
+              "type": "text",
+              "text": "first article",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "/vue/articles/first-article",
+                    "linktype": "story",
+                    "target": "_self"
+                  }
+                }
+              ]
+            },
+            { "type": "text", "text": " and a url link: " },
+            {
+              "type": "text",
+              "text": "storyblok.com",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "https://www.storyblok.com",
+                    "linktype": "url",
+                    "target": "_blank"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

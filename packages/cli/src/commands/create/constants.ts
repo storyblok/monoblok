@@ -7,15 +7,7 @@ export interface CreateOptions {
   token?: string; // Access token for Storyblok
   region?: RegionCode;
 }
-type TemplateTechnology =
-  | "REACT"
-  | "VUE"
-  | "SVELTE"
-  | "ASTRO"
-  | "NUXT"
-  | "NEXTJS"
-  | "ELEVENTY"
-  | "ANGULAR";
+type TemplateTechnology = "REACT" | "VUE" | "SVELTE" | "ASTRO" | "NUXT" | "NEXTJS" | "ANGULAR";
 
 export interface Template {
   name: string;
@@ -62,12 +54,6 @@ export const templates: Record<TemplateTechnology, Template> = {
     value: "nextjs",
     template: "https://github.com/storyblok/blueprint-core-nextjs",
     location: "https://localhost:3000/",
-  },
-  ELEVENTY: {
-    name: "Eleventy",
-    value: "eleventy",
-    template: "https://github.com/storyblok/blueprint-core-eleventy",
-    location: "https://localhost:8080/",
   },
   ANGULAR: {
     name: "Angular",

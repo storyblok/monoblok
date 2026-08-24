@@ -30,6 +30,12 @@ export default defineNuxtModule<AllModuleOptions>({
   setup(options: AllModuleOptions, nuxt: Nuxt) {
     const resolver = createResolver(import.meta.url);
 
+    if (!options.accessToken && !process.env.NUXT_STORYBLOK_ACCESS_TOKEN) {
+      throw new Error(
+        "Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts (or the NUXT_STORYBLOK_ACCESS_TOKEN environment variable) when storyblok.enableServerClient = true.",
+      );
+    }
+
     if (nuxt.options.vite.optimizeDeps) {
       nuxt.options.vite.optimizeDeps.include = nuxt.options.vite.optimizeDeps.include || [];
       nuxt.options.vite.optimizeDeps.include.push("@storyblok/vue");
@@ -48,12 +54,6 @@ export default defineNuxtModule<AllModuleOptions>({
     addImportsDir(resolver.resolve("./runtime/composables"));
 
     if (options.enableServerClient) {
-      if (!options.accessToken) {
-        throw new Error(
-          "Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts when storyblok.enableServerClient = true.",
-        );
-      }
-
       const { accessToken, ...publicOptions } = options;
       nuxt.options.runtimeConfig.storyblok = { accessToken };
       (nuxt.options.runtimeConfig.public.storyblok as unknown as PublicModuleOptions) =

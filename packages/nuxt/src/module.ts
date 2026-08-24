@@ -32,7 +32,7 @@ export default defineNuxtModule<AllModuleOptions>({
 
     if (!options.accessToken && !process.env.NUXT_STORYBLOK_ACCESS_TOKEN) {
       throw new Error(
-        "Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts (or the NUXT_STORYBLOK_ACCESS_TOKEN environment variable) when storyblok.enableServerClient = true.",
+        "Storyblok access token is not configured. Make sure to set storyblok.accessToken in your nuxt.config.ts (or the NUXT_STORYBLOK_ACCESS_TOKEN environment variable)",
       );
     }
 

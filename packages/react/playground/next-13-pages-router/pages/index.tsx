@@ -14,12 +14,12 @@ export default function Home({ story }: InferGetStaticPropsType<typeof getStatic
 }
 
 export const getStaticProps: GetStaticProps<{ story: Story }> = async () => {
-  const { data } = await client.get("cdn/stories/home", { version: "draft" });
+  const { data } = await client.stories.get("cdn/stories/home", { query: { version: "draft" } });
 
   if (!data.story) return { notFound: true };
 
   return {
-    props: { story: data.story as Story },
+    props: { story: data.story },
     revalidate: 3600,
   };
 };

@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <header>
+    <header className="mb-8">
       <h1 className="mb-8 text-4xl font-bold dark:text-white">Storyblok Next.js 16 Example</h1>
       <nav className="flex items-center gap-6">
         <Link

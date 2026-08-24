@@ -35,7 +35,7 @@ const EmojiRandomizer: FC<{ block: BlockContent & { label?: string } }> = ({ blo
         onClick={randomizeEmoji}
         className="rounded-lg bg-blue-500 px-6 py-3 font-small text-white transition-colors duration-200 hover:bg-blue-600 active:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 dark:active:bg-blue-800"
       >
-        {block.label ?? "Randomize Emoji"}
+        {block.label || "Randomize Emoji"}
       </button>
     </div>
   );

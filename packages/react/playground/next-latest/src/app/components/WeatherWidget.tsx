@@ -21,7 +21,7 @@ function hashLocation(location: string): number {
 async function fetchWeatherData(location: string): Promise<WeatherData> {
   const fetchId = Math.random().toString(36).slice(2, 8);
   // Simulated slow fetch — demonstrates Suspense streaming
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  await new Promise((resolve) => setTimeout(resolve, 10000));
   const hash = hashLocation(location);
   return {
     temperature: (hash % 15) + 15,

@@ -1,17 +1,11 @@
-import { storyblokEditable, StoryblokServerComponent } from "@storyblok/react/ssr";
-import type { SbBlokData } from "@storyblok/react";
+import type { BlockContent } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
+import { StoryblokComponent } from "@/lib/storyblok";
 
-interface PageProps {
-  blok: SbBlokData & {
-    body: SbBlokData[];
-  };
-}
-
-const Page = ({ blok }: PageProps) => (
-  <main {...storyblokEditable(blok)}>
-    {blok.body.map((nestedBlok) => (
-      // @ts-ignore - React 19 type compatibility issue
-      <StoryblokServerComponent blok={nestedBlok} key={nestedBlok._uid} />
+const Page = ({ block }: { block: BlockContent & { body?: BlockContent[] } }) => (
+  <main {...storyblokEditable(block)}>
+    {(block.body ?? []).map((nested) => (
+      <StoryblokComponent block={nested} key={nested._uid} />
     ))}
   </main>
 );

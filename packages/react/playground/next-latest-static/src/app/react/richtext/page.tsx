@@ -1,23 +1,19 @@
-import type { ISbStoriesParams } from "@storyblok/react/ssr";
-import { getStoryblokApi } from "@/lib/storyblok";
+import type { StoryblokRichTextInput } from "@storyblok/react";
+import { client, StoryblokRichText } from "@/lib/storyblok";
 
 export default async function RichtextPage() {
-  const { data } = await fetchData();
+  const { data } = await client.get("cdn/stories/richtext", { version: "draft" });
+  const story = data.story;
+  const richText = story?.content?.richText as StoryblokRichTextInput | undefined;
 
   return (
-    <div className="container mx-auto px-4 py-8 prose prose-lg dark:prose-invert max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8">Rich Text Example</h1>
-      <p className="text-gray-600 dark:text-gray-400">
-        Story loaded: {data.story?.name || "No story found"}
-      </p>
+    <div className="container mx-auto max-w-4xl px-4 py-8 prose prose-lg dark:prose-invert">
+      <h1 className="mb-8 text-3xl font-bold">Rich Text Example</h1>
+      {richText ? (
+        <StoryblokRichText document={richText} />
+      ) : (
+        <p className="text-gray-600 dark:text-gray-400">No content available</p>
+      )}
     </div>
   );
-}
-
-async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: "draft" };
-  const storyblokApi = getStoryblokApi();
-
-  // storyblokApi is already the API instance, not a function
-  return storyblokApi.get(`cdn/stories/react/richtext`, sbParams);
 }

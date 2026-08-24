@@ -1,23 +1,17 @@
-import React from "react";
-import type { SbBlokData } from "@storyblok/react";
-import { storyblokEditable } from "@storyblok/react/rsc";
+import type { BlockContent } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
 
-interface IframeEmbedBlok extends SbBlokData {
-  url?: { url?: string; title?: string };
+interface UrlField {
+  url?: string;
+  title?: string;
 }
 
-interface IframeEmbedProps {
-  blok: IframeEmbedBlok;
-}
-
-const IFrameEmbed = ({ blok }: IframeEmbedProps) => {
-  return (
-    <div {...storyblokEditable(blok)} key={blok._uid} data-test="iframe-embed">
-      <div>
-        <iframe src={blok?.url?.url} title={blok?.url?.title} />
-      </div>
+const IFrameEmbed = ({ block }: { block: BlockContent & { url?: UrlField } }) => (
+  <div {...storyblokEditable(block)} key={block._uid} data-test="iframe-embed">
+    <div>
+      <iframe src={block.url?.url} title={block.url?.title} />
     </div>
-  );
-};
+  </div>
+);
 
 export default IFrameEmbed;

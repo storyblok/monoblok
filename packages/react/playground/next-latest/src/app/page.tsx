@@ -1,39 +1,35 @@
-import { StoryblokStory } from "@storyblok/react/rsc";
-import type { ISbStoriesParams, StoryblokClient } from "@storyblok/react/rsc";
-import { getStoryblokApi } from "@/lib/storyblok";
+import type { Story } from "@storyblok/react";
+import { StoryblokPreviewRsc } from "@storyblok/react/client";
 import Link from "next/link";
+import { client, StoryblokComponent } from "@/lib/storyblok";
 
 export default async function Home() {
-  const { data } = await fetchData();
+  const { data } = await client.get("cdn/stories/react", { version: "draft" });
+  const story = data.story as Story | undefined;
+
+  async function renderContent(updatedStory: Story) {
+    "use server";
+    return <StoryblokComponent block={updatedStory.content} />;
+  }
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto clas prose">
-        <h1 className="text-4xl font-bold mb-8 dark:text-white">Storyblok Next.js 15 Example</h1>
-
-        <nav className="space-y-4">
+      <div className="max-w-4xl mx-auto prose">
+        <h1 className="text-4xl font-bold mb-8 dark:text-white">Storyblok Next.js 16 Example</h1>
+        <nav className="mb-8 space-y-4">
           <Link
             href="/react/richtext"
-            className="block p-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className="block rounded-lg bg-blue-500 p-4 text-white transition-colors hover:bg-blue-600"
           >
             Go to Rich Text Example
           </Link>
         </nav>
-
-        {data.story && (
-          <div>
-            {/* @ts-ignore - React 19 type compatibility issue */}
-            <StoryblokStory story={data.story} />
-          </div>
+        {story && (
+          <StoryblokPreviewRsc renderContent={renderContent}>
+            <StoryblokComponent block={story.content} />
+          </StoryblokPreviewRsc>
         )}
       </div>
     </main>
   );
-}
-
-async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: "draft" };
-
-  const storyblokApi: StoryblokClient = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/react`, sbParams);
 }

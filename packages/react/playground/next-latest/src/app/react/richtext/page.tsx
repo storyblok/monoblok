@@ -1,33 +1,27 @@
-import type { ISbStoriesParams, StoryblokClient } from "@storyblok/react/rsc";
-import { StoryblokServerRichText } from "@storyblok/react/rsc";
-import { getStoryblokApi } from "@/lib/storyblok";
+import type { StoryblokRichTextInput } from "@storyblok/react";
+import { client, StoryblokRichText } from "@/lib/storyblok";
 
 export default async function RichtextPage() {
-  const { data } = await fetchData();
+  const { data } = await client.get("cdn/stories/richtext", { version: "draft" });
+  const story = data.story;
+  const richText = story?.content?.richText as StoryblokRichTextInput | undefined;
 
-  if (!data.story?.content) {
+  if (!story?.content) {
     return (
-      <div className="animate-pulse text-lg text-gray-600 dark:text-gray-400">
-        <div className="min-h-screen flex items-center justify-center">Loading content...</div>
+      <div className="flex min-h-screen items-center justify-center text-lg text-gray-600 dark:text-gray-400">
+        Loading content...
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 prose prose-lg dark:prose-invert max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8">Rich Text Example</h1>
-      {data.story.content.richText ? (
-        <StoryblokServerRichText document={data.story.content.richText} />
+    <div className="container mx-auto max-w-4xl px-4 py-8 prose prose-lg dark:prose-invert">
+      <h1 className="mb-8 text-3xl font-bold">Rich Text Example</h1>
+      {richText ? (
+        <StoryblokRichText document={richText} />
       ) : (
         <p className="text-gray-600 dark:text-gray-400">No content available</p>
       )}
     </div>
   );
-}
-
-async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: "draft" };
-
-  const storyblokApi: StoryblokClient = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/richtext`, sbParams);
 }

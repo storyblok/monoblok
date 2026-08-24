@@ -10,8 +10,6 @@ export const client = createApiClient({
   accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
-export const isPreview = process.env.NODE_ENV !== "production";
-
 export const { StoryblokComponent, StoryblokRichText } = createRegistry({
   components: {
     teaser: Teaser,

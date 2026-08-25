@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/astro",
-  "version": "10.3.0",
+  "version": "10.3.1",
   "private": false,
   "description": "Official Astro integration for the Storyblok Headless CMS",
   "keywords": [

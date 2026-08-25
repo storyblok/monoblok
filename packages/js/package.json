@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/js",
-  "version": "6.3.1",
+  "version": "6.3.2",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js#readme",

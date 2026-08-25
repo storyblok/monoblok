@@ -41,14 +41,20 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 
 ## OAuth login
 
-Local builds ship placeholder OAuth credentials, so `login --oauth` needs
+`login --oauth` works out of the box: the CLI carries the first-party "Storyblok CLI" client, so no
+environment setup is needed.
+
+```bash
+node ./packages/cli/dist/index.mjs login --oauth            # add -r us|ca|ap|cn for other regions
+```
+
+To test against a different app instead, for example one with a restricted space list, set
 `STORYBLOK_OAUTH_CLIENT_ID` and `STORYBLOK_OAUTH_CLIENT_SECRET`. `.env.qa-engineer-manual` holds
 them for the "QA Manual" app (redirect URI `http://localhost:4900/oauth/callback`, all scopes, no
 space restriction):
 
 ```bash
 set -a && source ./.env.qa-engineer-manual && set +a
-node ./packages/cli/dist/index.mjs login --oauth            # add -r us|ca|ap|cn for other regions
 ```
 
 Consent runs in the browser, the callback lands on port 4900, and tokens go to

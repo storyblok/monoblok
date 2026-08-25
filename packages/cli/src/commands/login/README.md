@@ -57,6 +57,10 @@ The CLI ships with its own OAuth client, so there is nothing to configure. To au
 own OAuth app instead, for example while developing against a self-hosted instance, set
 `STORYBLOK_OAUTH_CLIENT_ID` and `STORYBLOK_OAUTH_CLIENT_SECRET`.
 
+The client credentials the CLI ships with belong to a public OAuth client, so its client secret is
+not confidential and is visible in the published package by design. Authorization is protected by
+PKCE and a loopback redirect URI, not by keeping that value hidden.
+
 ## Notes
 
 - OAuth login needs port 4900 free while you authorize, because the OAuth app registers

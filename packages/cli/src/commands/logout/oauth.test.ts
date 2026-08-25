@@ -6,6 +6,7 @@ import { setupServer } from "msw/node";
 import "../../index";
 import { logoutCommand } from "./index";
 import { getOAuthEntry } from "../oauth/store";
+import { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET } from "../oauth/constants";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
@@ -35,8 +36,7 @@ describe("logout with an oauth session", () => {
     delete process.env.STORYBLOK_LOGIN;
     delete process.env.STORYBLOK_TOKEN;
     delete process.env.STORYBLOK_REGION;
-    // The baked-in client is still a placeholder, so revocation resolves its
-    // credentials through the env-var override.
+    // Override the baked-in client so the revoke assertions read against fixed values.
     process.env.STORYBLOK_OAUTH_CLIENT_ID = "id";
     process.env.STORYBLOK_OAUTH_CLIENT_SECRET = "secret";
     vol.fromJSON({
@@ -90,13 +90,16 @@ describe("logout with an oauth session", () => {
     expect(await getOAuthEntry("eu")).toEqual({});
   });
 
-  it("should still clear the local session when no client credentials are available to revoke with", async () => {
+  it("should revoke with the baked-in client when no override is configured", async () => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
 
     await logoutCommand.parseAsync(["node", "test"]);
 
-    expect(revokeRequests).toHaveLength(0);
+    expect(revokeRequests).toHaveLength(1);
+    const body = new URLSearchParams(revokeRequests[0]);
+    expect(body.get("client_id")).toBe(OAUTH_CLIENT_ID);
+    expect(body.get("client_secret")).toBe(OAUTH_CLIENT_SECRET);
     expect(await getOAuthEntry("eu")).toEqual({});
   });
 });

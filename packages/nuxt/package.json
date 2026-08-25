@@ -42,7 +42,8 @@
     "dev:prepare": "nuxt-module-build build --stub && nuxi prepare playground",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
-    "test": "pnpm run test:e2e",
+    "test": "pnpm run test:unit && pnpm run test:e2e",
+    "test:unit": "vp test run",
     "test:e2e": "vp test run -c vitest.config.e2e.ts"
   },
   "dependencies": {

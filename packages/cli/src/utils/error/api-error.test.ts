@@ -491,6 +491,23 @@ describe("APIError credential rewrites", () => {
     }
   });
 
+  it("should let a customMessage suppress the credential rewrite entirely", () => {
+    setCredentialContext({ kind: "oauth" });
+    const error = new FetchError("Forbidden", {
+      status: 403,
+      statusText: "Forbidden",
+      data: { error: "Insufficient scope: stories:write is required" },
+    });
+
+    try {
+      handleAPIError("update_story", error, "Custom override message");
+    } catch (e) {
+      const apiError = e as APIError;
+      expect(apiError.message).toBe("Custom override message");
+      expect(apiError.fatal).toBe(false);
+    }
+  });
+
   it("should not mark unrelated errors as fatal", () => {
     setCredentialContext({ kind: "oauth" });
     const error = new FetchError("Unprocessable", {

@@ -235,6 +235,28 @@ type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F
     : PluginFieldValue
   : PluginFieldValue;
 
+/**
+ * Resolves an `option`/`options` field to the union of its `options` values.
+ * Only self-sourced fields narrow: with a `source` set, the values live in the
+ * space (datasource, stories, languages) and stay `string` at compile time.
+ */
+type ResolveOptionValue<TField> = TField extends { source: string }
+  ? string
+  : TField extends { options: ReadonlyArray<{ value: infer TValue extends string }> }
+    ? string extends TValue
+      ? string
+      : TValue
+    : string;
+
+/**
+ * A single-select `option` field delivers `''` for an unset value and whenever
+ * the editor clears a selection, so the empty string is always part of the
+ * union. `exclude_empty_option` only hides the empty entry in the editor's
+ * dropdown; it does not keep `''` out of the stored content. A multi-select
+ * `options` field delivers an empty array instead, so it never carries `''`.
+ */
+type ResolveSingleOptionValue<TField> = ResolveOptionValue<TField> | "";
+
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
   TField extends Field = Field,
@@ -251,7 +273,11 @@ export type FieldValue<
         : BlockContentBase[]
     : TField extends { type: "custom" }
       ? ResolveCustom<TField, TFieldPlugins>
-      : FieldTypeValueMap[TField["type"]]
+      : TField extends { type: "option" }
+        ? ResolveSingleOptionValue<TField>
+        : TField extends { type: "options" }
+          ? ResolveOptionValue<TField>[]
+          : FieldTypeValueMap[TField["type"]]
 >;
 
 /** Resolves a field definition to its input value type (write). */
@@ -270,5 +296,9 @@ export type FieldValueInput<
         : BlockContentInputBase[]
     : TField extends { type: "custom" }
       ? ResolveCustom<TField, TFieldPlugins>
-      : FieldTypeValueMap[TField["type"]]
+      : TField extends { type: "option" }
+        ? ResolveSingleOptionValue<TField>
+        : TField extends { type: "options" }
+          ? ResolveOptionValue<TField>[]
+          : FieldTypeValueMap[TField["type"]]
 >;

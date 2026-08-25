@@ -7,7 +7,9 @@ import { isInEditor } from "./utils/isInEditor";
 declare global {
   interface Window {
     storyblokRegisterEvent: (cb: () => void) => void;
-    StoryblokBridge: new (options?: BridgeParams) => StoryblokBridge;
+    StoryblokBridge: {
+      new (options?: BridgeParams): StoryblokBridge;
+    };
   }
 }
 
@@ -43,27 +45,56 @@ export async function loadStoryblokBridge(config?: BridgeParams): Promise<Storyb
         `Use \`${replacement}\` from \`@storyblok/live-preview\` instead.`,
     );
 
-  Object.defineProperty(window, "StoryblokBridge", {
-    get() {
-      deprecate("StoryblokBridge", "loadStoryblokBridge");
-      return StoryblokBridgeClass;
-    },
-    configurable: true,
-  });
+  // Stable function reference — returning the same closure on every getter read
+  // keeps identity comparisons against window.storyblokRegisterEvent correct.
+  const registerEventShim = (cb: () => void) => {
+    if (!isInEditor(new URL(window.location.href))) {
+      console.warn("[Storyblok] You are not in Draft Mode or in the Visual Editor.");
+      return;
+    }
+    cb();
+  };
 
-  Object.defineProperty(window, "storyblokRegisterEvent", {
-    get() {
-      deprecate("storyblokRegisterEvent", "onStoryblokEditorEvent");
-      return (cb: () => void) => {
-        if (!isInEditor(new URL(window.location.href))) {
-          console.warn("[Storyblok] You are not in Draft Mode or in the Visual Editor.");
-          return;
-        }
-        cb();
-      };
-    },
-    configurable: true,
-  });
+  // Only install each shim if no other loader (@storyblok/js, legacy CDN bundle)
+  // has already set a value on the property. If we are the first, install a
+  // get+set descriptor: the getter surfaces the deprecation warning, while the
+  // setter lets subsequent plain-assignment writes (e.g. from @storyblok/js's
+  // loadBridge()) succeed instead of throwing a TypeError in strict/ESM code.
+  if (!("StoryblokBridge" in window)) {
+    Object.defineProperty(window, "StoryblokBridge", {
+      get() {
+        deprecate("StoryblokBridge", "loadStoryblokBridge");
+        return StoryblokBridgeClass;
+      },
+      set(value) {
+        // Replace the accessor descriptor with a plain writable value so the
+        // caller's assignment takes effect (e.g. @storyblok/js bridge.ts).
+        Object.defineProperty(window, "StoryblokBridge", {
+          value,
+          writable: true,
+          configurable: true,
+        });
+      },
+      configurable: true,
+    });
+  }
+
+  if (!("storyblokRegisterEvent" in window)) {
+    Object.defineProperty(window, "storyblokRegisterEvent", {
+      get() {
+        deprecate("storyblokRegisterEvent", "onStoryblokEditorEvent");
+        return registerEventShim;
+      },
+      set(value) {
+        Object.defineProperty(window, "storyblokRegisterEvent", {
+          value,
+          writable: true,
+          configurable: true,
+        });
+      },
+      configurable: true,
+    });
+  }
 
   return new StoryblokBridgeClass(config);
 }

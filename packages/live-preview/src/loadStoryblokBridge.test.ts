@@ -102,6 +102,42 @@ describe("loadStoryblokBridge", () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("loadStoryblokBridge"));
   });
 
+  it("window.StoryblokBridge setter accepts a plain assignment without throwing", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const FakeBridge = vi.fn();
+    expect(() => {
+      (window as any).StoryblokBridge = FakeBridge;
+    }).not.toThrow();
+    expect((window as any).StoryblokBridge).toBe(FakeBridge);
+  });
+
+  it("reading window.StoryblokBridge after a setter write returns the written value without a deprecation warning", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    await loadStoryblokBridge();
+
+    const FakeBridge = vi.fn();
+    (window as any).StoryblokBridge = FakeBridge;
+
+    warnSpy.mockClear();
+    const value = (window as any).StoryblokBridge;
+
+    expect(value).toBe(FakeBridge);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite window.StoryblokBridge if already defined by another loader", async () => {
+    const ExistingBridge = vi.fn();
+    (window as any).StoryblokBridge = ExistingBridge;
+
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    await loadStoryblokBridge();
+
+    expect((window as any).StoryblokBridge).toBe(ExistingBridge);
+  });
+
   it("sets window.storyblokRegisterEvent", async () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
@@ -122,6 +158,38 @@ describe("loadStoryblokBridge", () => {
       ),
     );
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("onStoryblokEditorEvent"));
+  });
+
+  it("window.storyblokRegisterEvent returns a stable function reference on every access", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const refA = window.storyblokRegisterEvent;
+    const refB = window.storyblokRegisterEvent;
+    expect(refA).toBe(refB);
+  });
+
+  it("window.storyblokRegisterEvent setter accepts a plain assignment without throwing", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const shim = vi.fn();
+    expect(() => {
+      window.storyblokRegisterEvent = shim;
+    }).not.toThrow();
+    expect(window.storyblokRegisterEvent).toBe(shim);
+  });
+
+  it("does not overwrite window.storyblokRegisterEvent if already defined by another loader", async () => {
+    const existingShim = vi.fn();
+    (window as any).storyblokRegisterEvent = existingShim;
+
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    await loadStoryblokBridge();
+
+    expect(window.storyblokRegisterEvent).toBe(existingShim);
   });
 
   it("storyblokRegisterEvent calls cb immediately when in editor", async () => {

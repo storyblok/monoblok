@@ -69,7 +69,12 @@ export async function onStoryblokEditorEvent<TStory extends Story = Story>(
   }
 
   let active = true;
-  const bridge = await loadStoryblokBridge(bridgeOptions);
+  // Force initOnlyOnce: false so that every call gets its own fully-initialised
+  // bridge instance with its own window `message` listener. The bridge defaults
+  // to initOnlyOnce: true, which silently skips addMessageListener() when a
+  // .storyblok__hint element is already in the DOM (left by a prior instance),
+  // making any second concurrent subscription permanently deaf to editor events.
+  const bridge = await loadStoryblokBridge({ ...bridgeOptions, initOnlyOnce: false });
 
   bridge.on(["input", "change", "published"], (event) => {
     if (!active || !event) {
@@ -87,6 +92,7 @@ export async function onStoryblokEditorEvent<TStory extends Story = Story>(
   });
 
   return () => {
+    if (!active) return;
     active = false;
     bridge.destroy();
   };

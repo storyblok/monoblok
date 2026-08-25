@@ -1,5 +1,5 @@
 import type { AsyncData, AsyncDataOptions, NuxtError } from "#app";
-import { useAsyncData } from "#app";
+import { useAsyncData, useRuntimeConfig } from "#app";
 import {
   type ISbStoriesParams,
   type ISbStory,
@@ -31,8 +31,9 @@ export interface UseAsyncStoryblokOptions<T = any> extends AsyncDataOptions<ISbS
    *
    * Optional: when omitted, the bridge is still registered and inherits
    * `resolve_relations` and `resolve_links` from the `api` options.
+   * Pass `false` to disable bridge registration entirely.
    */
-  bridge?: StoryblokBridgeConfigV2;
+  bridge?: StoryblokBridgeConfigV2 | false;
 }
 
 interface AsyncDataExecuteOptions {
@@ -133,15 +134,23 @@ export async function useAsyncStoryblok<T = any>(
   options: UseAsyncStoryblokOptions<T>,
 ): Promise<UseAsyncStoryblokResult<T>> {
   const storyblokApiInstance = useStoryblokApi();
-  const { api, bridge = {}, ...rest } = options;
+  const { api, bridge, ...rest } = options;
   const uniqueKey = (): string => `${stableStringify(toValue(api))}${url}`;
+  const bridgeEnabled = bridge !== false;
+  const { storyblok } = useRuntimeConfig().public;
+  if (!storyblok?.accessToken) {
+    throw new Error(
+      "Storyblok access token is not available to useAsyncStoryblok. Set storyblok.accessToken in your nuxt.config.ts, and make sure storyblok.enableServerClient is not enabled (it keeps the token server-only, so this client composable can't use it — use the server-side client from '#storyblok/server' instead in that mode).",
+    );
+  }
 
   // Copy resolve_relations and resolve_links from API options to bridge options
   // This ensures the bridge resolves the same relations during live preview updates
   const bridgeOptions: StoryblokBridgeConfigV2 = {
     ...bridge,
-    resolveRelations: bridge.resolveRelations ?? toValue(api).resolve_relations,
-    resolveLinks: bridge.resolveLinks ?? toValue(api).resolve_links,
+    resolveRelations:
+      (bridge ? bridge.resolveRelations : undefined) ?? toValue(api).resolve_relations,
+    resolveLinks: (bridge ? bridge.resolveLinks : undefined) ?? toValue(api).resolve_links,
   };
 
   const result = (await useAsyncData(
@@ -153,7 +162,7 @@ export async function useAsyncStoryblok<T = any>(
   // Register bridge for live preview updates (client-side only)
   // Use watch instead of onMounted because lifecycle hooks must be registered before the first await
   // in async setup functions, but we can't as we need the story.id
-  if (import.meta.client) {
+  if (import.meta.client && bridgeEnabled) {
     let registeredId: number | undefined;
 
     watch(

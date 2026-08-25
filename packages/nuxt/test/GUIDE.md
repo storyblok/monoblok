@@ -31,8 +31,8 @@ look like product defects.
 
 Three specs cover what only the real editor can exercise: the story renders in the preview frame,
 typing updates the preview before any save, and a resolved relation survives a live edit. Everything
-the playground renders standalone belongs in the Cypress suite
-(`pnpm --filter @storyblok/nuxt cy:run`), not here.
+the playground renders standalone belongs in the e2e suite
+(`pnpm --filter @storyblok/nuxt test:e2e`), not here.
 
 For a check the specs do not cover, write a throwaway script instead of adding one. The skill's
 `examples/visual-editor-run.mjs` is the starting point.

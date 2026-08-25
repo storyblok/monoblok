@@ -337,8 +337,15 @@ function resolveFieldRestriction(
   ) {
     return { kind: "tags" };
   }
-  const hasNameAllow = isNonEmptyList(field.component_whitelist);
-  const hasNameDeny = isNonEmptyList(field.component_denylist);
+  // On `bloks`, the Management API clears the name lists when the editor switches
+  // dimension, so a `component_whitelist`/`component_denylist` surviving next to an
+  // empty-tag `restrict_type: 'tags'` is stale junk from before the switch, not a live
+  // restriction. Ignore it here so the field falls through to `raw`, which keeps the tag
+  // flags instead of resurrecting the stale list as `allow`/`deny`. `richtext` gets no such
+  // backstop from the API, so its name list is still live and is read below as usual.
+  const nameListsAreStale = field.type === "bloks" && field.restrict_type === "tags";
+  const hasNameAllow = !nameListsAreStale && isNonEmptyList(field.component_whitelist);
+  const hasNameDeny = !nameListsAreStale && isNonEmptyList(field.component_denylist);
   if (hasNameAllow || hasNameDeny) {
     return {
       kind: "names",

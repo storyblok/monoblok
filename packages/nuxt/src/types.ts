@@ -13,3 +13,12 @@ export interface PublicModuleOptions {
 export interface AllModuleOptions extends PublicModuleOptions {
   accessToken: string;
 }
+
+declare module "@nuxt/schema" {
+  interface NuxtConfig {
+    storyblok?: Partial<AllModuleOptions>;
+  }
+  interface NuxtOptions {
+    storyblok: AllModuleOptions;
+  }
+}

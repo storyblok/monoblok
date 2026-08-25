@@ -1,7 +1,8 @@
+import type { NuxtConfig } from "@nuxt/schema";
 import { defineNuxtConfig } from "nuxt/config";
 import StoryblokModule from "../../../src/module";
 
-export default defineNuxtConfig({
+const config: NuxtConfig = {
   modules: [StoryblokModule],
 
   imports: {
@@ -18,4 +19,6 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: "2025-01-13",
-} as any);
+};
+
+export default defineNuxtConfig(config);

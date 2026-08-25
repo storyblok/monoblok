@@ -73,8 +73,8 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*",
-    "@storyblok/richtext": "workspace:*",
+    "@storyblok/js": "workspace:^",
+    "@storyblok/richtext": "workspace:^",
     "camelcase": "^8.0.0",
     "morphdom": "^2.7.8"
   },

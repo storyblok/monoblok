@@ -18,6 +18,7 @@
     "lint:affected": "nx affected:lint",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
+    "check:workspace-protocol": "node tools/workspace-protocol-guard.mjs",
     "test": "nx run-many --target=test",
     "test:types": "nx run-many --target=test:types",
     "test:coverage": "nx run-many --target=test:coverage"

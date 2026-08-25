@@ -135,8 +135,8 @@ The gate is enforced in three places:
 1. `pnpm release` skips ineligible packages when creating version commits and tags.
 2. `pnpm release` also **aborts after the `nx release` step** if an ineligible package's `version`
    was bumped anyway. This guards against a regression where nx release version would silently bump
-   alpha-only packages, leaving downstream `workspace:*` references pointing at versions that would
-   never be published (see the "Alpha-only packages and downstream consumers" note below).
+   alpha-only packages, leaving downstream `workspace:^` references resolving against versions that
+   would never be published (see the "Alpha-only packages and downstream consumers" note below).
 3. The **Publish** workflow re-computes the eligible list from `release.branches` before running
    `nx release publish`. This means raw flows like `pnpm nx release version` — which bypass
    `pnpm release` — still cannot accidentally publish an ineligible package to npm, because the
@@ -158,8 +158,14 @@ alpha-only package to stable, add `"main"` back.
 Marking a package alpha-only (`release.branches: [{ name: "alpha", prerelease: true }]`) freezes its
 stable version on npm, but does **not** prevent nx from bumping the package's `version` field on
 `main` if conventional commits drive a bump. Downstream consumers that reference the alpha-only
-package via `workspace:*` will then publish tarballs pinning the bumped — but never published —
-version, producing `ETARGET` failures for anyone installing them.
+package via `workspace:^` will then publish tarballs carrying a caret range built from the bumped
+version, which was never published. If nothing on npm satisfies that range, anyone installing the
+consumer gets an `ETARGET` failure.
+
+The caret changes how this fails, not whether it fails. An exact pin broke loudly on a version that
+did not exist. A range breaks the same way when no published version satisfies it, but resolves
+quietly to some _other_ version when one happens to be in range, which is harder to spot. Both
+outcomes are wrong, so the guard below still matters.
 
 Two mitigations are in place:
 
@@ -276,6 +282,58 @@ The publish workflow will:
   - `beta` branch → `beta` tag
   - `alpha` branch → `alpha` tag
   - `rc` branch → `rc` tag
+
+## Workspace Dependencies
+
+Published packages reference each other with the `workspace:^` protocol:
+
+```json
+"dependencies": {
+  "@storyblok/js": "workspace:^"
+}
+```
+
+Locally, pnpm links these to the package in the monorepo. At pack time, `pnpm publish` replaces the
+protocol with a caret range built from the dependency's current version, so a tarball built while
+`@storyblok/js` sits at 6.3.1 carries `"@storyblok/js": "^6.3.1"`. Consumers then receive patches
+and minors of that dependency on their next install.
+
+nx never rewrites the specifier in the source manifest, because `release.version` sets
+`preserveLocalDependencyProtocols: true` in `nx.json`. Keep that setting. Without it,
+`nx release version` replaces every `workspace:^` with a literal resolved version inside the release
+commit, and consumers are back to exact pins that only refresh when the dependent is released again.
+
+Two rules follow:
+
+- **Runtime sections** (`dependencies`, `peerDependencies`, `optionalDependencies`) of published
+  packages use `workspace:^`.
+- **`devDependencies`** keep `workspace:*`. Consumers never install them, so the range never reaches
+  anyone, and `*` stays the clearest way to say "whatever is in the workspace".
+
+Run `pnpm check:workspace-protocol` to verify both rules. CI runs it on every build.
+
+### Caret Ranges on Pre-release Channels
+
+A caret range is resolved at install time against whatever npm offers, which interacts awkwardly with
+pre-release versions. When a package is packed while its workspace dependency sits at a pre-release
+version, the published range looks like `^7.8.0-next.0`, and semver reads that as
+`>=7.8.0-next.0 <8.0.0`. Stable `7.8.0` and `7.9.0` both satisfy it.
+
+An artifact published from `next` can therefore resolve a **stable** dependency rather than the
+pre-release it was built against, and two installs of the same artifact on different days can end up
+with different trees.
+
+This affects any edge where a package **and** its workspace dependency both release from the same
+pre-release channel, because only then is the dependency at a pre-release version when the dependent
+is packed. `storyblok` (the CLI), `@storyblok/angular`, `@storyblok/migrations`, and
+`@storyblok/astro` all have such edges today. A dependency that releases from `main` only is never at
+a pre-release version, so its published range is an ordinary caret and this does not apply, which is
+why `@storyblok/nuxt` and its `@storyblok/vue` dependency are unaffected.
+
+This is accepted rather than solved. Pre-release consumers are already opted into instability, and
+the alternatives (per-branch specifier overrides, publish-time channel checks) cost more than the
+risk. If a pre-release branch genuinely needs a dependency version that stable does not have, pin
+that single edge to an exact version on that branch instead of relying on the caret.
 
 ## Distribution Tags
 

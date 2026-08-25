@@ -12,7 +12,7 @@ export default defineConfig({
       fileName: () => "index.js",
     },
     rollupOptions: {
-      external: ["astro"],
+      external: ["astro", "@storyblok/js", "@storyblok/richtext"],
     },
   },
   plugins: [

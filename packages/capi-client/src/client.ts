@@ -48,6 +48,17 @@ const getFailure = (result: ApiResponse): StrategyFailure | undefined =>
     ? undefined
     : { transient: isTransientStatus(result.response?.status ?? 0), error: result.error };
 
+/**
+ * Describes the failure a rejection represents. A `ClientError` is an HTTP answer the
+ * origin gave — the shape an error takes with `throwOnError` enabled — and is classified
+ * by its status like any other. Anything else got no answer at all: a timeout, a DNS
+ * failure, an aborted socket. Those are transient by nature.
+ */
+const getThrownFailure = (error: unknown): StrategyFailure => ({
+  transient: error instanceof ClientError ? isTransientStatus(error.response.status) : true,
+  error,
+});
+
 export type HttpRequestMethod = <TData = unknown>(
   path: string,
   options?: HttpRequestOptions,
@@ -398,6 +409,7 @@ export const createApiClientBase = <
       cachedResult,
       loadNetwork,
       getFailure,
+      getThrownFailure,
     });
   };
 

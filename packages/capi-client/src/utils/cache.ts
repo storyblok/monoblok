@@ -17,6 +17,18 @@ interface StrategyContext<TData> {
    * custom strategy handlers and callers that do not supply it keep working.
    */
   getFailure?: (value: TData) => StrategyFailure | undefined;
+  /**
+   * Describes the failure a rejection from `loadNetwork` represents.
+   *
+   * The mirror of {@link StrategyContext.getFailure} for the other way a request can
+   * fail: with `throwOnError` enabled an HTTP error rejects rather than resolving, so a
+   * definitive answer reaches a strategy as a thrown value and has to be told apart from
+   * a transport-level failure the same way.
+   *
+   * Optional: a context without it behaves as if every rejection were transient, which is
+   * what a transport-level failure is.
+   */
+  getThrownFailure?: (error: unknown) => StrategyFailure;
 }
 
 export interface StrategyFailure {
@@ -99,9 +111,12 @@ export const createMemoryCacheProvider = (
 };
 
 /**
- * Statuses that mean "try again later" rather than "here is your answer". Mirrors the set
- * the client retries, so one of these only reaches a strategy once the retries are spent
- * and the failure is a real outage.
+ * Statuses that mean "try again later" rather than "here is your answer".
+ *
+ * Every 5xx counts: the server failing to answer says nothing about whether the resource
+ * exists, so a cached copy is still the best available answer. The 4xx exceptions are the
+ * three the origin uses to ask for the same request again — a timeout, a payload it wants
+ * re-sent, and a rate limit.
  */
 const TRANSIENT_STATUS_CODES = new Set([408, 413, 429]);
 
@@ -120,7 +135,12 @@ export const createCacheFirstStrategy = (): CacheStrategyHandler => {
 };
 
 export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
-  return async <TData>({ cachedResult, loadNetwork, getFailure }: StrategyContext<TData>) => {
+  return async <TData>({
+    cachedResult,
+    loadNetwork,
+    getFailure,
+    getThrownFailure,
+  }: StrategyContext<TData>) => {
     try {
       const result = await loadNetwork();
 
@@ -135,8 +155,12 @@ export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
 
       return result;
     } catch (error) {
-      // network-first: try network, fall back to cached data if available.
-      if (cachedResult !== undefined) {
+      // The rule the resolved path applies has to hold here too: with `throwOnError`
+      // enabled the same 404 rejects instead of resolving, and serving a cached copy
+      // would mask the deletion just as thoroughly. Without a reporter every rejection
+      // counts as transient — a context that cannot classify only ever sees the
+      // transport-level failures, which are.
+      if (cachedResult !== undefined && getThrownFailure?.(error).transient !== false) {
         return cachedResult;
       }
 

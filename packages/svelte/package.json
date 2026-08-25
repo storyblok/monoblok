@@ -70,7 +70,7 @@
     "@sveltejs/kit": "^2.20.2",
     "@sveltejs/package": "^2.3.10",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "jsdom": "catalog:",
     "oxlint": "catalog:",
     "pathe": "catalog:",

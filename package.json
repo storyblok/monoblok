@@ -24,7 +24,7 @@
     "test:coverage": "nx run-many --target=test:coverage"
   },
   "dependencies": {
-    "cypress": "^14.3.3"
+    "cypress": "^15.21.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
@@ -41,7 +41,7 @@
     "vite-plus": "0.2.8"
   },
   "resolutions": {
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "happy-dom": "^20.8.8"
   },
   "packageManager": "pnpm@10.27.0"

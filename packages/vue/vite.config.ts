@@ -1,65 +1,27 @@
-import vue from "@vitejs/plugin-vue";
-import { defineConfig, type Plugin } from "vitest/config";
-import path from "node:path";
-import { copyFileSync } from "node:fs";
-import { lightGreen } from "kolorist";
-import banner from "vite-plugin-banner";
-import dts from "vite-plugin-dts";
+import { defineConfig } from "vite-plus";
+import Vue from "unplugin-vue/rolldown";
 
 import pkg from "./package.json" with { type: "json" };
 
-// eslint-disable-next-line no-console
-console.log(`${lightGreen("Storyblok Vue")} v${pkg.version}`);
+const banner = `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n * author: ${pkg.author}\n */`;
 
 export default defineConfig({
-  plugins: [
-    dts({
-      insertTypesEntry: true,
-      afterBuild(emittedFiles) {
-        for (const filePath of emittedFiles.keys()) {
-          if (filePath.endsWith(".d.ts")) {
-            copyFileSync(filePath, filePath.replace(/\.d\.ts$/, ".d.cts"));
-          }
-        }
-      },
-    }),
-    vue(),
-    banner({
-      content: `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n * author: ${pkg.author}\n */`,
-    }) as unknown as Plugin,
-  ] as Plugin[],
-
-  build: {
-    lib: {
-      entry: path.resolve(import.meta.dirname, "src", "index.ts"),
-      name: "storyblokVue",
-      fileName: (format) => {
-        const name = "storyblok-vue";
-        return format === "es" ? `${name}.mjs` : `${name}.cjs`;
-      },
+  pack: [
+    {
+      // Scoped to the module entry: `./vue.css` is a stylesheet, so it has no
+      // TypeScript resolution for attw to check.
+      attw: { entrypoints: ["."], level: "error", profile: "node16" },
+      banner,
+      // Scoped styles from FallbackComponent.vue are extracted, not injected,
+      // which is how this package has always shipped them.
+      css: { fileName: "vue.css" },
+      // Declarations come from vue-tsc so that `.vue` imports resolve.
+      dts: { vue: true },
+      entry: { index: "./src/index.ts" },
+      format: ["esm", "cjs"],
+      outDir: "./dist",
+      plugins: [Vue({ isProduction: true })],
+      publint: true,
     },
-    rollupOptions: {
-      output: {
-        globals: {
-          vue: "Vue",
-          "@storyblok/js": "storyblok",
-          "@storyblok/richtext": "StoryblokRichtext",
-        },
-      },
-      external: ["vue", "@storyblok/js", "@storyblok/richtext"],
-    },
-  },
-  optimizeDeps: {
-    exclude: ["vue"],
-  },
-
-  test: {
-    globals: true,
-    include: ["./src/__tests__/**/*"],
-    exclude: [
-      "./src/__tests__/cypress",
-      "./src/__tests__/testing-components",
-      "./src/__tests__/richtext",
-    ],
-  },
+  ],
 });

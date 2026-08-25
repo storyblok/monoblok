@@ -2,15 +2,26 @@ export const OAUTH_CALLBACK_PORT = 4900;
 export const OAUTH_CALLBACK_PATH = "/oauth/callback";
 export const OAUTH_REDIRECT_URI = `http://localhost:${OAUTH_CALLBACK_PORT}${OAUTH_CALLBACK_PATH}`;
 
-// First-party OAuth client baked into the CLI, the same model `gh` and `gcloud` use: the user
-// supplies nothing. This is a public client, so the secret is not a security boundary; PKCE
-// protects the code exchange. One integration app covers every region.
-// TODO(DX-490): replace both placeholders with the registered "Storyblok CLI" app credentials.
-export const OAUTH_CLIENT_ID = "REPLACE_WITH_STORYBLOK_CLI_OAUTH_CLIENT_ID";
-export const OAUTH_CLIENT_SECRET = "REPLACE_WITH_STORYBLOK_CLI_OAUTH_CLIENT_SECRET";
-// Marks the values above as not-yet-provisioned, so a build without real credentials fails
-// with an explanation instead of sending the user to a broken authorization page.
-export const OAUTH_CLIENT_PLACEHOLDER_PREFIX = "REPLACE_WITH_";
+// Credentials of the first-party "Storyblok CLI" integration app, baked into the CLI so that
+// `login --oauth` needs no configuration. One app covers every region.
+//
+// `OAUTH_CLIENT_SECRET` IS NOT A SECRET. The CLI is a public OAuth client (RFC 8252): it is
+// installed on end-user machines, so anything shipped in it is readable by anyone who has it.
+// Treating this value as confidential would be security theater. What actually protects the
+// authorization code exchange is PKCE (see pkce.ts) — the code_verifier is generated per login
+// and never leaves the machine, so possessing this value alone mints nothing. The redirect URI
+// is pinned to loopback, which keeps a code from being delivered anywhere else.
+//
+// Consequences worth knowing before touching these lines:
+// - Do not move them to a build-time inject, a vault, or an env var to "protect" them. The same
+//   value would still ship in the published bundle; the only result is a broken install.
+// - Do rotate the app's credentials (and release a patched CLI) if the app itself is
+//   compromised or misconfigured — rotation, not concealment, is the mitigation here.
+// - The app must stay registered as a public client with PKCE required. If it is ever switched
+//   to a confidential client, this comment stops being true and the flow needs rethinking.
+export const OAUTH_CLIENT_ID = "2SiP2iS5Bef9iFNuIqnd3Q==";
+export const OAUTH_CLIENT_SECRET =
+  "ggtmjH1yp0/0F7Nrk7fGS7T86QjwDiXd9LES8ki4rOgOY51bnGVZdcVoLROcb3oma4TiXXWiQ1aOkk6zKFYsfQ==";
 
 // Scopes requested at login. This mirrors the full catalog (storyrails token_scopeable.rb
 // GROUPED_SCOPES plus OauthGrant::ADDITIONAL_SCOPES) so one consent covers every command,

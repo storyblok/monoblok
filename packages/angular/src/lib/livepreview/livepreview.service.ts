@@ -119,10 +119,19 @@ export class LivePreviewService {
     // that if the component is destroyed while the bridge is still loading,
     // `destroyed` is set to true and the bridge is torn down as soon as the
     // promise resolves.
-    destroyRef.onDestroy(() => {
+    //
+    // Guard with try/catch: during SSR, Angular may have already destroyed
+    // the view by the time ngOnInit runs (e.g. on navigation), causing
+    // DestroyRef.onDestroy() to throw NG0911. In that case treat the context
+    // as already destroyed so the bridge is torn down immediately once loaded.
+    try {
+      destroyRef.onDestroy(() => {
+        destroyed = true;
+        cleanup?.();
+      });
+    } catch {
       destroyed = true;
-      cleanup?.();
-    });
+    }
 
     this.listen(callback, options).then((fn) => {
       cleanup = fn;

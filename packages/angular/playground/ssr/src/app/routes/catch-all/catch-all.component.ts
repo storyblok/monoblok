@@ -15,7 +15,6 @@ import {
   type BridgeParams,
   StoryblokComponent,
 } from "@storyblok/angular";
-
 @Component({
   selector: "app-catch-all",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -46,7 +45,7 @@ export class CatchAllComponent implements OnInit {
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
   readonly bridgeConfig: BridgeParams = {
-    resolveRelations: ["featured-articles.articles"],
+    resolveRelations: ["article.author"],
   };
 
   ngOnInit(): void {

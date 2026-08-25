@@ -170,7 +170,17 @@ export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
 };
 
 export interface SwrStrategyOptions {
-  /** Called when a background revalidation fails. Defaults to `console.warn`. */
+  /**
+   * Called when a background revalidation fails. Defaults to `console.warn`.
+   *
+   * Called once per failed revalidation, and a revalidation starts on every request that
+   * is served from the cache while none is in flight — so a lasting outage reports on
+   * every request rather than once. That is the point: the entry keeps being served
+   * stale, and how long that has been going on is what the caller needs to see.
+   *
+   * A callback that throws is reported to `console.error` and otherwise ignored, since a
+   * background revalidation is not awaited anywhere.
+   */
   onRevalidationError?: (error: unknown) => void;
 }
 
@@ -182,23 +192,44 @@ export const createSwrStrategy = (options: SwrStrategyOptions = {}): CacheStrate
   const { onRevalidationError = defaultOnRevalidationError } = options;
   const revalidations = new Map<string, Promise<unknown>>();
 
+  // Nothing awaits a revalidation, so anything thrown while reporting one — by the
+  // caller's callback or by its `getFailure` — would leave the chain rejected with no
+  // handler, which current Node defaults treat as fatal. Reporting a failure failing is
+  // not a reason to take the process down.
+  const reportGuarded = (describeFailure: () => void): void => {
+    try {
+      describeFailure();
+    } catch (reportingError) {
+      console.error("[storyblok/api-client] SWR revalidation reporting threw:", reportingError);
+    }
+  };
+
   return async <TData>({ key, cachedResult, loadNetwork, getFailure }: StrategyContext<TData>) => {
     if (cachedResult !== undefined) {
       if (!revalidations.has(key)) {
         const revalidation = loadNetwork()
-          .then((value) => {
-            // A revalidation that came back 5xx resolved rather than threw, so reporting
-            // only from `catch` would drop it silently and leave the entry to go stale
-            // with no signal at all. Every failure reaches the callback, transient or
-            // not: the caller decides what is worth acting on.
-            const failure = getFailure?.(value);
-            if (failure !== undefined) {
-              onRevalidationError(failure.error);
-            }
-          })
-          .catch((error: unknown) => {
-            onRevalidationError(error);
-          })
+          .then(
+            (value) =>
+              reportGuarded(() => {
+                // A revalidation that came back 5xx resolved rather than threw, so
+                // reporting only from the rejection path would drop it silently and leave
+                // the entry to go stale with no signal at all. Every failure reaches the
+                // callback, transient or not: the caller decides what is worth acting on.
+                const failure = getFailure?.(value);
+                if (failure !== undefined) {
+                  onRevalidationError(failure.error);
+                }
+              }),
+            // Paired with the handler above rather than chained after it, so it sees only
+            // what `loadNetwork` rejected with. A trailing `.catch` would also catch a
+            // throw from that handler and report the same revalidation twice, the second
+            // time with the reporting failure in place of the failure itself.
+            (error: unknown) => {
+              reportGuarded(() => {
+                onRevalidationError(error);
+              });
+            },
+          )
           .finally(() => {
             revalidations.delete(key);
           });

@@ -388,6 +388,64 @@ describe("cache strategies", () => {
     expect(onRevalidationError).toHaveBeenCalledWith("not found");
   });
 
+  it.each([
+    ["resolved with a failure", "failed", { transient: true, error: "boom" }],
+    ["rejected", undefined, undefined],
+  ])(
+    "should report a swr revalidation that %s once when the callback throws",
+    async (_label, resolvedValue, failure) => {
+      // Nothing awaits the revalidation, so a callback that throws must not leave the
+      // chain rejected, and must not be re-entered with its own failure in place of the
+      // one it was reporting.
+      const onRevalidationError = vi.fn(() => {
+        throw new Error("callback blew up");
+      });
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const strategy = createSwrStrategy({ onRevalidationError });
+      const loadNetwork =
+        resolvedValue === undefined
+          ? vi.fn().mockRejectedValue("network down")
+          : vi.fn().mockResolvedValue(resolvedValue);
+
+      const result = await strategy({
+        key: "k",
+        cachedResult: "cached",
+        loadNetwork,
+        getFailure: () => failure,
+      });
+
+      expect(result).toBe("cached");
+      await vi.waitFor(() => expect(onRevalidationError).toHaveBeenCalledTimes(1));
+      expect(onRevalidationError).toHaveBeenCalledWith(failure?.error ?? "network down");
+      expect(consoleError).toHaveBeenCalled();
+
+      consoleError.mockRestore();
+    },
+  );
+
+  it("should survive a swr getFailure that throws", async () => {
+    // `getFailure` is caller-supplied like the callback, and runs in the same unawaited
+    // chain, so it must not be able to end the revalidation as an unhandled rejection.
+    const onRevalidationError = vi.fn();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const strategy = createSwrStrategy({ onRevalidationError });
+
+    const result = await strategy({
+      key: "k",
+      cachedResult: "cached",
+      loadNetwork: vi.fn().mockResolvedValue("fresh"),
+      getFailure: () => {
+        throw new Error("classifier blew up");
+      },
+    });
+
+    expect(result).toBe("cached");
+    await vi.waitFor(() => expect(consoleError).toHaveBeenCalled());
+    expect(onRevalidationError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
   it("should not report a successful swr revalidation", async () => {
     const onRevalidationError = vi.fn();
     const strategy = createSwrStrategy({ onRevalidationError });

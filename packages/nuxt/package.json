@@ -52,10 +52,10 @@
     "test:e2e:static": "start-server-and-test dev:preview http://localhost:3100 cy:run"
   },
   "dependencies": {
-    "@storyblok/vue": "workspace:*"
+    "@storyblok/vue": "workspace:^"
   },
   "devDependencies": {
-    "@cypress/vite-dev-server": "^6.0.3",
+    "@cypress/vite-dev-server": "^7.3.4",
     "@nuxt/kit": "^4.2.2",
     "@nuxt/module-builder": "^1.0.0",
     "@nuxt/schema": "^4.2.2",
@@ -64,7 +64,7 @@
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/visual-editor-qa": "workspace:*",
     "@types/node": "catalog:",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "nuxt": "^4.2.2",
     "oxlint": "catalog:",
     "start-server-and-test": "^2.0.11"

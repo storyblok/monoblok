@@ -20,11 +20,11 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/index.d.ts",
+        "types": "./dist/index.d.mts",
         "default": "./dist/index.mjs"
       },
       "require": {
@@ -34,7 +34,7 @@
     },
     "./ssr": {
       "import": {
-        "types": "./dist/ssr.d.ts",
+        "types": "./dist/ssr.d.mts",
         "default": "./dist/ssr.mjs"
       },
       "require": {
@@ -44,21 +44,22 @@
     },
     "./rsc": {
       "import": {
-        "types": "./dist/rsc.d.ts",
+        "types": "./dist/rsc.d.mts",
         "default": "./dist/rsc.mjs"
       },
       "require": {
         "types": "./dist/rsc.d.cts",
         "default": "./dist/rsc.cjs"
       }
-    }
+    },
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "dev": "vp build --watch",
-    "build": "vp build",
+    "dev": "vp pack --watch",
+    "build": "vp pack",
     "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit && pnpm run test:e2e:next-13 && pnpm run test:e2e:next-latest",
     "test:unit": "vp test run",
@@ -79,14 +80,14 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*",
-    "@storyblok/richtext": "workspace:*"
+    "@storyblok/js": "workspace:^",
+    "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",
     "@babel/preset-env": "^7.27.2",
     "@cypress/react": "^9.0.1",
-    "@cypress/vite-dev-server": "^6.0.3",
+    "@cypress/vite-dev-server": "^7.3.4",
     "@storyblok/lint-config": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -95,17 +96,15 @@
     "@types/react": "catalog:react19",
     "@vitejs/plugin-react": "^4.4.1",
     "babel-jest": "^29.7.0",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "jsdom": "catalog:",
     "oxlint": "catalog:",
     "publint": "catalog:",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
-    "rollup-plugin-preserve-directives": "^0.4.0",
     "start-server-and-test": "^2.0.11",
     "typescript": "catalog:",
     "vite": "^6.4.3",
-    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {

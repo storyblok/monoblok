@@ -130,7 +130,11 @@ allOf:
         description: Whether to allow custom link attributes
       link_scope:
         type: string
-        description: Path of the folder internal links are restricted to
+        description: |
+          Path of the folder internal links are restricted to. The richtext
+          schema form does not write this option itself; it belongs to the
+          multilink field's editor. Kept here because a space can carry it as
+          a legacy value, not because the richtext editor produces it.
       max_length:
         oneOf:
           - type: integer
@@ -141,4 +145,9 @@ allOf:
           `60`. Coerce before comparing.
       rtl:
         type: boolean
-        description: Whether to enable right-to-left text direction
+        description: |
+          Whether to enable right-to-left text direction. The richtext schema
+          form does not write this option itself; it belongs to the text,
+          textarea, and markdown fields' editors. Kept here because a space
+          can carry it as a legacy value, not because the richtext editor
+          produces it.

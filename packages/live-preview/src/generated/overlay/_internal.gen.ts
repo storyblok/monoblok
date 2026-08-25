@@ -161,7 +161,11 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     allow_custom_attributes?: boolean;
     /**
-     * Path of the folder internal links are restricted to
+     * Path of the folder internal links are restricted to. The richtext
+     * schema form does not write this option itself; it belongs to the
+     * multilink field's editor. Kept here because a space can carry it as
+     * a legacy value, not because the richtext editor produces it.
+     *
      */
     link_scope?: string;
     /**
@@ -172,7 +176,12 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     max_length?: number | string;
     /**
-     * Whether to enable right-to-left text direction
+     * Whether to enable right-to-left text direction. The richtext schema
+     * form does not write this option itself; it belongs to the text,
+     * textarea, and markdown fields' editors. Kept here because a space
+     * can carry it as a legacy value, not because the richtext editor
+     * produces it.
+     *
      */
     rtl?: boolean;
 };

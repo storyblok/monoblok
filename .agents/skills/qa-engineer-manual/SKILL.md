@@ -60,9 +60,7 @@ and stop at the first step that answers it:
    kept aligned with real wire formats, so a shape already in there is usually your answer.
 2. **`../storyrails`.** The backend truth for what is stored, normalized, and enforced.
    `spec/integration/openapi/` is the source of truth for schemas and error shapes.
-3. **`../storyfront`.** The editor is what writes component schemas and content values:
-   `packages/openapi/src/FieldType.ts` declares the shapes, `Schema/*/index.vue` is what it
-   **writes**, `EditorForm/FieldType*/` is what it **reads**.
+3. **`../storyfront`.** The editor is what writes component schemas and content values.
 4. **Ask the user to author it in the UI.** Last resort, when the source does not settle it. Ask
    them to create the field or story by hand in a QA space and give you the id, then read it back
    via MAPI (`curl` the component or story) and copy the result into the fixture verbatim. This is

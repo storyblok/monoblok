@@ -31,8 +31,7 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 - `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need
   information about the visual editor, bridge protocol, or rendering in the Storyblok UI, and
   whenever you need the real shape of a component schema field or a story content value. The editor
-  is what writes them: `packages/openapi/src/FieldType.ts` declares the shapes, `Schema/*/index.vue`
-  is what the editor **writes**, `EditorForm/FieldType*/` is what it **reads**.
+  is what writes them.
 - `../storyblok-bridge` (Storyblok Bridge) - Consult when verifying bridge behavior: the
   `postMessage` protocol between the editor and a preview iframe, the editable-block attributes it
   writes into the page, the overlay/click-to-edit UI, or the bridge lifecycle.

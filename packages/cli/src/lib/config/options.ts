@@ -101,6 +101,26 @@ export const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     defaultValue: DEFAULT_GLOBAL_CONFIG.report.enabled,
   },
   {
+    flags: "--telemetry-enabled",
+    description: "Send anonymous CLI usage telemetry",
+    defaultValue: DEFAULT_GLOBAL_CONFIG.telemetry.enabled,
+  },
+  {
+    flags: "--no-telemetry-enabled",
+    description: "Disable anonymous CLI usage telemetry",
+    defaultValue: DEFAULT_GLOBAL_CONFIG.telemetry.enabled,
+  },
+  {
+    flags: "--telemetry-debug",
+    description: "Print the run's telemetry span to stderr instead of sending it",
+    defaultValue: DEFAULT_GLOBAL_CONFIG.telemetry.debug,
+  },
+  {
+    flags: "--no-telemetry-debug",
+    description: "Do not print the run's telemetry span",
+    defaultValue: DEFAULT_GLOBAL_CONFIG.telemetry.debug,
+  },
+  {
     flags: "--report-max-files <number>",
     description: "Maximum number of report files to keep",
     defaultValue: DEFAULT_GLOBAL_CONFIG.report.maxFiles,

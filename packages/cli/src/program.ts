@@ -19,6 +19,7 @@ import {
   resolveConfig,
   setActiveConfig,
 } from "./lib/config";
+import { collectExplicitFlags, startTelemetry } from "./lib/telemetry";
 
 const packageJson = getPackageJson();
 
@@ -155,6 +156,18 @@ export function getProgram(): Command {
           reporter.addMeta("logPath", logFilePath);
         }
       }
+
+      // Step 3: Open the telemetry span covering this run. Returns immediately unless
+      // telemetry was opted into; `src/index.ts` closes and flushes the span.
+      await startTelemetry({
+        enabled: resolvedConfig.telemetry?.enabled,
+        debug: resolvedConfig.telemetry?.debug,
+        command,
+        flags: collectExplicitFlags(ancestry),
+        region: state.region ?? resolvedConfig.region,
+        runId,
+        cliVersion: packageJson.version,
+      });
     });
 
     // Prevent Commander from calling process.exit() so our exitCode convention is respected

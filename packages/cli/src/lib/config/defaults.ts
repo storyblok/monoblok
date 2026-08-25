@@ -26,6 +26,11 @@ const BASE_GLOBAL_CONFIG: GlobalConfig = {
   ui: {
     enabled: true,
   },
+  telemetry: {
+    // Left undefined so the environment can opt in when nothing else has an opinion.
+    enabled: undefined,
+    debug: undefined,
+  },
   verbose: false,
 };
 

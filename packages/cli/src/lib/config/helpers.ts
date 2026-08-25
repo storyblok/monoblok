@@ -17,6 +17,7 @@ import type {
   PlainObject,
   ReportConfig,
   ResolvedCliConfig,
+  TelemetryConfig,
 } from "./types";
 
 // Type representing any level of the config hierarchy during path traversal
@@ -27,6 +28,7 @@ type ConfigLevel =
   | LogConsoleConfig
   | LogFileConfig
   | ReportConfig
+  | TelemetryConfig
   | Record<string, unknown>;
 
 export const CONFIG_FILE_NAME = "storyblok.config";

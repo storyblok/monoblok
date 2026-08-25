@@ -5,6 +5,7 @@ import { CommanderError } from "commander";
 import { handleError } from "./utils";
 import { getProgram } from "./program";
 import { getUI } from "./lib/ui";
+import { finishTelemetry } from "./lib/telemetry";
 import { colorPalette } from "./constants";
 import "./commands/login";
 import "./commands/logout";
@@ -58,4 +59,7 @@ try {
   } else {
     handleError(error as Error);
   }
+} finally {
+  // Closes and flushes the run's span. No-op unless telemetry was opted into.
+  await finishTelemetry({ exitCode: Number(process.exitCode ?? 0) });
 }

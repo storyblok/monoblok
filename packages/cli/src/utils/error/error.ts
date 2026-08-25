@@ -1,6 +1,7 @@
 import type { LogContext } from "../../lib/logger/logger";
 import { getLogger } from "../../lib/logger/logger";
 import { getUI } from "../../lib/ui";
+import { recordTelemetryError } from "../../lib/telemetry";
 import type { FetchError } from "../fetch";
 import { APIError } from "./api-error";
 import { CommandError } from "./command-error";
@@ -97,6 +98,8 @@ export function handleError(
   }
 
   const ui = getUI();
+
+  recordTelemetryError(error);
 
   // Print the message stack if it exists
   if (error instanceof APIError || error instanceof FileSystemError) {

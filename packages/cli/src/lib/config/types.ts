@@ -53,6 +53,16 @@ export interface UiConfig {
   enabled: boolean;
 }
 
+export interface TelemetryConfig {
+  /**
+   * Tri-state on purpose: `undefined` means neither a config file nor a flag expressed an
+   * opinion, which leaves the decision to the environment. See `lib/telemetry`.
+   */
+  enabled?: boolean;
+  /** Print the run's telemetry to stderr instead of (or in addition to) exporting it. */
+  debug?: boolean;
+}
+
 export interface GlobalConfig {
   region?: RegionCode;
   space?: number | string;
@@ -61,6 +71,7 @@ export interface GlobalConfig {
   log: LogConfig;
   report: ReportConfig;
   ui: UiConfig;
+  telemetry: TelemetryConfig;
   verbose: boolean;
 }
 

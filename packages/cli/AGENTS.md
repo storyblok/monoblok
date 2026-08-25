@@ -15,15 +15,16 @@
 | User-facing terminal output                          | `src/lib/ui/`                                                                                                                       |
 | Config resolution, global option behavior            | `src/lib/config/`                                                                                                                   |
 | Structured logs                                      | `src/lib/logger/`                                                                                                                   |
+| Run telemetry (OpenTelemetry spans)                  | `src/lib/telemetry/`                                                                                                                |
 | Machine-readable command reports                     | `src/lib/reporter/`                                                                                                                 |
 | Validation issue filtering, grouping, and formatting | `src/lib/validation/`                                                                                                               |
 
 ## Module initialization
 
 The `preAction` hook in `src/program.ts` initializes everything in order: config → session and API
-client → logger → UI → reporter → command action. Anything a command action relies on is already
-resolved by the time it runs, so read config through `command.optsWithGlobals()` and reach for
-modules through their getters rather than initializing them yourself.
+client → logger → UI → reporter → telemetry → command action. Anything a command action relies on is
+already resolved by the time it runs, so read config through `command.optsWithGlobals()` and reach
+for modules through their getters rather than initializing them yourself.
 
 ## Terminal output
 

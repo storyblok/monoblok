@@ -176,6 +176,11 @@ export default defineConfig({
     maxFiles: 10, // Maximum report files to keep
   },
 
+  // Telemetry configuration
+  telemetry: {
+    enabled: false, // Opt in to anonymous usage telemetry (off by default)
+  },
+
   // Module-specific configuration
   modules: {
     components: {
@@ -213,20 +218,71 @@ export default defineConfig({
 
 ## Global Options Reference
 
-| Flag                                                 | Config File           | Description                              | Default |
-| ---------------------------------------------------- | --------------------- | ---------------------------------------- | ------- |
-| `--verbose`                                          | `verbose`             | Enable verbose output                    | `false` |
-| `--region <region>`                                  | `region`              | Storyblok region used for API requests   | `eu`    |
-| `--api-max-retries <number>`                         | `api.maxRetries`      | Maximum retry attempts for HTTP requests | `3`     |
-| `--api-max-concurrency <number>`                     | `api.maxConcurrency`  | Maximum concurrent API requests          | `6`     |
-| `--ui-enabled` / `--no-ui-enabled`                   | `ui.enabled`          | Enable/disable UI output                 | `true`  |
-| `--log-console-enabled` / `--no-log-console-enabled` | `log.console.enabled` | Enable/disable console logging output    | `false` |
-| `--log-console-level <level>`                        | `log.console.level`   | Console log level                        | `info`  |
-| `--log-file-enabled` / `--no-log-file-enabled`       | `log.file.enabled`    | Enable/disable file logging output       | `true`  |
-| `--log-file-level <level>`                           | `log.file.level`      | File log level                           | `info`  |
-| `--log-file-max-files <number>`                      | `log.file.maxFiles`   | Max log files kept on disk               | `10`    |
-| `--report-enabled` / `--no-report-enabled`           | `report.enabled`      | Enable/disable report generation         | `true`  |
-| `--report-max-files <number>`                        | `report.maxFiles`     | Max report files kept on disk            | `10`    |
+| Flag                                                 | Config File           | Description                                               | Default |
+| ---------------------------------------------------- | --------------------- | --------------------------------------------------------- | ------- |
+| `--verbose`                                          | `verbose`             | Enable verbose output                                     | `false` |
+| `--region <region>`                                  | `region`              | Storyblok region used for API requests                    | `eu`    |
+| `--api-max-retries <number>`                         | `api.maxRetries`      | Maximum retry attempts for HTTP requests                  | `3`     |
+| `--api-max-concurrency <number>`                     | `api.maxConcurrency`  | Maximum concurrent API requests                           | `6`     |
+| `--ui-enabled` / `--no-ui-enabled`                   | `ui.enabled`          | Enable/disable UI output                                  | `true`  |
+| `--log-console-enabled` / `--no-log-console-enabled` | `log.console.enabled` | Enable/disable console logging output                     | `false` |
+| `--log-console-level <level>`                        | `log.console.level`   | Console log level                                         | `info`  |
+| `--log-file-enabled` / `--no-log-file-enabled`       | `log.file.enabled`    | Enable/disable file logging output                        | `true`  |
+| `--log-file-level <level>`                           | `log.file.level`      | File log level                                            | `info`  |
+| `--log-file-max-files <number>`                      | `log.file.maxFiles`   | Max log files kept on disk                                | `10`    |
+| `--report-enabled` / `--no-report-enabled`           | `report.enabled`      | Enable/disable report generation                          | `true`  |
+| `--report-max-files <number>`                        | `report.maxFiles`     | Max report files kept on disk                             | `10`    |
+| `--telemetry-enabled` / `--no-telemetry-enabled`     | `telemetry.enabled`   | Enable/disable anonymous usage telemetry                  | `false` |
+| `--telemetry-debug` / `--no-telemetry-debug`         | `telemetry.debug`     | Print the run's telemetry to stderr instead of sending it | `false` |
+
+## Telemetry
+
+The CLI can report anonymous usage telemetry. It is **off by default** and only runs when you turn
+it on:
+
+| Setting                         | Effect                                          |
+| ------------------------------- | ----------------------------------------------- |
+| `DO_NOT_TRACK=1`                | Off, whatever else is configured                |
+| `--no-telemetry-enabled`        | Off for this run                                |
+| `telemetry.enabled: false`      | Off                                             |
+| `--telemetry-enabled`           | On for this run                                 |
+| `telemetry.enabled: true`       | On                                              |
+| `STORYBLOK_TELEMETRY_ENABLED=1` | On, unless a flag or config file says otherwise |
+
+An enabled run reports one span per command: the command path, the names of the flags you passed
+(never their values), the region, the run id, the exit code, and — when a command fails — the error
+type and HTTP status. Flag values, arguments, file paths, space ids, tokens, and error messages are
+never sent.
+
+### Inspecting what is reported
+
+`--telemetry-debug` (or `telemetry.debug: true`, or `STORYBLOK_TELEMETRY_DEBUG=1`) prints the run's
+telemetry to stderr:
+
+```
+[telemetry] storyblok components pull
+  service.name             storyblok-cli
+  service.version          4.22.2
+  sb.cli.command           storyblok components pull
+  sb.cli.flags             [--space]
+  sb.cli.outcome           success
+  → https://ingress.eu-west-1.aws.dash0.com/v1/traces (dataset: prd-storyblok-cli)
+  → trace id: bbf49e6c58866236ea0300a25ffbe47a
+```
+
+It never sends anything by itself, so it works without a token and under `DO_NOT_TRACK` — it is how
+you check exactly what the CLI would report. When the run is also exporting, the last line gives you
+the trace id to look up in Dash0; when it is not, it names the switch that stopped it.
+
+Where the data goes is controlled by the same environment variables the rest of the platform uses.
+Without `DASH0_TOKEN` there is nowhere to send anything, so telemetry stays off:
+
+| Variable                      | Default                                   |
+| ----------------------------- | ----------------------------------------- |
+| `DASH0_TOKEN`                 | _(none — telemetry stays off without it)_ |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `https://ingress.eu-west-1.aws.dash0.com` |
+| `DASH0_DATASET`               | `prd-storyblok-cli`                       |
+| `OTEL_SERVICE_NAME`           | `storyblok-cli`                           |
 
 ## How Config Resolution Works
 

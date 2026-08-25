@@ -339,14 +339,12 @@ export const createAsset = async (
 /**
  * Transfers a space-local asset into the org's shared library.
  *
- * UX wording is "transfer"; the backend endpoint is still `convert`
- * (`AssetsServices::ConvertToSharedAsset`). Drop this mapping when the backend
- * ships the `convert` -> `transfer` rename. One-way only (space to shared).
+ * UX wording is "transfer"; the API endpoint is still `convert`. Drop this
+ * mapping once the API ships the `convert` -> `transfer` rename. One-way only
+ * (space to shared).
  *
- * A 403 comes from the backend authorization policy (`AssetPolicy#convert?`):
- * the target folder must exist in the shared asset library and the space must
- * have write access to it. Surface that as a friendly hint instead of a raw
- * API error.
+ * A 403 means the space lacks write access to the target folder. Surface that
+ * as a friendly hint instead of a raw API error.
  */
 export const transferAsset = async (
   spaceId: string,

@@ -6,7 +6,6 @@ const { story } = await useAsyncStoryblok("vue/test-richtext", {
   api: {
     version: "draft",
   },
-  bridge: {},
 });
 
 const components: SbVueRichTextComponentMap = {

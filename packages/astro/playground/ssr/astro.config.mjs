@@ -14,7 +14,7 @@ export default defineConfig({
     vue(),
     react(),
     storyblok({
-      accessToken: "OsvNv534kS2nivAAj1EPVgtt",
+      accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OsvNv534kS2nivAAj1EPVgtt",
       apiOptions: {
         cache: {
           clear: "auto",

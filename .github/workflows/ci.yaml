@@ -64,6 +64,13 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm format:check
 
+      # Projects lint themselves in `Check` below. This covers what no project
+      # owns: repo config, the release scripts, the agent scripts. The build is
+      # needed because `oxlint.config.ts` imports `@storyblok/lint-config`.
+      - name: Check root lint
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm nx build @storyblok/lint-config && pnpm exec oxlint --disable-nested-config
+
       # Published packages must reference each other with `workspace:^`, so the
       # range `pnpm publish` writes into the tarball is a floor and not a pin.
       - name: Check workspace protocol

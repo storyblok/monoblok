@@ -4,6 +4,38 @@ interface StrategyContext<TData> {
   key: string;
   cachedResult: TData | undefined;
   loadNetwork: () => Promise<TData>;
+  /**
+   * Describes the failure a value `loadNetwork` resolved with represents, or `undefined`
+   * when it succeeded.
+   *
+   * A failed request does not always reject: with `throwOnError` disabled — the default —
+   * an HTTP error arrives as a resolved response carrying `error`. A strategy that reacts
+   * to failure has to recognise those, and `network-first` also has to tell a temporary
+   * failure apart from a definitive one.
+   *
+   * Optional: a context without it behaves as if every resolved value succeeded, so
+   * custom strategy handlers and callers that do not supply it keep working.
+   */
+  getFailure?: (value: TData) => StrategyFailure | undefined;
+  /**
+   * Describes the failure a rejection from `loadNetwork` represents.
+   *
+   * The mirror of {@link StrategyContext.getFailure} for the other way a request can
+   * fail: with `throwOnError` enabled an HTTP error rejects rather than resolving, so a
+   * definitive answer reaches a strategy as a thrown value and has to be told apart from
+   * a transport-level failure the same way.
+   *
+   * Optional: a context without it behaves as if every rejection were transient, which is
+   * what a transport-level failure is.
+   */
+  getThrownFailure?: (error: unknown) => StrategyFailure;
+}
+
+export interface StrategyFailure {
+  /** `true` for a failure worth retrying — an outage rather than an answer. */
+  transient: boolean;
+  /** The failure itself, for reporting. */
+  error: unknown;
 }
 
 export type CacheStrategyHandler = <TData>(context: StrategyContext<TData>) => Promise<TData>;
@@ -78,6 +110,20 @@ export const createMemoryCacheProvider = (
   };
 };
 
+/**
+ * Statuses that mean "try again later" rather than "here is your answer".
+ *
+ * Every 5xx counts: the server failing to answer says nothing about whether the resource
+ * exists, so a cached copy is still the best available answer. The 4xx exceptions are the
+ * three the origin uses to ask for the same request again — a timeout, a payload it wants
+ * re-sent, and a rate limit.
+ */
+const TRANSIENT_STATUS_CODES = new Set([408, 413, 429]);
+
+/** Returns `true` for a status that reflects a temporary failure rather than an answer. */
+export const isTransientStatus = (status: number): boolean =>
+  status >= 500 || TRANSIENT_STATUS_CODES.has(status);
+
 export const createCacheFirstStrategy = (): CacheStrategyHandler => {
   return async <TData>({ cachedResult, loadNetwork }: StrategyContext<TData>) => {
     if (cachedResult !== undefined) {
@@ -89,12 +135,32 @@ export const createCacheFirstStrategy = (): CacheStrategyHandler => {
 };
 
 export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
-  return async <TData>({ cachedResult, loadNetwork }: StrategyContext<TData>) => {
+  return async <TData>({
+    cachedResult,
+    loadNetwork,
+    getFailure,
+    getThrownFailure,
+  }: StrategyContext<TData>) => {
     try {
-      return await loadNetwork();
+      const result = await loadNetwork();
+
+      // An HTTP error is a resolved value rather than a rejection unless `throwOnError`
+      // is enabled, so falling back only in `catch` would miss the most common outage:
+      // the origin answering 5xx. A transient failure is treated exactly like a thrown
+      // network error. A definitive one — 404, 401 — is returned as it is: serving a
+      // cached copy there would mask a deletion or a revoked token.
+      if (cachedResult !== undefined && getFailure?.(result)?.transient === true) {
+        return cachedResult;
+      }
+
+      return result;
     } catch (error) {
-      // network-first: try network, fall back to cached data if available.
-      if (cachedResult !== undefined) {
+      // The rule the resolved path applies has to hold here too: with `throwOnError`
+      // enabled the same 404 rejects instead of resolving, and serving a cached copy
+      // would mask the deletion just as thoroughly. Without a reporter every rejection
+      // counts as transient — a context that cannot classify only ever sees the
+      // transport-level failures, which are.
+      if (cachedResult !== undefined && getThrownFailure?.(error).transient !== false) {
         return cachedResult;
       }
 
@@ -104,7 +170,17 @@ export const createNetworkFirstStrategy = (): CacheStrategyHandler => {
 };
 
 export interface SwrStrategyOptions {
-  /** Called when a background revalidation fails. Defaults to `console.warn`. */
+  /**
+   * Called when a background revalidation fails. Defaults to `console.warn`.
+   *
+   * Called once per failed revalidation, and a revalidation starts on every request that
+   * is served from the cache while none is in flight — so a lasting outage reports on
+   * every request rather than once. That is the point: the entry keeps being served
+   * stale, and how long that has been going on is what the caller needs to see.
+   *
+   * A callback that throws is reported to `console.error` and otherwise ignored, since a
+   * background revalidation is not awaited anywhere.
+   */
   onRevalidationError?: (error: unknown) => void;
 }
 
@@ -116,14 +192,44 @@ export const createSwrStrategy = (options: SwrStrategyOptions = {}): CacheStrate
   const { onRevalidationError = defaultOnRevalidationError } = options;
   const revalidations = new Map<string, Promise<unknown>>();
 
-  return async <TData>({ key, cachedResult, loadNetwork }: StrategyContext<TData>) => {
+  // Nothing awaits a revalidation, so anything thrown while reporting one — by the
+  // caller's callback or by its `getFailure` — would leave the chain rejected with no
+  // handler, which current Node defaults treat as fatal. Reporting a failure failing is
+  // not a reason to take the process down.
+  const reportGuarded = (describeFailure: () => void): void => {
+    try {
+      describeFailure();
+    } catch (reportingError) {
+      console.error("[storyblok/api-client] SWR revalidation reporting threw:", reportingError);
+    }
+  };
+
+  return async <TData>({ key, cachedResult, loadNetwork, getFailure }: StrategyContext<TData>) => {
     if (cachedResult !== undefined) {
       if (!revalidations.has(key)) {
         const revalidation = loadNetwork()
-          .catch((error: unknown) => {
-            onRevalidationError(error);
-            return undefined;
-          })
+          .then(
+            (value) =>
+              reportGuarded(() => {
+                // A revalidation that came back 5xx resolved rather than threw, so
+                // reporting only from the rejection path would drop it silently and leave
+                // the entry to go stale with no signal at all. Every failure reaches the
+                // callback, transient or not: the caller decides what is worth acting on.
+                const failure = getFailure?.(value);
+                if (failure !== undefined) {
+                  onRevalidationError(failure.error);
+                }
+              }),
+            // Paired with the handler above rather than chained after it, so it sees only
+            // what `loadNetwork` rejected with. A trailing `.catch` would also catch a
+            // throw from that handler and report the same revalidation twice, the second
+            // time with the reporting failure in place of the failure itself.
+            (error: unknown) => {
+              reportGuarded(() => {
+                onRevalidationError(error);
+              });
+            },
+          )
           .finally(() => {
             revalidations.delete(key);
           });

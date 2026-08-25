@@ -1,6 +1,11 @@
 import { createClient, createConfig } from "./generated/capi/client";
-import type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
-import { createMemoryCacheProvider, createStrategy } from "./utils/cache";
+import type {
+  CacheProvider,
+  CacheStrategy,
+  CacheStrategyHandler,
+  StrategyFailure,
+} from "./utils/cache";
+import { createMemoryCacheProvider, createStrategy, isTransientStatus } from "./utils/cache";
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
@@ -31,6 +36,28 @@ export type ApiResponse<
   : { data?: Data; error?: ClientError; response: Response; request: Request };
 
 export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "url">;
+
+/**
+ * Describes the failure a response represents, or `undefined` if it succeeded. The cache
+ * strategies cannot inspect an `ApiResponse` themselves, and with `throwOnError` disabled
+ * an HTTP error resolves rather than rejects — so without this they would only ever see a
+ * transport-level failure.
+ */
+const getFailure = (result: ApiResponse): StrategyFailure | undefined =>
+  result.error === undefined
+    ? undefined
+    : { transient: isTransientStatus(result.response?.status ?? 0), error: result.error };
+
+/**
+ * Describes the failure a rejection represents. A `ClientError` is an HTTP answer the
+ * origin gave — the shape an error takes with `throwOnError` enabled — and is classified
+ * by its status like any other. Anything else got no answer at all: a timeout, a DNS
+ * failure, an aborted socket. Those are transient by nature.
+ */
+const getThrownFailure = (error: unknown): StrategyFailure => ({
+  transient: error instanceof ClientError ? isTransientStatus(error.response.status) : true,
+  error,
+});
 
 export type HttpRequestMethod = <TData = unknown>(
   path: string,
@@ -381,6 +408,8 @@ export const createApiClientBase = <
       key,
       cachedResult,
       loadNetwork,
+      getFailure,
+      getThrownFailure,
     });
   };
 

@@ -1,0 +1,11 @@
+{
+  "name": "article",
+  "display_name": "Article",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "title": { "type": "text", "pos": 0 },
+    "content": { "type": "richtext", "pos": 1 }
+  }
+}

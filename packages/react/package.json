@@ -132,7 +132,11 @@
   },
   "release": {
     "branches": [
-      "main"
+      "main",
+      {
+        "name": "rc",
+        "prerelease": true
+      }
     ]
   },
   "nx": {

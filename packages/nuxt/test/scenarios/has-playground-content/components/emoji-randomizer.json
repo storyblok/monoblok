@@ -1,0 +1,8 @@
+{
+  "name": "emoji-randomizer",
+  "display_name": "Emoji Randomizer",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": { "label": { "type": "text", "pos": 0 } }
+}

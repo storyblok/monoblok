@@ -324,7 +324,7 @@ export const fetchBlueprintRepositories = async (): Promise<Template[]> => {
 
     // Filter and convert repositories to blueprints
     const blueprints = data.items
-      .filter((repo) => repo.name.startsWith("blueprint-core-"))
+      .filter((repo) => repo.name.startsWith("blueprint-core-") && !repo.archived)
       .map(repositoryToTemplate)
       .sort((a, b) => (b.stars || 0) - (a.stars || 0));
 

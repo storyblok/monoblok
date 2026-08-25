@@ -1,0 +1,14 @@
+{
+  "name": "page",
+  "display_name": "Page",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": false,
+  "schema": {
+    "headline": { "type": "text", "pos": 0 },
+    "image": { "type": "asset", "pos": 1, "filetypes": ["images"] },
+    "richText": { "type": "richtext", "pos": 2 },
+    "resolveRels": { "type": "text", "pos": 3 },
+    "body": { "type": "bloks", "pos": 4 }
+  }
+}

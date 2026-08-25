@@ -1,31 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import { isBrowser } from "./utils/isBrowser";
-import { isInEditor } from "./utils/isInEditor";
+import type { BridgeParams } from "@storyblok/preview-bridge";
 
 // ---- mocks ----
 
-vi.mock("./utils/isBrowser", () => ({
-  isBrowser: vi.fn(),
-}));
-
-vi.mock("./utils/isInEditor", () => ({
-  isInEditor: vi.fn(),
-}));
+vi.mock("./utils/isBrowser", () => ({ isBrowser: vi.fn() }));
+vi.mock("./utils/isInEditor", () => ({ isInEditor: vi.fn() }));
 
 const onMock = vi.fn();
-
-const mockBridge = {
-  on: onMock,
-};
+const destroyMock = vi.fn();
 
 vi.mock("./loadStoryblokBridge", () => ({
-  loadStoryblokBridge: vi.fn(async () => mockBridge),
+  loadStoryblokBridge: vi.fn(async () => ({ on: onMock, destroy: destroyMock })),
 }));
 
+import { isBrowser } from "./utils/isBrowser";
+import { isInEditor } from "./utils/isInEditor";
+import { loadStoryblokBridge } from "./loadStoryblokBridge";
+import { onStoryblokEditorEvent } from "./onStoryblokEditorEvent";
+
 describe("onStoryblokEditorEvent", () => {
-  beforeEach(async () => {
-    vi.resetModules();
+  beforeEach(() => {
     vi.clearAllMocks();
 
     Object.defineProperty(window, "location", {
@@ -34,157 +28,185 @@ describe("onStoryblokEditorEvent", () => {
     });
   });
 
-  async function loadModule() {
-    return await import("./onStoryblokEditorEvent");
+  function inEditor() {
+    vi.mocked(isBrowser).mockReturnValue(true);
+    vi.mocked(isInEditor).mockReturnValue(true);
   }
 
-  it("does nothing when not in browser", async () => {
+  it("returns a no-op cleanup when not in browser", async () => {
     vi.mocked(isBrowser).mockReturnValue(false);
-    vi.mocked(isInEditor).mockReturnValue(true);
 
-    const { onStoryblokEditorEvent } = await loadModule();
+    const cleanup = await onStoryblokEditorEvent(vi.fn());
 
-    await onStoryblokEditorEvent(vi.fn(), {});
-
-    expect(onMock).not.toHaveBeenCalled();
+    expect(loadStoryblokBridge).not.toHaveBeenCalled();
+    expect(cleanup).toBeTypeOf("function");
   });
 
-  it("does nothing when not in editor", async () => {
+  it("returns a no-op cleanup when not in editor", async () => {
     vi.mocked(isBrowser).mockReturnValue(true);
     vi.mocked(isInEditor).mockReturnValue(false);
 
-    const { onStoryblokEditorEvent } = await loadModule();
+    const cleanup = await onStoryblokEditorEvent(vi.fn());
 
-    await onStoryblokEditorEvent(vi.fn(), {});
-
-    expect(onMock).not.toHaveBeenCalled();
+    expect(loadStoryblokBridge).not.toHaveBeenCalled();
+    expect(cleanup).toBeTypeOf("function");
   });
 
-  it("initializes bridge only once", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
+  it("passes bridgeOptions to loadStoryblokBridge with initOnlyOnce forced to false", async () => {
+    inEditor();
 
-    const { onStoryblokEditorEvent } = await loadModule();
+    const config: BridgeParams = { resolveRelations: ["foo.bar"] };
+    await onStoryblokEditorEvent(vi.fn(), config);
 
-    await onStoryblokEditorEvent(vi.fn(), {});
-    await onStoryblokEditorEvent(vi.fn(), {});
+    expect(loadStoryblokBridge).toHaveBeenCalledWith({ ...config, initOnlyOnce: false });
+  });
 
-    expect(onMock).toHaveBeenCalledOnce();
+  it("creates a separate bridge per call", async () => {
+    inEditor();
+
+    await onStoryblokEditorEvent(vi.fn(), { resolveRelations: ["a.b"] });
+    await onStoryblokEditorEvent(vi.fn(), { resolveRelations: ["c.d"] });
+
+    expect(loadStoryblokBridge).toHaveBeenCalledTimes(2);
+  });
+
+  it("each call respects its own config independently and always forces initOnlyOnce: false", async () => {
+    inEditor();
+
+    await onStoryblokEditorEvent(vi.fn(), { resolveRelations: ["a.b"] });
+    await onStoryblokEditorEvent(vi.fn(), { resolveRelations: ["c.d"] });
+
+    expect(loadStoryblokBridge).toHaveBeenNthCalledWith(1, {
+      resolveRelations: ["a.b"],
+      initOnlyOnce: false,
+    });
+    expect(loadStoryblokBridge).toHaveBeenNthCalledWith(2, {
+      resolveRelations: ["c.d"],
+      initOnlyOnce: false,
+    });
   });
 
   it("calls callback on input event", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
-
-    const { onStoryblokEditorEvent } = await loadModule();
+    inEditor();
 
     const cb = vi.fn();
-
-    await onStoryblokEditorEvent(cb, {});
+    await onStoryblokEditorEvent(cb);
 
     const handler = onMock.mock.calls[0][1];
-
-    handler({
-      action: "input",
-      story: { id: 42, content: { title: "Hello" } },
-    });
+    handler({ action: "input", story: { id: 42 } });
 
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }));
   });
 
-  it("notifies multiple listeners", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
-
-    const { onStoryblokEditorEvent } = await loadModule();
-
-    const cb1 = vi.fn();
-    const cb2 = vi.fn();
-
-    await onStoryblokEditorEvent(cb1, {});
-    await onStoryblokEditorEvent(cb2, {});
-
-    const handler = onMock.mock.calls[0][1];
-
-    handler({
-      action: "input",
-      story: { id: 100 },
-    });
-
-    expect(cb1).toHaveBeenCalled();
-    expect(cb2).toHaveBeenCalled();
-  });
-
-  it("cleanup removes listener", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
-
-    const { onStoryblokEditorEvent } = await loadModule();
+  it("does not call callback after cleanup", async () => {
+    inEditor();
 
     const cb = vi.fn();
-
-    const cleanup = await onStoryblokEditorEvent(cb, {});
-
+    const cleanup = await onStoryblokEditorEvent(cb);
     cleanup();
 
     const handler = onMock.mock.calls[0][1];
-
-    handler({
-      action: "input",
-      story: { id: 1 },
-    });
+    handler({ action: "input", story: { id: 1 } });
 
     expect(cb).not.toHaveBeenCalled();
   });
 
+  it("destroys the bridge on cleanup", async () => {
+    inEditor();
+
+    const cleanup = await onStoryblokEditorEvent(vi.fn());
+    cleanup();
+
+    expect(destroyMock).toHaveBeenCalledOnce();
+  });
+
   it("reloads page on change event", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
+    inEditor();
 
-    const { onStoryblokEditorEvent } = await loadModule();
-
-    await onStoryblokEditorEvent(vi.fn(), {});
+    await onStoryblokEditorEvent(vi.fn());
 
     const handler = onMock.mock.calls[0][1];
-
-    handler({
-      action: "change",
-      story: { id: 42 },
-    });
+    handler({ action: "change" });
 
     expect(window.location.reload).toHaveBeenCalledOnce();
   });
 
   it("reloads page on published event", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
+    inEditor();
 
-    const { onStoryblokEditorEvent } = await loadModule();
-
-    await onStoryblokEditorEvent(vi.fn(), {});
+    await onStoryblokEditorEvent(vi.fn());
 
     const handler = onMock.mock.calls[0][1];
-
-    handler({
-      action: "published",
-      story: { id: 42 },
-    });
+    handler({ action: "published" });
 
     expect(window.location.reload).toHaveBeenCalledOnce();
   });
 
-  it("does not register duplicate handlers during concurrent calls", async () => {
-    vi.mocked(isBrowser).mockReturnValue(true);
-    vi.mocked(isInEditor).mockReturnValue(true);
+  it("overrides caller-supplied initOnlyOnce: true to false", async () => {
+    inEditor();
 
-    const { onStoryblokEditorEvent } = await loadModule();
+    await onStoryblokEditorEvent(vi.fn(), { initOnlyOnce: true });
 
-    await Promise.all([
-      onStoryblokEditorEvent(vi.fn(), {}),
-      onStoryblokEditorEvent(vi.fn(), {}),
-      onStoryblokEditorEvent(vi.fn(), {}),
-    ]);
+    expect(loadStoryblokBridge).toHaveBeenCalledWith(
+      expect.objectContaining({ initOnlyOnce: false }),
+    );
+  });
 
-    expect(onMock).toHaveBeenCalledOnce();
+  it("does not reload on change or published after cleanup", async () => {
+    inEditor();
+
+    const cleanup = await onStoryblokEditorEvent(vi.fn());
+    cleanup();
+
+    const handler = onMock.mock.calls[0][1];
+    handler({ action: "change" });
+    handler({ action: "published" });
+
+    expect(window.location.reload).not.toHaveBeenCalled();
+  });
+
+  it("calling cleanup twice only destroys the bridge once", async () => {
+    inEditor();
+
+    const cleanup = await onStoryblokEditorEvent(vi.fn());
+    cleanup();
+    cleanup();
+
+    expect(destroyMock).toHaveBeenCalledOnce();
+  });
+
+  it("ignores null and undefined events without throwing", async () => {
+    inEditor();
+
+    await onStoryblokEditorEvent(vi.fn());
+    const handler = onMock.mock.calls[0][1];
+
+    expect(() => handler(null)).not.toThrow();
+    expect(() => handler(undefined)).not.toThrow();
+  });
+
+  it("ignores events with an unrecognised action", async () => {
+    inEditor();
+
+    const cb = vi.fn();
+    await onStoryblokEditorEvent(cb);
+
+    const handler = onMock.mock.calls[0][1];
+    handler({ action: "enterEditmode" });
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(window.location.reload).not.toHaveBeenCalled();
+  });
+
+  it("does not call callback when input event has no story", async () => {
+    inEditor();
+
+    const cb = vi.fn();
+    await onStoryblokEditorEvent(cb);
+
+    const handler = onMock.mock.calls[0][1];
+    handler({ action: "input" }); // story is absent
+
+    expect(cb).not.toHaveBeenCalled();
   });
 });

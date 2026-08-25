@@ -5,6 +5,7 @@ import {
   signal,
   computed,
   OnInit,
+  DestroyRef,
 } from "@angular/core";
 import {
   type SbBlokData,
@@ -37,6 +38,7 @@ import {
 export class HomeComponent implements OnInit {
   private readonly storyblok = inject(StoryblokService);
   private readonly livePreview = inject(LivePreviewService);
+  private readonly destroyRef = inject(DestroyRef);
   private client = this.storyblok.getClient();
   readonly story = signal<Story | null>(null);
   readonly loading = signal(true);
@@ -45,6 +47,7 @@ export class HomeComponent implements OnInit {
     resolveRelations: ["featured-articles.articles"],
     preventClicks: true,
   };
+
   async ngOnInit(): Promise<void> {
     try {
       const { data } = await this.client.stories.get("angular/home", {
@@ -60,9 +63,10 @@ export class HomeComponent implements OnInit {
       this.loading.set(false);
     }
 
-    // Enable live preview for Visual Editor
-    this.livePreview.listen((updatedStory) => {
-      this.story.set((updatedStory as Story) || null);
-    }, this.bridgeConfig);
+    this.livePreview.connect(
+      (updatedStory) => this.story.set((updatedStory as Story) || null),
+      this.destroyRef,
+      this.bridgeConfig,
+    );
   }
 }

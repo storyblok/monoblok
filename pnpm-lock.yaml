@@ -222,7 +222,7 @@ importers:
     dependencies:
       '@storyblok/js':
         specifier: workspace:^
-        version: link:../js
+        version: file:packages/js
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
@@ -489,7 +489,7 @@ importers:
         version: 7.10.1(@types/node@24.11.0)
       '@storyblok/js':
         specifier: workspace:^
-        version: link:../js
+        version: file:packages/js
       '@storyblok/management-api-client':
         specifier: workspace:^
         version: link:../mapi-client
@@ -777,7 +777,7 @@ importers:
     devDependencies:
       '@storyblok/js':
         specifier: workspace:*
-        version: link:../..
+        version: file:packages/js
       '@vitejs/plugin-basic-ssl':
         specifier: ^1.1.0
         version: 1.2.0(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -792,7 +792,7 @@ importers:
     devDependencies:
       '@storyblok/js':
         specifier: workspace:*
-        version: link:../..
+        version: file:packages/js
       '@vitejs/plugin-basic-ssl':
         specifier: ^1.1.0
         version: 1.2.0(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -827,8 +827,8 @@ importers:
   packages/live-preview:
     dependencies:
       '@storyblok/preview-bridge':
-        specifier: ^2.1.6
-        version: 2.1.6
+        specifier: ^2.3.0
+        version: 2.3.0
     devDependencies:
       '@storyblok/lint-config':
         specifier: workspace:*
@@ -1003,7 +1003,7 @@ importers:
     dependencies:
       '@storyblok/js':
         specifier: workspace:^
-        version: link:../js
+        version: file:packages/js
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
@@ -1560,7 +1560,7 @@ importers:
     dependencies:
       '@storyblok/js':
         specifier: workspace:^
-        version: link:../js
+        version: file:packages/js
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
@@ -1658,7 +1658,7 @@ importers:
     dependencies:
       '@storyblok/js':
         specifier: workspace:^
-        version: link:../js
+        version: file:packages/js
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
@@ -6887,6 +6887,9 @@ packages:
   '@storyblok/preview-bridge@2.1.6':
     resolution: {integrity: sha512-fj8tV3ZaPJGyqqfpobzezIpm/LZZr1hW6J2eqhQkC1OVdA5PJNNw8eEnrMTXgLDn/Wrpd28NYCrY3UNXYJgmjg==}
 
+  '@storyblok/preview-bridge@2.3.0':
+    resolution: {integrity: sha512-AeWDJljta1eyF0ZizVxxro9DszOlzCYH4QQ+WC6JE43sfzGgPUNBLZQF+6BqIAqs6FbPmoqY7f/qUXF17UCjAA==}
+
   '@storyblok/react@file:packages/react':
     resolution: {directory: packages/react, type: directory}
     peerDependencies:
@@ -10199,6 +10202,7 @@ packages:
   eslint@9.39.3:
     resolution: {integrity: sha512-VmQ+sifHUbI/IcSopBCF/HO3YiHQx/AVd3UVyYL6weuwW+HvON9VYn5l6Zl1WZzPWXPNZrSQpxwkkZ/VuvJZzg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -21388,7 +21392,7 @@ snapshots:
 
   '@storyblok/js@file:packages/js':
     dependencies:
-      '@storyblok/preview-bridge': 2.1.6
+      '@storyblok/preview-bridge': 2.3.0
       '@storyblok/richtext': file:packages/richtext
       storyblok-js-client: file:packages/js-client
     transitivePeerDependencies:
@@ -21447,6 +21451,10 @@ snapshots:
       - magicast
 
   '@storyblok/preview-bridge@2.1.6':
+    dependencies:
+      pure-parse: 0.0.0-beta.8
+
+  '@storyblok/preview-bridge@2.3.0':
     dependencies:
       pure-parse: 0.0.0-beta.8
 

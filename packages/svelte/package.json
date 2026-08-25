@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/svelte",
-  "version": "7.3.0",
+  "version": "7.3.1",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using Svelte.",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/svelte#readme",
@@ -59,8 +59,8 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:*",
-    "@storyblok/richtext": "workspace:*"
+    "@storyblok/js": "workspace:^",
+    "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
     "@cypress/svelte": "^3.0.0",
@@ -70,7 +70,7 @@
     "@sveltejs/kit": "^2.20.2",
     "@sveltejs/package": "^2.3.10",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "jsdom": "catalog:",
     "oxlint": "catalog:",
     "pathe": "catalog:",

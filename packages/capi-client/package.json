@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/api-client",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": false,
   "description": "Storyblok Content Delivery API Client",
   "keywords": [],
@@ -42,7 +42,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/region-helper": "workspace:*",
+    "@storyblok/region-helper": "workspace:^",
     "ky": "^1.14.3"
   },
   "devDependencies": {

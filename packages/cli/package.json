@@ -1,6 +1,6 @@
 {
   "name": "storyblok",
-  "version": "4.22.2",
+  "version": "4.22.3",
   "description": "Storyblok CLI",
   "keywords": [
     "cli",
@@ -52,10 +52,10 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
-    "@storyblok/js": "workspace:*",
-    "@storyblok/management-api-client": "workspace:*",
-    "@storyblok/region-helper": "workspace:*",
-    "@storyblok/schema": "workspace:*",
+    "@storyblok/js": "workspace:^",
+    "@storyblok/management-api-client": "workspace:^",
+    "@storyblok/region-helper": "workspace:^",
+    "@storyblok/schema": "workspace:^",
     "@topcli/spinner": "^2.1.2",
     "async-sema": "^3.1.1",
     "c12": "^3.3.0",
@@ -73,7 +73,7 @@
     "open": "^10.1.2",
     "pathe": "catalog:",
     "read-package-up": "^11.0.0",
-    "storyblok-js-client": "workspace:*"
+    "storyblok-js-client": "workspace:^"
   },
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",

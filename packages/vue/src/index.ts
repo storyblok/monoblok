@@ -1,14 +1,18 @@
 import { defineAsyncComponent, onMounted, ref } from "vue";
 import type { Directive, Plugin, Ref } from "vue";
 
-import { storyblokEditable, storyblokInit, useStoryblokBridge } from "@storyblok/js";
+import {
+  storyblokEditable,
+  storyblokInit,
+  StoryblokClient,
+  useStoryblokBridge,
+} from "@storyblok/js";
 
 import type {
   ISbStoriesParams,
   ISbStoryData,
   SbVueSDKOptions,
   StoryblokBridgeConfigV2,
-  StoryblokClient,
 } from "./types";
 
 import StoryblokComponent from "./components/StoryblokComponent.vue";
@@ -34,7 +38,8 @@ export type {
 
 export * from "./types";
 
-export { apiPlugin, StoryblokClient, useStoryblokBridge } from "@storyblok/js";
+export { apiPlugin, useStoryblokBridge } from "@storyblok/js";
+export { StoryblokClient };
 
 const vEditableDirective: Directive<HTMLElement> = {
   beforeMount(el, binding) {
@@ -66,7 +71,7 @@ export const useStoryblok = async (
   url: string,
   apiOptions: ISbStoriesParams = {},
   bridgeOptions: StoryblokBridgeConfigV2 = {},
-) => {
+): Promise<Ref<ISbStoryData | null>> => {
   const story: Ref<ISbStoryData | null> = ref(null);
 
   bridgeOptions.resolveRelations = bridgeOptions.resolveRelations ?? apiOptions.resolve_relations;

@@ -71,6 +71,12 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: pnpm nx build @storyblok/lint-config && pnpm exec oxlint --disable-nested-config
 
+      # Published packages must reference each other with `workspace:^`, so the
+      # range `pnpm publish` writes into the tarball is a floor and not a pin.
+      - name: Check workspace protocol
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm check:workspace-protocol
+
       - name: Check
         run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}"
         env:

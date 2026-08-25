@@ -936,6 +936,213 @@ describe("cache and cv", () => {
     expect(requestCount).toBe(2); // page 1 still served from cache after receiving stale cv
   });
 
+  it.each([500, 502, 503, 429, 408])(
+    "should serve the cached response when network-first hits a %i",
+    async (status) => {
+      // An HTTP error resolves rather than rejects unless `throwOnError` is enabled, so
+      // without recognising the error result `network-first` would surface the outage to
+      // the caller while a perfectly good cached entry sat unused.
+      let fail = false;
+      server.use(
+        http.get("https://api.storyblok.com/v2/cdn/links", () =>
+          fail
+            ? HttpResponse.json({ error: "Nope" }, { status })
+            : HttpResponse.json({ links: {}, marker: "cached", cv: 1 }),
+        ),
+      );
+      const client = createApiClient({
+        accessToken: "test-token",
+        retry: { limit: 0 },
+        cache: { strategy: "network-first" },
+      });
+
+      await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      fail = true;
+      const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      expect(result.error).toBeUndefined();
+      // @ts-expect-error generic get request can have any shape or form
+      expect(result.data?.marker).toBe("cached");
+    },
+  );
+
+  it.each([400, 401, 403, 404, 422])(
+    "should surface a %i with network-first instead of the cached response",
+    async (status) => {
+      // A definitive answer must not be masked by a cached copy: a 404 means the entry is
+      // gone, a 401 means the token no longer works.
+      let fail = false;
+      server.use(
+        http.get("https://api.storyblok.com/v2/cdn/links", () =>
+          fail
+            ? HttpResponse.json({ error: "Nope" }, { status })
+            : HttpResponse.json({ links: {}, marker: "cached", cv: 1 }),
+        ),
+      );
+      const client = createApiClient({
+        accessToken: "test-token",
+        retry: { limit: 0 },
+        cache: { strategy: "network-first" },
+      });
+
+      await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      fail = true;
+      const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      expect(result.error).toBeDefined();
+      expect(result.response.status).toBe(status);
+    },
+  );
+
+  it.each([500, 502, 503, 429, 408])(
+    "should serve the cached response when network-first hits a %i with throwOnError",
+    async (status) => {
+      // With `throwOnError` the same outage rejects instead of resolving. The fallback has
+      // to recognise it there too, or the strategy would depend on a client-wide flag.
+      let fail = false;
+      server.use(
+        http.get("https://api.storyblok.com/v2/cdn/links", () =>
+          fail
+            ? HttpResponse.json({ error: "Nope" }, { status })
+            : HttpResponse.json({ links: {}, marker: "cached", cv: 1 }),
+        ),
+      );
+      const client = createApiClient({
+        accessToken: "test-token",
+        throwOnError: true,
+        retry: { limit: 0 },
+        cache: { strategy: "network-first" },
+      });
+
+      await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      fail = true;
+      const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      // @ts-expect-error generic get request can have any shape or form
+      expect(result.data?.marker).toBe("cached");
+    },
+  );
+
+  it.each([400, 401, 403, 404, 422])(
+    "should surface a %i with network-first and throwOnError instead of the cached response",
+    async (status) => {
+      // A definitive answer rejects rather than resolving here, and a rejection the cache
+      // swallows is the same masked deletion as a returned one.
+      let fail = false;
+      server.use(
+        http.get("https://api.storyblok.com/v2/cdn/links", () =>
+          fail
+            ? HttpResponse.json({ error: "Nope" }, { status })
+            : HttpResponse.json({ links: {}, marker: "cached", cv: 1 }),
+        ),
+      );
+      const client = createApiClient({
+        accessToken: "test-token",
+        throwOnError: true,
+        retry: { limit: 0 },
+        cache: { strategy: "network-first" },
+      });
+
+      await client.get("v2/cdn/links", { query: { version: "published" } });
+
+      fail = true;
+      await expect(
+        client.get("v2/cdn/links", { query: { version: "published" } }),
+      ).rejects.toMatchObject({ response: { status } });
+    },
+  );
+
+  it("should serve the cached response when network-first hits a transport failure", async () => {
+    // A request that got no answer at all is transient by nature: nothing was said about
+    // whether the resource still exists.
+    let fail = false;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        fail ? HttpResponse.error() : HttpResponse.json({ links: {}, marker: "cached", cv: 1 }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      retry: { limit: 0 },
+      cache: { strategy: "network-first" },
+    });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    fail = true;
+    const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    // @ts-expect-error generic get request can have any shape or form
+    expect(result.data?.marker).toBe("cached");
+  });
+
+  it("should surface a transient error with network-first when nothing is cached", async () => {
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        HttpResponse.json({ error: "Nope" }, { status: 503 }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      retry: { limit: 0 },
+      cache: { strategy: "network-first" },
+    });
+
+    const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    expect(result.error).toBeDefined();
+    expect(result.response.status).toBe(503);
+  });
+
+  it("should not serve a cached response for a transient error with cache-first", async () => {
+    // Only `network-first` falls back. `cache-first` never reaches the network while a
+    // valid entry exists, so an error there means the entry was already gone.
+    let requestCount = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        requestCount++;
+        return HttpResponse.json({ error: "Nope" }, { status: 503 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token", retry: { limit: 0 } });
+
+    const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    expect(result.response.status).toBe(503);
+    expect(requestCount).toBe(1);
+  });
+
+  it("should report a background swr revalidation that came back 5xx", async () => {
+    // The revalidation resolves with an error result rather than throwing, so without
+    // recognising it the entry would go stale with no signal to the caller at all.
+    let fail = false;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        fail
+          ? HttpResponse.json({ error: "Nope" }, { status: 503 })
+          : HttpResponse.json({ links: {}, cv: 1 }),
+      ),
+    );
+    const onRevalidationError = vi.fn();
+    const client = createApiClient({
+      accessToken: "test-token",
+      retry: { limit: 0 },
+      cache: { strategy: "swr", onRevalidationError },
+    });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    fail = true;
+    const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    // The cached entry is still served — reporting must not make swr blocking.
+    expect(result.error).toBeUndefined();
+    await vi.waitFor(() => expect(onRevalidationError).toHaveBeenCalledTimes(1));
+  });
+
   it("should return cached response and revalidate in background with swr strategy", async () => {
     let requestCount = 0;
     server.use(

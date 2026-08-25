@@ -18,12 +18,13 @@
     "lint:affected": "nx affected:lint",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
+    "check:workspace-protocol": "node tools/workspace-protocol-guard.mjs",
     "test": "nx run-many --target=test",
     "test:types": "nx run-many --target=test:types",
     "test:coverage": "nx run-many --target=test:coverage"
   },
   "dependencies": {
-    "cypress": "^14.3.3"
+    "cypress": "^15.21.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",
@@ -40,7 +41,7 @@
     "vite-plus": "0.2.8"
   },
   "resolutions": {
-    "cypress": "^14.3.3",
+    "cypress": "^15.21.0",
     "happy-dom": "^20.8.8"
   },
   "packageManager": "pnpm@10.27.0"

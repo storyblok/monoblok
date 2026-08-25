@@ -153,6 +153,16 @@ const preconditions = {
       ),
     );
   },
+  forbidsLibraryDiscoveryForAnotherReason() {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/shared_asset_folders", () =>
+        HttpResponse.json(
+          { error: "This token is restricted to specific spaces" },
+          { status: 403 },
+        ),
+      ),
+    );
+  },
   hasLocalStoriesReferencing(assetIds: number[]) {
     vol.fromJSON({
       ".storyblok/stories/12345/home_uuid.json": JSON.stringify({
@@ -619,6 +629,27 @@ describe("assets pull command", () => {
         expect.stringContaining("Shared libraries are unavailable"),
       );
       expect(process.exitCode).toBe(0);
+    });
+
+    it("should fail rather than degrade when referenced-library discovery fails for a non-token-type reason", async () => {
+      const spaceAsset = makeMockAsset({ id: 42 });
+      preconditions.hasLocalStoriesReferencing([42, 90]);
+      preconditions.canFetchRemoteFolders([]);
+      preconditions.canFetchRemoteAssetPages([[spaceAsset]]);
+      preconditions.canDownloadAssets([spaceAsset]);
+      preconditions.sharedAssetResolves({
+        id: 90,
+        filename: "https://a.storyblok.com/g/1/x.png",
+        asset_folder_id: 7,
+      });
+      preconditions.forbidsLibraryDiscoveryForAnotherReason();
+
+      await assetsCommand.parseAsync(["node", "test", "pull", "--space", "12345"]);
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining("Shared libraries are unavailable"),
+      );
+      expect(process.exitCode).toBe(1);
     });
 
     it("should fail when libraries were explicitly requested but are forbidden", async () => {

@@ -64,6 +64,14 @@ describe("getUser credential errors", () => {
     );
   });
 
+  it("should use the centralized message for a PAT session", async () => {
+    setCredentialContext({ kind: "pat" });
+
+    await expect(getUser({ personalAccessToken: "sb_pat_dead" }, "eu")).rejects.toThrow(
+      "Your personal access token was rejected",
+    );
+  });
+
   it("should keep the masked-token message while validating a token at login", async () => {
     // No session yet: the context is still unknown, so the matcher stays inactive.
     await expect(getUser("sb_pat_invalid", "eu")).rejects.toThrow("is invalid");

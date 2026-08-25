@@ -13,18 +13,43 @@ const UNSUPPORTED_TOKEN_TYPE = "This endpoint does not support this token type";
 const SPACE_RESTRICTED = "This token is restricted to specific spaces";
 const SPACE_NOT_ALLOWED = "This token does not have access to this space";
 
+function formatAuthorizedSpacesParenthetical(grantedSpaceIds: number[]): string {
+  return grantedSpaceIds.length > 0 ? ` (authorized spaces: ${grantedSpaceIds.join(", ")})` : "";
+}
+
 /**
  * Shared by the `oauth/space-guard.ts` pre-flight check and the post-flight 403 branch,
- * so a user sees identical wording whichever one catches the problem first.
+ * so a user sees identical wording whichever one catches the problem first. OAuth only:
+ * the backend's `enforce_pat_space_restriction` check runs for any scoped credential, but
+ * the pre-flight guard this mirrors only ever runs for an OAuth grant (see `program.ts`).
  */
 export function formatSpaceNotAllowedMessage(
   space: string | number,
   grantedSpaceIds: number[],
 ): string {
   return (
-    `Space ${space} is not covered by your OAuth login (authorized spaces: ${grantedSpaceIds.join(", ")}). ` +
+    `Space ${space} is not covered by your OAuth login${formatAuthorizedSpacesParenthetical(grantedSpaceIds)}. ` +
     `Re-run \`storyblok login\` and select this space at the consent screen.`
   );
+}
+
+function formatPatSpaceNotAllowedMessage(
+  space: string | number,
+  grantedSpaceIds: number[],
+): string {
+  return (
+    `Space ${space} is not covered by your personal access token${formatAuthorizedSpacesParenthetical(grantedSpaceIds)}. ` +
+    `Create a new token that covers this space under My account, Personal access tokens.`
+  );
+}
+
+/**
+ * Identifies the credential-does-not-support-this-endpoint signature, distinct from other
+ * `forbidden`-classified cases (space restriction) that must still fail loudly rather than
+ * degrade gracefully. See `assets/scope.ts#listLibrariesOrDegrade`.
+ */
+export function isUnsupportedTokenTypeServerError(serverError: string | undefined): boolean {
+  return serverError === UNSUPPORTED_TOKEN_TYPE;
 }
 
 function credentialLabel(kind: CredentialContext["kind"]): string {
@@ -91,7 +116,9 @@ export function matchCredentialError(
     return {
       errorId: "forbidden",
       fatal: true,
-      message: formatSpaceNotAllowedMessage(context.space ?? "unknown", ids),
+      message: isOAuth
+        ? formatSpaceNotAllowedMessage(context.space ?? "unknown", ids)
+        : formatPatSpaceNotAllowedMessage(context.space ?? "unknown", ids),
     };
   }
 

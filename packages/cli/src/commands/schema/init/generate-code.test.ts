@@ -298,6 +298,35 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("allow: [");
   });
 
+  // Regression: an empty tag list fell through to the name check, which treated a
+  // `component_whitelist` the Management API had already made stale (by clearing it on
+  // dimension switch) as live, emitting `allow` and dropping `restrict_type` on push.
+  it("should drop a stale name list on bloks when the tag dimension selects nothing", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [],
+          component_whitelist: ["stale-name"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).not.toContain("allow: [");
+    expect(result).not.toContain("component_whitelist");
+  });
+
   // The editor clears all six lists when you switch dimension, and the Management
   // API only strips stale name lists on `bloks` fields, so a `richtext` can carry
   // `restrict_type: 'tags'` next to a live name list. With no tag selected the tag

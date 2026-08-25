@@ -98,10 +98,12 @@ export class LivePreviewService {
    *
    * @example
    * ```ts
+   * private readonly destroyRef = inject(DestroyRef);
+   *
    * ngOnInit(): void {
    *   this.livePreview.connect(
    *     (story) => this.story.set(story),
-   *     inject(DestroyRef),
+   *     this.destroyRef,
    *     this.bridgeConfig,
    *   );
    * }
@@ -133,11 +135,15 @@ export class LivePreviewService {
       destroyed = true;
     }
 
-    this.listen(callback, options).then((fn) => {
-      cleanup = fn;
-      if (destroyed) {
-        fn();
-      }
-    });
+    this.listen(callback, options)
+      .then((fn) => {
+        cleanup = fn;
+        if (destroyed) {
+          fn();
+        }
+      })
+      .catch((err: unknown) => {
+        console.error("[Storyblok] connect() failed to subscribe to live preview updates:", err);
+      });
   }
 }

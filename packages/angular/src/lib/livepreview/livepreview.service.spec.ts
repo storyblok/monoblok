@@ -53,6 +53,20 @@ describe("LivePreviewService", () => {
       }
       expect(onStoryblokEditorEventMock).not.toHaveBeenCalled();
     });
+
+    it("returns a no-op cleanup in production mode (ngDevMode = false)", async () => {
+      // In production builds ngDevMode is false — listen() must not throw and
+      // must return a callable no-op rather than rejecting.
+      const originalDevMode = (globalThis as any).ngDevMode;
+      (globalThis as any).ngDevMode = false;
+      try {
+        const cleanup = await service.listen(() => {});
+        expect(typeof cleanup).toBe("function");
+        expect(onStoryblokEditorEventMock).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).ngDevMode = originalDevMode;
+      }
+    });
   });
 
   describe("with live preview enabled", () => {
@@ -216,6 +230,32 @@ describe("LivePreviewService", () => {
         expect.any(Function),
         expect.objectContaining({ resolveRelations: ["a.b"] }),
       );
+    });
+
+    it("logs to console.error and does not throw when listen() rejects", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const bridgeError = new Error("bridge failed");
+      onStoryblokEditorEventMock.mockRejectedValue(bridgeError);
+
+      const { ref } = makeDestroyRef();
+      expect(() => service.connect(() => {}, ref)).not.toThrow();
+      await flush();
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("[Storyblok]"), bridgeError);
+      errorSpy.mockRestore();
+    });
+
+    it("treats context as destroyed and tears down bridge immediately when DestroyRef.onDestroy() throws (NG0911)", async () => {
+      const throwingRef = {
+        onDestroy: () => {
+          throw new Error("NG0911: destroyRef is not in a valid state");
+        },
+      } as unknown as import("@angular/core").DestroyRef;
+
+      service.connect(() => {}, throwingRef);
+      await flush();
+
+      expect(cleanupMock).toHaveBeenCalledOnce();
     });
   });
 });

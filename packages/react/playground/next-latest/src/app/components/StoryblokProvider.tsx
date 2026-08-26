@@ -1,9 +1,2 @@
-"use client";
-
-import type { ReactNode } from "react";
-import { getStoryblokApi } from "@/lib/storyblok";
-
-export default function StoryblokProvider({ children }: { children: ReactNode }) {
-  getStoryblokApi();
-  return children;
-}
+// StoryblokProvider is no longer used with the new @storyblok/react API.
+// Kept as an empty module to avoid breaking any accidental imports.

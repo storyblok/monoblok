@@ -1,8 +1,2 @@
-"use client";
-
-import { getStoryblokApi } from "@/lib/storyblok";
-
-export default function StoryblokProvider({ children }: any) {
-  getStoryblokApi();
-  return children;
-}
+// This file is no longer used. StoryblokProvider was removed when migrating
+// to the new @storyblok/react API (defineStoryblokComponents / createApiClient).

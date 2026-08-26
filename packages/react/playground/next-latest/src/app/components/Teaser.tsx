@@ -1,16 +1,14 @@
-import type { SbBlokData } from "@storyblok/react";
-import { storyblokEditable } from "@storyblok/react/rsc";
+import type { StoryblokBlockData } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
 
-interface TeaserBlok extends SbBlokData {
-  headline: string;
+interface TeaserProps {
+  block: StoryblokBlockData & { headline: string };
 }
 
-const Teaser = ({ blok }: { blok: TeaserBlok }) => {
-  return (
-    <h2 data-cy="teaser" {...storyblokEditable(blok)}>
-      {blok.headline}
-    </h2>
-  );
-};
+const Teaser = ({ block }: TeaserProps) => (
+  <h2 data-cy="teaser" {...storyblokEditable(block)}>
+    {block.headline}
+  </h2>
+);
 
 export default Teaser;

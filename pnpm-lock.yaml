@@ -998,18 +998,12 @@ importers:
       '@storyblok/api-client':
         specifier: workspace:^
         version: link:../capi-client
-      '@storyblok/js':
-        specifier: workspace:^
-        version: file:packages/js
       '@storyblok/live-preview':
         specifier: workspace:^
         version: link:../live-preview
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
-      next:
-        specifier: ^13 || ^14 || ^15 || ^16
-        version: 13.5.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)
     devDependencies:
       '@babel/core':
         specifier: ^7.27.1
@@ -1082,7 +1076,7 @@ importers:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
-        version: file:packages/react(next@13.5.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.99.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: file:packages/react(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
       eslint:
         specifier: catalog:next13
@@ -1107,7 +1101,7 @@ importers:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
-        version: file:packages/react(next@13.5.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.99.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        version: file:packages/react(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     dependenciesMeta:
       '@storyblok/react':
         injected: true
@@ -1135,7 +1129,7 @@ importers:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
-        version: file:packages/react(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: link:../..
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.19(tailwindcss@4.2.1)
@@ -1172,7 +1166,7 @@ importers:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
-        version: file:packages/react(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: link:../..
       '@tailwindcss/typography':
         specifier: ^0.5.16
         version: 0.5.19(tailwindcss@4.2.1)
@@ -1209,7 +1203,7 @@ importers:
     dependencies:
       '@storyblok/react':
         specifier: workspace:*
-        version: file:packages/react(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: link:../..
       '@storyblok/richtext':
         specifier: workspace:*
         version: link:../../../richtext
@@ -1222,6 +1216,9 @@ importers:
       react-router:
         specifier: ^7.6.0
         version: 7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      swr:
+        specifier: ^2.5.1
+        version: 2.5.1(react@19.2.4)
     devDependencies:
       '@tailwindcss/typography':
         specifier: ^0.5.16
@@ -1235,6 +1232,9 @@ importers:
       '@types/react':
         specifier: catalog:react19
         version: 19.2.3
+      '@types/react-dom':
+        specifier: catalog:react19
+        version: 19.2.3(@types/react@19.2.3)
       '@vitejs/plugin-basic-ssl':
         specifier: ^2.0.0
         version: 2.1.4(vite@6.4.3(@types/node@24.11.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
@@ -6909,12 +6909,8 @@ packages:
   '@storyblok/react@file:packages/react':
     resolution: {directory: packages/react, type: directory}
     peerDependencies:
-      next: ^13 || ^14 || ^15 || ^16
       react: ^17 || ^18 || ^19
       react-dom: ^17 || ^18 || ^19
-    peerDependenciesMeta:
-      next:
-        optional: true
 
   '@storyblok/region-helper@file:packages/region-helper':
     resolution: {directory: packages/region-helper, type: directory}
@@ -11975,8 +11971,8 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  magic-string@1.2.2:
-    resolution: {integrity: sha512-veT/+7iXrXzT39XnEN4lOxtNl72dMgJ8Lp+5Bd6YcMSWpb0n0MjBM8Uuooi6jgJr8dhUW2swQgBmoZVMni5SVg==}
+  magic-string@1.2.3:
+    resolution: {integrity: sha512-Bpb0W2TbLKOZ7vJnOUnVRGq3WL2p+ISV29M6hYPL1AFCpyKZpdr5ytiXoTSSxRVhg8YW7f65+6gbG8WG6PCa/g==}
 
   magicast@0.5.2:
     resolution: {integrity: sha512-E3ZJh4J3S9KfwdjZhe2afj6R9lGIN5Pher1pF39UGrXRqq/VDaGVIGN13BjHd2u8B61hArAGOnso7nBOouW3TQ==}
@@ -14435,6 +14431,11 @@ packages:
 
   swr@2.4.1:
     resolution: {integrity: sha512-2CC6CiKQtEwaEeNiqWTAw9PGykW8SR5zZX8MZk6TeAvEAnVS7Visz8WzphqgtQ8v2xz/4Q5K+j+SeMaKXeeQIA==}
+    peerDependencies:
+      react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  swr@2.5.1:
+    resolution: {integrity: sha512-BRw55e8r0B7SpDN20CAzoQAHl7y1yP7/Zt7oqUjMv0vSt2u2Xnkm88Ws+VypbV9BXHQVuSuyVq7zMjO16wSExw==}
     peerDependencies:
       react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -19921,7 +19922,7 @@ snapshots:
       get-port-please: 3.2.0
       h3: 1.15.11
       local-pkg: 1.2.1
-      magic-string: 1.2.2
+      magic-string: 1.2.3
       node-fetch-native: 1.6.7
       node-mock-http: 1.0.4
       nypm: 0.6.9
@@ -21481,30 +21482,13 @@ snapshots:
     dependencies:
       pure-parse: 0.0.0-beta.8
 
-  '@storyblok/react@file:packages/react(next@13.5.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.99.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@storyblok/react@file:packages/react(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@storyblok/api-client': file:packages/capi-client
-      '@storyblok/js': file:packages/js
       '@storyblok/live-preview': file:packages/live-preview
       '@storyblok/richtext': file:packages/richtext
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-    optionalDependencies:
-      next: 13.5.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.99.0)
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-
-  '@storyblok/react@file:packages/react(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
-    dependencies:
-      '@storyblok/api-client': file:packages/capi-client
-      '@storyblok/js': file:packages/js
-      '@storyblok/live-preview': file:packages/live-preview
-      '@storyblok/richtext': file:packages/richtext
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-    optionalDependencies:
-      next: 16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -27769,9 +27753,9 @@ snapshots:
       clipboardy: 4.0.0
       consola: 3.4.2
       crossws: 0.3.5
-      defu: 6.1.7
+      defu: 6.1.4
       get-port-please: 3.2.0
-      h3: 1.15.11
+      h3: 1.15.5
       http-shutdown: 1.2.2
       jiti: 2.7.0
       mlly: 1.8.0
@@ -27960,7 +27944,7 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  magic-string@1.2.2:
+  magic-string@1.2.3:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
@@ -28610,33 +28594,6 @@ snapshots:
     dependencies:
       type-fest: 2.19.0
 
-  next@13.5.11(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0):
-    dependencies:
-      '@next/env': 13.5.11
-      '@swc/helpers': 0.5.2
-      busboy: 1.6.0
-      caniuse-lite: 1.0.30001775
-      postcss: 8.4.31
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-      styled-jsx: 5.1.1(@babel/core@7.29.0)(react@19.2.4)
-      watchpack: 2.4.0
-    optionalDependencies:
-      '@next/swc-darwin-arm64': 13.5.9
-      '@next/swc-darwin-x64': 13.5.9
-      '@next/swc-linux-arm64-gnu': 13.5.9
-      '@next/swc-linux-arm64-musl': 13.5.9
-      '@next/swc-linux-x64-gnu': 13.5.9
-      '@next/swc-linux-x64-musl': 13.5.9
-      '@next/swc-win32-arm64-msvc': 13.5.9
-      '@next/swc-win32-ia32-msvc': 13.5.9
-      '@next/swc-win32-x64-msvc': 13.5.9
-      '@opentelemetry/api': 1.9.0
-      sass: 1.99.0
-    transitivePeerDependencies:
-      - '@babel/core'
-      - babel-plugin-macros
-
   next@13.5.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.99.0):
     dependencies:
       '@next/env': 13.5.11
@@ -28864,7 +28821,7 @@ snapshots:
       proc-log: 6.1.0
       semver: 7.7.4
       tar: 7.5.9
-      tinyglobby: 0.2.17
+      tinyglobby: 0.2.16
       which: 6.0.1
     transitivePeerDependencies:
       - supports-color
@@ -31881,13 +31838,6 @@ snapshots:
 
   stubborn-utils@1.0.2: {}
 
-  styled-jsx@5.1.1(@babel/core@7.29.0)(react@19.2.4):
-    dependencies:
-      client-only: 0.0.1
-      react: 19.2.4
-    optionalDependencies:
-      '@babel/core': 7.29.0
-
   styled-jsx@5.1.1(@babel/core@7.29.7)(react@18.3.1):
     dependencies:
       client-only: 0.0.1
@@ -31989,6 +31939,12 @@ snapshots:
       dequal: 2.0.3
       react: 18.3.1
       use-sync-external-store: 1.6.0(react@18.3.1)
+
+  swr@2.5.1(react@19.2.4):
+    dependencies:
+      dequal: 2.0.3
+      react: 19.2.4
+      use-sync-external-store: 1.6.0(react@19.2.4)
 
   symbol-tree@3.2.4: {}
 
@@ -32676,6 +32632,10 @@ snapshots:
   use-sync-external-store@1.6.0(react@18.3.1):
     dependencies:
       react: 18.3.1
+
+  use-sync-external-store@1.6.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   util-deprecate@1.0.2: {}
 

@@ -1,9 +1,9 @@
 import React, { forwardRef } from "react";
-import type { SbBlokData } from "@storyblok/react";
+import type { StoryblokBlockData } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 
 interface RefCheckerProps {
-  blok: SbBlokData;
+  blok: StoryblokBlockData;
 }
 
 const RefChecker = forwardRef<HTMLDivElement, RefCheckerProps>(({ blok }, ref) => {

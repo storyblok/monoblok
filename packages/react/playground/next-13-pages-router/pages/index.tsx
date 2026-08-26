@@ -1,47 +1,20 @@
-import React from "react";
-import type { GetStaticProps, InferGetStaticPropsType } from "next";
-import Teaser from "../components/teaser";
-import Grid from "../components/grid";
-import Page from "../components/page";
-import Feature from "../components/feature";
+import type { GetStaticProps } from "next";
+import type { Story, StoryblokBlockData } from "@storyblok/react";
+import { apiClient, StoryblokComponent } from "../lib/storyblok";
 
-import {
-  getStoryblokApi,
-  setComponents,
-  StoryblokComponent,
-  useStoryblokState,
-} from "@storyblok/react";
-
-export default function Home({
-  story: initialStory,
-}: InferGetStaticPropsType<typeof getStaticProps>) {
-  setComponents({
-    teaser: Teaser,
-    grid: Grid,
-    feature: Feature,
-    page: Page,
-  });
-
-  const story = useStoryblokState(initialStory) as typeof initialStory;
-
-  if (!story.content) {
-    return <div>Loading...</div>;
-  }
-
-  return <StoryblokComponent blok={story.content} />;
+interface Props {
+  story: Story;
 }
 
-export const getStaticProps: GetStaticProps = async () => {
-  const storyblokApi = getStoryblokApi();
+export default function Home({ story }: Props) {
+  return <StoryblokComponent block={story.content as StoryblokBlockData} />;
+}
 
-  const { data } = await storyblokApi.get(`cdn/stories/home`, {
-    version: "draft",
-  });
-
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const result = await apiClient.stories.get("home", { query: { version: "draft" } });
+  if (!result.data) return { notFound: true };
   return {
-    props: {
-      story: data ? data.story : false,
-    },
+    props: { story: result.data.story },
     revalidate: 3600,
   };
 };

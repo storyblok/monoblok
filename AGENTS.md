@@ -24,26 +24,6 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   package. Prefer composing over writing new.
 - **Check versions** - Look up the latest version before installing a new npm package.
 
-## Sibling repos
-
-- `../storyrails` (Storyblok backend) - Consult when verifying REST/MAPI/CAPI schemas, error shapes,
-  or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
-- `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need
-  information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
-- `../storyblok-bridge` (Storyblok Bridge) - Consult when verifying bridge behavior: the
-  `postMessage` protocol between the editor and a preview iframe, the editable-block attributes it
-  writes into the page, the overlay/click-to-edit UI, or the bridge lifecycle.
-- `../storyblok-docs-platform` (docs site) - Consult when publishing or updating package reference
-  docs; see `docs/docs-platform.md` for the monoblok-side conventions. User-facing documentation
-  lives there, not here: package READMEs stay minimal and link to the docs site.
-
-These sibling repos may not be available; ignore them if absent.
-
-- **IMPORTANT:** `../storyrails`, `../storyfront` and `../storyblok-bridge` are private. Never
-  reference them, their paths, file names, or internal implementation details in commit messages, PR
-  titles and descriptions, issue comments, code comments, or any other public-facing text. Describe
-  the observable API or behavior instead.
-
 ## Conventions
 
 - **Naming:** Files `kebab-case.ts`, functions/variables `camelCase`, classes/types `PascalCase`,
@@ -103,9 +83,10 @@ For more context, read relevant files in `docs/`:
 
 - `announcements.md` - announcement article format and tone. Load when drafting a
   release/announcement post.
-- `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load
-  when changes need reference docs, when versioning docs for a major release, or when adding a
-  package to the site navigation.
+- `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs.
+  User-facing documentation lives on the docs site, not here: package READMEs stay minimal and link
+  to it. Load when changes need reference docs, when versioning docs for a major release, or when
+  adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
 - `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
 - `testing-patterns.md` - Test stack, file layout, session mocking, and Windows gotchas. Load when

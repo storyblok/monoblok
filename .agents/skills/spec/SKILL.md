@@ -38,8 +38,8 @@ Generate a spec for: $ARGUMENTS
 1. **Understand the problem** - What pain point does this solve? Who asked for it?
 2. **Determine scope** - Is this a project (multi-day, cross-cutting) or a ticket (single
    deliverable, 1-3 days)?
-3. **Research** - Read relevant code and context files, check storyrails for API contracts, look at
-   existing patterns
+3. **Research** - Read relevant code and context files, verify API contracts against the backend,
+   look at existing patterns
 4. **Write the spec** - Use the appropriate template
 
 ## What to include vs. leave to the developer

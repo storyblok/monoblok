@@ -29,6 +29,7 @@ const sessionApi = {
   }),
   persistCredentials: vi.fn().mockResolvedValue(undefined),
   clearOAuthSession: vi.fn().mockResolvedValue(undefined),
+  useOAuthRegion: vi.fn().mockResolvedValue(false),
 };
 
 vi.mock("../src/session.ts", async (importOriginal) => {

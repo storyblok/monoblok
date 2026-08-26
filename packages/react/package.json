@@ -32,54 +32,14 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./ssr": {
+    "./client": {
       "import": {
-        "types": "./dist/ssr.d.mts",
-        "default": "./dist/ssr.mjs"
+        "types": "./dist/client.d.mts",
+        "default": "./dist/client.mjs"
       },
       "require": {
-        "types": "./dist/ssr.d.cts",
-        "default": "./dist/ssr.cjs"
-      }
-    },
-    "./rsc": {
-      "import": {
-        "types": "./dist/rsc.d.mts",
-        "default": "./dist/rsc.mjs"
-      },
-      "require": {
-        "types": "./dist/rsc.d.cts",
-        "default": "./dist/rsc.cjs"
-      }
-    },
-    "./next": {
-      "import": {
-        "types": "./dist/next.d.mts",
-        "default": "./dist/next.mjs"
-      },
-      "require": {
-        "types": "./dist/next.d.cts",
-        "default": "./dist/next.cjs"
-      }
-    },
-    "./next/rsc": {
-      "import": {
-        "types": "./dist/next/rsc.d.mts",
-        "default": "./dist/next/rsc.mjs"
-      },
-      "require": {
-        "types": "./dist/next/rsc.d.cts",
-        "default": "./dist/next/rsc.cjs"
-      }
-    },
-    "./next/client": {
-      "import": {
-        "types": "./dist/next/client.d.mts",
-        "default": "./dist/next/client.mjs"
-      },
-      "require": {
-        "types": "./dist/next/client.d.cts",
-        "default": "./dist/next/client.cjs"
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -111,7 +71,6 @@
   },
   "dependencies": {
     "@storyblok/api-client": "workspace:^",
-    "@storyblok/js": "workspace:^",
     "@storyblok/live-preview": "workspace:^",
     "@storyblok/richtext": "workspace:^"
   },
@@ -140,14 +99,8 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "next": "^13 || ^14 || ^15 || ^16",
     "react": "^17 || ^18 || ^19",
     "react-dom": "^17 || ^18 || ^19"
-  },
-  "peerDependenciesMeta": {
-    "next": {
-      "optional": true
-    }
   },
   "babel": {
     "presets": [

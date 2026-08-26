@@ -1,9 +1,11 @@
 "use client";
-import { onStoryblokEditorEvent } from "@storyblok/live-preview";
+import type { BridgeParams } from "@storyblok/live-preview";
 import type { Story } from "@storyblok/api-client";
-import { type ReactNode, Suspense, use, useEffect, useRef, useState } from "react";
+import { type ReactNode, Suspense, use, useEffect, useState } from "react";
+import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
-export interface StoryblokPreviewProps {
+/** Props for the {@link StoryblokPreviewRsc} component. */
+export interface StoryblokPreviewRscProps {
   /**
    * Server action responsible for rendering updated content.
    */
@@ -25,9 +27,14 @@ export interface StoryblokPreviewProps {
    * Milliseconds to wait after the last editor event before triggering a
    * re-render. Prevents a Server Action call on every individual keystroke.
    *
-   * Defaults to 300 ms.
+   * Defaults to 200 ms.
    */
   debounceMs?: number;
+  /**
+   * Configuration forwarded to the Preview Bridge constructor.
+   * Captured at mount time — changes after mount have no effect.
+   */
+  bridgeOptions?: BridgeParams;
 }
 
 /**
@@ -55,11 +62,38 @@ function LiveContent({
   return <>{content}</>;
 }
 
-export function StoryblokPreview({
+/**
+ * Client component that enables live preview for React Server Component (RSC) routes.
+ *
+ * Listens for Storyblok Visual Editor events and invokes `renderContent` — a
+ * Server Action — with the updated story to produce fresh server-rendered output.
+ * While the Server Action is in flight the last committed content (or the initial
+ * `children`) is shown as a Suspense fallback, so the page never goes blank.
+ *
+ * Wrap your RSC page output with this component and pass a Server Action as
+ * `renderContent`. The initial server-rendered tree is passed as `children` and
+ * rendered with zero client-state involvement so RSC Suspense streaming works
+ * normally on first load.
+ *
+ * @example
+ * ```tsx
+ * // app/[slug]/page.tsx (Server Component)
+ * export default async function Page({ params }) {
+ *   const story = await fetchStory(params.slug);
+ *   return (
+ *     <StoryblokPreviewRsc renderContent={renderStory} >
+ *       <MyStoryContent story={story} />
+ *     </StoryblokPreviewRsc>
+ *   );
+ * }
+ * ```
+ */
+export function StoryblokPreviewRsc({
   renderContent,
   children,
-  debounceMs = 300,
-}: StoryblokPreviewProps) {
+  debounceMs = 200,
+  bridgeOptions,
+}: StoryblokPreviewRscProps) {
   // Store the Promise itself — not the resolved ReactNode.
   //
   // Storing ReactNode in useState forces the RSC serializer to fully await
@@ -87,51 +121,15 @@ export function StoryblokPreview({
   //     fallback instead of jumping back to the original SSR snapshot.
   const [committedContent, setCommittedContent] = useState<ReactNode | null>(null);
 
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    let unsubscribe: (() => void) | undefined;
-
-    const setup = async () => {
-      const fn = await onStoryblokEditorEvent((updatedStory) => {
-        if (!mounted) {
-          return;
-        }
-
-        if (debounceTimer.current !== null) {
-          clearTimeout(debounceTimer.current);
-        }
-
-        debounceTimer.current = setTimeout(() => {
-          debounceTimer.current = null;
-          if (!mounted) {
-            return;
-          }
-
-          // Set the promise directly — no useTransition, no awaiting here.
-          // React.use() inside LiveContent reads it; the Suspense boundary
-          // shows the fallback while the server action streams its RSC response.
-          setLivePromise(renderContent(updatedStory as Story));
-        }, debounceMs);
-      });
-      if (!mounted) {
-        fn();
-      } else {
-        unsubscribe = fn;
-      }
-    };
-
-    setup();
-
-    return () => {
-      mounted = false;
-      if (debounceTimer.current !== null) {
-        clearTimeout(debounceTimer.current);
-      }
-      unsubscribe?.();
-    };
-  }, [renderContent, debounceMs]);
+  useStoryblokEditorEvent(
+    (updatedStory) => {
+      // Set the promise directly — no useTransition, no awaiting here.
+      // React.use() inside LiveContent reads it; the Suspense boundary
+      // shows the fallback while the server action streams its RSC response.
+      setLivePromise(renderContent(updatedStory));
+    },
+    { debounceMs, bridgeOptions },
+  );
 
   // No editor update yet — return children with zero state involvement.
   // This is the initial SSR/streaming path: Suspense boundaries inside the
@@ -159,4 +157,4 @@ export function StoryblokPreview({
   );
 }
 
-export default StoryblokPreview;
+export default StoryblokPreviewRsc;

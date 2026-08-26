@@ -1,7 +1,7 @@
-import type { SbReactRichTextProps } from "@storyblok/react";
+import type { StoryblokReactRichTextProps } from "@storyblok/react";
 import type { JSX } from "react";
 
-export default function CustomHeading({ children, attrs }: SbReactRichTextProps<"heading">) {
+export default function CustomHeading({ children, attrs }: StoryblokReactRichTextProps<"heading">) {
   const level = attrs?.level || 1;
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
   return (

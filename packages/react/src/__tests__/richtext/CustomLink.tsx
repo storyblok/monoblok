@@ -1,6 +1,6 @@
-import type { SbReactRichTextProps } from "@storyblok/react";
+import type { StoryblokReactRichTextProps } from "@storyblok/react";
 
-export default function CustomLink({ children, attrs }: SbReactRichTextProps<"link">) {
+export default function CustomLink({ children, attrs }: StoryblokReactRichTextProps<"link">) {
   return (
     <a
       data-type="custom-link"

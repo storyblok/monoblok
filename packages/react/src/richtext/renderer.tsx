@@ -22,9 +22,8 @@ import {
 import React, { type ComponentType, type ReactNode } from "react";
 
 /**
- * Props type for React richtext node/mark components.
- * Extends the OpenAPI-sourced StoryblokRichTextCoreProps<T> with a React-specific
- * context and ReactNode children (instead of the static renderer's string children).
+ * Props for a custom React richtext node or mark component of type `T`.
+ * Replaces the core renderer's string `children` with `ReactNode` and adds a React render context.
  */
 export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> = Omit<
   StoryblokRichTextCoreProps<T>,
@@ -34,41 +33,25 @@ export type StoryblokReactRichTextProps<T extends StoryblokRichTextElement> = Om
   children?: ReactNode;
 };
 
-/**
- * @deprecated Use {@link StoryblokReactRichTextProps} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextProps<T extends StoryblokRichTextElement> =
-  StoryblokReactRichTextProps<T>;
-
+/** A React component that renders a single richtext node or mark of type `T`. */
 export type StoryblokReactRichTextComponent<T extends StoryblokRichTextElement> = ComponentType<
   StoryblokReactRichTextProps<T>
 >;
 
-/**
- * @deprecated Use {@link StoryblokReactRichTextComponent} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextComponent<T extends StoryblokRichTextElement> =
-  StoryblokReactRichTextComponent<T>;
-
+/** Map of richtext element types to their custom React renderer components. */
 export type StoryblokReactRichTextComponentMap = {
   [K in StoryblokRichTextElement]?: StoryblokReactRichTextComponent<K>;
 };
 
 /**
- * @deprecated Use {@link StoryblokReactRichTextComponentMap} instead. Will be removed in the next major version.
+ * Context threaded through the richtext renderer. Passed as the `context` prop
+ * to every custom node/mark component.
  */
-export type SbReactRichTextComponentMap = StoryblokReactRichTextComponentMap;
-
 export interface StoryblokReactRichTextRenderContext {
   optimizeImage?: boolean | StoryblokRichTextImageOptions;
   components?: StoryblokReactRichTextComponentMap;
   data?: unknown;
 }
-
-/**
- * @deprecated Use {@link StoryblokReactRichTextRenderContext} instead. Will be removed in the next major version.
- */
-export type SbReactRichTextRenderContext = StoryblokReactRichTextRenderContext;
 
 /** Props for the `<StoryblokRichText>` React component. */
 export interface StoryblokReactRichTextComponentProps extends StoryblokReactRichTextRenderContext {
@@ -86,6 +69,16 @@ function resolveComponent<K extends StoryblokRichTextElement>(
   return components?.[type] as ComponentType<StoryblokReactRichTextProps<K>> | undefined;
 }
 
+/**
+ * Returns a render function for a Storyblok richtext document.
+ * Prefer `<StoryblokRichText>` for typical use; use this when you need a plain function.
+ *
+ * @example
+ * ```tsx
+ * const render = createRichTextRenderer({ optimizeImage: true });
+ * return <div>{render(story.content.richtext)}</div>;
+ * ```
+ */
 export function createRichTextRenderer(options: StoryblokReactRichTextRenderContext) {
   return function render(document: StoryblokRichTextInput): ReactNode | null {
     const nodes = normalizeNodes(document, true);

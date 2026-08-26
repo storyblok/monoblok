@@ -1,5 +1,4 @@
-import type { SbReactRichTextComponentMap } from "@storyblok/react";
-import { StoryblokRichText, useStoryblokRichText } from "@storyblok/react";
+import type { StoryblokReactRichTextComponentMap } from "@storyblok/react";
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import {
@@ -16,6 +15,9 @@ import CustomCodeBlock from "./richtext/CodeComponent";
 import CustomTable from "./richtext/CustomTable";
 import CustomText from "./richtext/CustomText";
 import HeadingWithRichText from "./richtext/HeadingWithRichText";
+import { defineStoryblokComponents } from "../define-storyblok-components";
+
+const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
 
 interface AttributePositionRule {
   key: string;
@@ -95,33 +97,23 @@ function alignImageSrcAttribute(html: string): string {
 
 describe("react StoryblokRichText component", () => {
   describe("input handling", () => {
-    it("returns empty string for null input", () => {
+    it("returns nothing for null input", () => {
       const { container } = render(<StoryblokRichText document={null} />);
-      expect(container.innerHTML).toBe(`<div></div>`);
+      expect(container.innerHTML).toBe("");
     });
-    it("returns empty string for undefined input", () => {
+    it("returns nothing for undefined input", () => {
       const { container } = render(<StoryblokRichText document={undefined} />);
-      expect(container.innerHTML).toBe(`<div></div>`);
+      expect(container.innerHTML).toBe("");
     });
-    it("returns empty string for empty array", () => {
+    it("returns nothing for empty array", () => {
       const { container } = render(<StoryblokRichText document={[]} />);
-      expect(container.innerHTML).toBe(`<div></div>`);
+      expect(container.innerHTML).toBe("");
     });
   });
   describe("nodes", () => {
     nodeFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
-      });
-    });
-  });
-  // Testing the useStoryblokRichText hook separately to ensure it works
-  // This is using the same api that the StoryblokRichText component uses internally, so it's somewhat redundant, but it allows us to test the hook in isolation
-  describe("nodes rendering using useStoryblokRichText", () => {
-    nodeFixtures.forEach(({ title, input, expected }) => {
-      it(title, () => {
-        const { container } = render(useStoryblokRichText()(input));
         expect(alignImageSrcAttribute(container.innerHTML)).toBe(expected);
       });
     });
@@ -130,7 +122,7 @@ describe("react StoryblokRichText component", () => {
     markFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(expected);
       });
     });
   });
@@ -138,7 +130,7 @@ describe("react StoryblokRichText component", () => {
     linkFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(expected);
       });
     });
   });
@@ -146,7 +138,7 @@ describe("react StoryblokRichText component", () => {
     tableFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(expected);
       });
     });
   });
@@ -154,69 +146,68 @@ describe("react StoryblokRichText component", () => {
     integrationFixtures.forEach(({ title, input, expected }) => {
       it(title, () => {
         const { container } = render(<StoryblokRichText document={input} />);
-        expect(alignImageSrcAttribute(container.innerHTML)).toBe(`<div>${expected}</div>`);
+        expect(alignImageSrcAttribute(container.innerHTML)).toBe(expected);
       });
     });
   });
   describe("custom components", () => {
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
-      const options: SbReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap = {
         heading: CustomHeading,
         link: CustomLink,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
       const { container } = render(
-        <StoryblokRichText wrapper={false} document={node_and_mark.input} components={options} />,
+        <StoryblokRichText document={node_and_mark.input} components={options} />,
       );
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(node_and_mark.expected);
     });
     const recursive = customRendererFixture.recursive;
     it(recursive.title, () => {
-      const options: SbReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap = {
         heading: ({ content, attrs }) => (
           <h1 data-type="custom-heading" data-level={attrs?.level}>
-            <StoryblokRichText wrapper={false} document={content} components={options} />
+            <StoryblokRichText document={content} components={options} />
           </h1>
         ),
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
       const { container } = render(
-        <StoryblokRichText wrapper={false} document={recursive.input} components={options} />,
+        <StoryblokRichText document={recursive.input} components={options} />,
       );
 
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(recursive.expected);
     });
     const code_block = customRendererFixture.code_block;
     it(code_block.title, () => {
-      const options: SbReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap = {
         code_block: CustomCodeBlock,
       };
       const { container } = render(
-        <StoryblokRichText wrapper={false} document={code_block.input} components={options} />,
+        <StoryblokRichText document={code_block.input} components={options} />,
       );
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(code_block.expected);
     });
     const table = customRendererFixture.table;
 
     it(table.title, () => {
-      const options: SbReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap = {
         table: CustomTable,
         bold: ({ children }) => <b data-type="custom-bold">{children}</b>,
       };
       const { container } = render(
-        <StoryblokRichText wrapper={false} document={table.input} components={options} />,
+        <StoryblokRichText document={table.input} components={options} />,
       );
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(table.expected);
     });
     const text_node = customRendererFixture.text_node;
     it(text_node.title, () => {
-      const options: SbReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap = {
         text: CustomText,
       };
       const { container } = render(
         <StoryblokRichText
-          wrapper={false}
           document={text_node.input}
           components={options}
           data={{ prefix: "[prefix]" }}
@@ -226,11 +217,11 @@ describe("react StoryblokRichText component", () => {
     });
     const infinite_loop = customRendererFixture.infinite_loop_prevention;
     it(infinite_loop.title, () => {
-      const options: SbReactRichTextComponentMap = {
+      const options: StoryblokReactRichTextComponentMap = {
         heading: HeadingWithRichText,
       };
       const { container } = render(
-        <StoryblokRichText wrapper={false} document={infinite_loop.input} components={options} />,
+        <StoryblokRichText document={infinite_loop.input} components={options} />,
       );
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(infinite_loop.expected);
     });

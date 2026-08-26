@@ -995,9 +995,15 @@ importers:
 
   packages/react:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../capi-client
       '@storyblok/js':
         specifier: workspace:^
         version: file:packages/js
+      '@storyblok/live-preview':
+        specifier: workspace:^
+        version: link:../live-preview
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
@@ -6856,6 +6862,9 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@storyblok/api-client@file:packages/capi-client':
+    resolution: {directory: packages/capi-client, type: directory}
+
   '@storyblok/astro@9.0.5':
     resolution: {integrity: sha512-1AQfiERx7KMcfln9l1JjlExP6ivEGkn7oW7DTvC3P+q2E5Zu10EgG61FP7WbnLf0MaiqULk2jG0daEPHNPF//Q==}
     peerDependencies:
@@ -6876,6 +6885,9 @@ packages:
     resolution: {directory: packages/lint-config, type: directory}
     peerDependencies:
       oxlint: '>=0.15.0'
+
+  '@storyblok/live-preview@file:packages/live-preview':
+    resolution: {directory: packages/live-preview, type: directory}
 
   '@storyblok/management-api-client@file:packages/mapi-client':
     resolution: {directory: packages/mapi-client, type: directory}
@@ -21363,6 +21375,11 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@storyblok/api-client@file:packages/capi-client':
+    dependencies:
+      '@storyblok/region-helper': file:packages/region-helper
+      ky: 1.14.3
+
   '@storyblok/astro@9.0.5(astro@6.2.2(@types/node@24.11.0)(@vercel/functions@3.4.3)(db0@0.3.4)(ioredis@5.10.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
       '@storyblok/js': 5.1.4
@@ -21429,6 +21446,10 @@ snapshots:
     dependencies:
       oxlint: 1.76.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.8(@arethetypeswrong/core@0.18.2)(@opentelemetry/api@1.9.0)(@types/node@25.6.0)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(esbuild@0.28.1)(happy-dom@20.8.9)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@1.8.0))(less@4.6.4)(msw@2.12.10(@types/node@25.6.0)(typescript@6.0.3))(publint@0.3.22)(sass@1.99.0)(svelte@5.55.0)(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.28(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(synckit@0.11.12))(vite@8.1.1(@types/node@25.6.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))(yaml@2.9.0))
 
+  '@storyblok/live-preview@file:packages/live-preview':
+    dependencies:
+      '@storyblok/preview-bridge': 2.3.0
+
   '@storyblok/management-api-client@file:packages/mapi-client':
     dependencies:
       '@storyblok/region-helper': file:packages/region-helper
@@ -21462,7 +21483,9 @@ snapshots:
 
   '@storyblok/react@file:packages/react(next@13.5.11(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.99.0))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
+      '@storyblok/api-client': file:packages/capi-client
       '@storyblok/js': file:packages/js
+      '@storyblok/live-preview': file:packages/live-preview
       '@storyblok/richtext': file:packages/richtext
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
@@ -21474,7 +21497,9 @@ snapshots:
 
   '@storyblok/react@file:packages/react(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.99.0))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
+      '@storyblok/api-client': file:packages/capi-client
       '@storyblok/js': file:packages/js
+      '@storyblok/live-preview': file:packages/live-preview
       '@storyblok/richtext': file:packages/richtext
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)

@@ -52,6 +52,36 @@
         "default": "./dist/rsc.cjs"
       }
     },
+    "./next": {
+      "import": {
+        "types": "./dist/next.d.mts",
+        "default": "./dist/next.mjs"
+      },
+      "require": {
+        "types": "./dist/next.d.cts",
+        "default": "./dist/next.cjs"
+      }
+    },
+    "./next/rsc": {
+      "import": {
+        "types": "./dist/next/rsc.d.mts",
+        "default": "./dist/next/rsc.mjs"
+      },
+      "require": {
+        "types": "./dist/next/rsc.d.cts",
+        "default": "./dist/next/rsc.cjs"
+      }
+    },
+    "./next/client": {
+      "import": {
+        "types": "./dist/next/client.d.mts",
+        "default": "./dist/next/client.mjs"
+      },
+      "require": {
+        "types": "./dist/next/client.d.cts",
+        "default": "./dist/next/client.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -80,7 +110,9 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
+    "@storyblok/api-client": "workspace:^",
     "@storyblok/js": "workspace:^",
+    "@storyblok/live-preview": "workspace:^",
     "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {

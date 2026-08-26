@@ -1,18 +1,23 @@
-import { StoryblokComponent, useStoryblok } from "@storyblok/react";
-import React from "react";
+import type { StoryblokBlockData } from "@storyblok/react";
+import { StoryblokPreview } from "@storyblok/react/client";
+import { useStory } from "../hooks/use-story";
+import { StoryblokComponent } from "../storyblok";
 
 function Home() {
-  const story = useStoryblok("react", { version: "draft" });
+  const { data: story, error } = useStory("react");
 
-  if (!story?.content) {
-    return <div>Loading...</div>;
-  }
+  if (error) return <div>Failed to load story.</div>;
+  if (!story) return <div>Loading...</div>;
 
   return (
-    <div>
-      <h1>Home</h1>
-      <StoryblokComponent blok={story.content} />
-    </div>
+    <StoryblokPreview story={story}>
+      {(live) => (
+        <div>
+          <h1>Home</h1>
+          <StoryblokComponent block={live.content} />
+        </div>
+      )}
+    </StoryblokPreview>
   );
 }
 

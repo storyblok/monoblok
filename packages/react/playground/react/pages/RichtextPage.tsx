@@ -1,13 +1,22 @@
-import { StoryblokRichText, useStoryblok } from "@storyblok/react";
+import type { StoryblokBlockData } from "@storyblok/react";
+import { StoryblokPreview } from "@storyblok/react/client";
+import { useStory } from "../hooks/use-story";
+import { StoryblokRichText } from "../storyblok";
 
 function RichtextPage() {
-  const story = useStoryblok("richtext", { version: "draft" });
+  const { data: story, error } = useStory("richtext");
 
-  if (!story?.content) {
-    return <div>Loading...</div>;
-  }
+  if (error) return <div>Failed to load story.</div>;
+  if (!story) return <div>Loading...</div>;
 
-  return story.content.richText && <StoryblokRichText document={story.content.richText} />;
+  return (
+    <StoryblokPreview story={story}>
+      {(live) => {
+        const content = live.content as StoryblokBlockData;
+        return content.richText ? <StoryblokRichText document={content.richText as never} /> : null;
+      }}
+    </StoryblokPreview>
+  );
 }
 
 export default RichtextPage;

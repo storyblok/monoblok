@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [react(), basicSsl(), tailwindcss()] as PluginOption[],
   resolve: {
     alias: {
+      "@storyblok/react/client": resolve(import.meta.dirname, "../../src/client/index.ts"),
       "@storyblok/react": resolve(import.meta.dirname, "../../src/index.ts"),
     },
   },

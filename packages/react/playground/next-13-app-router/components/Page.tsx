@@ -1,9 +1,15 @@
-import { storyblokEditable, StoryblokServerComponent } from "@storyblok/react/rsc";
+import type { StoryblokBlockData } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
+import { StoryblokComponent } from "@/lib/storyblok";
 
-const Page = ({ blok }) => (
-  <main {...storyblokEditable(blok)}>
-    {blok.body.map((nestedBlok) => (
-      <StoryblokServerComponent blok={nestedBlok} key={nestedBlok._uid} />
+interface PageProps {
+  block: StoryblokBlockData & { body: StoryblokBlockData[] };
+}
+
+const Page = ({ block }: PageProps) => (
+  <main {...storyblokEditable(block)}>
+    {block.body.map((nestedBlock) => (
+      <StoryblokComponent block={nestedBlock} key={nestedBlock._uid} />
     ))}
   </main>
 );

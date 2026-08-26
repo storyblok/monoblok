@@ -1,19 +1,20 @@
 import React from "react";
-import type { SbBlokData, SbRichTextDoc } from "@storyblok/react";
-import { StoryblokComponent, storyblokEditable, StoryblokRichText } from "@storyblok/react";
+import type { StoryblokBlockData, StoryblokRichTextInput } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
+import { StoryblokComponent, StoryblokRichText } from "../storyblok";
 
 interface PageProps {
-  blok: SbBlokData;
+  block: StoryblokBlockData;
 }
 
-const Page = ({ blok }: PageProps) => {
-  const richText = blok.richText as SbRichTextDoc;
+const Page = ({ block }: PageProps) => {
+  const richText = block.richText as StoryblokRichTextInput | undefined;
   return (
-    <div {...storyblokEditable(blok)} key={blok._uid} data-test="page">
-      {blok.body
-        ? (blok.body as SbBlokData[]).map((nestedBlok) => (
-            <div key={nestedBlok._uid}>
-              <StoryblokComponent blok={nestedBlok} />
+    <div {...storyblokEditable(block)} key={block._uid} data-test="page">
+      {block.body
+        ? (block.body as StoryblokBlockData[]).map((nestedBlock) => (
+            <div key={nestedBlock._uid}>
+              <StoryblokComponent block={nestedBlock} />
             </div>
           ))
         : null}

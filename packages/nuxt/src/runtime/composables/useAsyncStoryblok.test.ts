@@ -59,6 +59,7 @@ describe("useAsyncStoryblok", () => {
     mockRuntimeConfig.public.storyblok = { accessToken: "test-token" };
     apiGet.mockClear();
     useStoryblokBridge.mockClear();
+    vi.mocked(useAsyncData).mockClear();
   });
 
   it("throws when the access token is not available client-side (regression)", async () => {

@@ -23,7 +23,7 @@ export const routes: Routes = [
         const { data } = await client.stories.get(path, {
           query: {
             version: "draft",
-            resolve_relations: "featured-articles.articles",
+            resolve_relations: "featured-articles.articles,article.author",
           },
         });
         return data?.story;

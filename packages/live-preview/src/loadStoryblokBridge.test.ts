@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BridgeParams } from "@storyblok/preview-bridge";
 
 // ---- mocks ----
@@ -18,12 +18,32 @@ vi.mock("@storyblok/preview-bridge", () => {
 });
 
 describe("loadStoryblokBridge", () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+
+    // Suppress (and capture) console.warn globally — individual tests assert
+    // specific messages where needed.
+    warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    Object.defineProperty(window, "location", {
+      value: {
+        href: "http://localhost/?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789",
+        search: "?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789",
+      },
+      writable: true,
+    });
   });
 
-  it("creates the bridge on first call", async () => {
+  afterEach(() => {
+    warnSpy.mockRestore();
+    delete (window as any).StoryblokBridge;
+    delete (window as any).storyblokRegisterEvent;
+  });
+
+  it("creates a bridge instance with the supplied config", async () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     const config: BridgeParams = { resolveRelations: ["foo.bar"] };
@@ -35,57 +55,201 @@ describe("loadStoryblokBridge", () => {
     expect(constructorMock).toHaveBeenCalledWith(config);
   });
 
-  it("returns the same promise on subsequent calls with no config", async () => {
+  it("creates a new instance on every call", async () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     const first = await loadStoryblokBridge();
     const second = await loadStoryblokBridge();
 
-    expect(first).toBe(second);
-    expect(constructorMock).toHaveBeenCalledOnce();
+    expect(first).not.toBe(second);
+    expect(constructorMock).toHaveBeenCalledTimes(2);
   });
 
-  it("returns the same promise when called with the same config reference", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
-
-    const config: BridgeParams = { resolveRelations: ["foo.bar"] };
-
-    const first = await loadStoryblokBridge(config);
-    const second = await loadStoryblokBridge(config);
-
-    expect(first).toBe(second);
-    expect(constructorMock).toHaveBeenCalledOnce();
-  });
-
-  it("throws if called with a different config reference", async () => {
+  it("accepts different configs on subsequent calls without throwing", async () => {
     const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
     const configA: BridgeParams = { resolveRelations: ["foo.bar"] };
     const configB: BridgeParams = { resolveRelations: ["bar.foo"] };
 
-    await loadStoryblokBridge(configA);
+    await expect(loadStoryblokBridge(configA)).resolves.toBeDefined();
+    await expect(loadStoryblokBridge(configB)).resolves.toBeDefined();
 
-    expect(() => loadStoryblokBridge(configB)).toThrowError(
-      "[Storyblok] Preview Bridge already initialized with a different configuration.",
-    );
-
-    expect(constructorMock).toHaveBeenCalledOnce();
+    expect(constructorMock).toHaveBeenCalledTimes(2);
   });
 
-  it("resets internal state if import fails", async () => {
-    vi.doMock("@storyblok/preview-bridge", () => {
-      class FailingBridge {
-        constructor() {
-          throw new Error("boom");
-        }
-      }
+  it("sets window.StoryblokBridge to the bridge class", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
 
-      return { default: FailingBridge };
+    expect((window as any).StoryblokBridge).toBeUndefined();
+
+    await loadStoryblokBridge();
+
+    expect((window as any).StoryblokBridge).toBeDefined();
+    expect(typeof (window as any).StoryblokBridge).toBe("function");
+  });
+
+  it("window.StoryblokBridge emits a deprecation warning on access", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+    void (window as any).StoryblokBridge;
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "`window.StoryblokBridge` is deprecated and will be removed in a future version.",
+      ),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("loadStoryblokBridge"));
+  });
+
+  it("window.StoryblokBridge setter accepts a plain assignment without throwing", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const FakeBridge = vi.fn();
+    expect(() => {
+      (window as any).StoryblokBridge = FakeBridge;
+    }).not.toThrow();
+    expect((window as any).StoryblokBridge).toBe(FakeBridge);
+  });
+
+  it("reading window.StoryblokBridge after a setter write returns the written value without a deprecation warning", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    await loadStoryblokBridge();
+
+    const FakeBridge = vi.fn();
+    (window as any).StoryblokBridge = FakeBridge;
+
+    warnSpy.mockClear();
+    const value = (window as any).StoryblokBridge;
+
+    expect(value).toBe(FakeBridge);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite window.StoryblokBridge if already defined by another loader", async () => {
+    const ExistingBridge = vi.fn();
+    (window as any).StoryblokBridge = ExistingBridge;
+
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    await loadStoryblokBridge();
+
+    expect((window as any).StoryblokBridge).toBe(ExistingBridge);
+  });
+
+  it("sets window.storyblokRegisterEvent", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    expect(typeof window.storyblokRegisterEvent).toBe("function");
+  });
+
+  it("window.storyblokRegisterEvent emits a deprecation warning on access", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+    void window.storyblokRegisterEvent;
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "`window.storyblokRegisterEvent` is deprecated and will be removed in a future version.",
+      ),
+    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("onStoryblokEditorEvent"));
+  });
+
+  it("window.storyblokRegisterEvent returns a stable function reference on every access", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const refA = window.storyblokRegisterEvent;
+    const refB = window.storyblokRegisterEvent;
+    expect(refA).toBe(refB);
+  });
+
+  it("window.storyblokRegisterEvent setter accepts a plain assignment without throwing", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const shim = vi.fn();
+    expect(() => {
+      window.storyblokRegisterEvent = shim;
+    }).not.toThrow();
+    expect(window.storyblokRegisterEvent).toBe(shim);
+  });
+
+  it("does not overwrite window.storyblokRegisterEvent if already defined by another loader", async () => {
+    const existingShim = vi.fn();
+    (window as any).storyblokRegisterEvent = existingShim;
+
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    await loadStoryblokBridge();
+
+    expect(window.storyblokRegisterEvent).toBe(existingShim);
+  });
+
+  it("storyblokRegisterEvent calls cb immediately when in editor", async () => {
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const cb = vi.fn();
+    window.storyblokRegisterEvent(cb);
+
+    expect(cb).toHaveBeenCalledOnce();
+  });
+
+  it("storyblokRegisterEvent warns and does not call cb when not in editor", async () => {
+    Object.defineProperty(window, "location", {
+      value: { href: "http://localhost/", search: "" },
+      writable: true,
+    });
+
+    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+
+    await loadStoryblokBridge();
+
+    const cb = vi.fn();
+    window.storyblokRegisterEvent(cb);
+
+    expect(cb).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[Storyblok] You are not in Draft Mode or in the Visual Editor.",
+    );
+  });
+
+  it("throws when called in a server-side environment", async () => {
+    const windowDescriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
+
+    Object.defineProperty(globalThis, "window", {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+      await expect(loadStoryblokBridge()).rejects.toThrow(
+        "Cannot load Storyblok bridge: window is undefined",
+      );
+    } finally {
+      if (windowDescriptor) {
+        Object.defineProperty(globalThis, "window", windowDescriptor);
+      }
+    }
+  });
+
+  it("propagates import errors", async () => {
+    vi.doMock("@storyblok/preview-bridge", () => {
+      throw new Error("import failed");
     });
 
     const { loadStoryblokBridge: failingLoader } = await import("./loadStoryblokBridge");
 
-    await expect(failingLoader()).rejects.toThrow("boom");
-    await expect(failingLoader()).rejects.toThrow("boom");
+    await expect(failingLoader()).rejects.toThrow();
   });
 });

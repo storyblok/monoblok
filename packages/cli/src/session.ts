@@ -87,27 +87,34 @@ function createSession() {
     );
   }
 
+  async function useOAuthRegion(region: RegionCode): Promise<boolean> {
+    const entry = await getOAuthEntry(region);
+    if (!entry.tokens?.access_token) {
+      return false;
+    }
+    state.isLoggedIn = true;
+    state.authType = "oauth";
+    state.region = region;
+    state.oauthAccessToken = entry.tokens.access_token;
+    state.oauthExpiresAt = entry.tokens.expires_at;
+    state.oauthSpaces = entry.spaces;
+    return true;
+  }
+
   async function loadOAuthSession(): Promise<boolean> {
     // Resolve the most recently used region first via the stored `activeRegion`
     // pointer, then fall back to a fixed order for its siblings. The fallback
     // also covers sessions created before the pointer existed and cases where
-    // the pointer is stale (its region has no tokens). This resolution is not
-    // affected by a command's `--region`; to switch the active OAuth region,
-    // log in again (which repoints `activeRegion`).
+    // the pointer is stale (its region has no tokens). A command's `--region`
+    // is reconciled afterwards by the region guard, which moves the session when
+    // that region has its own grant and stops the run when it does not.
     const fixedOrder: RegionCode[] = ["eu", "us", "cn", "ca", "ap"];
     const activeRegion = await getOAuthActiveRegion();
     const regionsToCheck = activeRegion
       ? [activeRegion, ...fixedOrder.filter((region) => region !== activeRegion)]
       : fixedOrder;
     for (const region of regionsToCheck) {
-      const entry = await getOAuthEntry(region);
-      if (entry.tokens?.access_token) {
-        state.isLoggedIn = true;
-        state.authType = "oauth";
-        state.region = region;
-        state.oauthAccessToken = entry.tokens.access_token;
-        state.oauthExpiresAt = entry.tokens.expires_at;
-        state.oauthSpaces = entry.spaces;
+      if (await useOAuthRegion(region)) {
         return true;
       }
     }
@@ -175,6 +182,7 @@ function createSession() {
     persistCredentials,
     logout,
     clearOAuthSession,
+    useOAuthRegion,
   };
 }
 

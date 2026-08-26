@@ -19,8 +19,7 @@ requests until the throttle wedged, SSR handlers hung, and Cloudflare returned `
 The `capi` client did not have this hang: it released its slot on request completion (in the settled
 promise handler), not from a timer. It did, however, share the modeling bug described below.
 
-The other relevant question is what the server actually limits. Verified against the backend
-(storyrails):
+The other relevant question is what the server actually limits. Verified against the backend:
 
 - The numbers the clients pace against are enforced as **requests per second**, in a fixed
   one-second window (a Redis counter keyed by the clock second, reset when the second rolls over).

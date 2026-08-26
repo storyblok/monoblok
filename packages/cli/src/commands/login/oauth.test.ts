@@ -38,7 +38,7 @@ describe("login --oauth", () => {
     vi.mocked(session().initializeSession).mockImplementation(async () => {
       session().state = loggedOutSessionState();
     });
-    // The baked-in client is still a placeholder, so point the CLI at a test client
+    // Point the CLI at a test client so the suite never depends on the baked-in one
     // through the env-var override that development and self-hosted setups use.
     process.env.STORYBLOK_OAUTH_CLIENT_ID = "cid";
     process.env.STORYBLOK_OAUTH_CLIENT_SECRET = "secret";

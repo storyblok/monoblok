@@ -10,11 +10,7 @@ export default defineConfig({
       dts: true,
       entry: {
         index: "./src/index.ts",
-        rsc: "./src/rsc/index.ts",
-        ssr: "./src/ssr/index.ts",
-        next: "./src/v2/index.ts",
-        "next/rsc": "./src/v2/rsc/index.ts",
-        "next/client": "./src/v2/client/index.ts",
+        client: "./src/client/index.ts",
       },
       format: ["esm", "cjs"],
       outDir: "./dist",

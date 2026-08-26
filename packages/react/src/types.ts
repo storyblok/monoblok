@@ -1,45 +1,20 @@
-import type React from "react";
-import type { ISbStoryData, SbSDKOptions, StoryblokBridgeConfigV2 } from "@storyblok/js";
-
-export interface SbReactComponentsMap {
-  [key: string]: React.ElementType;
+/** Base shape of every Storyblok block. All registered block components receive this as their `block` prop. */
+export interface StoryblokBlockData {
+  _uid: string;
+  component: string;
+  _editable?: string;
+  [key: string]: unknown;
 }
 
-export interface SbReactSDKOptions extends SbSDKOptions {
-  components?: SbReactComponentsMap;
-  enableFallbackComponent?: boolean;
-  customFallbackComponent?: React.ElementType;
+/**
+ * Helper type for typed block component props.
+ *
+ * @example
+ * type PageProps = StoryblokComponentProps<{ body: StoryblokBlockData[] }>;
+ * export default function Page({ block }: PageProps) { ... }
+ */
+export interface StoryblokComponentProps<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
+  block: StoryblokBlockData & T;
 }
-
-export type TUseStoryblokState = <T = void>(
-  initialStory: ISbStoryData<T> | null,
-  bridgeOptions?: StoryblokBridgeConfigV2,
-) => ISbStoryData<T> | null;
-
-export type {
-  ArrayFn,
-  AsyncFn,
-  ISbAlternateObject,
-  ISbCache,
-  ISbConfig,
-  ISbContentMangmntAPI,
-  ISbDimensions,
-  ISbError,
-  ISbManagmentApiResult,
-  ISbResponse,
-  ISbResult,
-  ISbSchema,
-  ISbStories,
-  ISbStoriesParams,
-  ISbStory,
-  ISbStoryData,
-  ISbStoryParams,
-  ISbThrottle,
-  SbBlokData,
-  SbBlokKeyDataTypes,
-  SbSDKOptions,
-  StoryblokBridgeConfigV2,
-  StoryblokBridgeV2,
-  StoryblokClient,
-  StoryblokComponentType,
-} from "@storyblok/js";

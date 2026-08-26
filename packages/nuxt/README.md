@@ -41,6 +41,37 @@
 - SSR/SSG compatibility with proper hydration
 - DevTools integration for Storyblok management
 
+## Usage
+
+Install the module:
+
+```bash
+npx nuxi module add @storyblok/nuxt
+```
+
+Enable it in `nuxt.config.ts`:
+
+```ts
+export default defineNuxtConfig({
+  modules: ["@storyblok/nuxt"],
+  storyblok: {
+    accessToken: "<your-access-token>",
+  },
+});
+```
+
+Fetch a story in a page:
+
+```vue
+<script setup lang="ts">
+const { story } = await useAsyncStoryblok("home", { api: { version: "draft" } });
+</script>
+
+<template>
+  <StoryblokComponent v-if="story" :blok="story.content" />
+</template>
+```
+
 ## Documentation
 
 For complete documentation, please visit

@@ -59,8 +59,8 @@ describe("program preAction OAuth refresh", () => {
     delete process.env.STORYBLOK_LOGIN;
     delete process.env.STORYBLOK_TOKEN;
     delete process.env.STORYBLOK_REGION;
-    // The baked-in client is still a placeholder, so the refresh path resolves its
-    // credentials through the env-var override.
+    // Pin the refresh path to a test client through the env-var override, so the suite
+    // never depends on the baked-in first-party credentials.
     process.env.STORYBLOK_OAUTH_CLIENT_ID = "cid";
     process.env.STORYBLOK_OAUTH_CLIENT_SECRET = "secret";
   });

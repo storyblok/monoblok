@@ -42,6 +42,12 @@ const seedExpiringOAuthSession = () => {
   });
 };
 
+const resolveProvidedToken = async (getMapiClient: unknown): Promise<string> => {
+  const mock = getMapiClient as { mock: { calls: [{ oauthToken: () => Promise<string> }][] } };
+  const [{ oauthToken }] = mock.mock.calls.at(-1)!;
+  return oauthToken();
+};
+
 describe("program preAction OAuth refresh", () => {
   beforeEach(() => {
     vol.reset();
@@ -63,12 +69,6 @@ describe("program preAction OAuth refresh", () => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_ID;
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
-
-  const resolveProvidedToken = async (getMapiClient: unknown): Promise<string> => {
-    const mock = getMapiClient as { mock: { calls: [{ oauthToken: () => Promise<string> }][] } };
-    const [{ oauthToken }] = mock.mock.calls.at(-1)!;
-    return oauthToken();
-  };
 
   it("should refresh an expiring OAuth token when the credential is resolved", async () => {
     seedExpiringOAuthSession();
@@ -153,5 +153,114 @@ describe("program preAction OAuth refresh", () => {
     await expect(resolveProvidedToken(getMapiClient)).rejects.toThrow(
       /Please run `storyblok login` again/,
     );
+  });
+});
+
+const seedOAuthSessions = (regions: Record<string, string>) => {
+  const oauth: Record<string, unknown> = { activeRegion: Object.keys(regions)[0] };
+  for (const [region, accessToken] of Object.entries(regions)) {
+    oauth[region] = {
+      tokens: {
+        auth_type: "oauth",
+        access_token: accessToken,
+        refresh_token: `${accessToken}_refresh`,
+        // Far in the future, so no refresh interferes with the region assertions.
+        expires_at: "2999-01-01T00:00:00.000Z",
+      },
+      spaces: [],
+    };
+  }
+  vol.fromJSON({
+    [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({ oauth }),
+  });
+};
+
+describe("program preAction OAuth region reconciliation", () => {
+  beforeEach(() => {
+    vol.reset();
+    vi.resetModules();
+    vi.clearAllMocks();
+    delete process.env.STORYBLOK_LOGIN;
+    delete process.env.STORYBLOK_TOKEN;
+    delete process.env.STORYBLOK_REGION;
+  });
+  afterEach(() => vol.reset());
+
+  it("should refuse to run against a region the OAuth login does not cover", async () => {
+    seedOAuthSessions({ eu: "sb_oat_eu" });
+
+    const { getProgram } = await import("./program");
+    const program = getProgram();
+    let actionRan = false;
+    program.command("oauth-test-region-mismatch").action(() => {
+      actionRan = true;
+    });
+
+    await expect(
+      program.parseAsync(["node", "test", "--region", "us", "oauth-test-region-mismatch"]),
+    ).rejects.toThrow(/but region United States \(us\) was requested/);
+    expect(actionRan).toBe(false);
+  });
+
+  it("should not reach the API with the wrong region's credential when the region is refused", async () => {
+    seedOAuthSessions({ eu: "sb_oat_eu" });
+
+    const { getProgram } = await import("./program");
+    const program = getProgram();
+    program.command("oauth-test-region-no-client").action(() => {});
+
+    await expect(
+      program.parseAsync(["node", "test", "--region", "us", "oauth-test-region-no-client"]),
+    ).rejects.toThrow();
+
+    const { getMapiClient } = await import("./api");
+    expect(getMapiClient).not.toHaveBeenCalled();
+  });
+
+  it("should move the session to the requested region when that region is also authorized", async () => {
+    seedOAuthSessions({ eu: "sb_oat_eu", us: "sb_oat_us" });
+
+    const { getProgram } = await import("./program");
+    const program = getProgram();
+    program.command("oauth-test-region-switch").action(() => {});
+
+    await program.parseAsync(["node", "test", "--region", "us", "oauth-test-region-switch"]);
+
+    const { getMapiClient } = await import("./api");
+    expect(getMapiClient).toHaveBeenCalledWith(
+      expect.objectContaining({ oauthToken: expect.any(Function), region: "us" }),
+    );
+    await expect(resolveProvidedToken(getMapiClient)).resolves.toBe("sb_oat_us");
+  });
+
+  it("should use the active region when no region is requested", async () => {
+    seedOAuthSessions({ eu: "sb_oat_eu", us: "sb_oat_us" });
+
+    const { getProgram } = await import("./program");
+    const program = getProgram();
+    program.command("oauth-test-region-default").action(() => {});
+
+    await program.parseAsync(["node", "test", "oauth-test-region-default"]);
+
+    const { getMapiClient } = await import("./api");
+    expect(getMapiClient).toHaveBeenCalledWith(
+      expect.objectContaining({ oauthToken: expect.any(Function), region: "eu" }),
+    );
+    await expect(resolveProvidedToken(getMapiClient)).resolves.toBe("sb_oat_eu");
+  });
+
+  it("should let login pick a region the current session does not cover", async () => {
+    seedOAuthSessions({ eu: "sb_oat_eu" });
+
+    const { getProgram } = await import("./program");
+    const program = getProgram();
+    let actionRan = false;
+    program.command("login").action(() => {
+      actionRan = true;
+    });
+
+    await program.parseAsync(["node", "test", "--region", "us", "login"]);
+
+    expect(actionRan).toBe(true);
   });
 });

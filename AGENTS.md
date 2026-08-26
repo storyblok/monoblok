@@ -23,10 +23,6 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 - **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the
   package. Prefer composing over writing new.
 - **Check versions** - Look up the latest version before installing a new npm package.
-- **IMPORTANT: Keep internal details internal** - Never reference private Storyblok repositories,
-  their paths, file names, or internal implementation details in commit messages, PR titles and
-  descriptions, issue comments, code comments, or any other public-facing text. Describe the
-  observable API or behavior instead.
 
 ## Conventions
 

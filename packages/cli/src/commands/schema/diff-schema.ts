@@ -246,11 +246,18 @@ function diffFolder(
   fromFolder: LocalFolder | undefined,
   toFolder: LocalFolder | undefined,
 ): EntityDiff {
-  const before = fromFolder ? { ...fromFolder } : null;
-  const after = toFolder ? { ...toFolder } : null;
   const action =
     !fromFolder && toFolder ? "create" : fromFolder && !toFolder ? "stale" : "unchanged";
-  return { type: "folder", name, action, changes: [], before, after };
+  // An unchanged folder carries neither side, matching the entity invariant:
+  // both are identical, so neither tells a consumer anything.
+  return {
+    type: "folder",
+    name,
+    action,
+    changes: [],
+    before: action === "unchanged" || !fromFolder ? null : { ...fromFolder },
+    after: action === "unchanged" || !toFolder ? null : { ...toFolder },
+  };
 }
 
 /**

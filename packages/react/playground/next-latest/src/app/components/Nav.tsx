@@ -14,6 +14,7 @@ export function Nav() {
         padding: "12px 16px",
         borderBottom: "1px solid #e5e7eb",
         background: "#fff",
+        marginBottom: "20px",
       }}
     >
       {links.map(({ href, label }) => (

@@ -1,6 +1,4 @@
 import "./globals.css";
-import { Nav } from "@/app/components/Nav";
-import { PreviewBanner } from "@/app/components/PreviewBanner";
 
 export const metadata = {
   title: "Storyblok React Playground",
@@ -14,11 +12,7 @@ interface RootLayoutType {
 export default function RootLayout({ children }: RootLayoutType) {
   return (
     <html lang="en">
-      <body>
-        <PreviewBanner />
-        <Nav />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

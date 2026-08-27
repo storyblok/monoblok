@@ -25,7 +25,9 @@ describe("credentials file", () => {
     await updateCredentialsFile(() => ({ pat: "token" }));
 
     expect(vol.statSync(credentialsPath).mode & 0o777).toBe(0o600);
-    expect(Object.keys(vol.toJSON())).toEqual([credentialsPath]);
+    // Compare by name: memfs keys drop the Windows drive letter.
+    const written = Object.keys(vol.toJSON()).map((path) => path.split(/[\\/]/).pop());
+    expect(written).toEqual(["credentials.json"]);
   });
 
   it("should tighten the permissions of a file that was already too permissive", async () => {

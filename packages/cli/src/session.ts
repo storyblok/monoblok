@@ -1,6 +1,12 @@
 import { type RegionCode, regionsDomain } from "./constants";
 import { addCredentials, getCredentials } from "./creds";
-import { clearOAuthTokens, getOAuthActiveRegion, getOAuthEntry } from "./lib/oauth/store";
+import {
+  clearOAuthTokens,
+  getOAuthActiveRegion,
+  getOAuthEntry,
+  hasAnyOAuthSession,
+} from "./lib/oauth/store";
+import { getUI } from "./lib/ui";
 
 export interface SessionState {
   isLoggedIn: boolean;
@@ -20,6 +26,7 @@ function createSession() {
   const state: SessionState = {
     isLoggedIn: false,
   };
+  let warnedOAuthShadowed = false;
 
   async function initializeSession() {
     // First, check for environment variables
@@ -31,6 +38,7 @@ function createSession() {
       state.region = envCredentials.region as RegionCode;
       state.envLogin = true;
       state.authType = "pat";
+      await warnIfOAuthSessionShadowed("the STORYBLOK_LOGIN/STORYBLOK_TOKEN environment variables");
       return;
     }
 
@@ -47,6 +55,7 @@ function createSession() {
       state.password = patEntry.password;
       state.region = patEntry.region as RegionCode;
       state.authType = "pat";
+      await warnIfOAuthSessionShadowed("a stored personal access token");
     } else {
       // No PAT credentials; try an OAuth session.
       const oauthLoaded = await loadOAuthSession();
@@ -59,6 +68,18 @@ function createSession() {
       }
     }
     state.envLogin = false;
+  }
+
+  // A personal access token always wins over an OAuth session. Say so, otherwise a
+  // fresh `storyblok login --oauth` silently has no effect.
+  async function warnIfOAuthSessionShadowed(patSource: string): Promise<void> {
+    if (warnedOAuthShadowed || !(await hasAnyOAuthSession())) {
+      return;
+    }
+    warnedOAuthShadowed = true;
+    getUI().warn(
+      `You have an OAuth session, but the CLI is authenticating with ${patSource}, which takes precedence. Run \`storyblok logout\` to use the OAuth session.`,
+    );
   }
 
   async function loadOAuthSession(): Promise<boolean> {

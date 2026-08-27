@@ -1,4 +1,4 @@
-import { removePatCredentials } from "../../creds";
+import { removeAllCredentials } from "../../creds";
 import { colorPalette, commands } from "../../constants";
 import { getProgram } from "../../program";
 import { handleError } from "../../utils";
@@ -44,7 +44,7 @@ export const logoutCommand = program
         }
         await clearOAuthSession(state.region);
       } else {
-        await removePatCredentials();
+        await removeAllCredentials();
       }
 
       ui.ok(`Successfully logged out.`, true);

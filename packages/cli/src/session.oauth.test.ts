@@ -17,7 +17,7 @@ describe("session OAuth support", () => {
 
   it("should initialize an oauth session from stored tokens when no PAT exists", async () => {
     vol.fromJSON({
-      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           eu: {
             tokens: {
@@ -44,6 +44,8 @@ describe("session OAuth support", () => {
     vol.fromJSON({
       [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
         "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+      }),
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_x", expires_at: "x" } },
         },
@@ -60,6 +62,8 @@ describe("session OAuth support", () => {
     vol.fromJSON({
       [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
         "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+      }),
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_x", expires_at: "x" } },
         },
@@ -90,9 +94,16 @@ describe("session OAuth support", () => {
     warn.mockRestore();
   });
 
-  it("should not produce a broken PAT session when only an oauth section is stored", async () => {
+  it("should ignore an entry in credentials.json that carries no login or token", async () => {
+    // A credentials.json written by a CLI that still kept OAuth state in this file. Reading
+    // that entry as a PAT session is what left `logout` and `login` contradicting each other.
     vol.fromJSON({
       [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: {
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_stale", expires_at: "x" } },
+        },
+      }),
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_only", expires_at: "x" } },
         },
@@ -107,9 +118,23 @@ describe("session OAuth support", () => {
     expect(s.state.oauthAccessToken).toBe("sb_oat_only");
   });
 
-  it("should resolve the active region ahead of the fixed order when several regions are logged in", async () => {
+  it("should report a logged-out session when credentials.json holds only unusable entries", async () => {
     vol.fromJSON({
       [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: { eu: { tokens: { access_token: "sb_oat_stale" } } },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    // Neither "already logged in" nor a half-populated PAT session.
+    expect(s.state.isLoggedIn).toBe(false);
+    expect(s.state.authType).toBeUndefined();
+  });
+
+  it("should resolve the active region ahead of the fixed order when several regions are logged in", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           activeRegion: "us",
           eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_eu", expires_at: "x" } },
@@ -126,7 +151,7 @@ describe("session OAuth support", () => {
 
   it("should fall back to the fixed order when the active region has no tokens", async () => {
     vol.fromJSON({
-      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           activeRegion: "us",
           eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_eu", expires_at: "x" } },

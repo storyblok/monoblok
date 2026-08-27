@@ -25,7 +25,7 @@ afterAll(() => server.close());
 
 const seedExpiringOAuthSession = () => {
   vol.fromJSON({
-    [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+    [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
       oauth: {
         eu: {
           tokens: {

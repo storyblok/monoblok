@@ -40,7 +40,7 @@ describe("logout with an oauth session", () => {
     process.env.STORYBLOK_OAUTH_CLIENT_ID = "id";
     process.env.STORYBLOK_OAUTH_CLIENT_SECRET = "secret";
     vol.fromJSON({
-      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
         oauth: {
           eu: {
             tokens: {

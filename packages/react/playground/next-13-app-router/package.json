@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "dev:https": "next dev --experimental-https",
     "build:demo": "next build",
     "start": "next start"
   },

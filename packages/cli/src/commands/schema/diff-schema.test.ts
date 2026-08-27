@@ -495,6 +495,19 @@ describe("diffSchema", () => {
     expect(second.diffs).toEqual(first.diffs);
   });
 
+  it("should omit both sides from an unchanged folder", () => {
+    const folders = [{ name: "Layout", path: "layout", parentPath: null }];
+
+    const result = diffSchema(normalized([], [], folders), normalized([], [], folders));
+
+    expect(result.diffs[0]).toMatchObject({
+      type: "folder",
+      action: "unchanged",
+      before: null,
+      after: null,
+    });
+  });
+
   it("should omit both sides from an unchanged entity", () => {
     const comp = makeComponent("page", { title: { type: "text", pos: 0 } });
 

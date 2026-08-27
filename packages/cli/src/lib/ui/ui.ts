@@ -217,8 +217,11 @@ export class UI {
     if (!bar) {
       return noopProgressBar;
     }
-    // cli-progress only substitutes payload tokens ({title}) when the payload is
-    // passed alongside the update. Keep forwarding the original options on every call.
+    // cli-progress only substitutes payload tokens ({title}) when a payload rides
+    // along with an update. Prime it once here so a bar that is torn down before
+    // its first update (an aborted phase) still renders its title rather than the
+    // raw format string, and keep forwarding the options on every call after.
+    bar.update(0, options);
     return {
       increment: (count = 1) => bar.increment(count, options),
       // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.

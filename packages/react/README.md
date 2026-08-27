@@ -628,16 +628,21 @@ const Page = ({ block }: PageProps) => (
 );
 ```
 
-### Legacy Rich Text Resolver
+### Static HTML Rich Text Renderer
 
-> [!WARNING] The legacy `renderRichText` is deprecated. Migrate to `StoryblokRichText` or
-> `createRichTextRenderer` instead.
+`renderRichText` returns a plain HTML string. Use it when you need raw HTML output and are
+comfortable setting it via `dangerouslySetInnerHTML`:
 
-```js
+```tsx
 import { renderRichText } from "@storyblok/react";
 
-const html = renderRichText(block.richtext);
+const Page = ({ block }: PageProps) => (
+  <div dangerouslySetInnerHTML={{ __html: renderRichText(block.richtext) }} />
+);
 ```
+
+For React element output (no `dangerouslySetInnerHTML`) use `StoryblokRichText` or
+`createRichTextRenderer` as shown above.
 
 ### Using fallback components
 

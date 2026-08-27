@@ -31,8 +31,14 @@
       "import": "./dist/index.mjs"
     },
     "./config": {
-      "types": "./dist/config/index.d.mts",
-      "import": "./dist/config/index.mjs"
+      "import": {
+        "types": "./dist/config/index.d.mts",
+        "default": "./dist/config/index.mjs"
+      },
+      "require": {
+        "types": "./dist/config/index.d.cts",
+        "default": "./dist/config/index.cjs"
+      }
     }
   },
   "scripts": {

@@ -1,7 +1,6 @@
 import open from "open";
 import type { RegionCode } from "../../constants";
 import { managementApiRegions } from "../../constants";
-import { CommandError } from "../../utils";
 import { getUI } from "../ui";
 import { resolveOAuthClient } from "./client";
 import {
@@ -59,7 +58,7 @@ export const performOAuthLogin = async (options: {
   // Bind the callback port before opening the browser: no callback can be missed, and a port
   // conflict fails here rather than after sending the user through a consent screen whose
   // redirect the CLI could never have received.
-  const listener = await startCallbackServer(OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH);
+  const listener = await startCallbackServer(OAUTH_CALLBACK_PORT, OAUTH_CALLBACK_PATH, state);
 
   const authorizeUrl = buildAuthorizeUrl({
     region,
@@ -78,12 +77,8 @@ export const performOAuthLogin = async (options: {
     throw error;
   }
 
-  const { code, state: returnedState } = await listener.callback;
-  if (returnedState !== state) {
-    throw new CommandError(
-      "OAuth state mismatch; aborting for your safety. Please try `storyblok login` again.",
-    );
-  }
+  // The callback server rejects a state mismatch itself, so reaching here means the state matched.
+  const { code } = await listener.callback;
 
   const token = await exchangeToken(region, {
     grant_type: "authorization_code",

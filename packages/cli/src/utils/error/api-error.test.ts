@@ -453,7 +453,7 @@ describe("APIError credential rewrites", () => {
       expect(apiError.errorId).toBe("insufficient_scope");
       expect(apiError.fatal).toBe(true);
       expect(apiError.message).toBe(
-        'Your OAuth login is missing the "stories:write" permission. Re-run `storyblok login` and grant it at the consent screen.',
+        'Your OAuth login is missing the "stories:write" permission. Run `storyblok logout`, then `storyblok login --oauth` and grant it at the consent screen.',
       );
     }
   });

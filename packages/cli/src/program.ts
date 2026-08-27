@@ -12,9 +12,9 @@ import { ConsoleTransport } from "./lib/logger/logger-transport-console";
 import { resolveCommandPath } from "./utils/filesystem";
 import { session } from "./session";
 import { getMapiClient } from "./api";
-import { isExpiringSoon } from "./commands/oauth/expiry";
-import { refreshOAuthTokens } from "./commands/oauth/refresh";
-import { assertSpaceAllowed } from "./commands/oauth/space-guard";
+import { isExpiringSoon } from "./lib/oauth/expiry";
+import { refreshOAuthTokens } from "./lib/oauth/refresh";
+import { assertSpaceAllowed } from "./lib/oauth/space-guard";
 import {
   applyConfigToCommander,
   getCommandAncestry,

@@ -5,8 +5,8 @@ import { setupServer } from "msw/node";
 
 import "../../index";
 import { logoutCommand } from "./index";
-import { getOAuthEntry } from "../oauth/store";
-import { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET } from "../oauth/constants";
+import { getOAuthEntry } from "../../lib/oauth/store";
+import { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET } from "../../lib/oauth/constants";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");

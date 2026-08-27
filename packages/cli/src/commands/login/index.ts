@@ -51,6 +51,15 @@ export const loginCommand = program
       return;
     }
 
+    if (options.oauth && token) {
+      handleError(
+        new CommandError(
+          "`--oauth` and `--token` are two different login methods. Pass `--oauth` for browser consent, or `--token <token>` for a personal access token.",
+        ),
+      );
+      return;
+    }
+
     if (options.oauth) {
       const userRegion = region || regions.EU;
       await performOAuthLoginStrategy({ region: userRegion, verbose });

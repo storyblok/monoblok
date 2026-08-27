@@ -76,4 +76,15 @@ describe("login --oauth", () => {
     expect(entry.tokens?.access_token).toBe("sb_oat_x");
     expect(entry.spaces).toEqual([{ id: 99, region: "eu" }]);
   });
+
+  it("should reject --oauth combined with --token instead of silently ignoring one", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await loginCommand.parseAsync(["node", "test", "--oauth", "--token", "pat", "--region", "eu"]);
+
+    expect(errors.mock.calls.flat().join("\n")).toContain("two different login methods");
+    // Neither method may have run.
+    expect(await getOAuthEntry("eu")).toEqual({});
+    errors.mockRestore();
+  });
 });

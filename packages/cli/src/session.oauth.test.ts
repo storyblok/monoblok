@@ -56,6 +56,40 @@ describe("session OAuth support", () => {
     expect(s.state.password).toBe("pat-token");
   });
 
+  it("should warn when a PAT shadows an existing oauth session", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+        oauth: {
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_x", expires_at: "x" } },
+        },
+      }),
+    });
+    const { getUI } = await import("./lib/ui");
+    const warn = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    await s.initializeSession();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("OAuth session");
+    warn.mockRestore();
+  });
+
+  it("should not warn when no oauth session is stored", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+      }),
+    });
+    const { getUI } = await import("./lib/ui");
+    const warn = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
+    const { session } = await import("./session");
+    await session().initializeSession();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("should not produce a broken PAT session when only an oauth section is stored", async () => {
     vol.fromJSON({
       [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({

@@ -60,6 +60,17 @@ export const setOAuthActiveRegion = async (region: RegionCode): Promise<void> =>
   await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
 };
 
+// True when any region holds an OAuth session, regardless of which region it is.
+export const hasAnyOAuthSession = async (): Promise<boolean> => {
+  const all = await readAll();
+  const oauth = (all.oauth ?? {}) as OAuthStore;
+  return Object.entries(oauth).some(
+    ([key, entry]) =>
+      key !== "activeRegion" &&
+      Boolean((entry as OAuthRegionEntry | undefined)?.tokens?.access_token),
+  );
+};
+
 export const getOAuthClientFromEnv = (): OAuthClientCredentials | null => {
   const clientId = process.env.STORYBLOK_OAUTH_CLIENT_ID;
   const clientSecret = process.env.STORYBLOK_OAUTH_CLIENT_SECRET;

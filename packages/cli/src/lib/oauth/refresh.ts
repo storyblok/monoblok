@@ -1,5 +1,6 @@
 import type { RegionCode } from "../../constants";
 import {
+  oauthPath,
   readCredentialsFile,
   withCredentialsLock,
   writeCredentialsFile,
@@ -24,7 +25,7 @@ const inFlight = new Map<RegionCode, Promise<OAuthTokens>>();
 // the same token, and the loser's `invalid_grant` ends the session for good.
 const doRefresh = async (region: RegionCode): Promise<OAuthTokens> =>
   withCredentialsLock(async () => {
-    const entry = readOAuthEntry(await readCredentialsFile(), region);
+    const entry = readOAuthEntry(await readCredentialsFile(oauthPath()), region);
 
     // Another process may have refreshed while this one waited for the lock.
     if (entry.tokens && !isExpiringSoon(entry.tokens.expires_at)) {
@@ -67,9 +68,12 @@ const doRefresh = async (region: RegionCode): Promise<OAuthTokens> =>
 
     // Persist the rotated tokens BEFORE returning them for use. Re-read inside the lock
     // so a concurrent PAT login in the same file is not overwritten.
-    await writeCredentialsFile(applyOAuthEntry(await readCredentialsFile(), region, { tokens }));
+    await writeCredentialsFile(
+      applyOAuthEntry(await readCredentialsFile(oauthPath()), region, { tokens }),
+      oauthPath(),
+    );
     return tokens;
-  });
+  }, oauthPath());
 
 export const refreshOAuthTokens = async (region: RegionCode): Promise<OAuthTokens> => {
   if (inFlight.has(region)) {

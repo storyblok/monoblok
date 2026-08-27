@@ -1,9 +1,4 @@
-import {
-  addCredentials,
-  getCredentials,
-  removeAllCredentials,
-  removePatCredentials,
-} from "./creds";
+import { addCredentials, getCredentials, removeAllCredentials } from "./creds";
 import { describe, expect, it } from "vitest";
 import { vol } from "memfs";
 import type { StoryblokCredentials } from "./types";
@@ -80,68 +75,6 @@ describe("creds", async () => {
       );
 
       await removeAllCredentials("/temp/test");
-
-      const content = vol.readFileSync("/temp/test/credentials.json", "utf8");
-      expect(content).toBe("{}");
-    });
-  });
-
-  describe("removePatCredentials", () => {
-    it("should remove PAT entries while preserving the oauth section", async () => {
-      vol.fromJSON(
-        {
-          "test/credentials.json": JSON.stringify({
-            "api.storyblok.com": {
-              login: "julio.professional@storyblok.com",
-              password: "my_access_token",
-              region: "eu",
-            },
-            oauth: {
-              eu: {
-                tokens: {
-                  auth_type: "oauth",
-                  access_token: "sb_oat_x",
-                  expires_at: "2026-07-20T12:00:00.000Z",
-                },
-              },
-              activeRegion: "eu",
-            },
-          }),
-        },
-        "/temp",
-      );
-
-      await removePatCredentials("/temp/test");
-
-      const content = JSON.parse(vol.readFileSync("/temp/test/credentials.json", "utf8") as string);
-      expect(content["api.storyblok.com"]).toBeUndefined();
-      expect(content.oauth).toEqual({
-        eu: {
-          tokens: {
-            auth_type: "oauth",
-            access_token: "sb_oat_x",
-            expires_at: "2026-07-20T12:00:00.000Z",
-          },
-        },
-        activeRegion: "eu",
-      });
-    });
-
-    it("should write an empty object when there is no oauth section", async () => {
-      vol.fromJSON(
-        {
-          "test/credentials.json": JSON.stringify({
-            "api.storyblok.com": {
-              login: "julio.professional@storyblok.com",
-              password: "my_access_token",
-              region: "eu",
-            },
-          }),
-        },
-        "/temp",
-      );
-
-      await removePatCredentials("/temp/test");
 
       const content = vol.readFileSync("/temp/test/credentials.json", "utf8");
       expect(content).toBe("{}");

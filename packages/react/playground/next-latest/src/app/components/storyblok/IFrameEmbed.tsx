@@ -1,14 +1,7 @@
-import React from "react";
-import type { StoryblokBlockData } from "@storyblok/react";
+import type { StoryblokComponentProps } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 
-interface IframeEmbedBlok extends StoryblokBlockData {
-  url?: { url?: string; title?: string };
-}
-
-interface IframeEmbedProps {
-  block: IframeEmbedBlok;
-}
+type IframeEmbedProps = StoryblokComponentProps<{ url?: { url?: string; title?: string } }>;
 
 const IFrameEmbed = ({ block }: IframeEmbedProps) => {
   return (

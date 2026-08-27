@@ -12,6 +12,24 @@ type BlockComponentType = ComponentType<{ block: StoryblokBlockData }>;
 type AnyBlockComponent = ComponentType<{ block: any }>;
 
 /**
+ * A value accepted as a Suspense fallback: either a rendered node or a component with no
+ * required props (passed as `WeatherWidgetSkeleton` or `<WeatherWidgetSkeleton />`).
+ */
+export type SuspenseFallback = ReactNode | ComponentType<object>;
+
+/**
+ * Normalizes a SuspenseFallback value to a ReactNode.
+ * If a component type is passed it is instantiated with no props.
+ */
+function resolveSuspenseFallback(fallback: SuspenseFallback): ReactNode {
+  if (typeof fallback === "function") {
+    const F = fallback as ComponentType<object>;
+    return <F />;
+  }
+  return fallback as ReactNode;
+}
+
+/**
  * A component entry in the Storyblok component map.
  * Can be either a plain component or a config object with Suspense options.
  */
@@ -19,8 +37,11 @@ export type StoryblokComponentEntry =
   | AnyBlockComponent
   | {
       component: AnyBlockComponent;
-      /** Custom fallback for this component's Suspense boundary */
-      fallback?: ReactNode;
+      /**
+       * Custom fallback for this component's Suspense boundary.
+       * Accepts a ReactNode (`<Skeleton />`) or a component type (`Skeleton`).
+       */
+      fallback?: SuspenseFallback;
       /** Whether to wrap in Suspense (auto-detected for lazy components, can be forced) */
       suspense?: boolean;
     };
@@ -30,8 +51,11 @@ export interface StoryblokComponentsOptions {
   components: Record<string, StoryblokComponentEntry>;
   /** Fallback component when a block type is not found */
   fallback?: AnyBlockComponent;
-  /** Default Suspense fallback for async components */
-  suspenseFallback?: ReactNode;
+  /**
+   * Default Suspense fallback for async components.
+   * Accepts a ReactNode (`<Skeleton />`) or a component type (`Skeleton`).
+   */
+  suspenseFallback?: SuspenseFallback;
 }
 
 /** Components returned by {@link defineStoryblokComponents}, pre-wired to the same component map. */
@@ -77,7 +101,7 @@ function isLazyComponent(component: unknown): boolean {
  */
 function normalizeEntry(entry: StoryblokComponentEntry): {
   component: BlockComponentType;
-  fallback?: ReactNode;
+  fallback?: SuspenseFallback;
   suspense?: boolean;
 } {
   if (typeof entry === "function" || isLazyComponent(entry)) {
@@ -98,18 +122,25 @@ function normalizeEntry(entry: StoryblokComponentEntry): {
  *     teaser: Teaser,
  *     weather_widget: {
  *       component: WeatherWidget,
- *       fallback: <WeatherWidgetSkeleton />,
+ *       fallback: WeatherWidgetSkeleton,   // component type
+ *       // fallback: <WeatherWidgetSkeleton />,  // or a ReactNode — both work
  *       suspense: true,
  *     },
  *   },
  *   fallback: FallbackBlock,
+ *   suspenseFallback: GlobalSkeleton,     // component type or ReactNode
  * });
  * ```
  */
 export function defineStoryblokComponents(
   config: StoryblokComponentsOptions,
 ): StoryblokComponentsResult {
-  const defaultSuspenseFallback = config.suspenseFallback ?? <DefaultSuspenseFallback />;
+  const defaultSuspenseFallback: ReactNode =
+    config.suspenseFallback !== undefined ? (
+      resolveSuspenseFallback(config.suspenseFallback)
+    ) : (
+      <DefaultSuspenseFallback />
+    );
 
   function StoryblokComponent({
     block,
@@ -150,7 +181,11 @@ export function defineStoryblokComponents(
 
     if (needsSuspense) {
       return (
-        <Suspense fallback={fallback ?? defaultSuspenseFallback}>
+        <Suspense
+          fallback={
+            fallback !== undefined ? resolveSuspenseFallback(fallback) : defaultSuspenseFallback
+          }
+        >
           <Component block={block} {...rest} />
         </Suspense>
       );

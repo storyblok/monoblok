@@ -18,6 +18,32 @@ describe("oauth store", () => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
 
+  it("should keep oauth state out of credentials.json", async () => {
+    await updateOAuthEntry("eu", {
+      tokens: { auth_type: "oauth", access_token: "a", expires_at: "x" },
+      activeRegion: true,
+    });
+
+    // Released CLIs read credentials.json as a map of machine name to PAT entry and treat the
+    // first value as the active session. An oauth section here wedges them: `logout` finds no
+    // password and says "already logged out" while `login` finds a truthy entry and says
+    // "already logged in", with no CLI-only way back.
+    expect(vol.existsSync(`${process.env.HOME}/.storyblok/credentials.json`)).toBe(false);
+    expect(vol.existsSync(`${process.env.HOME}/.storyblok/oauth.json`)).toBe(true);
+  });
+
+  it("should leave a stored PAT untouched when an oauth session is written", async () => {
+    const credentials = `${process.env.HOME}/.storyblok/credentials.json`;
+    const pat = { "api.storyblok.com": { login: "me@example.com", password: "pat", region: "eu" } };
+    vol.fromJSON({ [credentials]: JSON.stringify(pat) });
+
+    await updateOAuthEntry("eu", {
+      tokens: { auth_type: "oauth", access_token: "a", expires_at: "x" },
+    });
+
+    expect(JSON.parse(vol.readFileSync(credentials, "utf8") as string)).toEqual(pat);
+  });
+
   it("should round-trip an oauth entry per region", async () => {
     await updateOAuthEntry("eu", {
       tokens: {
@@ -83,7 +109,7 @@ describe("oauth store", () => {
       activeRegion: true,
     });
     // Corrupt the pointer directly, bypassing the setter.
-    const path = `${process.env.HOME}/.storyblok/credentials.json`;
+    const path = `${process.env.HOME}/.storyblok/oauth.json`;
     const stored = JSON.parse(vol.readFileSync(path, "utf8") as string);
     stored.oauth.activeRegion = "not-a-region";
     vol.fromJSON({ [path]: JSON.stringify(stored) });

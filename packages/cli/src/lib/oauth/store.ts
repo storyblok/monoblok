@@ -1,6 +1,6 @@
 import type { RegionCode } from "../../constants";
 import type { CredentialsFile } from "../../credentials-file";
-import { readCredentialsFile, updateCredentialsFile } from "../../credentials-file";
+import { oauthPath, readCredentialsFile, updateCredentialsFile } from "../../credentials-file";
 import { isRegion } from "../../utils";
 
 export interface OAuthClientCredentials {
@@ -25,7 +25,7 @@ export interface OAuthRegionEntry {
   spaces?: OAuthGrantSpace[];
 }
 
-// The `oauth` credentials section holds one entry per region, plus an
+// `oauth.json` nests everything under an `oauth` key holding one entry per region, plus an
 // `activeRegion` pointer marking the region the user most recently logged into.
 // The pointer disambiguates which session to load when several regions are
 // authenticated at once. Its key never collides with a region code.
@@ -58,18 +58,18 @@ export const applyOAuthEntry = (
 };
 
 export const getOAuthEntry = async (region: RegionCode): Promise<OAuthRegionEntry> =>
-  readOAuthEntry(await readCredentialsFile(), region);
+  readOAuthEntry(await readCredentialsFile(oauthPath()), region);
 
 // The region the user most recently logged into, or undefined when unset or
 // pointing at a value that is not a valid region.
 export const getOAuthActiveRegion = async (): Promise<RegionCode | undefined> => {
-  const active = getStore(await readCredentialsFile()).activeRegion;
+  const active = getStore(await readCredentialsFile(oauthPath())).activeRegion;
   return active && isRegion(active) ? active : undefined;
 };
 
 // True when any region holds an OAuth session, regardless of which region it is.
 export const hasAnyOAuthSession = async (): Promise<boolean> => {
-  const oauth = getStore(await readCredentialsFile());
+  const oauth = getStore(await readCredentialsFile(oauthPath()));
   return Object.entries(oauth).some(
     ([key, entry]) =>
       key !== "activeRegion" &&
@@ -96,7 +96,10 @@ export const updateOAuthEntry = async (
   region: RegionCode,
   patch: OAuthRegionEntry & { activeRegion?: boolean },
 ): Promise<void> => {
-  await updateCredentialsFile((credentials) => applyOAuthEntry(credentials, region, patch));
+  await updateCredentialsFile(
+    (credentials) => applyOAuthEntry(credentials, region, patch),
+    oauthPath(),
+  );
 };
 
 // Clears the session (tokens and granted spaces) for one region.
@@ -110,5 +113,5 @@ export const clearOAuthTokens = async (region: RegionCode): Promise<void> => {
       delete oauth.activeRegion;
     }
     return { ...credentials, oauth };
-  });
+  }, oauthPath());
 };

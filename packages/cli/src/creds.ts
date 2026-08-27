@@ -5,8 +5,8 @@ import { getStoryblokGlobalPath } from "./utils/filesystem";
 import type { StoryblokCredentials } from "./types";
 
 /**
- * Reads the credentials file: one entry per machine name, plus the `oauth` section that
- * holds the OAuth sessions. Returns null when nothing is stored yet.
+ * Reads the credentials file: one entry per machine name. OAuth sessions live in their own
+ * file (see `oauthPath`). Returns null when nothing is stored yet.
  */
 export const getCredentials = async (
   filePath = join(getStoryblokGlobalPath(), "credentials.json"),
@@ -40,15 +40,8 @@ export const addCredentials = async ({
   }
 };
 
+// Clears the PAT machine entries. OAuth sessions live in their own file, so logging out of
+// a PAT session no longer has to preserve anything here.
 export const removeAllCredentials = async (filepath: string = getStoryblokGlobalPath()) => {
   await updateCredentialsFile(() => ({}), join(filepath, "credentials.json"));
-};
-
-// Removes the PAT machine entries while preserving the `oauth` section (OAuth sessions
-// per region). Logging out of a PAT session must not end an OAuth session.
-export const removePatCredentials = async (filepath: string = getStoryblokGlobalPath()) => {
-  await updateCredentialsFile(
-    (credentials) => (credentials.oauth ? { oauth: credentials.oauth } : {}),
-    join(filepath, "credentials.json"),
-  );
 };

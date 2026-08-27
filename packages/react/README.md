@@ -187,309 +187,248 @@ Below is the guide and examples on how to use it with different frameworks -
 
 ### React
 
-The initalization remains the same when you work with React. You can intialze the SDK in the
-`index.js` file. Please refer to the 'Initialization' section above to read more.
+Initialize the SDK in your entry file (e.g. `main.tsx`) as described in the
+[Initialization](#initialization) section above.
 
 ### Fetching Content and Listening to Storyblok Visual Editor events
 
-Use `useStoryblok` to fetch the content as well as enable live editing. You need to pass the `slug`
-as the first parameter, `apiOptions` as the second parameter, and `bridgeOptions` as the third
-parameter, which is optional if you want to set the options for the bridge by yourself. Check the
-available [apiOptions](https://github.com/storyblok/storyblok-js-client#class-storyblok) (passed to
-`storyblok-js-client`) and
-[bridgeOptions](https://www.storyblok.com/docs/Guides/storyblok-latest-js?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-nuxt)
-(passed to the Storyblok Bridge).
+Fetch content using `apiClient` and pass the story to `StoryblokPreview` for live editing. The
+`StoryblokPreview` component is a client component that subscribes to Visual Editor events and calls
+its render-prop children with the latest story on every update.
 
-```js
-import { StoryblokComponent, useStoryblok } from "@storyblok/react";
+For data fetching we recommend a library such as [SWR](https://swr.vercel.app/) or
+[TanStack Query](https://tanstack.com/query) to handle loading and error states. The example below
+uses SWR:
+
+```tsx
+import { type Story } from "@storyblok/react";
+import { StoryblokPreview } from "@storyblok/react/client";
+import useSWR from "swr";
+import { apiClient, StoryblokComponent } from "./lib/storyblok";
+
+async function fetchStory(slug: string): Promise<Story> {
+  const { data } = await apiClient.stories.get(slug, { query: { version: "draft" } });
+  if (!data) throw new Error(`Story not found: ${slug}`);
+  return data.story;
+}
 
 function App() {
-  const story = useStoryblok("react", { version: "draft" });
+  const { data: story, error } = useSWR("react", fetchStory);
 
-  if (!story?.content) {
-    return <div>Loading...</div>;
-  }
+  if (error) return <div>Failed to load story.</div>;
+  if (!story) return <div>Loading...</div>;
 
-  return <StoryblokComponent blok={story.content} />;
+  return (
+    <StoryblokPreview story={story}>
+      {(live) => <StoryblokComponent block={live.content} />}
+    </StoryblokPreview>
+  );
 }
 
 export default App;
 ```
 
-`StoryblokComponent` renders the route components dynamically, using the list of components loaded
-during the initialization inside the `storyblokInit` function.
+`StoryblokComponent` renders the block by matching `block.component` against the map registered in
+`defineStoryblokComponents`. `StoryblokPreview` holds the live story in state and re-renders
+children on every Visual Editor update.
 
-This is how you can pass the Bridge options as a third parameter to `useStoryblok`:
+To configure the bridge, pass a `bridgeOptions` prop to `StoryblokPreview`:
 
-```js
-useStoryblok(
-  story.id,
-  { version: "draft", resolveRelations: ["Article.author"] },
-  {
-    resolveRelations: ["Article.author"],
-    resolveLinks: "url",
-    preventClicks: true,
-  },
-);
+```tsx
+<StoryblokPreview story={story} bridgeOptions={{ resolveRelations: ["article.author"] }}>
+  {(live) => <StoryblokComponent block={live.content} />}
+</StoryblokPreview>
 ```
 
-**Check out our React Boilerplate [here](https://github.com/storyblok/storyblok-react-boilerplate),
-or read on how to add Storyblok to React in 5 mins
-[here](https://www.storyblok.com/tp/headless-cms-react)** You can also take a look at the
-[React Playground](https://github.com/arorachakit/storyblok-react/tree/main/playground) in this
-repo.
+You can also take a look at the
+[React Playground](https://github.com/storyblok/monoblok/tree/main/packages/react/playground/react)
+in this repo.
 
 ### Learn: Next.js 13 and 14 Data Fetching and Caching Behavior
 
-When using Next.js 13 or 14 with the App Router, ensure that you include `cache: "no-store"` in your
-requests when fetching data from Storyblok. This prevents data caching, ensuring that you always
-receive the most up-to-date content from Storyblok.
+When using Next.js 13 or 14 with the App Router, fetches are cached by default. To ensure you always
+receive the latest content from Storyblok, opt out of caching at the route segment level:
+
+```typescript
+// app/[[...slug]]/page.tsx
+export const dynamic = "force-dynamic";
+```
 
 For more details, refer to the Next.js documentation on
 [opting out of caching](https://nextjs.org/docs/app/building-your-application/caching#opting-out-1).
 
-> Note: In Next.js 15, this will no longer be necessary, as the default caching behavior has been
-> adjusted based on [community feedback](https://nextjs.org/blog/next-15-rc#caching-updates).
-
-#### Example
-
-Here's how you can fetch data from Storyblok with `cache: "no-store"`:
-
-```typescript
-export async function fetchData() {
-  const sbParams: ISbStoriesParams = { version: "draft" };
-
-  const storyblokApi: StoryblokClient = getStoryblokApi();
-
-  return storyblokApi.get(`cdn/stories/home`, sbParams, {
-    cache: "no-store", // This prevents Next.js 13, 14 default caching behaviour
-  });
-}
-```
+> Note: In Next.js 15, this is no longer necessary — fetches are no longer cached by default based
+> on [community feedback](https://nextjs.org/blog/next-15-rc#caching-updates).
 
 ## Choosing the Right Export
 
-`@storyblok/react` provides three different exports to meet different deployment and framework
-requirements:
+`@storyblok/react` ships two entry points:
 
-### Export Types
-
-| Export                 | Use Case                            | Live Editing | Static Export Support |
-| ---------------------- | ----------------------------------- | ------------ | --------------------- |
-| `@storyblok/react`     | Client-side rendering, SPA          | ✅           | ✅                    |
-| `@storyblok/react/ssr` | Server-side rendering, static sites | ❌           | ✅                    |
-| `@storyblok/react/rsc` | React Server Components             | ✅           | ❌                    |
+| Export                    | Use Case                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@storyblok/react`        | All environments — initialization, rendering, richtext, `storyblokEditable`                                                                 |
+| `@storyblok/react/client` | Client-only — live editing components and hooks (`StoryblokPreview`, `StoryblokPreviewRsc`, `useStoryblokState`, `useStoryblokEditorEvent`) |
 
 ### When to Use Each Export
 
 **Use `@storyblok/react`** for:
 
-- Single Page Applications (SPA)
-- Client-side rendered React apps
-- When you need live editing in browser-based applications
+- Setting up `createApiClient` and `defineStoryblokComponents`
+- Block components (`storyblokEditable`, `StoryblokRichText`)
+- Any code that runs on the server or in shared modules
 
-**Use `@storyblok/react/ssr`** for:
+**Use `@storyblok/react/client`** for:
 
-- Next.js static exports (`output: 'export'`)
-- Static site generation without live editing
-- Server-side rendering where live editing isn't required
-- Performance-critical scenarios where bundle size matters
+- Subscribing to Visual Editor events in the browser
+- `StoryblokPreview` — client component with a render-prop for SPA and Pages Router live editing
+- `StoryblokPreviewRsc` — client component that calls a Server Action to re-render RSC on editor
+  events
+- `useStoryblokState` / `useStoryblokEditorEvent` — lower-level hooks
 
-**Use `@storyblok/react/rsc`** for:
-
-- Next.js App Router with React Server Components
-- When you need live editing with server components
-- Modern React applications with server/client component separation
-
-## Next.js Static Export Support
-
-If you're using Next.js with `output: 'export'` for static site generation, you must use the
-**`@storyblok/react/ssr`** export. The RSC export includes server actions that are incompatible with
-static exports.
-
-### Static Export Configuration
-
-```js
-// next.config.js
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: "export", // Enables static export
-};
-
-module.exports = nextConfig;
-```
-
-### Static Export Implementation
-
-```js
-// lib/storyblok.js
-import { apiPlugin, storyblokInit } from "@storyblok/react/ssr"; // Use SSR export
-import Page from "@/components/Page";
-import Teaser from "@/components/Teaser";
-
-export const getStoryblokApi = storyblokInit({
-  accessToken: "YOUR_ACCESS_TOKEN",
-  use: [apiPlugin],
-  components: {
-    page: Page,
-    teaser: Teaser,
-  },
-});
-```
-
-```js
-// app/page.js
-import { StoryblokServerStory } from "@storyblok/react/ssr";
-import { getStoryblokApi } from "@/lib/storyblok";
-
-export default async function Home() {
-  const { data } = await fetchData();
-
-  return (
-    <div>
-      <StoryblokServerStory story={data.story} />
-    </div>
-  );
-}
-
-export async function fetchData() {
-  const storyblokApi = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/home`, { version: "draft" });
-}
-```
-
-> [!NOTE] The SSR export does not include live editing capabilities. Live editing requires
-> client-side JavaScript that's incompatible with static exports.
+> [!NOTE] All `@storyblok/react/client` exports are marked `"use client"` and must not be imported
+> from Server Components directly. Pass them as children or use them in dedicated client files.
 
 ## Next.js using App Router
 
-The components in the `app` directory are by default React Server Side Components. The SDK provides
-different approaches depending on your deployment needs:
-
-- **For static exports**: Use `@storyblok/react/ssr` (no live editing)
-- **For dynamic apps**: Use `@storyblok/react/rsc` (with live editing)
-
-### React Server Components with Live Editing
-
-You can enable Storyblok Visual Editor's live editing with React Server Components by using the
-`StoryblokStory` component, which automatically handles both content rendering and live editing
-bridge loading. The SDK allows you to take full advantage of the Live Editing while maintaining the
-performance benefits of Server Components.
-
-> For live editing with RSC, always import `@storyblok/react/rsc`.
-
-### Live Editing Bridge Loading
-
-**When is bridge loading automatic?**
-
-- ✅ **Using `StoryblokStory`**: Automatically handles bridge loading and live editing
-- ✅ **Client-Side Components**: When using `StoryblokComponent` or other client components that
-  already load the bridge
-- ❌ **Pure `StoryblokServerComponent`**: Manual bridge loading needed with `StoryblokLiveEditing`
-
-**Why does RSC need special handling?**
-
-In React Server Components environments where components are purely server-rendered, the Storyblok
-bridge script isn't automatically loaded on the client. The `StoryblokStory` component detects when
-running in the Visual Editor and loads the bridge script for you.
+App Router pages are React Server Components by default. The SDK supports two live-editing
+approaches depending on your needs.
 
 ### 1. Initialize
 
-Create a new file `lib/storyblok.js` and initialize the SDK. Make sure you export the
-`getStoryblokApi` function, which is an instance of
-[storyblok-js-client](https://github.com/storyblok/storyblok-js-client) that is shared by server
-components.
+Create `lib/storyblok.ts` once. Both `apiClient` and the returned components are shared across
+server and client code.
 
-```js
-// lib/storyblok.js
+```ts
+// lib/storyblok.ts
+import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
 import Page from "@/components/Page";
 import Teaser from "@/components/Teaser";
-import { apiPlugin, storyblokInit } from "@storyblok/react/rsc";
 
-export const getStoryblokApi = storyblokInit({
+export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
-  use: [apiPlugin],
+});
+
+export const { StoryblokComponent } = defineStoryblokComponents({
   components: {
-    teaser: Teaser,
     page: Page,
+    teaser: Teaser,
   },
 });
 ```
 
-### 2. Fetch Content and Render Components
+### 2. Fetch Content
 
-The `getStoryblokApi` function can now be used inside your Story components to fetch the data from
-Storyblok. In `app/page.jsx`, use it as follows:
+Fetch the story in your Server Component page and pass it down:
 
-```js
-import { StoryblokClient, ISbStoriesParams } from '@storyblok/react/rsc';
-import { StoryblokStory } from '@storyblok/react/rsc';
-import { getStoryblokApi } from '@/lib/storyblok';
+```tsx
+// app/[[...slug]]/page.tsx
+import { apiClient } from "@/lib/storyblok";
+import { StoryContent } from "@/components/StoryContent";
 
-export default async function Home() {
-  const { data } = await fetchData();
+export default async function Page({ params }: { params: Promise<{ slug?: string[] }> }) {
+  const { slug } = await params;
+  const storySlug = slug ? slug.join("/") : "home";
+  const result = await apiClient.stories.get(storySlug, { query: { version: "draft" } });
+  const story = result.data?.story;
 
+  if (!story) return <main>Story not found</main>;
+
+  return <StoryContent story={story} />;
+}
+```
+
+### 3a. Live Editing with `StoryblokPreview` (simpler)
+
+For most apps, wrap the story in a `"use client"` component that uses `StoryblokPreview`:
+
+```tsx
+// components/StoryContent.tsx
+"use client";
+
+import type { Story } from "@storyblok/react";
+import { StoryblokPreview } from "@storyblok/react/client";
+import { StoryblokComponent } from "@/lib/storyblok";
+
+export function StoryContent({ story }: { story: Story }) {
   return (
-    <div>
-      <StoryblokStory story={data.story} />
-    </div>
+    <StoryblokPreview key={story.uuid} story={story}>
+      {(live) => <StoryblokComponent block={live.content} />}
+    </StoryblokPreview>
   );
 }
+```
 
-export async function fetchData() {
-  let sbParams: ISbStoriesParams = { version: 'draft' };
+### 3b. Live Editing with `StoryblokPreviewRsc` (full RSC streaming)
 
-  const storyblokApi: StoryblokClient = getStoryblokApi();
-  return storyblokApi.get(`cdn/stories/home`, sbParams);
+For apps using Suspense streaming and async Server Components (e.g. slow data fetches inside
+blocks), use `StoryblokPreviewRsc` with a Server Action. On every editor event it calls the action
+to produce fresh server-rendered output without a full page reload.
+
+```tsx
+// lib/actions.tsx
+"use server";
+
+import type { Story } from "@storyblok/react";
+import type { ReactNode } from "react";
+import { StoryContent } from "@/components/StoryContent";
+
+export async function renderContent(story: Story): Promise<ReactNode> {
+  return <StoryContent story={story} />;
 }
 ```
 
-**The `StoryblokStory` component automatically:**
+```tsx
+// app/[[...slug]]/page.tsx
+import { apiClient } from "@/lib/storyblok";
+import { StoryblokPreviewRsc } from "@storyblok/react/client";
+import { renderContent } from "@/lib/actions";
+import { StoryContent } from "@/components/StoryContent";
 
-- Renders your Storyblok content components on the server
-- Loads the bridge script for live editing (when in Visual Editor)
-- Handles live content updates via global cache
-- Manages bridge registration and cleanup
+export default async function Page({ params }: { params: Promise<{ slug?: string[] }> }) {
+  const { slug } = await params;
+  const storySlug = slug ? slug.join("/") : "home";
+  const result = await apiClient.stories.get(storySlug, { query: { version: "draft" } });
+  const story = result.data?.story;
 
-**Advanced: Bridge Options**
+  if (!story) return <main>Story not found</main>;
 
-You can pass bridge options for advanced configurations:
-
-```jsx
-const bridgeOptions = { resolveRelations: ["article.author"] };
-
-<StoryblokStory story={data.story} bridgeOptions={bridgeOptions} />;
+  return (
+    <StoryblokPreviewRsc renderContent={renderContent}>
+      <StoryContent story={story} />
+    </StoryblokPreviewRsc>
+  );
+}
 ```
 
-**Advanced: Manual Component Separation**
+`StoryContent` here is a plain Server Component (no `"use client"`):
 
-For advanced use cases where you need more control, you can use the individual components:
+```tsx
+// components/StoryContent.tsx
+import { StoryblokComponent } from "@/lib/storyblok";
+import type { Story } from "@storyblok/react";
 
-```jsx
-import { StoryblokServerComponent, StoryblokLiveEditing } from '@storyblok/react/rsc';
-
-// Manual approach (only use if you need special control)
-<StoryblokServerComponent blok={data.story.content} />
-<StoryblokLiveEditing story={data.story} bridgeOptions={bridgeOptions} />
+export function StoryContent({ story }: { story: Story }) {
+  return <StoryblokComponent block={story.content} />;
+}
 ```
 
-> [!NOTE] Most applications should use `StoryblokStory` for the best developer experience and
-> automatic live editing support.
+> [!NOTE] `StoryblokPreviewRsc` requires Server Actions. If you are using Next.js with
+> `output: 'export'` (static export), use `StoryblokPreview` (3a) instead.
 
-**Important: Individual Content Components**
+**Block components** use `StoryblokComponent` from your `lib/storyblok` for nested blocks:
 
-When creating your individual Storyblok content components (like `Page`, `Teaser`, etc.), you must
-use `StoryblokServerComponent` for nested components. Import it from the same export you're using:
+```tsx
+// components/Page.tsx
+import type { StoryblokBlockData, StoryblokComponentProps } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
+import { StoryblokComponent } from "@/lib/storyblok";
 
-**For RSC (with live editing):**
+type PageProps = StoryblokComponentProps<{ body: StoryblokBlockData[] }>;
 
-```jsx
-import { storyblokEditable, StoryblokServerComponent } from "@storyblok/react/rsc";
-
-const Page = ({ blok }) => (
-  <main {...storyblokEditable(blok)}>
-    {blok.body.map((nestedBlok) => (
-      <StoryblokServerComponent blok={nestedBlok} key={nestedBlok._uid} />
+const Page = ({ block }: PageProps) => (
+  <main {...storyblokEditable(block)}>
+    {block.body.map((nestedBlock) => (
+      <StoryblokComponent block={nestedBlock} key={nestedBlock._uid} />
     ))}
   </main>
 );
@@ -497,226 +436,133 @@ const Page = ({ blok }) => (
 export default Page;
 ```
 
-**For SSR (static exports):**
-
-```jsx
-import { storyblokEditable, StoryblokServerComponent } from "@storyblok/react/ssr";
-
-const Page = ({ blok }) => (
-  <main {...storyblokEditable(blok)}>
-    {blok.body.map((nestedBlok) => (
-      <StoryblokServerComponent blok={nestedBlok} key={nestedBlok._uid} />
-    ))}
-  </main>
-);
-
-export default Page;
-```
-
-> [!IMPORTANT] Always use `StoryblokServerComponent` for nested content components, even when you
-> declare them as client components with `"use client"`. This ensures proper server-side rendering.
-
-> [!NOTE] To use this approach (with `getStoryblokApi`), you need to include the `apiPlugin` module
-> when calling `storyblokInit` function. If you don't use `apiPlugin`, you can use your preferred
-> method or function to fetch your data.
-
-To try this setup, take a look at the
-[Next.js RSC Playgrounds](https://github.com/storyblok/monoblok/tree/main/packages/react/playground)
+Take a look at the
+[Next.js App Router playground](https://github.com/storyblok/monoblok/tree/main/packages/react/playground/next-latest)
+and the
+[Next.js 13 App Router playground](https://github.com/storyblok/monoblok/tree/main/packages/react/playground/next-13-app-router)
 in this repo.
 
 ## Next.js using Pages Router
 
-In this section, we'll see how to use the React SDK with the `pages` directory approach.
+### 1. Initialize
 
-The initalization remains the same when you work with Next.js. You can intialze the SDK in the
-`_app.js` file. Please refer to the 'Initialization' section above to read more.
+Set up `lib/storyblok.ts` once and export `apiClient` and `StoryblokComponent`:
 
-### 1. Fetching Content
+```ts
+// lib/storyblok.ts
+import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import Page from "@/components/Page";
+import Teaser from "@/components/Teaser";
 
-The SDK provides a `getStoryblokApi` object in your app, which is an instance of
-[storyblok-js-client](https://github.com/storyblok/storyblok-js-client). This can be used to fetch
-the content from Storyblok. You can use it in functions like `getStaticProps`, `getStaticPaths`,
-`getServerSideProps` etc.
-
-```js
-import { getStoryblokApi } from "@storyblok/react";
-
-// At the required place
-const storyblokApi = getStoryblokApi();
-const { data } = await storyblokApi.get("cdn/stories", { version: "draft" });
-```
-
-> Note: To use this approach, you need to include the `apiPlugin` module when calling
-> `storyblokInit` function. If you don't use `apiPlugin`, you can use your preferred method or
-> function to fetch your data.
-
-### 2. Listening to Storyblok Visual Editor events
-
-The SDK also provides you with the `useStoryblokState` hook. It works similarly to `useStoryblok`
-for live editing, but it doesn't fetch the content. Instead, it receives a story object as the first
-parameter. You can also pass the Bridge Options as the second parameter.
-
-```js
-import { StoryblokComponent, useStoryblokState } from "@storyblok/react";
-
-export default function Home({ story: initialStory }) {
-  const story = useStoryblokState(initialStory);
-
-  if (!story.content) {
-    return <div>Loading...</div>;
-  }
-
-  return <StoryblokComponent blok={story.content} />;
-}
-```
-
-In this case, the story is being passed as a prop that can be coming from where the story is being
-fetched. A complete example would look like this-
-
-```js
-import { getStoryblokApi, StoryblokComponent, useStoryblokState } from "@storyblok/react";
-
-export default function Home({ story: initialStory }) {
-  const story = useStoryblokState(initialStory);
-
-  if (!story.content) {
-    return <div>Loading...</div>;
-  }
-
-  return <StoryblokComponent blok={story.content} />;
-}
-
-export async function getStaticProps({ preview = false }) {
-  const storyblokApi = getStoryblokApi();
-  const { data } = await storyblokApi.get(`cdn/stories/react`, {
-    version: "draft",
-  });
-
-  return {
-    props: {
-      story: data ? data.story : false,
-      preview,
-    },
-    revalidate: 3600, // revalidate every hour
-  };
-}
-```
-
-`StoryblokComponent` renders the route components dynamically, using the list of components loaded
-during the initialization inside the `storyblokInit` function.
-
-**Check out the
-[code for the first part of our Next.js + Storyblok Ultimate Tutorial](https://github.com/storyblok/next.js-ultimate-tutorial/tree/part-1).
-Or you can also read on how to add Storyblok to a Next.js project in 5 minutes
-[here](https://www.storyblok.com/tp/add-a-headless-cms-to-next-js-in-5-minutes)**
-
-### 3. Adding components per page
-
-If you are using the pages router, you might want to load your components per page, instead of all
-in the `_app` file.
-
-If you load all components in the `_app` file with `storyblokInit` funciton, the JavaScript for all
-of those components will be loaded on every page, even on pages where most of these components might
-not be used.
-
-A better approach is to load these components on a per-page basis, reducing the JS bundle for that
-page, improving your load time, and SEO.
-
-Simply execute `storyblokInit` in the `_app` file as you did before, but omit the `components`
-object and the component imports like so:
-
-```diff
-import { storyblokInit, apiPlugin } from "@storyblok/react";
-
-/** Import your components */
--import Page from "./components/Page";
--import Teaser from "./components/Teaser";
-
-storyblokInit({
+export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
-  use: [apiPlugin],
-- components: {
--   page: Page,
--   teaser: Teaser,
-- },
 });
-```
 
-After that, use the `setComponent` method in each of your pages, to only load the components you
-need for that particular page:
-
-```diff
-import React from "react";
-import Teaser from "../components/teaser";
-import Grid from "../components/grid";
-import Page from "../components/page";
-import Feature from "../components/feature";
-
-import {
-  useStoryblokState,
-  StoryblokComponent,
-+  setComponents,
-} from "@storyblok/react";
-
-export default function Home({
-  story: initialStory,
-}: InferGetStaticPropsType<typeof getStaticProps>) {
-
-+  setComponents({
-+    teaser: Teaser,
-+    grid: Grid,
-+    feature: Feature,
-+    page: Page,
-+  })
-
-  const story = useStoryblokState(initialStory);
-
-  if (!story.content) {
-    return <div>Loading...</div>;
-  }
-
-  return <StoryblokComponent blok={story.content} />;
-}
-```
-
-## Features and API
-
-You can **choose the features to use** when you initialize the plugin. In that way, you can improve
-Web Performance by optimizing your page load and save some bytes.
-
-### Storyblok API
-
-You can use an `apiOptions` object. This is passed down to the
-[storyblok-js-client config object](https://github.com/storyblok/storyblok-js-client#class-storyblok):
-
-```js
-storyblokInit({
-  accessToken: "YOUR_ACCESS_TOKEN",
-  apiOptions: {
-    // storyblok-js-client config object
-    cache: { type: "memory" },
-  },
-  use: [apiPlugin],
+export const { StoryblokComponent } = defineStoryblokComponents({
   components: {
     page: Page,
     teaser: Teaser,
-    grid: Grid,
-    feature: Feature,
   },
 });
 ```
 
-If you prefer to use your own fetch method, just remove the `apiPlugin` and `storyblok-js-client`
-won't be added to your application.
+No changes are needed in `_app.tsx`.
 
-```js
-storyblokInit({});
+### 2. Fetching Content
+
+Use `apiClient` in `getStaticProps`, `getServerSideProps`, or `getStaticPaths`:
+
+```tsx
+// pages/index.tsx
+import type { GetStaticProps } from "next";
+import type { Story } from "@storyblok/react";
+import { apiClient, StoryblokComponent } from "@/lib/storyblok";
+
+interface Props {
+  story: Story;
+}
+
+export default function Home({ story }: Props) {
+  return <StoryblokComponent block={story.content} />;
+}
+
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const result = await apiClient.stories.get("home", { query: { version: "draft" } });
+  if (!result.data) return { notFound: true };
+
+  return {
+    props: { story: result.data.story },
+    revalidate: 3600,
+  };
+};
 ```
+
+### 3. Listening to Storyblok Visual Editor events
+
+To enable live editing, wrap your content in `StoryblokPreview` from `@storyblok/react/client`. It
+holds the latest story in state and re-renders children on every Visual Editor update:
+
+```tsx
+// pages/index.tsx
+import type { GetStaticProps } from "next";
+import type { Story } from "@storyblok/react";
+import { StoryblokPreview } from "@storyblok/react/client";
+import { apiClient, StoryblokComponent } from "@/lib/storyblok";
+
+interface Props {
+  story: Story;
+}
+
+export default function Home({ story }: Props) {
+  return (
+    <StoryblokPreview key={story.uuid} story={story}>
+      {(live) => <StoryblokComponent block={live.content} />}
+    </StoryblokPreview>
+  );
+}
+
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const result = await apiClient.stories.get("home", { query: { version: "draft" } });
+  if (!result.data) return { notFound: true };
+
+  return {
+    props: { story: result.data.story },
+    revalidate: 3600,
+  };
+};
+```
+
+`StoryblokComponent` renders block components dynamically using the map registered in
+`defineStoryblokComponents`.
+
+Take a look at the
+[Next.js Pages Router playground](https://github.com/storyblok/monoblok/tree/main/packages/react/playground/next-13-pages-router)
+in this repo.
+
+## Features and API
+
+### API Client
+
+`createApiClient` accepts a configuration object that is passed to `@storyblok/api-client`:
+
+```ts
+import { createApiClient } from "@storyblok/react";
+
+export const apiClient = createApiClient({
+  accessToken: "YOUR_ACCESS_TOKEN",
+  region: "eu", // "eu" | "us" | "ap" | "ca" | "cn"
+  cache: { type: "memory" },
+  // retry, timeout, rateLimit, …
+});
+```
+
+If you prefer to use your own data-fetching layer, simply don't call `createApiClient` — the rest of
+the SDK (components, richtext, editable) works independently.
 
 ### Storyblok Bridge
 
-If you don't use `registerStoryblokBridge`, you still have access to the raw
-`window.StoryblokBridge`:
+The bridge is loaded automatically by `StoryblokPreview` and `StoryblokPreviewRsc`. If you need
+direct access to the raw bridge, it is available on `window`:
 
 ```js
 const sbBridge = new window.StoryblokBridge(options);
@@ -728,62 +574,43 @@ sbBridge.on(["input", "published", "change"], (event) => {
 
 ## Rendering Rich Text
 
-You can render rich text fields by using the `StoryblokRichText` component:
+Render rich text fields using the `StoryblokRichText` component, importable directly from
+`@storyblok/react` or from the object returned by `defineStoryblokComponents`:
 
-```ts
-import { StoryblokRichText, useStoryblok } from '@storyblok/react';
+```tsx
+import { StoryblokRichText } from "@storyblok/react";
 
-function App() {
-  const story = useStoryblok('home', { version: 'draft' });
-
-  if (!story?.content) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div>
-      <StoryblokRichText doc={story.content.richText} />
-    </div>
-  );
-}
+const Page = ({ block }: PageProps) => (
+  <div>
+    <StoryblokRichText document={block.richtext} />
+  </div>
+);
 ```
 
-Or you can have more control by using the `useStoryblokRichText` hook:
+For more control, use `createRichTextRenderer` to get a plain render function:
 
-```ts
-import { useStoryblokRichText, convertAttributesInElement } from '@storyblok/react';
-import Codeblock from './Codeblock';
+```tsx
+import { createRichTextRenderer } from "@storyblok/react";
 
-function App() {
-  const { render } = useStoryblokRichText({
-    // options like resolvers
-  });
+const render = createRichTextRenderer({ optimizeImage: { width: 800 } });
 
-  const html = render(doc);
-  const formattedHtml = convertAttributesInElement(html as React.ReactElement); // JSX
-
-  return (
-    <div ref={ref}>
-      {formattedHtml}
-    </div>
-  );
-}
+const Page = ({ block }: PageProps) => <div>{render(block.richtext)}</div>;
 ```
 
-For a comprehensive list of options you can provide to the `useStoryblokRichText`, please consult
-the [Full options](https://github.com/storyblok/richtext?tab=readme-ov-file#options) documentation.
+### Overriding default resolvers
 
-### Overriding the default resolvers
+Pass a `components` map to override how specific node or mark types are rendered — for example to
+use Next.js `Link` or a custom code block component:
 
-You can override the default resolvers by passing a `resolvers` prop to the `StoryblokRichText`
-component, for example, to use NextJS Link component or add a custom codeblok component:
+```tsx
+import {
+  StoryblokRichText,
+  type StoryblokReactRichTextComponentMap,
+  type StoryblokReactRichTextProps,
+} from "@storyblok/react";
+import Link from "next/link";
 
-```ts
-import { StoryblokRichText, useStoryblok, MarkTypes, type SbReactRichTextComponentMap, type SbReactRichTextProps } from '@storyblok/react';
-import Link from 'next/link';
-import CodeBlock from './components/CodeBlock';
-
-function CustomLink({ children, attrs }: SbReactRichTextProps<"link">) {
+function CustomLink({ children, attrs }: StoryblokReactRichTextProps<"link">) {
   return (
     <Link href={attrs?.href ?? ""} target={attrs?.target ?? "_self"}>
       {children}
@@ -791,162 +618,104 @@ function CustomLink({ children, attrs }: SbReactRichTextProps<"link">) {
   );
 }
 
-function App() {
-  const story = useStoryblok('home', { version: 'draft' });
+const components: StoryblokReactRichTextComponentMap = {
+  link: CustomLink,
+  bold: ({ children }) => <b className="font-bold">{children}</b>,
+};
 
-  if (!story?.content) {
-    return <div>Loading...</div>;
-  }
-
-  const components: SbReactRichTextComponentMap = {
-    heading: CustomHeading,
-    link: CustomLink,
-    table: CustomTable,
-    bold: ({ children }) => <b className="font-bold text-black">{children}</b>,
-  };
-
-  return (
-    <div>
-      <StoryblokRichText document={blok.richtext_field} components={components} />
-    </div>
-  );
-}
+const Page = ({ block }: PageProps) => (
+  <StoryblokRichText document={block.richtext} components={components} />
+);
 ```
 
 ### Legacy Rich Text Resolver
 
-> [!WARNING]  
-> The legacy `renderRichText` is soon to be deprecated. We recommend migrating to the new approach
-> described above instead.
-
-You can easily render rich text by using the `renderRichText` function that comes with
-`@storyblok/react`:
+> [!WARNING] The legacy `renderRichText` is deprecated. Migrate to `StoryblokRichText` or
+> `createRichTextRenderer` instead.
 
 ```js
 import { renderRichText } from "@storyblok/react";
 
-const renderedRichText = renderRichText(blok.richtext);
+const html = renderRichText(block.richtext);
 ```
-
-You can set a **custom Schema and component resolver globally** at init time by using the `richText`
-init option:
-
-```js
-import { RichTextSchema, storyblokInit } from "@storyblok/react";
-import cloneDeep from "clone-deep";
-
-const mySchema = cloneDeep(RichTextSchema); // you can make a copy of the default RichTextSchema
-// ... and edit the nodes and marks, or add your own.
-// Check the base RichTextSchema source here https://github.com/storyblok/storyblok-js-client/blob/main/src/schema.ts
-
-storyblokInit({
-  accessToken: "<your-token>",
-  richText: {
-    schema: mySchema,
-    resolver: (component, blok) => {
-      switch (component) {
-        case "my-custom-component":
-          return `<div class="my-component-class">${blok.text}</div>`;
-        default:
-          return "Resolver not defined";
-      }
-    },
-  },
-});
-```
-
-You can also set a **custom Schema and component resolver only once** by passing the options as the
-second parameter to `renderRichText` function:
-
-```js
-import { renderRichText } from "@storyblok/react";
-
-renderRichText(blok.richTextField, {
-  schema: mySchema,
-  resolver: (component, blok) => {
-    switch (component) {
-      case "my-custom-component":
-        return `<div class="my-component-class">${blok.text}</div>`;
-      default:
-        return `Component ${component} not found`;
-    }
-  },
-});
-```
-
-We also recommend using the
-[Storyblok Rich Text Renderer for React by Claus](https://github.com/claus/storyblok-rich-text-react-renderer)
-for rendering your Storyblok rich text content to React elements and Next.js applications.
 
 ### Using fallback components
 
-By default, `@storyblok/react` returns an empty `<div>` if a component is not implemented. Setting
-`enableFallbackComponent` to `true` when calling `storyblokInit` bypasses that behavior, rendering a
-fallback component in the frontend instead. You can use the default fallback component, or create a
-custom React fallback component in your project and use it by setting
-`customFallbackComponent: [YourFallbackComponent]`.
+By default, `StoryblokComponent` logs a warning and returns `null` when a block type has no
+registered component. Pass a `fallback` option to `defineStoryblokComponents` to render a custom
+fallback instead:
+
+```tsx
+import { defineStoryblokComponents } from "@storyblok/react";
+import FallbackComponent from "./components/FallbackComponent";
+
+export const { StoryblokComponent } = defineStoryblokComponents({
+  components: {
+    page: Page,
+    teaser: Teaser,
+  },
+  fallback: FallbackComponent,
+});
+```
+
+The fallback receives the same `block` prop as any other block component.
 
 ## Efficiently Loading Storyblok Components in React
 
-When using Storyblok with React, the general approach is to load all the Storyblok components when
-initializing Storyblok, usually in a layout page to ensure all pages have access to all of them:
+`defineStoryblokComponents` registers all block components up front. For large sites this can
+increase the initial bundle size. You have two options to reduce it.
 
-```javascript
-storyblokInit({
-  accessToken,
-  use: [apiPlugin],
+### React.lazy
+
+Pass lazy-loaded components directly to `defineStoryblokComponents`. Lazy components are detected
+automatically and wrapped in a `Suspense` boundary:
+
+```tsx
+import { defineStoryblokComponents } from "@storyblok/react";
+import { lazy } from "react";
+
+export const { StoryblokComponent } = defineStoryblokComponents({
   components: {
-    // all your React components
+    page: lazy(() => import("./components/Page")),
+    teaser: lazy(() => import("./components/Teaser")),
   },
 });
 ```
 
-Storyblok's React SDK automatically renders these predefined components based on your page content.
-While this is convenient, it can lead to larger bundle sizes and slower page speeds, especially for
-larger sites or when using heavy JavaScript libraries that are only needed on specific pages or a
-specific component.
+To show a loading state while the component chunk loads, pass a `suspenseFallback` (global) or
+per-component `fallback`:
 
-### Solutions
+```tsx
+export const { StoryblokComponent } = defineStoryblokComponents({
+  components: {
+    page: lazy(() => import("./components/Page")),
+    weather_widget: {
+      component: lazy(() => import("./components/WeatherWidget")),
+      fallback: WeatherWidgetSkeleton, // component-level fallback
+    },
+  },
+  suspenseFallback: <GlobalSkeleton />, // global fallback
+});
+```
 
-1. **Storyblok's `setComponents` Function**: Storyblok SDK provides a function called
-   `setComponents` that allows you to load only the components needed for each route instead of
-   defining all components during initialization. This approach is useful but might not be practical
-   if you use a catch-all route, which is common in many React frameworks.
+### Next.js Dynamic Import
 
-2. **React's `react.lazy`**: React offers a built-in solution called `react.lazy` for code
-   splitting. Instead of directly importing components, you can do the following:
+In Next.js use `dynamic` for the same effect with better SSR support:
 
-   ```javascript
-   "use client";
-   import { apiPlugin, storyblokInit } from "@storyblok/react/rsc";
-   import { lazy } from "react";
+```tsx
+import dynamic from "next/dynamic";
+import { defineStoryblokComponents } from "@storyblok/react";
 
-   const lazyComponents = {
-     page: lazy(() => import("./components/Page")),
-     // other lazy-loaded components
-   };
+export const { StoryblokComponent } = defineStoryblokComponents({
+  components: {
+    page: dynamic(() => import("./components/Page")),
+    teaser: dynamic(() => import("./components/Teaser")),
+  },
+});
+```
 
-   storyblokInit({
-     accessToken,
-     use: [apiPlugin],
-     components: lazyComponents,
-   });
-   ```
-
-   This approach enables automatic code splitting and loads only the necessary JavaScript for each
-   page. However, `react.lazy` has some limitations when used with SSR (Server-Side Rendering).
-
-3. **Using `@loadable/component`**: For cases where SSR is needed, or in general, you can use the
-   `@loadable/component` library, which offers similar functionality and better SSR support. This
-   library is framework-agnostic and can be used with any React framework.
-   [Loadable Components Documentation](https://loadable-components.com/docs/getting-started/)
-
-4. **Next.js Dynamic Import**: Next.js has a built-in `dynamic` package that provides dynamic
-   imports for lazy loading.
-   [Next.js Dynamic Import Documentation](https://nextjs.org/docs/advanced-features/dynamic-import)
-
-By using these techniques, you can ensure that only the necessary components and dependencies are
-loaded for each page, improving your site's performance and speed.
+For more options see the
+[Next.js Dynamic Import documentation](https://nextjs.org/docs/advanced-features/dynamic-import).
 
 ## Troubleshooting
 
@@ -958,53 +727,48 @@ loaded for each page, improving your site's performance and speed.
 Error: Server Actions are not supported with static export
 ```
 
-**Solution:** Use `@storyblok/react/ssr` instead of `@storyblok/react/rsc` for static exports:
+**Solution:** `StoryblokPreviewRsc` uses Server Actions and is incompatible with static exports. Use
+`StoryblokPreview` instead:
 
 ```diff
-- import { StoryblokStory } from "@storyblok/react/rsc";
-+ import { StoryblokServerStory } from "@storyblok/react/ssr";
+- import { StoryblokPreviewRsc } from "@storyblok/react/client";
++ import { StoryblokPreview } from "@storyblok/react/client";
 ```
-
-**Explanation:** The RSC export includes server actions for live editing, which are incompatible
-with static exports. The SSR export provides server-side rendering without server actions.
 
 ### Live Editing Not Working
 
 **Issue:** Live editing doesn't work in the Visual Editor.
 
-**Possible Solutions:**
+**Possible solutions:**
 
-1. **Using SSR export**: Live editing isn't available with `@storyblok/react/ssr`. Use
-   `@storyblok/react/rsc` for live editing.
+1. **Not using a preview component**: Wrap your content in `StoryblokPreview` (client component) or
+   `StoryblokPreviewRsc` (RSC with Server Actions). Live editing requires one of these.
 
-2. **Missing bridge loading**: Ensure you're using `StoryblokStory` (RSC) which automatically loads
-   the bridge, or manually add `StoryblokLiveEditing`.
-
-3. **Development mode**: Live editing only works in development mode or when the Visual Editor is
-   active.
+2. **Development mode**: The Visual Editor bridge only activates when the page is loaded inside the
+   Storyblok Visual Editor.
 
 ### Component Not Found
 
-**Error:** Seeing empty divs or "Component not found" instead of your content.
+**Error:** Seeing `null` output or a fallback instead of your content.
 
-**Solution:** Ensure all your Storyblok components are registered during initialization:
+**Solution:** Ensure the component type name in your Storyblok space matches the key in
+`defineStoryblokComponents`:
 
-```js
-storyblokInit({
+```ts
+export const { StoryblokComponent } = defineStoryblokComponents({
   components: {
-    page: Page, // Matches 'page' component in Storyblok
-    teaser: Teaser, // Matches 'teaser' component in Storyblok
-    // Add all your components here
+    page: Page, // matches block with component: "page"
+    teaser: Teaser, // matches block with component: "teaser"
   },
 });
 ```
 
 ### TypeScript Import Errors
 
-**Issue:** TypeScript can't find the `/ssr` or `/rsc` exports.
+**Issue:** TypeScript can't find exports from `@storyblok/react/client`.
 
-**Solution:** Ensure you're using the latest version of `@storyblok/react` (v5.3.0+) which includes
-these exports.
+**Solution:** Ensure you're on `@storyblok/react` v7 or later, which includes the `/client` entry
+point.
 
 ## The Storyblok JavaScript SDK Ecosystem
 

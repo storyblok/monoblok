@@ -1,0 +1,75 @@
+type: object
+description: |
+  A conditional rule attached to a field: when `rule_conditions` match the
+  block's content, the editor applies `modifications` to this field.
+
+  Nothing here is required. The editor writes a setting the moment the operator
+  adds a rule row, before any of it is filled in, so a saved block can hold a
+  half-configured setting.
+properties:
+  rule_match:
+    type: string
+    enum: [all, any]
+    description: |
+      Whether every condition must match (`all`) or any one of them (`any`).
+      A setting the editor creates starts out as `any`.
+  rule_conditions:
+    type: array
+    description: The conditions evaluated against the block's content
+    items:
+      type: object
+      properties:
+        validated_object:
+          type: [object, "null"]
+          description: |
+            The field this condition reads. `null` until the operator picks one.
+          properties:
+            type:
+              type: string
+              enum: [field]
+              description: What the condition reads; only a sibling field is supported
+            field_key:
+              type: string
+              description: Key of the sibling field within the same block
+            field_attr:
+              type: string
+              enum: [value]
+              description: Which attribute of that field is compared
+        validation:
+          type: [string, "null"]
+          enum: [equals, not_equals, empty, not_empty, gt, lt, null]
+          description: |
+            The comparison to run. `null` until the operator picks one.
+            `gt`/`lt` compare numbers, or dates when both sides parse as
+            `YYYY-MM-DD HH:mm`.
+        value:
+          description: |
+            The value compared against. Its shape follows the validated field:
+            a string, number or boolean for most types, an asset object for an
+            `asset` field, and `null` for `empty`/`not_empty`, which ignore it.
+  modifications:
+    type: array
+    description: |
+      What to apply to this field when the conditions match. The editor writes
+      one entry and reads only the first.
+    items:
+      type: object
+      properties:
+        display:
+          type: string
+          enum: [hide, hidden]
+          description: |
+            Hides the field. Both spellings are live: the editor writes `hide`
+            and reads it back, while the server's conditional-required check
+            recognizes only `hidden`. Neither side accepts the other's value, so
+            a rule authored through the API with `hidden` hides nothing in the
+            editor, and one authored in the editor does not relax a required
+            field on save. Both are declared because real spaces hold both;
+            prefer `hide` for anything the editor will open.
+        required:
+          type: boolean
+          description: |
+            `true` makes the field required, `false` makes it explicitly not
+            required. Setting it alongside `display` is ambiguous rather than
+            layered: the editor lets `display` win, while the server only skips
+            the required check for the `hidden` spelling. Set one or the other.

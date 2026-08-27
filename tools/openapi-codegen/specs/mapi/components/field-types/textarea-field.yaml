@@ -14,8 +14,13 @@ allOf:
         type: string
         description: Default value for the field
       max_length:
-        type: integer
-        description: Maximum length of the input string
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Maximum length of the input. The schema form persists the number
+          input's raw value, so a space can hold `"60"` just as legitimately as
+          `60`. Coerce before comparing.
       maxlength:
         type: integer
         description: Maximum length for text fields (legacy alias for max_length)

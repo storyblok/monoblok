@@ -6,19 +6,51 @@
   "is_root": false,
   "is_nestable": true,
   "schema": {
-    "headline": { "type": "text", "pos": 0, "required": true },
-    "subtitle": { "type": "textarea", "pos": 1 },
-    "background": { "type": "asset", "pos": 2, "filetypes": ["images", "videos"] },
-    "cta_link": { "type": "multilink", "pos": 3, "allow_target_blank": true },
-    "cta_label": { "type": "text", "pos": 4 },
-    "overlay_opacity": { "type": "number", "pos": 5, "min_value": 0, "max_value": 100 },
+    "headline": {
+      "type": "text",
+      "pos": 0,
+      "required": true
+    },
+    "subtitle": {
+      "type": "textarea",
+      "pos": 1
+    },
+    "background": {
+      "type": "asset",
+      "pos": 2,
+      "filetypes": ["images", "videos"]
+    },
+    "cta_link": {
+      "type": "multilink",
+      "pos": 3,
+      "allow_target_blank": true
+    },
+    "cta_label": {
+      "type": "text",
+      "pos": 4
+    },
+    "overlay_opacity": {
+      "type": "number",
+      "pos": 5,
+      "min_value": 0,
+      "max_value": 100
+    },
     "style": {
       "type": "option",
       "pos": 6,
-      "source": "self",
+      "use_uuid": false,
+      "exclude_empty_option": true,
       "options": [
-        { "name": "Light", "value": "light" },
-        { "name": "Dark", "value": "dark" }
+        {
+          "_uid": "5cbb1f5c-3fdb-4b31-9c88-0b0e7f7b6a41",
+          "name": "Light",
+          "value": "light"
+        },
+        {
+          "_uid": "2a4de1a7-08a6-4f60-8f4e-6c0f8fef0a52",
+          "name": "Dark",
+          "value": "dark"
+        }
       ]
     }
   },

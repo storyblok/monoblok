@@ -1,4 +1,4 @@
-import { defineBlock, defineField } from "@storyblok/schema";
+import { defineBlock, defineField, hideWhen } from "@storyblok/schema";
 
 import { headlineField } from "../fields";
 
@@ -18,11 +18,16 @@ export const bannerBlock = defineBlock({
     defineField("cta_label", {
       type: "text",
       max_length: 40,
-      conditional_settings: [{ field: "show_cta", value: true }],
+      // The editor has no "show when" rule, only "hide when", so the condition
+      // is inverted: hide while `show_cta` is empty, which an unchecked boolean
+      // is. A story that has never touched `show_cta` has no value there at all,
+      // and the editor reads an absent field as no match, so the CTA fields are
+      // visible until the toggle has been used once.
+      conditional_settings: [hideWhen({ field: "show_cta", is: "empty" })],
     }),
     defineField("cta_link", {
       type: "multilink",
-      conditional_settings: [{ field: "show_cta", value: true }],
+      conditional_settings: [hideWhen({ field: "show_cta", is: "empty" })],
     }),
     defineField("background_image", { type: "asset", filetypes: ["images"] }),
   ],

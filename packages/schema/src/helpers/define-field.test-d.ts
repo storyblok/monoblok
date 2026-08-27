@@ -185,4 +185,77 @@ describe("defineField type inference", () => {
     // @ts-expect-error property does not exist when not supplied
     void f.allow;
   });
+
+  it("should accept a conditional setting on any field type", () => {
+    const f = defineField("subtitle", {
+      type: "text",
+      conditional_settings: [
+        {
+          modifications: [{ display: "hide" }],
+          rule_match: "any",
+          rule_conditions: [
+            {
+              validated_object: { type: "field", field_key: "headline", field_attr: "value" },
+              validation: "empty",
+              value: null,
+            },
+          ],
+        },
+      ],
+    });
+    expectTypeOf(f.conditional_settings[0].rule_match).toEqualTypeOf<"any">();
+  });
+
+  it("should accept the half-configured setting the editor writes before a rule is filled in", () => {
+    // Copied verbatim from what the editor persists the moment the operator adds
+    // the first rule row: `value` is absent rather than null, and the
+    // modification is a bare object. Keep it byte-for-byte, or the test stops
+    // pinning the shape it is named after.
+    const _f = defineField("subtitle", {
+      type: "text",
+      conditional_settings: [
+        {
+          modifications: [{}],
+          rule_match: "any",
+          rule_conditions: [{ validated_object: null, validation: null }],
+        },
+      ],
+    });
+  });
+
+  it("should accept the bare condition the editor appends to an existing setting", () => {
+    const _f = defineField("subtitle", {
+      type: "text",
+      conditional_settings: [
+        {
+          modifications: [{}],
+          rule_match: "any",
+          rule_conditions: [{ validated_object: null, validation: null }, {}],
+        },
+      ],
+    });
+  });
+
+  it("should accept the `hidden` spelling of a display modification", () => {
+    // The editor writes `hide`; the server's conditional-required check reads
+    // `hidden`. Both reach spaces, so both have to be expressible.
+    const _f = defineField("subtitle", {
+      type: "text",
+      conditional_settings: [{ modifications: [{ display: "hidden" }] }],
+    });
+  });
+
+  it("should reject a validation the editor cannot write", () => {
+    const _f = defineField("subtitle", {
+      type: "text",
+      conditional_settings: [
+        {
+          modifications: [{ display: "hide" }],
+          rule_match: "any",
+          // @ts-expect-error 'contains' is not one of the six validations
+          rule_conditions: [{ validation: "contains", value: null }],
+        },
+      ],
+    });
+  });
 });

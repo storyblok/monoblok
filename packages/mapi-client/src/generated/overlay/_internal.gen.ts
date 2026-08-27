@@ -3,7 +3,7 @@
 /**
  * A component schema field. Discriminated by the literal `type` enum on each variant.
  */
-export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | MultilinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | CustomFieldRoot;
+export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | ImageFieldRoot | FileFieldRoot | MultilinkFieldRoot | LinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | GroupFieldRoot | CommerceFieldRoot | CustomFieldRoot;
 
 export type AssetFieldValue = AssetFieldValueRoot;
 
@@ -29,9 +29,12 @@ export type TextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     default_value?: string;
     /**
-     * Maximum length of the input string
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
     /**
      * Maximum length for text fields (legacy alias for max_length)
      */
@@ -60,9 +63,12 @@ export type TextareaFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     default_value?: string;
     /**
-     * Maximum length of the input string
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
     /**
      * Maximum length for text fields (legacy alias for max_length)
      */
@@ -154,6 +160,30 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Whether to allow custom link attributes
      */
     allow_custom_attributes?: boolean;
+    /**
+     * Path of the folder internal links are restricted to. The richtext
+     * schema form does not write this option itself; it belongs to the
+     * multilink field's editor. Kept here because a space can carry it as
+     * a legacy value, not because the richtext editor produces it.
+     *
+     */
+    link_scope?: string;
+    /**
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
+     */
+    max_length?: number | string;
+    /**
+     * Whether to enable right-to-left text direction. The richtext schema
+     * form does not write this option itself; it belongs to the text,
+     * textarea, and markdown fields' editors. Kept here because a space
+     * can carry it as a legacy value, not because the richtext editor
+     * produces it.
+     *
+     */
+    rtl?: boolean;
 };
 
 export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -186,9 +216,12 @@ export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     allow_multiline?: boolean;
     /**
-     * Maximum length of the input string
+     * Maximum length of the input. The schema form persists the number
+     * input's raw value, so a space can hold `"60"` just as legitimately as
+     * `60`. Coerce before comparing.
+     *
      */
-    max_length?: number;
+    max_length?: number | string;
 };
 
 export type NumberFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -363,6 +396,10 @@ export type OptionsFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      */
     use_uuid?: boolean;
     /**
+     * Whether to exclude the empty option
+     */
+    exclude_empty_option?: boolean;
+    /**
      * Whether this Multi-Options field is a References field
      */
     is_reference_type?: boolean;
@@ -474,6 +511,66 @@ export type MultiassetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     minimum_entries?: number;
 };
 
+export type ImageFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'image';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
+     * Whether to prepend `https:` to the asset URL
+     */
+    add_https?: boolean;
+    /**
+     * Whether to force editors to crop the image to a fixed size
+     */
+    image_crop?: boolean;
+    /**
+     * Crop width in pixels, applied when `image_crop` is true. The editor
+     * writes an empty string when the input is cleared, so the value is not
+     * always numeric.
+     *
+     */
+    image_width?: number | string;
+    /**
+     * Crop height in pixels, applied when `image_crop` is true. The editor
+     * writes an empty string when the input is cleared, so the value is not
+     * always numeric.
+     *
+     */
+    image_height?: number | string;
+    /**
+     * Whether to keep the original image size when `image_crop` is true
+     */
+    keep_image_size?: boolean;
+    /**
+     * Numeric ID of the allowed asset folder
+     */
+    asset_folder_id?: number;
+};
+
+export type FileFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'file';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
+    /**
+     * Whether to prepend `https:` to the asset URL
+     */
+    add_https?: boolean;
+    /**
+     * Numeric ID of the allowed asset folder
+     */
+    asset_folder_id?: number;
+};
+
 export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     /**
      * Field type discriminant
@@ -519,6 +616,17 @@ export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
      * Whether to allow specifying an asset URL
      */
     asset_link_type?: boolean;
+};
+
+export type LinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'link';
+    /**
+     * Default value for the field
+     */
+    default_value?: string;
 };
 
 export type BloksFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -636,6 +744,20 @@ export type TabFieldRoot = BaseFieldRoot & {
      * Field keys that belong to this tab
      */
     keys?: Array<string>;
+};
+
+export type GroupFieldRoot = BaseFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'group';
+};
+
+export type CommerceFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+    /**
+     * Field type discriminant
+     */
+    type: 'commerce';
 };
 
 export type CustomFieldRoot = BaseFieldRoot & ValueFieldRoot & {
@@ -864,11 +986,14 @@ export type BaseFieldRoot = {
      */
     pos?: number;
     /**
-     * Conditions set on the field for conditional visibility
+     * Conditions set on the field for conditional visibility. The editor writes
+     * one setting and reads only the first, so an extra entry is invisible to it.
+     * It is not inert server-side: the conditional-required check requires every
+     * setting to match, so a second entry can only make a field harder to leave
+     * empty. Write one setting unless you mean that.
+     *
      */
-    conditional_settings?: Array<{
-        [key: string]: unknown;
-    }>;
+    conditional_settings?: Array<ConditionalSettingRoot>;
 };
 
 /**
@@ -976,6 +1101,87 @@ export type MultilinkFieldValueAssetLink = MultilinkFieldValueSharedLink & {
  * A rich text document node
  */
 export type RichTextFieldValueRichTextNode = RichTextFieldValueParagraphNode | RichTextFieldValueTextNode | RichTextFieldValueHeadingNode | RichTextFieldValueBlockquoteNode | RichTextFieldValueBulletListNode | RichTextFieldValueOrderedListNode | RichTextFieldValueListItemNode | RichTextFieldValueCodeBlockNode | RichTextFieldValueHardBreakNode | RichTextFieldValueHorizontalRuleNode | RichTextFieldValueImageNode | RichTextFieldValueEmojiNode | RichTextFieldValueTableNode | RichTextFieldValueTableRowNode | RichTextFieldValueTableCellNode | RichTextFieldValueTableHeaderNode | RichTextFieldValueBlockNode;
+
+/**
+ * A conditional rule attached to a field: when `rule_conditions` match the
+ * block's content, the editor applies `modifications` to this field.
+ *
+ * Nothing here is required. The editor writes a setting the moment the operator
+ * adds a rule row, before any of it is filled in, so a saved block can hold a
+ * half-configured setting.
+ *
+ */
+export type ConditionalSettingRoot = {
+    /**
+     * Whether every condition must match (`all`) or any one of them (`any`).
+     * A setting the editor creates starts out as `any`.
+     *
+     */
+    rule_match?: 'all' | 'any';
+    /**
+     * The conditions evaluated against the block's content
+     */
+    rule_conditions?: Array<{
+        /**
+         * The field this condition reads. `null` until the operator picks one.
+         *
+         */
+        validated_object?: {
+            /**
+             * What the condition reads; only a sibling field is supported
+             */
+            type?: 'field';
+            /**
+             * Key of the sibling field within the same block
+             */
+            field_key?: string;
+            /**
+             * Which attribute of that field is compared
+             */
+            field_attr?: 'value';
+        } | null;
+        /**
+         * The comparison to run. `null` until the operator picks one.
+         * `gt`/`lt` compare numbers, or dates when both sides parse as
+         * `YYYY-MM-DD HH:mm`.
+         *
+         */
+        validation?: 'equals' | 'not_equals' | 'empty' | 'not_empty' | 'gt' | 'lt' | null;
+        /**
+         * The value compared against. Its shape follows the validated field:
+         * a string, number or boolean for most types, an asset object for an
+         * `asset` field, and `null` for `empty`/`not_empty`, which ignore it.
+         *
+         */
+        value?: unknown;
+    }>;
+    /**
+     * What to apply to this field when the conditions match. The editor writes
+     * one entry and reads only the first.
+     *
+     */
+    modifications?: Array<{
+        /**
+         * Hides the field. Both spellings are live: the editor writes `hide`
+         * and reads it back, while the server's conditional-required check
+         * recognizes only `hidden`. Neither side accepts the other's value, so
+         * a rule authored through the API with `hidden` hides nothing in the
+         * editor, and one authored in the editor does not relax a required
+         * field on save. Both are declared because real spaces hold both;
+         * prefer `hide` for anything the editor will open.
+         *
+         */
+        display?: 'hide' | 'hidden';
+        /**
+         * `true` makes the field required, `false` makes it explicitly not
+         * required. Setting it alongside `display` is ambiguous rather than
+         * layered: the editor lets `display` win, while the server only skips
+         * the required check for the `hidden` spelling. Set one or the other.
+         *
+         */
+        required?: boolean;
+    }>;
+};
 
 export type MultilinkFieldValueSharedLink = {
     /**

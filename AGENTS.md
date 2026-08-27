@@ -29,7 +29,9 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 - `../storyrails` (Storyblok backend) - Consult when verifying REST/MAPI/CAPI schemas, error shapes,
   or endpoint behavior; `../storyrails/spec/integration/openapi/` is the source of truth.
 - `../storyfront` (headless CMS frontend) - Consult when matching UI/app behavior and you need
-  information about the visual editor, bridge protocol, or rendering in the Storyblok UI.
+  information about the visual editor, bridge protocol, or rendering in the Storyblok UI, and
+  whenever you need the real shape of a component schema field or a story content value. The editor
+  is what writes them.
 - `../storyblok-bridge` (Storyblok Bridge) - Consult when verifying bridge behavior: the
   `postMessage` protocol between the editor and a preview iframe, the editable-block attributes it
   writes into the page, the overlay/click-to-edit UI, or the bridge lifecycle.
@@ -43,6 +45,22 @@ These sibling repos may not be available; ignore them if absent.
   reference them, their paths, file names, or internal implementation details in commit messages, PR
   titles and descriptions, issue comments, code comments, or any other public-facing text. Describe
   the observable API or behavior instead.
+- **IMPORTANT:** The Management API validates a component schema field's `type` against a closed
+  list and rejects an unknown one outright. Everything else it treats as an opaque blob: the rest of
+  the schema unconditionally, and story content unless the space has field constraints enabled. So a
+  successful round trip proves storage, not shape. Never treat "I pushed it and read it back" as
+  evidence that a shape is real: you authored the input, so the check could not have failed. Only
+  two things can ground a shape:
+  1. **Sibling-repo source** - `../storyfront` for what the editor writes and reads, `../storyrails`
+     for what the backend normalizes and enforces.
+  2. **Operator-authored data** - ask the user to create it by hand in the Storyblok UI, then read
+     it back via MAPI. You cannot produce this yourself, so treat it as the last resort, for when
+     the source does not settle it.
+
+  Whatever the API actively enforces, it can prove: push a field with a bogus `type` and the 422
+  names the permitted values, which is cheaper than reading either sibling repo. The same goes for
+  normalization and server-set defaults. What it cannot prove is that a shape it merely stored is
+  one any real space holds.
 
 ## Conventions
 

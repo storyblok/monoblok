@@ -1,0 +1,12 @@
+{
+  "id": 208901504897577,
+  "name": "qa_beta",
+  "display_name": null,
+  "component_group_uuid": "2b80f462-c371-4f2d-81f5-ebc3e724be5d",
+  "is_root": false,
+  "is_nestable": true,
+  "internal_tag_ids": [],
+  "schema": {},
+  "created_at": "2026-08-14T07:02:23.969Z",
+  "updated_at": "2026-08-14T07:03:01.024Z"
+}

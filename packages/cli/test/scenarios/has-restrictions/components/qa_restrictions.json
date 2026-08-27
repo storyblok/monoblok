@@ -1,0 +1,79 @@
+{
+  "id": 208902708859469,
+  "name": "qa_restrictions",
+  "display_name": null,
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "internal_tag_ids": [],
+  "schema": {
+    "r_allow": {
+      "type": "bloks",
+      "pos": 0,
+      "restrict_components": true,
+      "restrict_type": "",
+      "component_whitelist": ["qa_alpha"],
+      "component_denylist": []
+    },
+    "r_deny": {
+      "type": "bloks",
+      "pos": 1,
+      "restrict_components": true,
+      "restrict_type": "",
+      "component_whitelist": [],
+      "component_denylist": ["qa_alpha"]
+    },
+    "r_allow_many": {
+      "type": "bloks",
+      "pos": 2,
+      "restrict_components": true,
+      "restrict_type": "",
+      "component_whitelist": ["qa_alpha", "qa_beta"],
+      "component_denylist": []
+    },
+    "r_groups": {
+      "type": "bloks",
+      "pos": 3,
+      "restrict_components": true,
+      "restrict_type": "groups",
+      "component_group_whitelist": ["2b80f462-c371-4f2d-81f5-ebc3e724be5d"],
+      "component_group_denylist": [],
+      "component_tag_whitelist": [],
+      "component_tag_denylist": []
+    },
+    "r_tags": {
+      "type": "bloks",
+      "pos": 4,
+      "restrict_components": true,
+      "restrict_type": "tags",
+      "component_group_whitelist": [],
+      "component_group_denylist": [],
+      "component_tag_whitelist": [208901878932724],
+      "component_tag_denylist": []
+    },
+    "r_tags_empty": {
+      "type": "bloks",
+      "pos": 5,
+      "restrict_components": true,
+      "restrict_type": "tags",
+      "component_group_whitelist": [],
+      "component_group_denylist": [],
+      "component_tag_whitelist": [],
+      "component_tag_denylist": []
+    },
+    "r_on_nothing": {
+      "type": "bloks",
+      "pos": 6,
+      "restrict_components": true,
+      "restrict_type": ""
+    },
+    "r_off": {
+      "type": "bloks",
+      "pos": 7,
+      "restrict_components": false,
+      "restrict_type": ""
+    }
+  },
+  "created_at": "2026-08-14T07:20:00.000Z",
+  "updated_at": "2026-08-14T07:20:00.000Z"
+}

@@ -54,5 +54,10 @@ allOf:
         type: boolean
         description: Whether to allow empty paragraphs
       max_length:
-        type: integer
-        description: Maximum length of the input string
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Maximum length of the input. The schema form persists the number
+          input's raw value, so a space can hold `"60"` just as legitimately as
+          `60`. Coerce before comparing.

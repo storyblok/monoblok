@@ -6,6 +6,42 @@
 import * as z from 'zod';
 
 /**
+ * A conditional rule attached to a field: when `rule_conditions` match the
+ * block's content, the editor applies `modifications` to this field.
+ *
+ * Nothing here is required. The editor writes a setting the moment the operator
+ * adds a rule row, before any of it is filled in, so a saved block can hold a
+ * half-configured setting.
+ *
+ */
+export const zConditionalSettingRoot = z.object({
+    rule_match: z.optional(z.enum(['all', 'any'])),
+    rule_conditions: z.optional(z.array(z.object({
+        validated_object: z.optional(z.union([
+            z.object({
+                type: z.optional(z.enum(['field'])),
+                field_key: z.optional(z.string()),
+                field_attr: z.optional(z.enum(['value']))
+            }),
+            z.null()
+        ])),
+        validation: z.optional(z.nullable(z.enum([
+            'equals',
+            'not_equals',
+            'empty',
+            'not_empty',
+            'gt',
+            'lt'
+        ]))),
+        value: z.optional(z.unknown())
+    }))),
+    modifications: z.optional(z.array(z.object({
+        display: z.optional(z.enum(['hide', 'hidden'])),
+        required: z.optional(z.boolean())
+    })))
+});
+
+/**
  * Universal identity and display properties shared by every field type
  */
 export const zBaseFieldRoot = z.object({
@@ -15,8 +51,12 @@ export const zBaseFieldRoot = z.object({
     description: z.optional(z.string()),
     tooltip: z.optional(z.boolean()),
     pos: z.optional(z.int()),
-    conditional_settings: z.optional(z.array(z.record(z.string(), z.unknown())))
+    conditional_settings: z.optional(z.array(zConditionalSettingRoot))
 });
+
+export const zGroupFieldRoot = zBaseFieldRoot.and(z.object({
+    type: z.enum(['group'])
+}));
 
 export const zSectionFieldRoot = zBaseFieldRoot.and(z.object({
     type: z.enum(['section']),
@@ -93,6 +133,10 @@ export const zBooleanFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.objec
     inline_label: z.optional(z.boolean())
 }));
 
+export const zCommerceFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['commerce'])
+}));
+
 export const zCustomFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['custom']),
     default_value: z.optional(z.string()),
@@ -111,6 +155,35 @@ export const zDatetimeFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
     type: z.enum(['datetime']),
     default_value: z.optional(z.string()),
     disable_time: z.optional(z.boolean())
+}));
+
+export const zFileFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['file']),
+    default_value: z.optional(z.string()),
+    add_https: z.optional(z.boolean()),
+    asset_folder_id: z.optional(z.int())
+}));
+
+export const zImageFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['image']),
+    default_value: z.optional(z.string()),
+    add_https: z.optional(z.boolean()),
+    image_crop: z.optional(z.boolean()),
+    image_width: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
+    image_height: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
+    keep_image_size: z.optional(z.boolean()),
+    asset_folder_id: z.optional(z.int())
+}));
+
+export const zLinkFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+    type: z.enum(['link']),
+    default_value: z.optional(z.string())
 }));
 
 export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
@@ -144,7 +217,10 @@ export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
         'rtl'
     ]))),
     allow_multiline: z.optional(z.boolean()),
-    max_length: z.optional(z.int())
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ]))
 }));
 
 export const zMultiassetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
@@ -224,6 +300,7 @@ export const zOptionsFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.objec
     folder_slug: z.optional(z.string()),
     filter_content_type: z.optional(z.array(z.string())),
     use_uuid: z.optional(z.boolean()),
+    exclude_empty_option: z.optional(z.boolean()),
     is_reference_type: z.optional(z.boolean()),
     entry_appearance: z.optional(z.string()),
     allow_advanced_search: z.optional(z.boolean()),
@@ -304,7 +381,13 @@ export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
     component_group_whitelist: z.optional(z.array(z.string())),
     component_group_denylist: z.optional(z.array(z.string())),
     allow_target_blank: z.optional(z.boolean()),
-    allow_custom_attributes: z.optional(z.boolean())
+    allow_custom_attributes: z.optional(z.boolean()),
+    link_scope: z.optional(z.string()),
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
+    rtl: z.optional(z.boolean())
 }));
 
 export const zTableFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
@@ -315,7 +398,10 @@ export const zTableFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object(
 export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['text']),
     default_value: z.optional(z.string()),
-    max_length: z.optional(z.int()),
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
     maxlength: z.optional(z.int()),
     minlength: z.optional(z.int()),
     size: z.optional(z.string()),
@@ -325,7 +411,10 @@ export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
 export const zTextareaFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
     type: z.enum(['textarea']),
     default_value: z.optional(z.string()),
-    max_length: z.optional(z.int()),
+    max_length: z.optional(z.union([
+        z.int(),
+        z.string()
+    ])),
     maxlength: z.optional(z.int()),
     minlength: z.optional(z.int()),
     size: z.optional(z.string()),
@@ -349,11 +438,16 @@ export const zComponentSchemaField = z.union([
     zOptionsFieldRoot,
     zAssetFieldRoot,
     zMultiassetFieldRoot,
+    zImageFieldRoot,
+    zFileFieldRoot,
     zMultilinkFieldRoot,
+    zLinkFieldRoot,
     zBloksFieldRoot,
     zTableFieldRoot,
     zSectionFieldRoot,
     zTabFieldRoot,
+    zGroupFieldRoot,
+    zCommerceFieldRoot,
     zCustomFieldRoot
 ]);
 

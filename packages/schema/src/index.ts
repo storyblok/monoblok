@@ -15,6 +15,9 @@ export type { Story } from "./generated/types/story";
 export { defineBlock } from "./helpers/define-block";
 
 export type { Block, BlockFields, NestableBlock, RootBlock } from "./helpers/define-block";
+// Conditional settings
+export { hideWhen, requiredWhen } from "./helpers/define-condition";
+export type { ConditionOptions, FieldCondition } from "./helpers/define-condition";
 // Datasource
 export { defineDatasource } from "./helpers/define-datasource";
 export type { Datasource } from "./helpers/define-datasource";

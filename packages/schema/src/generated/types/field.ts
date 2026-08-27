@@ -154,11 +154,30 @@ interface FieldTypeValueMap {
   options: string[];
   asset: AssetFieldValue;
   multiasset: AssetFieldValue[];
+  /**
+   * The legacy `image`/`file` types predate the asset object: they store the URL
+   * as a plain string, protocol-relative (`//a.storyblok.com/…`) unless the field
+   * sets `add_https`, which makes it absolute.
+   */
+  image: string;
+  file: string;
   multilink: MultilinkFieldValue;
+  /**
+   * Legacy predecessor of `multilink`, storing a bare URL string rather than a
+   * link object. Read-only in practice: the editor no longer writes it.
+   */
+  link: string;
   bloks: BlockContentBase[];
   table: TableFieldValue;
   section: never;
   tab: never;
+  group: never;
+  /**
+   * Owned by a commerce integration rather than the editor, and exempt from
+   * server-side content type-checking, so the integration is the only thing that
+   * knows the shape. Narrow it where you know which one wrote the field.
+   */
+  commerce: unknown;
   custom: PluginFieldValue;
 }
 

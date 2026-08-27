@@ -309,6 +309,12 @@ function validateFieldValue(
       checkDeclaredOption(field, value, path, entity, issues);
       break;
     case "datetime":
+    // The legacy `image`/`file`/`link` types predate the asset and link objects
+    // and store a bare URL string. There is nothing further to constrain:
+    // `add_https` and the crop options shape the editor, not the stored value.
+    case "image":
+    case "file":
+    case "link":
       if (typeof value !== "string") {
         pushTypeIssue(value, "string", path, entity, issues);
       }
@@ -405,7 +411,13 @@ function validateFieldValue(
       break;
     case "section":
     case "tab":
+    case "group":
       // Layout-only field types carry no content value.
+      break;
+    case "commerce":
+      // A commerce integration owns both the schema options and the stored
+      // value, and the server exempts the type from content checks, so there is
+      // no shape to validate against.
       break;
     default:
       // Exhaustiveness guard: when a new `FieldType` is added, this fails to
@@ -548,6 +560,22 @@ function checkCount(
   }
 }
 
+/**
+ * Reads a numeric field option that the wire may hold as a string. Returns
+ * `null` for anything that is not a usable bound, so a blank input (`""`, which
+ * is what clearing the field writes) does not become a `0`-length limit.
+ */
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "string" || value.trim() === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 /** Checks a string against optional `max_length`/`maxlength` and `minlength` bounds. */
 function checkStringLength(
   field: SchemaFieldLike,
@@ -556,7 +584,10 @@ function checkStringLength(
   entity: string,
   issues: ValidationIssue[],
 ): void {
-  const max = field.max_length ?? field.maxlength;
+  // `max_length` is `integer | string` on the wire: the schema form persists the
+  // number input's raw value. Coerce rather than compare, so a bound of `"60"`
+  // is a bound and not a string comparison that happens to work for two digits.
+  const max = toFiniteNumber(field.max_length ?? field.maxlength);
   if (max != null && value.length > max) {
     pushConstraint(
       `Text length ${value.length} exceeds the maximum of ${max}.`,

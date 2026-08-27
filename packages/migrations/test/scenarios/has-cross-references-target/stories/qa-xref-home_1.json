@@ -1,10 +1,11 @@
 {
   "id": 1,
-  "uuid": "1",
+  "uuid": "a3d50cc9-eedc-4359-8f5d-7ee83a5d4b7e",
   "name": "QA XRef Home Target",
   "slug": "qa-xref-home",
   "full_slug": "qa-xref-home",
   "content": {
+    "_uid": "99f66cdf-f374-44e7-880b-7d16168b9814",
     "component": "qa_xref_page",
     "title": "Home (target)"
   }

@@ -225,6 +225,27 @@ describe("detectIssues", () => {
     expect(issues[0].actual_url).toBe("target");
   });
 
+  // Regression: the unpublished branch used to `continue`, so a reference that
+  // was both never reported its stale URL. In a draft-heavy space that hid every
+  // stale_url behind an unpublished target, and an audit filtering on
+  // `$._ref_issues[?(@.type == 'stale_url')]` under-reported silently.
+  it("should report both unpublished and stale_url for a reference that is both", () => {
+    const refs: RefEntry[] = [
+      {
+        targetUuid: UUID_B,
+        refType: "richtext",
+        fieldPath: "content.body[0].link",
+        cachedUrl: "/faq-old",
+      },
+    ];
+    const targetMap = new Map<string, TargetMeta>([
+      [UUID_B, { full_slug: "faq", is_published: false }],
+    ]);
+    const issues = detectIssues(refs, targetMap);
+    expect(issues.map((issue) => issue.type)).toEqual(["unpublished", "stale_url"]);
+    expect(issues.every((issue) => issue.actual_url === "faq")).toBe(true);
+  });
+
   it("returns stale_url for mismatched cached_url", () => {
     const refs: RefEntry[] = [
       {

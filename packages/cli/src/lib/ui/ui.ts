@@ -29,6 +29,25 @@ export interface ProgressBar {
 }
 
 let stdoutEpipeGuarded = false;
+const stdoutClosedListeners = new Set<() => void>();
+let stdoutClosed = false;
+
+/**
+ * Subscribes to "the reader on the other end of stdout has gone away".
+ *
+ * Arms the `EPIPE` guard eagerly rather than waiting for the first write, so a
+ * producer that wants to stop early is listening before it has anything to
+ * emit. Returns an unsubscribe function; fires at most once.
+ */
+export function onStdoutClosed(listener: () => void): () => void {
+  guardStdoutEpipe();
+  if (stdoutClosed) {
+    listener();
+    return () => {};
+  }
+  stdoutClosedListeners.add(listener);
+  return () => stdoutClosedListeners.delete(listener);
+}
 
 /**
  * Installs a one-time `EPIPE` guard on stdout.
@@ -45,16 +64,23 @@ let stdoutEpipeGuarded = false;
  * listener is an uncaught exception, so the stack trace and clobbered exit code
  * come back for every `code` that is not EPIPE.
  */
-function guardStdoutEpipe(ui: UI): void {
+function guardStdoutEpipe(ui?: UI): void {
   if (stdoutEpipeGuarded) {
     return;
   }
   stdoutEpipeGuarded = true;
   process.stdout.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code === "EPIPE") {
+      // Nothing left to write, but a producer still mid-run needs telling: it
+      // would otherwise keep fetching a whole scope for a reader that has left.
+      stdoutClosed = true;
+      for (const listener of stdoutClosedListeners) {
+        listener();
+      }
+      stdoutClosedListeners.clear();
       return;
     }
-    ui.error(`Failed to write to stdout: ${error.message}`);
+    (ui ?? getUI()).error(`Failed to write to stdout: ${error.message}`);
     // A runtime failure, not a bad invocation, so 1 rather than 2. Set here
     // because the write already failed: the document on stdout is truncated,
     // and a consumer must not read the command's own exit code as success.
@@ -203,6 +229,9 @@ export class UI {
    */
   writeMachineOutput(payload: string) {
     guardStdoutEpipe(this);
+    if (stdoutClosed) {
+      return;
+    }
     process.stdout.write(`${payload}\n`);
   }
 

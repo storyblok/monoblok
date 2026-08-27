@@ -1,9 +1,8 @@
 import { compile } from "json-p3";
 import type { JSONValue } from "json-p3";
 import type { StoriesQueryParams, Story } from "../constants";
-import { normalizeStartsWith } from "../constants";
 import { fetchStories } from "../actions";
-import { parseFilterQuery } from "../filter-query";
+import { buildStoryScopeParams } from "../query-params";
 import { chunk } from "../../../utils/array";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { CommandError } from "../../../utils/error/command-error";
@@ -52,7 +51,22 @@ export function assertSupportedOptions(options: FindOptions): void {
     }
     // Parsed here as well as at build time so a malformed value fails as a usage
     // error, next to the flags it belongs with.
-    parseCapiParams(options.capiParams);
+    const capiParams = parseCapiParams(options.capiParams);
+
+    // Asking the CDN for published content answers "what is live", but a story
+    // with no published version is undecidable there: it passes through and is
+    // settled against MAPI's *draft* content, so a run that reads as "what is
+    // live" reports stories that have never been published. `--publish-status
+    // published` is what removes them from the scope in the first place.
+    if (
+      capiParams.version !== undefined &&
+      capiParams.version !== "draft" &&
+      options.publishStatus !== "published"
+    ) {
+      throw new CommandError(
+        `--capi-params version=${String(capiParams.version)} needs --publish-status published: stories with no published content cannot be decided from CDN content, and would otherwise be matched against their draft instead.`,
+      );
+    }
   }
 }
 
@@ -67,19 +81,20 @@ export function buildQueryParams(
     params.text_search = text;
   }
 
-  // Path scope. A `full_slug` never starts with a slash and MAPI matches the
-  // prefix literally, so `/en/blog/` would match nothing at all.
-  if (options.startsWith !== undefined) {
-    params.starts_with = normalizeStartsWith(options.startsWith) || undefined;
-  }
-
-  // Filter query and container block (both contribute to filter_query)
-  if (options.query || options.containerBlock) {
-    params.filter_query = {
-      ...(options.query ? parseFilterQuery(options.query) : {}),
-      ...(options.containerBlock ? { component: { in: options.containerBlock } } : {}),
-    };
-  }
+  // Path scope and filter query, shared with every other story-listing command.
+  // `--container-block product` is shorthand for a `component` clause, so it is
+  // handed over as an extra clause rather than spread over the parsed `--query`:
+  // both write `component`, and a spread would drop one of them without a word.
+  Object.assign(
+    params,
+    buildStoryScopeParams({
+      startsWith: options.startsWith,
+      query: options.query,
+      extraFilterQuery: options.containerBlock
+        ? { component: { in: options.containerBlock } }
+        : undefined,
+    }),
+  );
 
   // Contains block (server-side contain_component)
   if (options.includesBlock) {
@@ -94,6 +109,14 @@ export function buildQueryParams(
   // Reference search (server-side)
   if (options.references) {
     params.reference_search = options.references;
+  }
+
+  // Without a content fetch, the listing is the whole answer, so ask for the
+  // one part of it that is opt-in. MAPI returns `content_summary: {}` unless
+  // `with_summary` is set, and a per-field digest is often enough to tell two
+  // stories apart when the content itself is not being fetched.
+  if (options.skipContent) {
+    params.with_summary = true;
   }
 
   // Entry type filter

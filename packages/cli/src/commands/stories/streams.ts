@@ -235,25 +235,25 @@ export type AppendToManifestTransport = (
 
 export const makeAppendToManifestFSTransport =
   ({ manifestFile }: { manifestFile: string }): AppendToManifestTransport =>
-    async (entry, remoteStory) => {
-      const createdAt = new Date().toISOString();
-      await appendToFile(
-        manifestFile,
-        JSON.stringify({
-          old_id: entry.uuid,
-          new_id: remoteStory.uuid,
-          created_at: createdAt,
-        }),
-      );
-      await appendToFile(
-        manifestFile,
-        JSON.stringify({
-          old_id: entry.id,
-          new_id: remoteStory.id,
-          created_at: createdAt,
-        }),
-      );
-    };
+  async (entry, remoteStory) => {
+    const createdAt = new Date().toISOString();
+    await appendToFile(
+      manifestFile,
+      JSON.stringify({
+        old_id: entry.uuid,
+        new_id: remoteStory.uuid,
+        created_at: createdAt,
+      }),
+    );
+    await appendToFile(
+      manifestFile,
+      JSON.stringify({
+        old_id: entry.id,
+        new_id: remoteStory.id,
+        created_at: createdAt,
+      }),
+    );
+  };
 
 /**
  * Scans all local `.json` story files and returns a lightweight index
@@ -489,24 +489,24 @@ export type WriteStoryTransport = (story: Story) => Promise<Story>;
 
 export const makeWriteStoryFSTransport =
   ({ directoryPath }: { directoryPath: string }): WriteStoryTransport =>
-    async (story) => {
-      await saveToFile(
-        resolve(directoryPath, getStoryFilename(story)),
-        JSON.stringify(story, null, 2),
-      );
-      return story;
-    };
+  async (story) => {
+    await saveToFile(
+      resolve(directoryPath, getStoryFilename(story)),
+      JSON.stringify(story, null, 2),
+    );
+    return story;
+  };
 
 export const makeWriteStoryAPITransport =
   ({ spaceId, publish }: { spaceId: string; publish?: number }): WriteStoryTransport =>
-    (mappedLocalStory) =>
-      updateStory(spaceId, mappedLocalStory.id, {
-        story: {
-          ...mappedLocalStory,
-          parent_id: mappedLocalStory.parent_id ?? undefined,
-        },
-        publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
-      });
+  (mappedLocalStory) =>
+    updateStory(spaceId, mappedLocalStory.id, {
+      story: {
+        ...mappedLocalStory,
+        parent_id: mappedLocalStory.parent_id ?? undefined,
+      },
+      publish: publish ?? (isStoryPublishedWithoutChanges(mappedLocalStory) ? 1 : 0),
+    });
 
 export type CleanupStoryTransport = (mappedStory: Story) => Promise<void>;
 

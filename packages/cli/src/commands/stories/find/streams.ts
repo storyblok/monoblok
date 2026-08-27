@@ -81,52 +81,6 @@ export const filterStoriesStream = ({
     },
   });
 
-export interface JsonlWriter {
-  push: (value: unknown) => void;
-  flush: () => void;
-}
-
-/**
- * Emits one JSON document per line on stdout.
- *
- * Buffering keys off **stderr**, because that is where the progress bars redraw
- * in place: while they are live on a terminal, anything else written to that
- * terminal lands mid-render and garbles both. Keying off stdout instead would
- * miss the common case, since `… | jq` makes stdout a pipe while `jq` keeps
- * printing to the very terminal the bars are on.
- *
- * So results are held until `flush()` runs, after the bars have stopped, and
- * stream out as they match only when no bars are drawing — a redirected stderr,
- * a CI log, `--no-color`-style non-interactive use — where `… | head -5` stays
- * responsive and nothing can be garbled.
- */
-export function createJsonlWriter({
-  write,
-  buffered = process.stderr.isTTY === true,
-}: {
-  write: (line: string) => void;
-  buffered?: boolean;
-}): JsonlWriter {
-  const pending: string[] = [];
-
-  return {
-    push(value) {
-      const line = JSON.stringify(value);
-      if (buffered) {
-        pending.push(line);
-      } else {
-        write(line);
-      }
-    },
-    flush() {
-      for (const line of pending) {
-        write(line);
-      }
-      pending.length = 0;
-    },
-  };
-}
-
 /**
  * Replaces the per-story MAPI content fetch with one CAPI page per 25 stories,
  * for the sole purpose of deciding which stories are still worth fetching.
@@ -134,9 +88,13 @@ export function createJsonlWriter({
  * The stage only ever *prunes*. A story CAPI does not answer for — a folder, a
  * story the CDN has not got, a batch that failed — passes through undecided, so
  * the exact answer still comes from MAPI content downstream. That is what keeps
- * the result set identical to a run without the flag, and why the `--where`
- * filters are applied twice: cheaply here against CAPI content, then
- * authoritatively against the MAPI story.
+ * the result set identical to a run without the flag.
+ *
+ * A story this stage *matches* is settled here: `onCandidate` records it, and
+ * the terminal stage takes that as the verdict (`isAlreadyMatched`) rather than
+ * re-running the same expressions against the MAPI story. The two documents are
+ * the same draft content, so a second evaluation would cost time without
+ * changing the answer. Only undecided stories are filtered downstream.
  *
  * List metadata is merged under the CAPI content before filtering, so a
  * story-level expression (`$[?($.updated_at > …)]`) decides here too rather than

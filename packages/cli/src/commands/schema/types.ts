@@ -1,11 +1,5 @@
 import type { Component, ComponentFolder, Datasource, InternalTag } from "../../types";
 
-/**
- * Local schema loaded from the user's TypeScript entry file: blocks, datasource
- * definitions, and the block folders (component groups) they declare. A block's
- * group membership is diffed and pushed only when it opts in via a `folder`
- * key; blocks without one stay unmanaged and their remote group is left as-is.
- */
 /** A locally defined block folder in slug-path identity space. */
 export interface LocalFolder {
   /** Display name used when the group must be created. */
@@ -15,6 +9,12 @@ export interface LocalFolder {
   parentPath: string | null;
 }
 
+/**
+ * Local schema loaded from the user's TypeScript entry file: blocks, datasource
+ * definitions, and the block folders (component groups) they declare. A block's
+ * group membership is diffed and pushed only when it opts in via a `folder`
+ * key; blocks without one stay unmanaged and their remote group is left as-is.
+ */
 export interface SchemaData {
   components: Component[];
   folders: LocalFolder[];
@@ -41,17 +41,17 @@ export interface NormalizedSchema {
   /** Block folders (component groups) keyed by slug path — the folder's identity. */
   folders: Map<string, LocalFolder>;
   /**
-   * Component group uuid → slug path for this side's blocks. Empty for a schema
-   * loaded from code, which already references folders by path; a side that
-   * cannot resolve a uuid itself falls back to the other side's map.
+   * `component_group_uuid` → slug path, present only for a schema read from a
+   * space. Group uuids are per-space, so diffing translates both sides into slug
+   * paths before comparing; a side without this map contributes no translations.
    */
-  groupPathByUuid: Map<string, string>;
+  groupPathByUuid?: Map<string, string>;
   /**
-   * Block tag id → name for this side's blocks. Empty for a schema loaded from
-   * code, which already references tags by name; a side that cannot resolve an
-   * id itself falls back to the other side's map.
+   * Block tag id → name, present only for a schema read from a space. Tag ids are
+   * per-space, so diffing translates both sides into tag names before comparing;
+   * a side without this map contributes no translations.
    */
-  tagNameById: Map<string, string>;
+  tagNameById?: Map<string, string>;
 }
 
 export type DiffAction = "create" | "update" | "unchanged" | "stale";

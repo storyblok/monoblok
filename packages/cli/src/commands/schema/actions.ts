@@ -10,14 +10,16 @@ import { buildGroupPathByUuid } from "./folders";
  * block tags into name space for the same reason.
  */
 export function remoteToNormalized(remote: RemoteSchemaData): NormalizedSchema {
-  const groupPathByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
+  const segmentsByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
   const folders = new Map<string, LocalFolder>();
+  const groupPathByUuid = new Map<string, string>();
   for (const folder of remote.componentFolders.values()) {
-    const segments = groupPathByUuid.get(folder.uuid);
+    const segments = segmentsByUuid.get(folder.uuid);
     if (!segments || segments.length === 0) {
       continue;
     }
     const path = segments.join("/");
+    groupPathByUuid.set(folder.uuid, path);
     folders.set(path, {
       name: folder.name,
       path,
@@ -35,9 +37,7 @@ export function remoteToNormalized(remote: RemoteSchemaData): NormalizedSchema {
     components: remote.components,
     datasources: remote.datasources,
     folders,
-    groupPathByUuid: new Map(
-      [...groupPathByUuid].map(([uuid, segments]) => [uuid, segments.join("/")]),
-    ),
+    groupPathByUuid,
     tagNameById,
   };
 }
@@ -48,10 +48,6 @@ export function localToNormalized(local: SchemaData): NormalizedSchema {
     components: new Map(local.components.map((c) => [c.name, c])),
     datasources: new Map(local.datasources.map((d) => [d.name, d])),
     folders: new Map(local.folders.map((f) => [f.path, f])),
-    // A schema written in code names folders and tags directly; there is nothing
-    // to translate, and an id it does carry resolves against the other side.
-    groupPathByUuid: new Map(),
-    tagNameById: new Map(),
   };
 }
 

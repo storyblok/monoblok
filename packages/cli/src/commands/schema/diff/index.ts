@@ -6,8 +6,9 @@ import { getUI } from "../../../lib/ui";
 import { session } from "../../../session";
 import { schemaCommand } from "../command";
 import { diffSchema } from "../diff-schema";
-import type { SchemaDiffReport } from "./actions";
+import type { NormalizedSchema } from "../types";
 import { buildDiffReport, formatSchemaDiff, isSpaceRef, resolveSource } from "./actions";
+import type { SchemaDiffReport } from "./actions";
 
 schemaCommand
   .command("diff")
@@ -38,8 +39,8 @@ schemaCommand
 
     try {
       const resolveSpinner = ui.createSpinner("Resolving schemas...");
-      let fromSchema: Awaited<ReturnType<typeof resolveSource>>;
-      let toSchema: Awaited<ReturnType<typeof resolveSource>>;
+      let fromSchema: NormalizedSchema;
+      let toSchema: NormalizedSchema;
       try {
         [fromSchema, toSchema] = await Promise.all([
           resolveSource(from, "--from"),
@@ -47,6 +48,7 @@ schemaCommand
         ]);
       } catch (maybeError) {
         resolveSpinner.failed("Failed to resolve schemas");
+        summary.failed += 1;
         handleError(toError(maybeError), verbose);
         return;
       }

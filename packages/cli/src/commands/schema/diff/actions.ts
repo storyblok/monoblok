@@ -1,4 +1,5 @@
 import type { DiffResult, EntityDiff, NormalizedSchema } from "../types";
+import { APIError, CommandError, toError } from "../../../utils";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
 import { formatDiff } from "../format-diff";
 import { loadSchema } from "../load-schema";
@@ -8,8 +9,18 @@ export function isSpaceRef(ref: string): boolean {
   return /^\d+$/.test(ref.trim());
 }
 
-function describeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+/**
+ * Adds "which side failed and what to check" context, but only to errors that do
+ * not already explain themselves. A {@link CommandError} (a user mistake, exit
+ * code 2) or an {@link APIError} (which renders its own message stack) is
+ * rethrown untouched so the diagnosis and exit code match `schema push`.
+ */
+function withSourceContext(error: unknown, hint: string): Error {
+  if (error instanceof CommandError || error instanceof APIError) {
+    return error;
+  }
+  const cause = toError(error);
+  return new Error(`${hint}: ${cause.message}`, { cause });
 }
 
 /**
@@ -23,27 +34,29 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
       const { remote } = await fetchRemoteSchema(value);
       return remoteToNormalized(remote);
     } catch (error) {
-      throw new Error(
-        `Could not load space "${value}" (${label}): ${describeError(error)}. Check the space ID and that you are logged in with access to it.`,
+      throw withSourceContext(
+        error,
+        `Could not load space "${value}" (${label}). Check the space ID and that you are logged in with access to it`,
       );
     }
   }
   try {
     return localToNormalized(await loadSchema(value));
   } catch (error) {
-    throw new Error(
-      `Could not load schema entry file "${value}" (${label}): ${describeError(error)}. Check the path, and that it is a project where the schema package and its dependencies are installed.`,
+    throw withSourceContext(
+      error,
+      `Could not load schema entry file "${value}" (${label}). Check the path, and that it is a project where the schema package and its dependencies are installed`,
     );
   }
 }
 
 /** Machine-readable diff payload emitted via the reporter's `meta.diff`. */
-export interface SchemaDiffReport {
+export type SchemaDiffReport = {
   from: string;
   to: string;
   summary: { create: number; update: number; unchanged: number; stale: number };
   entities: EntityDiff[];
-}
+};
 
 /** Builds the serializable diff payload for the reporter. */
 export function buildDiffReport(result: DiffResult, from: string, to: string): SchemaDiffReport {

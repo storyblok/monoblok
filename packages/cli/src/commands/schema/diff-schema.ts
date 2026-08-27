@@ -8,34 +8,21 @@ import {
   isRecord,
 } from "./utils";
 import { cleanComponent, cleanDatasource } from "./serialize";
-import { mapSchemaGroupLists } from "./folders";
 import { mapSchemaTagLists } from "./tags";
 
 type EntityType = "component" | "datasource";
 
 /**
- * Translates one side's references into the shared identity space both sides are
- * compared in: component group uuids into slug paths, block tag ids into names.
+ * Resolves a block tag id to its name. Tag ids are per-space, so both sides are
+ * translated into name space before comparing; an id neither side knows is left
+ * as-is so it still surfaces as a diff.
  */
-interface NameSpace {
-  group: (uuid: string) => string;
-  tag: (entry: string | number) => string | number;
-}
+type ResolveTag = (entry: string | number) => string | number;
 
-/**
- * Resolves through a side's own map first, then the other side's. A schema
- * written in code carries no map of its own, so a raw uuid or tag id it holds —
- * what `schema init` emits — resolves against the space it is diffed with
- * instead of diffing dirty forever. An entry neither side knows is left as-is so
- * it still produces a visible diff.
- */
-function nameSpaceFor(own: NormalizedSchema, other: NormalizedSchema): NameSpace {
-  return {
-    group: (uuid) => own.groupPathByUuid.get(uuid) ?? other.groupPathByUuid.get(uuid) ?? uuid,
-    tag: (entry) => {
-      const id = String(entry);
-      return own.tagNameById.get(id) ?? other.tagNameById.get(id) ?? entry;
-    },
+function resolveTagWith(own: NormalizedSchema, other: NormalizedSchema): ResolveTag {
+  return (entry) => {
+    const id = String(entry);
+    return own.tagNameById?.get(id) ?? other.tagNameById?.get(id) ?? entry;
   };
 }
 
@@ -48,54 +35,53 @@ function stringifyTagIds(internalTagIds: unknown): unknown {
 }
 
 /**
- * A block's tag membership as sorted names: its own `tags` when it manages them
- * by name, otherwise its `internal_tag_ids` resolved through `names`. Tag order
- * is not meaningful to Storyblok and the API does not preserve the order a push
- * sent, so both sides are sorted rather than reporting a reordering as a change.
+ * A block's tag membership as sorted names: its own `tags` when it declares them
+ * that way, otherwise its `internal_tag_ids` resolved through `resolveTag`. Tag
+ * order is not meaningful to Storyblok and the API does not preserve the order a
+ * push sent, so both sides are sorted rather than reporting a reordering as a
+ * change.
  */
-function tagNames(comp: Record<string, unknown>, names: NameSpace): string[] {
+function tagNames(comp: Record<string, unknown>, resolveTag: ResolveTag): string[] {
   if (Array.isArray(comp.tags)) {
     return [...comp.tags].map(String).sort();
   }
   if (!Array.isArray(comp.internal_tag_ids)) {
     return [];
   }
-  return comp.internal_tag_ids.map((id) => String(names.tag(id))).sort();
+  return comp.internal_tag_ids.map((id) => String(resolveTag(id))).sort();
 }
 
 /**
- * Rewrites one side of a component into the shared identity space before it is
- * cleaned and compared. Group and tag lists inside `schema` are translated on
- * both sides; tag membership diffs by name only when the target block manages it
- * that way (`byTagName`), and otherwise falls back to comparing raw
- * `internal_tag_ids` as strings — the component serializer returns tag ids as
- * strings while a hand-written schema usually holds the numbers it was pasted
- * from, and an id that is already correct must not report the block as changed
- * on every push. The source component is never mutated.
+ * Copies a component into tag-name identity space: its own membership as a
+ * `tags` key when the target block declares one (`byTagName`), and each field's
+ * tag list ids translated to names. Without `byTagName` the raw-id escape hatch
+ * diffs in id space instead, where the two sides disagree on the JavaScript
+ * type — the component serializer returns tag ids as strings while a
+ * hand-written schema usually holds the numbers it was pasted from — so they are
+ * compared as strings. The source objects are never mutated.
  */
-function toNameSpace(
+function toTagSpace(
   comp: Component,
-  names: NameSpace,
+  resolveTag: ResolveTag,
   byTagName: boolean,
 ): Record<string, unknown> {
-  const prepared: Record<string, unknown> = { ...comp };
+  const copy: Record<string, unknown> = { ...comp };
 
   if (byTagName) {
-    prepared.tags = tagNames(prepared, names);
-    delete prepared.internal_tag_ids;
+    copy.tags = tagNames(copy, resolveTag);
+    delete copy.internal_tag_ids;
   } else {
-    delete prepared.tags;
-    if ("internal_tag_ids" in prepared) {
-      prepared.internal_tag_ids = stringifyTagIds(prepared.internal_tag_ids);
+    delete copy.tags;
+    if ("internal_tag_ids" in copy) {
+      copy.internal_tag_ids = stringifyTagIds(copy.internal_tag_ids);
     }
   }
 
-  if ("schema" in prepared) {
-    prepared.schema = mapSchemaGroupLists(prepared.schema, names.group);
-    prepared.schema = mapSchemaTagLists(prepared.schema, names.tag);
+  if (isRecord(copy.schema)) {
+    copy.schema = mapSchemaTagLists(copy.schema, resolveTag);
   }
 
-  return prepared;
+  return copy;
 }
 
 /** Canonical string for deep value equality; `formatValue` sorts keys recursively. */
@@ -132,8 +118,45 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
+ * Like {@link diffKeyed}, but recurses into nested records so a change reads as
+ * the property that actually moved (`schema.body.maximum`) instead of two dumps
+ * of the whole enclosing object. Recursion stops at non-record values, which are
+ * reported whole.
+ */
+function diffKeyedDeep(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  prefix: string,
+): FieldChange[] {
+  const changes: FieldChange[] = [];
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+
+  for (const key of [...keys].sort()) {
+    const field = `${prefix}${key}`;
+    const inBefore = key in before;
+    const inAfter = key in after;
+    if (inBefore && !inAfter) {
+      changes.push({ field, change: "removed", before: before[key] });
+    } else if (!inBefore && inAfter) {
+      changes.push({ field, change: "added", after: after[key] });
+    } else if (canonical(before[key]) !== canonical(after[key])) {
+      if (isRecord(before[key]) && isRecord(after[key])) {
+        changes.push(...diffKeyedDeep(before[key], after[key], `${field}.`));
+      } else {
+        changes.push({ field, change: "modified", before: before[key], after: after[key] });
+      }
+    }
+  }
+
+  return changes;
+}
+
+/**
  * Field-level changes for a component: top-level props (display_name, is_nestable,
- * component_group_uuid, …) and, expanded one level, individual schema fields.
+ * component_group_uuid, …) plus schema fields, which are namespaced under
+ * `schema.` and expanded down to the individual property that changed. The
+ * namespace keeps a schema field named e.g. `folder` distinct from the top-level
+ * `folder` prop.
  */
 function componentChanges(
   before: Record<string, unknown>,
@@ -143,33 +166,37 @@ function componentChanges(
   const { schema: afterSchema, ...afterProps } = after;
   return [
     ...diffKeyed(beforeProps, afterProps),
-    ...diffKeyed(asRecord(beforeSchema), asRecord(afterSchema)),
+    ...diffKeyedDeep(asRecord(beforeSchema), asRecord(afterSchema), "schema."),
   ];
 }
 
-/** Builds an {@link EntityDiff} from the cleaned source/target objects. */
+/**
+ * Builds an {@link EntityDiff} from the cleaned source/target objects. `before`
+ * and `after` carry the cleaned forms — API-assigned ids, timestamps and
+ * per-space group uuids are already stripped, so the payload is safe to replay
+ * into another space. An `unchanged` entity carries neither, since both sides
+ * are by definition identical.
+ */
 function buildEntityDiff(
   type: EntityType,
   name: string,
-  fromRaw: Record<string, unknown> | null,
-  toRaw: Record<string, unknown> | null,
   fromClean: Record<string, unknown> | null,
   toClean: Record<string, unknown> | null,
 ): EntityDiff {
   if (!fromClean && toClean) {
-    return { type, name, action: "create", changes: [], before: null, after: toRaw };
+    return { type, name, action: "create", changes: [], before: null, after: toClean };
   }
   if (fromClean && !toClean) {
-    return { type, name, action: "stale", changes: [], before: fromRaw, after: null };
+    return { type, name, action: "stale", changes: [], before: fromClean, after: null };
   }
   if (canonical(fromClean) === canonical(toClean)) {
-    return { type, name, action: "unchanged", changes: [], before: fromRaw, after: toRaw };
+    return { type, name, action: "unchanged", changes: [], before: null, after: null };
   }
 
   const changes =
     type === "component" ? componentChanges(fromClean!, toClean!) : diffKeyed(fromClean!, toClean!);
 
-  return { type, name, action: "update", changes, before: fromRaw, after: toRaw };
+  return { type, name, action: "update", changes, before: fromClean, after: toClean };
 }
 
 /** Names of `to` in insertion order, then any `from`-only names — mirrors the target's order. */
@@ -183,35 +210,103 @@ function orderedNames<T>(from: Map<string, T>, to: Map<string, T>): string[] {
   return names;
 }
 
+/**
+ * Whether a side can express this block's group membership: a schema read from a
+ * space always can (membership lives in `component_group_uuid`), and a local
+ * block does so by declaring a `folder` key. When either side cannot, membership
+ * is unmanaged and `folder` is stripped from both, leaving the remote UI grouping
+ * untouched instead of reporting a phantom change.
+ */
+function managesFolder(comp: Component | undefined, schema: NormalizedSchema): boolean {
+  return comp !== undefined && (schema.groupPathByUuid !== undefined || "folder" in comp);
+}
+
+/**
+ * Copies a component into slug-path identity space: group membership as a
+ * `folder` key (synthesized from `component_group_uuid` for a space-read block)
+ * and each field's `component_group_whitelist` uuids translated to paths. Both
+ * sides go through this so a uuid never diffs against the path meaning the same
+ * group. The source objects are never mutated.
+ */
+function toPathSpace(
+  comp: Record<string, unknown>,
+  uuidToPath: Map<string, string>,
+  manageFolder: boolean,
+): Record<string, unknown> {
+  const copy: Record<string, unknown> = { ...comp };
+
+  if (manageFolder) {
+    if (!("folder" in copy)) {
+      const uuid = copy.component_group_uuid;
+      copy.folder = typeof uuid === "string" && uuid ? (uuidToPath.get(uuid) ?? null) : null;
+    }
+  } else {
+    delete copy.folder;
+  }
+
+  if (isRecord(copy.schema)) {
+    const schema: Record<string, unknown> = {};
+    for (const [fieldName, field] of Object.entries(copy.schema)) {
+      // Unknown uuids pass through untranslated so they still surface as a diff.
+      schema[fieldName] =
+        isRecord(field) && Array.isArray(field.component_group_whitelist)
+          ? {
+              ...field,
+              component_group_whitelist: field.component_group_whitelist.map((entry: unknown) =>
+                typeof entry === "string" ? (uuidToPath.get(entry) ?? entry) : entry,
+              ),
+            }
+          : field;
+    }
+    copy.schema = schema;
+  }
+
+  return copy;
+}
+
 function diffComponent(
   name: string,
   fromComp: Component | undefined,
   toComp: Component | undefined,
-  fromNames: NameSpace,
-  toNames: NameSpace,
+  context: {
+    uuidToPath: Map<string, string>;
+    fromTag: ResolveTag;
+    toTag: ResolveTag;
+    from: NormalizedSchema;
+    to: NormalizedSchema;
+  },
   compareGroupUuid: boolean,
 ): EntityDiff {
+  const { uuidToPath, fromTag, toTag, from, to } = context;
   // Group UUIDs are per-space identifiers, so they only carry meaning when the
   // caller opts in (push, where the target is the local DSL and an explicit
   // `component_group_uuid` is a deliberate escape hatch). When comparing two
   // spaces they never match and would flag every grouped block as changed, so
   // the field stays stripped on both sides unless both are opted in.
   const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === "string";
-  // Tag membership diffs by name whenever the target block manages it that way:
-  // a `tags` key is the block declaring its tags, in any space.
+  // Tag membership diffs by name whenever the target block declares a `tags`
+  // key; otherwise the raw ids are compared as-is.
   const byTagName = toComp ? "tags" in toComp : false;
+  const manageFolder = managesFolder(fromComp, from) && managesFolder(toComp, to);
   const fromClean = fromComp
     ? cleanComponent(
-        applyDefaults(toNameSpace(fromComp, fromNames, byTagName), COMPONENT_DEFAULTS),
+        applyDefaults(
+          toPathSpace(toTagSpace(fromComp, fromTag, byTagName), uuidToPath, manageFolder),
+          COMPONENT_DEFAULTS,
+        ),
         { includeGroupUuid },
       )
     : null;
   const toClean = toComp
-    ? cleanComponent(applyDefaults(toNameSpace(toComp, toNames, byTagName), COMPONENT_DEFAULTS), {
-        includeGroupUuid,
-      })
+    ? cleanComponent(
+        applyDefaults(
+          toPathSpace(toTagSpace(toComp, toTag, byTagName), uuidToPath, manageFolder),
+          COMPONENT_DEFAULTS,
+        ),
+        { includeGroupUuid },
+      )
     : null;
-  return buildEntityDiff("component", name, fromComp ?? null, toComp ?? null, fromClean, toClean);
+  return buildEntityDiff("component", name, fromClean, toClean);
 }
 
 function diffDatasource(
@@ -221,7 +316,7 @@ function diffDatasource(
 ): EntityDiff {
   const fromClean = fromDs ? cleanDatasource(applyDefaults(fromDs, DATASOURCE_DEFAULTS)) : null;
   const toClean = toDs ? cleanDatasource(applyDefaults(toDs, DATASOURCE_DEFAULTS)) : null;
-  return buildEntityDiff("datasource", name, fromDs ?? null, toDs ?? null, fromClean, toClean);
+  return buildEntityDiff("datasource", name, fromClean, toClean);
 }
 
 /**
@@ -263,22 +358,38 @@ export function diffSchema(
   const compareGroupUuid = options.compareGroupUuid ?? false;
   const diffs: EntityDiff[] = [];
 
+  // One translation table for both sides. Group uuids are globally unique, so a
+  // union is unambiguous, and it lets a local block that still carries raw uuids
+  // (as `schema init` emits) resolve against the space it was pulled from.
+  const uuidToPath = new Map<string, string>([
+    ...(from.groupPathByUuid ?? new Map<string, string>()),
+    ...(to.groupPathByUuid ?? new Map<string, string>()),
+  ]);
+  // Tag ids, unlike group uuids, are only unique within a space, so each side
+  // resolves through its own table and falls back to the other's — which is what
+  // lets a local block holding raw ids (as `schema init` emits) resolve against
+  // the space it was pulled from.
+  const context = {
+    uuidToPath,
+    fromTag: resolveTagWith(from, to),
+    toTag: resolveTagWith(to, from),
+    from,
+    to,
+  };
+
   // Folders first: `schema push` creates them parent-first before the blocks
   // that reference them.
   for (const name of orderedNames(from.folders, to.folders)) {
     diffs.push(diffFolder(name, from.folders.get(name), to.folders.get(name)));
   }
 
-  const fromNames = nameSpaceFor(from, to);
-  const toNames = nameSpaceFor(to, from);
   for (const name of orderedNames(from.components, to.components)) {
     diffs.push(
       diffComponent(
         name,
         from.components.get(name),
         to.components.get(name),
-        fromNames,
-        toNames,
+        context,
         compareGroupUuid,
       ),
     );

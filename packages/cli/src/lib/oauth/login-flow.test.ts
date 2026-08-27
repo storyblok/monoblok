@@ -6,7 +6,7 @@ import { getOAuthActiveRegion, getOAuthEntry } from "./store";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
-vi.mock("../../lib/ui", () => ({ getUI: () => ({ info: vi.fn(), warn: vi.fn() }) }));
+vi.mock("../ui", () => ({ getUI: () => ({ info: vi.fn(), warn: vi.fn() }) }));
 vi.mock("./client", () => ({
   resolveOAuthClient: vi.fn(() => ({ client_id: "cid", client_secret: "sec" })),
 }));

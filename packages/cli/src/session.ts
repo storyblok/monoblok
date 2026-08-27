@@ -1,6 +1,6 @@
 import { type RegionCode, regionsDomain } from "./constants";
 import { addCredentials, getCredentials } from "./creds";
-import { clearOAuthTokens, getOAuthActiveRegion, getOAuthEntry } from "./commands/oauth/store";
+import { clearOAuthTokens, getOAuthActiveRegion, getOAuthEntry } from "./lib/oauth/store";
 
 export interface SessionState {
   isLoggedIn: boolean;

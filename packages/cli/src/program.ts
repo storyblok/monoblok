@@ -12,9 +12,8 @@ import { ConsoleTransport } from "./lib/logger/logger-transport-console";
 import { resolveCommandPath } from "./utils/filesystem";
 import { session } from "./session";
 import { getMapiClient } from "./api";
-import { isExpiringSoon } from "./lib/oauth/expiry";
-import { refreshOAuthTokens } from "./lib/oauth/refresh";
 import { assertSpaceAllowed } from "./lib/oauth/space-guard";
+import { createOAuthTokenProvider } from "./lib/oauth/token-provider";
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -77,27 +76,13 @@ export function getProgram(): Command {
       const { state, initializeSession } = session();
       await initializeSession();
       if (state.authType === "oauth" && state.region) {
-        let accessToken = state.oauthAccessToken;
-        if (isExpiringSoon(state.oauthExpiresAt)) {
-          try {
-            const refreshed = await refreshOAuthTokens(state.region);
-            accessToken = refreshed.access_token;
-            state.oauthAccessToken = refreshed.access_token;
-            state.oauthExpiresAt = refreshed.expires_at;
-          } catch (error) {
-            // The UI isn't configured yet at this point in the hook (Step 2 below applies
-            // the resolved config), so surface the re-login guidance via the default UI
-            // instance. Do not throw: commands that don't need auth should still run;
-            // authed commands will fail downstream if the token is dead.
-            getUI().warn((error as Error).message);
-          }
-        }
-        if (accessToken) {
-          getMapiClient({
-            oauthToken: accessToken,
-            region: state.region ?? resolvedConfig.region,
-          });
-        }
+        // A provider rather than a token string: access tokens live 15 minutes, so a
+        // command that runs longer refreshes mid-run instead of 401ing. Commands that
+        // need no auth never call it, so they never pay for a refresh.
+        getMapiClient({
+          oauthToken: createOAuthTokenProvider(state.region, state),
+          region: state.region ?? resolvedConfig.region,
+        });
       } else if (state.password) {
         getMapiClient({
           personalAccessToken: state.password,

@@ -60,9 +60,9 @@ npm install @storyblok/react
 ```
 
 > ⚠️ This SDK uses the Fetch API under the hood. If your environment doesn't support it, you need to
-> install a polyfill like [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch).
-> More info on
-> [storyblok-js-client docs](https://github.com/storyblok/storyblok-js-client#fetch-use-polyfill-if-needed---version-5).
+> provide a polyfill. See the
+> [API Client documentation](https://www.storyblok.com/docs/libraries/js/content-delivery-api-client)
+> for details.
 
 ### From a CDN
 
@@ -74,47 +74,39 @@ Install the file from the CDN:
 
 ## Initialization
 
-Register the plugin on your application and add the
-[access token](https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/authentication?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react)
-of your Storyblok space. You can also add the `apiPlugin` in case that you want to use the Storyblok
-API Client:
+Set up the SDK in two steps: create the API client with your
+[access token](https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/authentication?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react),
+then register your components with `defineStoryblokComponents`:
 
-```js
-import { apiPlugin, storyblokInit } from "@storyblok/react";
+```ts
+// lib/storyblok.ts
+import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
 
 /** Import your components */
 import Page from "./components/Page";
 import Teaser from "./components/Teaser";
-// import FallbackComponent from "./components/FallbackComponent";
 
-storyblokInit({
+export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
-  use: [apiPlugin],
+});
+
+export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
   components: {
     page: Page,
     teaser: Teaser,
   },
-  // bridge: false,
-  // apiOptions: {},
-  // richText: {},
-  // enableFallbackComponent: false,
-  // customFallbackComponent: FallbackComponent,
+  // fallback: FallbackComponent,
+  // suspenseFallback: LoadingSkeleton,
 });
 ```
 
-> Note: This is the general way for initalizing the SDK, the initialization might be a little
-> different depending upon the framework. You can see how everything works according to the
-> framework in their respective sections below.
+Add all your components to the `components` map in `defineStoryblokComponents`. The returned
+`StoryblokComponent` renders any registered block by looking up `block.component` in that map.
 
-Add all your components to the components object in the `storyblokInit` function.
-
-That's it! All the features are enabled for you: the _Api Client_ for interacting with
+That's it! All the features are enabled for you: the _API Client_ for interacting with the
 [Storyblok CDN API](https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/introduction?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react),
-and _Storyblok Bridge_ for
+and the _Storyblok Bridge_ for the
 [real-time visual editing experience](https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react).
-
-> You can enable/disable some of these features if you don't need them, so you save some KB. Please
-> read the "Features and API" section
 
 ## Region parameter
 
@@ -128,15 +120,15 @@ Possible values:
 
 Full example for a space created in the US:
 
-```js
-import { apiPlugin, storyblokInit } from "@storyblok/react";
+```ts
+import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
 
-storyblokInit({
+export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
-  use: [apiPlugin],
-  apiOptions: {
-    region: "us",
-  },
+  region: "us",
+});
+
+export const { StoryblokComponent } = defineStoryblokComponents({
   components: {},
 });
 ```
@@ -144,28 +136,34 @@ storyblokInit({
 > Note: For spaces created in the United States or China, the `region` parameter **must** be
 > specified.
 
-`@storyblok/react` does three actions when you initialize it:
+`@storyblok/react` provides the following when initialized:
 
-- Provides a `getStoryblokApi` object in your app, which is an instance of
-  [storyblok-js-client](https://github.com/storyblok/storyblok-js-client).
-- Loads the
-  [Storyblok Bridge](https://www.storyblok.com/docs/Guides/storyblok-latest-js?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react)
-  for real-time visual updates.
-- Provides a `storyblokEditable` function to link editable components to the Storyblok Visual
-  Editor.
+- `apiClient` — a typed API client for fetching content from the
+  [Storyblok CDN API](https://www.storyblok.com/docs/api/content-delivery/v2/getting-started/introduction?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react).
+- `StoryblokComponent` — renders any registered block component by matching `block.component` to the
+  components map.
+- `storyblokEditable` — attaches the required attributes to link a component to the Storyblok Visual
+  Editor for
+  [real-time visual updates](https://www.storyblok.com/docs/Guides/storyblok-latest-js?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react).
 
-For every component you've defined in your Storyblok space, call the `storyblokEditable` function
-with the blok content:
+For every component you've defined in your Storyblok space, call `storyblokEditable` with the block
+data and use `StoryblokComponentProps` to type your props:
 
-```js
+```tsx
+import type { StoryblokComponentProps } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 
-const Feature = ({ blok }) => {
+type FeatureProps = StoryblokComponentProps<{
+  name: string;
+  description: string;
+}>;
+
+const Feature = ({ block }: FeatureProps) => {
   return (
-    <div {...storyblokEditable(blok)} key={blok._uid} data-test="feature">
+    <div {...storyblokEditable(block)} key={block._uid} data-test="feature">
       <div>
-        <div>{blok.name}</div>
-        <p>{blok.description}</p>
+        <div>{block.name}</div>
+        <p>{block.description}</p>
       </div>
     </div>
   );
@@ -174,11 +172,10 @@ const Feature = ({ blok }) => {
 export default Feature;
 ```
 
-Where `blok` is the actual blok data coming from
+Where `block` is the actual block data coming from
 [Storyblok's Content Delivery API](https://www.storyblok.com/docs/api/content-delivery?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-react).
 
-> Note: The `storyblokEditable` function works the same way for all the frameworks and components
-> created.
+> Note: The `storyblokEditable` function works the same way for all frameworks and components.
 
 ## Getting Started
 

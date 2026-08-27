@@ -86,12 +86,25 @@ stories are in scope" rather than "what is inside them", `--skip-content` drops 
 and the run becomes the page walk, which moves 100 stories per request. It is rejected in
 combination with anything that has no other content source (`--check-references`).
 
-### 7. JSONL to stdout, UI to stderr
+### 7. JSONL to stdout, UI to stderr, and stdout never waits for the UI
 
 Output follows Unix piping conventions. Each matching story is written as a complete JSON object on
 one line to stdout. All UI (spinners, progress, summary) goes to stderr via `getUI()`. This enables
 `jq`, `wc -l`, `grep`, `>` redirection, and `xargs` piping without any special flags. A downstream
 reader that exits early (`| head -5`) terminates the run rather than being written to a closed pipe.
+
+Results stream as they are produced, unconditionally. An earlier version held them back while
+progress bars were drawing on a terminal, so that a downstream `jq` printing to that same terminal
+could not garble them. That was the wrong trade: it defeated the only property line-oriented output
+has over a single JSON array — that a reader can act on the first line without waiting for the last
+— and it did so for a condition this process cannot observe, since whether the downstream command
+prints to the terminal or to a file is a property of that command. It also held the entire result
+set in memory and made the early-exit above unreachable in the interactive case.
+
+The one collision that _is_ observable is stdout being a terminal, which puts the results and the
+bars on the same screen with certainty rather than by guess. Progress rendering is dropped for those
+runs; text output on stderr, which scrolls rather than redraws, stays. Everything else is left to
+the user, who knows what is downstream: `2>/dev/null`, or the global `--no-ui-enabled`.
 
 ## Alternatives Considered
 

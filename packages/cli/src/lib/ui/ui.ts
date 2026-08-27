@@ -104,6 +104,7 @@ export class UI {
   private console: Pick<typeof console, "log" | "info" | "warn" | "error"> | null;
   private enabled: boolean;
   private multiBar: MultiBar | null;
+  private progressSuppressed = false;
 
   constructor({ enabled }: { enabled: boolean }) {
     this.enabled = enabled;
@@ -241,7 +242,24 @@ export class UI {
     }
   }
 
+  /**
+   * Drops in-place progress rendering for the rest of the run, leaving the text
+   * output alone.
+   *
+   * For a command whose results go to stdout while the bars redraw on stderr and
+   * both land on the same terminal: the two overwrite each other, and the
+   * results are the part worth keeping. Titles, warnings and the closing summary
+   * still print — they scroll rather than redraw, so they cost nothing.
+   */
+  suppressProgress() {
+    this.progressSuppressed = true;
+    this.multiBar?.stop();
+  }
+
   createProgressBar(options: { title: string }): ProgressBar {
+    if (this.progressSuppressed) {
+      return noopProgressBar;
+    }
     const bar = this.multiBar?.create(0, 0, options);
     if (!bar) {
       return noopProgressBar;
@@ -265,7 +283,7 @@ export class UI {
   }
 
   createSpinner(title: string): CLISpinner {
-    if (!this.enabled) {
+    if (!this.enabled || this.progressSuppressed) {
       return noopSpinner;
     }
     const spinner = new Spinner({ verbose: getActiveConfig().verbose });

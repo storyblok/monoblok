@@ -1,10 +1,20 @@
 import { Option } from "commander";
+import { Readable, type Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { colorPalette, commands } from "../../../constants";
 import type { RegionCode } from "../../../constants";
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
-import { createJsonlOutput, getUI, isDownstreamClosed } from "../../../lib/ui";
+import { getUI } from "../../../lib/ui";
+import {
+  createCollectingSink,
+  createJsonlOutput,
+  createPhaseTracker,
+  formatMark,
+  isDownstreamClosed,
+  toPhaseSummary,
+} from "../../../lib/pipe";
+import type { PhaseDefinition, PhaseTracker } from "../../../lib/pipe";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { fetchStoriesStream, fetchStoryStream } from "../streams";
@@ -200,61 +210,57 @@ type FindContext = {
   verbose: boolean;
 };
 
-/** Widest label, so every bar's `[` lines up. */
-const PROGRESS_LABEL_WIDTH = "Applying client-side filters".length;
-const label = (text: string): string => text.padEnd(PROGRESS_LABEL_WIDTH);
-
-type PhaseCounters = {
-  list: { total: number; succeeded: number; skipped: number; failed: number };
-  capiFilter: {
-    total: number;
-    candidates: number;
-    pruned: number;
-    unresolved: number;
-    failed: number;
-  };
-  content: { total: number; succeeded: number; failed: number };
-  process: { total: number; succeeded: number; skipped: number; failed: number };
-};
-
-const createCounters = (): PhaseCounters => ({
-  list: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
-  capiFilter: { total: 0, candidates: 0, pruned: 0, unresolved: 0, failed: 0 },
-  content: { total: 0, succeeded: 0, failed: 0 },
-  process: { total: 0, succeeded: 0, skipped: 0, failed: 0 },
-});
-
 /**
- * Milliseconds from the start of the run until each phase last made progress.
+ * The phases of a find run, in pipeline order.
  *
- * The phases overlap on purpose — content fetches begin while later pages are
- * still listing — so these are "finished by" marks against a single clock, not
- * three durations that add up to the total.
+ * Which of them exist depends on the flags — `--skip-content` removes the content
+ * fetch, `--capi-filter` adds a bulk stage ahead of it — and each declares what
+ * it loses, which is what keeps every total below it honest as stories are
+ * dropped along the way. The tracker owns the bars, the counters and the
+ * `done @Xs` marks from here on.
  */
-type PhaseTimings = {
-  startedAt: number;
-  list: number;
-  capiFilter: number;
-  content: number;
-  process: number;
-};
-
-const createTimings = (): PhaseTimings => ({
-  startedAt: Date.now(),
-  list: 0,
-  capiFilter: 0,
-  content: 0,
-  process: 0,
-});
-
-/**
- * Renders a phase mark as an elapsed-since-start reading.
- *
- * Written as `done @12.3s` rather than a bare duration because the phases
- * overlap: listing reads "slow" whenever backpressure holds the pager back
- * waiting on content fetches, which is the pipeline working, not stalling.
- */
-const formatMark = (ms: number): string => `done @${(ms / 1000).toFixed(1)}s`;
+function findPhases({
+  capi,
+  skipContent,
+  capiLabel,
+  processLabel,
+}: {
+  capi: boolean;
+  skipContent: boolean;
+  capiLabel: string;
+  processLabel: string;
+}): PhaseDefinition[] {
+  return [
+    {
+      key: "list",
+      label: "Fetching stories",
+      counters: ["succeeded", "skipped", "failed"],
+      // A story dropped from list metadata alone never reaches the stage below.
+      outflow: (counts) => counts.total - counts.skipped,
+    },
+    {
+      key: "capiFilter",
+      label: capiLabel,
+      enabled: capi,
+      counters: ["candidates", "pruned", "unresolved", "failed"],
+      // What the CAPI filter prunes never costs a MAPI fetch.
+      outflow: (counts) => counts.total - counts.pruned,
+    },
+    {
+      key: "content",
+      label: "Fetching stories content",
+      enabled: !skipContent,
+      counters: ["succeeded", "failed"],
+      // A story whose content could not be fetched cannot be decided below.
+      outflow: (counts) => counts.total - counts.failed,
+    },
+    {
+      key: "process",
+      label: processLabel,
+      counters: ["succeeded", "skipped", "failed"],
+    },
+  ];
+}
 
 /**
  * Streams the fetch/filter phases and reports each with its own bar.
@@ -266,87 +272,55 @@ const formatMark = (ms: number): string => `done @${(ms / 1000).toFixed(1)}s`;
  *
  * Two stages are optional, and both exist to avoid that per-story fetch:
  * `capi` inserts a bulk CAPI filter ahead of it, and `skipContent` drops it
- * entirely. Neither changes what the terminal stage receives, only how much of
+ * entirely. Neither changes what the last stage receives, only how much of
  * the space reaches it.
  *
- * `filterStoriesStream` is that terminal stage; it decides what each matched
- * story turns into (JSONL now, a buffered reference candidate for
- * `--check-references`).
+ * `filterStoriesStream` is that last deciding stage, and everything it matches
+ * goes to `sink` — JSONL on stdout for `find`, a buffer for
+ * `--check-references`. The run therefore moves at the pace of whatever is
+ * reading, rather than ahead of it.
  */
 async function runStoryPipeline({
   spaceId,
   params,
   preContentFilters,
   filters,
-  processLabel,
-  counters,
-  timings,
+  tracker,
+  sink,
   onListed,
-  onMatch,
   capi,
   skipContent = false,
   signal,
-  ui,
   logger,
   verbose,
-}: Omit<FindContext, "reporter"> & {
+}: Omit<FindContext, "reporter" | "ui"> & {
   /** Stops the run when the reader on the other end of stdout exits first. */
   signal?: AbortSignal;
   /** Decided from list metadata alone, so matching stories skip the content fetch. */
   preContentFilters: ClientFilter[];
   filters: ClientFilter[];
-  processLabel: string;
-  counters: PhaseCounters;
-  timings: PhaseTimings;
+  tracker: PhaseTracker;
+  /** Where a match goes. Its backpressure is what paces the whole run. */
+  sink: Writable;
   /** Called for every listed story, before its content is fetched. */
   onListed?: (story: Story) => void;
-  onMatch: (story: Story) => void;
   /** Prunes candidates with bulk CAPI content before the per-story MAPI fetch. */
   capi?: CapiFilter;
   /** Emits list metadata without fetching content at all. */
   skipContent?: boolean;
 }): Promise<void> {
-  const listProgress = ui.createProgressBar({ title: label("Fetching stories") });
-  const capiFilterProgress = capi
-    ? ui.createProgressBar({ title: label("Filtering via CAPI") })
-    : undefined;
-  const contentProgress = skipContent
-    ? undefined
-    : ui.createProgressBar({ title: label("Fetching stories content") });
-  const processProgress = ui.createProgressBar({ title: label(processLabel) });
+  const list = tracker.phase("list");
+  const capiFilter = tracker.phase("capiFilter");
+  const content = tracker.phase("content");
+  const processed = tracker.phase("process");
 
   /**
-   * Ids the CAPI filter matched, so the terminal stage does not test them again.
+   * Ids the CAPI filter matched, so the last stage does not test them again.
    *
    * Holding only the survivors keeps this small — it is the same set that reaches
    * the content fetch, and every entry leaves the pipeline as a result.
    */
   const matchedByCapiFilter = capi ? new Set<Story["id"]>() : undefined;
-
-  /**
-   * Re-derives every downstream total from the counts so far.
-   *
-   * Re-derived rather than adjusted in place, because the page total arrives
-   * again with every page: assigning would reset the totals back to the full
-   * count and un-subtract everything already dropped. Each subtrahend is a story
-   * that can never reach the stage below it — dropped from the list response,
-   * pruned by the CAPI filter, or lost to a failed content fetch — so the bars
-   * still land on 100% instead of stalling short.
-   */
-  const syncDownstreamTotals = (): void => {
-    const listed = Math.max(counters.list.total - counters.list.skipped, 0);
-    counters.capiFilter.total = listed;
-    // What survives the CAPI filter is what reaches the stages below it, whether
-    // or not a content fetch sits in between.
-    const survivedCapiFilter = listed - counters.capiFilter.pruned;
-    counters.content.total = skipContent ? 0 : survivedCapiFilter;
-    counters.process.total = skipContent
-      ? survivedCapiFilter
-      : counters.content.total - counters.content.failed;
-    capiFilterProgress?.setTotal(counters.capiFilter.total);
-    contentProgress?.setTotal(counters.content.total);
-    processProgress.setTotal(counters.process.total);
-  };
 
   // Aborting the pipeline tears every in-flight stage down at once, and each one
   // reports that teardown through its own error callback: a listing page, a CAPI
@@ -362,14 +336,11 @@ async function runStoryPipeline({
       spaceId,
       params,
       setTotalStories: (total) => {
-        counters.list.total = total;
-        listProgress.setTotal(total);
-        syncDownstreamTotals();
+        list.setTotal(total);
       },
       onStoryListed: (story) => {
-        counters.list.succeeded += 1;
-        timings.list = Date.now() - timings.startedAt;
-        listProgress.increment();
+        list.count("succeeded");
+        list.tick();
         onListed?.(story);
       },
       onPageSuccess: (page, total) => {
@@ -379,15 +350,14 @@ async function runStoryPipeline({
         if (causedByStop(error)) {
           return;
         }
-        counters.list.failed += 1;
+        list.count("failed");
         handleError(error, verbose, { page, total });
       },
     }),
     filterListedStoriesStream({
       filters: preContentFilters,
       onDropped: () => {
-        counters.list.skipped += 1;
-        syncDownstreamTotals();
+        list.count("skipped");
       },
     }),
     ...(capi
@@ -397,25 +367,23 @@ async function runStoryPipeline({
             filters: capi.filters,
             attachContent: capi.attachContent,
             onCandidate: (story) => {
-              counters.capiFilter.candidates += 1;
+              capiFilter.count("candidates");
               matchedByCapiFilter?.add(story.id);
             },
             onPruned: () => {
-              counters.capiFilter.pruned += 1;
-              syncDownstreamTotals();
+              capiFilter.count("pruned");
             },
             onUnresolved: () => {
-              counters.capiFilter.unresolved += 1;
+              capiFilter.count("unresolved");
             },
             onBatchSettled: (size) => {
-              timings.capiFilter = Date.now() - timings.startedAt;
-              capiFilterProgress?.increment(size);
+              capiFilter.tick(size);
             },
             onBatchError: (error, size) => {
               if (causedByStop(error)) {
                 return;
               }
-              counters.capiFilter.failed += 1;
+              capiFilter.count("failed");
               // Whether a failed batch costs the run anything depends on what is
               // downstream of it. With the per-story MAPI fetch still to come,
               // its stories pass through undecided and are settled exactly as
@@ -441,18 +409,16 @@ async function runStoryPipeline({
           fetchStoryStream({
             spaceId,
             onIncrement: () => {
-              timings.content = Date.now() - timings.startedAt;
-              contentProgress?.increment();
+              content.tick();
             },
             onStorySuccess: () => {
-              counters.content.succeeded += 1;
+              content.count("succeeded");
             },
             onStoryError: (error, story) => {
               if (causedByStop(error)) {
                 return;
               }
-              counters.content.failed += 1;
-              syncDownstreamTotals();
+              content.count("failed");
               handleError(error, verbose, { storyId: story.id });
             },
           }),
@@ -465,24 +431,23 @@ async function runStoryPipeline({
         ? (story) => matchedByCapiFilter.has(story.id)
         : undefined,
       onIncrement: () => {
-        timings.process = Date.now() - timings.startedAt;
-        processProgress.increment();
+        processed.tick();
       },
-      onMatch: (story) => {
-        counters.process.succeeded += 1;
-        onMatch(story);
+      onMatch: () => {
+        processed.count("succeeded");
       },
       onSkip: () => {
-        counters.process.skipped += 1;
+        processed.count("skipped");
       },
       onStoryError: (error, story) => {
         if (causedByStop(error)) {
           return;
         }
-        counters.process.failed += 1;
+        processed.count("failed");
         handleError(error, verbose, { storyId: story.id });
       },
     }),
+    sink,
   ];
 
   await pipeline(stages, { signal });
@@ -505,9 +470,19 @@ async function runFind({
   skipContent?: boolean;
   capi?: CapiFilter;
 }): Promise<void> {
-  const counters = createCounters();
-  const timings = createTimings();
   const output = createJsonlOutput();
+  const tracker = createPhaseTracker({
+    ui,
+    phases: findPhases({
+      capi: capi !== undefined,
+      skipContent,
+      capiLabel: "Filtering via CAPI",
+      // What the last stage still decides depends on the stages before it: with
+      // no content fetch and no filter it only writes, and under the CAPI filter
+      // it tests just the stories the CDN could not settle.
+      processLabel: processStageName({ skipContent, capi: capi !== undefined, filters }),
+    }),
+  });
   let earlyExit = false;
 
   try {
@@ -516,17 +491,11 @@ async function runFind({
       params,
       preContentFilters,
       filters,
-      // What the last stage still decides depends on the stages before it: with
-      // no content fetch and no filter it only writes, and under the CAPI filter
-      // it tests just the stories the CDN could not settle.
-      processLabel: processStageName({ skipContent, capi: capi !== undefined, filters }),
-      counters,
-      timings,
-      onMatch: (story) => output.push(story),
+      tracker,
+      sink: output.sink,
       capi,
       skipContent,
       signal: output.signal,
-      ui,
       logger,
       verbose,
     });
@@ -539,12 +508,15 @@ async function runFind({
     }
     earlyExit = true;
   } finally {
-    ui.stopAllProgressBars();
+    tracker.stop();
     output.close();
 
-    const { list, capiFilter, content, process: filtered } = counters;
+    const list = tracker.counts("list");
+    const capiFilter = tracker.counts("capiFilter");
+    const content = tracker.counts("content");
+    const filtered = tracker.counts("process");
     ui.br();
-    ui.info(resultsHeadline({ counters, filters, skipContent, capi: capi !== undefined }));
+    ui.info(resultsHeadline({ tracker, filters, skipContent, capi: capi !== undefined }));
 
     // A deliberate stop, so it reports as one. The counts below describe a
     // partial scan and would otherwise read as "this is all there was", and
@@ -581,33 +553,36 @@ async function runFind({
     }
 
     const lines = [
-      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${formatMark(timings.list)})`,
+      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${tracker.phase("list").mark()})`,
     ];
     if (capi) {
       lines.push(
-        `Filtering via CAPI: ${capiFilter.candidates}/${capiFilter.total} candidates, ${capiFilter.pruned} pruned before fetch, ${capiFilter.unresolved} undecided, ${capiFilter.failed} batch(es) failed. (${formatMark(timings.capiFilter)})`,
+        `Filtering via CAPI: ${capiFilter.candidates}/${capiFilter.total} candidates, ${capiFilter.pruned} pruned before fetch, ${capiFilter.unresolved} undecided, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`,
       );
     }
     if (!skipContent) {
       lines.push(
-        `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
+        `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${tracker.phase("content").mark()})`,
       );
     }
     const processName = processStageName({ skipContent, capi: capi !== undefined, filters });
     lines.push(
-      `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${formatMark(timings.process)})`,
+      `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${tracker.phase("process").mark()})`,
     );
     ui.list(lines);
 
-    logger.info("Finding stories finished", { ...counters, timings, skipContent, capi: !!capi });
-    reporter.addMeta("phaseTimingsMs", {
-      list: timings.list,
-      ...(capi ? { capiFilter: timings.capiFilter } : {}),
-      ...(skipContent ? {} : { content: timings.content }),
-      filter: timings.process,
-      total: Date.now() - timings.startedAt,
+    const timings = tracker.timings();
+    logger.info("Finding stories finished", {
+      list,
+      capiFilter,
+      content,
+      process: filtered,
+      timings,
+      skipContent,
+      capi: !!capi,
     });
-    reporter.addSummary("listStoriesResults", list);
+    reporter.addMeta("phaseTimingsMs", { ...timings, total: tracker.elapsedMs() });
+    reporter.addSummary("listStoriesResults", toPhaseSummary(list));
     if (capi) {
       // `succeeded` is what survived to a MAPI fetch, `skipped` what the
       // CAPI filter saved: the two numbers the optimization is judged on.
@@ -619,7 +594,7 @@ async function runFind({
       });
     }
     if (!skipContent) {
-      reporter.addSummary("fetchContentResults", content);
+      reporter.addSummary("fetchContentResults", toPhaseSummary(content));
     }
     reporter.addSummary("filterResults", {
       total: filtered.total,
@@ -658,17 +633,20 @@ function processStageName({
 
 /** One line naming what the run cost and what it saved, per optimization in play. */
 function resultsHeadline({
-  counters,
+  tracker,
   filters,
   skipContent,
   capi,
 }: {
-  counters: PhaseCounters;
+  tracker: PhaseTracker;
   filters: ClientFilter[];
   skipContent: boolean;
   capi: boolean;
 }): string {
-  const { list, capiFilter, content, process: filtered } = counters;
+  const list = tracker.counts("list");
+  const capiFilter = tracker.counts("capiFilter");
+  const content = tracker.counts("content");
+  const filtered = tracker.counts("process");
 
   if (skipContent) {
     if (capi) {
@@ -708,6 +686,23 @@ async function runCheckReferences({
   /** Bulk content source in place of the per-story MAPI fetch. */
   capi?: CapiFilter;
 }): Promise<void> {
+  // Said before the scan rather than after it: the gap changes what a clean
+  // report means, and it is cheap to act on while nothing has been read yet.
+  //
+  // CDN content omits every `<field>__i18n__<lang>` key, so a reference held in
+  // a field-level translation is not in the document this scan sees — including
+  // whole nested blocks under a translated `bloks` field. `extractReferences`
+  // matches those fields by their base name when reading MAPI content, and that
+  // handling has nothing to work with here.
+  if (capi) {
+    ui.warn(
+      "References inside field-level translations are not checked under --capi-filter: CDN content " +
+        "omits every `<field>__i18n__<lang>` key, so references held in a translated field — including " +
+        "whole blocks nested under one — are invisible to the scan. Drop --capi-filter to read every " +
+        "story from the Management API instead.",
+    );
+  }
+
   // Relation fields are only recognisable from the block schema, so the
   // component list has to be loaded before any story is inspected.
   const schemaSpinner = ui.createSpinner("Fetching component schema...");
@@ -727,11 +722,20 @@ async function runCheckReferences({
     `Loaded ${components.length} components (${relationFieldMap.size} with relation fields)`,
   );
 
-  const counters = createCounters();
-  const timings = createTimings();
+  const output = createJsonlOutput();
+  const tracker = createPhaseTracker({
+    ui,
+    phases: findPhases({
+      capi: capi !== undefined,
+      // The CAPI stage already carries each story's content, so the per-story
+      // MAPI fetch has nothing left to add and is dropped entirely.
+      skipContent: capi !== undefined,
+      capiLabel: "Reading content via CAPI",
+      processLabel: "Checking references",
+    }),
+  });
   const uuidToMeta = new Map<string, TargetMeta>();
   const candidates: ReferenceCandidate[] = [];
-  const output = createJsonlOutput();
   let earlyExit = false;
   let checked = 0;
   let matched = 0;
@@ -745,11 +749,7 @@ async function runCheckReferences({
       // content fetch. `--where` runs after enrichment so it can match `_ref_issues`.
       preContentFilters: publishStatusFilters,
       filters: [],
-      processLabel: "Checking references",
-      counters,
-      timings,
-      // The CAPI stage already carries each story's content, so the per-story
-      // MAPI fetch has nothing left to add and is dropped entirely.
+      tracker,
       capi,
       skipContent: capi !== undefined,
       // Index from the list phase: it already carries `full_slug` and
@@ -761,7 +761,11 @@ async function runCheckReferences({
           uuidToMeta.set(story.uuid, toTargetMeta(story));
         }
       },
-      onMatch: (story) => {
+      // Buffered rather than written straight out: an issue cannot be decided
+      // until the whole scope has been listed, because deciding one needs the
+      // *target's* current slug and publish state. This is the one mode of the
+      // command that does not stream — see the emit below.
+      sink: createCollectingSink<Story>((story) => {
         checked += 1;
         const refs = extractReferences(story, relationFieldMap);
         // A story with no references can never have a reference issue, so it is
@@ -770,14 +774,13 @@ async function runCheckReferences({
         if (refs.length > 0) {
           candidates.push({ story, refs });
         }
-      },
+      }),
       signal: output.signal,
-      ui,
       logger,
       verbose,
     });
 
-    ui.stopAllProgressBars();
+    tracker.stop();
 
     const missingUuids = new Set<string>();
     for (const { refs } of candidates) {
@@ -805,17 +808,28 @@ async function runCheckReferences({
       }
     }
 
-    for (const { story, refs } of candidates) {
-      const issues = detectIssues(refs, uuidToMeta);
-      if (issues.length === 0) {
-        continue;
-      }
-      const enriched: Story & { _ref_issues: RefIssue[] } = { ...story, _ref_issues: issues };
-      if (applyClientFilters(enriched, whereFilters)) {
+    /** The buffered matches, decided one at a time as the sink asks for them. */
+    function* reportIssues(): Generator<Story> {
+      for (const { story, refs } of candidates) {
+        const issues = detectIssues(refs, uuidToMeta);
+        if (issues.length === 0) {
+          continue;
+        }
+        const enriched: Story & { _ref_issues: RefIssue[] } = { ...story, _ref_issues: issues };
+        if (!applyClientFilters(enriched, whereFilters)) {
+          continue;
+        }
         matched += 1;
-        output.push(enriched);
+        yield enriched;
       }
     }
+
+    // Written through the sink rather than in a loop of its own, for the two
+    // properties that come with it: a slow reader paces the emit instead of
+    // having it buffered ahead of them, and a reader that leaves stops it — a
+    // plain loop would go on deciding every remaining candidate and counting
+    // matches nobody ever received.
+    await pipeline(Readable.from(reportIssues()), output.sink, { signal: output.signal });
   } catch (error) {
     // Same contract as `find`: a reader that has taken what it wanted and left
     // ends the run cleanly. See `runFind`.
@@ -824,10 +838,12 @@ async function runCheckReferences({
     }
     earlyExit = true;
   } finally {
-    ui.stopAllProgressBars();
+    tracker.stop();
     output.close();
 
-    const { list, capiFilter, content } = counters;
+    const list = tracker.counts("list");
+    const capiFilter = tracker.counts("capiFilter");
+    const content = tracker.counts("content");
     ui.br();
     ui.info(
       `Results: ${matched} stories with reference issues (${checked} checked, ${externalTargets} external targets resolved)`,
@@ -852,29 +868,27 @@ async function runCheckReferences({
     }
 
     ui.list([
-      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${formatMark(timings.list)})`,
+      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${tracker.phase("list").mark()})`,
       capi
-        ? `Reading content via CAPI: ${capiFilter.candidates}/${capiFilter.total} resolved, ${capiFilter.unresolved} without content, ${capiFilter.failed} batch(es) failed. (${formatMark(timings.capiFilter)})`
-        : `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${formatMark(timings.content)})`,
-      `Checking references: ${checked} checked, ${candidates.length} with references, ${matched} with issues. (${formatMark(timings.process)})`,
-      `Resolving + detecting: ${externalTargets} external targets. (done @${((Date.now() - timings.startedAt) / 1000).toFixed(1)}s)`,
+        ? `Reading content via CAPI: ${capiFilter.candidates}/${capiFilter.total} resolved, ${capiFilter.unresolved} without content, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`
+        : `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${tracker.phase("content").mark()})`,
+      `Checking references: ${checked} checked, ${candidates.length} with references, ${matched} with issues. (${tracker.phase("process").mark()})`,
+      `Resolving + detecting: ${externalTargets} external targets. (${formatMark(tracker.elapsedMs())})`,
     ]);
 
-    reporter.addMeta("phaseTimingsMs", {
-      list: timings.list,
-      ...(capi ? { capiContent: timings.capiFilter } : { content: timings.content }),
-      check: timings.process,
-      total: Date.now() - timings.startedAt,
-    });
+    const timings = tracker.timings();
+    reporter.addMeta("phaseTimingsMs", { ...timings, total: tracker.elapsedMs() });
     logger.info("Reference check finished", {
-      ...counters,
+      list,
+      capiFilter,
+      content,
       timings,
       checked,
       withReferences: candidates.length,
       issues: matched,
       externalTargets,
     });
-    reporter.addSummary("listStoriesResults", list);
+    reporter.addSummary("listStoriesResults", toPhaseSummary(list));
     reporter.addSummary(
       "fetchContentResults",
       capi
@@ -883,7 +897,7 @@ async function runCheckReferences({
             succeeded: capiFilter.candidates,
             failed: capiFilter.unresolved,
           }
-        : content,
+        : toPhaseSummary(content),
     );
     reporter.addSummary("referenceCheckResults", {
       total: checked,

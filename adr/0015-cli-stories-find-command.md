@@ -134,5 +134,7 @@ the user, who knows what is downstream: `2>/dev/null`, or the global `--no-ui-en
 - **The flag surface stays small, the `--where` surface stays large** — users asking a content
   question have to write JSONPath. Discoverability moves to documented recipes rather than to
   `--help`.
-- **Downstream commands use `id`/`uuid` from JSONL output** — they should refetch via MAPI before
-  mutating, not replay the full `find` payload.
+- **Downstream commands read the payload, not just the ids.** Each line is a complete story as the
+  Management API returned it, so a consumer takes what it needs off the line rather than fetching
+  the story again. See [ADR-0016](0016-cli-jsonl-pipe-contract.md), which supersedes an earlier
+  position here that had consumers refetch before mutating.

@@ -1,7 +1,9 @@
 describe("@storyblok/react/rsc", () => {
   describe("Bridge", () => {
     it("Is loaded by default", () => {
-      cy.visit("http://localhost:3000/?_storyblok_tk[timestamp]=1677494658");
+      cy.visit(
+        "http://localhost:3000/?_storyblok=1&_storyblok_c=1&_storyblok_tk[space_id]=12345&_storyblok_tk[timestamp]=1677494658",
+      );
       cy.window().its("storyblokRegisterEvent").should("be.a", "function");
       cy.window().its("StoryblokBridge").should("be.a", "function");
     });

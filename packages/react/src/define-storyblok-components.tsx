@@ -196,7 +196,10 @@ export function defineStoryblokComponents(
 
   StoryblokComponent.displayName = "StoryblokComponent";
 
-  const StoryblokRichText = createStoryblokRichText(StoryblokComponent as BlockComponentType);
-
-  return { StoryblokComponent, StoryblokRichText };
+  return {
+    StoryblokComponent,
+    get StoryblokRichText() {
+      return createStoryblokRichText(StoryblokComponent as BlockComponentType);
+    },
+  };
 }

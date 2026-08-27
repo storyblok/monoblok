@@ -93,29 +93,95 @@ SUMMARY_ROWS=()
 MD_BLOCKS=()
 MD_SUMMARY_ROWS=()
 
-# Renders the argument list the way it would have to be typed, so the printed
-# command can be copied straight into a shell. JSONPath expressions are the
-# reason this exists: `$..[?(@.component == 'hint')]` needs its quotes back.
-# With `color`, flags and their values are told apart by colour as well.
-render_args() {
-  local mode="$1"; shift
-  local rendered="" arg piece
+# Quotes one argument the way it would have to be typed, so the printed command
+# can be copied straight into a shell. JSONPath expressions are the reason this
+# exists: `$..[?(@.component == 'hint')]` needs its quotes back.
+#
+# Single quotes are the default because they protect everything. An expression
+# that itself contains a single quote would then need `'\''` at every one of
+# them, which is most of what made these commands unreadable, so double quotes
+# are used instead — but only where the shell would not read something inside
+# them. That rules out more than it looks: `$[?(...)]`, the form a root-level
+# `--where` takes, is legacy arithmetic expansion to bash and fails outright,
+# and `!=` inside double quotes is history expansion in an interactive shell.
+# Anything left over falls back to the escaping, which is ugly but always right.
+quote_arg() {
+  local arg="$1"
   local single="'" escaped="'\\''"
+
+  if [[ "$arg" =~ ^[A-Za-z0-9_./:=@,-]+$ ]]; then
+    printf '%s' "$arg"
+    return
+  fi
+  if [[ "$arg" != *"$single"* ]]; then
+    printf "'%s'" "$arg"
+    return
+  fi
+
+  # Has a single quote in it, so single quoting would mean escaping. Double
+  # quotes are readable but only inert for some of what these expressions
+  # contain, so every form the shell would act on disqualifies them.
+  local unsafe=0
+  # `$[` is arithmetic expansion to bash and fails outright, `${` and `$(` expand,
+  # and `!` is history expansion in an interactive shell — the one that bites on
+  # paste rather than here.
+  case "$arg" in
+    *'"'*|*'`'*|*'\\'*|*'!'*|*'$['*|*'${'*|*'$('*) unsafe=1 ;;
+  esac
+  # `$` before a name character starts a variable; `$.` and `$..`, which is how
+  # every other JSONPath expression begins, are literal and stay readable.
+  local variable_re='\$[A-Za-z_]'
+  [[ "$arg" =~ $variable_re ]] && unsafe=1
+
+  if [[ $unsafe -eq 0 ]]; then
+    printf '"%s"' "$arg"
+  else
+    printf "'%s'" "${arg//$single/$escaped}"
+  fi
+}
+
+# Renders a whole command as it would be typed: the binary and `-s <space>` on
+# the first line, then one flag per line. A scenario carries up to half a dozen
+# `--where` expressions, and on one line they wrap into an unreadable block; a
+# line each makes the shape of the query visible. Backslash continuations keep
+# the block a single command when it is pasted back into a shell.
+#
+# With `color`, flags and their values are told apart by colour as well.
+render_command() {
+  local mode="$1" indent="$2"; shift 2
+  local head="storyblok stories find" lines=() current="" arg piece
+  [[ "$mode" == color ]] && head="${BOLD}${head}${RESET}"
+
   for arg in "$@"; do
-    if [[ "$arg" =~ ^[A-Za-z0-9_./:=@,-]+$ ]]; then
-      piece="$arg"
-    else
-      piece="'${arg//$single/$escaped}'"
-    fi
+    piece="$(quote_arg "$arg")"
     if [[ "$mode" == color ]]; then
       case "$arg" in
         -*) piece="${CYAN}${piece}${RESET}" ;;
         *) piece="${YELLOW}${piece}${RESET}" ;;
       esac
     fi
-    rendered+=" $piece"
+    if [[ -z "$current" ]]; then
+      current="$piece"
+    elif [[ "$arg" == -* ]]; then
+      lines+=("$current"); current="$piece"
+    else
+      current+=" $piece"
+    fi
   done
-  printf '%s' "${rendered# }"
+  [[ -n "$current" ]] && lines+=("$current")
+
+  # `-s <space>` rides on the first line: every scenario passes it, so a line of
+  # its own would say nothing and cost a line in every block.
+  if [[ ${#lines[@]} -gt 0 && "${lines[0]}" == *"-s"* ]]; then
+    head+=" ${lines[0]}"
+    lines=("${lines[@]:1}")
+  fi
+
+  printf '%s' "$head"
+  local line
+  for line in "${lines[@]}"; do
+    printf ' \\\n%s%s' "$indent" "$line"
+  done
 }
 
 # Padding helpers. Durations arrive already formatted from `stats.mjs`, which is
@@ -196,7 +262,7 @@ markdown_block() {
       $description,
       "",
       "```bash",
-      "storyblok stories find " + $command,
+      $command,
       "```",
       "",
       ($v.counts | map(.sep + "\(.value) \(.label)") | join("") | ltrimstr(" ")),
@@ -230,9 +296,8 @@ run() {
   if [[ $LIST_ONLY -eq 1 ]]; then
     printf "%s %2d %s %s%s%s\n" "$ON_CYAN" "$INDEX" "$RESET" "$BOLD" "$name" "$RESET"
     printf "    %s%s%s\n" "$DIM" "$description" "$RESET"
-    printf "    %s$%s storyblok stories find %s-s%s %s%s%s %s\n\n" \
-      "$DIM" "$RESET" "$CYAN" "$RESET" "$YELLOW" "$SPACE" "$RESET" \
-      "$(render_args color "${args[@]}")"
+    printf "    %s$%s %s\n\n" "$DIM" "$RESET" \
+      "$(render_command color "      " -s "$SPACE" "${args[@]}")"
     return 0
   fi
 
@@ -247,9 +312,10 @@ run() {
   # The command as a user would type it, plus what this harness adds around it:
   # `-p` moves the run report and log into a scratch directory, and `--import`
   # loads the timing probe.
-  printf "  %s$%s %sstoryblok stories find%s %s-s%s %s%s%s %s %s-p %s --import probe.mjs%s\n\n" \
-    "$DIM" "$RESET" "$BOLD" "$RESET" "$CYAN" "$RESET" "$YELLOW" "$SPACE" "$RESET" \
-    "$(render_args color "${args[@]}")" "$DIM" "$work" "$RESET"
+  printf "  %s$%s %s %s\\\\\n    -p %s --import probe.mjs%s\n\n" \
+    "$DIM" "$RESET" \
+    "$(render_command color "    " -s "$SPACE" "${args[@]}")" \
+    "$DIM" "$work" "$RESET"
 
   if [[ ! -t 2 ]]; then
     printf "  %s(progress bars need a terminal on stderr; only the summary follows)%s\n" \
@@ -287,7 +353,7 @@ run() {
       + ($v.summary.content | lpad(10))
       + ($v.summary.median | lpad(9))')")
     MD_BLOCKS+=("$(markdown_block "$view" "$INDEX" "$name" "$description" \
-      "-s $SPACE $(render_args plain "${args[@]}")")")
+      "$(render_command plain "  " -s "$SPACE" "${args[@]}")")")
     MD_SUMMARY_ROWS+=("$(jq -rn --argjson v "$view" --arg name "$name" '
       "| \($name) | \($v.summary.listed) | \($v.summary.fetched) | \($v.summary.kept) "
       + "| \($v.summary.content) | \($v.summary.median) |"')")
@@ -338,6 +404,12 @@ scenarios() {
     --where "\$[?(\$.content.component == 'enterprise_page')]"
 
   run "client-filters (optimized)" \
+    "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
+    --starts-with lp --publish-status published --includes-block customers_logos --container-block enterprise_page \
+    --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
+    --where "\$..[?match(@.component, 'card_with_.*')]"
+
+  run "client-filters (optimized with CAPI)" \
     "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
     --starts-with lp --publish-status published --includes-block customers_logos --capi-filter \
     --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \

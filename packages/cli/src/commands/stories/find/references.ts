@@ -178,6 +178,11 @@ export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta
     }
     // Only an explicit `false` counts: a folder is not a publishable entity, and
     // `null` means the API never told us — reporting either would be a false positive.
+    //
+    // Not exclusive with `stale_url` below: a reference can be both, and in a
+    // draft-heavy space reporting only the first would hide every stale URL
+    // behind an unpublished target. Each issue type has to stand on its own for
+    // `--where "$._ref_issues[?(@.type == 'stale_url')]"` to be trustworthy.
     if (target.is_published === false && !target.is_folder) {
       issues.push({
         type: "unpublished",
@@ -187,7 +192,6 @@ export function detectIssues(refs: RefEntry[], targetMap: Map<string, TargetMeta
         actual_url: target.full_slug,
         field_path: ref.fieldPath,
       });
-      continue;
     }
     if (
       ref.cachedUrl !== undefined &&

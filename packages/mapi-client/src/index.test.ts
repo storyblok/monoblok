@@ -159,6 +159,89 @@ describe("createManagementApiClient - HTTP requests", () => {
     expect(capturedAuth).toBe("Bearer my-oauth-token");
   });
 
+  it("should resolve a function oauthToken before every request", async () => {
+    const capturedAuth: string[] = [];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces", ({ request }) => {
+        capturedAuth.push(request.headers.get("authorization") ?? "");
+        return HttpResponse.json({ spaces: [] });
+      }),
+    );
+
+    let token = "first-token";
+    const client = createManagementApiClient({
+      oauthToken: () => token,
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+    token = "second-token";
+    await client.spaces.list();
+
+    expect(capturedAuth).toEqual(["Bearer first-token", "Bearer second-token"]);
+  });
+
+  it("should await an async token provider", async () => {
+    let capturedAuth = "";
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces", ({ request }) => {
+        capturedAuth = request.headers.get("authorization") ?? "";
+        return HttpResponse.json({ spaces: [] });
+      }),
+    );
+
+    const client = createManagementApiClient({
+      oauthToken: async () => "refreshed-token",
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(capturedAuth).toBe("Bearer refreshed-token");
+  });
+
+  it("should surface a token provider failure to the caller", async () => {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces", () => HttpResponse.json({ spaces: [] })),
+    );
+
+    const client = createManagementApiClient({
+      oauthToken: () => {
+        throw new Error("Your OAuth session has expired.");
+      },
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+    });
+
+    await expect(client.spaces.list()).rejects.toThrow("Your OAuth session has expired.");
+  });
+
+  it("should resolve a function personalAccessToken without a Bearer prefix", async () => {
+    let capturedAuth = "";
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces", ({ request }) => {
+        capturedAuth = request.headers.get("authorization") ?? "";
+        return HttpResponse.json({ spaces: [] });
+      }),
+    );
+
+    const client = createManagementApiClient({
+      personalAccessToken: () => "pat-from-provider",
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+    });
+
+    await client.spaces.list();
+
+    expect(capturedAuth).toBe("pat-from-provider");
+  });
+
   it("should not double-prefix Bearer when oauthToken already includes it", async () => {
     let capturedAuth = "";
     server.use(

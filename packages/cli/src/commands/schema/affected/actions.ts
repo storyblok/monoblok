@@ -5,6 +5,7 @@ import { validateStory } from "@storyblok/schema";
 import type { ValidationIssue } from "@storyblok/schema";
 
 import type { Story } from "../../../types";
+import { CommandError } from "../../../utils";
 import type { DiffResult } from "../types";
 import type { BreakingChange, ComponentBreakingChanges } from "../migrations/types";
 import type { AdaptedSchema } from "../to-schema-like";
@@ -13,6 +14,7 @@ import {
   fetchStoryStream,
   readLocalStoriesStream,
 } from "../../stories/streams";
+import { ATTRIBUTED_ISSUE_CODES } from "./constants";
 import { collectComponentUsage } from "./content-usage";
 
 /** How an impacted component changed. `removed` = deleted from the local schema. */
@@ -163,15 +165,30 @@ function issueKey(issue: ValidationIssue): string {
   return `${issue.entity}|${issue.code}|${issue.path.join(".")}`;
 }
 
-/** Finds the impacted field an issue path points at, matching by old or new field name. */
+/**
+ * Finds the impacted field an issue points at. An issue path runs from the story
+ * root down to the offending value (`content` › `body` › 0 › `title`), so it is
+ * walked from the end: the deepest matching segment is the field that actually
+ * failed, not the parent field that happens to contain it. The leading `content`
+ * segment is skipped so a field literally named `content` cannot match every
+ * issue.
+ */
 function matchField(entry: ImpactedComponent, issuePath: (string | number)[]): string | undefined {
-  const pathKeys = new Set(
-    issuePath.filter((segment): segment is string => typeof segment === "string"),
-  );
+  const names = new Map<string, string>();
   for (const field of entry.fields) {
     // Renames validate at the new name but occupy the old content key, so match either.
-    if (pathKeys.has(field.contentKey) || pathKeys.has(field.field)) {
-      return field.field;
+    names.set(field.contentKey, field.field);
+    names.set(field.field, field.field);
+  }
+
+  for (let index = issuePath.length - 1; index > 0; index -= 1) {
+    const segment = issuePath[index];
+    if (typeof segment !== "string") {
+      continue;
+    }
+    const match = names.get(segment);
+    if (match) {
+      return match;
     }
   }
   return undefined;
@@ -227,6 +244,9 @@ export function analyzeStory(story: Story, ctx: AnalyzeContext): AffectedStory |
   const { issues: validationIssues } = validateStory(story, ctx.newSchema);
   for (const issue of validationIssues) {
     if (!issue.entity.startsWith("block:") || preExisting.has(issueKey(issue))) {
+      continue;
+    }
+    if (!ATTRIBUTED_ISSUE_CODES.has(issue.code)) {
       continue;
     }
     const component = issue.entity.slice("block:".length);
@@ -335,19 +355,15 @@ function createAnalyzeCollector(ctx: AnalyzeContext, results: AffectedStory[]): 
  * Fetches remote stories that use any impacted component, fetches full content
  * per story, and analyzes each.
  *
- * Two MAPI filters are combined to cover every usage:
- * - `contain_component` matches a component used as a *nested* blok. It has AND
- *   (superset) semantics for a comma-separated list, so we issue one request per
- *   impacted component to get their union.
- * - `filter_query[component][in]` matches a component used as a story's *root*
- *   content type. `contain_component` alone misses a root-only story that has no
- *   nested bloks (its root component is never indexed as "contained"), so those
- *   stories would be silently omitted — a false all-clear. One `in`-list request
- *   covers all impacted names (OR semantics).
+ * `contain_component` matches a component anywhere in a story's content, root
+ * content type included. It has AND (superset) semantics for a comma-separated
+ * list, so one request per impacted component is issued and their results
+ * unioned by story id. Over-fetching is harmless: `analyzeStory` recomputes
+ * usage from the story's own content.
  *
- * Refs de-duplicate by story id, so a story matched by several filters is fetched
- * once; over-fetching is harmless because `analyzeStory` recomputes usage from
- * the story's own content.
+ * A listing that fails part-way is fatal. Silently analyzing a truncated set
+ * would report a smaller impact than the real one, and under `--fail-on-break`
+ * that is a false all-clear on a CI gate.
  */
 export async function analyzeRemoteStories(
   spaceId: string,
@@ -359,32 +375,27 @@ export async function analyzeRemoteStories(
   const ctx = createAnalyzeContext(impacted, oldSchema, newSchema);
   const results: AffectedStory[] = [];
 
-  // Gather and de-duplicate list refs. One `contain_component` request per
-  // impacted component (nested usage) plus one `filter_query` request for all
-  // impacted names (root content-type usage).
-  const refs = new Map<number, Story>();
+  const storyIds = new Set<number>();
   for (const component of impacted.keys()) {
+    let listError: Error | undefined;
     const listStream = fetchStoriesStream({
       spaceId,
-      params: { contain_component: component },
-      onPageError: (error, page) =>
-        hooks.onStoryError?.(error, `component "${component}" (page ${page})`),
+      params: { contain_component: component, story_only: true },
+      onPageError: (error) => {
+        listError = error;
+      },
     });
     for await (const story of listStream) {
-      refs.set(story.id, story);
+      storyIds.add(story.id);
+    }
+    if (listError) {
+      throw new CommandError(
+        `Could not list the stories using "${component}": ${listError.message}. The analysis would be incomplete, so no result is reported.`,
+      );
     }
   }
 
-  const rootStream = fetchStoriesStream({
-    spaceId,
-    params: { filter_query: { component: { in: [...impacted.keys()].join(",") } } },
-    onPageError: (error, page) => hooks.onStoryError?.(error, `root content type (page ${page})`),
-  });
-  for await (const story of rootStream) {
-    refs.set(story.id, story);
-  }
-
-  hooks.onTotal?.(refs.size);
+  hooks.onTotal?.(storyIds.size);
 
   const fetchStream = fetchStoryStream({
     spaceId,
@@ -393,7 +404,11 @@ export async function analyzeRemoteStories(
     onStoryError: (error, story) => hooks.onStoryError?.(error, String(story.id)),
   });
 
-  await pipeline(Readable.from(refs.values()), fetchStream, createAnalyzeCollector(ctx, results));
+  await pipeline(
+    Readable.from([...storyIds].map((id) => ({ id }))),
+    fetchStream,
+    createAnalyzeCollector(ctx, results),
+  );
   return results;
 }
 

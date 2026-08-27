@@ -1,5 +1,5 @@
-import { apiClient, StoryblokComponent } from "@/lib/storyblok";
-import type { StoryblokBlockData } from "@storyblok/react";
+import { apiClient } from "@/lib/storyblok";
+import { StoryContent } from "@/components/StoryContent";
 
 export default async function Home() {
   const result = await apiClient.stories.get("react", { query: { version: "draft" } });
@@ -7,10 +7,5 @@ export default async function Home() {
 
   if (!story) return <div>Story not found.</div>;
 
-  return (
-    <div>
-      <h1>Story: {story.name}</h1>
-      <StoryblokComponent block={story.content as StoryblokBlockData} />
-    </div>
-  );
+  return <StoryContent story={story} />;
 }

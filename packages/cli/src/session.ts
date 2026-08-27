@@ -47,10 +47,12 @@ function createSession() {
 
     // If no environment variables, fall back to .storyblok/credentials.json
     const credentials = await getCredentials();
-    // The credentials file also stores an `oauth` top-level key; exclude it so it is
-    // never mistaken for a PAT entry (it has no login/password/region fields).
+    // Identify a PAT entry by the fields it must carry rather than by its key, so an
+    // unrecognized entry is ignored instead of being read as a half-populated session.
     const patEntry = credentials
-      ? Object.entries(credentials).find(([machineName]) => machineName !== "oauth")?.[1]
+      ? Object.values(credentials).find(
+          (entry) => typeof entry?.login === "string" && typeof entry?.password === "string",
+        )
       : undefined;
     if (patEntry) {
       state.isLoggedIn = true;

@@ -3,10 +3,18 @@ import { join, parse } from "pathe";
 import { CommandError } from "./utils";
 import { getStoryblokGlobalPath, readFile, writeFileAtomic } from "./utils/filesystem";
 
-// `credentials.json` holds the PAT entries and the OAuth sessions of every region, and
-// every mutation rewrites it whole. Concurrent CLI processes must therefore serialize:
-// an interleaved write would drop the other's entry, and dropping a rotated refresh
-// token logs the user out for good, because the previous one is already revoked.
+// `credentials.json` holds the PAT entries and `oauth.json` the OAuth sessions of every
+// region. Every mutation rewrites its file whole, so concurrent CLI processes must
+// serialize: an interleaved write would drop the other's entry, and dropping a rotated
+// refresh token logs the user out for good, because the previous one is already revoked.
+// Each file carries its own lock, so a PAT write never waits on a token refresh.
+//
+// The split is not cosmetic. Released CLIs read `credentials.json` as nothing but a map of
+// machine name to PAT entry and treat the first value they find as the logged-in session, so
+// an OAuth section in that file leaves them wedged: `logout` sees no password and reports
+// "already logged out" while `login` sees a truthy entry and reports "already logged in".
+// Keeping OAuth state in its own file means those versions see an empty credentials file and
+// behave correctly.
 const LOCK_STALE_MS = 30_000;
 const LOCK_TOUCH_INTERVAL_MS = LOCK_STALE_MS / 3;
 const LOCK_RETRY_INTERVAL_MS = 50;
@@ -15,6 +23,8 @@ const LOCK_RETRY_INTERVAL_MS = 50;
 const LOCK_ACQUIRE_TIMEOUT_MS = 90_000;
 
 export const credentialsPath = (): string => join(getStoryblokGlobalPath(), "credentials.json");
+
+export const oauthPath = (): string => join(getStoryblokGlobalPath(), "oauth.json");
 
 const lockPath = (filePath: string): string => `${filePath}.lock`;
 

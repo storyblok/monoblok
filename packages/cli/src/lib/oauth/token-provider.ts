@@ -1,6 +1,7 @@
 import type { RegionCode } from "../../constants";
 import { CommandError } from "../../utils";
 import { getLogger } from "../logger/logger";
+import { getUI } from "../ui";
 import { isExpiringSoon } from "./expiry";
 import { refreshOAuthTokens } from "./refresh";
 import type { OAuthTokens } from "./store";
@@ -27,6 +28,7 @@ export const createOAuthTokenProvider = (
   state: OAuthTokenState,
 ): (() => Promise<string>) => {
   let backgroundRefresh: Promise<void> | undefined;
+  let reportedRefreshFailure = false;
 
   const apply = (tokens: OAuthTokens): void => {
     state.oauthAccessToken = tokens.access_token;
@@ -51,7 +53,17 @@ export const createOAuthTokenProvider = (
 
   return async (): Promise<string> => {
     if (isExpiringSoon(state.oauthExpiresAt, BLOCKING_REFRESH_SKEW_MS)) {
-      apply(await refreshOAuthTokens(region));
+      try {
+        apply(await refreshOAuthTokens(region));
+      } catch (error) {
+        // Commands differ in how much of a failed request they report, and some only
+        // count it as a failed item. Say it once here so a dead session is never silent.
+        if (!reportedRefreshFailure) {
+          reportedRefreshFailure = true;
+          getUI().warn((error as Error).message);
+        }
+        throw error;
+      }
     } else if (isExpiringSoon(state.oauthExpiresAt, BACKGROUND_REFRESH_SKEW_MS)) {
       refreshInBackground();
     }

@@ -54,8 +54,9 @@ wording:
   differing as changed.
 - Unchanged entities are omitted from the terminal output to keep space-to-space comparisons
   readable. They still appear in the summary count and in the structured `meta.diff`.
-- Component group UUIDs are per-space identifiers, so they are ignored unless both sides are local
-  files. A component that differs only by its group assignment between two spaces is reported as
-  unchanged.
+- Component group UUIDs are per-space identifiers, so they never diff directly. Both sides are
+  translated into slug-path space first: a block's group membership and each field's component group
+  whitelist are compared by folder path, so two spaces holding the same layout under different UUIDs
+  are reported as unchanged.
 - The classification is the same one `schema push` computes internally, exposed here as a read-only
   command.

@@ -15,7 +15,8 @@ function inlineValue(value: unknown): string {
  * green, removed in red, and modified as a red `before` / green `after` pair.
  * Shared by the `push` diff display and the `schema diff` command.
  */
-export function renderFieldChanges(changes: FieldChange[], indent = "    "): string[] {
+function renderFieldChanges(changes: FieldChange[]): string[] {
+  const indent = "    ";
   const lines: string[] = [];
 
   for (const change of changes) {
@@ -34,14 +35,14 @@ export function renderFieldChanges(changes: FieldChange[], indent = "    "): str
 }
 
 /** Per-action wording for entity tags and the summary line. */
-export interface DiffLabelSet {
+export type DiffLabelSet = {
   create: string;
   update: string;
   unchanged: string;
   stale: string;
-}
+};
 
-export interface FormatDiffOptions {
+export type FormatDiffOptions = {
   /** Optional dimmed header line, e.g. `from A → to B`. */
   header?: string;
   /** Per-entity action tag wording, e.g. `(create)` or `(added)`. */
@@ -50,9 +51,9 @@ export interface FormatDiffOptions {
   summary: DiffLabelSet;
   /** List unchanged entities in the per-entity output (default `true`). The summary count is unaffected. */
   showUnchanged?: boolean;
-  /** Text shown after `Summary:` when there are no changes at all. */
+  /** Text shown after `Summary:` when both schemas are empty. */
   emptySummary?: string;
-}
+};
 
 const ACTION_ICONS: Record<DiffAction, string> = {
   create: chalk.green("+"),

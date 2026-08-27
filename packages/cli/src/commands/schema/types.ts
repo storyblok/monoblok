@@ -1,11 +1,5 @@
 import type { Component, ComponentFolder, Datasource } from "../../types";
 
-/**
- * Local schema loaded from the user's TypeScript entry file: blocks, datasource
- * definitions, and the block folders (component groups) they declare. A block's
- * group membership is diffed and pushed only when it opts in via a `folder`
- * key; blocks without one stay unmanaged and their remote group is left as-is.
- */
 /** A locally defined block folder in slug-path identity space. */
 export interface LocalFolder {
   /** Display name used when the group must be created. */
@@ -15,6 +9,12 @@ export interface LocalFolder {
   parentPath: string | null;
 }
 
+/**
+ * Local schema loaded from the user's TypeScript entry file: blocks, datasource
+ * definitions, and the block folders (component groups) they declare. A block's
+ * group membership is diffed and pushed only when it opts in via a `folder`
+ * key; blocks without one stay unmanaged and their remote group is left as-is.
+ */
 export interface SchemaData {
   components: Component[];
   folders: LocalFolder[];
@@ -38,6 +38,12 @@ export interface NormalizedSchema {
   datasources: Map<string, Datasource>;
   /** Block folders (component groups) keyed by slug path — the folder's identity. */
   folders: Map<string, LocalFolder>;
+  /**
+   * `component_group_uuid` → slug path, present only for a schema read from a
+   * space. Group uuids are per-space, so diffing translates both sides into slug
+   * paths before comparing; a side without this map contributes no translations.
+   */
+  groupPathByUuid?: Map<string, string>;
 }
 
 export type DiffAction = "create" | "update" | "unchanged" | "stale";

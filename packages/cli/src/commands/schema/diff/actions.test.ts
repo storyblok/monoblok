@@ -103,14 +103,27 @@ describe("formatSchemaDiff", () => {
     expect(output).toContain("1 added, 1 changed, 1 removed");
   });
 
-  it("should report no differences when nothing changed", () => {
+  it("should count an unchanged entity in the summary", () => {
     const result = makeResult([
-      { type: "component", name: "hero", action: "unchanged", changes: [], before: {}, after: {} },
+      {
+        type: "component",
+        name: "hero",
+        action: "unchanged",
+        changes: [],
+        before: null,
+        after: null,
+      },
     ]);
 
     const output = formatSchemaDiff(result, "a.ts", "b.ts");
 
     expect(output).toContain("1 unchanged");
+  });
+
+  it("should report no differences when both schemas are empty", () => {
+    const output = formatSchemaDiff(makeResult([]), "a.ts", "b.ts");
+
+    expect(output).toContain("Summary: no differences");
   });
 
   it("should omit unchanged entities from the listing while keeping the summary count", () => {

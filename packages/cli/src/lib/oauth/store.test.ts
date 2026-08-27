@@ -5,7 +5,6 @@ import {
   getOAuthActiveRegion,
   getOAuthClientFromEnv,
   getOAuthEntry,
-  setOAuthActiveRegion,
   updateOAuthEntry,
 } from "./store";
 
@@ -74,15 +73,15 @@ describe("oauth store", () => {
 
   it("should round-trip the active region pointer", async () => {
     expect(await getOAuthActiveRegion()).toBeUndefined();
-    await setOAuthActiveRegion("us");
+    await updateOAuthEntry("us", { activeRegion: true });
     expect(await getOAuthActiveRegion()).toBe("us");
   });
 
   it("should ignore an active region that is not a valid region", async () => {
     await updateOAuthEntry("eu", {
       tokens: { auth_type: "oauth", access_token: "a", expires_at: "x" },
+      activeRegion: true,
     });
-    await setOAuthActiveRegion("eu");
     // Corrupt the pointer directly, bypassing the setter.
     const path = `${process.env.HOME}/.storyblok/credentials.json`;
     const stored = JSON.parse(vol.readFileSync(path, "utf8") as string);
@@ -94,8 +93,8 @@ describe("oauth store", () => {
   it("should not drop sibling region entries when setting the active region", async () => {
     await updateOAuthEntry("eu", {
       tokens: { auth_type: "oauth", access_token: "a", expires_at: "x" },
+      activeRegion: true,
     });
-    await setOAuthActiveRegion("eu");
     expect((await getOAuthEntry("eu")).tokens?.access_token).toBe("a");
     expect(await getOAuthActiveRegion()).toBe("eu");
   });
@@ -103,8 +102,8 @@ describe("oauth store", () => {
   it("should clear the active region pointer when its region is logged out", async () => {
     await updateOAuthEntry("eu", {
       tokens: { auth_type: "oauth", access_token: "a", expires_at: "x" },
+      activeRegion: true,
     });
-    await setOAuthActiveRegion("eu");
     await clearOAuthTokens("eu");
     expect(await getOAuthActiveRegion()).toBeUndefined();
   });
@@ -116,7 +115,7 @@ describe("oauth store", () => {
     await updateOAuthEntry("us", {
       tokens: { auth_type: "oauth", access_token: "b", expires_at: "y" },
     });
-    await setOAuthActiveRegion("us");
+    await updateOAuthEntry("us", { activeRegion: true });
     await clearOAuthTokens("eu");
     expect(await getOAuthActiveRegion()).toBe("us");
   });

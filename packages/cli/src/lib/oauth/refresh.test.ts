@@ -43,6 +43,27 @@ describe("refreshOAuthTokens", () => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
 
+  it("should not call the token endpoint when the stored token is still valid", async () => {
+    // Stands in for another process having refreshed while this one waited for the lock.
+    await updateOAuthEntry("eu", {
+      tokens: {
+        auth_type: "oauth",
+        access_token: "fresh-access",
+        refresh_token: "fresh-refresh",
+        expires_at: computeExpiresAt(900),
+      },
+    });
+    server.use(
+      http.post("https://mapi.storyblok.com/oauth/token", () => {
+        throw new Error("the token endpoint must not be called");
+      }),
+    );
+
+    await expect(refreshOAuthTokens("eu")).resolves.toMatchObject({
+      access_token: "fresh-access",
+    });
+  });
+
   it("should key single-flight refresh by region so concurrent regions do not share a promise", async () => {
     await updateOAuthEntry("us", {
       tokens: {

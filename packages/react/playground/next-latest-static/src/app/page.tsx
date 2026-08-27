@@ -1,5 +1,4 @@
 import { apiClient, StoryblokComponent } from "@/lib/storyblok";
-import type { StoryblokBlockData } from "@storyblok/react";
 import Link from "next/link";
 
 export default async function Home() {
@@ -12,7 +11,7 @@ export default async function Home() {
     <main>
       <h1>Storyblok Next.js Static Export Example</h1>
       <Link href="/react/richtext">Go to Rich Text Example</Link>
-      <StoryblokComponent block={story.content as StoryblokBlockData} />
+      <StoryblokComponent block={story.content} />
     </main>
   );
 }

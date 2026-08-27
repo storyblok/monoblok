@@ -29,7 +29,14 @@ function makeStory(overrides: Partial<Story> & { content: unknown }): Story {
 }
 
 describe("computeImpactedComponents", () => {
-  const emptyDiff: DiffResult = { diffs: [], creates: 0, updates: 0, unchanged: 0, stale: 0 };
+  const emptyDiff: DiffResult = {
+    diffs: [],
+    unmanagedFolders: [],
+    creates: 0,
+    updates: 0,
+    unchanged: 0,
+    stale: 0,
+  };
 
   it("should mark components with breaking changes as update", () => {
     const breaking: ComponentBreakingChanges[] = [
@@ -52,11 +59,12 @@ describe("computeImpactedComponents", () => {
           type: "component",
           name: "teaser",
           action: "stale",
-          diff: null,
-          local: null,
-          remote: null,
+          changes: [],
+          before: null,
+          after: null,
         },
       ],
+      unmanagedFolders: [],
       creates: 0,
       updates: 0,
       unchanged: 0,

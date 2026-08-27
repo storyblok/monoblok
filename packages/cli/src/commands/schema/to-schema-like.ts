@@ -1,4 +1,4 @@
-import type { FieldType } from "@storyblok/schema";
+import { FIELD_TYPES, type FieldType } from "@storyblok/schema";
 
 import type { Component } from "../../types";
 import { isRecord } from "./utils";
@@ -6,34 +6,8 @@ import { isRecord } from "./utils";
 /** Field-schema keys that are internal Storyblok sentinels, never user-defined fields. */
 const SENTINEL_FIELDS = new Set(["_uid", "component"]);
 
-// Content field types the `@storyblok/schema` validators understand. Declaring
-// this as `Record<FieldType, true>` makes it a compile-time exhaustiveness check:
-// adding or removing a `FieldType` in the schema package fails to type-check here
-// until this map is updated in lockstep.
-const KNOWN_FIELD_TYPES = {
-  text: true,
-  textarea: true,
-  richtext: true,
-  markdown: true,
-  number: true,
-  datetime: true,
-  boolean: true,
-  option: true,
-  options: true,
-  asset: true,
-  multiasset: true,
-  multilink: true,
-  bloks: true,
-  table: true,
-  section: true,
-  tab: true,
-  custom: true,
-} satisfies Record<FieldType, true>;
-
 function isKnownFieldType(value: unknown): value is FieldType {
-  return (
-    typeof value === "string" && Object.prototype.hasOwnProperty.call(KNOWN_FIELD_TYPES, value)
-  );
+  return FIELD_TYPES.some((fieldType) => fieldType === value);
 }
 
 /** A single field in the adapted schema, structurally compatible with the validators' `SchemaFieldLike`. */
@@ -50,8 +24,8 @@ export interface AdaptedSchema {
 }
 
 function toField(name: string, def: Record<string, unknown>): AdaptedField | null {
-  // Field types the validators cannot check (e.g. commerce, image, link) are
-  // dropped: `validateStory` has no rule for them, so they never affect breakage.
+  // A type outside the field types the Management API accepts has no
+  // `validateStory` rule, so it can never affect breakage.
   if (!isKnownFieldType(def.type)) {
     return null;
   }
@@ -59,8 +33,14 @@ function toField(name: string, def: Record<string, unknown>): AdaptedField | nul
   const field: AdaptedField = { ...def, name, type: def.type };
 
   // MAPI stores the allowed-blocks list for `bloks` fields as `component_whitelist`;
-  // the validators expect it under `allow`.
-  if (Array.isArray(def.component_whitelist)) {
+  // the validators expect it under `allow`. The editor only enforces the list
+  // when `restrict_components` is on and the restriction is by component name,
+  // so an inert list must not become an `allow` constraint here.
+  if (
+    Array.isArray(def.component_whitelist) &&
+    def.restrict_components === true &&
+    !def.restrict_type
+  ) {
     field.allow = def.component_whitelist.filter(
       (entry): entry is string => typeof entry === "string",
     );

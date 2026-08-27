@@ -1,6 +1,6 @@
 import type { RegionCode } from "../../constants";
 import { regionNames } from "../../constants";
-import { CommandError } from "../../utils";
+import { CommandError, formatReloginSteps } from "../../utils";
 
 // Commands that establish or tear down a session pick their own region and must not be
 // measured against the session already on disk.
@@ -29,6 +29,6 @@ export const assertOAuthRegionAuthorized = async (
   }
   throw new CommandError(
     `Your OAuth login is for region ${describe(active)}, but region ${describe(requested)} was requested. ` +
-      `Run \`storyblok login --oauth --region ${requested}\` to authorize that region, or drop the region option to use ${describe(active)}.`,
+      `${formatReloginSteps(`storyblok login --oauth --region ${requested}`)} to authorize that region, or drop the region option to use ${describe(active)}.`,
   );
 };

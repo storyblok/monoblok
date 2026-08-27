@@ -3,11 +3,12 @@ import { describe, expect, it } from "vitest";
 import { startCallbackServer } from "./server";
 
 const PATH = "/oauth/callback";
+const STATE = "state-abc";
 const callback = (port: number, query: string) => fetch(`http://127.0.0.1:${port}${PATH}${query}`);
 
 describe("startCallbackServer", () => {
   it("should resolve with code and state and serve a 200 success page", async () => {
-    const listener = await startCallbackServer(4917, PATH);
+    const listener = await startCallbackServer(4917, PATH, STATE);
     const response = await callback(4917, "?code=auth-code&state=state-abc");
 
     expect(response.status).toBe(200);
@@ -15,7 +16,7 @@ describe("startCallbackServer", () => {
   });
 
   it("should serve a non-200 page and reject when the callback carries an error", async () => {
-    const listener = await startCallbackServer(4918, PATH);
+    const listener = await startCallbackServer(4918, PATH, STATE);
     // Attach the rejection assertion before triggering the callback so the
     // rejection is handled the moment it settles.
     const rejected = expect(listener.callback).rejects.toThrow(/access_denied/);
@@ -34,7 +35,7 @@ describe("startCallbackServer", () => {
       // flow report the conflict before it opens a browser tab. The holder lookup shells out to
       // lsof/netstat, which may be unavailable in CI, so the assertion covers the always-present
       // parts: the port, the cause, and the way out.
-      await expect(startCallbackServer(4920, PATH)).rejects.toThrow(
+      await expect(startCallbackServer(4920, PATH, STATE)).rejects.toThrow(
         /Port 4920 is already in use .*run `storyblok login --oauth` again/s,
       );
     } finally {
@@ -43,7 +44,7 @@ describe("startCallbackServer", () => {
   });
 
   it("should serve a non-200 page and reject when code or state is missing", async () => {
-    const listener = await startCallbackServer(4919, PATH);
+    const listener = await startCallbackServer(4919, PATH, STATE);
     const rejected = expect(listener.callback).rejects.toThrow(/code and state/);
     const response = await callback(4919, "?code=only-code");
 
@@ -52,11 +53,22 @@ describe("startCallbackServer", () => {
   });
 
   it("should stop listening once closed so the port is free again", async () => {
-    const listener = await startCallbackServer(4921, PATH);
+    const listener = await startCallbackServer(4921, PATH, STATE);
     listener.close();
 
     // A second bind on the same port only succeeds if the first server really let it go.
-    const reopened = await startCallbackServer(4921, PATH);
+    const reopened = await startCallbackServer(4921, PATH, STATE);
     reopened.close();
+  });
+
+  it("should serve the failure page and reject when the returned state does not match", async () => {
+    const listener = await startCallbackServer(4922, PATH, STATE);
+    const rejected = expect(listener.callback).rejects.toThrow(/state mismatch/);
+    const response = await callback(4922, "?code=auth-code&state=forged-state");
+
+    // A forged callback must not be told it succeeded.
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain("Authorization failed");
+    await rejected;
   });
 });

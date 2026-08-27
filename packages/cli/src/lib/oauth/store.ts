@@ -1,8 +1,7 @@
-import { join } from "pathe";
 import type { RegionCode } from "../../constants";
-import { getCredentials } from "../../creds";
+import type { CredentialsFile } from "../../credentials-file";
+import { readCredentialsFile, updateCredentialsFile } from "../../credentials-file";
 import { isRegion } from "../../utils";
-import { getStoryblokGlobalPath, saveToFile } from "../../utils/filesystem";
 
 export interface OAuthClientCredentials {
   client_id: string;
@@ -32,38 +31,45 @@ export interface OAuthRegionEntry {
 // authenticated at once. Its key never collides with a region code.
 type OAuthStore = Partial<Record<RegionCode, OAuthRegionEntry>> & { activeRegion?: RegionCode };
 
-const credentialsPath = (): string => join(getStoryblokGlobalPath(), "credentials.json");
+const getStore = (credentials: CredentialsFile): OAuthStore =>
+  (credentials.oauth ?? {}) as OAuthStore;
 
-const readAll = async (): Promise<Record<string, unknown>> => {
-  return ((await getCredentials(credentialsPath())) as Record<string, unknown> | null) ?? {};
+export const readOAuthEntry = (
+  credentials: CredentialsFile,
+  region: RegionCode,
+): OAuthRegionEntry => getStore(credentials)[region] ?? {};
+
+/**
+ * Applies a patch to one region's OAuth entry. Pure, so callers already holding the
+ * credentials lock can compose it with their own read and write.
+ */
+export const applyOAuthEntry = (
+  credentials: CredentialsFile,
+  region: RegionCode,
+  patch: OAuthRegionEntry & { activeRegion?: boolean },
+): CredentialsFile => {
+  const { activeRegion, ...entryPatch } = patch;
+  const oauth = { ...getStore(credentials) };
+  oauth[region] = { ...oauth[region], ...entryPatch };
+  if (activeRegion) {
+    oauth.activeRegion = region;
+  }
+  return { ...credentials, oauth };
 };
 
-export const getOAuthEntry = async (region: RegionCode): Promise<OAuthRegionEntry> => {
-  const all = await readAll();
-  const oauth = (all.oauth ?? {}) as OAuthStore;
-  return oauth[region] ?? {};
-};
+export const getOAuthEntry = async (region: RegionCode): Promise<OAuthRegionEntry> =>
+  readOAuthEntry(await readCredentialsFile(), region);
 
 // The region the user most recently logged into, or undefined when unset or
 // pointing at a value that is not a valid region.
 export const getOAuthActiveRegion = async (): Promise<RegionCode | undefined> => {
-  const all = await readAll();
-  const oauth = (all.oauth ?? {}) as OAuthStore;
-  const active = oauth.activeRegion;
+  const active = getStore(await readCredentialsFile()).activeRegion;
   return active && isRegion(active) ? active : undefined;
-};
-
-export const setOAuthActiveRegion = async (region: RegionCode): Promise<void> => {
-  const all = await readAll();
-  const oauth = (all.oauth ?? {}) as OAuthStore;
-  oauth.activeRegion = region;
-  await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
 };
 
 // True when any region holds an OAuth session, regardless of which region it is.
 export const hasAnyOAuthSession = async (): Promise<boolean> => {
-  const all = await readAll();
-  const oauth = (all.oauth ?? {}) as OAuthStore;
+  const oauth = getStore(await readCredentialsFile());
   return Object.entries(oauth).some(
     ([key, entry]) =>
       key !== "activeRegion" &&
@@ -80,28 +86,29 @@ export const getOAuthClientFromEnv = (): OAuthClientCredentials | null => {
   return null;
 };
 
+/**
+ * Updates one region's OAuth entry.
+ * @param region - The region whose entry is patched.
+ * @param patch - Fields to merge into the entry; `activeRegion` also repoints the
+ * active-region marker, in the same write.
+ */
 export const updateOAuthEntry = async (
   region: RegionCode,
-  patch: OAuthRegionEntry,
+  patch: OAuthRegionEntry & { activeRegion?: boolean },
 ): Promise<void> => {
-  const all = await readAll();
-  const oauth = (all.oauth ?? {}) as OAuthStore;
-  oauth[region] = { ...oauth[region], ...patch };
-  await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
+  await updateCredentialsFile((credentials) => applyOAuthEntry(credentials, region, patch));
 };
 
 // Clears the session (tokens and granted spaces) for one region.
 export const clearOAuthTokens = async (region: RegionCode): Promise<void> => {
-  const all = await readAll();
-  const oauth = (all.oauth ?? {}) as OAuthStore;
-  if (!oauth[region]) {
-    return;
-  }
-  delete oauth[region];
-  // Drop the pointer when the region it references is logged out, so the next
-  // session falls back to whatever other region still has tokens.
-  if (oauth.activeRegion === region) {
-    delete oauth.activeRegion;
-  }
-  await saveToFile(credentialsPath(), JSON.stringify({ ...all, oauth }, null, 2), { mode: 0o600 });
+  await updateCredentialsFile((credentials) => {
+    const oauth = { ...getStore(credentials) };
+    delete oauth[region];
+    // Drop the pointer when the region it references is logged out, so the next
+    // session falls back to whatever other region still has tokens.
+    if (oauth.activeRegion === region) {
+      delete oauth.activeRegion;
+    }
+    return { ...credentials, oauth };
+  });
 };

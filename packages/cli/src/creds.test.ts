@@ -57,6 +57,22 @@ describe("creds", async () => {
         '{\n  "api.storyblok.com": {\n    "login": "julio.professional@storyblok.com",\n    "password": "my_access_token",\n    "region": "eu"\n  }\n}',
       );
     });
+
+    it("should restrict the credentials file to its owner even when it already exists world-readable", async () => {
+      vol.fromJSON({ "test/credentials.json": "{}" }, "/temp");
+      vol.chmodSync("/temp/test/credentials.json", 0o644);
+
+      await addCredentials({
+        filePath: "/temp/test/credentials.json",
+        machineName: "api.storyblok.com",
+        login: "julio.professional@storyblok.com",
+        password: "my_access_token",
+        region: "eu",
+      });
+
+      const mode = vol.statSync("/temp/test/credentials.json").mode & 0o777;
+      expect(mode).toBe(0o600);
+    });
   });
 
   describe("removeAllCredentials", () => {

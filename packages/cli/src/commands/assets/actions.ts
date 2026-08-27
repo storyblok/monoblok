@@ -510,7 +510,7 @@ export const fetchSharedAssetFolders = async ({
     }
     return { asset_folders: all.filter((folder) => keep.has(folder.id)) };
   } catch (maybeError) {
-    handleAPIError("pull_shared_asset_folders", toError(maybeError));
+    handleAPIError("list_shared_asset_folders", toError(maybeError));
   }
 };
 

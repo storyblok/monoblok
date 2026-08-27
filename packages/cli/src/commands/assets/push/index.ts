@@ -62,6 +62,7 @@ import { makeWriteStoryAPITransport } from "../../stories/streams";
 import {
   assertLibraryWritable,
   listWritableLibraries,
+  listWritableLibrariesOrDegrade,
   resolveScopeBaseDir,
   type Scope,
 } from "../scope";
@@ -211,14 +212,26 @@ pushCmd.action(async (assetInput, options, command) => {
         scopes.push({ kind: "space", spaceId: fromSpace });
       }
       if (target === "shared" || target === "auto") {
-        // `listWritableLibraries` already filters to writable libraries, so
-        // these scopes need no further access check.
-        const libraries = await listWritableLibraries(targetSpace);
-        scopes.push(
-          ...libraries.map(
-            (library) => ({ kind: "library", libraryId: library.id }) satisfies Scope,
-          ),
-        );
+        // `auto` is implicit: the user asked to push assets, not libraries. A credential that
+        // cannot reach library discovery degrades to the space scope with a warning rather
+        // than failing the whole command. An explicit `--target shared` still fails.
+        // `listWritableLibraries`/`listWritableLibrariesOrDegrade` already filter to writable
+        // libraries, so these scopes need no further access check.
+        const libraries =
+          target === "auto"
+            ? await listWritableLibrariesOrDegrade(targetSpace)
+            : await listWritableLibraries(targetSpace);
+        if (libraries === undefined) {
+          getUI().warn(
+            "Shared libraries are unavailable with this login; continuing with space assets only.",
+          );
+        } else {
+          scopes.push(
+            ...libraries.map(
+              (library) => ({ kind: "library", libraryId: library.id }) satisfies Scope,
+            ),
+          );
+        }
       }
     }
   } catch (maybeError) {

@@ -91,4 +91,14 @@ describe("userCommand", () => {
 
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Network error"));
   });
+
+  it("should not dump a stack trace when the failure is reported without --verbose", async () => {
+    vi.mocked(getUser).mockRejectedValue(new Error("Network error"));
+
+    await userCommand.parseAsync(["node", "test"]);
+
+    const output = vi.mocked(console.error).mock.calls.flat().join("\n");
+    expect(output).toContain("Network error");
+    expect(output).not.toContain("at ");
+  });
 });

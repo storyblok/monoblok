@@ -240,6 +240,7 @@ describe("filterStoriesStream", () => {
   it("applies the filters to every story by default", async () => {
     const matched: number[] = [];
     const skipped: number[] = [];
+    const received: Story[] = [];
 
     await pipeline(
       Readable.from([withContent(1, "page"), withContent(2, "post")]),
@@ -248,10 +249,13 @@ describe("filterStoriesStream", () => {
         onMatch: (story) => matched.push(story.id),
         onSkip: (story) => skipped.push(story.id),
       }),
+      collect(received),
     );
 
     expect(matched).toEqual([1]);
     expect(skipped).toEqual([2]);
+    // What it pushes is what the sink writes out, so a slow reader paces the run.
+    expect(received.map((story) => story.id)).toEqual([1]);
   });
 
   it("takes an upstream match as final, without evaluating the filters again", async () => {
@@ -263,6 +267,7 @@ describe("filterStoriesStream", () => {
       return isPage(story);
     };
     const matched: number[] = [];
+    const received: Story[] = [];
 
     await pipeline(
       Readable.from([withContent(1, "page"), withContent(2, "post"), withContent(3, "post")]),
@@ -271,15 +276,18 @@ describe("filterStoriesStream", () => {
         isAlreadyMatched: (story) => story.id === 2,
         onMatch: (story) => matched.push(story.id),
       }),
+      collect(received),
     );
 
     expect(matched).toEqual([1, 2]);
     expect(evaluated).toEqual([1, 3]);
+    expect(received.map((story) => story.id)).toEqual([1, 2]);
   });
 
   it("still filters the stories the upstream stage could not settle", async () => {
     const matched: number[] = [];
     const skipped: number[] = [];
+    const received: Story[] = [];
 
     await pipeline(
       Readable.from([withContent(1, "page"), withContent(2, "post")]),
@@ -290,9 +298,34 @@ describe("filterStoriesStream", () => {
         onMatch: (story) => matched.push(story.id),
         onSkip: (story) => skipped.push(story.id),
       }),
+      collect(received),
     );
 
     expect(matched).toEqual([1]);
     expect(skipped).toEqual([2]);
+    expect(received.map((story) => story.id)).toEqual([1]);
+  });
+
+  it("drops a story whose filter throws, without ending the run", async () => {
+    const explodes: ClientFilter = (story) => {
+      if (story.id === 2) {
+        throw new Error("bad expression");
+      }
+      return true;
+    };
+    const errors: number[] = [];
+    const received: Story[] = [];
+
+    await pipeline(
+      Readable.from([withContent(1, "page"), withContent(2, "post"), withContent(3, "post")]),
+      filterStoriesStream({
+        filters: [explodes],
+        onStoryError: (_error, story) => errors.push(story.id),
+      }),
+      collect(received),
+    );
+
+    expect(errors).toEqual([2]);
+    expect(received.map((story) => story.id)).toEqual([1, 3]);
   });
 });

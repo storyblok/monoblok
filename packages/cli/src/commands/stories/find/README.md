@@ -67,6 +67,33 @@ Management API returns it, printed as a single line of JSON:
 storyblok stories find --space 12345 --container-block product > products.jsonl
 ```
 
+### The output contract
+
+A line is the story, not a pointer to it. Everything the Management API returned is on it, so
+whatever reads the line can take the fields it needs and skip fetching the story again. That is the
+whole point of the pipe: a consumer starts at the stage that does the work, with no listing and no
+per-story content fetch of its own.
+
+Three rules make the format safe to consume, whatever flags produced it. They are the contract, and
+they are enforced on the reading side by `storyblok`'s own consumers:
+
+- **Every line carries `id`, `uuid`, and `full_slug`.** A script can be written against the format
+  rather than against one flag combination. `id` addresses the story for a write, `uuid` addresses
+  it across spaces, and `full_slug` is what any report about it has to say out loud.
+- **`content` is optional.** `--skip-content` emits list metadata only. Treat content as something
+  to check for, and fetch it for the lines that lack it.
+- **A key that is not part of the story starts with `_`.** `--check-references` adds `_ref_issues`;
+  future producers may add others. Ignore the ones you do not know, and strip them before sending a
+  story back to the API. This applies to top-level keys only, because `_uid` and `_editable` live
+  inside `content`, where the API itself round-trips them.
+
+A line is also a snapshot. Between this run and whatever writes next, a story can be edited or
+moved, so `updated_at` is worth comparing before an overwrite. For anything destructive, keep the
+selection rather than streaming it (`find … > selection.jsonl`, then act on the file), so the same
+set can be re-applied, audited, or diffed afterwards.
+
+See [ADR-0016](../../../../../../adr/0016-cli-jsonl-pipe-contract.md) for the reasoning.
+
 ### Built for Unix pipes
 
 One self-contained document per line is what makes the output composable: line-oriented tools work
@@ -110,6 +137,15 @@ output nobody will read. The summary on stderr says the scan was cut short, and 
 # prints five lines and stops, whatever the size of the scope
 storyblok stories find --space 12345 | head -5
 ```
+
+Results are also written at the pace of whatever is reading them, so a slow consumer holds the run
+back rather than having the whole result set queued up in front of it.
+
+`--check-references` is the one exception to all of this. A reference problem is only decidable once
+the whole scope has been listed, because deciding one needs the _target's_ current slug and publish
+state, so that mode buffers its matches and writes them at the end. Everything else holds: the
+output is the same JSONL, a reader that leaves still ends the run cleanly, and the exit codes are
+unchanged. Only the first line arrives late.
 
 Progress bars are dropped when **stdout is a terminal**, because the results are landing on that
 same screen and the two would overwrite each other. Redirect or pipe stdout and the bars come back:
@@ -406,7 +442,8 @@ found, and `cached_url` only for reference types that carry one, so a relation p
 # Audit a whole space
 storyblok stories find --space 12345 --check-references
 
-# The same audit, reading content from the CDN in bulk instead of story by story
+# The same audit, reading content from the CDN in bulk instead of story by story.
+# Faster, and blind to field-level translations: see the warning below.
 storyblok stories find --space 12345 --check-references --capi-filter
 
 # Only dead links
@@ -421,6 +458,12 @@ storyblok stories find --space 12345 --check-references \
 storyblok stories find --space 12345 --check-references --publish-status published \
   --where "$._ref_issues[?(@.type == 'unpublished')]"
 ```
+
+**`--capi-filter` does not check field-level translations.** CDN content omits every
+`<field>__i18n__<lang>` key, so a reference held in a translated field is not in the document the
+scan sees, and neither are whole blocks nested under a translated **bloks** field. The scan says so
+on stderr before it starts. Drop the flag to read every story from the Management API instead, which
+is slower and complete.
 
 ## Optimizations
 
@@ -1003,18 +1046,21 @@ Each of these is useful before the pipe exists, and none depends on the others.
 ### What has to be solved first
 
 - **CDN content is not Management API content.** The CDN drops every `field__i18n__<lang>` key from
-  the payload. Harmless for a predicate over untranslated fields, a silent undercount when a
-  **bloks** field is field-level translated — those nested blocks simply are not in the document the
-  filter sees — and never acceptable as the source of a write. The bulk read can decide _which_
-  stories; only the Management API can say _what_ is written back.
+  the payload. That is harmless for a predicate over untranslated fields, a silent undercount when a
+  **bloks** field is field-level translated (those nested blocks simply are not in the document the
+  filter sees), and never acceptable as the source of a write. The bulk read can decide _which_
+  stories. Only the Management API can say _what_ is written back.
 - **Staleness on the write path.** `migrations run` sends `force_update: "1"`, which overrides the
   server's conflict check. A pipe widens the window between reading a story and writing it, so a
-  concurrent edit is lost without a word. The lines already carry `updated_at` — compare it, or drop
-  `force_update` for piped input.
+  concurrent edit is lost without a word. The lines already carry `updated_at`, so compare it, or
+  drop `force_update` for piped input.
 - ~~**`find` buffers its output when stderr is a terminal**, so the two processes never overlap.~~
   Solved: results stream unconditionally, so `find | migrations run -` overlaps the read and the
   write from the first matching story, and a consumer that stops early stops the producer with it.
-- **A stated output contract.** `--skip-content` omits content and `--check-references` adds
-  `_ref_issues`, so the shape depends on the flags. A consumer needs a documented minimum — `id`,
-  `uuid`, `full_slug` — and has to treat `content` as optional, fetching only the lines that lack
-  it.
+  Writes are paced by the reader too, so a slow consumer holds the producer back instead of having
+  the result set buffered in front of it.
+- ~~**A stated output contract.**~~ Solved: see [The output contract](#the-output-contract) above
+  and [ADR-0016](../../../../../../adr/0016-cli-jsonl-pipe-contract.md). Every line carries `id`,
+  `uuid`, and `full_slug`, `content` is optional, and a producer's own annotations are prefixed `_`.
+  `src/lib/pipe/` holds both halves of it, so a consuming command mounts `createStoryLineSource()`
+  where it would otherwise have put a list fetcher and gets the reading side for free.

@@ -227,13 +227,18 @@ export class UI {
    * Writes machine-readable output straight to stdout, bypassing the UI enable
    * gate. Decorative output is suppressed alongside it (see `--format json`), so
    * stdout stays a single pipeable document even with `--no-ui-enabled`.
+   *
+   * Returns whether stdout wants more, so a streaming producer can pace itself
+   * against a slow reader instead of letting the unread lines pile up in
+   * stdout's buffer. `true` once the reader has gone away: there is nothing left
+   * to wait for there, and the run is ending anyway.
    */
-  writeMachineOutput(payload: string) {
+  writeMachineOutput(payload: string): boolean {
     guardStdoutEpipe(this);
     if (stdoutClosed) {
-      return;
+      return true;
     }
-    process.stdout.write(`${payload}\n`);
+    return process.stdout.write(`${payload}\n`);
   }
 
   list(items: string[]) {

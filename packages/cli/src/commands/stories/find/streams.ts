@@ -1,4 +1,4 @@
-import { Transform, Writable } from "node:stream";
+import { Transform } from "node:stream";
 import { toError } from "../../../utils/error/error";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import type { Story } from "../constants";
@@ -36,12 +36,17 @@ export const filterListedStoriesStream = ({
   });
 
 /**
- * Terminal stage of the find pipeline: decides which stories reach the caller.
+ * Last deciding stage of the find pipeline: what it pushes is a result.
  *
  * Filtering is CPU-only, so this stage needs no concurrency control of its own —
  * it is the fan-in point for the parallel content fetches upstream. A filter
  * that throws on one story is reported and that story dropped, so a single odd
  * document cannot abort a whole run.
+ *
+ * Matches are pushed on to the sink below rather than handed to a callback,
+ * which is what puts the sink's backpressure behind them: a reader slower than
+ * this run holds the pipeline back instead of having the result set buffered
+ * ahead of it.
  *
  * `isAlreadyMatched` lets an upstream stage settle a story for good: under
  * `--capi-filter` the filters have already run against that story's content,
@@ -63,12 +68,13 @@ export const filterStoriesStream = ({
   onIncrement?: () => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) =>
-  new Writable({
+  new Transform({
     objectMode: true,
-    write(story: Story, _encoding, callback) {
+    transform(story: Story, _encoding, callback) {
       try {
         if (isAlreadyMatched?.(story) === true || applyClientFilters(story, filters)) {
           onMatch?.(story);
+          this.push(story);
         } else {
           onSkip?.(story);
         }
@@ -188,24 +194,32 @@ export const capiFilterStream = ({
   return new Transform({
     objectMode: true,
     async transform(story: Story, _encoding, callback) {
-      batch.push(story);
-      if (batch.length < batchSize) {
+      // Node does not observe the promise an `async transform` returns, so a
+      // throw on the way to `callback()` would surface as an unhandled rejection
+      // rather than as a pipeline failure — and the stage would stall on a
+      // callback that never comes.
+      try {
+        batch.push(story);
+        if (batch.length < batchSize) {
+          callback();
+          return;
+        }
+
+        const pending = batch;
+        batch = [];
+        // Awaited before the callback, so a saturated queue holds the pager back
+        // rather than buffering the whole space in memory.
+        await lock.acquire();
+        const task = settleBatch(pending, (resolved) => this.push(resolved)).finally(() => {
+          lock.release();
+          processing.delete(task);
+        });
+        processing.add(task);
+
         callback();
-        return;
+      } catch (maybeError) {
+        callback(toError(maybeError));
       }
-
-      const pending = batch;
-      batch = [];
-      // Awaited before the callback, so a saturated queue holds the pager back
-      // rather than buffering the whole space in memory.
-      await lock.acquire();
-      const task = settleBatch(pending, (resolved) => this.push(resolved)).finally(() => {
-        lock.release();
-        processing.delete(task);
-      });
-      processing.add(task);
-
-      callback();
     },
     // The last batch is almost never full, and in-flight batches have to finish
     // before the stage can end.

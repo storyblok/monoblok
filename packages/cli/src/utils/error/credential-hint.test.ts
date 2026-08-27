@@ -14,7 +14,7 @@ describe("matchCredentialError", () => {
       errorId: "insufficient_scope",
       fatal: true,
       message:
-        'Your OAuth login is missing the "stories:write" permission. Re-run `storyblok login` and grant it at the consent screen.',
+        'Your OAuth login is missing the "stories:write" permission. Run `storyblok logout`, then `storyblok login --oauth` and grant it at the consent screen.',
     });
   });
 
@@ -23,7 +23,7 @@ describe("matchCredentialError", () => {
 
     expect(hint?.errorId).toBe("insufficient_scope");
     expect(hint?.message).toBe(
-      'Your personal access token is missing the "assets:write" scope. Create a new token with that scope under My account, Personal access tokens.',
+      'Your personal access token is missing the "assets:write" scope. Create a new token with that scope under My account, Personal access tokens. Run `storyblok logout`, then `storyblok login --token <token>` to use it.',
     );
   });
 
@@ -32,7 +32,7 @@ describe("matchCredentialError", () => {
 
     expect(hint?.errorId).toBe("forbidden");
     expect(hint?.message).toBe(
-      "This command is not available with an OAuth login yet. Re-run `storyblok login --token <token>` with a personal access token instead.",
+      "This command is not available with an OAuth login yet. Run `storyblok logout`, then `storyblok login --token <token>` with a personal access token instead.",
     );
   });
 
@@ -40,7 +40,7 @@ describe("matchCredentialError", () => {
     const hint = matchCredentialError(403, "This endpoint does not support this token type", pat);
 
     expect(hint?.message).toBe(
-      "This command is not available with a personal access token. Run `storyblok login` and sign in with your email and password.",
+      "This command is not available with a personal access token. Run `storyblok logout`, then `storyblok login` and sign in with your email and password.",
     );
   });
 
@@ -87,7 +87,7 @@ describe("matchCredentialError", () => {
     });
 
     expect(hint?.message).toBe(
-      "Space 222 is not covered by your personal access token. Create a new token that covers this space under My account, Personal access tokens.",
+      "Space 222 is not covered by your personal access token. Create a new token that covers this space under My account, Personal access tokens. Run `storyblok logout`, then `storyblok login --token <token>` to use it.",
     );
   });
 
@@ -99,17 +99,17 @@ describe("matchCredentialError", () => {
     });
 
     expect(hint?.message).toBe(
-      "Space 222 is not covered by your OAuth login. Re-run `storyblok login` and select this space at the consent screen.",
+      "Space 222 is not covered by your OAuth login. Run `storyblok logout`, then `storyblok login --oauth` and select this space at the consent screen.",
     );
     expect(hint?.message).not.toContain("(authorized spaces: )");
   });
 
   it("should treat a 401 as a dead session regardless of the body", () => {
     expect(matchCredentialError(401, "Unauthorized", oauth)?.message).toBe(
-      "Your OAuth login is no longer valid, it may have been revoked or expired. Run `storyblok login` to sign in again.",
+      "Your OAuth login is no longer valid, it may have been revoked or expired. Run `storyblok logout`, then `storyblok login --oauth` to sign in again.",
     );
     expect(matchCredentialError(401, undefined, pat)?.message).toBe(
-      "Your personal access token was rejected. It may have been revoked, create a new one and run `storyblok login --token <token>`.",
+      "Your personal access token was rejected. It may have been revoked; create a new one. Run `storyblok logout`, then `storyblok login --token <token>` to use it.",
     );
   });
 

@@ -5,7 +5,7 @@ import {
   withCredentialsLock,
   writeCredentialsFile,
 } from "../../credentials-file";
-import { CommandError } from "../../utils";
+import { CommandError, formatReloginSteps } from "../../utils";
 import { resolveOAuthClient } from "./client";
 import { isExpiringSoon } from "./expiry";
 import { applyOAuthEntry, readOAuthEntry } from "./store";
@@ -35,29 +35,20 @@ const doRefresh = async (region: RegionCode): Promise<OAuthTokens> =>
     const refreshToken = entry.tokens?.refresh_token;
     if (!refreshToken) {
       throw new CommandError(
-        "No OAuth refresh token stored. Run `storyblok login` to authenticate.",
+        `No OAuth refresh token stored. ${formatReloginSteps("storyblok login --oauth")} to authenticate.`,
       );
     }
 
     const client = resolveOAuthClient();
 
-    let response;
-    try {
-      response = await exchangeToken(region, {
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-        client_id: client.client_id,
-        client_secret: client.client_secret,
-      });
-    } catch (error) {
-      // The refresh token rotates and is single-use; an invalid grant means the session is dead.
-      if (error instanceof CommandError && /invalid_grant/.test(error.message)) {
-        throw new CommandError(
-          "Your OAuth session has expired. Please run `storyblok login` again.",
-        );
-      }
-      throw error;
-    }
+    // A rejected refresh grant surfaces as a dead-session message from the token endpoint,
+    // which knows the grant type it was exchanging.
+    const response = await exchangeToken(region, {
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: client.client_id,
+      client_secret: client.client_secret,
+    });
 
     const tokens: OAuthTokens = {
       auth_type: "oauth",

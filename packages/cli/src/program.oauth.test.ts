@@ -151,7 +151,7 @@ describe("program preAction OAuth refresh", () => {
 
     const { getMapiClient } = await import("./api");
     await expect(resolveProvidedToken(getMapiClient)).rejects.toThrow(
-      /Please run `storyblok login` again/,
+      /Run `storyblok logout`, then `storyblok login --oauth`/,
     );
   });
 });

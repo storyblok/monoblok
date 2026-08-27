@@ -32,6 +32,7 @@ export interface CallbackListener {
 export const startCallbackServer = (
   port: number,
   path: string,
+  expectedState: string,
   timeoutMs = 300_000,
 ): Promise<CallbackListener> => {
   return new Promise((ready, failToStart) => {
@@ -74,6 +75,17 @@ export const startCallbackServer = (
       const state = url.searchParams.get("state");
       if (!code || !state) {
         fail(new CommandError("Callback did not include code and state query params."));
+        return;
+      }
+
+      // Compared here rather than by the caller, so the mismatched callback this check exists
+      // for is told it failed instead of being served the success page.
+      if (state !== expectedState) {
+        fail(
+          new CommandError(
+            "OAuth state mismatch; aborting for your safety. Please try `storyblok login` again.",
+          ),
+        );
         return;
       }
 

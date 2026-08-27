@@ -13,6 +13,14 @@ const UNSUPPORTED_TOKEN_TYPE = "This endpoint does not support this token type";
 const SPACE_RESTRICTED = "This token is restricted to specific spaces";
 const SPACE_NOT_ALLOWED = "This token does not have access to this space";
 
+/**
+ * `storyblok login` refuses to run while a session is on disk, so a remedy that ends in a
+ * fresh login has to name the logout that makes it possible.
+ */
+export function formatReloginSteps(loginCommand: string): string {
+  return `Run \`storyblok logout\`, then \`${loginCommand}\``;
+}
+
 function formatAuthorizedSpacesParenthetical(grantedSpaceIds: number[]): string {
   return grantedSpaceIds.length > 0 ? ` (authorized spaces: ${grantedSpaceIds.join(", ")})` : "";
 }
@@ -29,7 +37,7 @@ export function formatSpaceNotAllowedMessage(
 ): string {
   return (
     `Space ${space} is not covered by your OAuth login${formatAuthorizedSpacesParenthetical(grantedSpaceIds)}. ` +
-    `Re-run \`storyblok login\` and select this space at the consent screen.`
+    `${formatReloginSteps("storyblok login --oauth")} and select this space at the consent screen.`
   );
 }
 
@@ -39,7 +47,8 @@ function formatPatSpaceNotAllowedMessage(
 ): string {
   return (
     `Space ${space} is not covered by your personal access token${formatAuthorizedSpacesParenthetical(grantedSpaceIds)}. ` +
-    `Create a new token that covers this space under My account, Personal access tokens.`
+    `Create a new token that covers this space under My account, Personal access tokens. ` +
+    `${formatReloginSteps("storyblok login --token <token>")} to use it.`
   );
 }
 
@@ -71,8 +80,8 @@ export function matchCredentialError(
       errorId: "unauthorized",
       fatal: true,
       message: isOAuth
-        ? "Your OAuth login is no longer valid, it may have been revoked or expired. Run `storyblok login` to sign in again."
-        : "Your personal access token was rejected. It may have been revoked, create a new one and run `storyblok login --token <token>`.",
+        ? `Your OAuth login is no longer valid, it may have been revoked or expired. ${formatReloginSteps("storyblok login --oauth")} to sign in again.`
+        : `Your personal access token was rejected. It may have been revoked; create a new one. ${formatReloginSteps("storyblok login --token <token>")} to use it.`,
     };
   }
 
@@ -86,8 +95,8 @@ export function matchCredentialError(
       errorId: "insufficient_scope",
       fatal: true,
       message: isOAuth
-        ? `Your OAuth login is missing the "${missingScope}" permission. Re-run \`storyblok login\` and grant it at the consent screen.`
-        : `Your personal access token is missing the "${missingScope}" scope. Create a new token with that scope under My account, Personal access tokens.`,
+        ? `Your OAuth login is missing the "${missingScope}" permission. ${formatReloginSteps("storyblok login --oauth")} and grant it at the consent screen.`
+        : `Your personal access token is missing the "${missingScope}" scope. Create a new token with that scope under My account, Personal access tokens. ${formatReloginSteps("storyblok login --token <token>")} to use it.`,
     };
   }
 
@@ -96,8 +105,8 @@ export function matchCredentialError(
       errorId: "forbidden",
       fatal: true,
       message: isOAuth
-        ? "This command is not available with an OAuth login yet. Re-run `storyblok login --token <token>` with a personal access token instead."
-        : "This command is not available with a personal access token. Run `storyblok login` and sign in with your email and password.",
+        ? `This command is not available with an OAuth login yet. ${formatReloginSteps("storyblok login --token <token>")} with a personal access token instead.`
+        : `This command is not available with a personal access token. ${formatReloginSteps("storyblok login")} and sign in with your email and password.`,
     };
   }
 

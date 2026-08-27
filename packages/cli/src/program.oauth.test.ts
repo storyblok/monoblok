@@ -1,7 +1,6 @@
-// Integration coverage for the proactive OAuth-refresh path inside the shared
-// preAction hook (see program.ts). This only fires end-to-end when a real
-// command is run through `getProgram()`, so it is exercised here rather than
-// unit-tested in isolation.
+// Integration coverage for the OAuth credential the shared preAction hook hands to the
+// mapi client (see program.ts). The hook passes a provider rather than a token string,
+// so the assertions here resolve that provider the way a request would.
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 import { http, HttpResponse } from "msw";
@@ -65,7 +64,13 @@ describe("program preAction OAuth refresh", () => {
     delete process.env.STORYBLOK_OAUTH_CLIENT_SECRET;
   });
 
-  it("should refresh an expiring OAuth token and initialize the mapi client with the new access token", async () => {
+  const resolveProvidedToken = async (getMapiClient: unknown): Promise<string> => {
+    const mock = getMapiClient as { mock: { calls: [{ oauthToken: () => Promise<string> }][] } };
+    const [{ oauthToken }] = mock.mock.calls.at(-1)!;
+    return oauthToken();
+  };
+
+  it("should refresh an expiring OAuth token when the credential is resolved", async () => {
     seedExpiringOAuthSession();
     server.use(
       http.post("https://mapi.storyblok.com/oauth/token", () =>
@@ -87,8 +92,9 @@ describe("program preAction OAuth refresh", () => {
     await program.parseAsync(["node", "test", "oauth-test-refresh"]);
 
     expect(getMapiClient).toHaveBeenCalledWith(
-      expect.objectContaining({ oauthToken: "sb_oat_new", region: "eu" }),
+      expect.objectContaining({ oauthToken: expect.any(Function), region: "eu" }),
     );
+    await expect(resolveProvidedToken(getMapiClient)).resolves.toBe("sb_oat_new");
 
     // The rotated tokens are persisted before use.
     const { getOAuthEntry } = await import("./lib/oauth/store");
@@ -97,18 +103,37 @@ describe("program preAction OAuth refresh", () => {
     expect(entry.tokens?.refresh_token).toBe("sb_ort_new");
   });
 
-  it("should surface the re-login message and not throw when the refresh fails", async () => {
+  it("should not refresh for a command that never resolves the credential", async () => {
+    seedExpiringOAuthSession();
+    let tokenEndpointCalls = 0;
+    server.use(
+      http.post("https://mapi.storyblok.com/oauth/token", () => {
+        tokenEndpointCalls += 1;
+        return HttpResponse.json({
+          access_token: "sb_oat_new",
+          refresh_token: "sb_ort_new",
+          token_type: "bearer",
+          expires_in: 900,
+        });
+      }),
+    );
+
+    const { getProgram } = await import("./program");
+    const program = getProgram();
+    program.command("oauth-test-no-request").action(() => {});
+
+    await program.parseAsync(["node", "test", "oauth-test-no-request"]);
+
+    expect(tokenEndpointCalls).toBe(0);
+  });
+
+  it("should surface the re-login guidance when the refresh fails", async () => {
     seedExpiringOAuthSession();
     server.use(
       http.post("https://mapi.storyblok.com/oauth/token", () =>
         HttpResponse.json({ error: "invalid_grant" }, { status: 400 }),
       ),
     );
-
-    // Import the module fresh (post vi.resetModules()) so the spy targets the same
-    // UI instance the freshly-loaded program.ts module resolves to.
-    const { getUI } = await import("./lib/ui");
-    const warnSpy = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
 
     const { getProgram } = await import("./program");
     const program = getProgram();
@@ -117,25 +142,16 @@ describe("program preAction OAuth refresh", () => {
       actionRan = true;
     });
 
-    // The hook must not reject the command run just because the proactive refresh failed;
-    // commands that don't need auth should still be able to run.
+    // A failing refresh must not reject the command run itself; commands that don't
+    // need auth still work, and the failure surfaces where the credential is used.
     await expect(
       program.parseAsync(["node", "test", "oauth-test-refresh-fail"]),
     ).resolves.not.toThrow();
     expect(actionRan).toBe(true);
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/Please run `storyblok login` again/),
-    );
-
-    // The mapi client still gets initialized with the stale token (not a refreshed one);
-    // any authed downstream call will fail on that dead token rather than silently succeed.
     const { getMapiClient } = await import("./api");
-    expect(getMapiClient).toHaveBeenCalledWith(
-      expect.objectContaining({ oauthToken: "sb_oat_old" }),
-    );
-    expect(getMapiClient).not.toHaveBeenCalledWith(
-      expect.objectContaining({ oauthToken: "sb_oat_new" }),
+    await expect(resolveProvidedToken(getMapiClient)).rejects.toThrow(
+      /Please run `storyblok login` again/,
     );
   });
 });

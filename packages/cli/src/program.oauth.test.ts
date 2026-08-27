@@ -171,7 +171,7 @@ const seedOAuthSessions = (regions: Record<string, string>) => {
     };
   }
   vol.fromJSON({
-    [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({ oauth }),
+    [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({ oauth }),
   });
 };
 

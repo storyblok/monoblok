@@ -5,7 +5,7 @@ import { setupServer } from "msw/node";
 
 import "../../index";
 import { loginCommand } from "./index";
-import { getOAuthEntry } from "../oauth/store";
+import { getOAuthEntry } from "../../lib/oauth/store";
 import { session } from "../../session";
 import { loggedOutSessionState } from "../../../test/setup";
 
@@ -13,12 +13,12 @@ vi.mock("node:fs");
 vi.mock("node:fs/promises");
 // Avoid opening a real browser and a real socket in tests.
 vi.mock("open", () => ({ default: vi.fn(async () => undefined) }));
-vi.mock("../oauth/server", () => ({
+vi.mock("../../lib/oauth/server", () => ({
   waitForCallback: vi.fn(async () => ({ code: "auth-code", state: "ignored" })),
 }));
 // Force the state check to pass by returning the same state generatePkce/generateState produced.
-vi.mock("../oauth/pkce", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../oauth/pkce")>();
+vi.mock("../../lib/oauth/pkce", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../lib/oauth/pkce")>();
   return { ...actual, generateState: () => "ignored" };
 });
 

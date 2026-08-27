@@ -21,7 +21,7 @@ kept out of a published npm package.
 ## Decision
 
 **Bake the first-party "Storyblok CLI" app's client id and secret into
-`packages/cli/src/commands/oauth/constants.ts`, treat the secret as public, and delete
+`packages/cli/src/lib/oauth/constants.ts`, treat the secret as public, and delete
 `storyblok oauth setup`.**
 
 1. **The client is a public OAuth client, so the secret is not a security boundary.** The CLI is

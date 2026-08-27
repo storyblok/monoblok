@@ -6,8 +6,8 @@ import { handleError } from "../../utils";
 import { loginWithEmailAndPassword, loginWithOtp, loginWithToken } from "./actions";
 import { session } from "../../session";
 import { type CLISpinner, getUI, stderrPromptContext } from "../../lib/ui";
-import { performOAuthLogin } from "../oauth/login-flow";
-import type { OAuthLoginResult } from "../oauth/login-flow";
+import { performOAuthLogin } from "../../lib/oauth/login-flow";
+import type { OAuthLoginResult } from "../../lib/oauth/login-flow";
 
 /**
  * Result of an interactive login. OAuth logins carry no token here (the access

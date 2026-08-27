@@ -79,8 +79,9 @@ export function getProgram(): Command {
         // A provider rather than a token string: access tokens live 15 minutes, so a
         // command that runs longer refreshes mid-run instead of 401ing. Commands that
         // need no auth never call it, so they never pay for a refresh.
+        state.oauthTokenProvider = createOAuthTokenProvider(state.region, state);
         getMapiClient({
-          oauthToken: createOAuthTokenProvider(state.region, state),
+          oauthToken: state.oauthTokenProvider,
           region: state.region ?? resolvedConfig.region,
         });
       } else if (state.password) {

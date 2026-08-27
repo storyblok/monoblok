@@ -12,7 +12,9 @@ type AuthenticatedSessionState = SessionState & {
  * A credential the management API client can authenticate with: a Personal Access
  * Token (PAT session) or an OAuth access token (OAuth session).
  */
-export type ApiCredential = { personalAccessToken: string } | { oauthToken: string };
+export type ApiCredential =
+  | { personalAccessToken: string }
+  | { oauthToken: string | (() => Promise<string>) };
 
 /**
  * Resolve the API credential for the current session, preferring an OAuth access
@@ -21,8 +23,11 @@ export type ApiCredential = { personalAccessToken: string } | { oauthToken: stri
  * @returns the credential, or undefined when the session has neither
  */
 export function sessionCredential(state: SessionState): ApiCredential | undefined {
-  if (state.authType === "oauth" && state.oauthAccessToken) {
-    return { oauthToken: state.oauthAccessToken };
+  // The provider keeps a long command authenticated; the stored token is the fallback
+  // for call sites reached before the program wired the session up.
+  const oauthToken = state.oauthTokenProvider ?? state.oauthAccessToken;
+  if (state.authType === "oauth" && oauthToken) {
+    return { oauthToken };
   }
   if (state.password) {
     return { personalAccessToken: state.password };

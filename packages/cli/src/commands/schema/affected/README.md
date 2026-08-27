@@ -48,6 +48,11 @@ storyblok schema affected ./schema/index.ts --space YOUR_SPACE_ID --fail-on-brea
   counted. Pre-existing invalid content is not misattributed.
 - By default the command fetches only the stories that use an impacted component (as a nested blok
   or as their root content type) directly from the space. Use `--local` to analyze already-pulled
-  story JSON instead. Run `storyblok stories pull --space YOUR_SPACE_ID` first.
+  story JSON instead. Run `storyblok stories pull --space YOUR_SPACE_ID` first. `--local` changes
+  where stories come from, not whether the command needs access: it still authenticates and reads
+  the space's current schema to compute the diff.
+- If a story listing or an individual story cannot be read, the command says so rather than
+  reporting a smaller impact. A failed listing aborts the run, and a story that could not be fetched
+  fails the `--fail-on-break` gate, because an unread story is not a story known to be safe.
 - The full per-story and per-field detail is written to the standard command report file when
   reporting is enabled (`--report-enabled`).

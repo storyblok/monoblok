@@ -3,7 +3,6 @@ import { pathToFileURL } from "node:url";
 import {
   access,
   appendFile,
-  chmod,
   constants,
   mkdir,
   open,
@@ -25,6 +24,12 @@ import { toError } from "./error";
 export const DEFAULT_STORAGE_DIR = ".storyblok";
 
 export interface FileOptions {
+  /**
+   * Permissions to create the file with. Like `fs.writeFile`, this applies only when the
+   * file is created; an existing file keeps the permissions it already has. Anything
+   * secret belongs in `writeFileAtomic`, which creates every write's file fresh with
+   * this mode and replaces the target atomically.
+   */
   mode?: number;
 }
 
@@ -110,26 +115,8 @@ export const saveToFile = async (
   // Write the file
   try {
     await writeFile(filePath, data, options);
-    await enforceMode(filePath, options?.mode);
   } catch (writeError) {
     handleFileSystemError("write", writeError as Error);
-  }
-};
-
-/**
- * `writeFile`'s `mode` applies only when it creates the file, so a file that already exists
- * keeps whatever permissions it was created with. Credentials written by an older CLI stay
- * world-readable without this. Chmod is unavailable on Windows and best-effort elsewhere:
- * a failure here must not fail the write that already succeeded.
- */
-const enforceMode = async (filePath: string, mode: number | undefined): Promise<void> => {
-  if (mode === undefined || process.platform.startsWith("win")) {
-    return;
-  }
-  try {
-    await chmod(filePath, mode);
-  } catch {
-    // Permissions could not be tightened (unsupported filesystem, foreign owner).
   }
 };
 

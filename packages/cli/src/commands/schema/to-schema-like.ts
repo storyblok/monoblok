@@ -59,8 +59,14 @@ function toField(name: string, def: Record<string, unknown>): AdaptedField | nul
   const field: AdaptedField = { ...def, name, type: def.type };
 
   // MAPI stores the allowed-blocks list for `bloks` fields as `component_whitelist`;
-  // the validators expect it under `allow`.
-  if (Array.isArray(def.component_whitelist)) {
+  // the validators expect it under `allow`. The editor only enforces the list
+  // when `restrict_components` is on and the restriction is by component name,
+  // so an inert list must not become an `allow` constraint here.
+  if (
+    Array.isArray(def.component_whitelist) &&
+    def.restrict_components === true &&
+    !def.restrict_type
+  ) {
     field.allow = def.component_whitelist.filter(
       (entry): entry is string => typeof entry === "string",
     );

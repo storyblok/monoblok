@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
+import { join } from "pathe";
 
 import "../index";
 import { schemaCommand } from "../command";
@@ -10,6 +11,8 @@ import type { Component } from "../../../types";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
 import { getReporter, resetReporter } from "../../../lib/reporter/reporter";
 import { getUI } from "../../../lib/ui";
+import { directories } from "../../../constants";
+import { resolveCommandPath } from "../../../utils/filesystem";
 
 import { loadSchema } from "../load-schema";
 
@@ -87,6 +90,75 @@ const preconditions = {
           const story = stories.find((s) => String(s.id) === params.id);
           return HttpResponse.json({ story });
         },
+      ),
+    );
+  },
+  failsToListStories() {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, () => {
+        storiesListCalls += 1;
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
+  },
+  failsToFetchStory(stories: StoryFixture[], unreadableId: number) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, () => {
+        storiesListCalls += 1;
+        return HttpResponse.json(
+          {
+            stories: stories.map(({ id, uuid, name, full_slug }) => ({
+              id,
+              uuid,
+              name,
+              full_slug,
+            })),
+          },
+          { headers: { Total: String(stories.length), "Per-Page": "100" } },
+        );
+      }),
+      http.get(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`,
+        ({ params }) => {
+          if (String(unreadableId) === params.id) {
+            return new HttpResponse(null, { status: 500 });
+          }
+          return HttpResponse.json({ story: stories.find((s) => String(s.id) === params.id) });
+        },
+      ),
+    );
+  },
+  hasPaginatedStories(pages: StoryFixture[][]) {
+    const all = pages.flat();
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) => {
+        storiesListCalls += 1;
+        const page = Number(new URL(request.url).searchParams.get("page") ?? 1);
+        const stories = pages[page - 1] ?? [];
+        return HttpResponse.json(
+          {
+            stories: stories.map(({ id, uuid, name, full_slug }) => ({
+              id,
+              uuid,
+              name,
+              full_slug,
+            })),
+          },
+          { headers: { Total: String(all.length), "Per-Page": String(pages[0]?.length ?? 1) } },
+        );
+      }),
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`, ({ params }) =>
+        HttpResponse.json({ story: all.find((s) => String(s.id) === params.id) }),
+      ),
+    );
+  },
+  hasPulledStories(directoryPath: string, stories: StoryFixture[]) {
+    vol.fromJSON(
+      Object.fromEntries(
+        stories.map((story) => [
+          join(directoryPath, `${story.full_slug}_${story.uuid}.json`),
+          JSON.stringify(story),
+        ]),
       ),
     );
   },
@@ -224,7 +296,7 @@ describe("schema affected command", () => {
     await runAffected();
 
     expect(storiesListCalls).toBe(0);
-    expect(readOutputReport()).toBeUndefined();
+    expect(readOutputReport()).toMatchObject({ components: [], totals: { usedStories: 0 } });
   });
 
   it("should union stories across multiple impacted components (MAPI contain_component is AND)", async () => {
@@ -310,10 +382,6 @@ describe("schema affected command", () => {
   });
 
   it("should include a story that uses an impacted component only as its root content type", async () => {
-    // `contain_component=page` never matches a story that uses `page` only as its
-    // root type with no nested bloks — that story must be caught via the
-    // `filter_query[component][in]` root-content-type request, or breakage is
-    // silently under-reported (a false all-clear under --fail-on-break).
     preconditions.hasLocalSchema([
       makeComponent("page", {
         title: { type: "text" },
@@ -321,37 +389,17 @@ describe("schema affected command", () => {
       }),
     ]);
     preconditions.hasRemote([makeComponent("page", { title: { type: "text" } })]);
-
-    const story: StoryFixture = {
-      id: 300,
-      uuid: "u-p",
-      name: "P",
-      full_slug: "p",
-      content: { _uid: "r", component: "page", title: "Hi" },
-    };
-    server.use(
-      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) => {
-        storiesListCalls += 1;
-        const url = new URL(request.url);
-        // Only the root-content-type filter returns the flat story; contain_component does not.
-        const rootIn = url.searchParams.get("filter_query[component][in]");
-        const matched = rootIn?.split(",").includes("page") ? [story] : [];
-        return HttpResponse.json(
-          {
-            stories: matched.map(({ id, uuid, name, full_slug }) => ({
-              id,
-              uuid,
-              name,
-              full_slug,
-            })),
-          },
-          { headers: { Total: String(matched.length), "Per-Page": "100" } },
-        );
-      }),
-      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`, ({ params }) =>
-        HttpResponse.json({ story: String(story.id) === params.id ? story : undefined }),
-      ),
-    );
+    // `contain_component` matches a component anywhere in the content, root
+    // content type included, so a story with no nested bloks still matches.
+    preconditions.hasStories([
+      {
+        id: 300,
+        uuid: "u-p",
+        name: "P",
+        full_slug: "p",
+        content: { _uid: "r", component: "page", title: "Hi" },
+      },
+    ]);
 
     await runAffected();
 
@@ -422,25 +470,170 @@ describe("schema affected command", () => {
     ).toBe(true);
     // The guard returns before any analysis, so no impact report is attached.
     expect(readOutputReport()).toBeUndefined();
-    // An operational failure must not be a green run, so CI gating can trust it.
-    expect(process.exitCode).toBe(1);
+    // A user-input mistake must not be a green run, so CI gating can trust it.
+    expect(process.exitCode).toBe(2);
   });
 
-  it("should warn and exit non-zero when the entry file resolves to an empty schema", async () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("should fail when the entry file resolves to an empty schema", async () => {
+    const errorSpy = vi.spyOn(getUI(), "error").mockImplementation(() => {});
     preconditions.hasLocalSchema([]);
 
     await runAffected();
 
     expect(
-      warnSpy.mock.calls.some(
+      errorSpy.mock.calls.some(
         ([message]) =>
           typeof message === "string" && message.includes("No components or datasources"),
       ),
     ).toBe(true);
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBe(2);
     // A misconfigured entry-file must never diff nothing and report a false all-clear.
     expect(readOutputReport()).toBeUndefined();
+  });
+
+  it("should fail loudly instead of reporting a clean result when the story listing fails", async () => {
+    const errorSpy = vi.spyOn(getUI(), "error").mockImplementation(() => {});
+    preconditions.hasLocalSchema([
+      makeComponent("hero", {
+        title: { type: "text" },
+        subtitle: { type: "text", required: true },
+      }),
+    ]);
+    preconditions.hasRemote([makeComponent("hero", { title: { type: "text" } })]);
+    preconditions.failsToListStories();
+
+    await runAffected(["--fail-on-break"]);
+
+    // A truncated listing under-reports impact, which reads as an all-clear on a
+    // CI gate. It has to be an error, not a quiet zero.
+    expect(process.exitCode).toBeGreaterThan(0);
+    expect(
+      errorSpy.mock.calls.some(
+        ([message]) => typeof message === "string" && message.includes("Could not list"),
+      ),
+    ).toBe(true);
+    expect(readOutputReport()).toBeUndefined();
+  });
+
+  it("should fail the --fail-on-break gate when a story cannot be read", async () => {
+    preconditions.hasLocalSchema([
+      makeComponent("hero", {
+        title: { type: "text" },
+        subtitle: { type: "text", required: true },
+      }),
+    ]);
+    preconditions.hasRemote([makeComponent("hero", { title: { type: "text" } })]);
+    preconditions.failsToFetchStory(
+      [
+        {
+          id: 1,
+          uuid: "u-1",
+          name: "One",
+          full_slug: "one",
+          content: { _uid: "r", component: "hero", title: "Hi" },
+        },
+      ],
+      1,
+    );
+
+    await runAffected(["--fail-on-break"]);
+
+    // Zero broken stories were found, but only because none could be read.
+    expect(readOutputReport().totals).toMatchObject({ brokenStories: 0 });
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("should analyze stories across every page of the listing", async () => {
+    preconditions.hasLocalSchema([
+      makeComponent("hero", {
+        title: { type: "text" },
+        subtitle: { type: "text", required: true },
+      }),
+    ]);
+    preconditions.hasRemote([makeComponent("hero", { title: { type: "text" } })]);
+    preconditions.hasPaginatedStories([
+      [
+        {
+          id: 1,
+          uuid: "u-1",
+          name: "One",
+          full_slug: "one",
+          content: { _uid: "a", component: "hero", title: "Hi" },
+        },
+      ],
+      [
+        {
+          id: 2,
+          uuid: "u-2",
+          name: "Two",
+          full_slug: "two",
+          content: { _uid: "b", component: "hero", title: "Ho" },
+        },
+      ],
+    ]);
+
+    await runAffected();
+
+    expect(readOutputReport().totals).toMatchObject({ usedStories: 2, brokenStories: 2 });
+  });
+
+  it("should attribute an issue to the nested field that failed, not its parent", async () => {
+    preconditions.hasLocalSchema([
+      makeComponent("page", { body: { type: "bloks" } }),
+      makeComponent("card", {
+        body: { type: "text" },
+        title: { type: "text", required: true },
+      }),
+    ]);
+    preconditions.hasRemote([
+      makeComponent("page", { body: { type: "bloks" } }),
+      makeComponent("card", { body: { type: "text" }, title: { type: "text" } }),
+    ]);
+    preconditions.hasStories([
+      {
+        id: 400,
+        uuid: "u-c",
+        name: "C",
+        full_slug: "c",
+        content: {
+          _uid: "r",
+          component: "page",
+          body: [{ _uid: "n", component: "card", body: "text" }],
+        },
+      },
+    ]);
+
+    await runAffected();
+
+    const report = readOutputReport();
+    const issue = report.stories[0].issues.find(
+      (i: { component: string }) => i.component === "card",
+    );
+    expect(issue.field).toBe("title");
+  });
+
+  it("should analyze locally pulled stories with --local", async () => {
+    preconditions.hasLocalSchema([
+      makeComponent("hero", {
+        title: { type: "text" },
+        subtitle: { type: "text", required: true },
+      }),
+    ]);
+    preconditions.hasRemote([makeComponent("hero", { title: { type: "text" } })]);
+    preconditions.hasPulledStories(resolveCommandPath(directories.stories, DEFAULT_SPACE), [
+      {
+        id: 500,
+        uuid: "u-l",
+        name: "L",
+        full_slug: "l",
+        content: { _uid: "r", component: "hero", title: "Hi" },
+      },
+    ]);
+
+    await runAffected(["--local"]);
+
+    expect(storiesListCalls).toBe(0);
+    expect(readOutputReport().totals).toMatchObject({ usedStories: 1, brokenStories: 1 });
   });
 
   it("should exit non-zero when the required --space is missing", async () => {
@@ -450,7 +643,7 @@ describe("schema affected command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "affected", "schema.ts"]);
 
-    expect(process.exitCode).toBe(1);
+    expect(process.exitCode).toBe(2);
   });
 
   it("should not fetch stories when there are no content-affecting changes", async () => {
@@ -462,6 +655,6 @@ describe("schema affected command", () => {
     await runAffected();
 
     expect(storiesListCalls).toBe(0);
-    expect(readOutputReport()).toBeUndefined();
+    expect(readOutputReport()).toMatchObject({ components: [], totals: { usedStories: 0 } });
   });
 });

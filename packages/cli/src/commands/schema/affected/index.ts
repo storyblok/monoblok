@@ -65,7 +65,6 @@ Scope:
         new CommandError("Please provide the space as argument --space SPACE_ID."),
         verbose,
       );
-      process.exitCode = 1;
       return;
     }
 
@@ -78,7 +77,6 @@ Scope:
       } catch (maybeError) {
         loadSpinner.failed("Failed to resolve schema");
         handleError(toError(maybeError), verbose);
-        process.exitCode = 1;
         return;
       }
       loadSpinner.succeed(
@@ -89,10 +87,12 @@ Scope:
       // (typo, wrong export). Fail loudly rather than diffing nothing and
       // reporting a false all-clear — critical under `--fail-on-break` in CI.
       if (local.components.length + local.datasources.length === 0) {
-        ui.warn(
-          "No components or datasources found in the entry file. Verify the file exports schema definitions.",
+        handleError(
+          new CommandError(
+            "No components or datasources found in the entry file. Verify the file exports schema definitions.",
+          ),
+          verbose,
         );
-        process.exitCode = 1;
         return;
       }
 
@@ -104,7 +104,6 @@ Scope:
       } catch (maybeError) {
         remoteSpinner.failed("Failed to fetch remote schema");
         handleError(toError(maybeError), verbose);
-        process.exitCode = 1;
         return;
       }
       const { remote, rawComponents } = remoteResult;
@@ -124,6 +123,9 @@ Scope:
       if (impacted.size === 0) {
         ui.br();
         ui.ok("No content-affecting schema changes detected.");
+        // Emit the same report shape as the analyzed path so a machine consumer
+        // never has to special-case "nothing to do".
+        reporter.addMeta("schemaAffected", aggregate(space, impacted, []));
         reporter.addSummary("schemaAffectedResults", { total: 0, succeeded: 0, failed: 0 });
         return;
       }
@@ -145,17 +147,16 @@ Scope:
           ),
           verbose,
         );
-        process.exitCode = 1;
         return;
       }
 
       const progress = ui.createProgressBar({ title: "Analyzing stories" });
-      let fetchErrors = 0;
+      let storyFailures = 0;
       const hooks = {
         onTotal: (total: number) => progress.setTotal(total),
         onStory: () => progress.increment(),
         onStoryError: (error: Error, storyRef?: string) => {
-          fetchErrors += 1;
+          storyFailures += 1;
           logger.warn("Failed to fetch story for impact analysis", {
             story: storyRef,
             error: error.message,
@@ -163,17 +164,24 @@ Scope:
         },
       };
 
-      const stories = storiesPath
-        ? await analyzeLocalStories(storiesPath, impacted, oldSchema, newSchema, hooks)
-        : await analyzeRemoteStories(space, impacted, oldSchema, newSchema, hooks);
-      // Tear down the whole MultiBar (not just this bar) so its async renderer
-      // stops before we log the summary; a bare `progress.stop()` leaves the
-      // render loop alive and its final frame flushes after the output.
-      ui.stopAllProgressBars();
+      let stories;
+      try {
+        stories = storiesPath
+          ? await analyzeLocalStories(storiesPath, impacted, oldSchema, newSchema, hooks)
+          : await analyzeRemoteStories(space, impacted, oldSchema, newSchema, hooks);
+      } finally {
+        // Tear down the whole MultiBar (not just this bar) so its async renderer
+        // stops before anything else is written; a bare `progress.stop()` leaves
+        // the render loop alive and its final frame flushes after the output.
+        ui.stopAllProgressBars();
+      }
 
-      if (fetchErrors > 0) {
+      // A skipped story is one the analysis could not see, so the totals below
+      // are a lower bound. Say so, and let `--fail-on-break` treat it as a
+      // failed gate rather than a pass.
+      if (storyFailures > 0) {
         ui.warn(
-          `${pluralize(fetchErrors, "story", "stories")} could not be fetched and were skipped. Re-run with --verbose for details.`,
+          `${pluralize(storyFailures, "story", "stories")} could not be read and ${storyFailures === 1 ? "was" : "were"} skipped, so the totals below are incomplete. See the command log file for details.`,
         );
       }
 
@@ -195,13 +203,14 @@ Scope:
       });
       logger.info("Schema affected finished", { totals: report.totals });
 
-      // Opt-in CI gate: surface breaking impact as a non-zero exit code.
-      if (options.failOnBreak && report.totals.brokenStories > 0) {
+      // Opt-in CI gate: surface breaking impact as a non-zero exit code. An
+      // incomplete analysis fails the gate too — a story that could not be read
+      // is not a story that is known to be safe.
+      if (options.failOnBreak && (report.totals.brokenStories > 0 || storyFailures > 0)) {
         process.exitCode = 1;
       }
     } catch (maybeError) {
       handleError(toError(maybeError), verbose);
-      process.exitCode = 1;
     } finally {
       reporter.finalize();
     }

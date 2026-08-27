@@ -47,14 +47,41 @@ describe("toSchemaLike", () => {
     expect(block.fields.map((f) => f.name)).toEqual(["title"]);
   });
 
-  it("should map MAPI component_whitelist to allow", () => {
+  it("should map an enforced MAPI component_whitelist to allow", () => {
+    const [block] = toSchemaLike([
+      makeComponent("page", {
+        body: { type: "bloks", restrict_components: true, component_whitelist: ["hero", "teaser"] },
+      }),
+    ]).blocks;
+
+    expect(block.fields[0].allow).toEqual(["hero", "teaser"]);
+  });
+
+  it("should ignore a component_whitelist that the field does not enforce", () => {
+    // Without `restrict_components` the editor applies no restriction at all, so
+    // the list must not become a validation constraint.
     const [block] = toSchemaLike([
       makeComponent("page", {
         body: { type: "bloks", component_whitelist: ["hero", "teaser"] },
       }),
     ]).blocks;
 
-    expect(block.fields[0].allow).toEqual(["hero", "teaser"]);
+    expect(block.fields[0].allow).toBeUndefined();
+  });
+
+  it("should ignore a component_whitelist when the field restricts by group instead", () => {
+    const [block] = toSchemaLike([
+      makeComponent("page", {
+        body: {
+          type: "bloks",
+          restrict_components: true,
+          restrict_type: "groups",
+          component_whitelist: ["hero"],
+        },
+      }),
+    ]).blocks;
+
+    expect(block.fields[0].allow).toBeUndefined();
   });
 
   it("should drop fields whose type is not a known content field type", () => {

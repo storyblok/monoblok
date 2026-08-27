@@ -1,4 +1,5 @@
-import Storyblok from "storyblok-js-client";
+import { createApiClient } from "@storyblok/api-client";
+import type { CacheProvider } from "@storyblok/api-client";
 import type { RegionCode } from "../../../constants";
 import { CommandError } from "../../../utils/error/command-error";
 import { fetchSpace } from "../../spaces/actions";
@@ -9,7 +10,7 @@ import type { Story } from "../constants";
  *
  * 25 is a throughput optimum, not a size limit: the CDN's rate limit shrinks as
  * `per_page` grows — 50 req/s up to 25 entries, 15 up to 50, 6 above 75 — so a
- * bigger page buys fewer stories per second. `storyblok-js-client` derives that
+ * bigger page buys fewer stories per second. `@storyblok/api-client` derives that
  * tier from `per_page` itself, which is why no `rateLimit` is configured below.
  */
 export const CAPI_BATCH_SIZE = 25;
@@ -188,31 +189,53 @@ export async function createCapiContentFetcher({
     );
   }
 
-  const client = new Storyblok({
+  const client = createApiClient({
     accessToken: token,
     region: region ?? "eu",
-    // Nothing is read twice, so a response cache would only grow. `published`
-    // requests are the ones a cache would serve, which makes this explicit
-    // rather than incidental.
-    cache: { type: "none", clear: "auto" },
+    // Nothing is read twice, so a response cache would only grow. Draft requests
+    // bypass it anyway; `published` ones are what a cache would serve, which
+    // makes this explicit rather than incidental.
+    cache: { provider: NO_CACHE_PROVIDER },
+    // A failed batch has to reach the stage's error callback to be counted and
+    // reported, so an HTTP error must reject rather than resolve as `{ error }`.
+    throwOnError: true,
   });
 
   const query = { ...DEFAULT_CAPI_PARAMS, ...params };
 
   return async (uuids) => {
-    const { data } = await client.get("cdn/stories", {
-      ...query,
-      by_uuids: uuids.join(","),
-      per_page: CAPI_BATCH_SIZE,
+    const { data } = await client.stories.list({
+      // `--capi-params` is free-form by design, so the merged query is only
+      // known to be CDN query parameters, not which ones.
+      query: {
+        ...query,
+        by_uuids: uuids.join(","),
+        per_page: CAPI_BATCH_SIZE,
+      } as NonNullable<Parameters<typeof client.stories.list>[0]>["query"],
     });
 
     const contentByUuid = new Map<string, StoryContent>();
-    for (const story of (data?.stories ?? []) as Story[]) {
-      if (story?.uuid && story.content) {
-        contentByUuid.set(story.uuid, story.content);
+    for (const story of data.stories) {
+      if (story.uuid && story.content) {
+        // CDN content and MAPI content are the same document in two generated
+        // shapes; the filters downstream work against the MAPI one.
+        contentByUuid.set(story.uuid, story.content as StoryContent);
       }
     }
 
     return contentByUuid;
   };
 }
+
+/**
+ * Cache that stores nothing, for a client that reads every story exactly once.
+ *
+ * The client always has a provider — the default is an in-memory LRU that would
+ * only grow over a full-space scan — so opting out means supplying one that
+ * never retains a response.
+ */
+const NO_CACHE_PROVIDER: CacheProvider = {
+  get: async () => undefined,
+  set: async () => {},
+  flush: async () => {},
+};

@@ -6,11 +6,13 @@ import { mergeFilterQuery, parseFilterQuery } from "./filter-query";
 /**
  * The scope flags every story-listing command shares.
  *
- * `find`, `pull` and `migrations run` all narrow the same list endpoint with the
- * same two flags, and each used to normalize them itself — down to the same
- * comment about the leading slash, copied between files. Sibling subcommands
- * must not import from each other, so the shared half lives here in the parent
- * command directory, and each command layers its own flags on top.
+ * `find`, `pull` and `migrations run` narrow the same list endpoint with the same
+ * two flags, `validate` with the first of them, and each used to normalize them
+ * itself — down to the same comment about the leading slash, copied between
+ * files, while `migrations run` did not normalize at all and quietly matched
+ * nothing for a `--starts-with=/en/blog/`. Sibling subcommands must not import
+ * from each other, so the shared half lives here in the parent command
+ * directory, and each command layers its own flags on top.
  */
 export interface StoryScopeOptions {
   startsWith?: string;

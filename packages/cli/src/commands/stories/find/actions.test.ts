@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertSupportedOptions } from "./actions";
+import { assertSupportedOptions, buildQueryParams } from "./actions";
 import { CommandError } from "../../../utils/error/command-error";
 import type { FindOptions } from "./types";
 
@@ -92,7 +92,47 @@ describe("assertSupportedOptions", () => {
           options({
             capiFilter: true,
             where: ["$.content"],
+            capiParams: "{language: de}",
+          }),
+        ),
+      ).not.toThrow();
+    });
+
+    // A story with no published content is undecidable on the CDN, so it passes
+    // through and gets matched against its draft — a "what is live" run that
+    // reports stories which have never been live.
+    it("should reject a published --capi-params version without --publish-status published", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({
+            capiFilter: true,
+            where: ["$.content"],
             capiParams: "{version: published}",
+          }),
+        ),
+      ).toThrow(/needs --publish-status published/);
+    });
+
+    it("should accept a published --capi-params version alongside --publish-status published", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({
+            capiFilter: true,
+            where: ["$.content"],
+            capiParams: "{version: published}",
+            publishStatus: "published",
+          }),
+        ),
+      ).not.toThrow();
+    });
+
+    it("should accept an explicit draft --capi-params version, which matches what MAPI serves", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({
+            capiFilter: true,
+            where: ["$.content"],
+            capiParams: "{version: draft}",
           }),
         ),
       ).not.toThrow();
@@ -103,5 +143,43 @@ describe("assertSupportedOptions", () => {
     expect(() => assertSupportedOptions(options({ capiParams: "version=published" }))).toThrow(
       /--capi-params has no effect without --capi-filter/,
     );
+  });
+});
+
+describe("buildQueryParams", () => {
+  it("should turn --container-block into a component clause", () => {
+    expect(
+      buildQueryParams(undefined, options({ containerBlock: "product" })).filter_query,
+    ).toEqual({ component: { in: "product" } });
+  });
+
+  // Regression: `--container-block` was spread over the parsed `--query` into
+  // one object, so a `component` clause in the query vanished without a word.
+  it("should reject --container-block conflicting with a component clause in --query", () => {
+    expect(() =>
+      buildQueryParams(
+        undefined,
+        options({ query: "[component][in]=hero", containerBlock: "product" }),
+      ),
+    ).toThrow(/Conflicting filters for "component"/);
+  });
+
+  it("should keep --query clauses on other fields alongside --container-block", () => {
+    expect(
+      buildQueryParams(
+        undefined,
+        options({ query: "[highlighted][in]=true", containerBlock: "product" }),
+      ).filter_query,
+    ).toEqual({
+      highlighted: { in: "true" },
+      component: { in: "product" },
+    });
+  });
+
+  // MAPI returns `content_summary: {}` unless asked, and under --skip-content
+  // the listing is the entire answer the user gets.
+  it("should request the content summary when the content fetch is skipped", () => {
+    expect(buildQueryParams(undefined, options({ skipContent: true })).with_summary).toBe(true);
+    expect(buildQueryParams(undefined, options()).with_summary).toBeUndefined();
   });
 });

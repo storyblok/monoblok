@@ -109,6 +109,31 @@ out as they match and `… | head -5` prints promptly:
 storyblok stories find --space 12345 2>/dev/null | head -5
 ```
 
+A reader that exits first also **stops the run**. `head -5` closes the pipe once it has its five
+lines, and the command stops listing and fetching rather than walking the rest of the scope for
+output nobody will read. The summary on stderr says the scan was cut short, and the run still exits
+0 — taking what you need and leaving is a successful use of the command, not a failure. (A buffered
+run has written nothing yet when `head` exits, so there is nothing to cut short; it finishes
+normally.)
+
+### Exit codes
+
+| Code | Meaning                                                                                                                                                               |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | The run completed and the result set is complete. Also used when a reader closed the pipe early.                                                                      |
+| `1`  | Something failed and the result set may be missing stories — a listing page, a content fetch, or a filter.                                                            |
+| `2`  | The command was invoked wrongly: an unknown flag, a malformed `--query` or `--where`, or a combination of flags that cannot answer one question. Nothing was fetched. |
+
+The distinction that matters for scripting is that a failure only reaches the exit code when it
+costs the run a result. A `--capi-filter` batch that fails while the per-story fetch is still
+downstream does not: those stories pass through undecided and MAPI settles them exactly as it would
+have without the flag, so the answer is complete and the run exits 0. The summary still reports the
+failed batch count. Under `--skip-content` — or in a `--check-references` run, where the CDN _is_
+the content source — there is no second chance, so the same failure exits 1.
+
+This makes `find > out.jsonl || exit 1` safe: a non-zero code means the file is not the whole
+answer.
+
 ### Progress on stderr
 
 Progress and the run summary go to stderr, so a run is pipeable without a quiet flag. Discard
@@ -190,11 +215,14 @@ storyblok stories find --space 12345 --starts-with "en/blog"
 anywhere inside it — see [Blocks](https://www.storyblok.com/docs/concepts/blocks) for the
 difference.
 
+Several names in `--includes-block` compose with **AND**: the story has to contain every one of
+them. To find stories using any one of a set, run the command once per block and concatenate.
+
 ```bash
 # Stories whose content type is "product"
 storyblok stories find --space 12345 --container-block product
 
-# Stories using a hero or a pricing table anywhere in their content
+# Stories using both a hero and a pricing table anywhere in their content
 storyblok stories find --space 12345 --includes-block hero,pricing_table
 ```
 
@@ -224,7 +252,12 @@ storyblok stories find --space 12345 --query='{"component":{"in":"product"}}'
 
 Field and operator names are passed to the API as written, so the API is what decides whether a
 query is valid. `--container-block product` is shorthand for `--query="[component][in]=product"`,
-and the two combine into a single query.
+and the two combine into a single query — field by field, so clauses on other fields survive.
+Setting the same field and operator from both flags is a usage error rather than a silent
+last-one-wins.
+
+Input that parses to nothing is rejected too: a `--query` with no readable clause would send no
+filter at all and quietly return the whole space.
 
 ### `--where`
 
@@ -414,7 +447,8 @@ the run becomes the page walk, which moves 100 stories per request instead of on
 The output is the story listing —
 [the story object](https://www.storyblok.com/docs/api/management/stories/the-story-object) as the
 listing returns it, with slugs, ids, publish state and timestamps, but **no `content` field**. The
-`content_summary` digest is included, and is often enough on its own.
+run asks MAPI for the `content_summary` digest (`with_summary`), which the listing omits by default
+and which is often enough on its own to tell two stories apart.
 
 Reach for it when the question is "which stories are in scope" rather than "what is inside them":
 inventories, slug and ID lists, publish-state counts.
@@ -589,8 +623,8 @@ Two differences from the un-flagged run, neither of which touches the issues fou
 
 - **The emitted story is the listing plus content**, not the single-story response, so envelope
   fields only that response carries (`breadcrumbs`, `translated_stories`, `preview_token`, `parent`,
-  …) are absent, and list-only fields (`content_type`, `content_summary`) are present. `content` and
-  `_ref_issues` are identical either way.
+  …) are absent, and list-only fields (`content_type`) are present. `content` and `_ref_issues` are
+  identical either way.
 - **A story the CDN holds no content for is checked with nothing in hand**, so it reports no
   references. Folders are the usual case and have none anyway; the run says how many:
 

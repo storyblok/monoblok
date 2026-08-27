@@ -4,12 +4,12 @@ import { colorPalette, commands } from "../../../constants";
 import type { RegionCode } from "../../../constants";
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
-import { getUI } from "../../../lib/ui";
+import { createJsonlOutput, getUI, isDownstreamClosed } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { fetchStoriesStream, fetchStoryStream } from "../streams";
 import { requireAuthentication } from "../../../utils/auth";
-import { handleError, toError } from "../../../utils/error/error";
+import { handleError, logOnlyError, toError } from "../../../utils/error/error";
 import { CommandError } from "../../../utils/error/command-error";
 import { fetchComponents } from "../../components/pull/actions";
 import {
@@ -20,12 +20,7 @@ import {
   buildWhereFilters,
   resolveReferenceTargets,
 } from "./actions";
-import {
-  capiFilterStream,
-  createJsonlWriter,
-  filterListedStoriesStream,
-  filterStoriesStream,
-} from "./streams";
+import { capiFilterStream, filterListedStoriesStream, filterStoriesStream } from "./streams";
 import { CAPI_BATCH_SIZE, createCapiContentFetcher, parseCapiParams } from "./capi";
 import type { CapiContentFetcher } from "./capi";
 import { buildRelationFieldMap, detectIssues, extractReferences, toTargetMeta } from "./references";
@@ -290,10 +285,13 @@ async function runStoryPipeline({
   onMatch,
   capi,
   skipContent = false,
+  signal,
   ui,
   logger,
   verbose,
 }: Omit<FindContext, "reporter"> & {
+  /** Stops the run when the reader on the other end of stdout exits first. */
+  signal?: AbortSignal;
   /** Decided from list metadata alone, so matching stories skip the content fetch. */
   preContentFilters: ClientFilter[];
   filters: ClientFilter[];
@@ -403,7 +401,21 @@ async function runStoryPipeline({
             },
             onBatchError: (error, size) => {
               counters.capiFilter.failed += 1;
-              handleError(error, verbose, { batchSize: size });
+              // Whether a failed batch costs the run anything depends on what is
+              // downstream of it. With the per-story MAPI fetch still to come,
+              // its stories pass through undecided and are settled exactly as
+              // they would have been without the flag: the result set is
+              // complete, so the run is a success and must exit 0. A script
+              // doing `find > out.jsonl || exit` would otherwise throw away a
+              // correct answer. Without that fetch (`--skip-content`, or the
+              // reference scan, where CAPI *is* the content source) the stories
+              // in the batch really are decided on less, so it is a real
+              // failure. The summary reports the count either way.
+              if (skipContent) {
+                handleError(error, verbose, { batchSize: size });
+              } else {
+                logOnlyError(error, { batchSize: size });
+              }
             },
           }),
         ]
@@ -452,7 +464,7 @@ async function runStoryPipeline({
     }),
   ];
 
-  await pipeline(stages);
+  await pipeline(stages, { signal });
 }
 
 async function runFind({
@@ -474,7 +486,8 @@ async function runFind({
 }): Promise<void> {
   const counters = createCounters();
   const timings = createTimings();
-  const output = createJsonlWriter({ write: (line) => ui.writeMachineOutput(line) });
+  const output = createJsonlOutput();
+  let earlyExit = false;
 
   try {
     await runStoryPipeline({
@@ -491,10 +504,19 @@ async function runFind({
       onMatch: (story) => output.push(story),
       capi,
       skipContent,
+      signal: output.signal,
       ui,
       logger,
       verbose,
     });
+  } catch (error) {
+    // `find | head -5` is a complete, successful use of the command, not a
+    // failure: the reader got what it asked for and left. Everything below still
+    // runs, so the summary on stderr reports what the run managed to do.
+    if (!isDownstreamClosed(error)) {
+      throw error;
+    }
+    earlyExit = true;
   } finally {
     ui.stopAllProgressBars();
     output.flush();
@@ -502,6 +524,14 @@ async function runFind({
     const { list, capiFilter, content, process: filtered } = counters;
     ui.br();
     ui.info(resultsHeadline({ counters, filters, skipContent, capi: capi !== undefined }));
+
+    // The counts below describe a partial scan in this case, so say so: they
+    // would otherwise read as "this is all there was".
+    if (earlyExit) {
+      ui.info(
+        "Stopped early: the command reading this output closed the pipe. Counts below cover the part of the scope that ran.",
+      );
+    }
 
     // An empty result under a bare `--skip-content` is ambiguous: the filters
     // genuinely matched nothing, or they were written against the content that
@@ -678,7 +708,8 @@ async function runCheckReferences({
   const timings = createTimings();
   const uuidToMeta = new Map<string, TargetMeta>();
   const candidates: ReferenceCandidate[] = [];
-  const output = createJsonlWriter({ write: (line) => ui.writeMachineOutput(line) });
+  const output = createJsonlOutput();
+  let earlyExit = false;
   let checked = 0;
   let matched = 0;
   let externalTargets = 0;
@@ -717,6 +748,7 @@ async function runCheckReferences({
           candidates.push({ story, refs });
         }
       },
+      signal: output.signal,
       ui,
       logger,
       verbose,
@@ -761,6 +793,13 @@ async function runCheckReferences({
         output.push(enriched);
       }
     }
+  } catch (error) {
+    // Same contract as `find`: a reader that has taken what it wanted and left
+    // ends the run cleanly. See `runFind`.
+    if (!isDownstreamClosed(error)) {
+      throw error;
+    }
+    earlyExit = true;
   } finally {
     ui.stopAllProgressBars();
     output.flush();
@@ -770,6 +809,12 @@ async function runCheckReferences({
     ui.info(
       `Results: ${matched} stories with reference issues (${checked} checked, ${externalTargets} external targets resolved)`,
     );
+
+    if (earlyExit) {
+      ui.info(
+        "Stopped early: the command reading this output closed the pipe. Counts below cover the part of the scope that ran.",
+      );
+    }
 
     // A story the CDN holds no content for is checked with nothing in hand, so
     // it can only ever report "no references". Saying how many keeps a clean

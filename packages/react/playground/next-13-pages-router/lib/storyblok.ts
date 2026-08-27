@@ -6,7 +6,7 @@ import Page from "../components/page";
 import Teaser from "../components/teaser";
 
 export const apiClient = createApiClient({
-  accessToken: "d6IKUtAUDiKyAhpJtrLFccwtt",
+  accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
 export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({

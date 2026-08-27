@@ -41,11 +41,6 @@ export async function performInteractiveLogin(options?: {
         message: "How would you like to login?",
         choices: [
           {
-            name: "With OAuth (recommended — opens your browser)",
-            value: "login-with-oauth",
-            short: "OAuth",
-          },
-          {
             name: "With email",
             value: "login-with-email",
             short: "Email",
@@ -54,6 +49,11 @@ export async function performInteractiveLogin(options?: {
             name: "With Token (Personal Access Token – works also for SSO accounts)",
             value: "login-with-token",
             short: "Token",
+          },
+          {
+            name: "With OAuth (opens your browser)",
+            value: "login-with-oauth",
+            short: "OAuth",
           },
         ],
       },

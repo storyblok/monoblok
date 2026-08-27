@@ -97,24 +97,33 @@ storyblok stories find --space 12345 --query="[archived][is]=true" --skip-conten
   | jq -r '.id' | xargs -I{} storyblok stories delete --space 12345 {}
 ```
 
-Whenever the progress bars are drawing on a terminal, results are held back until they have stopped,
-then written in one go. That covers piping into a tool that prints as it goes:
-`… | jq -r .full_slug` would otherwise have `jq` writing to the same terminal the bars are redrawing
-on, and the two garble each other.
-
-With stderr redirected or in a non-interactive shell there are no bars to protect, so results stream
-out as they match and `… | head -5` prints promptly:
-
-```bash
-storyblok stories find --space 12345 2>/dev/null | head -5
-```
+Results stream as they match — always, whatever stdout and stderr are attached to. That is what
+line-oriented output is for: a reader can act on the first line without waiting for the last, memory
+stays flat on a result set of any size, and `… | head -5` prints straight away.
 
 A reader that exits first also **stops the run**. `head -5` closes the pipe once it has its five
 lines, and the command stops listing and fetching rather than walking the rest of the scope for
 output nobody will read. The summary on stderr says the scan was cut short, and the run still exits
-0 — taking what you need and leaving is a successful use of the command, not a failure. (A buffered
-run has written nothing yet when `head` exits, so there is nothing to cut short; it finishes
-normally.)
+0 — taking what you need and leaving is a successful use of the command, not a failure.
+
+```bash
+# prints five lines and stops, whatever the size of the scope
+storyblok stories find --space 12345 | head -5
+```
+
+Progress bars are dropped when **stdout is a terminal**, because the results are landing on that
+same screen and the two would overwrite each other. Redirect or pipe stdout and the bars come back:
+
+```bash
+storyblok stories find --space 12345                       # results on screen, no bars
+storyblok stories find --space 12345 > stories.jsonl        # bars, results in the file
+storyblok stories find --space 12345 | jq -r .full_slug     # bars, results through jq
+```
+
+That last case is the one to know about: the bars are on stderr and `jq` prints to the same
+terminal, so the two interleave. Nothing here can tell whether a downstream command writes to your
+terminal or to a file, so the choice is left to you — `2>/dev/null` drops the progress output, and
+the global `--no-ui-enabled` silences every non-result line while leaving stdout untouched.
 
 ### Exit codes
 
@@ -1002,10 +1011,9 @@ Each of these is useful before the pipe exists, and none depends on the others.
   server's conflict check. A pipe widens the window between reading a story and writing it, so a
   concurrent edit is lost without a word. The lines already carry `updated_at` — compare it, or drop
   `force_update` for piped input.
-- **`find` buffers its output when stderr is a terminal**, so the progress bars cannot be garbled.
-  In `find | migrations run -` at an interactive prompt, stderr is still the terminal, so nothing
-  reaches the consumer until `find` finishes and the two processes do not overlap. Redirecting
-  stderr already fixes it; deciding that a piped consumer outranks the bars would fix it properly.
+- ~~**`find` buffers its output when stderr is a terminal**, so the two processes never overlap.~~
+  Solved: results stream unconditionally, so `find | migrations run -` overlaps the read and the
+  write from the first matching story, and a consumer that stops early stops the producer with it.
 - **A stated output contract.** `--skip-content` omits content and `--check-references` adds
   `_ref_issues`, so the shape depends on the flags. A consumer needs a documented minimum — `id`,
   `uuid`, `full_slug` — and has to treat `content` as optional, fetching only the lines that lack

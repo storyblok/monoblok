@@ -348,6 +348,15 @@ async function runStoryPipeline({
     processProgress.setTotal(counters.process.total);
   };
 
+  // Aborting the pipeline tears every in-flight stage down at once, and each one
+  // reports that teardown through its own error callback: a listing page, a CAPI
+  // batch and a content fetch all surface the same `AbortError`. None of them is
+  // a failure — it is this run being stopped on purpose — so none may print, be
+  // counted, or reach the exit code. Once the signal has fired there is no
+  // independent failure left to distinguish, so everything after it is swallowed.
+  const causedByStop = (error: Error): boolean =>
+    signal?.aborted === true || isDownstreamClosed(error);
+
   const stages = [
     fetchStoriesStream({
       spaceId,
@@ -367,6 +376,9 @@ async function runStoryPipeline({
         logger.info(`Fetched stories page ${page} of ${total}`);
       },
       onPageError: (error, page, total) => {
+        if (causedByStop(error)) {
+          return;
+        }
         counters.list.failed += 1;
         handleError(error, verbose, { page, total });
       },
@@ -400,6 +412,9 @@ async function runStoryPipeline({
               capiFilterProgress?.increment(size);
             },
             onBatchError: (error, size) => {
+              if (causedByStop(error)) {
+                return;
+              }
               counters.capiFilter.failed += 1;
               // Whether a failed batch costs the run anything depends on what is
               // downstream of it. With the per-story MAPI fetch still to come,
@@ -433,6 +448,9 @@ async function runStoryPipeline({
               counters.content.succeeded += 1;
             },
             onStoryError: (error, story) => {
+              if (causedByStop(error)) {
+                return;
+              }
               counters.content.failed += 1;
               syncDownstreamTotals();
               handleError(error, verbose, { storyId: story.id });
@@ -458,6 +476,9 @@ async function runStoryPipeline({
         counters.process.skipped += 1;
       },
       onStoryError: (error, story) => {
+        if (causedByStop(error)) {
+          return;
+        }
         counters.process.failed += 1;
         handleError(error, verbose, { storyId: story.id });
       },
@@ -519,17 +540,19 @@ async function runFind({
     earlyExit = true;
   } finally {
     ui.stopAllProgressBars();
-    output.flush();
+    output.close();
 
     const { list, capiFilter, content, process: filtered } = counters;
     ui.br();
     ui.info(resultsHeadline({ counters, filters, skipContent, capi: capi !== undefined }));
 
-    // The counts below describe a partial scan in this case, so say so: they
-    // would otherwise read as "this is all there was".
+    // A deliberate stop, so it reports as one. The counts below describe a
+    // partial scan and would otherwise read as "this is all there was", and
+    // anything less explicit than "not an error" reads as one next to them.
     if (earlyExit) {
-      ui.info(
-        "Stopped early: the command reading this output closed the pipe. Counts below cover the part of the scope that ran.",
+      ui.ok(
+        "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. " +
+          "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran.",
       );
     }
 
@@ -802,7 +825,7 @@ async function runCheckReferences({
     earlyExit = true;
   } finally {
     ui.stopAllProgressBars();
-    output.flush();
+    output.close();
 
     const { list, capiFilter, content } = counters;
     ui.br();
@@ -811,8 +834,9 @@ async function runCheckReferences({
     );
 
     if (earlyExit) {
-      ui.info(
-        "Stopped early: the command reading this output closed the pipe. Counts below cover the part of the scope that ran.",
+      ui.ok(
+        "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. " +
+          "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran.",
       );
     }
 

@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^7.5.1",
+    "@storyblok/api-client": "workspace:^",
     "@storyblok/js": "workspace:^",
     "@storyblok/management-api-client": "workspace:^",
     "@storyblok/region-helper": "workspace:^",
@@ -79,8 +80,7 @@
     "ohash": "^2.0.11",
     "open": "^10.1.2",
     "pathe": "catalog:",
-    "read-package-up": "^11.0.0",
-    "storyblok-js-client": "workspace:^"
+    "read-package-up": "^11.0.0"
   },
   "devDependencies": {
     "@release-it/conventional-changelog": "10.0.0",

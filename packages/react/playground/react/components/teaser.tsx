@@ -1,19 +1,12 @@
-import React from "react";
-import type { StoryblokBlockData } from "@storyblok/react";
+import type { StoryblokComponentProps } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 
-interface TeaserProps {
-  block: StoryblokBlockData;
-}
+type TeaserProps = StoryblokComponentProps<{ headline: string }>;
 
-const Teaser = ({ block }: TeaserProps) => {
-  return (
-    <div {...storyblokEditable(block)} key={block._uid} data-test="teaser">
-      <div>
-        <h2>{block.headline as string}</h2>
-      </div>
-    </div>
-  );
-};
+const Teaser = ({ block }: TeaserProps) => (
+  <div {...storyblokEditable(block)} data-test="teaser">
+    <h2>{block.headline}</h2>
+  </div>
+);
 
 export default Teaser;

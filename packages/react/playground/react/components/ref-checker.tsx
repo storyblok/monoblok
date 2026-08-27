@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import { forwardRef } from "react";
 import type { StoryblokBlockData } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 

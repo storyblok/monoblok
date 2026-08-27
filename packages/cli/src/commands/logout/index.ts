@@ -4,9 +4,9 @@ import { getProgram } from "../../program";
 import { handleError } from "../../utils";
 import { session } from "../../session";
 import { getUI } from "../../lib/ui";
-import { resolveOAuthClient } from "../oauth/client";
-import { getOAuthEntry } from "../oauth/store";
-import { revokeToken } from "../oauth/token-endpoint";
+import { resolveOAuthClient } from "../../lib/oauth/client";
+import { getOAuthEntry } from "../../lib/oauth/store";
+import { revokeToken } from "../../lib/oauth/token-endpoint";
 
 const program = getProgram(); // Get the shared singleton instance
 

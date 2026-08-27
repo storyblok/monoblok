@@ -91,7 +91,7 @@ describe("program preAction OAuth refresh", () => {
     );
 
     // The rotated tokens are persisted before use.
-    const { getOAuthEntry } = await import("./commands/oauth/store");
+    const { getOAuthEntry } = await import("./lib/oauth/store");
     const entry = await getOAuthEntry("eu");
     expect(entry.tokens?.access_token).toBe("sb_oat_new");
     expect(entry.tokens?.refresh_token).toBe("sb_ort_new");

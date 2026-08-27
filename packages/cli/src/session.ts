@@ -18,6 +18,9 @@ export interface SessionState {
   oauthAccessToken?: string;
   oauthExpiresAt?: string;
   oauthSpaces?: { id: number; region: string }[];
+  // Resolves the current OAuth access token, refreshing it when it is about to expire.
+  // Set once the program has wired up the session; absent for PAT sessions.
+  oauthTokenProvider?: () => Promise<string>;
 }
 
 let sessionInstance: ReturnType<typeof createSession> | null = null;
@@ -114,6 +117,7 @@ function createSession() {
     state.oauthAccessToken = undefined;
     state.oauthExpiresAt = undefined;
     state.oauthSpaces = undefined;
+    state.oauthTokenProvider = undefined;
     if (state.authType === "oauth") {
       logout();
     }

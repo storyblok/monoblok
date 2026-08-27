@@ -15,7 +15,6 @@ export const getUser = async (credential: string | ApiCredential, region: Region
   const config: ApiCredential =
     typeof credential === "string" ? { personalAccessToken: credential } : credential;
   const isOauth = "oauthToken" in config;
-  const token = "personalAccessToken" in config ? config.personalAccessToken : config.oauthToken;
   try {
     const client = createMapiClient({
       ...config,
@@ -35,7 +34,7 @@ export const getUser = async (credential: string | ApiCredential, region: Region
         ? isOauth
           ? `Your OAuth session has expired or been revoked.
         Please run \`storyblok login --oauth\` to authenticate again.`
-          : `The token provided ${chalk.bold(maskToken(token))} is invalid.
+          : `The token provided ${chalk.bold(maskToken("personalAccessToken" in config ? config.personalAccessToken : ""))} is invalid.
         Please make sure you are using the correct token and try again.`
         : undefined;
     handleAPIError("get_user", error, customMessage);

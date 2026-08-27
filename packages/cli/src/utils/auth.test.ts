@@ -68,3 +68,18 @@ describe("sessionCredential", () => {
     expect(sessionCredential({ isLoggedIn: false })).toBeUndefined();
   });
 });
+
+describe("sessionCredential with a token provider", () => {
+  it("should hand out the provider so the credential refreshes mid-command", () => {
+    const provideToken = async () => "sb_oat_refreshed";
+    const credential = sessionCredential({
+      isLoggedIn: true,
+      authType: "oauth",
+      region: "eu",
+      oauthAccessToken: "sb_oat_stale",
+      oauthTokenProvider: provideToken,
+    });
+
+    expect(credential).toEqual({ oauthToken: provideToken });
+  });
+});

@@ -64,6 +64,23 @@ describe("OAuth token provider", () => {
     await expect(createOAuthTokenProvider("eu", state)()).resolves.toBe("sb_oat_old");
   });
 
+  it("should report a failed refresh to the user, once, as well as throwing", async () => {
+    refreshOAuthTokens.mockRejectedValue(
+      new Error("Your OAuth session has expired. Please run `storyblok login` again."),
+    );
+    const { getUI } = await import("../ui");
+    const warn = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
+    const state = { oauthAccessToken: "sb_oat_old", oauthExpiresAt: inSeconds(10) };
+    const provideToken = createOAuthTokenProvider("eu", state);
+
+    await expect(provideToken()).rejects.toThrow("storyblok login");
+    await expect(provideToken()).rejects.toThrow("storyblok login");
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("Please run `storyblok login` again");
+    warn.mockRestore();
+  });
+
   it("should surface a failed refresh once the token can no longer be used", async () => {
     refreshOAuthTokens.mockRejectedValue(
       new Error("Your OAuth session has expired. Please run `storyblok login` again."),

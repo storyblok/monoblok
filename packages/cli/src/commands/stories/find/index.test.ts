@@ -5,7 +5,7 @@ import { vol } from "memfs";
 // Import the parent module first so the subcommand registers on it.
 import "../index";
 import { storiesCommand } from "../command";
-import { makeMockStory, type MockStory } from "../__tests__/helpers";
+import { makeMockStory } from "../__tests__/helpers";
 
 const errorSpy = vi.spyOn(console, "error");
 
@@ -47,6 +47,57 @@ const preconditions = {
       );
     }
     return stories;
+  },
+  /**
+   * A space whose `hero` block has a relation field, one story linking to a
+   * story that is not there, and one story linking to nothing at all.
+   *
+   * The listing answers `by_uuids` too, which is how the scan resolves a target
+   * outside the searched scope: an unknown uuid has to come back empty, or every
+   * broken reference would resolve to whatever the handler felt like returning.
+   */
+  canCheckReferences() {
+    const missingUuid = "11111111-2222-3333-4444-555555555555";
+    const linking = makeMockStory({
+      slug: "linking",
+      content: {
+        _uid: "a",
+        component: "hero",
+        link: { fieldtype: "multilink", linktype: "story", id: missingUuid, cached_url: "gone" },
+      },
+    });
+    const plain = makeMockStory({ slug: "plain" });
+    const stories = [linking, plain];
+
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/components", () =>
+        HttpResponse.json({
+          components: [
+            { name: "hero", schema: { link: { type: "multilink" } } },
+            { name: "page", schema: {} },
+          ],
+        }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", ({ request }) => {
+        const byUuids = new URL(request.url).searchParams.get("by_uuids");
+        const matching = byUuids
+          ? stories.filter((story) => byUuids.split(",").includes(story.uuid))
+          : stories;
+        return HttpResponse.json(
+          { stories: matching },
+          { headers: { Total: String(matching.length), "Per-Page": "100" } },
+        );
+      }),
+    );
+    for (const story of stories) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
+          HttpResponse.json({ story }),
+        ),
+      );
+    }
+
+    return { linking, plain, missingUuid };
   },
   /**
    * The reader on the other end of stdout exits after `afterLines`.
@@ -93,6 +144,36 @@ describe("stories find command", () => {
       expect(line.endsWith("\n")).toBe(true);
       expect(() => JSON.parse(line)).not.toThrow();
     }
+  });
+
+  // The one mode that cannot stream: an issue is only decidable once the whole
+  // scope has been listed, so matches are buffered and then written through the
+  // same sink a streaming run uses.
+  it("should emit only the stories with reference issues, annotated", async () => {
+    const { linking, missingUuid } = preconditions.canCheckReferences();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+    ]);
+
+    expect(written).toHaveLength(1);
+    const emitted = JSON.parse(written[0]);
+    expect(emitted.uuid).toBe(linking.uuid);
+    expect(emitted._ref_issues).toEqual([
+      {
+        type: "broken",
+        ref_type: "multilink",
+        target_uuid: missingUuid,
+        cached_url: "gone",
+        field_path: "content.link",
+      },
+    ]);
   });
 
   // Regression: aborting the pipeline tears every in-flight stage down at once,

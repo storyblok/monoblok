@@ -9,21 +9,28 @@ import { buildGroupPathByUuid } from "./folders";
  * parent chain) so folders diff against local folders in the same terms.
  */
 export function remoteToNormalized(remote: RemoteSchemaData): NormalizedSchema {
-  const groupPathByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
+  const segmentsByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
   const folders = new Map<string, LocalFolder>();
+  const groupPathByUuid = new Map<string, string>();
   for (const folder of remote.componentFolders.values()) {
-    const segments = groupPathByUuid.get(folder.uuid);
+    const segments = segmentsByUuid.get(folder.uuid);
     if (!segments || segments.length === 0) {
       continue;
     }
     const path = segments.join("/");
+    groupPathByUuid.set(folder.uuid, path);
     folders.set(path, {
       name: folder.name,
       path,
       parentPath: segments.length > 1 ? segments.slice(0, -1).join("/") : null,
     });
   }
-  return { components: remote.components, datasources: remote.datasources, folders };
+  return {
+    components: remote.components,
+    datasources: remote.datasources,
+    folders,
+    groupPathByUuid,
+  };
 }
 
 /** Reduces locally-loaded schema arrays to the common {@link NormalizedSchema} shape. */

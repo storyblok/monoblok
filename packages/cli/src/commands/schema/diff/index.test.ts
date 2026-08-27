@@ -7,6 +7,7 @@ import "../index";
 import { schemaCommand } from "../command";
 import type { SchemaData } from "../types";
 import { resetReporter } from "../../../lib/reporter/reporter";
+import { CommandError } from "../../../utils";
 import { loadSchema } from "../load-schema";
 
 // loadSchema uses jiti to import TypeScript entry files at runtime, which cannot
@@ -62,6 +63,7 @@ describe("schema diff command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
   afterEach(() => {
+    process.exitCode = undefined;
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
@@ -99,7 +101,9 @@ describe("schema diff command", () => {
     const hero = (
       report.meta.diff.entities as { name: string; changes: { field: string; change: string }[] }[]
     ).find((e) => e.name === "hero");
-    expect(hero?.changes.some((c) => c.field === "subtitle" && c.change === "added")).toBe(true);
+    expect(hero?.changes.some((c) => c.field === "schema.subtitle" && c.change === "added")).toBe(
+      true,
+    );
   });
 
   it("should diff a local entry file against a remote space", async () => {
@@ -149,5 +153,46 @@ describe("schema diff command", () => {
     const message = consoleError.mock.calls.flat().join(" ");
     expect(message).toContain("--from");
     expect(message).toContain("schema entry file");
+  });
+
+  it("should mark the report as failed when a schema cannot be resolved", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(loadSchema).mockRejectedValue(new Error("Cannot find module /abs/missing.ts"));
+    spaceWith("222", []);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "./missing.ts",
+      "--to",
+      "222",
+    ]);
+
+    expect(getDiffReport()?.status).toBe("FAILURE");
+  });
+
+  it("should surface a schema authoring mistake unchanged, with the user-error exit code", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(loadSchema).mockRejectedValue(
+      new CommandError(`Duplicate schema definitions: block name "hero".`),
+    );
+    spaceWith("222", []);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "./schema.ts",
+      "--to",
+      "222",
+    ]);
+
+    const message = consoleError.mock.calls.flat().join(" ");
+    expect(message).toContain(`Duplicate schema definitions: block name "hero".`);
+    expect(message).not.toContain("Check the path");
+    expect(process.exitCode).toBe(2);
   });
 });

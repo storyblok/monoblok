@@ -8,7 +8,7 @@ const Grid = ({ block }: GridProps) => {
   if (!block.columns) return null;
 
   return (
-    <ul data-cy="grid" {...storyblokEditable(block)}>
+    <ul data-test="grid" {...storyblokEditable(block)}>
       {block.columns.map((column) => (
         <li key={column._uid}>
           <StoryblokComponent block={column} />

@@ -10,7 +10,7 @@
       "@/*": ["./src/*"]
     },
     "resolveJsonModule": true,
-    "types": ["cypress", "node"],
+    "types": ["node"],
     "allowJs": true,
     "strict": false,
     "noFallthroughCasesInSwitch": true,
@@ -26,5 +26,11 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Recommended",
   "include": ["./src/**/*"],
-  "exclude": ["node_modules", "./src/**/*.test.ts", "./src/**/*.test.tsx", "./src/__tests__/**/*"]
+  "exclude": [
+    "node_modules",
+    "./src/**/*.test.ts",
+    "./src/**/*.test.tsx",
+    "./src/**/fixtures/**/*",
+    "./e2e/**/*"
+  ]
 }

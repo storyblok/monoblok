@@ -11,7 +11,7 @@ const Grid = ({ block }: GridProps) => {
 
   return (
     <section>
-      <div data-cy="grid" className="grid grid-cols-3 gap-6" {...storyblokEditable(block)}>
+      <div data-test="grid" className="grid grid-cols-3 gap-6" {...storyblokEditable(block)}>
         {block.columns?.map((column) => (
           <StoryblokComponent key={column._uid} block={column} />
         ))}

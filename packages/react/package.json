@@ -53,9 +53,7 @@
     "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit && pnpm run test:e2e:next-13 && pnpm run test:e2e:next-latest",
     "test:unit": "vp test run",
-    "cy:run": "cypress run",
-    "cy:open": "cypress open",
-    "test:comp": "cypress run --component",
+    "pw:run": "playwright test",
     "playground": "pnpm run --filter ./playground/react dev",
     "playground:next-latest": "pnpm run --filter ./playground/next-latest dev",
     "playground:next-13": "pnpm run --filter ./playground/next-13-app-router dev",
@@ -64,9 +62,9 @@
     "publint": "publint .",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
-    "test:e2e:next-13": "start-server-and-test playground:next-13 http://localhost:3000/ cy:run",
-    "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ cy:run",
-    "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ cy:open",
+    "test:e2e:next-13": "start-server-and-test playground:next-13 http://localhost:3000/ pw:run",
+    "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ pw:run",
+    "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ pw:run --ui",
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
@@ -75,10 +73,7 @@
     "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
-    "@babel/core": "^7.27.1",
-    "@babel/preset-env": "^7.27.2",
-    "@cypress/react": "^9.0.1",
-    "@cypress/vite-dev-server": "^7.3.4",
+    "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -86,8 +81,6 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "@vitejs/plugin-react": "^4.4.1",
-    "babel-jest": "^29.7.0",
-    "cypress": "^15.21.0",
     "jsdom": "catalog:",
     "oxlint": "catalog:",
     "publint": "catalog:",
@@ -101,18 +94,6 @@
   "peerDependencies": {
     "react": "^17 || ^18 || ^19",
     "react-dom": "^17 || ^18 || ^19"
-  },
-  "babel": {
-    "presets": [
-      [
-        "@babel/preset-env",
-        {
-          "targets": {
-            "node": "current"
-          }
-        }
-      ]
-    ]
   },
   "release": {
     "branches": [

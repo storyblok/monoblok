@@ -1,7 +1,12 @@
 "use client";
 import type { BridgeParams } from "@storyblok/live-preview";
 import type { Story } from "@storyblok/api-client";
-import { type ReactNode, Suspense, use, useEffect, useState } from "react";
+// `React` namespace imported separately so `React.use` is a runtime property
+// lookup rather than a static named import. This means the module loads on
+// React <19 without a SyntaxError, even though StoryblokPreviewRsc itself
+// requires React 19 to function.
+import * as React from "react";
+import { Component, type ReactNode, startTransition, Suspense, useState } from "react";
 import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
 /** Props for the {@link StoryblokPreviewRsc} component. */
@@ -37,38 +42,84 @@ export interface StoryblokPreviewRscProps {
   bridgeOptions?: BridgeParams;
 }
 
+// ── LiveContent ───────────────────────────────────────────────────────────────
+
 /**
- * Inner component that calls use() inside its own Suspense boundary.
- * Keeping it separate means use() only suspends this subtree, not the whole
- * page. Once the promise resolves, onCommit is called so the parent can
- * advance the Suspense fallback to the freshly rendered content.
+ * Inner component that calls React.use() inside its own Suspense boundary.
+ * Keeping it separate means use() only suspends this subtree, not the whole page.
+ *
+ * React.use is accessed via the React namespace (not a static named import) so
+ * that the module can be loaded on React <19 without a parse error — consumers
+ * who only import StoryblokPreview / useStoryblokState are unaffected.
  */
-function LiveContent({
-  promise,
-  onCommit,
-}: {
-  promise: Promise<ReactNode>;
-  onCommit: (content: ReactNode) => void;
-}) {
-  const content = use(promise);
-
-  // After use() resolves, persist the content so subsequent editor updates
-  // show the most-recent rendered state as the fallback rather than the
-  // original SSR snapshot.
-  useEffect(() => {
-    onCommit(content);
-  }, [content, onCommit]);
-
+function LiveContent({ promise }: { promise: Promise<ReactNode> }) {
+  const content = React.use(promise);
   return <>{content}</>;
 }
+
+// ── Error boundary ────────────────────────────────────────────────────────────
+
+interface LiveContentBoundaryProps {
+  promise: Promise<ReactNode>;
+  fallback: ReactNode;
+  children: ReactNode;
+}
+interface LiveContentBoundaryState {
+  hasError: boolean;
+  /** The promise that triggered the current error, used to self-reset on the next attempt. */
+  capturedPromise: Promise<ReactNode> | null;
+}
+
+/**
+ * Catches rejections thrown by React.use() inside LiveContent (e.g. a failed
+ * Server Action) and shows the provided fallback — the initial SSR children —
+ * instead of crashing the page. Resets automatically when a new promise
+ * arrives from the next editor event.
+ */
+class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveContentBoundaryState> {
+  state: LiveContentBoundaryState = { hasError: false, capturedPromise: null };
+
+  static getDerivedStateFromError(): Partial<LiveContentBoundaryState> {
+    return { hasError: true };
+  }
+
+  // Reset when a new promise arrives — each editor event is a fresh retry opportunity.
+  static getDerivedStateFromProps(
+    { promise }: LiveContentBoundaryProps,
+    { hasError, capturedPromise }: LiveContentBoundaryState,
+  ): Partial<LiveContentBoundaryState> | null {
+    if (hasError && capturedPromise !== null && capturedPromise !== promise) {
+      return { hasError: false, capturedPromise: null };
+    }
+    // Latch the promise that caused the error so the next comparison works.
+    if (hasError && capturedPromise === null) {
+      return { capturedPromise: promise };
+    }
+    return null;
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("[Storyblok] StoryblokPreviewRsc: renderContent failed.", error);
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+// ── StoryblokPreviewRsc ───────────────────────────────────────────────────────
 
 /**
  * Client component that enables live preview for React Server Component (RSC) routes.
  *
  * Listens for Storyblok Visual Editor events and invokes `renderContent` — a
  * Server Action — with the updated story to produce fresh server-rendered output.
- * While the Server Action is in flight the last committed content (or the initial
- * `children`) is shown as a Suspense fallback, so the page never goes blank.
+ * The promise update is wrapped in `startTransition` so React keeps the current
+ * tree on screen while the action is in flight instead of showing a Suspense
+ * fallback, which eliminates the duplicate-DOM window that confuses the bridge.
+ *
+ * If `renderContent` rejects, the error boundary catches it, logs it, and keeps
+ * the initial `children` visible. The boundary resets on the next editor event.
  *
  * Wrap your RSC page output with this component and pass a Server Action as
  * `renderContent`. The initial server-rendered tree is passed as `children` and
@@ -94,39 +145,17 @@ export function StoryblokPreviewRsc({
   debounceMs = 200,
   bridgeOptions,
 }: StoryblokPreviewRscProps) {
-  // Store the Promise itself — not the resolved ReactNode.
-  //
-  // Storing ReactNode in useState forces the RSC serializer to fully await
-  // every async component in the tree before it can commit the state value,
-  // bypassing Suspense streaming and causing a full blank-page wait.
-  //
-  // Storing a Promise lets React.use() + Suspense handle async resolution
-  // progressively: the initial RSC shell (with skeleton fallbacks) can arrive
-  // quickly, and slow components stream in independently.
   const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(null);
-
-  // Tracks the last successfully committed content from a renderContent call.
-  //
-  // Initialized to null — NOT to `children`. Storing `children` here would
-  // have the same effect as any other named prop: the RSC serialiser would
-  // need to fully await every async component in the tree (e.g. WeatherWidget
-  // with a 10 s fetch) before committing the state, blocking the initial HTML.
-  //
-  // The Suspense fallback uses `committedContent ?? children`:
-  //   • Before the first renderContent resolves: children is used directly
-  //     from the prop (stays in the RSC streaming channel — safe).
-  //   • After the first renderContent resolves: committedContent holds the
-  //     server-rendered output (fully resolved, safe to store in state).
-  //     Subsequent editor updates show the latest committed state as the
-  //     fallback instead of jumping back to the original SSR snapshot.
-  const [committedContent, setCommittedContent] = useState<ReactNode | null>(null);
 
   useStoryblokEditorEvent(
     (updatedStory) => {
-      // Set the promise directly — no useTransition, no awaiting here.
-      // React.use() inside LiveContent reads it; the Suspense boundary
-      // shows the fallback while the server action streams its RSC response.
-      setLivePromise(renderContent(updatedStory));
+      // Call renderContent eagerly (outside the transition) so the Server Action
+      // starts streaming its RSC response immediately.
+      // Wrapping setLivePromise in startTransition tells React to keep the
+      // current tree on screen while LiveContent re-suspends, which prevents
+      // the fallback from showing and the duplicate-DOM window it creates.
+      const promise = renderContent(updatedStory);
+      startTransition(() => setLivePromise(promise));
     },
     { debounceMs, bridgeOptions },
   );
@@ -139,21 +168,12 @@ export function StoryblokPreviewRsc({
     return <>{children}</>;
   }
 
-  // Editor update in flight or resolved.
-  //
-  // Fallback precedence:
-  //   1. committedContent — output of the last resolved renderContent call.
-  //      Fully resolved server-rendered content; safe in state.
-  //   2. children — the initial SSR tree accessed directly from the prop
-  //      (never from state) so it stays in the RSC streaming channel.
-  //
-  // This means the page always shows the most-recently committed state while
-  // a new render is in flight, and never reverts to the original SSR snapshot
-  // after the first editor update has already resolved.
   return (
-    <Suspense fallback={<>{committedContent ?? children}</>}>
-      <LiveContent promise={livePromise} onCommit={setCommittedContent} />
-    </Suspense>
+    <LiveContentBoundary promise={livePromise} fallback={<>{children}</>}>
+      <Suspense fallback={<>{children}</>}>
+        <LiveContent promise={livePromise} />
+      </Suspense>
+    </LiveContentBoundary>
   );
 }
 

@@ -1,5 +1,5 @@
 import type { StoryblokReactRichTextComponentMap } from "@storyblok/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import {
   customRendererFixture,
@@ -16,6 +16,7 @@ import CustomTable from "./richtext/CustomTable";
 import CustomText from "./richtext/CustomText";
 import HeadingWithRichText from "./richtext/HeadingWithRichText";
 import { defineStoryblokComponents } from "../define-storyblok-components";
+import { StoryblokRichText as RootStoryblokRichText } from "../richtext/StoryblokRichText";
 
 const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
 
@@ -224,6 +225,75 @@ describe("react StoryblokRichText component", () => {
         <StoryblokRichText document={infinite_loop.input} components={options} />,
       );
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(infinite_loop.expected);
+    });
+  });
+
+  // ─── Root StoryblokRichText — blok nodes (finding #5) ─────────────────────
+
+  describe("root StoryblokRichText — blok node handling", () => {
+    const blokDoc = {
+      type: "doc",
+      content: [
+        {
+          type: "blok",
+          attrs: {
+            id: "blok-1",
+            body: [{ component: "teaser", _uid: "uid-1" }],
+          },
+        },
+      ],
+    };
+
+    it("warns when a blok node appears with no blok component registered", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { container } = render(<RootStoryblokRichText document={blokDoc as any} />);
+      expect(container.textContent).toBe("");
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"blok"'));
+      warnSpy.mockRestore();
+    });
+
+    it("does NOT warn when a blok component is provided via the components prop", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      render(
+        <RootStoryblokRichText
+          document={blokDoc as any}
+          components={{
+            blok: ({ attrs }: any) => (
+              <div data-testid="inline-blok">{attrs?.body?.[0]?.component}</div>
+            ),
+          }}
+        />,
+      );
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
+
+  // ─── Root StoryblokRichText — data prop forwarding (finding #6) ───────────
+
+  describe("root StoryblokRichText — data prop forwarding", () => {
+    it("forwards the data prop to custom node components via context", () => {
+      const doc = {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "hello" }] }],
+      };
+
+      const receivedData: unknown[] = [];
+      const Paragraph = ({ children, context }: any) => {
+        receivedData.push(context?.data);
+        return <p>{children}</p>;
+      };
+
+      render(
+        <RootStoryblokRichText
+          document={doc as any}
+          data={{ locale: "de-AT" }}
+          components={{ paragraph: Paragraph }}
+        />,
+      );
+
+      expect(receivedData).toHaveLength(1);
+      expect(receivedData[0]).toEqual({ locale: "de-AT" });
     });
   });
 });

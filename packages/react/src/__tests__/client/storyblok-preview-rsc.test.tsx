@@ -169,7 +169,7 @@ describe("StoryblokPreviewRsc", () => {
     expect(getByTestId("live")).toBeInTheDocument();
   });
 
-  it("shows the previously committed content as Suspense fallback on subsequent updates", async () => {
+  it("shows the current content while a subsequent update is in flight (no duplicate DOM)", async () => {
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
     let resolveSecond!: (node: React.ReactNode) => void;
@@ -201,10 +201,10 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    const firstLiveNodes = getAllByTestId("first-live");
-    expect(firstLiveNodes.length).toBeGreaterThanOrEqual(1);
-    const visibleFirstLive = firstLiveNodes.find((el) => getComputedStyle(el).display !== "none");
-    expect(visibleFirstLive).toBeDefined();
+    // The first-live content remains visible while the second edit is in flight
+    expect(getByTestId("first-live")).toBeInTheDocument();
+    // Exactly one copy — no duplicate DOM from a stale Suspense fallback (#10)
+    expect(getAllByTestId("first-live")).toHaveLength(1);
     expect(queryByTestId("second-live")).toBeNull();
 
     await act(async () => {
@@ -213,6 +213,42 @@ describe("StoryblokPreviewRsc", () => {
     });
 
     expect(getByTestId("second-live")).toBeInTheDocument();
+  });
+
+  it("shows children fallback when renderContent rejects, then recovers on the next event", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const firstStory = makeStory({ slug: "first" });
+    const secondStory = makeStory({ slug: "second" });
+
+    const renderContent = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("server error"))
+      .mockResolvedValueOnce(<div data-testid="recovered">recovered content</div>);
+
+    const { getByTestId, queryByTestId } = render(
+      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
+        <div data-testid="initial">initial</div>
+      </StoryblokPreviewRsc>,
+    );
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // First event — renderContent rejects
+    await fireEditorEvent(editorCallback!, firstStory);
+
+    // Error boundary must keep children visible, not crash the page
+    expect(getByTestId("initial")).toBeInTheDocument();
+    expect(queryByTestId("recovered")).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[Storyblok]"),
+      expect.any(Error),
+    );
+
+    // Second event — renderContent resolves → boundary resets and shows new content
+    await fireEditorEvent(editorCallback!, secondStory);
+    expect(getByTestId("recovered")).toBeInTheDocument();
+
+    consoleSpy.mockRestore();
   });
 
   it("unsubscribes and clears the debounce timer on unmount", async () => {

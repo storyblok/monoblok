@@ -33,10 +33,15 @@ export function useStoryblokEditorEvent(
   { debounceMs, bridgeOptions }: UseStoryblokEditorEventOptions = {},
 ): void {
   const callbackRef = useRef(callback);
-  callbackRef.current = callback;
-
   const debounceRef = useRef(debounceMs);
-  debounceRef.current = debounceMs;
+
+  // Sync refs after every commit, never during render.
+  // A render discarded by React's concurrent mode must not install its
+  // callback, which would cause a stale closure to handle live events.
+  useEffect(() => {
+    callbackRef.current = callback;
+    debounceRef.current = debounceMs;
+  });
 
   useEffect(() => {
     let mounted = true;

@@ -1,4 +1,5 @@
 import { readdir } from "node:fs/promises";
+import chalk from "chalk";
 import { resolve } from "pathe";
 
 import { colorPalette, commands } from "../../../constants";
@@ -102,14 +103,19 @@ schemaCommand
 
       writeSpinner.succeed(`Generated ${writtenFiles.length} files`);
       ui.list(writtenFiles.map((file) => displayPath(file, options.outDir)));
-      ui.warn(
-        "`schema init` is a one-time bootstrap step for adopting an existing space. Review generated files before continuing.",
+
+      ui.ok(
+        `Schema workspace initialized from space ${space} in ${chalk.hex(colorPalette.PRIMARY)(targetDisplayPath)}`,
+        true,
       );
+      ui.br();
       ui.info(
-        "After bootstrapping, keep your local schema as the source of truth and use `schema push` for ongoing changes.",
-      );
-      ui.info(
-        "Make sure `@storyblok/schema` is installed in the project that imports these files (e.g. `pnpm add @storyblok/schema`).",
+        [
+          "Next steps:",
+          `  1. Install ${chalk.hex(colorPalette.PRIMARY)("@storyblok/schema")} in the project that imports these files`,
+          "  2. Review the generated files. Your local schema is now the source of truth",
+          `  3. Use ${chalk.hex(colorPalette.PRIMARY)("storyblok schema push")} for all further schema changes. ${chalk.hex(colorPalette.PRIMARY)("schema init")} is a one-time bootstrap`,
+        ].join("\n"),
       );
     } catch (maybeError) {
       summary.failed += 1;

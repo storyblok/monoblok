@@ -84,6 +84,10 @@ function DefaultSuspenseFallback(): ReactNode {
 /**
  * Check if a component is a lazy component (created with React.lazy).
  * Lazy components have $$typeof Symbol(react.lazy).
+ *
+ * SAFETY: relies on React's internal $$typeof symbol string representation.
+ * There is no public API alternative; this pattern is widely used in the
+ * ecosystem and has been stable across React 16–19.
  */
 function isLazyComponent(component: unknown): boolean {
   if (typeof component !== "object" || component === null) {
@@ -99,6 +103,10 @@ function isLazyComponent(component: unknown): boolean {
 /**
  * Check if a component is a memo() or forwardRef() wrapper.
  * These return objects (not functions) but are valid React component types.
+ *
+ * SAFETY: relies on React's internal $$typeof symbol string representation.
+ * There is no public API alternative; this pattern is widely used in the
+ * ecosystem and has been stable across React 16–19.
  */
 function isWrappedComponent(component: unknown): boolean {
   if (typeof component !== "object" || component === null) {

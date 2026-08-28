@@ -23,10 +23,12 @@ export function StoryblokRichText({
   document,
   optimizeImage,
   components,
+  data,
 }: StoryblokReactRichTextComponentProps): ReactNode {
   const render = createRichTextRenderer({
     optimizeImage,
     components,
+    data,
   });
   const content = render(document);
   return content;

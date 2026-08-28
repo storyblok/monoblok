@@ -72,6 +72,19 @@ describe("useStoryblokEditorEvent", () => {
     expect(callback).not.toHaveBeenCalled();
   });
 
+  it("calls the callback registered at mount even before the async subscription resolves", async () => {
+    // Verifies that ref sync happens in useEffect (after commit) not during render,
+    // so the subscription always reads a committed callback — not a render-phase one.
+    const callback = vi.fn();
+    renderHook(() => useStoryblokEditorEvent(callback));
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory()));
+    expect(callback).toHaveBeenCalledOnce();
+    // subscription registered only once — ref sync must not cause re-subscription
+    expect(onStoryblokEditorEvent).toHaveBeenCalledOnce();
+  });
+
   describe("with debounceMs", () => {
     beforeEach(() => {
       vi.useFakeTimers();

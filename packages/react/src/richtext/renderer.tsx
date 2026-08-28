@@ -170,6 +170,13 @@ function renderNode(
   }
   const tag = resolveTag(node);
   if (!tag) {
+    if (node.type === "blok") {
+      console.warn(
+        '[Storyblok] A richtext document contains a "blok" node but no "blok" component is ' +
+          "registered. Use defineStoryblokComponents() to render embedded blocks, or pass a " +
+          '"blok" key in the components prop.',
+      );
+    }
     return node.content ? renderChildren(node.content, options) : null;
   }
   if (node.type === "image" && options.optimizeImage) {

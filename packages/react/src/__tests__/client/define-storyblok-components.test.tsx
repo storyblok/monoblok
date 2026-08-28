@@ -1,4 +1,4 @@
-import React from "react";
+import React, { forwardRef, memo } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
 import type { StoryblokBlockData } from "../../types";
@@ -245,6 +245,61 @@ describe("defineStoryblokComponents", () => {
 
       const { getByTestId } = render(<resultB.StoryblokComponent block={teaserBlock} />);
       expect(getByTestId("teaser")).toBeInTheDocument();
+    });
+  });
+
+  // ─── memo() and forwardRef() components ───────────────────────────────────
+
+  describe("memo() and forwardRef() components", () => {
+    it("renders a component wrapped with React.memo()", () => {
+      const MemoTeaser = memo(Teaser);
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: { teaser: MemoTeaser },
+      });
+      const { getByTestId } = render(<StoryblokComponent block={teaserBlock} />);
+      expect(getByTestId("teaser")).toHaveTextContent("Hello");
+    });
+
+    it("renders a component wrapped with React.forwardRef()", () => {
+      const ForwardRefTeaser = forwardRef<HTMLSpanElement, { block: StoryblokBlockData }>(
+        ({ block }, _ref) => <span data-testid="fwd-teaser">{(block as any).title}</span>,
+      );
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: { teaser: ForwardRefTeaser },
+      });
+      const { getByTestId } = render(<StoryblokComponent block={teaserBlock} />);
+      expect(getByTestId("fwd-teaser")).toHaveTextContent("Hello");
+    });
+
+    it("does not treat memo() as a config object (no undefined component crash)", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const MemoPage = memo(Page);
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: { page: MemoPage },
+      });
+      // Should render without React error (would crash if normalizeEntry returned {component: undefined})
+      const { getByTestId } = render(<StoryblokComponent block={pageBlock} />);
+      expect(getByTestId("page")).toBeInTheDocument();
+      expect(consoleSpy).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  // ─── StoryblokRichText stable reference ───────────────────────────────────
+
+  describe("StoryblokRichText stable reference", () => {
+    it("returns the same StoryblokRichText reference on every property access", () => {
+      const result = defineStoryblokComponents({ components: {} });
+      const first = result.StoryblokRichText;
+      const second = result.StoryblokRichText;
+      expect(first).toBe(second);
+    });
+
+    it("two different defineStoryblokComponents calls produce different StoryblokRichText types", () => {
+      const resultA = defineStoryblokComponents({ components: { page: Page } });
+      const resultB = defineStoryblokComponents({ components: { teaser: Teaser } });
+      // Each registry has its own pre-computed component — they must not be the same reference
+      expect(resultA.StoryblokRichText).not.toBe(resultB.StoryblokRichText);
     });
   });
 });

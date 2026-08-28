@@ -1,7 +1,7 @@
 "use client";
 
 import type { Story } from "@storyblok/api-client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useStoryblokEditorEvent,
   type UseStoryblokEditorEventOptions,
@@ -28,6 +28,15 @@ export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions
  */
 export function useStoryblokState(story: Story, options: UseStoryblokStateOptions = {}): Story {
   const [current, setCurrent] = useState(story);
+
+  // Sync the prop into state when the story identity changes.
+  // useState only uses the initial value on mount, so cross-route navigation
+  // or SWR keepPreviousData swaps that change `story.id` would otherwise render
+  // stale content forever on a reused component instance.
+  useEffect(() => {
+    setCurrent(story);
+  }, [story.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useStoryblokEditorEvent((updatedStory) => setCurrent(updatedStory), options);
   return current;
 }

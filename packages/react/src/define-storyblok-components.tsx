@@ -97,6 +97,22 @@ function isLazyComponent(component: unknown): boolean {
 }
 
 /**
+ * Check if a component is a memo() or forwardRef() wrapper.
+ * These return objects (not functions) but are valid React component types.
+ */
+function isWrappedComponent(component: unknown): boolean {
+  if (typeof component !== "object" || component === null) {
+    return false;
+  }
+  const typedComponent = component as { $$typeof?: symbol };
+  if (typeof typedComponent.$$typeof !== "symbol") {
+    return false;
+  }
+  const str = typedComponent.$$typeof.toString();
+  return str === "Symbol(react.memo)" || str === "Symbol(react.forward_ref)";
+}
+
+/**
  * Normalize a component entry to extract component and config.
  */
 function normalizeEntry(entry: StoryblokComponentEntry): {
@@ -104,7 +120,7 @@ function normalizeEntry(entry: StoryblokComponentEntry): {
   fallback?: SuspenseFallback;
   suspense?: boolean;
 } {
-  if (typeof entry === "function" || isLazyComponent(entry)) {
+  if (typeof entry === "function" || isLazyComponent(entry) || isWrappedComponent(entry)) {
     return { component: entry as BlockComponentType };
   }
   return entry;
@@ -196,10 +212,14 @@ export function defineStoryblokComponents(
 
   StoryblokComponent.displayName = "StoryblokComponent";
 
+  // Pre-compute once so every access returns the same function reference.
+  // A getter would call createStoryblokRichText() on each access, producing a
+  // new component type per render and causing React to unmount + remount the
+  // entire richtext subtree on every render.
+  const StoryblokRichText = createStoryblokRichText(StoryblokComponent as BlockComponentType);
+
   return {
     StoryblokComponent,
-    get StoryblokRichText() {
-      return createStoryblokRichText(StoryblokComponent as BlockComponentType);
-    },
+    StoryblokRichText,
   };
 }

@@ -101,6 +101,46 @@ describe("useStoryblokState", () => {
     expect((result.current as any).slug).toBe("before");
   });
 
+  it("resets to the new story when story.id changes (cross-route navigation)", async () => {
+    const storyA = makeStory({ id: 1, slug: "page-a" });
+    const storyB = makeStory({ id: 2, slug: "page-b" });
+
+    const { result, rerender } = renderHook(({ story }) => useStoryblokState(story), {
+      initialProps: { story: storyA },
+    });
+
+    expect((result.current as any).slug).toBe("page-a");
+
+    // Simulate cross-route navigation: same component instance, new story
+    await act(async () => {
+      rerender({ story: storyB });
+    });
+
+    expect((result.current as any).slug).toBe("page-b");
+  });
+
+  it("does not reset when the same story.id is re-rendered with a new reference", async () => {
+    const story = makeStory({ id: 1, slug: "home" });
+    const storyNewRef = makeStory({ id: 1, slug: "home-ref2" });
+
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: story },
+    });
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // Editor update to change displayed content first
+    act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
+    expect((result.current as any).slug).toBe("editor-updated");
+
+    // Re-render with same id but different reference — must NOT reset editor state
+    await act(async () => {
+      rerender({ s: storyNewRef });
+    });
+
+    expect((result.current as any).slug).toBe("editor-updated");
+  });
+
   describe("with debounceMs option", () => {
     beforeEach(() => {
       vi.useFakeTimers();

@@ -35,7 +35,7 @@ export function useStoryblokState(story: Story, options: UseStoryblokStateOption
   // stale content forever on a reused component instance.
   useEffect(() => {
     setCurrent(story);
-  }, [story.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [story.id]); // oxlint-disable-line react-hooks/exhaustive-deps -- intentional: sync on id change only, not on every render-phase story reference
 
   useStoryblokEditorEvent((updatedStory) => setCurrent(updatedStory), options);
   return current;

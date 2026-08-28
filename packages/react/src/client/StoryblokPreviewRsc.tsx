@@ -145,6 +145,17 @@ export function StoryblokPreviewRsc({
   debounceMs = 200,
   bridgeOptions,
 }: StoryblokPreviewRscProps) {
+  // Runtime guard for React <19. React.use is not available before React 19,
+  // which is required for the Suspense-based live preview to work.
+  // Note: this guard cannot be covered by unit tests because the React module
+  // namespace is sealed in the test environment. It is verified manually.
+  if (typeof React.use !== "function") {
+    throw new Error(
+      "[Storyblok] StoryblokPreviewRsc requires React 19 (React.use is not available). " +
+        "Use StoryblokPreview for React 17/18.",
+    );
+  }
+
   const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(null);
 
   useStoryblokEditorEvent(

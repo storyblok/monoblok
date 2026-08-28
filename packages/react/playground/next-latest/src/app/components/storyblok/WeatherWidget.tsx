@@ -11,7 +11,7 @@ interface WeatherData {
   fetchId: string;
 }
 
-async function fetchWeatherData(location: string): Promise<WeatherData> {
+async function fetchWeatherData(_location: string): Promise<WeatherData> {
   const fetchId = Math.random().toString(36).slice(2, 8);
   await new Promise((resolve) => setTimeout(resolve, 10000));
   return {

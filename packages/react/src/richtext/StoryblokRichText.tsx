@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { createRichTextRenderer } from "./renderer";
 import type { ReactNode } from "react";
 import type { StoryblokReactRichTextComponentProps } from "./renderer";
@@ -25,11 +26,12 @@ export function StoryblokRichText({
   components,
   data,
 }: StoryblokReactRichTextComponentProps): ReactNode {
-  const render = createRichTextRenderer({
-    optimizeImage,
-    components,
-    data,
-  });
-  const content = render(document);
-  return content;
+  // Memoize the renderer so it is not recreated on every render when options
+  // are stable references (e.g. module-level component maps).
+  const render = useMemo(
+    () => createRichTextRenderer({ optimizeImage, components, data }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [optimizeImage, components, data],
+  );
+  return render(document);
 }

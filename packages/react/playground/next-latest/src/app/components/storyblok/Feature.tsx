@@ -13,7 +13,7 @@ type FeatureProps = StoryblokComponentProps<{
 
 const Feature = ({ block }: FeatureProps) => (
   <div
-    data-cy="feature"
+    data-test="feature"
     style={{ backgroundColor: block.color.color, padding: "8px" }}
     {...storyblokEditable(block)}
   >

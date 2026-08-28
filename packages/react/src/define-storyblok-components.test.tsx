@@ -1,8 +1,8 @@
 import React, { forwardRef, memo } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, waitFor } from "@testing-library/react";
-import type { StoryblokBlockData } from "../../types";
-import { defineStoryblokComponents } from "../../define-storyblok-components";
+import type { StoryblokBlockData } from "./types";
+import { defineStoryblokComponents } from "./define-storyblok-components";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 

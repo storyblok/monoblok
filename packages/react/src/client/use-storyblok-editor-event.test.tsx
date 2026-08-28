@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import type { Story } from "@storyblok/api-client";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
-import { useStoryblokEditorEvent } from "../../client/use-storyblok-editor-event";
+import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
 // ─── Mock @storyblok/live-preview ─────────────────────────────────────────────
 

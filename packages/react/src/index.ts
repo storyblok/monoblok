@@ -1,4 +1,4 @@
-export type { StoryblokBlockData, StoryblokComponentProps } from "./types";
+export type { BlockContent, StoryblokComponentProps } from "./types";
 
 export {
   defineStoryblokComponents,

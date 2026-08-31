@@ -1,11 +1,11 @@
 import type { ComponentType, ReactNode } from "react";
 import { createRichTextRenderer } from "./renderer";
 import type { StoryblokReactRichTextComponentProps } from "./renderer";
-import type { StoryblokBlockData } from "../types";
+import type { BlockContent } from "../types";
 import { createDefaultBlock } from "./create-default-block";
 
 export function createStoryblokRichText(
-  StoryblokComponent: ComponentType<{ block: StoryblokBlockData }>,
+  StoryblokComponent: ComponentType<{ block: BlockContent }>,
 ) {
   const DefaultBlock = createDefaultBlock(StoryblokComponent);
 

@@ -1,14 +1,12 @@
 import React, { forwardRef, memo, useState, useEffect, Suspense } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, waitFor, act } from "@testing-library/react";
-import type { StoryblokBlockData } from "./types";
+import type { BlockContent } from "./types";
 import { defineStoryblokComponents } from "./define-storyblok-components";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-function makeBlockData(
-  overrides: { component: string } & Partial<StoryblokBlockData>,
-): StoryblokBlockData {
+function makeBlockData(overrides: { component: string } & Partial<BlockContent>): BlockContent {
   return { _uid: "test-uid", ...overrides };
 }
 
@@ -16,15 +14,15 @@ const pageBlock = makeBlockData({ component: "page", _uid: "uid-page" });
 const teaserBlock = makeBlockData({ component: "teaser", _uid: "uid-teaser", title: "Hello" });
 const unknownBlock = makeBlockData({ component: "unknown", _uid: "uid-unknown" });
 
-function Page({ block }: { block: StoryblokBlockData }) {
+function Page({ block }: { block: BlockContent }) {
   return <div data-testid="page">{block._uid}</div>;
 }
 
-function Teaser({ block }: { block: StoryblokBlockData & { title?: string } }) {
+function Teaser({ block }: { block: BlockContent & { title?: string } }) {
   return <span data-testid="teaser">{block.title as string}</span>;
 }
 
-function Fallback({ block }: { block: StoryblokBlockData }) {
+function Fallback({ block }: { block: BlockContent }) {
   return <div data-testid="fallback">{block.component}</div>;
 }
 
@@ -47,7 +45,7 @@ describe("defineStoryblokComponents", () => {
     });
 
     it("passes extra props through to the registered component", () => {
-      function WithExtra({ _block, extra }: { _block: StoryblokBlockData; extra?: string }) {
+      function WithExtra({ _block, extra }: { _block: BlockContent; extra?: string }) {
         return <div data-testid="extra">{extra}</div>;
       }
       const { StoryblokComponent } = defineStoryblokComponents({
@@ -263,7 +261,7 @@ describe("defineStoryblokComponents", () => {
     });
 
     it("renders a component wrapped with React.forwardRef()", () => {
-      const ForwardRefTeaser = forwardRef<HTMLSpanElement, { block: StoryblokBlockData }>(
+      const ForwardRefTeaser = forwardRef<HTMLSpanElement, { block: BlockContent }>(
         ({ block }, _ref) => <span data-testid="fwd-teaser">{(block as any).title}</span>,
       );
       const { StoryblokComponent } = defineStoryblokComponents({

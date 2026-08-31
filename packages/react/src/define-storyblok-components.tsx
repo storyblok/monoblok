@@ -1,12 +1,12 @@
 import { type ComponentType, type ReactNode, Suspense } from "react";
-import type { StoryblokBlockData } from "./types";
+import type { BlockContent } from "./types";
 import { createStoryblokRichText } from "./richtext/create-storyblok-richtext";
 
-/** Internal type: how the registry calls components (always passes StoryblokBlockData) */
-type BlockComponentType = ComponentType<{ block: StoryblokBlockData }>;
+/** Internal type: how the registry calls components (always passes BlockContent) */
+type BlockComponentType = ComponentType<{ block: BlockContent }>;
 
 /**
- * Registration type: accepts any component whose block prop is a subtype of StoryblokBlockData.
+ * Registration type: accepts any component whose block prop is a subtype of BlockContent.
  * Using `any` intentionally avoids contravariance errors for components with specific block shapes.
  */
 type AnyBlockComponent = ComponentType<{ block: any }>;
@@ -53,7 +53,7 @@ export interface StoryblokComponentsResult {
    * ```
    */
   StoryblokComponent: ComponentType<
-    { block: StoryblokBlockData | StoryblokBlockData[] } & Record<string, unknown>
+    { block: BlockContent | BlockContent[] } & Record<string, unknown>
   >;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
@@ -73,25 +73,6 @@ function isLazyComponent(component: unknown): boolean {
   }
   const typedComponent = component as { $$typeof?: symbol };
   return typedComponent.$$typeof === Symbol.for("react.lazy");
-}
-
-/**
- * Check if a component is a memo() or forwardRef() wrapper.
- * These return objects (not functions) but are valid React component types.
- *
- * SAFETY: relies on React's internal $$typeof symbol string representation.
- * There is no public API alternative; this pattern is widely used in the
- * ecosystem and has been stable across React 16–19.
- */
-function isWrappedComponent(component: unknown): boolean {
-  if (typeof component !== "object" || component === null) {
-    return false;
-  }
-  const typedComponent = component as { $$typeof?: symbol };
-  return (
-    typedComponent.$$typeof === Symbol.for("react.memo") ||
-    typedComponent.$$typeof === Symbol.for("react.forward_ref")
-  );
 }
 
 /**
@@ -137,7 +118,7 @@ export function defineStoryblokComponents(
   function StoryblokComponent({
     block,
     ...rest
-  }: { block: StoryblokBlockData | StoryblokBlockData[] } & Record<string, unknown>): ReactNode {
+  }: { block: BlockContent | BlockContent[] } & Record<string, unknown>): ReactNode {
     // ── Array path ──────────────────────────────────────────────────────────
     if (Array.isArray(block)) {
       if (block.length === 0) return null;

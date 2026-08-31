@@ -703,24 +703,27 @@ export const { StoryblokComponent } = defineStoryblokComponents({
 });
 ```
 
-### Next.js Dynamic Import
+### Next.js
 
-In Next.js use `dynamic` for the same effect with better SSR support:
+`React.lazy` is the recommended way to lazy-load components in any React application, including
+Next.js. It works correctly with `defineStoryblokComponents` in both the App Router and Pages
+Router:
 
 ```tsx
-import dynamic from "next/dynamic";
 import { defineStoryblokComponents } from "@storyblok/react";
+import { lazy } from "react";
 
 export const { StoryblokComponent } = defineStoryblokComponents({
   components: {
-    page: dynamic(() => import("./components/Page")),
-    teaser: dynamic(() => import("./components/Teaser")),
+    page: lazy(() => import("./components/Page")),
+    teaser: lazy(() => import("./components/Teaser")),
   },
 });
 ```
 
-For more options see the
-[Next.js Dynamic Import documentation](https://nextjs.org/docs/advanced-features/dynamic-import).
+> **Note:** `next/dynamic` is not recommended here. Its suspension behavior differs between the App
+> Router and Pages Router, and in neither case does it integrate with this SDK's `fallback` option.
+> Use `React.lazy` instead — it behaves consistently and is detected automatically.
 
 ## Troubleshooting
 

@@ -1,4 +1,4 @@
-import type { StoryblokReactRichTextProps } from "@storyblok/react";
+import type { StoryblokReactRichTextProps } from "../renderer";
 
 export default function CustomText({ text, context }: StoryblokReactRichTextProps<"text">) {
   const data = context?.data as { prefix: string } | undefined;

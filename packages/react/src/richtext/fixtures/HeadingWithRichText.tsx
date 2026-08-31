@@ -3,7 +3,7 @@
  * This tests the infinite loop prevention - without it, this would cause:
  * HeadingWithRichText -> StoryblokRichText -> HeadingWithRichText -> ...
  */
-import type { StoryblokReactRichTextProps } from "@storyblok/react";
+import type { StoryblokReactRichTextProps } from "../renderer";
 import { defineStoryblokComponents } from "../../define-storyblok-components";
 import type { JSX } from "react";
 

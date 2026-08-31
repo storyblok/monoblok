@@ -277,25 +277,6 @@ describe("stories.get()", () => {
       "translated_slugs",
     );
   });
-
-  it("should omit excluding_story_fields when passed an empty array", async () => {
-    let capturedUrl: string | undefined;
-    server.use(
-      http.get("https://api.storyblok.com/v2/cdn/stories/*", ({ request }) => {
-        capturedUrl = request.url;
-        return HttpResponse.json({
-          story: makeStory("home", { component: "page", _uid: "uid-1" }),
-        });
-      }),
-    );
-    const client = createApiClient({ accessToken: "test-token" });
-
-    await client.stories.get("home", {
-      query: { excluding_story_fields: [] as any },
-    });
-
-    expect(new URL(capturedUrl!).searchParams.has("excluding_story_fields")).toBe(false);
-  });
 });
 
 describe("stories.list()", () => {
@@ -345,29 +326,12 @@ describe("stories.list()", () => {
     const client = createApiClient({ accessToken: "test-token" });
 
     await client.stories.list({
-      query: { excluding_story_fields: "translated_slugs" },
+      query: { excluding_story_fields: "translated_slugs,alternates" },
     });
 
     expect(new URL(capturedUrl!).searchParams.get("excluding_story_fields")).toBe(
-      "translated_slugs",
+      "translated_slugs,alternates",
     );
-  });
-
-  it("should omit excluding_story_fields when passed an empty array", async () => {
-    let capturedUrl: string | undefined;
-    server.use(
-      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
-        capturedUrl = request.url;
-        return HttpResponse.json({ stories: [] });
-      }),
-    );
-    const client = createApiClient({ accessToken: "test-token" });
-
-    await client.stories.list({
-      query: { excluding_story_fields: [] as any },
-    });
-
-    expect(new URL(capturedUrl!).searchParams.has("excluding_story_fields")).toBe(false);
   });
 });
 

@@ -7,4 +7,4 @@ export {
   createRichTextRenderer,
 } from "./renderer";
 
-export { StoryblokRichText } from "./StoryblokRichText";
+export { StoryblokRichText } from "./storyblok-rich-text";

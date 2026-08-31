@@ -1,5 +1,5 @@
-export { StoryblokPreview, type StoryblokPreviewProps } from "./StoryblokPreview";
-export { StoryblokPreviewRsc, type StoryblokPreviewRscProps } from "./StoryblokPreviewRsc";
+export { StoryblokPreview, type StoryblokPreviewProps } from "./storyblok-preview";
+export { StoryblokPreviewRsc, type StoryblokPreviewRscProps } from "./storyblok-preview-rsc";
 export {
   useStoryblokEditorEvent,
   type UseStoryblokEditorEventOptions,

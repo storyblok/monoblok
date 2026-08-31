@@ -9,14 +9,14 @@ import {
   nodeFixtures,
   tableFixtures,
 } from "@storyblok/richtext/test-utils";
-import CustomHeading from "./fixtures/CustomHeading";
-import CustomLink from "./fixtures/CustomLink";
-import CustomCodeBlock from "./fixtures/CodeComponent";
-import CustomTable from "./fixtures/CustomTable";
-import CustomText from "./fixtures/CustomText";
-import HeadingWithRichText from "./fixtures/HeadingWithRichText";
+import CustomHeading from "./fixtures/custom-heading";
+import CustomLink from "./fixtures/custom-link";
+import CustomCodeBlock from "./fixtures/code-component";
+import CustomTable from "./fixtures/custom-table";
+import CustomText from "./fixtures/custom-text";
+import HeadingWithRichText from "./fixtures/heading-with-rich-text";
 import { defineStoryblokComponents } from "../define-storyblok-components";
-import { StoryblokRichText as RootStoryblokRichText } from "./StoryblokRichText";
+import { StoryblokRichText as RootStoryblokRichText } from "./storyblok-rich-text";
 
 const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
 

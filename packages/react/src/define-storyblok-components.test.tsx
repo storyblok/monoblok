@@ -1,5 +1,6 @@
 import React, { forwardRef, memo, useState, useEffect, Suspense } from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, expectTypeOf } from "vitest";
+import type { ReactNode } from "react";
 import { render, waitFor, act } from "@testing-library/react";
 import type { BlockContent } from "./types";
 import { defineStoryblokComponents } from "./define-storyblok-components";
@@ -45,7 +46,7 @@ describe("defineStoryblokComponents", () => {
     });
 
     it("passes extra props through to the registered component", () => {
-      function WithExtra({ _block, extra }: { _block: BlockContent; extra?: string }) {
+      function WithExtra({ block: _block, extra }: { block: BlockContent; extra?: string }) {
         return <div data-testid="extra">{extra}</div>;
       }
       const { StoryblokComponent } = defineStoryblokComponents({
@@ -364,7 +365,8 @@ describe("defineStoryblokComponents", () => {
       }, []);
       // Default loading option is null in Pages Router dynamic.
       if (!Comp) return null;
-      return <Comp {...props} />;
+      const AnyComp = Comp as React.ComponentType<any>;
+      return <AnyComp {...props} />;
     });
   }
 
@@ -514,5 +516,143 @@ describe("defineStoryblokComponents", () => {
         defineStoryblokComponents({ components: { page: DynamicPage } });
       }).not.toThrow();
     });
+  });
+});
+
+// ─── Registry pre-computation ─────────────────────────────────────────────────
+//
+// normalizeEntry, isLazyComponent, and fallback resolution all run once at
+// factory time and are stored in a Map. The render path is a single Map.get
+// plus a branch — nothing is recomputed per block per render.
+
+describe("registry is pre-computed at factory time", () => {
+  it("adding a key to config.components after factory is not reflected", () => {
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const components: Record<string, typeof Page> = { page: Page };
+    const { StoryblokComponent } = defineStoryblokComponents({ components });
+
+    // mutate after factory
+    components.teaser = Teaser;
+
+    const { container } = render(<StoryblokComponent block={teaserBlock} />);
+    expect(container.firstChild).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith('[Storyblok] No component registered for "teaser".');
+    consoleSpy.mockRestore();
+  });
+
+  it("removing a key from config.components after factory is not reflected", () => {
+    const components: Record<string, typeof Page | typeof Teaser> = {
+      page: Page,
+      teaser: Teaser,
+    };
+    const { StoryblokComponent } = defineStoryblokComponents({ components });
+
+    // mutate after factory
+    delete components.page;
+
+    const { getByTestId } = render(<StoryblokComponent block={pageBlock} />);
+    expect(getByTestId("page")).toBeInTheDocument();
+  });
+
+  it("lazy detection is resolved at factory time — Suspense present on every render, not just the first", async () => {
+    const LazyPage = React.lazy(
+      () =>
+        new Promise<{ default: typeof Page }>((resolve) =>
+          setTimeout(() => resolve({ default: Page }), 10),
+        ),
+    );
+    const { StoryblokComponent } = defineStoryblokComponents({
+      components: {
+        page: {
+          component: LazyPage,
+          fallback: <div data-testid="skeleton">loading</div>,
+        },
+      },
+    });
+
+    // First mount
+    const { getByTestId, unmount } = render(<StoryblokComponent block={pageBlock} />);
+    expect(getByTestId("skeleton")).toBeInTheDocument();
+    unmount();
+
+    // Second mount — needsSuspense must still be true without re-running isLazyComponent
+    const { getByTestId: get2 } = render(<StoryblokComponent block={pageBlock} />);
+    expect(get2("skeleton")).toBeInTheDocument();
+  });
+
+  it("per-entry fallback is resolved at factory time and not re-evaluated per render", async () => {
+    let fallbackCallCount = 0;
+    const LazyPage = React.lazy(
+      () =>
+        new Promise<{ default: typeof Page }>((resolve) =>
+          setTimeout(() => resolve({ default: Page }), 10),
+        ),
+    );
+
+    // Compute fallback node once, track how many times the factory ran it
+    function makeFallback() {
+      fallbackCallCount++;
+      return <div data-testid="counted-skeleton">loading</div>;
+    }
+
+    defineStoryblokComponents({
+      components: {
+        page: { component: LazyPage, fallback: makeFallback(), suspense: true },
+      },
+    });
+
+    // makeFallback() is called exactly once (at the call-site above, i.e. factory time).
+    // Rendering StoryblokComponent multiple times must not increment the count.
+    expect(fallbackCallCount).toBe(1);
+  });
+});
+
+// ─── Type safety ─────────────────────────────────────────────────────────────
+
+describe("StoryblokComponent — type safety", () => {
+  const { StoryblokComponent } = defineStoryblokComponents({ components: {} });
+
+  it("requires the block prop", () => {
+    // @ts-expect-error — block is required
+    void (<StoryblokComponent />);
+  });
+
+  it("accepts a single BlockContent", () => {
+    void (<StoryblokComponent block={pageBlock} />);
+  });
+
+  it("accepts an array of BlockContent", () => {
+    void (<StoryblokComponent block={[pageBlock]} />);
+  });
+
+  it("rejects a non-BlockContent value for block", () => {
+    // @ts-expect-error — string is not assignable to BlockContent | BlockContent[]
+    void (<StoryblokComponent block="not-a-block" />);
+  });
+
+  it("accepts typed extra props via TExtraProps inference", () => {
+    // TypeScript infers TExtraProps = { locale: string } — no error
+    void (<StoryblokComponent block={pageBlock} locale="en" />);
+  });
+
+  // ── Regression guard: no Record<string, unknown> index-signature bleed ────
+  //
+  // With the old `& Record<string, unknown>` the param type had an index
+  // signature so `keyof Props` resolved to `string` — wiping out autocomplete
+  // and excess-property checks for `block`.
+  //
+  // With `TExtraProps extends object = {}`, instantiating at TExtraProps = {}
+  // yields `{ block: BlockContent | BlockContent[] }` with no index signature,
+  // so `keyof Props` is the literal union of known keys only.
+
+  it("with TExtraProps = {}, the only known key is 'block'", () => {
+    type StrictProps = Parameters<typeof StoryblokComponent<{}>>[0];
+    expectTypeOf<keyof StrictProps>().toEqualTypeOf<"block">();
+  });
+
+  it("returns ReactNode", () => {
+    // @ts-expect-error — ReactNode is not assignable to number
+    const _bad: number = StoryblokComponent({ block: pageBlock });
+    expectTypeOf<ReturnType<typeof StoryblokComponent<{}>>>().toEqualTypeOf<ReactNode>();
   });
 });

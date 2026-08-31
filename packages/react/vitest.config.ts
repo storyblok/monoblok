@@ -15,5 +15,11 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     globals: true,
     exclude: ["e2e/**", "**/node_modules/**"],
+    typecheck: {
+      enabled: true,
+      tsconfig: "./tsconfig.json",
+      allFiles: true,
+      include: ["src/**/*.test.{ts,tsx}"],
+    },
   },
 });

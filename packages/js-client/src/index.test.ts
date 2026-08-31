@@ -1838,6 +1838,25 @@ describe("storyblokClient", () => {
         }),
       );
     });
+
+    it("should omit excluding_story_fields when passed an empty array", async () => {
+      const storySlug = "test-story";
+      const mockStoryResponse = {
+        data: { story: { id: 123, uuid: "test-uuid", name: "Test Story", content: {} } },
+        headers: {},
+        status: 200,
+      };
+      const mockGet = vi.fn().mockResolvedValue(mockStoryResponse);
+      client.client = { get: mockGet, post: vi.fn(), setFetchOptions: vi.fn() };
+
+      await client.get(`cdn/stories/${storySlug}`, {
+        version: "draft",
+        excluding_story_fields: [] as any,
+      });
+
+      const callArgs = mockGet.mock.calls[0][1];
+      expect(callArgs).not.toHaveProperty("excluding_story_fields");
+    });
   });
 
   describe("dynamic Rate Limiting", () => {

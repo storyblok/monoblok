@@ -74,6 +74,18 @@ const _VERSION = {
 type ObjectValues<T> = T[keyof T];
 type Version = ObjectValues<typeof _VERSION>;
 
+/**
+ * Normalises `excluding_story_fields` to the comma-separated wire format.
+ * Returns `undefined` for an empty array or a missing value so the caller
+ * can omit the param entirely instead of sending an empty string.
+ */
+function normalizeExcludingStoryFields(
+  value: ExcludableStoryField | ExcludableStoryField[] | undefined,
+): string | undefined {
+  if (Array.isArray(value)) return value.length > 0 ? value.join(",") : undefined;
+  return value;
+}
+
 export class Storyblok {
   private client: SbFetch;
   private maxRetries: number;
@@ -187,13 +199,13 @@ export class Storyblok {
       params.resolve_relations = decodeIfEncoded(params.resolve_relations);
     }
 
-    if (Array.isArray(params.excluding_story_fields)) {
-      // Join array to the comma-separated string the API expects.
+    const normalizedExcluding = normalizeExcludingStoryFields(params.excluding_story_fields);
+    if (normalizedExcluding !== undefined) {
       // Cast required: the public type is a strict literal union; the wire
       // format is the joined string which does not match that union.
-      params.excluding_story_fields = params.excluding_story_fields.join(
-        ",",
-      ) as (typeof params)["excluding_story_fields"];
+      params.excluding_story_fields = normalizedExcluding as (typeof params)["excluding_story_fields"];
+    } else {
+      delete params.excluding_story_fields;
     }
 
     if (typeof params.resolve_relations !== "undefined") {

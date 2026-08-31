@@ -46,15 +46,21 @@ export interface StoryblokComponentsResult {
   /**
    * Renders a single block or an array of blocks by looking up `block.component` in the map.
    *
+   * `TExtraProps` lets callers thread additional props through the tree without
+   * widening the type to `Record<string, unknown>`, which would disable excess
+   * property checking and break autocomplete across the board.
+   *
    * @example
    * ```tsx
    * <StoryblokComponent block={story.content} />
    * <StoryblokComponent block={story.content.body} />
+   * // Extra props are forwarded to every rendered block component:
+   * <StoryblokComponent block={story.content} locale="en" />
    * ```
    */
-  StoryblokComponent: ComponentType<
-    { block: BlockContent | BlockContent[] } & Record<string, unknown>
-  >;
+  StoryblokComponent: <TExtraProps extends object = {}>(
+    props: { block: BlockContent | BlockContent[] } & TExtraProps,
+  ) => ReactNode;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
 }
@@ -110,10 +116,30 @@ function normalizeEntry(entry: StoryblokComponentEntry): {
  * });
  * ```
  */
+/** Pre-computed, render-ready descriptor for a single registered block type. */
+type ResolvedEntry = {
+  Component: BlockComponentType;
+  needsSuspense: boolean;
+  fallbackNode: ReactNode;
+};
+
 export function defineStoryblokComponents(
   config: StoryblokComponentsOptions,
 ): StoryblokComponentsResult {
   const defaultSuspenseFallback = config.suspenseFallback ?? null;
+
+  // ── Build the registry once at factory time ────────────────────────────────
+  // normalizeEntry, isLazyComponent (Symbol.for allocation), and fallback
+  // resolution all run here — never inside the render function.
+  const registry = new Map<string, ResolvedEntry>();
+  for (const [type, entry] of Object.entries(config.components)) {
+    const { component: Component, fallback, suspense } = normalizeEntry(entry);
+    registry.set(type, {
+      Component,
+      needsSuspense: suspense ?? isLazyComponent(Component),
+      fallbackNode: fallback ?? defaultSuspenseFallback,
+    });
+  }
 
   function StoryblokComponent({
     block,
@@ -137,10 +163,10 @@ export function defineStoryblokComponents(
       return null;
     }
 
-    // ── Single block path ───────────────────────────────────────────────────
-    const entry = config.components[block.component];
+    // ── Single block path — O(1) Map.get + one branch ───────────────────────
+    const resolved = registry.get(block.component);
 
-    if (!entry) {
+    if (!resolved) {
       if (config.fallback) {
         const FallbackComponent = config.fallback;
         return <FallbackComponent block={block} {...rest} />;
@@ -149,12 +175,11 @@ export function defineStoryblokComponents(
       return null;
     }
 
-    const { component: Component, fallback, suspense } = normalizeEntry(entry);
-    const needsSuspense = suspense ?? isLazyComponent(Component);
+    const { Component, needsSuspense, fallbackNode } = resolved;
 
     if (needsSuspense) {
       return (
-        <Suspense fallback={fallback ?? defaultSuspenseFallback}>
+        <Suspense fallback={fallbackNode}>
           <Component block={block} {...rest} />
         </Suspense>
       );
@@ -169,10 +194,13 @@ export function defineStoryblokComponents(
   // A getter would call createStoryblokRichText() on each access, producing a
   // new component type per render and causing React to unmount + remount the
   // entire richtext subtree on every render.
-  const StoryblokRichText = createStoryblokRichText(StoryblokComponent as BlockComponentType);
+  const StoryblokRichText = createStoryblokRichText(StoryblokComponent);
 
   return {
-    StoryblokComponent,
+    // Cast: the internal implementation uses `Record<string, unknown>` for JSX
+    // spreads onto fixed-type components, which is a safe superset of any
+    // `TExtraProps extends object` a caller may infer or supply.
+    StoryblokComponent: StoryblokComponent as StoryblokComponentsResult["StoryblokComponent"],
     StoryblokRichText,
   };
 }

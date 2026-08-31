@@ -47,6 +47,19 @@ export type ExcludableStoryField =
   | "translated_slugs"
   | "updated_at";
 
+/**
+ * Returns a spread-ready query fragment for `excluding_story_fields`:
+ * - array with items  → `{ excluding_story_fields: "a,b,c" }`
+ * - empty array / undefined → `{}` (param omitted)
+ * - string → `{ excluding_story_fields: "a,b,c" }` (unchanged)
+ */
+function excludingStoryFieldsParam(
+  value: ExcludableStoryField | ExcludableStoryField[] | undefined,
+): { excluding_story_fields: string } | Record<never, never> {
+  const str = Array.isArray(value) ? (value.length > 0 ? value.join(",") : undefined) : value;
+  return str !== undefined ? { excluding_story_fields: str } : {};
+}
+
 type InlinedStoryContentField =
   | string
   | number
@@ -225,14 +238,7 @@ export function createStoriesResource<
     > => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const { excluding_story_fields, ...restQuery } = query;
-      const normalizedQuery = {
-        ...restQuery,
-        ...(excluding_story_fields !== undefined && {
-          excluding_story_fields: Array.isArray(excluding_story_fields)
-            ? excluding_story_fields.join(",")
-            : excluding_story_fields,
-        }),
-      };
+      const normalizedQuery = { ...restQuery, ...excludingStoryFieldsParam(excluding_story_fields) };
       const typedQuery = normalizedQuery as NonNullable<GetStoryByIdData["query"]>;
       const resolvedQuery =
         typeof identifier === "string" && UUID_RE.test(identifier) && !typedQuery.find_by
@@ -314,14 +320,7 @@ export function createStoriesResource<
     > => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const { excluding_story_fields, ...restQuery } = query;
-      const normalizedQuery = {
-        ...restQuery,
-        ...(excluding_story_fields !== undefined && {
-          excluding_story_fields: Array.isArray(excluding_story_fields)
-            ? excluding_story_fields.join(",")
-            : excluding_story_fields,
-        }),
-      };
+      const normalizedQuery = { ...restQuery, ...excludingStoryFieldsParam(excluding_story_fields) };
       const typedQuery = normalizedQuery as NonNullable<ListStoriesData["query"]>;
       const requestPath = "/v2/cdn/stories";
       return requestWithCache(

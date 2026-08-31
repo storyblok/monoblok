@@ -1,4 +1,4 @@
-import type { StoryblokReactRichTextProps } from "@storyblok/react";
+import type { StoryblokReactRichTextProps } from "../renderer";
 import type { JSX } from "react";
 
 export default function CustomHeading({ children, attrs }: StoryblokReactRichTextProps<"heading">) {

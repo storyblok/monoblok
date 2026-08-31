@@ -49,6 +49,7 @@
     "access": "public"
   },
   "scripts": {
+    "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
     "dev": "vp pack --watch",
     "build": "vp pack",
     "test:types": "tsc --noEmit --skipLibCheck",
@@ -77,6 +78,7 @@
   "devDependencies": {
     "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@tsconfig/recommended": "^1.0.8",
@@ -109,6 +111,22 @@
   "nx": {
     "implicitDependencies": [
       "!@storyblok/playground-*"
-    ]
+    ],
+    "targets": {
+      "generate:openapi": {
+        "inputs": [
+          "{projectRoot}/scripts/generate.ts",
+          "{projectRoot}/package.json",
+          "openapiCodegen"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
+        ]
+      }
+    }
   }
 }

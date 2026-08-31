@@ -1,20 +1,16 @@
-/** Base shape of every Storyblok block. All registered block components receive this as their `block` prop. */
-export interface StoryblokBlockData {
-  _uid: string;
-  component: string;
-  _editable?: string;
-  [key: string]: unknown;
-}
+import type { BlockContent } from "./generated/types/field";
 
 /**
  * Helper type for typed block component props.
  *
  * @example
- * type PageProps = StoryblokComponentProps<{ body: StoryblokBlockData[] }>;
+ * type PageProps = StoryblokComponentProps<{ body: BlockContent[] }>;
  * export default function Page({ block }: PageProps) { ... }
  */
 export interface StoryblokComponentProps<
   T extends Record<string, unknown> = Record<string, unknown>,
 > {
-  block: StoryblokBlockData & T;
+  block: BlockContent & T;
 }
+
+export type { BlockContent };

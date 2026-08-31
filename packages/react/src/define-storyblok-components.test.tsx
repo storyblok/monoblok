@@ -2,7 +2,7 @@ import React, { forwardRef, memo, useState, useEffect, Suspense } from "react";
 import { describe, it, expect, vi, expectTypeOf } from "vitest";
 import type { ReactNode } from "react";
 import { render, waitFor, act } from "@testing-library/react";
-import type { BlockContent } from "./types";
+import type { BlockContent, StoryblokComponentProps, StoryblokEditableProps } from "./types";
 import { defineStoryblokComponents } from "./define-storyblok-components";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -604,6 +604,138 @@ describe("registry is pre-computed at factory time", () => {
     // makeFallback() is called exactly once (at the call-site above, i.e. factory time).
     // Rendering StoryblokComponent multiple times must not increment the count.
     expect(fallbackCallCount).toBe(1);
+  });
+});
+
+// ─── editable injection ───────────────────────────────────────────────────────
+//
+// StoryblokComponent calls storyblokEditable(block) and passes the result as the
+// `editable` prop so block components never need to import or call it themselves.
+//
+// storyblokEditable returns:
+//   {}                               — when block._editable is absent / malformed
+//   { "data-blok-c", "data-blok-uid" } — when block._editable is the comment format
+
+const editableComment = (id: string, uid: string) =>
+  `<!--#storyblok#${JSON.stringify({ id, uid })}-->`;
+
+describe("StoryblokComponent — editable injection", () => {
+  it("passes editable={} to registered components when block has no _editable", () => {
+    let received: unknown;
+    function Widget({ block: _block, editable }: { block: BlockContent; editable?: unknown }) {
+      received = editable;
+      return <div data-testid="widget" />;
+    }
+    const { StoryblokComponent } = defineStoryblokComponents({ components: { widget: Widget } });
+    const block = makeBlockData({ component: "widget" });
+    render(<StoryblokComponent block={block} />);
+    expect(received).toEqual({});
+  });
+
+  it("passes data-blok-c and data-blok-uid via editable when block._editable is set", () => {
+    let received: Record<string, string> | undefined;
+    function Widget({ block: _block, editable }: { block: BlockContent; editable?: unknown }) {
+      received = editable as Record<string, string>;
+      return <div data-testid="widget" />;
+    }
+    const { StoryblokComponent } = defineStoryblokComponents({ components: { widget: Widget } });
+    const block = makeBlockData({
+      component: "widget",
+      _editable: editableComment("story-1", "uid-abc"),
+    });
+    render(<StoryblokComponent block={block} />);
+    expect(received).toMatchObject({
+      "data-blok-c": JSON.stringify({ id: "story-1", uid: "uid-abc" }),
+      "data-blok-uid": "story-1-uid-abc",
+    });
+  });
+
+  it("passes editable to the config.fallback component when block type is unregistered", () => {
+    let received: unknown;
+    function FallbackWithEditable({
+      block: _b,
+      editable,
+    }: {
+      block: BlockContent;
+      editable?: unknown;
+    }) {
+      received = editable;
+      return <div data-testid="fallback" />;
+    }
+    const { StoryblokComponent } = defineStoryblokComponents({
+      components: {},
+      fallback: FallbackWithEditable,
+    });
+    const block = makeBlockData({
+      component: "missing",
+      _editable: editableComment("s1", "u1"),
+    });
+    render(<StoryblokComponent block={block} />);
+    expect(received).toMatchObject({ "data-blok-uid": "s1-u1" });
+  });
+
+  it("passes editable through a Suspense-wrapped component", async () => {
+    let received: unknown;
+    function SlowWidget({ block: _b, editable }: { block: BlockContent; editable?: unknown }) {
+      received = editable;
+      return <div data-testid="slow-widget" />;
+    }
+    const LazyWidget = React.lazy(
+      () =>
+        new Promise<{ default: typeof SlowWidget }>((resolve) =>
+          setTimeout(() => resolve({ default: SlowWidget }), 10),
+        ),
+    );
+    const { StoryblokComponent } = defineStoryblokComponents({
+      components: {
+        widget: { component: LazyWidget, fallback: <div>loading</div>, suspense: true },
+      },
+    });
+    const block = makeBlockData({
+      component: "widget",
+      _editable: editableComment("s2", "u2"),
+    });
+    render(<StoryblokComponent block={block} />);
+    await waitFor(() => expect(received).toMatchObject({ "data-blok-uid": "s2-u2" }));
+  });
+
+  it("passes editable to each block independently when rendering an array", () => {
+    const received: Array<unknown> = [];
+    function Widget({ block: _b, editable }: { block: BlockContent; editable?: unknown }) {
+      received.push(editable);
+      return <div data-testid="widget" />;
+    }
+    const { StoryblokComponent } = defineStoryblokComponents({ components: { widget: Widget } });
+    const blockA = makeBlockData({
+      component: "widget",
+      _uid: "a",
+      _editable: editableComment("s1", "a"),
+    });
+    const blockB = makeBlockData({ component: "widget", _uid: "b" }); // no _editable
+    render(<StoryblokComponent block={[blockA, blockB]} />);
+    expect(received[0]).toMatchObject({ "data-blok-uid": "s1-a" });
+    expect(received[1]).toEqual({});
+  });
+});
+
+// ─── StoryblokComponentProps type ────────────────────────────────────────────
+
+describe("StoryblokComponentProps — type", () => {
+  it("has block and editable keys", () => {
+    type Props = StoryblokComponentProps;
+    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable">();
+  });
+
+  it("editable is optional", () => {
+    type Props = StoryblokComponentProps;
+    // Should compile: omitting editable is valid
+    const _p: Props = { block: pageBlock };
+    void _p;
+  });
+
+  it("editable is typed as StoryblokEditableProps", () => {
+    type Props = StoryblokComponentProps;
+    expectTypeOf<Props["editable"]>().toEqualTypeOf<StoryblokEditableProps | undefined>();
   });
 });
 

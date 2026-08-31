@@ -1,15 +1,20 @@
 import { type ComponentType, type ReactNode, Suspense } from "react";
+import { storyblokEditable } from "@storyblok/live-preview";
 import type { BlockContent } from "./types";
 import { createStoryblokRichText } from "./richtext/create-storyblok-richtext";
 
-/** Internal type: how the registry calls components (always passes BlockContent) */
-type BlockComponentType = ComponentType<{ block: BlockContent }>;
+/** Attributes returned by {@link storyblokEditable} — spread onto the root element of a block component. */
+type EditableProps = ReturnType<typeof storyblokEditable>;
+
+/** Internal type: how the registry calls components (always passes BlockContent and editable). */
+type BlockComponentType = ComponentType<{ block: BlockContent; editable?: EditableProps }>;
 
 /**
  * Registration type: accepts any component whose block prop is a subtype of BlockContent.
  * Using `any` intentionally avoids contravariance errors for components with specific block shapes.
+ * `editable` is optional so existing components that don't declare it remain assignable.
  */
-type AnyBlockComponent = ComponentType<{ block: any }>;
+type AnyBlockComponent = ComponentType<{ block: any; editable?: EditableProps }>;
 
 /** A value accepted as a Suspense fallback (passed as `<Skeleton />`). */
 export type SuspenseFallback = ReactNode;
@@ -165,11 +170,12 @@ export function defineStoryblokComponents(
 
     // ── Single block path — O(1) Map.get + one branch ───────────────────────
     const resolved = registry.get(block.component);
+    const editable = storyblokEditable(block);
 
     if (!resolved) {
       if (config.fallback) {
         const FallbackComponent = config.fallback;
-        return <FallbackComponent block={block} {...rest} />;
+        return <FallbackComponent block={block} editable={editable} {...rest} />;
       }
       console.warn(`[Storyblok] No component registered for "${block.component}".`);
       return null;
@@ -180,12 +186,12 @@ export function defineStoryblokComponents(
     if (needsSuspense) {
       return (
         <Suspense fallback={fallbackNode}>
-          <Component block={block} {...rest} />
+          <Component block={block} editable={editable} {...rest} />
         </Suspense>
       );
     }
 
-    return <Component block={block} {...rest} />;
+    return <Component block={block} editable={editable} {...rest} />;
   }
 
   StoryblokComponent.displayName = "StoryblokComponent";

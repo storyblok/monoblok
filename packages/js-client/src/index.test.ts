@@ -1792,6 +1792,52 @@ describe("storyblokClient", () => {
         }),
       );
     });
+
+    it("should join excluding_story_fields array into a comma-separated string", async () => {
+      const storySlug = "test-story";
+      const mockStoryResponse = {
+        data: { story: { id: 123, uuid: "test-uuid", name: "Test Story", content: {} } },
+        headers: {},
+        status: 200,
+      };
+      const mockGet = vi.fn().mockResolvedValue(mockStoryResponse);
+      client.client = { get: mockGet, post: vi.fn(), setFetchOptions: vi.fn() };
+
+      await client.get(`cdn/stories/${storySlug}`, {
+        version: "draft",
+        excluding_story_fields: ["translated_slugs", "alternates", "created_at"],
+      });
+
+      expect(mockGet).toHaveBeenCalledWith(
+        `/cdn/stories/${storySlug}`,
+        expect.objectContaining({
+          excluding_story_fields: "translated_slugs,alternates,created_at",
+        }),
+      );
+    });
+
+    it("should pass excluding_story_fields string through unchanged", async () => {
+      const storySlug = "test-story";
+      const mockStoryResponse = {
+        data: { story: { id: 123, uuid: "test-uuid", name: "Test Story", content: {} } },
+        headers: {},
+        status: 200,
+      };
+      const mockGet = vi.fn().mockResolvedValue(mockStoryResponse);
+      client.client = { get: mockGet, post: vi.fn(), setFetchOptions: vi.fn() };
+
+      await client.get(`cdn/stories/${storySlug}`, {
+        version: "draft",
+        excluding_story_fields: "translated_slugs,alternates",
+      });
+
+      expect(mockGet).toHaveBeenCalledWith(
+        `/cdn/stories/${storySlug}`,
+        expect.objectContaining({
+          excluding_story_fields: "translated_slugs,alternates",
+        }),
+      );
+    });
   });
 
   describe("dynamic Rate Limiting", () => {

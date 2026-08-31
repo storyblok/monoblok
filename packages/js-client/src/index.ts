@@ -187,6 +187,15 @@ export class Storyblok {
       params.resolve_relations = decodeIfEncoded(params.resolve_relations);
     }
 
+    if (Array.isArray(params.excluding_story_fields)) {
+      // Join array to the comma-separated string the API expects.
+      // Cast required: the public type is a strict literal union; the wire
+      // format is the joined string which does not match that union.
+      params.excluding_story_fields = params.excluding_story_fields.join(
+        ",",
+      ) as (typeof params)["excluding_story_fields"];
+    }
+
     if (typeof params.resolve_relations !== "undefined") {
       params.resolve_level = 2;
     }

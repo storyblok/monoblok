@@ -20,7 +20,7 @@ export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponen
     feature: Feature,
     weather_widget: {
       component: WeatherWidget,
-      fallback: WeatherWidgetSkeleton,
+      fallback: <WeatherWidgetSkeleton />,
       suspense: true,
     },
   },

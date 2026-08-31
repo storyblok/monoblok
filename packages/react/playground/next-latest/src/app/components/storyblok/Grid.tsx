@@ -1,8 +1,8 @@
 import { StoryblokComponent } from "@/lib/storyblok";
-import type { StoryblokBlockData, StoryblokComponentProps } from "@storyblok/react";
+import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 
-type GridProps = StoryblokComponentProps<{ columns: StoryblokBlockData[] }>;
+type GridProps = StoryblokComponentProps<{ columns: BlockContent[] }>;
 
 const Grid = ({ block }: GridProps) => {
   if (!block?.columns) {

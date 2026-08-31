@@ -1,8 +1,8 @@
-import type { StoryblokBlockData, StoryblokComponentProps } from "@storyblok/react";
+import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 import { StoryblokComponent } from "@/lib/storyblok";
 
-type PageProps = StoryblokComponentProps<{ body: StoryblokBlockData[] }>;
+type PageProps = StoryblokComponentProps<{ body: BlockContent[] }>;
 
 const Page = ({ block }: PageProps) => (
   <main {...storyblokEditable(block)}>

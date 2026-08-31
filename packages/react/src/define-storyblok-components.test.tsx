@@ -1,18 +1,20 @@
-import React, { forwardRef, memo } from "react";
+import React, { forwardRef, memo, useState, useEffect, Suspense } from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { render, waitFor, act } from "@testing-library/react";
 import type { StoryblokBlockData } from "./types";
 import { defineStoryblokComponents } from "./define-storyblok-components";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const pageBlock = { component: "page", _uid: "uid-page" } as StoryblokBlockData;
-const teaserBlock = {
-  component: "teaser",
-  _uid: "uid-teaser",
-  title: "Hello",
-} as StoryblokBlockData;
-const unknownBlock = { component: "unknown", _uid: "uid-unknown" } as StoryblokBlockData;
+function makeBlockData(
+  overrides: { component: string } & Partial<StoryblokBlockData>,
+): StoryblokBlockData {
+  return { _uid: "test-uid", ...overrides };
+}
+
+const pageBlock = makeBlockData({ component: "page", _uid: "uid-page" });
+const teaserBlock = makeBlockData({ component: "teaser", _uid: "uid-teaser", title: "Hello" });
+const unknownBlock = makeBlockData({ component: "unknown", _uid: "uid-unknown" });
 
 function Page({ block }: { block: StoryblokBlockData }) {
   return <div data-testid="page">{block._uid}</div>;
@@ -51,7 +53,7 @@ describe("defineStoryblokComponents", () => {
       const { StoryblokComponent } = defineStoryblokComponents({
         components: { widget: WithExtra },
       });
-      const block = { component: "widget", _uid: "w1" } as StoryblokBlockData;
+      const block = makeBlockData({ component: "widget" });
       const { getByTestId } = render(<StoryblokComponent block={block} extra="hello" />);
       expect(getByTestId("extra")).toHaveTextContent("hello");
     });
@@ -120,7 +122,7 @@ describe("defineStoryblokComponents", () => {
           teaser: {
             component: LazyTeaser,
             fallback: <div data-testid="skeleton">loading</div>,
-            suspense: true,
+            // suspense omitted — auto-detected via isLazyComponent()
           },
         },
       });
@@ -300,6 +302,219 @@ describe("defineStoryblokComponents", () => {
       const resultB = defineStoryblokComponents({ components: { teaser: Teaser } });
       // Each registry has its own pre-computed component — they must not be the same reference
       expect(resultA.StoryblokRichText).not.toBe(resultB.StoryblokRichText);
+    });
+  });
+
+  // ─── next/dynamic compatibility ───────────────────────────────────────────
+  //
+  // next/dynamic is NOT one function. The compiler aliases `next/dynamic` to one
+  // of two runtime implementations depending on the router:
+  //
+  //   App Router  → next/dist/shared/lib/lazy-dynamic/loadable.js
+  //                 Returns a plain function (LoadableComponent).
+  //                 Internally uses React.lazy but wraps with Fragment (not
+  //                 Suspense) when ssr:true and no `loading` option, so the
+  //                 suspension propagates to the nearest ancestor boundary.
+  //
+  //   Pages Router → next/dist/shared/lib/loadable.shared-runtime.js
+  //                  Returns React.forwardRef(LoadableComponent).
+  //                  Manages loading state internally via useSyncExternalStore;
+  //                  never throws a Promise, so Suspense boundaries are inert.
+  //
+  // Neither variant carries $$typeof Symbol(react.lazy), so isLazyComponent()
+  // returns false for both. Without suspense:true the fallback never renders.
+  //
+  // The helpers below are structural fidelity mocks — they reproduce the exact
+  // return shapes from the real Next.js 16.1.6 source without importing Next.
+
+  /**
+   * Mimics next/dist/shared/lib/lazy-dynamic/loadable.js (App Router).
+   * Returns a plain function that wraps React.lazy in a Fragment.
+   * typeof === "function", no $$typeof → isLazyComponent() === false.
+   */
+  function makeAppRouterDynamic<T extends React.ComponentType<any>>(
+    importFn: () => Promise<{ default: T }>,
+  ): React.FC<any> {
+    const Lazy = React.lazy(importFn);
+    // Mirrors: const Wrap = hasSuspenseBoundary ? Suspense : Fragment
+    // With default ssr:true and no loading option, hasSuspenseBoundary === false.
+    function LoadableComponent(props: any) {
+      return (
+        <>
+          <Lazy {...props} />
+        </>
+      );
+    }
+    LoadableComponent.displayName = "LoadableComponent";
+    return LoadableComponent;
+  }
+
+  /**
+   * Mimics next/dist/shared/lib/loadable.shared-runtime.js (Pages Router).
+   * Returns React.forwardRef(LoadableComponent).
+   * typeof === "object", $$typeof === Symbol(react.forward_ref) →
+   * isLazyComponent() === false, isWrappedComponent() === true.
+   * Never suspends — manages loading state internally.
+   */
+  function makePagesRouterDynamic<T extends React.ComponentType<any>>(
+    importFn: () => Promise<{ default: T }>,
+  ) {
+    return forwardRef<unknown, any>((props, _ref) => {
+      const [Comp, setComp] = useState<T | null>(null);
+      useEffect(() => {
+        importFn().then((mod) => setComp(() => mod.default));
+      }, []);
+      // Default loading option is null in Pages Router dynamic.
+      if (!Comp) return null;
+      return <Comp {...props} />;
+    });
+  }
+
+  // Helper to build a deferred import promise so tests can control resolution.
+  function makeDeferred<T extends React.ComponentType<any>>(
+    component: T,
+  ): { importFn: () => Promise<{ default: T }>; resolve: () => void } {
+    let resolveFn!: (v: { default: T }) => void;
+    const promise = new Promise<{ default: T }>((r) => {
+      resolveFn = r;
+    });
+    return {
+      importFn: () => promise,
+      resolve: () => resolveFn({ default: component }),
+    };
+  }
+
+  describe("next/dynamic — structural shape assertions", () => {
+    it("App Router dynamic returns a plain function (typeof === 'function', no $$typeof)", () => {
+      const { importFn } = makeDeferred(Page);
+      const DynamicPage = makeAppRouterDynamic(importFn);
+
+      expect(typeof DynamicPage).toBe("function");
+      expect((DynamicPage as any).$$typeof).toBeUndefined();
+    });
+
+    it("Pages Router dynamic returns a forwardRef object ($$typeof === Symbol(react.forward_ref))", () => {
+      const { importFn } = makeDeferred(Page);
+      const DynamicPage = makePagesRouterDynamic(importFn);
+
+      expect(typeof DynamicPage).toBe("object");
+      expect((DynamicPage as any).$$typeof?.toString()).toBe("Symbol(react.forward_ref)");
+    });
+  });
+
+  describe("next/dynamic — App Router (plain function)", () => {
+    it("isLazyComponent returns false → no auto-Suspense → fallback never renders without suspense:true", async () => {
+      const { importFn, resolve } = makeDeferred(Page);
+      const DynamicPage = makeAppRouterDynamic(importFn);
+
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: {
+          page: {
+            component: DynamicPage,
+            fallback: <div data-testid="skeleton">loading</div>,
+            // suspense: true intentionally omitted
+          },
+        },
+      });
+
+      // Wrap in a Suspense so the suspending Lazy doesn't crash the test tree.
+      const { queryByTestId } = render(
+        <Suspense fallback={<div data-testid="outer-boundary">outer</div>}>
+          <StoryblokComponent block={pageBlock} />
+        </Suspense>,
+      );
+
+      // Our skeleton is absent — suspension bubbled to the outer boundary.
+      expect(queryByTestId("skeleton")).toBeNull();
+      expect(queryByTestId("outer-boundary")).toBeInTheDocument();
+
+      await act(async () => resolve());
+      await waitFor(() => expect(queryByTestId("page")).toBeInTheDocument());
+    });
+
+    it("suspense:true adds our boundary → fallback renders, then content resolves", async () => {
+      const { importFn, resolve } = makeDeferred(Page);
+      const DynamicPage = makeAppRouterDynamic(importFn);
+
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: {
+          page: {
+            component: DynamicPage,
+            fallback: <div data-testid="skeleton">loading</div>,
+            suspense: true,
+          },
+        },
+      });
+
+      const { getByTestId } = render(<StoryblokComponent block={pageBlock} />);
+
+      expect(getByTestId("skeleton")).toBeInTheDocument();
+
+      await act(async () => resolve());
+      await waitFor(() => expect(getByTestId("page")).toBeInTheDocument());
+    });
+  });
+
+  describe("next/dynamic — Pages Router (forwardRef)", () => {
+    it("isLazyComponent returns false → no auto-Suspense → our fallback never renders", async () => {
+      const { importFn, resolve } = makeDeferred(Page);
+      const DynamicPage = makePagesRouterDynamic(importFn);
+
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: {
+          page: {
+            component: DynamicPage,
+            fallback: <div data-testid="skeleton">loading</div>,
+            // suspense: true intentionally omitted
+          },
+        },
+      });
+
+      const { queryByTestId } = render(<StoryblokComponent block={pageBlock} />);
+
+      // Our skeleton never renders; Pages Router manages loading internally (renders null).
+      expect(queryByTestId("skeleton")).toBeNull();
+      expect(queryByTestId("page")).toBeNull();
+
+      await act(async () => resolve());
+      await waitFor(() => expect(queryByTestId("page")).toBeInTheDocument());
+    });
+
+    it("suspense:true wraps in our Suspense but Pages Router never suspends → fallback still absent", async () => {
+      const { importFn, resolve } = makeDeferred(Page);
+      const DynamicPage = makePagesRouterDynamic(importFn);
+
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: {
+          page: {
+            component: DynamicPage,
+            fallback: <div data-testid="skeleton">loading</div>,
+            suspense: true, // forced on — but forwardRef component never throws
+          },
+        },
+      });
+
+      const { queryByTestId } = render(<StoryblokComponent block={pageBlock} />);
+
+      // Suspense boundary IS in the tree but forwardRef never throws a Promise,
+      // so the fallback is never triggered. The component renders null internally.
+      expect(queryByTestId("skeleton")).toBeNull();
+      expect(queryByTestId("page")).toBeNull();
+
+      await act(async () => resolve());
+      await waitFor(() => expect(queryByTestId("page")).toBeInTheDocument());
+    });
+
+    it("isWrappedComponent returns true for Pages Router forwardRef passed directly (no config object)", () => {
+      const { importFn } = makeDeferred(Page);
+      const DynamicPage = makePagesRouterDynamic(importFn);
+
+      // When passed directly (not in a config object), isWrappedComponent detects it
+      // as a forwardRef and normalizeEntry wraps it as { component: DynamicPage }.
+      // No fallback is extracted since there was none to begin with.
+      expect(() => {
+        defineStoryblokComponents({ components: { page: DynamicPage } });
+      }).not.toThrow();
     });
   });
 });

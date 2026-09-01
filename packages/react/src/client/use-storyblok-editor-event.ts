@@ -1,8 +1,7 @@
 "use client";
 
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
-import type { BridgeParams } from "@storyblok/live-preview";
-import type { Story } from "@storyblok/api-client";
+import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import { useEffect, useRef } from "react";
 
 /** Options for {@link useStoryblokEditorEvent}. */
@@ -29,7 +28,7 @@ export interface UseStoryblokEditorEventOptions {
  * unless the component unmounts.
  */
 export function useStoryblokEditorEvent(
-  callback: (story: Story) => void,
+  callback: (story: LivePreviewStory) => void,
   { debounceMs, bridgeOptions }: UseStoryblokEditorEventOptions = {},
 ): void {
   const callbackRef = useRef(callback);
@@ -46,7 +45,7 @@ export function useStoryblokEditorEvent(
   useEffect(() => {
     let mounted = true;
     let unsubscribe: (() => void) | undefined;
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
     const setup = async () => {
       const fn = await onStoryblokEditorEvent((updatedStory) => {
@@ -55,14 +54,10 @@ export function useStoryblokEditorEvent(
         const ms = debounceRef.current;
 
         if (ms !== undefined) {
-          if (debounceTimer !== null) clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            debounceTimer = null;
-            if (!mounted) return;
-            callbackRef.current(updatedStory as Story);
-          }, ms);
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => callbackRef.current(updatedStory), ms);
         } else {
-          callbackRef.current(updatedStory as Story);
+          callbackRef.current(updatedStory);
         }
       }, bridgeOptions);
 
@@ -77,7 +72,7 @@ export function useStoryblokEditorEvent(
 
     return () => {
       mounted = false;
-      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      clearTimeout(debounceTimer);
       unsubscribe?.();
     };
   }, []);

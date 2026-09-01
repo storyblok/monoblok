@@ -37,6 +37,9 @@ export function useStoryblokState(story: Story, options: UseStoryblokStateOption
     setCurrent(story);
   }, [story.id]); // oxlint-disable-line react-hooks/exhaustive-deps -- intentional: sync on id change only, not on every render-phase story reference
 
-  useStoryblokEditorEvent((updatedStory) => setCurrent(updatedStory), options);
+  useStoryblokEditorEvent(
+    (updatedStory) => setCurrent((prev) => ({ ...prev, ...updatedStory }) as Story),
+    options,
+  );
   return current;
 }

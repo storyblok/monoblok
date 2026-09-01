@@ -6,7 +6,7 @@ import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 // into module-graph edges that fail on React <19, even when the import is never
 // executed. Reflect.get is opaque to bundler static analysis.
 import * as React from "react";
-import { Component, type ReactNode, startTransition, Suspense, useState } from "react";
+import { Component, type ReactNode, startTransition, Suspense, useRef, useState } from "react";
 import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
 /** Props for the {@link StoryblokPreviewRsc} component. */
@@ -173,15 +173,44 @@ export function StoryblokPreviewRsc({
 
   const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(null);
 
+  // One server action at a time. A story arriving while an action is in-flight
+  // is held in `queued` (replacing any earlier queued story) and dispatched once
+  // the current action settles. This bounds concurrent server work to one action
+  // instead of one per debounce window, preventing redundant re-fetches in every
+  // async Server Component in the subtree.
+  const inFlight = useRef(false);
+  const queued = useRef<LivePreviewStory | null>(null);
+
+  function run(story: LivePreviewStory) {
+    inFlight.current = true;
+    // Call renderContent eagerly (outside the transition) so the Server Action
+    // starts streaming its RSC response immediately.
+    const promise = renderContent(story).finally(() => {
+      inFlight.current = false;
+      const next = queued.current;
+      queued.current = null;
+      if (next) run(next);
+    });
+    // Suppress the unhandled-rejection warning that fires in the window between
+    // setLivePromise and React's use() subscribing to the promise. React.use()
+    // handles the rejection by throwing to the error boundary; this no-op catch
+    // exists only to satisfy the JS engine's "unhandled rejection" detector.
+    promise.catch(() => {});
+    // Wrap setLivePromise in startTransition so React keeps the current tree on
+    // screen while LiveContent re-suspends, preventing the duplicate-DOM window
+    // that confuses the bridge.
+    startTransition(() => setLivePromise(promise));
+  }
+
   useStoryblokEditorEvent(
     (updatedStory) => {
-      // Call renderContent eagerly (outside the transition) so the Server Action
-      // starts streaming its RSC response immediately.
-      // Wrapping setLivePromise in startTransition tells React to keep the
-      // current tree on screen while LiveContent re-suspends, which prevents
-      // the fallback from showing and the duplicate-DOM window it creates.
-      const promise = renderContent(updatedStory);
-      startTransition(() => setLivePromise(promise));
+      if (inFlight.current) {
+        // Replace any previously queued story with the latest — intermediate
+        // stories are intentionally discarded.
+        queued.current = updatedStory;
+        return;
+      }
+      run(updatedStory);
     },
     { debounceMs, bridgeOptions },
   );

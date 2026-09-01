@@ -251,6 +251,214 @@ describe("StoryblokPreviewRsc", () => {
     consoleSpy.mockRestore();
   });
 
+  // ─── Concurrent action gating ──────────────────────────────────────────────
+  //
+  // Each test below fires an event while a server action is still in-flight.
+  // The desired behaviour is: at most one action running at a time; the latest
+  // story that arrived mid-flight is queued and dispatched once the current
+  // action settles (resolve or reject); intermediate stories are discarded.
+
+  it("does not start a second renderContent call while the first is in-flight", async () => {
+    let resolveFirst!: (node: ReactNode) => void;
+    const firstStory = makeStory({ slug: "first" });
+    const secondStory = makeStory({ slug: "second" });
+
+    const renderContent = vi.fn().mockImplementationOnce(
+      () =>
+        new Promise<ReactNode>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+
+    render(
+      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
+        <div>initial</div>
+      </StoryblokPreviewRsc>,
+    );
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // First event — action is now in-flight (unresolved promise)
+    await act(async () => {
+      editorCallback!(firstStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledOnce();
+
+    // Second event fires while first is still pending
+    await act(async () => {
+      editorCallback!(secondStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+
+    // Must still be one — the second action must not have started yet
+    expect(renderContent).toHaveBeenCalledOnce();
+
+    // Clean up — resolve so the component doesn't leak a pending promise
+    await act(async () => {
+      resolveFirst(<div>first</div>);
+      await vi.runAllTimersAsync();
+    });
+  });
+
+  it("runs the queued story after the in-flight action resolves", async () => {
+    let resolveFirst!: (node: ReactNode) => void;
+    const firstStory = makeStory({ slug: "first" });
+    const secondStory = makeStory({ slug: "second" });
+
+    const renderContent = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(<div data-testid="second-live">second</div>);
+
+    const { getByTestId } = render(
+      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
+        <div>initial</div>
+      </StoryblokPreviewRsc>,
+    );
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // Start first (in-flight), then queue second
+    await act(async () => {
+      editorCallback!(firstStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+    await act(async () => {
+      editorCallback!(secondStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledOnce();
+
+    // Resolving the first should trigger the queued second
+    await act(async () => {
+      resolveFirst(<div data-testid="first-live">first</div>);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledTimes(2);
+    expect(renderContent).toHaveBeenNthCalledWith(2, secondStory);
+    expect(getByTestId("second-live")).toBeInTheDocument();
+  });
+
+  it("discards intermediate stories and runs only the latest queued story", async () => {
+    let resolveFirst!: (node: ReactNode) => void;
+    const firstStory = makeStory({ slug: "first" });
+    const middleStory = makeStory({ slug: "middle" });
+    const lastStory = makeStory({ slug: "last" });
+
+    const renderContent = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockResolvedValue(<div>content</div>);
+
+    render(
+      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
+        <div>initial</div>
+      </StoryblokPreviewRsc>,
+    );
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // First event starts the in-flight action
+    await act(async () => {
+      editorCallback!(firstStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+
+    // Two more events arrive mid-flight — only the last should be queued
+    await act(async () => {
+      editorCallback!(middleStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+    await act(async () => {
+      editorCallback!(lastStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      resolveFirst(<div>first</div>);
+      await vi.runAllTimersAsync();
+    });
+
+    // Only two calls total: first + last. middle must have been discarded.
+    expect(renderContent).toHaveBeenCalledTimes(2);
+    expect(renderContent).toHaveBeenNthCalledWith(2, lastStory);
+    expect(renderContent).not.toHaveBeenCalledWith(middleStory);
+  });
+
+  it("runs the queued story even when the in-flight action rejects", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    let rejectFirst!: (err: Error) => void;
+    const firstStory = makeStory({ slug: "first" });
+    const secondStory = makeStory({ slug: "second" });
+
+    const renderContent = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((_, reject) => {
+            rejectFirst = reject;
+          }),
+      )
+      .mockResolvedValueOnce(<div data-testid="second-live">second</div>);
+
+    const { getByTestId } = render(
+      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
+        <div data-testid="initial">initial</div>
+      </StoryblokPreviewRsc>,
+    );
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // Start first (in-flight), then queue second
+    await act(async () => {
+      editorCallback!(firstStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+    await act(async () => {
+      editorCallback!(secondStory);
+      vi.advanceTimersByTime(0);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledOnce();
+
+    // Rejecting the first should still trigger the queued second
+    await act(async () => {
+      rejectFirst(new Error("server error"));
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledTimes(2);
+    expect(renderContent).toHaveBeenNthCalledWith(2, secondStory);
+    expect(getByTestId("second-live")).toBeInTheDocument();
+
+    consoleSpy.mockRestore();
+  });
+
   it("unsubscribes and clears the debounce timer on unmount", async () => {
     const renderContent = vi.fn();
     const { unmount } = render(

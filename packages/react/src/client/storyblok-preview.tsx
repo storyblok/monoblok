@@ -37,5 +37,3 @@ export function StoryblokPreview({ story, children, ...options }: StoryblokPrevi
   const current = useStoryblokState(story, options);
   return <>{children(current)}</>;
 }
-
-export default StoryblokPreview;

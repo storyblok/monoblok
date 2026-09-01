@@ -1,6 +1,5 @@
 "use client";
-import type { BridgeParams } from "@storyblok/live-preview";
-import type { Story } from "@storyblok/api-client";
+import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 // `React` namespace imported separately so `React.use` is a runtime property
 // lookup rather than a static named import. This means the module loads on
 // React <19 without a SyntaxError, even though StoryblokPreviewRsc itself
@@ -14,7 +13,7 @@ export interface StoryblokPreviewRscProps {
   /**
    * Server action responsible for rendering updated content.
    */
-  renderContent: (story: Story) => Promise<ReactNode>;
+  renderContent: (story: LivePreviewStory) => Promise<ReactNode>;
   /**
    * Initial server-rendered content passed as children.
    *

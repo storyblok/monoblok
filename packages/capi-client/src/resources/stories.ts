@@ -238,7 +238,10 @@ export function createStoriesResource<
     > => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const { excluding_story_fields, ...restQuery } = query;
-      const normalizedQuery = { ...restQuery, ...excludingStoryFieldsParam(excluding_story_fields) };
+      const normalizedQuery = {
+        ...restQuery,
+        ...excludingStoryFieldsParam(excluding_story_fields),
+      };
       const typedQuery = normalizedQuery as NonNullable<GetStoryByIdData["query"]>;
       const resolvedQuery =
         typeof identifier === "string" && UUID_RE.test(identifier) && !typedQuery.find_by
@@ -320,7 +323,10 @@ export function createStoriesResource<
     > => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
       const { excluding_story_fields, ...restQuery } = query;
-      const normalizedQuery = { ...restQuery, ...excludingStoryFieldsParam(excluding_story_fields) };
+      const normalizedQuery = {
+        ...restQuery,
+        ...excludingStoryFieldsParam(excluding_story_fields),
+      };
       const typedQuery = normalizedQuery as NonNullable<ListStoriesData["query"]>;
       const requestPath = "/v2/cdn/stories";
       return requestWithCache(

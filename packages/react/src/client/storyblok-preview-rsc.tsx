@@ -186,5 +186,3 @@ export function StoryblokPreviewRsc({
     </LiveContentBoundary>
   );
 }
-
-export default StoryblokPreviewRsc;

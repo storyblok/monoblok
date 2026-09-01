@@ -42,6 +42,7 @@ import type {
   ISbStory,
   ISbStoryData,
   ISbStoryParams,
+  ExcludableStoryField,
 } from "./interfaces";
 
 export * from "./interfaces";
@@ -73,6 +74,18 @@ const _VERSION = {
 
 type ObjectValues<T> = T[keyof T];
 type Version = ObjectValues<typeof _VERSION>;
+
+/**
+ * Normalises `excluding_story_fields` to the comma-separated wire format.
+ * Returns `undefined` for an empty array or a missing value so the caller
+ * can omit the param entirely instead of sending an empty string.
+ */
+function normalizeExcludingStoryFields(
+  value: ExcludableStoryField | ExcludableStoryField[] | undefined,
+): string | undefined {
+  if (Array.isArray(value)) return value.length > 0 ? value.join(",") : undefined;
+  return value;
+}
 
 export class Storyblok {
   private client: SbFetch;
@@ -185,6 +198,16 @@ export class Storyblok {
     } else if (typeof params.resolve_relations === "string") {
       // Decode URL-encoded strings to prevent double-encoding
       params.resolve_relations = decodeIfEncoded(params.resolve_relations);
+    }
+
+    const normalizedExcluding = normalizeExcludingStoryFields(params.excluding_story_fields);
+    if (normalizedExcluding !== undefined) {
+      // Cast required: the public type is a strict literal union; the wire
+      // format is the joined string which does not match that union.
+      params.excluding_story_fields =
+        normalizedExcluding as (typeof params)["excluding_story_fields"];
+    } else {
+      delete params.excluding_story_fields;
     }
 
     if (typeof params.resolve_relations !== "undefined") {
@@ -576,6 +599,7 @@ export class Storyblok {
           version: params.version,
           starts_with: params.starts_with,
           by_uuids: chunks[chunkIndex].join(","),
+          excluding_story_fields: params.excluding_story_fields,
         });
 
         linksRes.data.stories.forEach((rel: ISbStoryData | ISbLinkURLObject | string) => {
@@ -619,6 +643,7 @@ export class Storyblok {
           starts_with: params.starts_with,
           by_uuids: chunks[chunkIndex].join(","),
           excluding_fields: params.excluding_fields,
+          excluding_story_fields: params.excluding_story_fields,
         });
 
         relationsRes.data.stories.forEach((rel: ISbStoryData) => {

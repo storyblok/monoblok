@@ -155,4 +155,31 @@ describe("fetchMissingRelations", () => {
       }),
     ).rejects.toBeDefined();
   });
+
+  it("should forward excluding_story_fields from baseQuery to the secondary request", async () => {
+    const seenExcludingStoryFields: Array<string | null> = [];
+
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }: { request: Request }) => {
+        const url = new URL(request.url);
+        seenExcludingStoryFields.push(url.searchParams.get("excluding_story_fields"));
+        const byUuids = url.searchParams.get("by_uuids") ?? "";
+        return HttpResponse.json({
+          stories: byUuids.split(",").map((uuid) => ({ uuid })),
+        });
+      }),
+    );
+
+    await fetchMissingRelations({
+      baseQuery: {
+        version: "draft",
+        excluding_story_fields: "translated_slugs,alternates",
+      },
+      client: createTestClient(),
+      throttleManager: passthroughThrottleManager,
+      uuids: ["rel-uuid-1"],
+    });
+
+    expect(seenExcludingStoryFields).toEqual(["translated_slugs,alternates"]);
+  });
 });

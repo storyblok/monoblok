@@ -1535,6 +1535,106 @@ describe("storyblokClient", () => {
         expect.anything(),
       );
     });
+
+    it("should forward excluding_story_fields to secondary requests when resolving relations", async () => {
+      const TEST_UUID = "rel-uuid-1";
+
+      const mockResponse = {
+        data: {
+          story: {
+            uuid: "story-uuid",
+            content: { _uid: "uid", component: "page", author: TEST_UUID },
+          },
+          rel_uuids: [TEST_UUID],
+        },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      };
+
+      const mockRelationsResponse = {
+        data: {
+          stories: [
+            { uuid: TEST_UUID, name: "Author", content: { component: "author", _uid: TEST_UUID } },
+          ],
+        },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      };
+
+      const mockGet = vi
+        .fn()
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockRelationsResponse);
+
+      client.client = { get: mockGet, post: vi.fn(), setFetchOptions: vi.fn() };
+
+      await client.get("cdn/stories/test", {
+        version: "draft",
+        resolve_relations: "page.author",
+        excluding_story_fields: ["translated_slugs", "alternates"],
+      });
+
+      // Second call is the relations fetch — it must carry excluding_story_fields
+      const relationsCallParams = mockGet.mock.calls[1][1];
+      expect(relationsCallParams).toHaveProperty(
+        "excluding_story_fields",
+        "translated_slugs,alternates",
+      );
+    });
+
+    it("should forward excluding_story_fields to secondary requests when resolving links", async () => {
+      const TEST_UUID = "link-uuid-1";
+
+      const mockResponse = {
+        data: {
+          story: {
+            uuid: "story-uuid",
+            content: { _uid: "uid", component: "page" },
+          },
+          link_uuids: [TEST_UUID],
+        },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      };
+
+      const mockLinksResponse = {
+        data: {
+          stories: [
+            {
+              uuid: TEST_UUID,
+              name: "Linked page",
+              content: { component: "page", _uid: TEST_UUID },
+            },
+          ],
+        },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      };
+
+      const mockGet = vi
+        .fn()
+        .mockResolvedValueOnce(mockResponse)
+        .mockResolvedValueOnce(mockLinksResponse);
+
+      client.client = { get: mockGet, post: vi.fn(), setFetchOptions: vi.fn() };
+
+      await client.get("cdn/stories/test", {
+        version: "draft",
+        resolve_links: "story",
+        excluding_story_fields: ["translated_slugs", "alternates"],
+      });
+
+      // Second call is the links fetch — it must carry excluding_story_fields
+      const linksCallParams = mockGet.mock.calls[1][1];
+      expect(linksCallParams).toHaveProperty(
+        "excluding_story_fields",
+        "translated_slugs,alternates",
+      );
+    });
   });
 
   // eslint-disable-next-line test/prefer-lowercase-title

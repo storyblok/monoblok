@@ -42,6 +42,7 @@ import type {
   ISbStory,
   ISbStoryData,
   ISbStoryParams,
+  ExcludableStoryField,
 } from "./interfaces";
 
 export * from "./interfaces";
@@ -203,7 +204,8 @@ export class Storyblok {
     if (normalizedExcluding !== undefined) {
       // Cast required: the public type is a strict literal union; the wire
       // format is the joined string which does not match that union.
-      params.excluding_story_fields = normalizedExcluding as (typeof params)["excluding_story_fields"];
+      params.excluding_story_fields =
+        normalizedExcluding as (typeof params)["excluding_story_fields"];
     } else {
       delete params.excluding_story_fields;
     }
@@ -597,6 +599,7 @@ export class Storyblok {
           version: params.version,
           starts_with: params.starts_with,
           by_uuids: chunks[chunkIndex].join(","),
+          excluding_story_fields: params.excluding_story_fields,
         });
 
         linksRes.data.stories.forEach((rel: ISbStoryData | ISbLinkURLObject | string) => {
@@ -640,6 +643,7 @@ export class Storyblok {
           starts_with: params.starts_with,
           by_uuids: chunks[chunkIndex].join(","),
           excluding_fields: params.excluding_fields,
+          excluding_story_fields: params.excluding_story_fields,
         });
 
         relationsRes.data.stories.forEach((rel: ISbStoryData) => {

@@ -331,6 +331,46 @@ describe("migrations run command", () => {
     expect(fetchStory).toHaveBeenCalledWith("12345", "517473243");
   });
 
+  it("should strip a leading slash from --starts-with so the prefix still matches", async () => {
+    preconditions.canMigrate();
+
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--starts-with",
+      "/en/blog/",
+    ]);
+
+    // MAPI matches `starts_with` literally and a `full_slug` never starts with a
+    // slash, so the slash the flag's own example used to show matched nothing.
+    expect(fetchStories).toHaveBeenCalledWith(
+      "12345",
+      expect.objectContaining({ starts_with: "en/blog/" }),
+    );
+  });
+
+  it("should parse --query into the structured filter_query MAPI requires", async () => {
+    preconditions.canMigrate();
+
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--query",
+      "[highlighted][in]=true",
+    ]);
+
+    expect(fetchStories).toHaveBeenCalledWith(
+      "12345",
+      expect.objectContaining({ filter_query: { highlighted: { in: "true" } } }),
+    );
+  });
+
   it("should read migration files from --from space and apply to --space", async () => {
     preconditions.canMigrateFromSpace();
 

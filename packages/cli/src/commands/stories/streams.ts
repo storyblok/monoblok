@@ -25,12 +25,26 @@ const getPipelineSlot = (): Sema => {
   return _pipelineSlot;
 };
 
+/**
+ * Reads a positive-integer pagination header.
+ *
+ * MAPI always sends `Total` and `Per-Page`, but if missing it would
+ * make `Number(null)`/`Number("")` collapse the page count to `0`/`NaN` and
+ * silently truncate the result set to the first page. Falling back to the
+ * caller's default keeps a missing header from looking like "no more data".
+ */
+const readPositiveIntHeader = (headers: Headers, name: string): number | undefined => {
+  const value = Number(headers.get(name));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
 export const fetchStoriesStream = ({
   spaceId,
   params = {},
   setTotalStories,
   setTotalPages,
   onIncrement,
+  onStoryListed,
   onPageSuccess,
   onPageError,
 }: {
@@ -38,7 +52,10 @@ export const fetchStoriesStream = ({
   params?: StoriesQueryParams;
   setTotalStories?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
+  /** Called once per fetched page, on success and on failure alike. */
   onIncrement?: () => void;
+  /** Called for every story the list endpoint yields, before it enters the pipeline. */
+  onStoryListed?: (story: Story) => void;
   onPageSuccess?: (page: number, total: number) => void;
   onPageError?: (error: Error, page: number, total: number) => void;
 }) => {
@@ -62,14 +79,15 @@ export const fetchStoriesStream = ({
         }
 
         const { headers } = result;
-        const total = Number(headers.get("Total"));
-        perPage = Number(headers.get("Per-Page"));
+        const total = readPositiveIntHeader(headers, "Total") ?? 0;
+        perPage = readPositiveIntHeader(headers, "Per-Page") ?? perPage;
         totalPages = Math.ceil(total / perPage);
         setTotalStories?.(total);
         setTotalPages?.(totalPages);
         onPageSuccess?.(page, totalPages);
 
         for (const story of result.stories) {
+          onStoryListed?.(story);
           yield story;
         }
 

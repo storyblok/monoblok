@@ -13,6 +13,7 @@
 | Utilities shared by sibling subcommands              | parent command directory (e.g. `schema/serialize.ts`, not `schema/push/serialize.ts`) — subcommands must not import from each other |
 | Shared CLI utilities                                 | `src/utils/`                                                                                                                        |
 | User-facing terminal output                          | `src/lib/ui/`                                                                                                                       |
+| JSONL on stdout/stdin, `-`, staged-run progress      | `src/lib/pipe/`                                                                                                                     |
 | Config resolution, global option behavior            | `src/lib/config/`                                                                                                                   |
 | Structured logs                                      | `src/lib/logger/`                                                                                                                   |
 | Machine-readable command reports                     | `src/lib/reporter/`                                                                                                                 |

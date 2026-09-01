@@ -1,4 +1,4 @@
-import Storyblok from "storyblok-js-client";
+import { createApiClient } from "@storyblok/api-client";
 import { getMapiClient } from "../../api";
 import { createPipelineBackpressureLock } from "../../utils/backpressure-lock";
 import { handleAPIError } from "../../utils/error/api-error";
@@ -157,6 +157,9 @@ export const downloadFile = async (filename: string) => {
   return response.arrayBuffer();
 };
 
+/** The one field `cdn/assets/me` is called for. The endpoint has no typed resource. */
+type SignedAssetResponse = { asset?: { signed_url?: string } };
+
 /**
  * Fetches a signed URL for a private asset from the Content Delivery API.
  */
@@ -166,16 +169,21 @@ export const getSignedAssetUrl = async (
   region?: RegionCode,
 ): Promise<string> => {
   try {
-    const client = new Storyblok({
+    const client = createApiClient({
       accessToken: assetToken,
       region: region || "eu",
+      // A failed lookup has to reach `handleAPIError` below, so an HTTP error
+      // must reject rather than resolve as `{ error }`.
+      throwOnError: true,
     });
 
-    const response = await client.get("cdn/assets/me", {
-      filename,
-    });
+    const { data } = await client.get("/v2/cdn/assets/me", { query: { filename } });
+    const signedUrl = (data as SignedAssetResponse | undefined)?.asset?.signed_url;
+    if (!signedUrl) {
+      throw new TypeError(`No signed URL returned for asset ${filename}`);
+    }
 
-    return response.data.asset.signed_url;
+    return signedUrl;
   } catch (maybeError) {
     handleAPIError("pull_asset", toError(maybeError));
   }

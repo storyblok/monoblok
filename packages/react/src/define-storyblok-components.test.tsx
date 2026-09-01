@@ -1,4 +1,13 @@
-import React, { forwardRef, memo, useState, useEffect, Suspense } from "react";
+import {
+  forwardRef,
+  lazy,
+  memo,
+  useState,
+  useEffect,
+  Suspense,
+  type ComponentType,
+  type FC,
+} from "react";
 import { describe, it, expect, vi, expectTypeOf } from "vitest";
 import type { ReactNode } from "react";
 import { render, waitFor, act } from "@testing-library/react";
@@ -88,7 +97,7 @@ describe("defineStoryblokComponents", () => {
     });
 
     it("wraps a component in Suspense when suspense: true, showing fallback then content", async () => {
-      const LazyPage = React.lazy(
+      const LazyPage = lazy(
         () =>
           new Promise<{ default: typeof Page }>((resolve) =>
             setTimeout(() => resolve({ default: Page }), 10),
@@ -109,8 +118,8 @@ describe("defineStoryblokComponents", () => {
       await waitFor(() => expect(getByTestId("page")).toBeInTheDocument());
     });
 
-    it("auto-wraps React.lazy components in Suspense without explicit suspense: true", async () => {
-      const LazyTeaser = React.lazy(
+    it("auto-wraps lazy components in Suspense without explicit suspense: true", async () => {
+      const LazyTeaser = lazy(
         () =>
           new Promise<{ default: typeof Teaser }>((resolve) =>
             setTimeout(() => resolve({ default: Teaser }), 10),
@@ -132,7 +141,7 @@ describe("defineStoryblokComponents", () => {
     });
 
     it("uses the registry-level suspenseFallback when the entry omits its own fallback", async () => {
-      const LazyPage = React.lazy(
+      const LazyPage = lazy(
         () =>
           new Promise<{ default: typeof Page }>((resolve) =>
             setTimeout(() => resolve({ default: Page }), 10),
@@ -311,7 +320,7 @@ describe("defineStoryblokComponents", () => {
   //
   //   App Router  → next/dist/shared/lib/lazy-dynamic/loadable.js
   //                 Returns a plain function (LoadableComponent).
-  //                 Internally uses React.lazy but wraps with Fragment (not
+  //                 Internally uses lazy but wraps with Fragment (not
   //                 Suspense) when ssr:true and no `loading` option, so the
   //                 suspension propagates to the nearest ancestor boundary.
   //
@@ -328,13 +337,13 @@ describe("defineStoryblokComponents", () => {
 
   /**
    * Mimics next/dist/shared/lib/lazy-dynamic/loadable.js (App Router).
-   * Returns a plain function that wraps React.lazy in a Fragment.
+   * Returns a plain function that wraps lazy in a Fragment.
    * typeof === "function", no $$typeof → isLazyComponent() === false.
    */
-  function makeAppRouterDynamic<T extends React.ComponentType<any>>(
+  function makeAppRouterDynamic<T extends ComponentType<any>>(
     importFn: () => Promise<{ default: T }>,
-  ): React.FC<any> {
-    const Lazy = React.lazy(importFn);
+  ): FC<any> {
+    const Lazy = lazy(importFn);
     // Mirrors: const Wrap = hasSuspenseBoundary ? Suspense : Fragment
     // With default ssr:true and no loading option, hasSuspenseBoundary === false.
     function LoadableComponent(props: any) {
@@ -355,7 +364,7 @@ describe("defineStoryblokComponents", () => {
    * isLazyComponent() === false, isWrappedComponent() === true.
    * Never suspends — manages loading state internally.
    */
-  function makePagesRouterDynamic<T extends React.ComponentType<any>>(
+  function makePagesRouterDynamic<T extends ComponentType<any>>(
     importFn: () => Promise<{ default: T }>,
   ) {
     return forwardRef<unknown, any>((props, _ref) => {
@@ -365,13 +374,13 @@ describe("defineStoryblokComponents", () => {
       }, []);
       // Default loading option is null in Pages Router dynamic.
       if (!Comp) return null;
-      const AnyComp = Comp as React.ComponentType<any>;
+      const AnyComp = Comp as ComponentType<any>;
       return <AnyComp {...props} />;
     });
   }
 
   // Helper to build a deferred import promise so tests can control resolution.
-  function makeDeferred<T extends React.ComponentType<any>>(
+  function makeDeferred<T extends ComponentType<any>>(
     component: T,
   ): { importFn: () => Promise<{ default: T }>; resolve: () => void } {
     let resolveFn!: (v: { default: T }) => void;
@@ -555,7 +564,7 @@ describe("registry is pre-computed at factory time", () => {
   });
 
   it("lazy detection is resolved at factory time — Suspense present on every render, not just the first", async () => {
-    const LazyPage = React.lazy(
+    const LazyPage = lazy(
       () =>
         new Promise<{ default: typeof Page }>((resolve) =>
           setTimeout(() => resolve({ default: Page }), 10),
@@ -582,7 +591,7 @@ describe("registry is pre-computed at factory time", () => {
 
   it("per-entry fallback is resolved at factory time and not re-evaluated per render", async () => {
     let fallbackCallCount = 0;
-    const LazyPage = React.lazy(
+    const LazyPage = lazy(
       () =>
         new Promise<{ default: typeof Page }>((resolve) =>
           setTimeout(() => resolve({ default: Page }), 10),
@@ -680,7 +689,7 @@ describe("StoryblokComponent — editable injection", () => {
       received = editable;
       return <div data-testid="slow-widget" />;
     }
-    const LazyWidget = React.lazy(
+    const LazyWidget = lazy(
       () =>
         new Promise<{ default: typeof SlowWidget }>((resolve) =>
           setTimeout(() => resolve({ default: SlowWidget }), 10),

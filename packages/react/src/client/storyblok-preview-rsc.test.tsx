@@ -1,4 +1,4 @@
-import React from "react";
+import { type ReactNode } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 import type { Story } from "@storyblok/api-client";
@@ -136,10 +136,10 @@ describe("StoryblokPreviewRsc", () => {
 
   it("shows Suspense fallback (children) while renderContent is pending", async () => {
     const updatedStory = makeStory({ slug: "updated" });
-    let resolveContent!: (node: React.ReactNode) => void;
+    let resolveContent!: (node: ReactNode) => void;
     const renderContent = vi.fn(
       () =>
-        new Promise<React.ReactNode>((resolve) => {
+        new Promise<ReactNode>((resolve) => {
           resolveContent = resolve;
         }),
     );
@@ -172,14 +172,14 @@ describe("StoryblokPreviewRsc", () => {
   it("shows the current content while a subsequent update is in flight (no duplicate DOM)", async () => {
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
-    let resolveSecond!: (node: React.ReactNode) => void;
+    let resolveSecond!: (node: ReactNode) => void;
 
     const renderContent = vi
       .fn()
       .mockResolvedValueOnce(<div data-testid="first-live">first live</div>)
       .mockImplementationOnce(
         () =>
-          new Promise<React.ReactNode>((resolve) => {
+          new Promise<ReactNode>((resolve) => {
             resolveSecond = resolve;
           }),
       );

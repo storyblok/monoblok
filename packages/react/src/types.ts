@@ -1,45 +1,45 @@
-import type React from "react";
-import type { ISbStoryData, SbSDKOptions, StoryblokBridgeConfigV2 } from "@storyblok/js";
+import type { storyblokEditable } from "@storyblok/live-preview";
+import type { BlockContent } from "./generated/types/field";
 
-export interface SbReactComponentsMap {
-  [key: string]: React.ElementType;
+/**
+ * Attributes returned by `storyblokEditable` — spread onto the root element of a
+ * block component to enable click-to-edit in the Visual Editor.
+ *
+ * When used via `StoryblokComponent`, this is injected automatically as the
+ * `editable` prop; no manual import of `storyblokEditable` is required.
+ *
+ * @example
+ * ```tsx
+ * const Feature = ({ block, editable }: FeatureProps) => (
+ *   <div {...editable}>…</div>
+ * );
+ * ```
+ */
+export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
+
+/**
+ * Helper type for typed block component props.
+ *
+ * @example
+ * type PageProps = StoryblokComponentProps<{ body: BlockContent[] }>;
+ * export default function Page({ block, editable }: PageProps) { ... }
+ */
+export interface StoryblokComponentProps<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
+  block: BlockContent & T;
+  /**
+   * Editable attributes injected by `StoryblokComponent`. Spread onto the root
+   * element of the block to enable click-to-edit in the Visual Editor.
+   *
+   * @example
+   * ```tsx
+   * const Feature = ({ block, editable }: FeatureProps) => (
+   *   <div {...editable}>{block.name}</div>
+   * );
+   * ```
+   */
+  editable?: StoryblokEditableProps;
 }
 
-export interface SbReactSDKOptions extends SbSDKOptions {
-  components?: SbReactComponentsMap;
-  enableFallbackComponent?: boolean;
-  customFallbackComponent?: React.ElementType;
-}
-
-export type TUseStoryblokState = <T = void>(
-  initialStory: ISbStoryData<T> | null,
-  bridgeOptions?: StoryblokBridgeConfigV2,
-) => ISbStoryData<T> | null;
-
-export type {
-  ArrayFn,
-  AsyncFn,
-  ISbAlternateObject,
-  ISbCache,
-  ISbConfig,
-  ISbContentMangmntAPI,
-  ISbDimensions,
-  ISbError,
-  ISbManagmentApiResult,
-  ISbResponse,
-  ISbResult,
-  ISbSchema,
-  ISbStories,
-  ISbStoriesParams,
-  ISbStory,
-  ISbStoryData,
-  ISbStoryParams,
-  ISbThrottle,
-  SbBlokData,
-  SbBlokKeyDataTypes,
-  SbSDKOptions,
-  StoryblokBridgeConfigV2,
-  StoryblokBridgeV2,
-  StoryblokClient,
-  StoryblokComponentType,
-} from "@storyblok/js";
+export type { BlockContent };

@@ -1,25 +1,22 @@
-import React from "react";
-import type { SbBlokData, SbRichTextDoc } from "@storyblok/react";
-import { StoryblokComponent, storyblokEditable, StoryblokRichText } from "@storyblok/react";
+import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
+import { storyblokEditable, StoryblokRichText } from "@storyblok/react";
+import { StoryblokComponent } from "../storyblok";
+import type { StoryblokRichTextDoc } from "@storyblok/richtext";
 
-interface PageProps {
-  blok: SbBlokData;
-}
+type PageProps = StoryblokComponentProps<{
+  body: BlockContent[];
+  richText: StoryblokRichTextDoc;
+}>;
 
-const Page = ({ blok }: PageProps) => {
-  const richText = blok.richText as SbRichTextDoc;
-  return (
-    <div {...storyblokEditable(blok)} key={blok._uid} data-test="page">
-      {blok.body
-        ? (blok.body as SbBlokData[]).map((nestedBlok) => (
-            <div key={nestedBlok._uid}>
-              <StoryblokComponent blok={nestedBlok} />
-            </div>
-          ))
-        : null}
-      {richText ? <StoryblokRichText document={richText} /> : null}
-    </div>
-  );
-};
+const Page = ({ block }: PageProps) => (
+  <div {...storyblokEditable(block)} data-test="page">
+    {block.body?.map((nestedBlock) => (
+      <div key={nestedBlock._uid}>
+        <StoryblokComponent block={nestedBlock} />
+      </div>
+    ))}
+    {block.richText ? <StoryblokRichText document={block.richText} /> : null}
+  </div>
+);
 
 export default Page;

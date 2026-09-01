@@ -18,6 +18,7 @@
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
@@ -32,24 +33,14 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./ssr": {
+    "./client": {
       "import": {
-        "types": "./dist/ssr.d.mts",
-        "default": "./dist/ssr.mjs"
+        "types": "./dist/client.d.mts",
+        "default": "./dist/client.mjs"
       },
       "require": {
-        "types": "./dist/ssr.d.cts",
-        "default": "./dist/ssr.cjs"
-      }
-    },
-    "./rsc": {
-      "import": {
-        "types": "./dist/rsc.d.mts",
-        "default": "./dist/rsc.mjs"
-      },
-      "require": {
-        "types": "./dist/rsc.d.cts",
-        "default": "./dist/rsc.cjs"
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -58,14 +49,14 @@
     "access": "public"
   },
   "scripts": {
+    "generate:openapi": "node --experimental-strip-types --no-warnings=ExperimentalWarning scripts/generate.ts",
     "dev": "vp pack --watch",
     "build": "vp pack",
     "test:types": "tsc --noEmit --skipLibCheck",
     "test": "pnpm run test:unit && pnpm run test:e2e:next-13 && pnpm run test:e2e:next-latest",
     "test:unit": "vp test run",
-    "cy:run": "cypress run",
-    "cy:open": "cypress open",
-    "test:comp": "cypress run --component",
+    "pw:install": "playwright install chromium",
+    "pw:run": "pnpm run pw:install && playwright test",
     "playground": "pnpm run --filter ./playground/react dev",
     "playground:next-latest": "pnpm run --filter ./playground/next-latest dev",
     "playground:next-13": "pnpm run --filter ./playground/next-13-app-router dev",
@@ -74,29 +65,26 @@
     "publint": "publint .",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
-    "test:e2e:next-13": "start-server-and-test playground:next-13 http://localhost:3000/ cy:run",
-    "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ cy:run",
-    "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ cy:open",
+    "test:e2e:next-13": "start-server-and-test playground:next-13 http://localhost:3000/ pw:run",
+    "test:e2e:next-latest": "start-server-and-test playground:next-latest http://localhost:3000/ pw:run",
+    "test:e2e:watch": "start-server-and-test playground:next-latest http-get://localhost:3000/ pw:run --ui",
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:^",
+    "@storyblok/api-client": "workspace:^",
+    "@storyblok/live-preview": "workspace:^",
     "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
-    "@babel/core": "^7.27.1",
-    "@babel/preset-env": "^7.27.2",
-    "@cypress/react": "^9.0.1",
-    "@cypress/vite-dev-server": "^7.3.4",
+    "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/openapi-codegen": "workspace:*",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "catalog:",
     "@types/react": "catalog:react19",
     "@vitejs/plugin-react": "^4.4.1",
-    "babel-jest": "^29.7.0",
-    "cypress": "^15.21.0",
     "jsdom": "catalog:",
     "oxlint": "catalog:",
     "publint": "catalog:",
@@ -108,26 +96,8 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "next": "^13 || ^14 || ^15 || ^16",
-    "react": "^17 || ^18 || ^19",
-    "react-dom": "^17 || ^18 || ^19"
-  },
-  "peerDependenciesMeta": {
-    "next": {
-      "optional": true
-    }
-  },
-  "babel": {
-    "presets": [
-      [
-        "@babel/preset-env",
-        {
-          "targets": {
-            "node": "current"
-          }
-        }
-      ]
-    ]
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19"
   },
   "release": {
     "branches": [
@@ -141,6 +111,22 @@
   "nx": {
     "implicitDependencies": [
       "!@storyblok/playground-*"
-    ]
+    ],
+    "targets": {
+      "generate:openapi": {
+        "inputs": [
+          "{projectRoot}/scripts/generate.ts",
+          "{projectRoot}/package.json",
+          "openapiCodegen"
+        ],
+        "outputs": [
+          "{projectRoot}/src/generated"
+        ],
+        "cache": true,
+        "dependsOn": [
+          "@storyblok/openapi-codegen:build"
+        ]
+      }
+    }
   }
 }

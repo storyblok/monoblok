@@ -10,13 +10,14 @@
       "@/*": ["./src/*"]
     },
     "resolveJsonModule": true,
-    "types": ["cypress", "node"],
+    "types": ["node", "vitest/globals"],
     "allowJs": true,
-    "strict": false,
+    "strict": true,
     "noFallthroughCasesInSwitch": true,
     "declaration": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
+    "rootDir": "./src",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -26,5 +27,5 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Recommended",
   "include": ["./src/**/*"],
-  "exclude": ["node_modules", "./src/**/*.test.ts", "./src/**/*.test.tsx", "./src/__tests__/**/*"]
+  "exclude": ["node_modules", "./src/**/fixtures/**/*", "./e2e/**/*"]
 }

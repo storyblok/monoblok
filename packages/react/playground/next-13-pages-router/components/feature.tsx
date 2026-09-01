@@ -1,20 +1,16 @@
-import React from "react";
-import type { SbBlokData } from "@storyblok/react";
+import type { StoryblokComponentProps } from "@storyblok/react";
 import { storyblokEditable } from "@storyblok/react";
 
-interface FeatureProps {
-  blok: SbBlokData;
-}
+type FeatureProps = StoryblokComponentProps<{
+  name: string;
+  description: string;
+}>;
 
-const Feature = ({ blok }: FeatureProps) => {
-  return (
-    <div {...storyblokEditable(blok)} key={blok._uid} data-test="feature">
-      <div>
-        <div>{blok.name as string}</div>
-        <p>{blok.description as string}</p>
-      </div>
-    </div>
-  );
-};
+const Feature = ({ block }: FeatureProps) => (
+  <div {...storyblokEditable(block)} data-test="feature">
+    <div>{block.name}</div>
+    <p>{block.description}</p>
+  </div>
+);
 
 export default Feature;

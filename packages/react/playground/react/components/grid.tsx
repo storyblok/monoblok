@@ -1,19 +1,23 @@
-import React from "react";
-import type { SbBlokData } from "@storyblok/react";
-import { StoryblokComponent, storyblokEditable } from "@storyblok/react";
+import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
+import { StoryblokComponent } from "../storyblok";
 
-interface GridProps {
-  blok: SbBlokData;
-}
+type GridProps = StoryblokComponentProps<{ columns: BlockContent[] }>;
 
-const Grid = ({ blok }: GridProps) => (
-  <ul {...storyblokEditable(blok)} key={blok._uid} data-test="grid">
-    {(blok.columns as SbBlokData[]).map((nestedBlok) => (
-      <li key={nestedBlok._uid}>
-        <StoryblokComponent blok={nestedBlok} />
-      </li>
-    ))}
-  </ul>
-);
+const Grid = ({ block }: GridProps) => {
+  if (!block.columns) {
+    return null;
+  }
+
+  return (
+    <ul {...storyblokEditable(block)} data-test="grid">
+      {block.columns.map((nestedBlock) => (
+        <li key={nestedBlock._uid}>
+          <StoryblokComponent block={nestedBlock} />
+        </li>
+      ))}
+    </ul>
+  );
+};
 
 export default Grid;

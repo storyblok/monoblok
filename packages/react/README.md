@@ -415,6 +415,10 @@ export function StoryContent({ story }: { story: Story }) {
 > [!NOTE] `StoryblokPreviewRsc` requires Server Actions. If you are using Next.js with
 > `output: 'export'` (static export), use `StoryblokPreview` (3a) instead.
 
+> [!NOTE] `StoryblokPreviewRsc` requires **React 19**. It uses `React.use` to suspend on the promise
+> returned by `renderContent`. On React 18, the component throws at runtime before anything renders.
+> Use `StoryblokPreview` (3a) for React 18 apps.
+
 **Block components** use `StoryblokComponent` from your `lib/storyblok` for nested blocks:
 
 ```tsx

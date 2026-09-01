@@ -1,4 +1,4 @@
-import type { StoryblokReactRichTextComponentMap } from "@storyblok/react";
+import type { StoryblokReactRichTextComponentMap } from "./index";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import {
@@ -16,7 +16,7 @@ import CustomTable from "./fixtures/custom-table";
 import CustomText from "./fixtures/custom-text";
 import HeadingWithRichText from "./fixtures/heading-with-rich-text";
 import { defineStoryblokComponents } from "../define-storyblok-components";
-import { StoryblokRichText as RootStoryblokRichText } from "./storyblok-rich-text";
+import { StoryblokRichText as RootStoryblokRichText } from "./index";
 
 const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
 

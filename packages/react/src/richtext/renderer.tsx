@@ -19,7 +19,7 @@ import {
   resolveTag,
   splitTableRows,
 } from "@storyblok/richtext";
-import React, { type ComponentType, type ReactNode } from "react";
+import { createElement, Fragment, type ComponentType, type Key, type ReactNode } from "react";
 
 /**
  * Props for a custom React richtext node or mark component of type `T`.
@@ -112,7 +112,7 @@ function renderLinkGroup(
   nodes: StoryblokRichTextNodeWithKey[],
   linkMark: StoryblokRichTextMark,
   options: StoryblokReactRichTextRenderContext,
-  key: React.Key,
+  key: Key,
 ): ReactNode {
   const inner = nodes.map((node, index) => {
     const textNode = node as StoryblokRichTextTextNode;
@@ -130,11 +130,11 @@ function renderLinkGroup(
 
   const tag = resolveTag(linkMark);
   if (!tag) {
-    return <React.Fragment key={key}>{inner}</React.Fragment>;
+    return <Fragment key={key}>{inner}</Fragment>;
   }
 
   const markAttrs = ("attrs" in linkMark ? linkMark.attrs : {}) as Record<string, unknown>;
-  return React.createElement(
+  return createElement(
     tag,
     { key, ...processAttrs(linkMark.type, markAttrs, extendAttrMap) },
     inner,
@@ -144,7 +144,7 @@ function renderLinkGroup(
 function renderNode(
   node: StoryblokRichTextNodeWithKey,
   options: StoryblokReactRichTextRenderContext,
-  key: React.Key,
+  key: Key,
 ): ReactNode {
   const content =
     node.type !== "text" && node.content ? renderChildren(node.content, options) : null;
@@ -186,7 +186,7 @@ function renderNode(
   const nodeAttrs = ("attrs" in node ? node.attrs : {}) as Record<string, unknown>;
   const props = processAttrs(node.type, nodeAttrs, extendAttrMap);
   if (isSelfClosing(tag)) {
-    return React.createElement(tag, { key, ...props });
+    return createElement(tag, { key, ...props });
   }
 
   if (node.type === "table") {
@@ -197,15 +197,15 @@ function renderNode(
   if (staticChildren) {
     const nodeContent = node.content ? renderChildren(node.content, options) : null;
     const inner = renderStaticStructure(node.type, staticChildren, nodeAttrs, nodeContent);
-    return React.createElement(tag, { key }, inner);
+    return createElement(tag, { key }, inner);
   }
 
   if (node.type === "emoji") {
     const emojiNode = node as Extract<StoryblokRichTextNodeWithKey, { type: "emoji" }>;
-    return React.createElement(tag, { key, ...props }, emojiNode.attrs.emoji);
+    return createElement(tag, { key, ...props }, emojiNode.attrs.emoji);
   }
 
-  return React.createElement(
+  return createElement(
     tag,
     { key, ...props },
     node.content ? renderChildren(node.content, options) : null,
@@ -218,7 +218,7 @@ function renderNode(
 function renderOptimizedImage(
   node: StoryblokRichTextNodeWithKey,
   options: StoryblokReactRichTextRenderContext,
-  key: React.Key,
+  key: Key,
 ): ReactNode {
   const attrs = ("attrs" in node ? node.attrs : undefined) as Record<string, unknown> | undefined;
   const src = attrs?.src as string | undefined;
@@ -248,7 +248,7 @@ function renderOptimizedImage(
 function renderTable(
   node: StoryblokRichTextNodeWithKey,
   options: StoryblokReactRichTextRenderContext,
-  key: React.Key,
+  key: Key,
   tag: string,
   props: Record<string, unknown>,
 ): ReactNode {
@@ -272,7 +272,7 @@ function renderTable(
     );
   }
 
-  return React.createElement(tag, { key, ...props }, tableContent);
+  return createElement(tag, { key, ...props }, tableContent);
 }
 
 /**
@@ -290,19 +290,19 @@ function renderStaticStructure(
     const props = processAttrs(type, mergedAttrs, extendAttrMap);
 
     if (isSelfClosing(tag)) {
-      return React.createElement(tag, { key: index, ...props });
+      return createElement(tag, { key: index, ...props });
     }
 
     const inner = children ? renderStaticStructure(type, children, parentAttrs, content) : content;
 
-    return React.createElement(tag, { key: index, ...props }, inner);
+    return createElement(tag, { key: index, ...props }, inner);
   });
 }
 
 function renderTextNode(
   node: StoryblokRichTextTextNode,
   options: StoryblokReactRichTextRenderContext,
-  key?: React.Key,
+  key?: Key,
 ): ReactNode {
   return renderTextNodeWithMarks(node, node.marks, options, key);
 }
@@ -311,7 +311,7 @@ function renderTextNodeWithMarks(
   node: StoryblokRichTextTextNode,
   marks: StoryblokRichTextMark[] | undefined,
   options: StoryblokReactRichTextRenderContext,
-  key?: React.Key,
+  key?: Key,
 ): ReactNode {
   let content: ReactNode = node.text;
 
@@ -321,7 +321,7 @@ function renderTextNodeWithMarks(
     }
   }
 
-  return <React.Fragment key={key}>{content}</React.Fragment>;
+  return <Fragment key={key}>{content}</Fragment>;
 }
 
 function wrapMark(
@@ -345,5 +345,5 @@ function wrapMark(
 
   const markAttrs = ("attrs" in mark ? mark.attrs : {}) as Record<string, unknown>;
   const props = processAttrs(mark.type, markAttrs, extendAttrMap);
-  return React.createElement(tag, props, children);
+  return createElement(tag, props, children);
 }

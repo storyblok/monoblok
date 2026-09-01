@@ -1,9 +1,10 @@
 "use client";
 import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
-// `React` namespace imported separately so `React.use` is a runtime property
-// lookup rather than a static named import. This means the module loads on
-// React <19 without a SyntaxError, even though StoryblokPreviewRsc itself
-// requires React 19 to function.
+// `React` namespace is imported so `Reflect.get(React, "use")` can be used to
+// resolve React.use at runtime without a static named import. Static named
+// imports (and even `React["use"]` string-key lookups) are folded by Webpack
+// into module-graph edges that fail on React <19, even when the import is never
+// executed. Reflect.get is opaque to bundler static analysis.
 import * as React from "react";
 import { Component, type ReactNode, startTransition, Suspense, useState } from "react";
 import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
@@ -41,18 +42,33 @@ export interface StoryblokPreviewRscProps {
   bridgeOptions?: BridgeParams;
 }
 
+// ── reactUse ──────────────────────────────────────────────────────────────────
+
+// Resolved at module-evaluation time via Reflect.get so that no bundler
+// (Webpack, Rollup, esbuild) can statically rewrite this into a named import
+// of `use` from `react`. A named import would cause a hard error on React <19
+// even when this module is imported by a pages-router app that never renders
+// StoryblokPreviewRsc, because the bundler validates all named exports at
+// module-graph construction time.
+//
+// `React["use"]` with a string-literal key is NOT sufficient — Webpack folds
+// that into a named import too. `Reflect.get` is opaque to static analysis.
+const reactUse = Reflect.get(React, "use") as (<T>(p: Promise<T>) => T) | undefined;
+
 // ── LiveContent ───────────────────────────────────────────────────────────────
 
 /**
  * Inner component that calls React.use() inside its own Suspense boundary.
  * Keeping it separate means use() only suspends this subtree, not the whole page.
  *
- * React.use is accessed via the React namespace (not a static named import) so
- * that the module can be loaded on React <19 without a parse error — consumers
+ * `reactUse` is resolved via Reflect.get (not a static named import) so that
+ * the module can be loaded on React <19 without a module-graph error — consumers
  * who only import StoryblokPreview / useStoryblokState are unaffected.
  */
 function LiveContent({ promise }: { promise: Promise<ReactNode> }) {
-  const content = React.use(promise);
+  // reactUse is guaranteed to be defined here: StoryblokPreviewRsc throws
+  // before rendering LiveContent when React <19 is detected.
+  const content = reactUse!(promise);
   return <>{content}</>;
 }
 
@@ -148,7 +164,7 @@ export function StoryblokPreviewRsc({
   // which is required for the Suspense-based live preview to work.
   // Note: this guard cannot be covered by unit tests because the React module
   // namespace is sealed in the test environment. It is verified manually.
-  if (typeof React.use !== "function") {
+  if (typeof reactUse !== "function") {
     throw new Error(
       "[Storyblok] StoryblokPreviewRsc requires React 19 (React.use is not available). " +
         "Use StoryblokPreview for React 17/18.",

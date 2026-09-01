@@ -17,6 +17,49 @@ import {
 } from "./generate-code";
 
 describe("generateComponentFile", () => {
+  it("should omit component metadata that is already at its reset value", () => {
+    // Push always sends these keys with their reset value, so a space that never
+    // had them set comes back holding `""` rather than `null`. Emitting that back
+    // would make a second `init` differ from the first for a field nobody set.
+    const component = {
+      id: 1,
+      name: "page",
+      display_name: "",
+      description: "",
+      color: "",
+      icon: "",
+      preview_field: "",
+      internal_tag_ids: [],
+      created_at: "",
+      updated_at: "",
+      schema: { title: { type: "text", pos: 0 } },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("  name: 'page',");
+    for (const key of ["display_name", "description", "color", "icon", "preview_field"]) {
+      expect(result).not.toContain(`${key}:`);
+    }
+  });
+
+  it("should keep component metadata that holds a real value", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      display_name: "Page",
+      color: "#fff",
+      created_at: "",
+      updated_at: "",
+      schema: { title: { type: "text", pos: 0 } },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("  display_name: 'Page',");
+    expect(result).toContain("color: '#fff',");
+  });
+
   it("should generate a defineBlock() file with a fields array", () => {
     const component = {
       id: 1,
@@ -144,7 +187,7 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("restrict_type");
   });
 
-  it("should keep restrict_components and restrict_type for group/tag restrictions", () => {
+  it("should keep restrict_components and restrict_type for an unresolvable group restriction", () => {
     const component = {
       id: 1,
       name: "page",
@@ -165,6 +208,181 @@ describe("generateComponentFile", () => {
 
     expect(result).toContain("restrict_components: true,");
     expect(result).toContain("restrict_type: 'groups',");
+  });
+
+  // Regression: `restrict_type` was dropped for tag restrictions too, so the
+  // round-trip pushed back a field whose tag lists the editor never reads. The
+  // tag dimension has no `allow`/`deny` equivalent, so nothing re-derives it.
+  it("should keep the tag lists and their flags for a tag restriction", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [1, 2],
+          component_tag_denylist: [3],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_components: true,");
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).toContain("component_tag_whitelist: [");
+    expect(result).toContain("component_tag_denylist: [");
+    expect(result).not.toContain("allow: [");
+  });
+
+  // Switching dimensions in the editor leaves the old lists behind. Emitting them
+  // as `allow` would make the next push re-derive `restrict_type: ''` and restrict
+  // the field by block name instead.
+  it("should drop a stale name list rather than emit allow when the tag dimension is in force", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [1],
+          component_whitelist: ["hero"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).not.toContain("allow: [");
+    expect(result).not.toContain("component_whitelist");
+  });
+
+  // Regression, reproduced against a real space: requiring a non-empty tag list to
+  // recognise the dimension dropped `restrict_type` and `restrict_components` for a
+  // tag restriction whose lists happen to be empty, and nothing re-derives them —
+  // `schema init` emitted a bare `defineField('content', { type: 'bloks' })` and the
+  // next push unrestricted the field.
+  it("should keep the tag dimension when its lists are empty", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [],
+          component_tag_denylist: [],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).not.toContain("allow: [");
+  });
+
+  // Regression: an empty tag list fell through to the name check, which treated a
+  // `component_whitelist` the Management API had already made stale (by clearing it on
+  // dimension switch) as live, emitting `allow` and dropping `restrict_type` on push.
+  it("should drop a stale name list on bloks when the tag dimension selects nothing", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [],
+          component_whitelist: ["stale-name"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("restrict_type: 'tags',");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).not.toContain("allow: [");
+    expect(result).not.toContain("component_whitelist");
+  });
+
+  // The editor clears all six lists when you switch dimension, and the Management
+  // API only strips stale name lists on `bloks` fields, so a `richtext` can carry
+  // `restrict_type: 'tags'` next to a live name list. With no tag selected the tag
+  // dimension restricts nothing, so claiming the field for it would drop the only
+  // list actually in force.
+  it("should keep a name list on a richtext whose tag dimension selects nothing", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "richtext",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [],
+          component_whitelist: ["hero"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).toContain("allow: [");
+    expect(result).toContain("'hero'");
+    expect(result).not.toContain("component_whitelist");
+  });
+
+  it("should not treat tag lists as a restriction when restrict_type does not select them", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "",
+          component_tag_whitelist: [1],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    // The tag list passes through verbatim but nothing puts it in force, so it is
+    // not treated as the tag dimension. `restrict_components: true` is still real
+    // state with nothing to re-derive it, so it round-trips with its selector.
+    expect(result).toContain("component_tag_whitelist: [");
+    expect(result).toContain("restrict_components: true,");
+    expect(result).toContain("restrict_type: '',");
+    expect(result).not.toContain("allow: [");
   });
 
   it("should resolve a group whitelist to allow: [folderVar] and import the folder when uuids are known", () => {
@@ -386,10 +604,11 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("component_denylist");
   });
 
-  it("should drop orphaned restrict flags when a restricted field has no names and no groups", () => {
-    // `restrict_components: true` with an empty `component_whitelist` and no group
-    // whitelist is a wire byproduct that `allow` re-derives on push; without an
-    // allow to back it, it must not be emitted as orphaned DSL state.
+  it("should keep `restrict_components: true` when no list is in force", () => {
+    // Regression: this was treated as a wire byproduct that `allow` re-derives on
+    // push, but with an empty `component_whitelist` there is no `allow` to emit and
+    // so nothing re-derives it. Dropping it switched the restriction off on the
+    // round-trip, turning "restricted, nothing selected" into "unrestricted".
     const component = {
       id: 1,
       name: "landing",
@@ -408,9 +627,44 @@ describe("generateComponentFile", () => {
     const result = generateComponentFile(component as any);
 
     expect(result).toContain("defineField('body', {");
-    expect(result).not.toContain("restrict_components");
+    expect(result).toContain("restrict_components: true,");
+    // The empty list carries no dimension, so it is not emitted either way.
     expect(result).not.toContain("component_whitelist");
     expect(result).not.toContain("allow");
+  });
+
+  it("should not emit restriction keys for a field type that does not own them", () => {
+    // The Management API stores a component schema as an opaque blob, so a space
+    // can hold a stray `restrict_components` on an `asset` field. `defineField`
+    // rejects an option the field type does not own, so emitting it verbatim
+    // generated code that did not compile.
+    const component = {
+      id: 1,
+      name: "landing",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        disabled_pic: { type: "asset", pos: 0, restrict_components: false, restrict_type: "" },
+        active_pic: { type: "asset", pos: 1, restrict_components: true, restrict_type: "" },
+        tagged_pic: {
+          type: "asset",
+          pos: 2,
+          restrict_type: "tags",
+          component_tag_whitelist: [1],
+        },
+        tagged_text: { type: "text", pos: 3, component_tag_whitelist: [1] },
+        grouped_pic: { type: "asset", pos: 4, component_group_whitelist: ["uuid"] },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).not.toContain("restrict_components");
+    expect(result).not.toContain("restrict_type");
+    // The tag lists reach the output through the untouched-key passthrough rather
+    // than the restriction branches, so they need the same guard.
+    expect(result).not.toContain("component_tag_whitelist");
+    expect(result).not.toContain("component_group_whitelist");
   });
 
   it("should keep a disabled restriction disabled instead of mapping a stale name whitelist to allow", () => {

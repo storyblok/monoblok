@@ -1,5 +1,6 @@
 import type { SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
+import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
 /**
@@ -7,7 +8,8 @@ import { isRecord, toValues } from "./shapes";
  * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
  * resolves to a defined datasource; every `custom` field's `field_type`
- * resolves to a registered field plugin).
+ * resolves to a registered field plugin; no field mixes `allow`/`deny` with the
+ * wire restriction keys they derive).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -192,6 +194,42 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
             message: `Field "${fieldName}" denies unknown block "${denied}".`,
           });
         }
+      }
+
+      // `schema push` derives the wire restriction keys from `allow`/`deny` and
+      // overwrites anything set by hand, so setting both silently drops one of
+      // the two. `defineField` rejects this at compile time; repeat it here for
+      // consumers authoring schemas in plain JavaScript.
+      if (field.allow !== undefined || field.deny !== undefined) {
+        for (const key of DERIVED_RESTRICTION_KEYS) {
+          if (field[key] === undefined) {
+            continue;
+          }
+          issues.push({
+            severity: "error",
+            code: "conflicting_restriction",
+            path: ["blocks", blockKey, fieldName ?? index, key],
+            entity: blockEntity,
+            message: `Field "${fieldName}" sets "${key}" alongside "allow"/"deny", which derives it. Keep one of the two.`,
+          });
+        }
+      }
+
+      // `restrict_type` selects which restriction dimension the editor reads, and
+      // it is the one restriction key the DSL tells authors to set by hand, for
+      // the tag dimension. A typo silently unrestricts the field, so it is worth
+      // flagging. A warning rather than an error: the API never validates this
+      // key, so a space can legitimately hand back a value nothing recognizes,
+      // and failing a build over what a space already stores would be wrong.
+      const restrictType = field.restrict_type;
+      if (typeof restrictType === "string" && !EDITOR_RESTRICT_TYPES.includes(restrictType)) {
+        issues.push({
+          severity: "warning",
+          code: "unknown_restrict_type",
+          path: ["blocks", blockKey, fieldName ?? index, "restrict_type"],
+          entity: blockEntity,
+          message: `Field "${fieldName}" sets "restrict_type" to "${restrictType}", which the editor does not recognize; the field's restriction lists are ignored. Expected one of ${EDITOR_RESTRICT_TYPES.map((value) => `"${value}"`).join(", ")}.`,
+        });
       }
 
       const datasource = field.datasource;

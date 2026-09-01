@@ -60,6 +60,10 @@ describe("defineField", () => {
   });
 
   it("should throw when deny is used on a field type with no denylist", () => {
+    // The stricter `defineField` signature also rejects this at compile time. The
+    // runtime guard still matters: schemas authored in plain JavaScript reach the
+    // wire without ever being type-checked.
+    // @ts-expect-error `multilink` has no denylist
     expect(() => defineField("link", { type: "multilink", deny: ["page"] })).toThrow(
       'defineField: "deny" on field "link" has no effect on a "multilink" field; only bloks and richtext fields have a block denylist',
     );
@@ -71,6 +75,7 @@ describe("defineField", () => {
   });
 
   it("should not throw on an empty deny list, whatever the field type", () => {
+    // @ts-expect-error `text` has no denylist; the runtime guard still tolerates an empty list
     expect(() => defineField("title", { type: "text", deny: [] })).not.toThrow();
   });
 

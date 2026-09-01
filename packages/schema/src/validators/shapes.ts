@@ -19,6 +19,11 @@ export interface SchemaFieldLike {
   required?: boolean;
   /** Normalized block-name or folder-path references for `bloks` fields. */
   allow?: readonly (string | { folder: string })[];
+  /**
+   * The `deny` counterpart, same normalized shape. Only in force when `allow` is
+   * empty: the editor lets a non-empty allow list decide on its own.
+   */
+  deny?: readonly (string | { folder: string })[];
   /** Normalized datasource slug for option/options fields. */
   datasource?: string;
   /** `option`/`options`: the self-sourced selectable options. */

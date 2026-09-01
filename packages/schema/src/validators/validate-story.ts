@@ -427,18 +427,54 @@ function validateFieldValue(
   }
 }
 
+type RestrictionEntry = string | { folder: string };
+
+/** Renders a restriction list the way the error message names it. */
+const describeRestriction = (entries: readonly RestrictionEntry[]): string =>
+  entries.map((entry) => (typeof entry === "string" ? entry : `folder:${entry.folder}`)).join(", ");
+
 /**
- * Enforces a field's `allow` list for one embedded blok. Shared by the `bloks`
- * case and the richtext walk so both apply the same rule: `mapFieldToWire`
- * pushes folder/name `allow` as an editor/API restriction on *both* field types,
- * so validation must reject the same components the editor and API would.
+ * Whether a block is named by a restriction list, directly or through a folder
+ * it sits in. Both sides are canonicalized to slug space, so a folder referenced
+ * two ways (a `defineFolder` ref vs. a string shorthand with different
+ * casing/separators) matches the way the CLI and editor group it. A folder entry
+ * covers its nested folders too, mirroring the editor.
+ */
+function matchesRestriction(
+  entries: readonly RestrictionEntry[],
+  block: SchemaBlockLike | undefined,
+  componentName: string,
+): boolean {
+  if (entries.includes(componentName)) {
+    return true;
+  }
+  const blockFolder = block?.folder;
+  if (typeof blockFolder !== "string") {
+    return false;
+  }
+  const blockFolderSlug = slugifyFolderPath(blockFolder);
+  return entries.some((entry) => {
+    if (typeof entry === "string") {
+      return false;
+    }
+    const entrySlug = slugifyFolderPath(entry.folder);
+    return blockFolderSlug === entrySlug || blockFolderSlug.startsWith(`${entrySlug}/`);
+  });
+}
+
+/**
+ * Enforces a field's `allow`/`deny` lists for one embedded blok. Shared by the
+ * `bloks` case and the richtext walk so both apply the same rule:
+ * `mapFieldToWire` pushes either list as an editor restriction on *both* field
+ * types, so validation must reject the same components the editor would.
+ *
+ * The editor gives `allow` precedence within a dimension: a non-empty allow list
+ * decides on its own and the denylist is never consulted. That is mirrored here,
+ * so a field carrying both validates as the allow list alone rather than as the
+ * stricter intersection.
  *
  * `itemPath` is the path to the blok item (its index); the reported issue points
- * at that item's `component` key. A component is allowed when it is named
- * directly in `allow` or its block sits in (or under) an allowed folder — both
- * sides canonicalized to slug space so a folder referenced two ways (a
- * `defineFolder` ref vs. a string shorthand with different casing/separators)
- * matches the way the CLI/editor group it.
+ * at that item's `component` key.
  */
 function checkComponentAllowed(
   field: SchemaFieldLike,
@@ -449,7 +485,12 @@ function checkComponentAllowed(
   issues: ValidationIssue[],
 ): void {
   const allowEntries = field.allow ?? [];
-  if (allowEntries.length === 0 || !isRecord(item) || typeof item.component !== "string") {
+  const denyEntries = field.deny ?? [];
+  if (
+    (allowEntries.length === 0 && denyEntries.length === 0) ||
+    !isRecord(item) ||
+    typeof item.component !== "string"
+  ) {
     return;
   }
   // A component the schema does not define at all is reported once as
@@ -458,34 +499,28 @@ function checkComponentAllowed(
   if (!blocksByName.has(item.component)) {
     return;
   }
-  const blockNamesAllowed = allowEntries.filter(
-    (entry): entry is string => typeof entry === "string",
-  );
-  const folderPathsAllowed = allowEntries.filter(
-    (entry): entry is { folder: string } =>
-      typeof entry === "object" && entry !== null && typeof entry.folder === "string",
-  );
-  const itemBlock = blocksByName.get(item.component);
-  const itemBlockFolder = itemBlock?.folder;
-  const allowedByName = blockNamesAllowed.includes(item.component);
-  const itemFolderSlug =
-    typeof itemBlockFolder === "string" ? slugifyFolderPath(itemBlockFolder) : undefined;
-  const allowedByFolder =
-    itemFolderSlug !== undefined &&
-    folderPathsAllowed.some(({ folder }) => {
-      const allowedSlug = slugifyFolderPath(folder);
-      return itemFolderSlug === allowedSlug || itemFolderSlug.startsWith(`${allowedSlug}/`);
-    });
-  if (!allowedByName && !allowedByFolder) {
-    const allowedList = allowEntries
-      .map((entry) => (typeof entry === "string" ? entry : `folder:${entry.folder}`))
-      .join(", ");
+  const block = blocksByName.get(item.component);
+
+  if (allowEntries.length > 0) {
+    if (!matchesRestriction(allowEntries, block, item.component)) {
+      issues.push({
+        severity: "error",
+        code: "disallowed_component",
+        path: [...itemPath, "component"],
+        entity,
+        message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${describeRestriction(allowEntries)}.`,
+      });
+    }
+    return;
+  }
+
+  if (matchesRestriction(denyEntries, block, item.component)) {
     issues.push({
       severity: "error",
       code: "disallowed_component",
       path: [...itemPath, "component"],
       entity,
-      message: `Component "${item.component}" is not allowed in field "${field.name}"; allowed: ${allowedList}.`,
+      message: `Component "${item.component}" is denied in field "${field.name}"; denied: ${describeRestriction(denyEntries)}.`,
     });
   }
 }

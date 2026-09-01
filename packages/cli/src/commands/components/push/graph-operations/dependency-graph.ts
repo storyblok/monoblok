@@ -22,9 +22,19 @@ import { getLogger } from "../../../../lib/logger/logger";
 // =============================================================================
 
 /**
- * Field types that support component whitelists (group, tag, and component whitelists)
+ * Field types that support component restriction lists (group, tag, and
+ * component names, in both their allow and deny halves)
  */
 const fieldTypesWithDependencies = ["bloks", "richtext"] as const;
+
+/**
+ * The restriction lists whose entries identify an entity by something that is
+ * only valid within one space, and so have to be translated on a cross-space
+ * push. Both halves of each dimension: a denylist is as space-bound as its
+ * whitelist.
+ */
+const GROUP_LIST_KEYS = ["component_group_whitelist", "component_group_denylist"] as const;
+const TAG_LIST_KEYS = ["component_tag_whitelist", "component_tag_denylist"] as const;
 
 // =============================================================================
 // GRAPH BUILDING
@@ -204,17 +214,23 @@ export function collectWhitelistDependencies(schema: Record<string, any>): Schem
 
   function traverseField(field: Record<string, any>) {
     if (fieldTypesWithDependencies.includes(field.type)) {
-      // Collect group dependencies
-      if (field.component_group_whitelist && Array.isArray(field.component_group_whitelist)) {
-        field.component_group_whitelist.forEach((uuid: string) => groupUuids.add(uuid));
+      // Both halves of each dimension, not just the whitelist: a group uuid and a
+      // tag id differ per space, so a denylist left unresolved arrives in the
+      // target pointing at source-space entities and silently denies nothing.
+      for (const key of GROUP_LIST_KEYS) {
+        if (Array.isArray(field[key])) {
+          field[key].forEach((uuid: string) => groupUuids.add(uuid));
+        }
       }
 
-      // Collect tag dependencies
-      if (field.component_tag_whitelist && Array.isArray(field.component_tag_whitelist)) {
-        field.component_tag_whitelist.forEach((tagId: number) => tagIds.add(tagId));
+      for (const key of TAG_LIST_KEYS) {
+        if (Array.isArray(field[key])) {
+          field[key].forEach((tagId: number) => tagIds.add(tagId));
+        }
       }
 
-      // Collect component dependencies
+      // Component names are space-independent, so only the whitelist matters for
+      // ordering the push: a denied block need not exist in the target.
       if (field.component_whitelist && Array.isArray(field.component_whitelist)) {
         field.component_whitelist.forEach((name: string) => componentNames.add(name));
       }
@@ -734,37 +750,30 @@ export class ComponentNode extends GraphNode<Component> {
 
       const resolvedField = { ...field };
 
-      // Resolve bloks and richtext field references (both support component whitelists)
+      // Resolve bloks and richtext field references, both halves of each
+      // dimension. An unresolved entry falls back to the source value, which in
+      // the target space points at nothing.
       if (fieldTypesWithDependencies.includes(resolvedField.type)) {
-        // Resolve component group whitelist
-        if (
-          resolvedField.component_group_whitelist &&
-          Array.isArray(resolvedField.component_group_whitelist)
-        ) {
-          resolvedField.component_group_whitelist = resolvedField.component_group_whitelist.map(
-            (groupUuid: string) => {
-              const groupNodeId = `group:${groupUuid}`;
-              const groupNode = graph.nodes.get(groupNodeId) as GroupNode;
+        for (const key of GROUP_LIST_KEYS) {
+          if (Array.isArray(resolvedField[key])) {
+            resolvedField[key] = resolvedField[key].map((groupUuid: string) => {
+              const groupNode = graph.nodes.get(`group:${groupUuid}`) as GroupNode;
               return groupNode?.targetData?.resource.uuid || groupUuid;
-            },
-          );
+            });
+          }
         }
 
-        // Resolve component tag whitelist
-        if (
-          resolvedField.component_tag_whitelist &&
-          Array.isArray(resolvedField.component_tag_whitelist)
-        ) {
-          resolvedField.component_tag_whitelist = resolvedField.component_tag_whitelist.map(
-            (tagId: number) => {
-              const tagNodeId = `tag:${tagId}`;
-              const tagNode = graph.nodes.get(tagNodeId) as TagNode;
+        for (const key of TAG_LIST_KEYS) {
+          if (Array.isArray(resolvedField[key])) {
+            resolvedField[key] = resolvedField[key].map((tagId: number) => {
+              const tagNode = graph.nodes.get(`tag:${tagId}`) as TagNode;
               return tagNode?.targetData?.id || tagId;
-            },
-          );
+            });
+          }
         }
 
-        // Component whitelist doesn't need ID resolution as it uses names
+        // The component name lists need no translation: a block's name is its
+        // identity in every space.
       }
 
       // Note: Datasource references are not resolved by the components push command.

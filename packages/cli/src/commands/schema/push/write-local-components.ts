@@ -13,6 +13,7 @@ import {
 import type { Component } from "../../../types";
 import type { DiffResult, SchemaData } from "../types";
 import { displayPath, isRecord } from "../utils";
+import { GROUP_LIST_KEYS } from "../folders";
 
 const DEFAULT_GROUPS_FILENAME = "groups.json";
 const CONSOLIDATED_COMPONENTS_FILENAME = "components.json";
@@ -20,26 +21,32 @@ const CONSOLIDATED_COMPONENTS_FILENAME = "components.json";
 /**
  * Strips transient, push-time-only keys before a component is written to local
  * JSON. `folder` is an internal slug-path key that never belongs on disk, and
- * each field's `component_group_whitelist` here holds slug paths, not the group
- * uuids that local JSON consumers (e.g. `stories push` schema validation)
- * expect. Only `local` schema data reaches this function — the remote/created
- * group set needed to resolve paths → uuids is not available here — so the
- * path-space whitelist is dropped rather than written in a form no consumer can
- * use. The escape-hatch `component_group_uuid` (a real uuid) is preserved.
+ * each field's group lists (`component_group_whitelist` /
+ * `component_group_denylist`) here hold slug paths, not the group uuids that
+ * local JSON consumers (e.g. `stories push` schema validation) expect. Only
+ * `local` schema data reaches this function — the remote/created group set needed
+ * to resolve paths → uuids is not available here — so the path-space lists are
+ * dropped rather than written in a form no consumer can use. The escape-hatch
+ * `component_group_uuid` (a real uuid) is preserved.
  *
- * A field carrying `component_group_whitelist` also has its `restrict_type:
- * 'groups'` and `restrict_components` keys dropped alongside it, so the
- * written JSON never has a group restriction with no group list left behind
- * (orphaned keys). Folder and block whitelists never coexist — the schema
- * throws on mixing — so this is safe: such a field has no `component_whitelist`.
+ * A field carrying either group list also has its `restrict_type: 'groups'` and
+ * `restrict_components` keys dropped alongside them, so the written JSON never
+ * has a group restriction with no group list left behind (orphaned keys). Folder
+ * and block restrictions never coexist on one field — `defineField` throws on
+ * mixing them, across `allow` and `deny` alike — so this is safe: such a field
+ * has no `component_whitelist` or `component_denylist`.
  */
 function sanitizeForLocalWrite(component: Component): Record<string, unknown> {
   const { folder, ...rest } = component as Record<string, unknown>;
   if (isRecord(rest.schema)) {
     const schema: Record<string, unknown> = {};
     for (const [key, field] of Object.entries(rest.schema)) {
-      if (isRecord(field) && "component_group_whitelist" in field) {
-        const { component_group_whitelist, restrict_components, ...fieldRest } = field;
+      if (isRecord(field) && GROUP_LIST_KEYS.some((groupKey) => groupKey in field)) {
+        const fieldRest = { ...field };
+        for (const groupKey of GROUP_LIST_KEYS) {
+          delete fieldRest[groupKey];
+        }
+        delete fieldRest.restrict_components;
         if (fieldRest.restrict_type === "groups") {
           delete fieldRest.restrict_type;
         }

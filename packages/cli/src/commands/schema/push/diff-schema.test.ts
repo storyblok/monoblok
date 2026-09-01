@@ -373,6 +373,35 @@ describe("diffSchema", () => {
     expect(diff?.action).toBe("unchanged");
   });
 
+  it("should translate remote component_group_denylist uuids to paths for diffing", () => {
+    const local: SchemaData = {
+      components: [
+        makeComponent("page", {
+          body: {
+            type: "bloks",
+            pos: 0,
+            restrict_components: true,
+            component_group_denylist: ["layout"],
+          },
+        }),
+      ],
+      datasources: [],
+      folders: [{ name: "Layout", path: "layout", parentPath: null }],
+    };
+    const remoteComp = makeComponent("page", {
+      body: { type: "bloks", pos: 0, restrict_components: true, component_group_denylist: ["u1"] },
+    });
+    const remote: RemoteSchemaData = {
+      components: new Map([["page", remoteComp]]),
+      datasources: new Map(),
+      componentFolders: remoteFolders([{ uuid: "u1", name: "Layout" }]),
+    };
+    const diff = diffSchema(local, remote).diffs.find(
+      (d) => d.type === "component" && d.name === "page",
+    );
+    expect(diff?.action).toBe("unchanged");
+  });
+
   it("should treat a local uuid whitelist as unchanged against the same remote uuid (schema init passthrough)", () => {
     // `schema init` emits raw uuid `component_group_whitelist` entries; both
     // sides must translate uuid → slug path so the whitelist does not diff forever.

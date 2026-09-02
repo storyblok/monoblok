@@ -4,22 +4,25 @@ import { generateStoryblokTypes, generateTypes } from "./actions";
 import "../index";
 import { typesCommand } from "../command";
 import { readComponentsFiles } from "../../components/push/actions";
+import type { Component, SpaceComponentsData } from "../../components/constants";
 
-const mockResponse = [
+const mockResponse: Component[] = [
   {
     name: "component-name",
     display_name: "Component Name",
     created_at: "2021-08-09T12:00:00Z",
     updated_at: "2021-08-09T12:00:00Z",
     id: 12345,
-    schema: { type: "object" },
+    schema: { content: { type: "text" } },
     color: undefined,
     internal_tags_list: [],
     internal_tag_ids: [],
+    is_root: false,
+    is_nestable: true,
   },
 ];
 
-const mockSpaceData = {
+const mockSpaceData: SpaceComponentsData = {
   components: mockResponse,
   groups: [],
   presets: [],

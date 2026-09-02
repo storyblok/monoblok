@@ -119,12 +119,12 @@ describe("mapBlockToWire", () => {
 
   it("should slugify the block folder path onto the wire component", () => {
     const wire = mapBlockToWire({ name: "hero", folder: "My Layout/Heros", fields: [] });
-    expect(wire.folder).toBe("my-layout/heros");
+    expect(wire).toMatchObject({ folder: "my-layout/heros" });
   });
 
   it("should keep folder null and absent as-is", () => {
-    expect(mapBlockToWire({ name: "a", folder: null, fields: [] }).folder).toBeNull();
-    expect("folder" in mapBlockToWire({ name: "b", fields: [] })).toBe(false);
+    expect(mapBlockToWire({ name: "a", folder: null, fields: [] })).toMatchObject({ folder: null });
+    expect(mapBlockToWire({ name: "b", fields: [] })).not.toHaveProperty("folder");
   });
 });
 

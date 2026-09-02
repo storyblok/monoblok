@@ -49,7 +49,7 @@ const mockComponent: Component = {
   created_at: "2021-08-09T12:00:00Z",
   updated_at: "2021-08-09T12:00:00Z",
   id: 1,
-  schema: { type: "object" },
+  schema: {},
   is_root: false,
   is_nestable: true,
   all_presets: [],
@@ -302,30 +302,38 @@ describe("push", () => {
   });
 
   describe("--group option", () => {
-    const checkoutForm = {
+    const checkoutForm: Component = {
+      ...mockComponent,
       name: "checkout-form",
       display_name: "Checkout Form",
       id: 1,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
       component_group_uuid: "checkout",
-      internal_tags_list: [] as { id?: number; name?: string }[],
-      internal_tag_ids: [] as string[],
     };
-    const hero = {
+    const hero: Component = {
+      ...mockComponent,
       name: "hero",
       display_name: "Hero",
       id: 2,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
       component_group_uuid: "marketing",
-      internal_tags_list: [] as { id?: number; name?: string }[],
-      internal_tag_ids: [] as string[],
     };
-    const checkoutGroup = { id: 1, uuid: "checkout", name: "Checkout" };
-    const marketingGroup = { id: 2, uuid: "marketing", name: "Marketing" };
+    const checkoutGroup = {
+      id: 1,
+      uuid: "checkout",
+      name: "Checkout",
+      parent_id: null,
+      parent_uuid: null,
+    };
+    const marketingGroup = {
+      id: 2,
+      uuid: "marketing",
+      name: "Marketing",
+      parent_id: null,
+      parent_uuid: null,
+    };
 
     beforeEach(() => {
       vol.fromJSON({
@@ -339,8 +347,8 @@ describe("push", () => {
       vi.mocked(fetchComponentGroups).mockResolvedValue([]);
       vi.mocked(fetchComponentPresets).mockResolvedValue([]);
       vi.mocked(fetchComponentInternalTags).mockResolvedValue([]);
-      vi.mocked(upsertComponent).mockResolvedValue(checkoutForm as unknown as Component);
-      vi.mocked(upsertComponentGroup).mockResolvedValue(checkoutGroup as any);
+      vi.mocked(upsertComponent).mockResolvedValue(checkoutForm);
+      vi.mocked(upsertComponentGroup).mockResolvedValue(checkoutGroup);
     });
 
     it("pushes only components in the named group", async () => {
@@ -382,25 +390,22 @@ describe("push", () => {
   });
 
   describe("--tag option", () => {
-    const taggedComponent = {
+    const taggedComponent: Component = {
+      ...mockComponent,
       name: "tagged",
       display_name: "Tagged",
       id: 1,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
-      internal_tags_list: [] as { id?: number; name?: string }[],
       internal_tag_ids: ["10"],
     };
-    const untaggedComponent = {
+    const untaggedComponent: Component = {
+      ...mockComponent,
       name: "untagged",
       display_name: "Untagged",
       id: 2,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
-      internal_tags_list: [] as { id?: number; name?: string }[],
-      internal_tag_ids: [] as string[],
     };
     const betaTag = { id: 10, name: "beta", object_type: "component" };
 
@@ -416,8 +421,7 @@ describe("push", () => {
       vi.mocked(fetchComponentGroups).mockResolvedValue([]);
       vi.mocked(fetchComponentPresets).mockResolvedValue([]);
       vi.mocked(fetchComponentInternalTags).mockResolvedValue([]);
-      vi.mocked(upsertComponent).mockResolvedValue(taggedComponent as unknown as Component);
-      vi.mocked(upsertComponentGroup).mockResolvedValue({} as any);
+      vi.mocked(upsertComponent).mockResolvedValue(taggedComponent);
     });
 
     it("pushes only components carrying the named tag", async () => {
@@ -440,25 +444,21 @@ describe("push", () => {
   });
 
   describe("--filter option", () => {
-    const checkoutFormFilter = {
+    const checkoutFormFilter: Component = {
+      ...mockComponent,
       name: "checkout-form",
       display_name: "Checkout Form",
       id: 1,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
-      internal_tags_list: [] as { id?: number; name?: string }[],
-      internal_tag_ids: [] as string[],
     };
-    const heroFilter = {
+    const heroFilter: Component = {
+      ...mockComponent,
       name: "hero",
       display_name: "Hero",
       id: 2,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
-      internal_tags_list: [] as { id?: number; name?: string }[],
-      internal_tag_ids: [] as string[],
     };
 
     beforeEach(() => {
@@ -472,8 +472,7 @@ describe("push", () => {
       vi.mocked(fetchComponentGroups).mockResolvedValue([]);
       vi.mocked(fetchComponentPresets).mockResolvedValue([]);
       vi.mocked(fetchComponentInternalTags).mockResolvedValue([]);
-      vi.mocked(upsertComponent).mockResolvedValue(checkoutFormFilter as unknown as Component);
-      vi.mocked(upsertComponentGroup).mockResolvedValue({} as any);
+      vi.mocked(upsertComponent).mockResolvedValue(checkoutFormFilter);
     });
 
     it("pushes only components matching the glob filter", async () => {

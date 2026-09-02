@@ -7,6 +7,7 @@ import { migrationsCommand } from "../command";
 import { fetchComponent } from "../../../commands/components";
 import { getLogFileContents } from "../../__tests__/helpers";
 import { getProgram } from "../../../program";
+import type { Component } from "../../components";
 
 vi.mock("../../../commands/components", () => ({
   fetchComponent: vi.fn(),
@@ -20,12 +21,14 @@ vi.spyOn(console, "error");
 
 const LOG_PREFIX = "storyblok-migrations-generate-";
 
-const mockComponent = {
+const mockComponent: Component = {
   name: "component-name",
   display_name: "Component Name",
   created_at: "2021-08-09T12:00:00Z",
   updated_at: "2021-08-09T12:00:00Z",
   id: 12345,
+  is_root: false,
+  is_nestable: true,
   schema: {
     field1: {
       type: "bloks",
@@ -33,7 +36,7 @@ const mockComponent = {
       component_tag_whitelist: [1, 2],
     },
   },
-} as const;
+};
 
 const preconditions = {
   componentExists() {

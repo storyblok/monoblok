@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UpdateStream } from "./update-stream";
 import { updateStory } from "../../../stories/actions";
 import type { BlokContent } from "../../../stories/constants";
+import type { Story } from "../../../stories/constants";
 
 // Mock the updateStory action
 vi.mock("../../../stories/actions", () => ({
@@ -20,6 +21,56 @@ describe("updateStream", () => {
       component: "page",
       title: "Test Content",
     };
+    const mockUpdatedStory: Story = {
+      id: 1,
+      name: "Test Story",
+      uuid: "uuid-1",
+      slug: "test-story",
+      full_slug: "test-story",
+      content: mockContent,
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      published_at: "2023-01-01T00:00:00Z",
+      first_published_at: "2023-01-01T00:00:00Z",
+      published: true,
+      unpublished_changes: false,
+      is_startpage: false,
+      is_folder: false,
+      pinned: false,
+      parent_id: 0,
+      group_id: "group-1",
+      parent: null,
+      path: null,
+      position: 0,
+      sort_by_date: null,
+      tag_list: [],
+      disble_fe_editor: false,
+      disable_fe_editor: false,
+      default_root: null,
+      preview_token: {
+        token: "preview-token",
+        timestamp: "2023-01-01T00:00:00Z",
+      },
+      meta_data: null,
+      last_author: null,
+      last_author_id: null,
+      alternates: [],
+      translated_slugs: [],
+      localized_paths: [],
+      breadcrumbs: [],
+      publish_at: null,
+      expire_at: null,
+      user_ids: [],
+      space_role_ids: [],
+      translated_stories: [],
+      can_not_view: null,
+      is_scheduled: null,
+      scheduled_dates: null,
+      ideas: [],
+      favourite_for_user_ids: [],
+      imported_at: null,
+      deleted_at: null,
+    };
 
     it('should publish stories with "published" flag only if they were already published without changes', async () => {
       const updateStream = new UpdateStream({
@@ -28,11 +79,7 @@ describe("updateStream", () => {
         dryRun: false,
       });
 
-      vi.mocked(updateStory).mockResolvedValue({
-        id: 1,
-        name: "Test Story",
-        content: mockContent,
-      } as any);
+      vi.mocked(updateStory).mockResolvedValue(mockUpdatedStory);
 
       return new Promise<void>((resolve) => {
         updateStream.on("finish", () => {
@@ -105,11 +152,7 @@ describe("updateStream", () => {
         dryRun: false,
       });
 
-      vi.mocked(updateStory).mockResolvedValue({
-        id: 1,
-        name: "Test Story",
-        content: mockContent,
-      } as any);
+      vi.mocked(updateStory).mockResolvedValue(mockUpdatedStory);
 
       return new Promise<void>((resolve) => {
         updateStream.on("finish", () => {
@@ -182,11 +225,7 @@ describe("updateStream", () => {
         dryRun: false,
       });
 
-      vi.mocked(updateStory).mockResolvedValue({
-        id: 1,
-        name: "Test Story",
-        content: mockContent,
-      } as any);
+      vi.mocked(updateStory).mockResolvedValue(mockUpdatedStory);
 
       return new Promise<void>((resolve) => {
         updateStream.on("finish", () => {
@@ -256,11 +295,7 @@ describe("updateStream", () => {
         dryRun: false,
       });
 
-      vi.mocked(updateStory).mockResolvedValue({
-        id: 1,
-        name: "Test Story",
-        content: mockContent,
-      } as any);
+      vi.mocked(updateStory).mockResolvedValue(mockUpdatedStory);
 
       return new Promise<void>((resolve) => {
         updateStream.on("finish", () => {

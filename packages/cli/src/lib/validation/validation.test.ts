@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { ValidationIssue } from "./adapter";
 import type { ValidationRunResult } from "./types";
@@ -8,7 +8,7 @@ import { formatJson } from "./format-json";
 import { formatPretty } from "./format-pretty";
 import { entityToHeader, entityToRef, groupIssuesByEntity } from "./group";
 import { writeValidationReport } from "./report";
-import type { Reporter } from "../reporter/reporter";
+import { Reporter } from "../reporter/reporter";
 
 const error: ValidationIssue = {
   severity: "error",
@@ -178,27 +178,11 @@ describe("formatPretty unit noun", () => {
 });
 
 describe("writeValidationReport", () => {
-  /** Captures what the reporter was handed, without touching the filesystem. */
-  function fakeReporter() {
-    const summaries: Record<string, unknown> = {};
-    const metas: Record<string, unknown> = {};
-    const reporter = {
-      addSummary(key: string, value: unknown) {
-        summaries[key] = value;
-        return reporter;
-      },
-      addMeta(key: string, value: unknown) {
-        metas[key] = value;
-        return reporter;
-      },
-    };
-    return { reporter, summaries, metas };
-  }
-
   // The artifact's `succeeded` is derived, so a wrong unit count silently
   // reported a broken definition as clean.
   it("should keep succeeded + failed equal to the unit total", () => {
-    const { reporter, summaries } = fakeReporter();
+    const reporter = new Reporter();
+    const addSummary = vi.spyOn(reporter, "addSummary");
     const namelessBlock = (index: number): ValidationIssue => ({
       severity: "error",
       code: "invalid_block_name",
@@ -219,9 +203,9 @@ describe("writeValidationReport", () => {
       ],
     };
 
-    writeValidationReport(reporter as unknown as Reporter, result);
+    writeValidationReport(reporter, result);
 
-    expect(summaries.validation).toEqual({ total: 3, succeeded: 1, failed: 2 });
+    expect(addSummary).toHaveBeenCalledWith("validation", { total: 3, succeeded: 1, failed: 2 });
   });
 });
 
@@ -268,7 +252,12 @@ describe("formatPretty", () => {
   });
 
   it("should report a clean run", () => {
-    const clean: ValidationRunResult = { unitNoun: "entities", unitsTotal: 14, groups: [] };
+    const clean: ValidationRunResult = {
+      unitNoun: "entities",
+      unitNounSingular: "entity",
+      unitsTotal: 14,
+      groups: [],
+    };
     expect(formatPretty(clean, "warning")).toContain(
       "0 errors, 0 warnings across 0 of 14 entities",
     );
@@ -400,6 +389,7 @@ describe("formatJson", () => {
   it("should omit the failure reasons when nothing failed", () => {
     const clean: ValidationRunResult = {
       unitNoun: "stories",
+      unitNounSingular: "story",
       unitsTotal: 5,
       groups: [],
       fetchErrors: [],
@@ -450,7 +440,12 @@ describe("formatJson", () => {
   });
 
   it("should not flag no-matches for an unfiltered run over an empty space", () => {
-    const empty: ValidationRunResult = { unitNoun: "stories", unitsTotal: 0, groups: [] };
+    const empty: ValidationRunResult = {
+      unitNoun: "stories",
+      unitNounSingular: "story",
+      unitsTotal: 0,
+      groups: [],
+    };
     const report = JSON.parse(formatJson(empty, "warning"));
     expect(report).not.toHaveProperty("noMatches");
     expect(report).not.toHaveProperty("filter");
@@ -478,6 +473,7 @@ describe("formatJson", () => {
   it("should report ok:true for a complete clean run", () => {
     const clean: ValidationRunResult = {
       unitNoun: "stories",
+      unitNounSingular: "story",
       unitsTotal: 5,
       groups: [],
       fetchFailures: 0,

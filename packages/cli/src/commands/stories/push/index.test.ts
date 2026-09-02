@@ -170,7 +170,7 @@ const preconditions = {
           );
         } else if (byIds !== null) {
           const idSet = new Set(byIds.split(",").map((n) => Number(n)));
-          matched = stories.filter((s) => idSet.has(s.id));
+          matched = stories.filter((s) => idSet.has(Number(s.id)));
         }
         return HttpResponse.json(
           { stories: matched },

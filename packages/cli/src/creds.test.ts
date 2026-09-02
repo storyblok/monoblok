@@ -1,7 +1,6 @@
 import { addCredentials, getCredentials, removeAllCredentials } from "./creds";
 import { describe, expect, it } from "vitest";
 import { vol } from "memfs";
-import type { StoryblokCredentials } from "./types";
 
 describe("creds", async () => {
   describe("getCredentials", () => {
@@ -19,14 +18,14 @@ describe("creds", async () => {
         "/temp",
       );
 
-      const credentials = (await getCredentials(
-        "/temp/test/credentials.json",
-      )) as StoryblokCredentials;
+      const credentials = await getCredentials("/temp/test/credentials.json");
 
-      expect(credentials["api.storyblok.com"]).toEqual({
-        login: "julio.professional@storyblok.com",
-        password: "my_access_token",
-        region: "eu",
+      expect(credentials).toEqual({
+        "api.storyblok.com": {
+          login: "julio.professional@storyblok.com",
+          password: "my_access_token",
+          region: "eu",
+        },
       });
     });
     it("should create a credentials.json file if it does not exist", async () => {

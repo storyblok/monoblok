@@ -45,7 +45,13 @@ describe("internalTagNamesFromAssets", () => {
           { id: 2, name: "green" },
         ],
       },
-      { internal_tags_list: [{ id: 3, name: "blue" }, { id: 4, name: "" }, { id: 5 }] },
+      {
+        internal_tags_list: [
+          { id: 3, name: "blue" },
+          { id: 4, name: "" },
+          { id: 5, name: "" },
+        ],
+      },
       {},
     ]);
 

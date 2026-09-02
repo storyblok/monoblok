@@ -4,6 +4,7 @@ import { userCommand } from "./";
 import { getUser } from "./actions";
 import { session } from "../../session";
 import { loggedOutSessionState } from "../../../test/setup";
+import type { User } from "../../types";
 
 vi.mock("./actions", () => ({
   getUser: vi.fn(),
@@ -29,12 +30,28 @@ describe("userCommand", () => {
   });
 
   it("should show the user information", async () => {
-    const mockResponse = {
+    const mockResponse: User = {
       id: 1,
+      userid: "1",
       friendly_name: "John Doe",
       email: "john.doe@storyblok.com",
       created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
+      use_username: false,
+      login_strategy: "password",
+      has_org: false,
+      has_partner: false,
+      org: {},
+      notified: [],
+      favourite_spaces: [],
+      favourite_ideas: [],
+      beta_user: false,
+      track_statistics: true,
+      ui_theme: {},
+      totp_factor_verified: false,
+      configured_2fa_options: ["otp_email"],
+      disclaimer_ids: [],
+      live_chat_enabled: false,
+      confirmed: true,
     };
     vi.mocked(getUser).mockResolvedValue(mockResponse);
     await userCommand.parseAsync(["node", "test"]);

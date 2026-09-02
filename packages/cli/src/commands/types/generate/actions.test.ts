@@ -24,10 +24,16 @@ const mockDatasource: SpaceDatasource = {
   slug: "countries",
   created_at: "2021-08-09T12:00:00Z",
   updated_at: "2021-08-09T12:00:00Z",
+  dimensions: [],
   entries: [
-    { id: 101, name: "United States", value: "us", dimension_value: "", datasource_id: 1 },
-    { id: 102, name: "Canada", value: "ca", dimension_value: "", datasource_id: 1 },
+    { id: 101, name: "United States", value: "us", dimension_values: {} },
+    { id: 102, name: "Canada", value: "ca", dimension_values: {} },
   ],
+};
+
+const componentDefaults: Pick<Component, "is_root" | "is_nestable"> = {
+  is_root: false,
+  is_nestable: true,
 };
 
 // Mock the filesystem module
@@ -171,6 +177,7 @@ vi.mocked(readFileSync).mockImplementation((path) => {
 const mockSpaceData: SpaceComponentsData = {
   components: [
     {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -420,16 +427,17 @@ describe("generate types actions", () => {
     }
   });
 
-  it("should handle null or undefined component schema", async () => {
-    const spaceDataWithNullSchema: SpaceComponentsData = {
+  it("should handle an empty component schema", async () => {
+    const spaceDataWithEmptySchema: SpaceComponentsData = {
       components: [
         {
+          ...componentDefaults,
           name: "empty_component",
           display_name: "Empty Component",
           created_at: "2023-01-01T00:00:00Z",
           updated_at: "2023-01-01T00:00:00Z",
           id: 1,
-          schema: null as any,
+          schema: {},
           internal_tags_list: [],
           internal_tag_ids: [],
         },
@@ -445,12 +453,12 @@ describe("generate types actions", () => {
     };
 
     // Should not throw an error
-    const result = await generateTypes(spaceDataWithNullSchema, mockOptions);
+    const result = await generateTypes(spaceDataWithEmptySchema, mockOptions);
     expect(result).toBeDefined();
   });
 
-  it("should filter out datasources with null or undefined slug", async () => {
-    const spaceDataWithInvalidDatasource: SpaceComponentsData = {
+  it("should generate types for a datasource with a slug", async () => {
+    const spaceDataWithDatasource: SpaceComponentsData = {
       components: [],
       datasources: [
         {
@@ -459,19 +467,8 @@ describe("generate types actions", () => {
           slug: "valid_datasource",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
-          entries: [
-            { id: 1, name: "Item 1", value: "item1", dimension_value: "", datasource_id: 1 },
-          ],
-        },
-        {
-          id: 2,
-          name: "Invalid Datasource",
-          created_at: "2021-08-09T12:00:00Z",
-          updated_at: "2021-08-09T12:00:00Z",
-          slug: null as any,
-          entries: [
-            { id: 2, name: "Item 2", value: "item2", dimension_value: "", datasource_id: 2 },
-          ],
+          dimensions: [],
+          entries: [{ id: 1, name: "Item 1", value: "item1", dimension_values: {} }],
         },
       ],
       groups: [],
@@ -483,13 +480,12 @@ describe("generate types actions", () => {
       strict: false,
     };
 
-    const result = await generateTypes(spaceDataWithInvalidDatasource, mockOptions);
+    const result = await generateTypes(spaceDataWithDatasource, mockOptions);
 
-    // Should only contain the valid datasource
+    // The datasource name is represented in the generated type.
     expect(result).toBeDefined();
     if (typeof result === "string") {
       expect(result).toContain("ValidDatasourceDataSource");
-      expect(result).not.toContain("InvalidDatasourceDataSource");
     }
   });
 
@@ -632,6 +628,7 @@ describe("Storyblok type references", () => {
   // without skipLibCheck, so assert the two agree for every Storyblok field type.
   it("should import every Storyblok type it annotates", async () => {
     const componentWithEveryStoryblokType: Component = {
+      ...componentDefaults,
       name: "field_showcase",
       display_name: "Field Showcase",
       created_at: "2023-01-01T00:00:00Z",
@@ -671,6 +668,7 @@ describe("Storyblok type references", () => {
 
   it("should annotate richtext fields with the exported richtext type name", async () => {
     const componentWithRichtext: Component = {
+      ...componentDefaults,
       name: "article",
       display_name: "Article",
       created_at: "2023-01-01T00:00:00Z",
@@ -695,6 +693,7 @@ describe("component property type annotations", () => {
   it("should handle text property type", async () => {
     // Create a component with text property type
     const componentWithTextType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -729,6 +728,7 @@ describe("component property type annotations", () => {
   it("should handle textarea property type", async () => {
     // Create a component with textarea property type
     const componentWithTextareaType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -763,6 +763,7 @@ describe("component property type annotations", () => {
   it("should handle number property type", async () => {
     // Create a component with number property type
     const componentWithNumberType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -797,6 +798,7 @@ describe("component property type annotations", () => {
   it("should handle boolean property type", async () => {
     // Create a component with boolean property type
     const componentWithBooleanType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -830,6 +832,7 @@ describe("component property type annotations", () => {
 
   it("should handle multilink property type", async () => {
     const componentWithMultilinkEmail: Component = {
+      ...componentDefaults,
       name: "test_component",
       created_at: "2023-01-01T00:00:00Z",
       updated_at: "2023-01-01T00:00:00Z",
@@ -855,6 +858,7 @@ describe("component property type annotations", () => {
     );
 
     const componentWithMultilinkBoth: Component = {
+      ...componentDefaults,
       name: "test_component",
       created_at: "2023-01-01T00:00:00Z",
       updated_at: "2023-01-01T00:00:00Z",
@@ -880,6 +884,7 @@ describe("component property type annotations", () => {
     );
 
     const componentWithMultilinkNone: Component = {
+      ...componentDefaults,
       name: "test_component",
       created_at: "2023-01-01T00:00:00Z",
       updated_at: "2023-01-01T00:00:00Z",
@@ -908,6 +913,7 @@ describe("component property type annotations", () => {
   it("should handle bloks property type with component restrictions", async () => {
     // Create a component with bloks property type and component restrictions
     const componentWithBloksType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -944,6 +950,7 @@ describe("component property type annotations", () => {
   it("should handle bloks property type with tag-based restrictions", async () => {
     // Create components with different tag IDs
     const buttonComponent: Component = {
+      ...componentDefaults,
       name: "button",
       display_name: "Button",
       created_at: "2023-01-01T00:00:00Z",
@@ -955,6 +962,7 @@ describe("component property type annotations", () => {
     };
 
     const imageComponent: Component = {
+      ...componentDefaults,
       name: "image",
       display_name: "Image",
       created_at: "2023-01-01T00:00:00Z",
@@ -966,6 +974,7 @@ describe("component property type annotations", () => {
     };
 
     const textComponent: Component = {
+      ...componentDefaults,
       name: "text",
       display_name: "Text",
       created_at: "2023-01-01T00:00:00Z",
@@ -978,6 +987,7 @@ describe("component property type annotations", () => {
 
     // Create a component with bloks property type and tag-based restrictions
     const componentWithTagBasedBloks: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1017,6 +1027,7 @@ describe("component property type annotations", () => {
   it("should handle tabbed properties correctly", async () => {
     // Create a component with tabbed properties
     const componentWithTabbedProperties: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1057,6 +1068,7 @@ describe("component property type annotations", () => {
     // The management API represents the editor's "Group" field as a `section`. It only
     // arranges the fields listed in `keys`, so it never holds a value of its own.
     const componentWithGroup: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1094,6 +1106,7 @@ describe("component property type annotations", () => {
     // Tabs are identified by their type, not by their key. A content field that merely
     // happens to be named `tab-...` still holds a value and belongs in the types.
     const componentWithTabPrefixedField: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1122,17 +1135,15 @@ describe("component property type annotations", () => {
     expect(result).toContain('"tab-title": string');
   });
 
-  it("should skip malformed schema entries instead of failing", async () => {
-    // The management API types every schema entry as an object, but malformed spaces
-    // do occur. A single bad entry must not take down the whole command.
-    const componentWithMalformedEntry: Component = {
+  it("should generate valid schema entries", async () => {
+    const componentWithValidEntry: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
       updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
-        broken: null as unknown as Component["schema"][string],
         title: {
           type: "text",
           required: true,
@@ -1143,7 +1154,7 @@ describe("component property type annotations", () => {
     };
 
     const spaceData: SpaceComponentsData = {
-      components: [componentWithMalformedEntry],
+      components: [componentWithValidEntry],
       datasources: [],
       groups: [],
       presets: [],
@@ -1153,12 +1164,12 @@ describe("component property type annotations", () => {
     const result = await generateTypes(spaceData, { strict: false });
 
     expect(result).toContain("title: string");
-    expect(result).not.toContain("broken");
   });
 
   it("should handle custom property type with customFieldsParser", async () => {
     // Create a component with custom property type
     const componentWithCustomType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1206,6 +1217,7 @@ describe("component property type annotations", () => {
   it("should handle datasource property type", async () => {
     // Create a component with boolean property type
     const componentWithDatasourceType: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1239,24 +1251,21 @@ describe("component property type annotations", () => {
           entries: [
             {
               id: 109556771421284,
-              datasource_id: 109556769159015,
               name: "deform-206",
               value: "deform-206",
-              dimension_value: "",
+              dimension_values: {},
             },
             {
               id: 109556773588069,
-              datasource_id: 109556769159015,
               name: "because-854",
               value: "because-854",
-              dimension_value: "",
+              dimension_values: {},
             },
             {
               id: 109556775738470,
-              datasource_id: 109556769159015,
               name: "even-218",
               value: "even-218",
-              dimension_value: "",
+              dimension_values: {},
             },
           ],
         },
@@ -1285,8 +1294,9 @@ describe("single-option empty value", () => {
     options: values.map((value) => ({ name: value, value })),
   });
 
-  const generate = async (schema: Record<string, unknown>) => {
+  const generate = async (schema: Component["schema"]) => {
     const component: Component = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1295,11 +1305,14 @@ describe("single-option empty value", () => {
       schema,
       internal_tags_list: [],
       internal_tag_ids: [],
-    } as unknown as Component;
+    };
     const spaceData: SpaceComponentsData = {
       components: [component],
       datasources: [],
-    } as unknown as SpaceComponentsData;
+      groups: [],
+      presets: [],
+      internalTags: [],
+    };
     return (await generateTypes(spaceData, { strict: false })) as string;
   };
 

@@ -427,17 +427,16 @@ describe("generate types actions", () => {
     }
   });
 
-  it("should handle an empty component schema", async () => {
-    const spaceDataWithEmptySchema: SpaceComponentsData = {
+  it("should handle null component schema", async () => {
+    const spaceDataWithNullSchema = {
       components: [
         {
-          ...componentDefaults,
           name: "empty_component",
           display_name: "Empty Component",
           created_at: "2023-01-01T00:00:00Z",
           updated_at: "2023-01-01T00:00:00Z",
           id: 1,
-          schema: {},
+          schema: null,
           internal_tags_list: [],
           internal_tag_ids: [],
         },
@@ -453,12 +452,15 @@ describe("generate types actions", () => {
     };
 
     // Should not throw an error
-    const result = await generateTypes(spaceDataWithEmptySchema, mockOptions);
+    const result = await Reflect.apply(generateTypes, undefined, [
+      spaceDataWithNullSchema,
+      mockOptions,
+    ]);
     expect(result).toBeDefined();
   });
 
-  it("should generate types for a datasource with a slug", async () => {
-    const spaceDataWithDatasource: SpaceComponentsData = {
+  it("should filter out datasources with null slug", async () => {
+    const spaceDataWithInvalidDatasource = {
       components: [],
       datasources: [
         {
@@ -470,6 +472,15 @@ describe("generate types actions", () => {
           dimensions: [],
           entries: [{ id: 1, name: "Item 1", value: "item1", dimension_values: {} }],
         },
+        {
+          id: 2,
+          name: "Invalid Datasource",
+          slug: null,
+          created_at: "2021-08-09T12:00:00Z",
+          updated_at: "2021-08-09T12:00:00Z",
+          dimensions: [],
+          entries: [{ id: 2, name: "Item 2", value: "item2", dimension_values: {} }],
+        },
       ],
       groups: [],
       presets: [],
@@ -480,12 +491,15 @@ describe("generate types actions", () => {
       strict: false,
     };
 
-    const result = await generateTypes(spaceDataWithDatasource, mockOptions);
+    const result = await Reflect.apply(generateTypes, undefined, [
+      spaceDataWithInvalidDatasource,
+      mockOptions,
+    ]);
 
-    // The datasource name is represented in the generated type.
     expect(result).toBeDefined();
     if (typeof result === "string") {
       expect(result).toContain("ValidDatasourceDataSource");
+      expect(result).not.toContain("InvalidDatasourceDataSource");
     }
   });
 
@@ -1135,15 +1149,15 @@ describe("component property type annotations", () => {
     expect(result).toContain('"tab-title": string');
   });
 
-  it("should generate valid schema entries", async () => {
-    const componentWithValidEntry: Component = {
-      ...componentDefaults,
+  it("should skip malformed schema entries instead of failing", async () => {
+    const componentWithMalformedEntry = {
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
       updated_at: "2023-01-01T00:00:00Z",
       id: 1,
       schema: {
+        broken: null,
         title: {
           type: "text",
           required: true,
@@ -1153,17 +1167,18 @@ describe("component property type annotations", () => {
       internal_tag_ids: [],
     };
 
-    const spaceData: SpaceComponentsData = {
-      components: [componentWithValidEntry],
+    const spaceData = {
+      components: [componentWithMalformedEntry],
       datasources: [],
       groups: [],
       presets: [],
       internalTags: [],
     };
 
-    const result = await generateTypes(spaceData, { strict: false });
+    const result = await Reflect.apply(generateTypes, undefined, [spaceData, { strict: false }]);
 
     expect(result).toContain("title: string");
+    expect(result).not.toContain("broken");
   });
 
   it("should handle custom property type with customFieldsParser", async () => {

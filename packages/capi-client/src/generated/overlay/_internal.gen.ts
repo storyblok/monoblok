@@ -866,7 +866,7 @@ export type BlockContentRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | undefined;
 };
 
 /**
@@ -885,7 +885,7 @@ export type BlockContentInputRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: null | string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentInputRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: null | string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentInputRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | undefined;
 };
 
 /**
@@ -1347,7 +1347,7 @@ export type RichTextFieldValueImageNode = {
             title?: string | null;
             source?: string | null;
             copyright?: string | null;
-            [key: string]: string | null | string | null | string | null | string | null | string | null | undefined;
+            [key: string]: string | null | undefined;
         } | null;
     };
 };

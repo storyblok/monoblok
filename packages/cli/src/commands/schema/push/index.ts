@@ -288,23 +288,23 @@ schemaCommand
         diffResult.creates === 0 &&
         diffResult.updates === 0 &&
         (!options.delete || diffResult.stale === 0);
-      if (nothingToPush) {
-        ui.ok("Everything up to date — nothing to push.");
-      } else {
+      let pushResult: Awaited<ReturnType<typeof executePush>> | null = null;
+      if (!nothingToPush) {
         const pushSpinner = ui.createSpinner("Pushing schema...");
-        let result: Awaited<ReturnType<typeof executePush>>;
         try {
-          result = await executePush(space, local, remote, diffResult, { delete: options.delete });
+          pushResult = await executePush(space, local, remote, diffResult, {
+            delete: options.delete,
+          });
         } catch (error) {
           pushSpinner.failed("Failed to push schema");
           throw error;
         }
 
-        summary.total = result.created + result.updated + result.deleted;
+        summary.total = pushResult.created + pushResult.updated + pushResult.deleted;
         summary.succeeded = summary.total;
 
         pushSpinner.succeed(
-          `Pushed ${result.created} creations, ${result.updated} updates${result.deleted > 0 ? `, ${result.deleted} deletions` : ""}.`,
+          `Pushed ${pushResult.created} creations, ${pushResult.updated} updates${pushResult.deleted > 0 ? `, ${pushResult.deleted} deletions` : ""}.`,
         );
       }
 
@@ -329,6 +329,19 @@ schemaCommand
           });
         }
       }
+
+      // 11. Confirm the outcome last, so a run that only surfaced advisory
+      // warnings does not read as a failure.
+      ui.br();
+      if (pushResult) {
+        ui.ok(
+          `Schema pushed to space ${space}. ${pushResult.created} created, ${pushResult.updated} updated${pushResult.deleted > 0 ? `, ${pushResult.deleted} deleted` : ""}.`,
+          true,
+        );
+      } else {
+        ui.ok(`Schema already up to date with space ${space}, nothing to push.`, true);
+      }
+      ui.br();
     } catch (maybeError) {
       summary.failed += 1;
       handleError(toError(maybeError), verbose);

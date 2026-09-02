@@ -7,6 +7,7 @@ import { readRollbackFile } from "./actions";
 import { updateStory } from "../../stories/actions";
 import type { RollbackData } from "./actions";
 import type { BlokContent } from "../../stories/constants";
+import type { Story } from "../../stories/constants";
 import { getLogFileContents } from "../../__tests__/helpers";
 import { session } from "../../../session";
 import { loggedOutSessionState } from "../../../../test/setup";
@@ -44,6 +45,57 @@ const mockRollbackData: RollbackData = {
   ],
 };
 
+const mockUpdatedStory: Story = {
+  id: 1,
+  name: "Test Story",
+  uuid: "uuid-1",
+  slug: "test-story",
+  full_slug: "test-story",
+  content: mockBlokContent,
+  created_at: "2023-01-01T00:00:00Z",
+  updated_at: "2023-01-01T00:00:00Z",
+  published_at: "2023-01-01T00:00:00Z",
+  first_published_at: "2023-01-01T00:00:00Z",
+  published: true,
+  unpublished_changes: false,
+  is_startpage: false,
+  is_folder: false,
+  pinned: false,
+  parent_id: 0,
+  group_id: "group-1",
+  parent: null,
+  path: null,
+  position: 0,
+  sort_by_date: null,
+  tag_list: [],
+  disble_fe_editor: false,
+  disable_fe_editor: false,
+  default_root: null,
+  preview_token: {
+    token: "preview-token",
+    timestamp: "2023-01-01T00:00:00Z",
+  },
+  meta_data: null,
+  last_author: null,
+  last_author_id: null,
+  alternates: [],
+  translated_slugs: [],
+  localized_paths: [],
+  breadcrumbs: [],
+  publish_at: null,
+  expire_at: null,
+  user_ids: [],
+  space_role_ids: [],
+  translated_stories: [],
+  can_not_view: null,
+  is_scheduled: null,
+  scheduled_dates: null,
+  ideas: [],
+  favourite_for_user_ids: [],
+  imported_at: null,
+  deleted_at: null,
+};
+
 const preconditions = {
   loggedOut() {
     vi.mocked(session().initializeSession).mockImplementation(async () => {
@@ -57,7 +109,7 @@ const preconditions = {
     vi.mocked(readRollbackFile).mockRejectedValue(new Error("File not found"));
   },
   canUpdateStory() {
-    vi.mocked(updateStory).mockResolvedValue({ id: 1 });
+    vi.mocked(updateStory).mockResolvedValue(mockUpdatedStory);
   },
   canNotUpdateStory() {
     vi.mocked(updateStory).mockRejectedValue(new Error("Update failed"));

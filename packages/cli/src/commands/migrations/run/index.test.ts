@@ -22,42 +22,72 @@ vi.spyOn(console, "error");
 vi.spyOn(console, "warn");
 
 // Helper function to create mock story
-const createMockStory = (overrides: Partial<Story> = {}): Story => ({
-  id: 517473243,
-  name: "Test Story",
-  uuid: "uuid-1",
-  slug: "test-story",
-  full_slug: "test-story",
-  content: {
-    _uid: "4b16d1ea-4306-47c5-b901-9d67d5babf53",
-    component: "page",
-    body: [
-      {
-        _uid: "216ba4ef-1298-4b7d-8ce0-7487e6db15cc",
-        component: "migration-component",
-        unchanged: "unchanged",
-        amount: 10,
-      },
-    ],
-  },
-  created_at: "2023-01-01T00:00:00Z",
-  updated_at: "2023-01-01T00:00:00Z",
-  published_at: "2023-01-01T00:00:00Z",
-  first_published_at: "2023-01-01T00:00:00Z",
-  published: true,
-  unpublished_changes: false,
-  is_startpage: false,
-  is_folder: false,
-  pinned: false,
-  group_id: "group-1",
-  position: 0,
-  tag_list: [],
-  disable_fe_editor: false,
-  alternates: [],
-  breadcrumbs: [],
-  favourite_for_user_ids: [],
-  ...overrides,
-});
+const createMockStory = (overrides: Partial<Story> = {}): Story => {
+  const { parent_id = 0, ...storyOverrides } = overrides;
+
+  return {
+    id: 517473243,
+    name: "Test Story",
+    uuid: "uuid-1",
+    slug: "test-story",
+    full_slug: "test-story",
+    content: {
+      _uid: "4b16d1ea-4306-47c5-b901-9d67d5babf53",
+      component: "page",
+      body: [
+        {
+          _uid: "216ba4ef-1298-4b7d-8ce0-7487e6db15cc",
+          component: "migration-component",
+          unchanged: "unchanged",
+          amount: 10,
+        },
+      ],
+    },
+    created_at: "2023-01-01T00:00:00Z",
+    updated_at: "2023-01-01T00:00:00Z",
+    published_at: "2023-01-01T00:00:00Z",
+    first_published_at: "2023-01-01T00:00:00Z",
+    published: true,
+    unpublished_changes: false,
+    is_startpage: false,
+    is_folder: false,
+    pinned: false,
+    parent_id,
+    group_id: "group-1",
+    parent: null,
+    path: null,
+    position: 0,
+    sort_by_date: null,
+    tag_list: [],
+    disble_fe_editor: false,
+    disable_fe_editor: false,
+    default_root: null,
+    preview_token: {
+      token: "preview-token",
+      timestamp: "2023-01-01T00:00:00Z",
+    },
+    meta_data: null,
+    last_author: null,
+    last_author_id: null,
+    alternates: [],
+    translated_slugs: [],
+    localized_paths: [],
+    breadcrumbs: [],
+    publish_at: null,
+    expire_at: null,
+    user_ids: [],
+    space_role_ids: [],
+    translated_stories: [],
+    can_not_view: null,
+    is_scheduled: null,
+    scheduled_dates: null,
+    ideas: [],
+    favourite_for_user_ids: [],
+    imported_at: null,
+    deleted_at: null,
+    ...storyOverrides,
+  };
+};
 
 const mockStory = createMockStory();
 

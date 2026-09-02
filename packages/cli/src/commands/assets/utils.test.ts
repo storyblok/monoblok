@@ -38,16 +38,19 @@ describe("extractAssetSizeFromFilename", () => {
 
 describe("internalTagNamesFromAssets", () => {
   it("collects unique tag names in first-seen order, ignoring blanks", () => {
-    const names = internalTagNamesFromAssets([
+    const assets = [
       {
         internal_tags_list: [
           { id: 1, name: "blue" },
           { id: 2, name: "green" },
         ],
       },
-      { internal_tags_list: [{ id: 3, name: "blue" }, { id: 4, name: "" }, { id: 5 }] },
+      {
+        internal_tags_list: [{ id: 3, name: "blue" }, { id: 4, name: "" }, { id: 5 }],
+      },
       {},
-    ]);
+    ];
+    const names = Reflect.apply(internalTagNamesFromAssets, undefined, [assets]);
 
     expect(names).toEqual(["blue", "green"]);
   });

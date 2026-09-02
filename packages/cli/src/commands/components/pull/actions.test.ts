@@ -9,41 +9,56 @@ import {
   saveComponentsToFiles,
 } from "./actions";
 import { getMapiClient } from "../../../api";
+import type { Component } from "../constants";
 
-const mockedComponents = [
-  {
+function component(overrides: Partial<Component> & { id: number; name: string }): Component {
+  return {
+    ...overrides,
+    display_name: overrides.display_name ?? null,
+    created_at: overrides.created_at ?? "2021-08-09T12:00:00Z",
+    updated_at: overrides.updated_at ?? "2021-08-09T12:00:00Z",
+    schema: overrides.schema ?? {},
+    is_root: overrides.is_root ?? false,
+    is_nestable: overrides.is_nestable ?? false,
+    internal_tags_list: overrides.internal_tags_list ?? [],
+    internal_tag_ids: overrides.internal_tag_ids ?? [],
+  };
+}
+
+const mockedComponents: Component[] = [
+  component({
     name: "component-name",
     display_name: "Component Name",
     created_at: "2021-08-09T12:00:00Z",
     updated_at: "2021-08-09T12:00:00Z",
     id: 12345,
-    schema: { type: "object" },
+    schema: {},
     color: undefined,
     internal_tags_list: [{ id: 1, name: "tag" }],
     internal_tag_ids: ["1"],
-  },
-  {
+  }),
+  component({
     name: "component-name-2",
     display_name: "Component Name 2",
     created_at: "2021-08-09T12:00:00Z",
     updated_at: "2021-08-09T12:00:00Z",
     id: 12346,
-    schema: { type: "object" },
+    schema: {},
     color: undefined,
     internal_tags_list: [{ id: 1, name: "tag" }],
     internal_tag_ids: ["1"],
-  },
-  {
+  }),
+  component({
     name: "name-2",
     display_name: "Name 2",
     created_at: "2021-08-09T12:00:00Z",
     updated_at: "2021-08-09T12:00:00Z",
     id: 12346,
-    schema: { type: "object" },
+    schema: {},
     color: undefined,
     internal_tags_list: [],
     internal_tag_ids: [],
-  },
+  }),
 ];
 
 const emptySpaceData = {
@@ -86,44 +101,14 @@ describe("pull components actions", () => {
   });
 
   it("should fetch a component by name", async () => {
-    const mockResponse = {
-      components: [
-        {
-          name: "component-name",
-          display_name: "Component Name",
-          created_at: "2021-08-09T12:00:00Z",
-          updated_at: "2021-08-09T12:00:00Z",
-          id: 12345,
-          schema: { type: "object" },
-          color: undefined,
-          internal_tags_list: [{ id: 1, name: "tag" }],
-          internal_tag_ids: ["1"],
-        },
-      ],
-    };
     const result = await fetchComponent("12345", "component-name");
-    expect(result).toEqual(mockResponse.components[0]);
+    expect(result).toEqual(mockedComponents[0]);
   });
 
   it("should choose the right component when multiple names match", async () => {
-    const mockResponse = {
-      components: [
-        {
-          name: "name-2",
-          display_name: "Name 2",
-          created_at: "2021-08-09T12:00:00Z",
-          updated_at: "2021-08-09T12:00:00Z",
-          id: 12346,
-          schema: { type: "object" },
-          color: undefined,
-          internal_tags_list: [],
-          internal_tag_ids: [],
-        },
-      ],
-    };
     // searching for 'name-2' would match both 'component-name-2' and 'name-2'
     const result = await fetchComponent("12345", "name-2");
-    expect(result).toEqual(mockResponse.components[0]);
+    expect(result).toEqual(mockedComponents[2]);
   });
 
   describe("fetchComponentInternalTags", () => {
@@ -206,18 +191,18 @@ describe("pull components actions", () => {
         "/path/to/components/12345": null,
       });
 
-      const components = [
-        {
+      const components: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
+        }),
       ];
 
       await saveComponentsToFiles(
@@ -238,18 +223,18 @@ describe("pull components actions", () => {
         "/path/to2/": null,
       });
 
-      const components = [
-        {
+      const components: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
+        }),
       ];
 
       await saveComponentsToFiles(
@@ -271,18 +256,18 @@ describe("pull components actions", () => {
         "/path/to3/": null,
       });
 
-      const components = [
-        {
+      const components: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
+        }),
       ];
 
       try {
@@ -308,29 +293,29 @@ describe("pull components actions", () => {
         "/path/to4/": null,
       });
 
-      const components = [
-        {
+      const components: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
-        {
+        }),
+        component({
           name: "component-name-2",
           display_name: "Component Name 2",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12346,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
+        }),
       ];
 
       await saveComponentsToFiles(

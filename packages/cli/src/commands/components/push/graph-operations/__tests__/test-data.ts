@@ -39,6 +39,8 @@ export function createTestComponent(overrides: Partial<Component> = {}): Compone
     updated_at: "2023-01-01T00:00:00.000Z",
     schema: {},
     color: null,
+    is_root: false,
+    is_nestable: false,
     internal_tags_list: [],
     internal_tag_ids: [],
     ...overrides,
@@ -126,7 +128,7 @@ export function createComplexSchemaDependenciesScenario() {
         component_tag_whitelist: [1, 2],
       },
       nested: {
-        type: "blocks",
+        type: "bloks",
         blocks: [
           {
             type: "bloks",
@@ -231,12 +233,14 @@ export function createTestSpaceDataState(
     groups?: ComponentFolder[];
     tags?: InternalTag[];
     presets?: Preset[];
+    datasources?: SpaceComponentsDataState["local"]["datasources"];
   } = {},
   targetData: {
     components?: Component[];
     groups?: ComponentFolder[];
     tags?: InternalTag[];
     presets?: Preset[];
+    datasources?: SpaceComponentsDataState["local"]["datasources"];
   } = {},
 ): SpaceComponentsDataState {
   const targetComponents = targetData.components || [];
@@ -259,12 +263,16 @@ export function createTestSpaceDataState(
       groups: localData.groups || [],
       internalTags: localData.tags || [],
       presets: localData.presets || [],
+      datasources: localData.datasources || [],
     },
     target: {
       components: new Map((targetData.components || []).map((c) => [c.name, c])),
       groups: new Map((targetData.groups || []).map((g) => [g.name, g])),
       tags: new Map((targetData.tags || []).map((t) => [t.name, t])),
       presets: presetMap,
+      datasources: new Map(
+        (targetData.datasources || []).map((datasource) => [datasource.slug, datasource]),
+      ),
     },
   };
 }

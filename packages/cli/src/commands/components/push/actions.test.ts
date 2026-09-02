@@ -74,14 +74,16 @@ const mockGroup1: ComponentFolder = {
   id: 1,
   name: "Content",
   uuid: "group-uuid-1",
-  parent_id: undefined,
+  parent_id: null,
+  parent_uuid: null,
 };
 
 const mockGroup2: ComponentFolder = {
   id: 2,
   name: "Layout",
   uuid: "group-uuid-2",
-  parent_id: undefined,
+  parent_id: null,
+  parent_uuid: null,
 };
 
 const mockPreset1: Preset = {

@@ -427,79 +427,68 @@ describe("generate types actions", () => {
     }
   });
 
-  it("should handle null component schema", async () => {
-    const spaceDataWithNullSchema = {
-      components: [
-        {
-          name: "empty_component",
-          display_name: "Empty Component",
-          created_at: "2023-01-01T00:00:00Z",
-          updated_at: "2023-01-01T00:00:00Z",
-          id: 1,
-          schema: null,
-          internal_tags_list: [],
-          internal_tag_ids: [],
-        },
-      ],
-      datasources: [],
-      groups: [],
-      presets: [],
-      internalTags: [],
-    };
+  it("should handle null or missing component schema", async () => {
+    for (const schema of [null, undefined]) {
+      const component = {
+        name: "empty_component",
+        display_name: "Empty Component",
+        created_at: "2023-01-01T00:00:00Z",
+        updated_at: "2023-01-01T00:00:00Z",
+        id: 1,
+        internal_tags_list: [],
+        internal_tag_ids: [],
+        ...(schema === undefined ? {} : { schema }),
+      };
+      const spaceData = {
+        components: [component],
+        datasources: [],
+        groups: [],
+        presets: [],
+        internalTags: [],
+      };
 
-    const mockOptions: GenerateTypesOptions = {
-      strict: false,
-    };
+      const result = await Reflect.apply(generateTypes, undefined, [spaceData, { strict: false }]);
 
-    // Should not throw an error
-    const result = await Reflect.apply(generateTypes, undefined, [
-      spaceDataWithNullSchema,
-      mockOptions,
-    ]);
-    expect(result).toBeDefined();
+      expect(result).toBeDefined();
+    }
   });
 
-  it("should filter out datasources with null slug", async () => {
-    const spaceDataWithInvalidDatasource = {
-      components: [],
-      datasources: [
-        {
-          id: 1,
-          name: "Valid Datasource",
-          slug: "valid_datasource",
-          created_at: "2021-08-09T12:00:00Z",
-          updated_at: "2021-08-09T12:00:00Z",
-          dimensions: [],
-          entries: [{ id: 1, name: "Item 1", value: "item1", dimension_values: {} }],
-        },
-        {
-          id: 2,
-          name: "Invalid Datasource",
-          slug: null,
-          created_at: "2021-08-09T12:00:00Z",
-          updated_at: "2021-08-09T12:00:00Z",
-          dimensions: [],
-          entries: [{ id: 2, name: "Item 2", value: "item2", dimension_values: {} }],
-        },
-      ],
-      groups: [],
-      presets: [],
-      internalTags: [],
-    };
+  it("should filter out datasources with null or missing slug", async () => {
+    for (const slug of [null, undefined]) {
+      const spaceData = {
+        components: [],
+        datasources: [
+          {
+            id: 1,
+            name: "Valid Datasource",
+            slug: "valid_datasource",
+            created_at: "2021-08-09T12:00:00Z",
+            updated_at: "2021-08-09T12:00:00Z",
+            dimensions: [],
+            entries: [{ id: 1, name: "Item 1", value: "item1", dimension_values: {} }],
+          },
+          {
+            id: 2,
+            name: "Invalid Datasource",
+            created_at: "2021-08-09T12:00:00Z",
+            updated_at: "2021-08-09T12:00:00Z",
+            dimensions: [],
+            entries: [{ id: 2, name: "Item 2", value: "item2", dimension_values: {} }],
+            ...(slug === undefined ? {} : { slug }),
+          },
+        ],
+        groups: [],
+        presets: [],
+        internalTags: [],
+      };
 
-    const mockOptions: GenerateTypesOptions = {
-      strict: false,
-    };
+      const result = await Reflect.apply(generateTypes, undefined, [spaceData, { strict: false }]);
 
-    const result = await Reflect.apply(generateTypes, undefined, [
-      spaceDataWithInvalidDatasource,
-      mockOptions,
-    ]);
-
-    expect(result).toBeDefined();
-    if (typeof result === "string") {
-      expect(result).toContain("ValidDatasourceDataSource");
-      expect(result).not.toContain("InvalidDatasourceDataSource");
+      expect(result).toBeDefined();
+      if (typeof result === "string") {
+        expect(result).toContain("ValidDatasourceDataSource");
+        expect(result).not.toContain("InvalidDatasourceDataSource");
+      }
     }
   });
 

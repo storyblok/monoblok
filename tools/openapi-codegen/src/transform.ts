@@ -111,7 +111,7 @@ export function transformGeneratedFile(
       }
     }
 
-    body = rewriteRefs(body, renameMap);
+    body = deduplicateUnions(rewriteRefs(body, renameMap), sourceText);
 
     const newDecl = withLeadingComments(
       sourceText,
@@ -230,6 +230,35 @@ function rewriteRefs(node: ts.TypeNode, renameMap: ReadonlyMap<string, string>):
           }
         }
         return ts.visitEachChild(n, visit, ctx);
+      };
+      return (n) => ts.visitNode(n, visit) as ts.TypeNode;
+    },
+  ]);
+  const transformed = result.transformed[0] as ts.TypeNode;
+  result.dispose();
+  return transformed;
+}
+
+/** Remove structurally identical members from unions emitted by @hey-api/openapi-ts. */
+function deduplicateUnions(node: ts.TypeNode, sourceText: string): ts.TypeNode {
+  const printer = ts.createPrinter({ removeComments: true });
+  const source = ts.createSourceFile("union.ts", sourceText, ts.ScriptTarget.Latest, false);
+  const result = ts.transform(node, [
+    (ctx) => {
+      const visit: ts.Visitor = (n) => {
+        const visited = ts.visitEachChild(n, visit, ctx);
+        if (!ts.isUnionTypeNode(visited)) {
+          return visited;
+        }
+
+        const members = new Map<string, ts.TypeNode>();
+        for (const member of visited.types) {
+          const key = printer.printNode(ts.EmitHint.Unspecified, member, source);
+          members.set(key, member);
+        }
+        return members.size === visited.types.length
+          ? visited
+          : ctx.factory.createUnionTypeNode([...members.values()]);
       };
       return (n) => ts.visitNode(n, visit) as ts.TypeNode;
     },

@@ -70,6 +70,27 @@ describe("transformGeneratedFile", () => {
     expect(output).not.toContain(": Content ");
   });
 
+  it("should deduplicate union members after rewriting references", () => {
+    const source =
+      "export type Content = { [key: string]: string | null | string | null | Source | Source };";
+
+    const { output } = run(
+      source,
+      [{ source: "Content", emitAs: "Content" }],
+      new Map([["Source", "AssetSource"]]),
+    );
+
+    expect(squish(output)).toContain("[key: string]: string | null | AssetSource;");
+  });
+
+  it("should preserve distinct literal union members", () => {
+    const source = "export type Heading = { level: 1 | 2 | 3 | 4 | 5 | 6 | null };";
+
+    const { output } = run(source, [{ source: "Heading", emitAs: "Heading" }]);
+
+    expect(squish(output)).toContain("level: 1 | 2 | 3 | 4 | 5 | 6 | null;");
+  });
+
   it("should unwrap a single envelope property", () => {
     const source =
       "export type UpdateStoryRequest = { story: { name: string }; force_update?: boolean };";

@@ -6,7 +6,15 @@ import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 // into module-graph edges that fail on React <19, even when the import is never
 // executed. Reflect.get is opaque to bundler static analysis.
 import * as React from "react";
-import { Component, type ReactNode, startTransition, Suspense, useRef, useState } from "react";
+import {
+  Component,
+  type ReactNode,
+  startTransition,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
 /** Props for the {@link StoryblokPreviewRsc} component. */
@@ -180,13 +188,30 @@ export function StoryblokPreviewRsc({
   // async Server Component in the subtree.
   const inFlight = useRef(false);
   const queued = useRef<LivePreviewStory | null>(null);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+      queued.current = null;
+    };
+  }, []);
 
   function run(story: LivePreviewStory) {
+    if (!mounted.current) {
+      return;
+    }
+
     inFlight.current = true;
     // Call renderContent eagerly (outside the transition) so the Server Action
     // starts streaming its RSC response immediately.
     const promise = renderContent(story).finally(() => {
       inFlight.current = false;
+
+      if (!mounted.current) {
+        return;
+      }
+
       const next = queued.current;
       queued.current = null;
       if (next) run(next);
@@ -199,7 +224,9 @@ export function StoryblokPreviewRsc({
     // Wrap setLivePromise in startTransition so React keeps the current tree on
     // screen while LiveContent re-suspends, preventing the duplicate-DOM window
     // that confuses the bridge.
-    startTransition(() => setLivePromise(promise));
+    if (mounted.current) {
+      startTransition(() => setLivePromise(promise));
+    }
   }
 
   useStoryblokEditorEvent(

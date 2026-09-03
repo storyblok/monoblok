@@ -459,6 +459,47 @@ describe("StoryblokPreviewRsc", () => {
     consoleSpy.mockRestore();
   });
 
+  it("should not run a queued story after unmount", async () => {
+    let resolveFirst!: (node: ReactNode) => void;
+    const firstStory = makeStory({ slug: "first" });
+    const queuedStory = makeStory({ slug: "queued" });
+    const renderContent = vi.fn().mockImplementationOnce(
+      () =>
+        new Promise<ReactNode>((resolve) => {
+          resolveFirst = resolve;
+        }),
+    );
+
+    const { unmount } = render(
+      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
+        <div>initial</div>
+      </StoryblokPreviewRsc>,
+    );
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    await act(async () => {
+      editorCallback!(firstStory);
+      await vi.runAllTimersAsync();
+    });
+
+    await act(async () => {
+      editorCallback!(queuedStory);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledOnce();
+
+    unmount();
+
+    await act(async () => {
+      resolveFirst(<div>first</div>);
+      await vi.runAllTimersAsync();
+    });
+
+    expect(renderContent).toHaveBeenCalledOnce();
+  });
+
   it("unsubscribes and clears the debounce timer on unmount", async () => {
     const renderContent = vi.fn();
     const { unmount } = render(

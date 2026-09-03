@@ -13,7 +13,7 @@ import type { GenerateTypesOptions } from "./constants";
 import { isStoryblokPropertyType } from "../../../utils/storyblok-property-types";
 import { getLogger } from "../../../lib/logger/logger";
 import { join, resolve } from "pathe";
-import { pathToFileURL } from "node:url";
+import { loadUserModule } from "./load-user-module";
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import { readFileSync } from "node:fs";
 import type { ComponentPropertySchema, ComponentPropertySchemaType } from "../../../types/schemas";
@@ -414,8 +414,9 @@ const loadCustomFieldsParser = async (
   ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined
 > => {
   try {
-    const customFieldsParser = await import(pathToFileURL(resolve(path)).href);
-    return customFieldsParser.default;
+    return await loadUserModule<
+      (key: string, value: Record<string, unknown>) => Record<string, unknown>
+    >(path);
   } catch (error) {
     handleError(error as Error);
     return undefined;
@@ -424,8 +425,7 @@ const loadCustomFieldsParser = async (
 
 async function loadCompilerOptions(path: string) {
   if (path) {
-    const compilerOptions = await import(pathToFileURL(resolve(path)).href);
-    return compilerOptions.default;
+    return await loadUserModule(path);
   }
   return {};
 }

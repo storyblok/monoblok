@@ -78,16 +78,24 @@ export interface MapiResourceDeps<DefaultThrowOnError extends boolean = false> {
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
 }
 
+/**
+ * A credential, or a function resolving one per request.
+ *
+ * Pass a function for credentials that expire: it is called before every request,
+ * so a token refreshed mid-run is picked up without recreating the client.
+ */
+export type TokenProvider = string | (() => string | Promise<string>);
+
 type TokenConfig =
   | {
       /** Personal access token for authentication. */
-      personalAccessToken: string;
+      personalAccessToken: TokenProvider;
       oauthToken?: never;
     }
   | {
       personalAccessToken?: never;
       /** OAuth bearer token for authentication. */
-      oauthToken: string;
+      oauthToken: TokenProvider;
     }
   | {
       personalAccessToken?: undefined;
@@ -142,14 +150,42 @@ export type ManagementApiClientConfig<ThrowOnError extends boolean = false> = To
 // Client factory
 // ---------------------------------------------------------------------------
 
-function getAuthorizationHeader(config: ManagementApiClientConfig<boolean>): string | undefined {
+const asBearer = (token: string): string =>
+  token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+
+async function resolveAuthorizationHeader(
+  config: ManagementApiClientConfig<boolean>,
+): Promise<string | undefined> {
   if (config.personalAccessToken) {
-    return config.personalAccessToken;
+    return typeof config.personalAccessToken === "function"
+      ? await config.personalAccessToken()
+      : config.personalAccessToken;
   }
   if (config.oauthToken) {
-    return config.oauthToken.startsWith("Bearer ")
-      ? config.oauthToken
-      : `Bearer ${config.oauthToken}`;
+    return asBearer(
+      typeof config.oauthToken === "function" ? await config.oauthToken() : config.oauthToken,
+    );
+  }
+  return undefined;
+}
+
+// A function-valued credential must be resolved per request, not once at construction:
+// OAuth access tokens expire mid-run and the refreshed one has to reach the wire.
+function hasTokenProvider(config: ManagementApiClientConfig<boolean>): boolean {
+  return (
+    typeof config.personalAccessToken === "function" || typeof config.oauthToken === "function"
+  );
+}
+
+function getStaticAuthorizationHeader(
+  config: ManagementApiClientConfig<boolean>,
+): string | undefined {
+  const { personalAccessToken, oauthToken } = config;
+  if (typeof personalAccessToken === "string") {
+    return personalAccessToken;
+  }
+  if (typeof oauthToken === "string") {
+    return asBearer(oauthToken);
   }
   return undefined;
 }
@@ -177,7 +213,8 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
   } = config;
 
   const throttleManager = createThrottleManager(rateLimit ?? {});
-  const authHeader = getAuthorizationHeader(config);
+  const resolvesTokenPerRequest = hasTokenProvider(config);
+  const authHeader = getStaticAuthorizationHeader(config);
 
   const client: Client = createClient(
     createConfig({
@@ -197,6 +234,16 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
       },
     }),
   );
+
+  if (resolvesTokenPerRequest) {
+    client.interceptors.request.use(async (request: Request) => {
+      const header = await resolveAuthorizationHeader(config);
+      if (header) {
+        request.headers.set("Authorization", header);
+      }
+      return request;
+    });
+  }
 
   client.interceptors.error.use(
     (error: unknown, response: Response) =>

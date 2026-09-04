@@ -12,6 +12,8 @@ import { ConsoleTransport } from "./lib/logger/logger-transport-console";
 import { resolveCommandPath } from "./utils/filesystem";
 import { session } from "./session";
 import { getMapiClient } from "./api";
+import { assertSpaceAllowed } from "./lib/oauth/space-guard";
+import { createOAuthTokenProvider } from "./lib/oauth/token-provider";
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -70,14 +72,30 @@ export function getProgram(): Command {
       applyConfigToCommander(ancestry, resolvedConfig);
       setActiveConfig(resolvedConfig);
 
-      // Initialize mapiClient
+      // Initialize mapiClient with the active credential (PAT or OAuth access token).
       const { state, initializeSession } = session();
       await initializeSession();
-      if (state.password) {
+      if (state.authType === "oauth" && state.region) {
+        // A provider rather than a token string: access tokens live 15 minutes, so a
+        // command that runs longer refreshes mid-run instead of 401ing. Commands that
+        // need no auth never call it, so they never pay for a refresh.
+        state.oauthTokenProvider = createOAuthTokenProvider(state.region, state);
+        getMapiClient({
+          oauthToken: state.oauthTokenProvider,
+          region: state.region ?? resolvedConfig.region,
+        });
+      } else if (state.password) {
         getMapiClient({
           personalAccessToken: state.password,
           region: state.region ?? resolvedConfig.region,
         });
+      }
+
+      // Guard OAuth sessions against operating on spaces outside their consent grant.
+      // A thrown CommandError here propagates out of the preAction hook, rejecting
+      // `program.parseAsync()` in index.ts, which handles it once at the top level.
+      if (state.authType === "oauth") {
+        assertSpaceAllowed(targetCommand.optsWithGlobals().space, state.oauthSpaces);
       }
 
       // Step 2: Setup logging, UI, and reporting with resolved config

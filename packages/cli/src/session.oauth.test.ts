@@ -1,0 +1,167 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { vol } from "memfs";
+
+vi.mock("node:fs");
+vi.mock("node:fs/promises");
+vi.unmock("./session");
+
+describe("session OAuth support", () => {
+  beforeEach(() => {
+    vol.reset();
+    vi.resetModules();
+    delete process.env.STORYBLOK_LOGIN;
+    delete process.env.STORYBLOK_TOKEN;
+    delete process.env.STORYBLOK_REGION;
+  });
+  afterEach(() => vol.reset());
+
+  it("should initialize an oauth session from stored tokens when no PAT exists", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
+        oauth: {
+          eu: {
+            tokens: {
+              auth_type: "oauth",
+              access_token: "sb_oat_x",
+              refresh_token: "sb_ort_x",
+              expires_at: "2026-07-20T12:00:00.000Z",
+            },
+            spaces: [{ id: 5, region: "eu" }],
+          },
+        },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.isLoggedIn).toBe(true);
+    expect(s.state.authType).toBe("oauth");
+    expect(s.state.oauthAccessToken).toBe("sb_oat_x");
+    expect(s.state.region).toBe("eu");
+  });
+
+  it("should prefer a stored PAT over oauth tokens", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+      }),
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
+        oauth: {
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_x", expires_at: "x" } },
+        },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.authType).toBe("pat");
+    expect(s.state.password).toBe("pat-token");
+  });
+
+  it("should warn when a PAT shadows an existing oauth session", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+      }),
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
+        oauth: {
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_x", expires_at: "x" } },
+        },
+      }),
+    });
+    const { getUI } = await import("./lib/ui");
+    const warn = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    await s.initializeSession();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("OAuth session");
+    warn.mockRestore();
+  });
+
+  it("should not warn when no oauth session is stored", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        "api.storyblok.com": { login: "me@example.com", password: "pat-token", region: "eu" },
+      }),
+    });
+    const { getUI } = await import("./lib/ui");
+    const warn = vi.spyOn(getUI(), "warn").mockImplementation(() => {});
+    const { session } = await import("./session");
+    await session().initializeSession();
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("should ignore an entry in credentials.json that carries no login or token", async () => {
+    // A credentials.json written by a CLI that still kept OAuth state in this file. Reading
+    // that entry as a PAT session is what left `logout` and `login` contradicting each other.
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: {
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_stale", expires_at: "x" } },
+        },
+      }),
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
+        oauth: {
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_only", expires_at: "x" } },
+        },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.authType).toBe("oauth");
+    expect(s.state.login).toBeUndefined();
+    expect(s.state.password).toBeUndefined();
+    expect(s.state.oauthAccessToken).toBe("sb_oat_only");
+  });
+
+  it("should report a logged-out session when credentials.json holds only unusable entries", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/credentials.json`]: JSON.stringify({
+        oauth: { eu: { tokens: { access_token: "sb_oat_stale" } } },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    // Neither "already logged in" nor a half-populated PAT session.
+    expect(s.state.isLoggedIn).toBe(false);
+    expect(s.state.authType).toBeUndefined();
+  });
+
+  it("should resolve the active region ahead of the fixed order when several regions are logged in", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
+        oauth: {
+          activeRegion: "us",
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_eu", expires_at: "x" } },
+          us: { tokens: { auth_type: "oauth", access_token: "sb_oat_us", expires_at: "x" } },
+        },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.region).toBe("us");
+    expect(s.state.oauthAccessToken).toBe("sb_oat_us");
+  });
+
+  it("should fall back to the fixed order when the active region has no tokens", async () => {
+    vol.fromJSON({
+      [`${process.env.HOME}/.storyblok/oauth.json`]: JSON.stringify({
+        oauth: {
+          activeRegion: "us",
+          eu: { tokens: { auth_type: "oauth", access_token: "sb_oat_eu", expires_at: "x" } },
+        },
+      }),
+    });
+    const { session } = await import("./session");
+    const s = session();
+    await s.initializeSession();
+    expect(s.state.region).toBe("eu");
+    expect(s.state.oauthAccessToken).toBe("sb_oat_eu");
+  });
+});

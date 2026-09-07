@@ -43,6 +43,16 @@
         "default": "./dist/client.cjs"
       }
     },
+    "./rsc": {
+      "import": {
+        "types": "./dist/rsc.d.mts",
+        "default": "./dist/rsc.mjs"
+      },
+      "require": {
+        "types": "./dist/rsc.d.cts",
+        "default": "./dist/rsc.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {

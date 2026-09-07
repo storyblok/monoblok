@@ -194,7 +194,7 @@ Initialize the SDK in your entry file (e.g. `main.tsx`) as described in the
 
 Fetch content using `apiClient` and pass the story to `StoryblokPreview` for live editing. The
 `StoryblokPreview` component is a client component that subscribes to Visual Editor events and calls
-its render-prop children with the latest story on every update.
+`renderContent` with the latest story on every update.
 
 For data fetching we recommend a library such as [SWR](https://swr.vercel.app/) or
 [TanStack Query](https://tanstack.com/query) to handle loading and error states. The example below
@@ -219,9 +219,10 @@ function App() {
   if (!story) return <div>Loading...</div>;
 
   return (
-    <StoryblokPreview story={story}>
-      {(live) => <StoryblokComponent block={live.content} />}
-    </StoryblokPreview>
+    <StoryblokPreview
+      story={story}
+      renderContent={(live) => <StoryblokComponent block={live.content} />}
+    />
   );
 }
 
@@ -229,15 +230,17 @@ export default App;
 ```
 
 `StoryblokComponent` renders the block by matching `block.component` against the map registered in
-`defineStoryblokComponents`. `StoryblokPreview` holds the live story in state and re-renders
-children on every Visual Editor update.
+`defineStoryblokComponents`. `StoryblokPreview` holds the live story in state and calls
+`renderContent` again on every Visual Editor update.
 
 To configure the bridge, pass a `bridgeOptions` prop to `StoryblokPreview`:
 
 ```tsx
-<StoryblokPreview story={story} bridgeOptions={{ resolveRelations: ["article.author"] }}>
-  {(live) => <StoryblokComponent block={live.content} />}
-</StoryblokPreview>
+<StoryblokPreview
+  story={story}
+  bridgeOptions={{ resolveRelations: ["article.author"] }}
+  renderContent={(live) => <StoryblokComponent block={live.content} />}
+/>
 ```
 
 You can also take a look at the
@@ -262,12 +265,13 @@ For more details, refer to the Next.js documentation on
 
 ## Choosing the Right Export
 
-`@storyblok/react` ships two entry points:
+`@storyblok/react` ships three entry points:
 
-| Export                    | Use Case                                                                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@storyblok/react`        | All environments — initialization, rendering, richtext, `storyblokEditable`                                                                 |
-| `@storyblok/react/client` | Client-only — live editing components and hooks (`StoryblokPreview`, `StoryblokPreviewRsc`, `useStoryblokState`, `useStoryblokEditorEvent`) |
+| Export                    | Use Case                                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `@storyblok/react`        | All environments — initialization, rendering, richtext, `storyblokEditable`                    |
+| `@storyblok/react/client` | Client-only — `StoryblokPreview` (client mode), `useStoryblokState`, `useStoryblokEditorEvent` |
+| `@storyblok/react/rsc`    | RSC-only — `StoryblokPreview` (RSC mode, Server Actions + Suspense streaming)                  |
 
 ### When to Use Each Export
 
@@ -280,13 +284,21 @@ For more details, refer to the Next.js documentation on
 **Use `@storyblok/react/client`** for:
 
 - Subscribing to Visual Editor events in the browser
-- `StoryblokPreview` — client component with a render-prop for SPA and Pages Router live editing
-- `StoryblokPreviewRsc` — client component that calls a Server Action to re-render RSC on editor
-  events
+- `StoryblokPreview` — client component. Pass `story` and a `renderContent` function; it holds the
+  live story in state and calls `renderContent` again on every editor update. Use this for SPAs,
+  Pages Router, and any `"use client"` subtree.
 - `useStoryblokState` / `useStoryblokEditorEvent` — lower-level hooks
 
-> [!NOTE] All `@storyblok/react/client` exports are marked `"use client"` and must not be imported
-> from Server Components directly. Pass them as children or use them in dedicated client files.
+**Use `@storyblok/react/rsc`** for:
+
+- App Router pages that need Suspense streaming for slow data fetches inside blocks
+- `StoryblokPreview` — Server Component. Pass `story` and an `async renderContent` (a Server
+  Action); it awaits `renderContent(story)` for the initial render, then re-invokes it on every
+  editor update, streaming the result in via Suspense. Requires React 19 and Server Actions.
+
+> [!NOTE] `@storyblok/react/client` exports are marked `"use client"` and must not be imported from
+> Server Components directly. `@storyblok/react/rsc` exports are Server-Component-only and must not
+> be imported from `"use client"` files.
 
 ## Next.js using App Router
 
@@ -337,9 +349,10 @@ export default async function Page({ params }: { params: Promise<{ slug?: string
 }
 ```
 
-### 3a. Live Editing with `StoryblokPreview` (simpler)
+### 3a. Live Editing with `StoryblokPreview` in client mode (simpler)
 
-For most apps, wrap the story in a `"use client"` component that uses `StoryblokPreview`:
+For most apps, wrap the story in a `"use client"` component that uses `StoryblokPreview` from
+`@storyblok/react/client`, passing `story` and a `renderContent` function:
 
 ```tsx
 // components/StoryContent.tsx
@@ -351,18 +364,23 @@ import { StoryblokComponent } from "@/lib/storyblok";
 
 export function StoryContent({ story }: { story: Story }) {
   return (
-    <StoryblokPreview key={story.uuid} story={story}>
-      {(live) => <StoryblokComponent block={live.content} />}
-    </StoryblokPreview>
+    <StoryblokPreview
+      key={story.uuid}
+      story={story}
+      renderContent={(live) => <StoryblokComponent block={live.content} />}
+    />
   );
 }
 ```
 
-### 3b. Live Editing with `StoryblokPreviewRsc` (full RSC streaming)
+### 3b. Live Editing with `StoryblokPreview` in server mode (full RSC streaming)
 
 For apps using Suspense streaming and async Server Components (e.g. slow data fetches inside
-blocks), use `StoryblokPreviewRsc` with a Server Action. On every editor event it calls the action
-to produce fresh server-rendered output without a full page reload.
+blocks), use `StoryblokPreview` from `@storyblok/react/rsc` instead, passing `story` and an
+`async renderContent` Server Action. It awaits `renderContent(story)` once for the initial render,
+then calls it again on every editor event to produce fresh server-rendered output without a full
+page reload — `renderContent` is the single source of truth for "how does this story render", used
+for both the initial paint and every update:
 
 ```tsx
 // lib/actions.tsx
@@ -380,9 +398,8 @@ export async function renderContent(story: Story): Promise<ReactNode> {
 ```tsx
 // app/[[...slug]]/page.tsx
 import { apiClient } from "@/lib/storyblok";
-import { StoryblokPreviewRsc } from "@storyblok/react/client";
+import { StoryblokPreview } from "@storyblok/react/rsc";
 import { renderContent } from "@/lib/actions";
-import { StoryContent } from "@/components/StoryContent";
 
 export default async function Page({ params }: { params: Promise<{ slug?: string[] }> }) {
   const { slug } = await params;
@@ -392,11 +409,7 @@ export default async function Page({ params }: { params: Promise<{ slug?: string
 
   if (!story) return <main>Story not found</main>;
 
-  return (
-    <StoryblokPreviewRsc renderContent={renderContent}>
-      <StoryContent story={story} />
-    </StoryblokPreviewRsc>
-  );
+  return <StoryblokPreview story={story} renderContent={renderContent} />;
 }
 ```
 
@@ -412,12 +425,12 @@ export function StoryContent({ story }: { story: Story }) {
 }
 ```
 
-> [!NOTE] `StoryblokPreviewRsc` requires Server Actions. If you are using Next.js with
-> `output: 'export'` (static export), use `StoryblokPreview` (3a) instead.
+> [!NOTE] Server mode requires Server Actions. If you are using Next.js with `output: 'export'`
+> (static export), use client mode (3a) instead.
 
-> [!NOTE] `StoryblokPreviewRsc` requires **React 19**. It uses `React.use` to suspend on the promise
-> returned by `renderContent`. On React 18, the component throws at runtime before anything renders.
-> Use `StoryblokPreview` (3a) for React 18 apps.
+> [!NOTE] Server mode requires **React 19**. It uses `React.use` to suspend on the promise returned
+> by `renderContent`. On React 18, the component throws at runtime before anything renders. Use
+> client mode (3a) for React 18 apps.
 
 **Block components** use `StoryblokComponent` from your `lib/storyblok` for nested blocks:
 
@@ -504,7 +517,7 @@ export const getStaticProps: GetStaticProps<Props> = async () => {
 ### 3. Listening to Storyblok Visual Editor events
 
 To enable live editing, wrap your content in `StoryblokPreview` from `@storyblok/react/client`. It
-holds the latest story in state and re-renders children on every Visual Editor update:
+holds the latest story in state and calls `renderContent` again on every Visual Editor update:
 
 ```tsx
 // pages/index.tsx
@@ -519,9 +532,11 @@ interface Props {
 
 export default function Home({ story }: Props) {
   return (
-    <StoryblokPreview key={story.uuid} story={story}>
-      {(live) => <StoryblokComponent block={live.content} />}
-    </StoryblokPreview>
+    <StoryblokPreview
+      key={story.uuid}
+      story={story}
+      renderContent={(live) => <StoryblokComponent block={live.content} />}
+    />
   );
 }
 
@@ -565,8 +580,8 @@ the SDK (components, richtext, editable) works independently.
 
 ### Storyblok Bridge
 
-The bridge is loaded automatically by `StoryblokPreview` and `StoryblokPreviewRsc`. If you need
-direct access to the raw bridge, it is available on `window`:
+The bridge is loaded automatically by `StoryblokPreview` (both modes). If you need direct access to
+the raw bridge, it is available on `window`:
 
 ```js
 const sbBridge = new window.StoryblokBridge(options);
@@ -739,12 +754,15 @@ export const { StoryblokComponent } = defineStoryblokComponents({
 Error: Server Actions are not supported with static export
 ```
 
-**Solution:** `StoryblokPreviewRsc` uses Server Actions and is incompatible with static exports. Use
-`StoryblokPreview` instead:
+**Solution:** `StoryblokPreview` from `@storyblok/react/rsc` uses Server Actions and is incompatible
+with static exports. Switch to the client-mode `StoryblokPreview` instead:
 
 ```diff
-- import { StoryblokPreviewRsc } from "@storyblok/react/client";
+- import { StoryblokPreview } from "@storyblok/react/rsc";
 + import { StoryblokPreview } from "@storyblok/react/client";
+
+- <StoryblokPreview story={story} renderContent={renderContent} />
++ <StoryblokPreview story={story} renderContent={(live) => <StoryContent story={live} />} />
 ```
 
 ### Live Editing Not Working
@@ -753,8 +771,9 @@ Error: Server Actions are not supported with static export
 
 **Possible solutions:**
 
-1. **Not using a preview component**: Wrap your content in `StoryblokPreview` (client component) or
-   `StoryblokPreviewRsc` (RSC with Server Actions). Live editing requires one of these.
+1. **Not using a preview component**: Wrap your content in `StoryblokPreview`, either from
+   `@storyblok/react/client` (sync `renderContent`) or `@storyblok/react/rsc`
+   (`async renderContent`, a Server Action). Live editing requires one of these.
 
 2. **Development mode**: The Visual Editor bridge only activates when the page is loaded inside the
    Storyblok Visual Editor.

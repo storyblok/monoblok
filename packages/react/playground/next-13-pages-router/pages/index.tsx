@@ -9,9 +9,10 @@ interface Props {
 
 export default function Home({ story }: Props) {
   return (
-    <StoryblokPreview story={story}>
-      {(live) => <StoryblokComponent block={live.content} />}
-    </StoryblokPreview>
+    <StoryblokPreview
+      story={story}
+      renderContent={(live) => <StoryblokComponent block={live.content} />}
+    />
   );
 }
 

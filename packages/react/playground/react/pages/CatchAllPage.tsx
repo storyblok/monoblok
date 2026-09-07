@@ -11,13 +11,15 @@ function CatchAllPage() {
   if (!story) return <div>Loading...</div>;
 
   return (
-    <StoryblokPreview key={story.uuid} story={story}>
-      {(live) => (
+    <StoryblokPreview
+      key={story.uuid}
+      story={story}
+      renderContent={(live) => (
         <div>
           <StoryblokComponent block={live.content} />
         </div>
       )}
-    </StoryblokPreview>
+    />
   );
 }
 

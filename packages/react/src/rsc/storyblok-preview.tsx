@@ -1,6 +1,6 @@
-import type { Story } from "@storyblok/api-client";
 import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import type { ReactNode } from "react";
+import type { Story } from "../types";
 import { StoryblokPreviewServerRuntime } from "../client/storyblok-preview-server-runtime";
 
 /** Props for the {@link StoryblokPreview} component. */

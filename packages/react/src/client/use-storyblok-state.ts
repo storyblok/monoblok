@@ -1,7 +1,7 @@
 "use client";
 
-import type { Story } from "@storyblok/api-client";
 import { useEffect, useState } from "react";
+import type { Story } from "../types";
 import {
   useStoryblokEditorEvent,
   type UseStoryblokEditorEventOptions,

@@ -1,7 +1,7 @@
 "use client";
 
-import type { Story } from "@storyblok/api-client";
 import type { ReactNode } from "react";
+import type { Story } from "../types";
 import { useStoryblokState, type UseStoryblokStateOptions } from "./use-storyblok-state";
 
 /** Props for the {@link StoryblokPreview} component. */

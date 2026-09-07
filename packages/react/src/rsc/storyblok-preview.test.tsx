@@ -1,8 +1,8 @@
 import { type ReactNode, Suspense } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act } from "@testing-library/react";
-import type { Story } from "@storyblok/api-client";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
+import type { Story } from "../types";
 import { StoryblokPreview } from "./storyblok-preview";
 
 // ─── Mock @storyblok/live-preview ─────────────────────────────────────────────
@@ -56,8 +56,12 @@ function createResource<T>(promise: Promise<T>) {
   );
   return {
     read(): T {
-      if (status === "pending") throw suspender;
-      if (status === "error") throw result;
+      if (status === "pending") {
+        throw suspender;
+      }
+      if (status === "error") {
+        throw result;
+      }
       return result as T;
     },
   };

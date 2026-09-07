@@ -206,7 +206,9 @@ export function StoryblokPreviewServerRuntime({
 
       const next = queued.current;
       queued.current = null;
-      if (next) run(next);
+      if (next) {
+        run(next);
+      }
     });
     // Suppress the unhandled-rejection warning that fires in the window between
     // setLivePromise and React's use() subscribing to the promise. React.use()

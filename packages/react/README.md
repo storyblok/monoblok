@@ -52,11 +52,13 @@ using Storyblok and Next.js from start to finish.
 
 ## Installation
 
-Install `@storyblok/react`:
+Install `@storyblok/react`, plus `@storyblok/api-client` if you're using `createApiClient` to fetch
+from the CDN API, and `@storyblok/richtext` if you need its lower-level renderer utilities
+(`renderRichText`, rich text types) directly rather than through `StoryblokRichText`:
 
 ```bash
-npm install @storyblok/react
-// yarn add @storyblok/react
+npm install @storyblok/react @storyblok/api-client @storyblok/richtext
+// yarn add @storyblok/react @storyblok/api-client @storyblok/richtext
 ```
 
 > ⚠️ This SDK uses the Fetch API under the hood. If your environment doesn't support it, you need to
@@ -80,7 +82,8 @@ then register your components with `defineStoryblokComponents`:
 
 ```ts
 // lib/storyblok.ts
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 
 /** Import your components */
 import Page from "./components/Page";
@@ -121,7 +124,8 @@ Possible values:
 Full example for a space created in the US:
 
 ```ts
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 
 export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
@@ -277,7 +281,7 @@ For more details, refer to the Next.js documentation on
 
 **Use `@storyblok/react`** for:
 
-- Setting up `createApiClient` and `defineStoryblokComponents`
+- Registering components with `defineStoryblokComponents`
 - Block components (`storyblokEditable`, `StoryblokRichText`)
 - Any code that runs on the server or in shared modules
 
@@ -312,7 +316,8 @@ server and client code.
 
 ```ts
 // lib/storyblok.ts
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 import Page from "@/components/Page";
 import Teaser from "@/components/Teaser";
 
@@ -467,7 +472,8 @@ Set up `lib/storyblok.ts` once and export `apiClient` and `StoryblokComponent`:
 
 ```ts
 // lib/storyblok.ts
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 import Page from "@/components/Page";
 import Teaser from "@/components/Teaser";
 
@@ -562,10 +568,11 @@ in this repo.
 
 ### API Client
 
-`createApiClient` accepts a configuration object that is passed to `@storyblok/api-client`:
+`@storyblok/react` doesn't wrap the API client — install `@storyblok/api-client` directly and pass
+its configuration object to `createApiClient`:
 
 ```ts
-import { createApiClient } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
 
 export const apiClient = createApiClient({
   accessToken: "YOUR_ACCESS_TOKEN",
@@ -653,7 +660,7 @@ const Page = ({ block }: PageProps) => (
 comfortable setting it via `dangerouslySetInnerHTML`:
 
 ```tsx
-import { renderRichText } from "@storyblok/react";
+import { renderRichText } from "@storyblok/richtext";
 
 const Page = ({ block }: PageProps) => (
   <div dangerouslySetInnerHTML={{ __html: renderRichText(block.richtext) }} />

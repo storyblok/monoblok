@@ -183,6 +183,12 @@ export function StoryblokPreviewServerRuntime({
   const mounted = useRef(true);
 
   useEffect(() => {
+    // Strict Mode (React 18+ dev) mounts, cleans up, then remounts the same
+    // component instance to surface missing cleanup handling. The cleanup
+    // below flips `mounted` to false; reset it here so the simulated
+    // remount — and every real mount — starts with `mounted` true again.
+    mounted.current = true;
+
     return () => {
       mounted.current = false;
       queued.current = null;

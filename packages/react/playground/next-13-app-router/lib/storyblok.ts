@@ -1,4 +1,5 @@
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 import Feature from "@/components/Feature";
 import Grid from "@/components/Grid";
 import Page from "@/components/Page";

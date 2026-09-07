@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@storyblok/api-client": "workspace:^",
     "@storyblok/react": "workspace:*",
     "@storyblok/richtext": "workspace:*",
     "react": "catalog:react19",

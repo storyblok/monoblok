@@ -1,5 +1,6 @@
 import type { storyblokEditable } from "@storyblok/live-preview";
 import type { BlockContent } from "./generated/types/field";
+import type { Story } from "./generated/types/story";
 
 /**
  * Attributes returned by `storyblokEditable` — spread onto the root element of a
@@ -42,4 +43,4 @@ export interface StoryblokComponentProps<
   editable?: StoryblokEditableProps;
 }
 
-export type { BlockContent };
+export type { BlockContent, Story };

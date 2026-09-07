@@ -15,5 +15,5 @@ const PKG_ROOT = resolve(fileURLToPath(import.meta.url), "../..");
 
 await generate({
   outDir: resolve(PKG_ROOT, "src/generated"),
-  include: ["BlockContent"],
+  include: ["Story", "BlockContent"],
 });

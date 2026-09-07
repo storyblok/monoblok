@@ -995,9 +995,6 @@ importers:
 
   packages/react:
     dependencies:
-      '@storyblok/api-client':
-        specifier: workspace:^
-        version: link:../capi-client
       '@storyblok/live-preview':
         specifier: workspace:^
         version: link:../live-preview
@@ -1062,6 +1059,9 @@ importers:
 
   packages/react/playground/next-13-app-router:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../../../capi-client
       '@storyblok/react':
         specifier: workspace:*
         version: file:packages/react(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1087,6 +1087,9 @@ importers:
 
   packages/react/playground/next-13-pages-router:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../../../capi-client
       '@storyblok/react':
         specifier: workspace:*
         version: file:packages/react(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1115,6 +1118,9 @@ importers:
 
   packages/react/playground/next-latest:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../../../capi-client
       '@storyblok/react':
         specifier: workspace:*
         version: link:../..
@@ -1152,6 +1158,9 @@ importers:
 
   packages/react/playground/next-latest-static:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../../../capi-client
       '@storyblok/react':
         specifier: workspace:*
         version: link:../..
@@ -1189,6 +1198,9 @@ importers:
 
   packages/react/playground/react:
     dependencies:
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../../../capi-client
       '@storyblok/react':
         specifier: workspace:*
         version: link:../..
@@ -6751,9 +6763,6 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@storyblok/api-client@file:packages/capi-client':
-    resolution: {directory: packages/capi-client, type: directory}
-
   '@storyblok/astro@9.0.5':
     resolution: {integrity: sha512-1AQfiERx7KMcfln9l1JjlExP6ivEGkn7oW7DTvC3P+q2E5Zu10EgG61FP7WbnLf0MaiqULk2jG0daEPHNPF//Q==}
     peerDependencies:
@@ -6798,8 +6807,8 @@ packages:
   '@storyblok/react@file:packages/react':
     resolution: {directory: packages/react, type: directory}
     peerDependencies:
-      react: ^17 || ^18 || ^19
-      react-dom: ^17 || ^18 || ^19
+      react: ^18 || ^19
+      react-dom: ^18 || ^19
 
   '@storyblok/region-helper@file:packages/region-helper':
     resolution: {directory: packages/region-helper, type: directory}
@@ -21020,11 +21029,6 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@storyblok/api-client@file:packages/capi-client':
-    dependencies:
-      '@storyblok/region-helper': file:packages/region-helper
-      ky: 1.14.3
-
   '@storyblok/astro@9.0.5(astro@6.2.2(@types/node@24.11.0)(@vercel/functions@3.4.3)(db0@0.3.4)(ioredis@5.10.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(rollup@4.60.2)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
       '@storyblok/js': 5.1.4
@@ -21128,7 +21132,6 @@ snapshots:
 
   '@storyblok/react@file:packages/react(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@storyblok/api-client': file:packages/capi-client
       '@storyblok/live-preview': file:packages/live-preview
       '@storyblok/richtext': file:packages/richtext
       react: 18.3.1
@@ -22495,9 +22498,9 @@ snapshots:
       obug: 2.1.1
       std-env: 4.0.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.11.0)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@6.4.3(@types/node@24.11.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.11.0)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@8.1.1(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
     optionalDependencies:
-      '@vitest/browser': 4.1.10(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@6.4.3(@types/node@24.11.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))(vitest@4.1.10)
+      '@vitest/browser': 4.1.10(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@8.1.1(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))(vitest@4.1.10)
 
   '@vitest/expect@4.1.10':
     dependencies:
@@ -22589,7 +22592,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.11.0)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@6.4.3(@types/node@24.11.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
+      vitest: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.11.0)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(happy-dom@20.8.9)(jsdom@27.4.0(@noble/hashes@1.8.0))(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@8.1.1(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
 
   '@vitest/utils@4.1.10':
     dependencies:

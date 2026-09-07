@@ -1,4 +1,5 @@
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 import EmojiRandomizer from "@/app/components/EmojiRandomizer";
 import Grid from "@/app/components/Grid";
 import Page from "@/app/components/Page";

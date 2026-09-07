@@ -1,4 +1,5 @@
-import { createApiClient, defineStoryblokComponents } from "@storyblok/react";
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 import FallbackComponent from "../components/fallback-component";
 import Feature from "../components/feature";
 import Grid from "../components/grid";

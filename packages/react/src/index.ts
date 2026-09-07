@@ -1,4 +1,4 @@
-export type { BlockContent, StoryblokComponentProps, StoryblokEditableProps } from "./types";
+export type { BlockContent, Story, StoryblokComponentProps, StoryblokEditableProps } from "./types";
 
 export {
   defineStoryblokComponents,
@@ -17,34 +17,4 @@ export {
   StoryblokRichText,
 } from "./richtext";
 
-export type {
-  StoryblokRichTextElement,
-  StoryblokRichTextImageOptions,
-  StoryblokRichTextInput,
-  StoryblokRichTextMark,
-  StoryblokRichTextMarkWithKey,
-  StoryblokRichTextNode,
-  StoryblokRichTextNodeWithKey,
-  StoryblokRichTextProps,
-  StoryblokRichTextRenderContext,
-  StoryblokRichTextRenderSpec,
-  StoryblokRichTextTextNode,
-} from "@storyblok/richtext";
-export {
-  attrsToHtmlString,
-  buildStoryblokImage,
-  getInnerMarks,
-  getStaticChildren,
-  groupLinkNodes,
-  hasContent,
-  isSelfClosing,
-  normalizeNodes,
-  processAttrs,
-  renderRichText,
-  resolveTag,
-  splitTableRows,
-  styleToString,
-} from "@storyblok/richtext";
-
-export { type ContentApiClientConfig, createApiClient, type Story } from "@storyblok/api-client";
 export { storyblokEditable } from "@storyblok/live-preview";

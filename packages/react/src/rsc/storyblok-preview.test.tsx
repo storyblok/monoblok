@@ -1,4 +1,4 @@
-import { type ReactNode, Suspense } from "react";
+import { type ReactNode, StrictMode, Suspense } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
@@ -173,6 +173,30 @@ describe("StoryblokPreview (server mode)", () => {
       vi.advanceTimersByTime(50);
       await vi.runAllTimersAsync();
     });
+
+    expect(renderContent).toHaveBeenCalledTimes(2);
+    expect(renderContent).toHaveBeenNthCalledWith(2, updatedStory);
+  });
+
+  // Regression test: React 18+ Strict Mode (dev only) mounts, cleans up, then
+  // remounts the same component instance to surface missing cleanup handling.
+  // A prior bug set `mounted` to false in that cleanup and never reset it back
+  // to true on the simulated remount, so every editor event silently no-opped
+  // under Strict Mode — live editing appeared completely broken in Next.js dev
+  // (which enables Strict Mode by default).
+  it("still applies live updates under Strict Mode", async () => {
+    const story = makeStory();
+    const updatedStory = makeStory({ slug: "updated" });
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
+      .mockResolvedValueOnce(<div>live</div>);
+
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    render(<StrictMode>{element}</StrictMode>);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    await fireEditorEvent(editorCallback!, updatedStory);
 
     expect(renderContent).toHaveBeenCalledTimes(2);
     expect(renderContent).toHaveBeenNthCalledWith(2, updatedStory);

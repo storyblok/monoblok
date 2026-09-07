@@ -1,8 +1,7 @@
 import { apiClient } from "@/lib/storyblok";
 import PreviewBanner from "@/app/components/PreviewBanner";
-import { StoryblokPreviewRsc } from "@storyblok/react/client";
+import { StoryblokPreview } from "@storyblok/react/rsc";
 import { renderContent } from "@/lib/actions";
-import { StoryContent } from "@/app/components/StoryContent";
 
 type Params = Promise<{ slug?: string[] }>;
 
@@ -27,12 +26,10 @@ async function PageContent({
     return <main>Story not found</main>;
   }
 
-  const content = <StoryContent story={story} />;
-
   return (
     <>
       <PreviewBanner />
-      <StoryblokPreviewRsc renderContent={renderContent}>{content}</StoryblokPreviewRsc>
+      <StoryblokPreview story={story} renderContent={renderContent} />
     </>
   );
 }

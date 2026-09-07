@@ -6,8 +6,10 @@ import { StoryblokComponent } from "@/lib/storyblok";
 
 export function StoryContent({ story }: { story: Story }) {
   return (
-    <StoryblokPreview key={story.uuid} story={story}>
-      {(live) => <StoryblokComponent block={live.content} />}
-    </StoryblokPreview>
+    <StoryblokPreview
+      key={story.uuid}
+      story={story}
+      renderContent={(live) => <StoryblokComponent block={live.content} />}
+    />
   );
 }

@@ -21,7 +21,7 @@ function makeStory(overrides: Record<string, unknown> = {}): Story {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("StoryblokPreview", () => {
+describe("StoryblokPreview (client mode)", () => {
   let editorCallback: EditorCallback | undefined;
   const mockUnsubscribe = vi.fn();
 
@@ -38,24 +38,27 @@ describe("StoryblokPreview", () => {
     vi.restoreAllMocks();
   });
 
-  it("calls the render prop with the initial story", () => {
+  it("calls renderContent with the initial story", () => {
     const story = makeStory({ slug: "initial" });
-    const children = vi.fn((s: Story) => <div data-testid="content">{(s as any).slug}</div>);
+    const renderContent = vi.fn((s: Story) => <div data-testid="content">{(s as any).slug}</div>);
 
-    const { getByTestId } = render(<StoryblokPreview story={story}>{children}</StoryblokPreview>);
+    const { getByTestId } = render(
+      <StoryblokPreview story={story} renderContent={renderContent} />,
+    );
 
     expect(getByTestId("content")).toHaveTextContent("initial");
-    expect(children).toHaveBeenCalledWith(story);
+    expect(renderContent).toHaveBeenCalledWith(story);
   });
 
-  it("calls the render prop with the updated story on editor events", async () => {
+  it("calls renderContent with the updated story on editor events", async () => {
     const initial = makeStory({ slug: "initial" });
     const updated = makeStory({ slug: "updated" });
 
     const { getByTestId } = render(
-      <StoryblokPreview story={initial}>
-        {(s) => <div data-testid="content">{(s as any).slug}</div>}
-      </StoryblokPreview>,
+      <StoryblokPreview
+        story={initial}
+        renderContent={(s) => <div data-testid="content">{(s as any).slug}</div>}
+      />,
     );
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
@@ -70,12 +73,13 @@ describe("StoryblokPreview", () => {
     const renderCount = vi.fn();
 
     const { getByTestId } = render(
-      <StoryblokPreview story={initial}>
-        {(s) => {
+      <StoryblokPreview
+        story={initial}
+        renderContent={(s) => {
           renderCount();
           return <div data-testid="slug">{(s as any).slug}</div>;
         }}
-      </StoryblokPreview>,
+      />,
     );
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
@@ -90,7 +94,7 @@ describe("StoryblokPreview", () => {
   it("unsubscribes from editor events when unmounted", async () => {
     const story = makeStory();
     const { unmount } = render(
-      <StoryblokPreview story={story}>{(s) => <div>{(s as any).slug}</div>}</StoryblokPreview>,
+      <StoryblokPreview story={story} renderContent={(s) => <div>{(s as any).slug}</div>} />,
     );
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
@@ -105,12 +109,13 @@ describe("StoryblokPreview", () => {
     let renderedSlug = "";
 
     const { unmount } = render(
-      <StoryblokPreview story={initial}>
-        {(s) => {
+      <StoryblokPreview
+        story={initial}
+        renderContent={(s) => {
           renderedSlug = (s as any).slug;
           return <div>{renderedSlug}</div>;
         }}
-      </StoryblokPreview>,
+      />,
     );
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
@@ -130,14 +135,16 @@ describe("StoryblokPreview", () => {
       vi.useRealTimers();
     });
 
-    it("delays render prop update until debounce settles", async () => {
+    it("delays the content update until debounce settles", async () => {
       const initial = makeStory({ slug: "initial" });
       const updated = makeStory({ slug: "updated" });
 
       const { getByTestId } = render(
-        <StoryblokPreview story={initial} debounceMs={100}>
-          {(s) => <div data-testid="slug">{(s as any).slug}</div>}
-        </StoryblokPreview>,
+        <StoryblokPreview
+          story={initial}
+          debounceMs={100}
+          renderContent={(s) => <div data-testid="slug">{(s as any).slug}</div>}
+        />,
       );
 
       await vi.waitFor(() => expect(editorCallback).toBeDefined());

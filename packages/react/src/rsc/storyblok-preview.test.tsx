@@ -1,9 +1,9 @@
-import { type ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 import type { Story } from "@storyblok/api-client";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
-import { StoryblokPreviewRsc } from "./storyblok-preview-rsc";
+import { StoryblokPreview } from "./storyblok-preview";
 
 // ─── Mock @storyblok/live-preview ─────────────────────────────────────────────
 
@@ -35,9 +35,47 @@ async function fireEditorEvent(
   });
 }
 
+/**
+ * Classic "throw a promise to suspend" resource, used to prove a Suspense
+ * boundary nested inside the *resolved* content still streams independently —
+ * i.e. awaiting `renderContent(story)` only resolves the outer shell, it does
+ * not force-resolve everything inside it.
+ */
+function createResource<T>(promise: Promise<T>) {
+  let status: "pending" | "success" | "error" = "pending";
+  let result: T | unknown;
+  const suspender = promise.then(
+    (value) => {
+      status = "success";
+      result = value;
+    },
+    (error) => {
+      status = "error";
+      result = error;
+    },
+  );
+  return {
+    read(): T {
+      if (status === "pending") throw suspender;
+      if (status === "error") throw result;
+      return result as T;
+    },
+  };
+}
+
+function SuspendingChild({
+  resource,
+  testId,
+}: {
+  resource: ReturnType<typeof createResource<string>>;
+  testId: string;
+}) {
+  return <div data-testid={testId}>{resource.read()}</div>;
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("StoryblokPreviewRsc", () => {
+describe("StoryblokPreview (server mode)", () => {
   let editorCallback: EditorCallback | undefined;
   const mockUnsubscribe = vi.fn();
 
@@ -56,51 +94,94 @@ describe("StoryblokPreviewRsc", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders children immediately on first render (before any editor event)", () => {
-    const renderContent = vi.fn();
-    const { getByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent}>
-        <div data-testid="initial">initial content</div>
-      </StoryblokPreviewRsc>,
-    );
+  it("awaits renderContent once for the initial story and renders the result", async () => {
+    const story = makeStory({ slug: "initial" });
+    const renderContent = vi.fn().mockResolvedValue(<div data-testid="initial">initial</div>);
+
+    const element = await StoryblokPreview({ story, renderContent });
+    const { getByTestId } = render(element);
 
     expect(getByTestId("initial")).toBeInTheDocument();
-    expect(renderContent).not.toHaveBeenCalled();
+    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledWith(story);
+  });
+
+  // Regression test: awaiting renderContent(story) for the initial paint only
+  // resolves the outer shell it returns — a Suspense boundary nested *inside*
+  // that result still suspends and streams independently, and is never
+  // intercepted or stored in useState by StoryblokPreview.
+  it("never intercepts a nested Suspense boundary inside the resolved initial content", async () => {
+    const story = makeStory();
+    let resolveChild!: () => void;
+    const childPromise = new Promise<string>((resolve) => {
+      resolveChild = () => resolve("nested content");
+    });
+    const resource = createResource(childPromise);
+
+    const renderContent = vi.fn().mockResolvedValue(
+      <Suspense fallback={<div data-testid="fallback">loading…</div>}>
+        <SuspendingChild resource={resource} testId="nested" />
+      </Suspense>,
+    );
+
+    const element = await StoryblokPreview({ story, renderContent });
+    const { getByTestId, queryByTestId } = render(element);
+
+    // renderContent has already resolved (it was awaited) — but the nested
+    // Suspense boundary inside its result is independent and still pending.
+    expect(getByTestId("fallback")).toBeInTheDocument();
+    expect(queryByTestId("nested")).toBeNull();
+
+    await act(async () => {
+      resolveChild();
+      await childPromise;
+    });
+
+    expect(getByTestId("nested")).toBeInTheDocument();
+  });
+
+  it("propagates a rejection from the initial renderContent call", async () => {
+    const story = makeStory();
+    const renderContent = vi.fn().mockRejectedValue(new Error("initial render failed"));
+
+    await expect(StoryblokPreview({ story, renderContent })).rejects.toThrow(
+      "initial render failed",
+    );
   });
 
   it("calls renderContent with the updated story after an editor event and debounce", async () => {
+    const story = makeStory();
     const updatedStory = makeStory({ slug: "updated" });
-    const renderContent = vi.fn().mockResolvedValue(<div>live</div>);
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
+      .mockResolvedValueOnce(<div>live</div>);
 
-    render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={50}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 50 });
+    render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
     act(() => editorCallback!(updatedStory));
-    expect(renderContent).not.toHaveBeenCalled();
+    expect(renderContent).toHaveBeenCalledOnce();
 
     await act(async () => {
       vi.advanceTimersByTime(50);
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledWith(updatedStory);
+    expect(renderContent).toHaveBeenCalledTimes(2);
+    expect(renderContent).toHaveBeenNthCalledWith(2, updatedStory);
   });
 
   it("debounces rapid editor events — only calls renderContent once for the last event", async () => {
-    const renderContent = vi.fn().mockResolvedValue(<div>content</div>);
+    const story = makeStory();
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
+    const renderContent = vi.fn().mockResolvedValue(<div>content</div>);
 
-    render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={100}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 100 });
+    render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -113,19 +194,20 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
-    expect(renderContent).toHaveBeenCalledWith(secondStory);
+    expect(renderContent).toHaveBeenCalledTimes(2); // 1 initial + 1 update
+    expect(renderContent).toHaveBeenNthCalledWith(2, secondStory);
   });
 
   it("shows the new content after renderContent resolves", async () => {
+    const story = makeStory();
     const updatedStory = makeStory({ slug: "updated" });
-    const renderContent = vi.fn().mockResolvedValue(<div data-testid="live">live content</div>);
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
+      .mockResolvedValueOnce(<div data-testid="live">live content</div>);
 
-    const { getByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div data-testid="initial">initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
     await fireEditorEvent(editorCallback!, updatedStory);
@@ -134,21 +216,22 @@ describe("StoryblokPreviewRsc", () => {
     expect(getByTestId("live")).toHaveTextContent("live content");
   });
 
-  it("shows Suspense fallback (children) while renderContent is pending", async () => {
+  it("shows the previous content while renderContent is pending for an update", async () => {
+    const story = makeStory();
     const updatedStory = makeStory({ slug: "updated" });
     let resolveContent!: (node: ReactNode) => void;
-    const renderContent = vi.fn(
-      () =>
-        new Promise<ReactNode>((resolve) => {
-          resolveContent = resolve;
-        }),
-    );
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((resolve) => {
+            resolveContent = resolve;
+          }),
+      );
 
-    const { getByTestId, queryByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div data-testid="initial">initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId, queryByTestId } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -170,12 +253,14 @@ describe("StoryblokPreviewRsc", () => {
   });
 
   it("shows the current content while a subsequent update is in flight (no duplicate DOM)", async () => {
+    const story = makeStory();
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
     let resolveSecond!: (node: ReactNode) => void;
 
     const renderContent = vi
       .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
       .mockResolvedValueOnce(<div data-testid="first-live">first live</div>)
       .mockImplementationOnce(
         () =>
@@ -184,11 +269,8 @@ describe("StoryblokPreviewRsc", () => {
           }),
       );
 
-    const { getByTestId, getAllByTestId, queryByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div data-testid="initial">initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId, getAllByTestId, queryByTestId } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -203,7 +285,7 @@ describe("StoryblokPreviewRsc", () => {
 
     // The first-live content remains visible while the second edit is in flight
     expect(getByTestId("first-live")).toBeInTheDocument();
-    // Exactly one copy — no duplicate DOM from a stale Suspense fallback (#10)
+    // Exactly one copy — no duplicate DOM from a stale Suspense fallback
     expect(getAllByTestId("first-live")).toHaveLength(1);
     expect(queryByTestId("second-live")).toBeNull();
 
@@ -215,28 +297,27 @@ describe("StoryblokPreviewRsc", () => {
     expect(getByTestId("second-live")).toBeInTheDocument();
   });
 
-  it("shows children fallback when renderContent rejects, then recovers on the next event", async () => {
+  it("shows the previous content when an update rejects, then recovers on the next event", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const story = makeStory();
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
 
     const renderContent = vi
       .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
       .mockRejectedValueOnce(new Error("server error"))
       .mockResolvedValueOnce(<div data-testid="recovered">recovered content</div>);
 
-    const { getByTestId, queryByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div data-testid="initial">initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId, queryByTestId } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
-    // First event — renderContent rejects
+    // First update — renderContent rejects
     await fireEditorEvent(editorCallback!, firstStory);
 
-    // Error boundary must keep children visible, not crash the page
+    // Error boundary must keep the previous content visible, not crash the page
     expect(getByTestId("initial")).toBeInTheDocument();
     expect(queryByTestId("recovered")).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -244,37 +325,38 @@ describe("StoryblokPreviewRsc", () => {
       expect.any(Error),
     );
 
-    // Second event — renderContent resolves → boundary resets and shows new content
+    // Second update — renderContent resolves → boundary resets and shows new content
     await fireEditorEvent(editorCallback!, secondStory);
     expect(getByTestId("recovered")).toBeInTheDocument();
 
     consoleSpy.mockRestore();
   });
 
-  // ─── Concurrent action gating ──────────────────────────────────────────────
+  // ─── Concurrent action gating ────────────────────────────────────────────
   //
   // Each test below fires an event while a server action is still in-flight.
   // The desired behaviour is: at most one action running at a time; the latest
   // story that arrived mid-flight is queued and dispatched once the current
   // action settles (resolve or reject); intermediate stories are discarded.
 
-  it("does not start a second renderContent call while the first is in-flight", async () => {
+  it("does not start a second renderContent call while the first update is in-flight", async () => {
+    const story = makeStory();
     let resolveFirst!: (node: ReactNode) => void;
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
 
-    const renderContent = vi.fn().mockImplementationOnce(
-      () =>
-        new Promise<ReactNode>((resolve) => {
-          resolveFirst = resolve;
-        }),
-    );
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      );
 
-    render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -285,7 +367,7 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledTimes(2); // initial + first
 
     // Second event fires while first is still pending
     await act(async () => {
@@ -294,8 +376,8 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    // Must still be one — the second action must not have started yet
-    expect(renderContent).toHaveBeenCalledOnce();
+    // Must still be two — the second action must not have started yet
+    expect(renderContent).toHaveBeenCalledTimes(2);
 
     // Clean up — resolve so the component doesn't leak a pending promise
     await act(async () => {
@@ -305,12 +387,14 @@ describe("StoryblokPreviewRsc", () => {
   });
 
   it("runs the queued story after the in-flight action resolves", async () => {
+    const story = makeStory();
     let resolveFirst!: (node: ReactNode) => void;
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
 
     const renderContent = vi
       .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
       .mockImplementationOnce(
         () =>
           new Promise<ReactNode>((resolve) => {
@@ -319,11 +403,8 @@ describe("StoryblokPreviewRsc", () => {
       )
       .mockResolvedValueOnce(<div data-testid="second-live">second</div>);
 
-    const { getByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -339,7 +420,7 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledTimes(2); // initial + first (in-flight)
 
     // Resolving the first should trigger the queued second
     await act(async () => {
@@ -347,12 +428,13 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledTimes(2);
-    expect(renderContent).toHaveBeenNthCalledWith(2, secondStory);
+    expect(renderContent).toHaveBeenCalledTimes(3);
+    expect(renderContent).toHaveBeenNthCalledWith(3, secondStory);
     expect(getByTestId("second-live")).toBeInTheDocument();
   });
 
   it("discards intermediate stories and runs only the latest queued story", async () => {
+    const story = makeStory();
     let resolveFirst!: (node: ReactNode) => void;
     const firstStory = makeStory({ slug: "first" });
     const middleStory = makeStory({ slug: "middle" });
@@ -360,6 +442,7 @@ describe("StoryblokPreviewRsc", () => {
 
     const renderContent = vi
       .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
       .mockImplementationOnce(
         () =>
           new Promise<ReactNode>((resolve) => {
@@ -368,11 +451,8 @@ describe("StoryblokPreviewRsc", () => {
       )
       .mockResolvedValue(<div>content</div>);
 
-    render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -395,27 +475,29 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledTimes(2); // initial + first (in-flight)
 
     await act(async () => {
       resolveFirst(<div>first</div>);
       await vi.runAllTimersAsync();
     });
 
-    // Only two calls total: first + last. middle must have been discarded.
-    expect(renderContent).toHaveBeenCalledTimes(2);
-    expect(renderContent).toHaveBeenNthCalledWith(2, lastStory);
+    // initial + first + last. middle must have been discarded.
+    expect(renderContent).toHaveBeenCalledTimes(3);
+    expect(renderContent).toHaveBeenNthCalledWith(3, lastStory);
     expect(renderContent).not.toHaveBeenCalledWith(middleStory);
   });
 
   it("runs the queued story even when the in-flight action rejects", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const story = makeStory();
     let rejectFirst!: (err: Error) => void;
     const firstStory = makeStory({ slug: "first" });
     const secondStory = makeStory({ slug: "second" });
 
     const renderContent = vi
       .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
       .mockImplementationOnce(
         () =>
           new Promise<ReactNode>((_, reject) => {
@@ -424,11 +506,8 @@ describe("StoryblokPreviewRsc", () => {
       )
       .mockResolvedValueOnce(<div data-testid="second-live">second</div>);
 
-    const { getByTestId } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div data-testid="initial">initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -444,7 +523,7 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledTimes(2);
 
     // Rejecting the first should still trigger the queued second
     await act(async () => {
@@ -452,29 +531,30 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledTimes(2);
-    expect(renderContent).toHaveBeenNthCalledWith(2, secondStory);
+    expect(renderContent).toHaveBeenCalledTimes(3);
+    expect(renderContent).toHaveBeenNthCalledWith(3, secondStory);
     expect(getByTestId("second-live")).toBeInTheDocument();
 
     consoleSpy.mockRestore();
   });
 
   it("should not run a queued story after unmount", async () => {
+    const story = makeStory();
     let resolveFirst!: (node: ReactNode) => void;
     const firstStory = makeStory({ slug: "first" });
     const queuedStory = makeStory({ slug: "queued" });
-    const renderContent = vi.fn().mockImplementationOnce(
-      () =>
-        new Promise<ReactNode>((resolve) => {
-          resolveFirst = resolve;
-        }),
-    );
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div>initial</div>)
+      .mockImplementationOnce(
+        () =>
+          new Promise<ReactNode>((resolve) => {
+            resolveFirst = resolve;
+          }),
+      );
 
-    const { unmount } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={0}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { unmount } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -488,7 +568,7 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledTimes(2);
 
     unmount();
 
@@ -497,16 +577,14 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).toHaveBeenCalledOnce();
+    expect(renderContent).toHaveBeenCalledTimes(2);
   });
 
   it("unsubscribes and clears the debounce timer on unmount", async () => {
-    const renderContent = vi.fn();
-    const { unmount } = render(
-      <StoryblokPreviewRsc renderContent={renderContent} debounceMs={200}>
-        <div>initial</div>
-      </StoryblokPreviewRsc>,
-    );
+    const story = makeStory();
+    const renderContent = vi.fn().mockResolvedValue(<div>initial</div>);
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 200 });
+    const { unmount } = render(element);
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
@@ -520,7 +598,7 @@ describe("StoryblokPreviewRsc", () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(renderContent).not.toHaveBeenCalled();
+    expect(renderContent).toHaveBeenCalledOnce(); // only the initial call
     expect(mockUnsubscribe).toHaveBeenCalledOnce();
   });
 });

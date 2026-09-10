@@ -293,7 +293,7 @@ export type OptionFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     /**
      * Array of selectable options
      */
-    options?: Array<{
+    options?: ReadonlyArray<{
         _uid?: string;
         name?: string;
         value?: string;
@@ -366,7 +366,7 @@ export type OptionsFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     /**
      * Array of selectable options
      */
-    options?: Array<{
+    options?: ReadonlyArray<{
         _uid?: string;
         name?: string;
         value?: string;
@@ -776,7 +776,7 @@ export type CustomFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     /**
      * Plugin-specific options
      */
-    options?: Array<{
+    options?: ReadonlyArray<{
         name?: string;
         value?: string;
     }>;

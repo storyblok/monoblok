@@ -1,12 +1,13 @@
 import { useParams } from "react-router";
 import { StoryblokPreview } from "@storyblok/react/client";
-import { useStory } from "../hooks/use-story";
+import { useStoryblokStory } from "../hooks/use-story";
 import { StoryblokComponent } from "../storyblok";
+import type { BlockContent } from "@storyblok/react";
 
 function CatchAllPage() {
   const params = useParams();
   const slug = params["*"] || "react";
-  const { data: story, error } = useStory(slug);
+  const { data: story, error } = useStoryblokStory(slug);
   if (error) return <div>Failed to load story.</div>;
   if (!story) return <div>Loading...</div>;
 
@@ -16,7 +17,7 @@ function CatchAllPage() {
       story={story}
       renderContent={(live) => (
         <div>
-          <StoryblokComponent block={live.content} />
+          <StoryblokComponent block={live.content as BlockContent} />
         </div>
       )}
     />

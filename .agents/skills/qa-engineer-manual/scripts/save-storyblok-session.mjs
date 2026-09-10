@@ -16,8 +16,10 @@
 //
 // STORYBLOK_QA_CDP_URL drives a Chrome that is already running with remote
 // debugging instead of launching one, for environments with no display.
+/* eslint-disable no-await-in-loop -- the polling is sequential on purpose: each
+   round has to see what the previous one left in the browser. */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium } from "@playwright/test";
 
@@ -44,7 +46,9 @@ const openAppPage = context.pages().find((candidate) => {
   }
 });
 const page = openAppPage ?? (await context.newPage());
-if (!openAppPage) await page.goto(`${appBaseUrl}/#/me/spaces`);
+if (!openAppPage) {
+  await page.goto(`${appBaseUrl}/#/me/spaces`);
+}
 
 console.log(`Browser open. Log in at ${appBaseUrl}; the session saves by itself.`);
 
@@ -85,8 +89,12 @@ while (Date.now() - startedAt < TIMEOUT_MS) {
     // Let the app finish writing anything else it sets on first render.
     await new Promise((r) => setTimeout(r, POLL_MS));
     const state = await context.storageState();
-    const origins = state.origins.length ? state.origins : await readLocalStorage();
-    writeFileSync(statePath, JSON.stringify({ ...state, origins }, null, 2));
+    const savedOrigins = state.origins.length ? state.origins : await readLocalStorage();
+    // The state is a live credential, so keep it readable by its owner only.
+    writeFileSync(statePath, JSON.stringify({ ...state, origins: savedOrigins }, null, 2), {
+      mode: 0o600,
+    });
+    chmodSync(statePath, 0o600);
     saved = true;
     console.log(JSON.stringify({ outcome: "PASS", details: `session saved to ${statePath}` }));
     break;

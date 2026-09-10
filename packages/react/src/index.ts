@@ -17,4 +17,6 @@ export {
   StoryblokRichText,
 } from "./richtext";
 
-export { storyblokEditable } from "@storyblok/live-preview";
+export { storyblokEditable, type LivePreviewStory } from "@storyblok/live-preview";
+
+export { type StoryblokRichTextDoc } from "@storyblok/richtext";

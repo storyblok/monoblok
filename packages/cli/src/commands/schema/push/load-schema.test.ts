@@ -225,6 +225,19 @@ describe("classifyExports folders", () => {
     expect(data.folders).toEqual([{ name: "Legacy", path: "legacy", parentPath: null }]);
   });
 
+  it("should not materialize folders from a deny the wire mapping drops", () => {
+    // A `text` field has no denylist, so `mapFieldToWire` drops the `deny`.
+    // Harvesting the folder anyway would create a component group that nothing
+    // goes on to reference.
+    const data = classifyExports({
+      page: {
+        name: "page",
+        fields: [{ name: "title", type: "text", deny: [{ folder: "Legacy" }] }],
+      },
+    });
+    expect(data.folders).toEqual([]);
+  });
+
   it("should materialize folders from both restriction lists on one field", () => {
     const data = classifyExports({
       page: {

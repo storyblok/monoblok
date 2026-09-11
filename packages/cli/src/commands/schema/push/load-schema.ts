@@ -1,3 +1,5 @@
+import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+
 import type { LocalFolder, SchemaData } from "../types";
 import { CommandError, isRecord } from "../../../utils";
 import { collectSchemaExports, loadSchemaModule } from "../../../utils/schema/classify-exports";
@@ -7,7 +9,7 @@ import { mapBlockToWire, mapDatasourceToWire } from "../map-to-wire";
 /**
  * Builds the deduped, parent-first {@link LocalFolder} list from harvested
  * display paths. `registered` paths come from `defineFolder()` objects;
- * `derived` paths come from block `folder` fields and `allow` entries.
+ * `derived` paths come from block `folder` fields and `allow`/`deny` entries.
  * Dedupe is by slug path. Display-name precedence: a registered `defineFolder`
  * wins over a derived segment. Two registered folders resolving to the same
  * slug path with different display names is a conflict.
@@ -156,7 +158,15 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
         if (!isRecord(field)) {
           continue;
         }
-        for (const entry of [...toArray(field.allow), ...toArray(field.deny)]) {
+        // `deny` is only harvested from where it survives the wire mapping. That
+        // mapping drops a `deny` on a field type with no denylist, so harvesting it
+        // anyway would create a component group for a restriction nothing goes on
+        // to reference. Reachable only from a schema written as plain objects;
+        // `defineField` rejects the same field outright.
+        const restrictions = DENIABLE_FIELD_TYPES.includes(String(field.type))
+          ? [...toArray(field.allow), ...toArray(field.deny)]
+          : toArray(field.allow);
+        for (const entry of restrictions) {
           if (isRecord(entry) && typeof entry.folder === "string") {
             derived.push(entry.folder);
           }

@@ -471,7 +471,8 @@ function matchesRestriction(
  * The editor gives `allow` precedence within a dimension: a non-empty allow list
  * decides on its own and the denylist is never consulted. That is mirrored here,
  * so a field carrying both validates as the allow list alone rather than as the
- * stricter intersection.
+ * stricter intersection. `defineField` rejects that pair, so only a schema written
+ * as plain objects reaches this branch.
  *
  * `itemPath` is the path to the blok item (its index); the reported issue points
  * at that item's `component` key.

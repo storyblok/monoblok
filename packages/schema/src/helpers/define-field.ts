@@ -56,10 +56,6 @@ type NormalizeRestriction<T> = T extends readonly any[]
 const isFolderRef = (ref: unknown): ref is BlockFolder =>
   isRecord(ref) && typeof ref.path === "string" && !Array.isArray(ref.fields) && !("slug" in ref);
 
-/** Whether a normalized `allow`/`deny` list restricts by folder rather than by block name. */
-const isFolderList = (entries: readonly unknown[]): boolean =>
-  entries.some((entry) => isRecord(entry) && typeof entry.folder === "string");
-
 /**
  * The field types whose nested-block picker reads the restriction lists, and so
  * the only ones a `deny` can mean anything on.
@@ -110,10 +106,10 @@ export type FieldInput = Field & {
    * `schema push` applies the matching editor restriction. Only `bloks` and
    * `richtext` fields have a denylist; anywhere else this throws.
    *
-   * The editor restricts by either blocks or folders, never both, so `allow` and
-   * `deny` on one field must not disagree on which. Where they agree, the editor
-   * gives `allow` precedence: a non-empty allow list decides on its own and
-   * leaves `deny` inert, so reach for `deny` when you mean "everything except".
+   * Use `deny` when you mean "everything except". It is the alternative to
+   * `allow`, not an addition to it: the editor consults the denylist only when
+   * the allow list is empty, so setting both is rejected rather than silently
+   * reduced to the allow list alone.
    *
    * A denial governs the block picker, not the stored content. Pasting a block
    * from the clipboard is checked against the allow list only, so a denied block
@@ -139,8 +135,9 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
 /**
  * Returns a {@link Field} stamped with the given `name`, normalizing reference
  * keys to strings so everything downstream sees plain names/slugs. A thin,
- * strongly-typed identity helper: it validates only that `allow` and `deny` pick
- * a single restriction dimension, and otherwise does not check the field.
+ * strongly-typed identity helper: it validates only that the restriction keys can
+ * reach the editor — `allow` and `deny` are mutually exclusive, and `deny` needs a
+ * field type that has a denylist — and otherwise does not check the field.
  *
  * Use inside a {@link defineBlock} `fields` array — `pos` is injected from the
  * array index by `defineBlock`.
@@ -161,13 +158,15 @@ export function defineField(name: string, field: Record<string, unknown>): Recor
   const normalized: Record<string, unknown> = { ...rest, name };
   const allowList = allow === undefined ? undefined : normalizeRestriction("allow", name, allow);
   const denyList = deny === undefined ? undefined : normalizeRestriction("deny", name, deny);
-  // The editor picks one restriction dimension per field, so an `allow` that
-  // restricts by folder alongside a `deny` that restricts by block name (or the
-  // reverse) would silently drop one of the two lists. Empty lists carry no
-  // dimension, so they never conflict.
-  if (allowList?.length && denyList?.length && isFolderList(allowList) !== isFolderList(denyList)) {
+  // The editor consults a denylist only when the matching allow list is empty, so
+  // a `deny` beside a non-empty `allow` never governs anything. Rejected rather
+  // than dropped, for the same reason a `deny` on a field type without a denylist
+  // is: the whole point of the key is to reach the editor, and config that cannot
+  // is the bug it was added to fix. Say `allow` without the denied entries
+  // instead. Empty lists restrict nothing, so they never conflict.
+  if (allowList?.length && denyList?.length) {
     throw new Error(
-      `defineField: "allow" and "deny" on field "${name}" mix block and folder references; the editor restricts by either blocks or folders, not both`,
+      `defineField: "allow" and "deny" on field "${name}" cannot both be set; the editor ignores the denylist whenever the allow list is non-empty, so list only the blocks you want in "allow"`,
     );
   }
   // Rejected rather than dropped: a `deny` the editor cannot read is the bug this

@@ -1226,10 +1226,12 @@ describe("validateStory — deny entries", () => {
   it("lets a non-empty allow list decide on its own, matching the editor", () => {
     // The editor never consults the denylist while the allow list has entries.
     // Enforcing both would be stricter than the runtime it is validating for.
+    // `defineField` rejects the pair, so this is the plain-object form a schema
+    // written without the helpers takes.
     const page = defineBlock({
       name: "page",
       is_root: true,
-      fields: [defineField("body", { type: "bloks", allow: ["banner"], deny: ["banner"] })],
+      fields: [{ name: "body", type: "bloks", allow: ["banner"], deny: ["banner"] }],
     });
     const result = validateStory(storyWith("banner"), {
       blocks: { page, banner, teaser: teaserBlock },

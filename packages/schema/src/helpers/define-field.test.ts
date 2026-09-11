@@ -42,20 +42,18 @@ describe("defineField", () => {
     );
   });
 
-  it("should keep allow and deny that restrict by the same dimension", () => {
-    const field = defineField("body", {
-      type: "bloks",
-      allow: ["teaser", "banner"],
-      deny: ["banner"],
-    });
-    expect(field.allow).toEqual(["teaser", "banner"]);
-    expect(field.deny).toEqual(["banner"]);
+  it("should throw when allow and deny are both set", () => {
+    expect(() =>
+      defineField("body", { type: "bloks", allow: ["teaser", "banner"], deny: ["banner"] }),
+    ).toThrow(
+      'defineField: "allow" and "deny" on field "body" cannot both be set; the editor ignores the denylist whenever the allow list is non-empty, so list only the blocks you want in "allow"',
+    );
   });
 
-  it("should throw when allow and deny restrict by different dimensions", () => {
+  it("should throw when allow and deny are both set across dimensions", () => {
     const heros = defineFolder({ name: "Heros" });
     expect(() => defineField("body", { type: "bloks", allow: [heros], deny: ["teaser"] })).toThrow(
-      'defineField: "allow" and "deny" on field "body" mix block and folder references; the editor restricts by either blocks or folders, not both',
+      'defineField: "allow" and "deny" on field "body" cannot both be set',
     );
   });
 

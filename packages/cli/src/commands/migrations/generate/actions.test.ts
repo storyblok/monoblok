@@ -25,6 +25,8 @@ describe("generateMigration", () => {
     created_at: "2024-01-01",
     updated_at: "2024-01-01",
     id: 1,
+    is_root: false,
+    is_nestable: true,
     schema: {
       fullname: {
         type: "text",

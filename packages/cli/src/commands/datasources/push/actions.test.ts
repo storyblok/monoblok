@@ -9,6 +9,23 @@ import { FileSystemError } from "../../../utils/error/filesystem-error";
 
 const server = setupServer();
 
+type DatasourceRequest = {
+  datasource: {
+    dimensions?: unknown;
+    dimensions_attributes?: Array<{ entry_value: string; name: string }>;
+  };
+};
+
+function isDatasourceRequest(body: unknown): body is DatasourceRequest {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "datasource" in body &&
+    typeof body.datasource === "object" &&
+    body.datasource !== null
+  );
+}
+
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
@@ -20,6 +37,7 @@ const mockDatasource1: SpaceDatasource = {
   slug: "countries",
   dimensions: [
     {
+      id: 1,
       name: "United States",
       entry_value: "us",
       datasource_id: 1,
@@ -27,6 +45,7 @@ const mockDatasource1: SpaceDatasource = {
       updated_at: "2021-08-09T12:00:00Z",
     },
     {
+      id: 2,
       name: "Canada",
       entry_value: "ca",
       datasource_id: 1,
@@ -37,8 +56,8 @@ const mockDatasource1: SpaceDatasource = {
   created_at: "2021-08-09T12:00:00Z",
   updated_at: "2021-08-09T12:00:00Z",
   entries: [
-    { id: 101, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-    { id: 102, name: "red", value: "#ff0000", dimension_value: "", datasource_id: 1 },
+    { id: 101, name: "blue", value: "#0000ff" },
+    { id: 102, name: "red", value: "#ff0000" },
   ],
 };
 
@@ -48,6 +67,7 @@ const mockDatasource2: SpaceDatasource = {
   slug: "categories",
   dimensions: [
     {
+      id: 3,
       name: "Technology",
       entry_value: "tech",
       datasource_id: 2,
@@ -58,8 +78,8 @@ const mockDatasource2: SpaceDatasource = {
   created_at: "2021-08-09T12:00:00Z",
   updated_at: "2021-08-09T12:00:00Z",
   entries: [
-    { id: 201, name: "tech", value: "Technology", dimension_value: "", datasource_id: 2 },
-    { id: 202, name: "business", value: "Business", dimension_value: "", datasource_id: 2 },
+    { id: 201, name: "tech", value: "Technology" },
+    { id: 202, name: "business", value: "Business" },
   ],
 };
 
@@ -95,13 +115,12 @@ describe("push datasources actions", () => {
           });
         } catch (error) {
           expect(error).toBeInstanceOf(FileSystemError);
-          expect((error as FileSystemError).message).toContain(
-            "No local datasources found for space source-space",
-          );
-          expect((error as FileSystemError).message).toContain(
-            "storyblok datasources pull --space source-space",
-          );
-          expect((error as FileSystemError).message).toContain(
+          if (!(error instanceof FileSystemError)) {
+            throw error;
+          }
+          expect(error.message).toContain("No local datasources found for space source-space");
+          expect(error.message).toContain("storyblok datasources pull --space source-space");
+          expect(error.message).toContain(
             "storyblok datasources push --space <target_space> --from source-space",
           );
         }
@@ -399,7 +418,7 @@ describe("push datasources actions", () => {
     });
 
     it("should map the local dimensions array to dimensions_attributes so a fresh target gets them created", async () => {
-      let createdBody: any;
+      let createdBody: unknown;
       server.use(
         http.post("https://mapi.storyblok.com/v1/spaces/12345/datasources", async ({ request }) => {
           createdBody = await request.json();
@@ -410,9 +429,12 @@ describe("push datasources actions", () => {
         }),
       );
 
-      const { entries, ...definition } = mockDatasource1;
+      const { entries: _entries, ...definition } = mockDatasource1;
       await pushDatasource("12345", definition);
 
+      if (!isDatasourceRequest(createdBody)) {
+        throw new Error("Expected a datasource request body");
+      }
       // Dimensions are sent as dimensions_attributes (name + entry_value only), not as the raw `dimensions` array.
       expect(createdBody.datasource.dimensions_attributes).toEqual([
         { name: "United States", entry_value: "us" },
@@ -422,7 +444,7 @@ describe("push datasources actions", () => {
     });
 
     it("should omit dimensions_attributes for a datasource without dimensions", async () => {
-      let createdBody: any;
+      let createdBody: unknown;
       server.use(
         http.post("https://mapi.storyblok.com/v1/spaces/12345/datasources", async ({ request }) => {
           createdBody = await request.json();
@@ -435,6 +457,9 @@ describe("push datasources actions", () => {
 
       await pushDatasource("12345", { name: "colors", slug: "colors", dimensions: [] });
 
+      if (!isDatasourceRequest(createdBody)) {
+        throw new Error("Expected a datasource request body");
+      }
       expect(createdBody.datasource.dimensions_attributes).toBeUndefined();
     });
   });

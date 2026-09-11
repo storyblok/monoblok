@@ -45,9 +45,9 @@ describe("datasources delete command", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     loggerInfoMock.mockReset();
     // Reset the option values
-    (datasourcesCommand as any)._optionValues = {};
+    Reflect.set(datasourcesCommand, "_optionValues", {});
     for (const command of datasourcesCommand.commands) {
-      (command as any)._optionValues = {};
+      Reflect.set(command, "_optionValues", {});
     }
   });
 

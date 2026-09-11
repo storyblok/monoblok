@@ -16,6 +16,21 @@ import { componentsCommand } from "../command";
 import { loggedOutSessionState } from "../../../../test/setup";
 import { getUI } from "../../../lib/ui";
 import { getProgram } from "../../../program";
+import type { Component } from "../constants";
+
+function component(overrides: Partial<Component> & { id: number; name: string }): Component {
+  return {
+    ...overrides,
+    display_name: overrides.display_name ?? null,
+    created_at: overrides.created_at ?? "",
+    updated_at: overrides.updated_at ?? "",
+    schema: overrides.schema ?? {},
+    is_root: overrides.is_root ?? false,
+    is_nestable: overrides.is_nestable ?? false,
+    internal_tags_list: overrides.internal_tags_list ?? [],
+    internal_tag_ids: overrides.internal_tag_ids ?? [],
+  };
+}
 
 vi.mock("./actions", () => ({
   fetchComponents: vi.fn(),
@@ -58,29 +73,25 @@ describe("pull", () => {
 
   describe("default mode", () => {
     it("should prompt the user if the operation was sucessfull", async () => {
-      const mockResponse = [
-        {
+      const mockResponse: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
-          internal_tags_list: [] as { id?: number; name?: string }[],
-          internal_tag_ids: [] as string[],
-        },
-        {
+        }),
+        component({
           name: "component-name-2",
           display_name: "Component Name 2",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12346,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
-          internal_tags_list: [] as { id?: number; name?: string }[],
-          internal_tag_ids: [] as string[],
-        },
+        }),
       ];
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
@@ -107,17 +118,17 @@ describe("pull", () => {
     });
 
     it("should fetch a component by name", async () => {
-      const mockResponse = {
+      const mockResponse: Component = component({
         name: "component-name",
         display_name: "Component Name",
         created_at: "2021-08-09T12:00:00Z",
         updated_at: "2021-08-09T12:00:00Z",
         id: 12345,
-        schema: { type: "object" },
+        schema: {},
         color: undefined,
         internal_tags_list: [{ id: 1, name: "tag" }],
         internal_tag_ids: ["1"],
-      };
+      });
       vi.mocked(fetchComponent).mockResolvedValue(mockResponse);
       await componentsCommand.parseAsync([
         "node",
@@ -180,18 +191,16 @@ describe("pull", () => {
 
   describe("--path option", () => {
     it("should save the file at the provided path", async () => {
-      const mockResponse = [
-        {
+      const mockResponse: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
-          internal_tags_list: [] as { id?: number; name?: string }[],
-          internal_tag_ids: [] as string[],
-        },
+        }),
       ];
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
@@ -219,18 +228,16 @@ describe("pull", () => {
 
   describe("--filename option", () => {
     it("should save the file with the custom filename", async () => {
-      const mockResponse = [
-        {
+      const mockResponse: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
-          internal_tags_list: [] as { id?: number; name?: string }[],
-          internal_tag_ids: [] as string[],
-        },
+        }),
       ];
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
@@ -264,29 +271,29 @@ describe("pull", () => {
 
   describe("--separate-files option", () => {
     it("should save each component in a separate file", async () => {
-      const mockResponse = [
-        {
+      const mockResponse: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
-        {
+        }),
+        component({
           name: "component-name-2",
           display_name: "Component Name 2",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12346,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
+        }),
       ];
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
@@ -317,18 +324,18 @@ describe("pull", () => {
     });
 
     it("should warn the user if the --filename is used along", async () => {
-      const mockResponse = [
-        {
+      const mockResponse: Component[] = [
+        component({
           name: "component-name",
           display_name: "Component Name",
           created_at: "2021-08-09T12:00:00Z",
           updated_at: "2021-08-09T12:00:00Z",
           id: 12345,
-          schema: { type: "object" },
+          schema: {},
           color: undefined,
           internal_tags_list: [{ id: 1, name: "tag" }],
           internal_tag_ids: ["1"],
-        },
+        }),
       ];
 
       vi.mocked(fetchComponents).mockResolvedValue(mockResponse);
@@ -363,25 +370,21 @@ describe("pull", () => {
 
   describe("--filter option", () => {
     it("should save only components matching the glob and their dependencies", async () => {
-      const checkout = {
+      const checkout: Component = {
+        ...component({ id: 1, name: "checkout-form" }),
         name: "checkout-form",
         display_name: "Checkout Form",
         id: 1,
         created_at: "",
         updated_at: "",
-        schema: { type: "object" },
-        internal_tags_list: [] as { id?: number; name?: string }[],
-        internal_tag_ids: [] as string[],
       };
-      const hero = {
+      const hero: Component = {
+        ...component({ id: 2, name: "hero" }),
         name: "hero",
         display_name: "Hero",
         id: 2,
         created_at: "",
         updated_at: "",
-        schema: { type: "object" },
-        internal_tags_list: [] as { id?: number; name?: string }[],
-        internal_tag_ids: [] as string[],
       };
 
       vi.mocked(fetchComponents).mockResolvedValue([checkout, hero]);
@@ -406,15 +409,13 @@ describe("pull", () => {
     });
 
     it("should warn and not save when the glob matches nothing", async () => {
-      const hero = {
+      const hero: Component = {
+        ...component({ id: 2, name: "hero" }),
         name: "hero",
         display_name: "Hero",
         id: 2,
         created_at: "",
         updated_at: "",
-        schema: { type: "object" },
-        internal_tags_list: [] as { id?: number; name?: string }[],
-        internal_tag_ids: [] as string[],
       };
       vi.mocked(fetchComponents).mockResolvedValue([hero]);
 
@@ -434,31 +435,40 @@ describe("pull", () => {
   });
 
   describe("--group and --tag options", () => {
-    const inCheckout = {
+    const inCheckout: Component = {
+      ...component({ id: 1, name: "checkout-form" }),
       name: "checkout-form",
       display_name: "Checkout Form",
       id: 1,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
       component_group_uuid: "checkout",
-      internal_tags_list: [] as { id?: number; name?: string }[],
       internal_tag_ids: ["10"],
     };
-    const inMarketing = {
+    const inMarketing: Component = {
+      ...component({ id: 2, name: "hero" }),
       name: "hero",
       display_name: "Hero",
       id: 2,
       created_at: "",
       updated_at: "",
-      schema: { type: "object" },
       component_group_uuid: "marketing",
-      internal_tags_list: [] as { id?: number; name?: string }[],
-      internal_tag_ids: [] as string[],
     };
-    const checkoutGroup = { id: 1, uuid: "checkout", name: "Checkout" };
-    const marketingGroup = { id: 2, uuid: "marketing", name: "Marketing" };
-    const betaTag = { id: 10, name: "beta" };
+    const checkoutGroup = {
+      id: 1,
+      uuid: "checkout",
+      name: "Checkout",
+      parent_id: null,
+      parent_uuid: null,
+    };
+    const marketingGroup = {
+      id: 2,
+      uuid: "marketing",
+      name: "Marketing",
+      parent_id: null,
+      parent_uuid: null,
+    };
+    const betaTag = { id: 10, name: "beta", object_type: "component" as const };
 
     beforeEach(() => {
       vi.mocked(fetchComponents).mockResolvedValue([inCheckout, inMarketing]);

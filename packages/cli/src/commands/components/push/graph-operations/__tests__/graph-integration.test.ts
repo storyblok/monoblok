@@ -33,6 +33,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: ["100"], // References source tag ID
+              is_root: false,
+              is_nestable: false,
               component_group_uuid: "shared-group-uuid", // References source group
             },
           ],
@@ -83,6 +85,8 @@ describe("graph Integration Tests", () => {
                 color: null,
                 internal_tags_list: [],
                 internal_tag_ids: ["500"], // Different tag ID in target
+                is_root: false,
+                is_nestable: false,
                 component_group_uuid: "shared-group-uuid",
               },
             ],
@@ -311,6 +315,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: ["200"], // Source tag ID
+              is_root: false,
+              is_nestable: false,
               component_group_uuid: "test-group-uuid",
             },
           ],
@@ -345,12 +351,14 @@ describe("graph Integration Tests", () => {
               description: "",
             },
           ],
+          datasources: [],
         },
         target: {
           components: new Map(),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -405,6 +413,8 @@ describe("graph Integration Tests", () => {
           color: null,
           internal_tags_list: [],
           internal_tag_ids: [],
+          is_root: false,
+          is_nestable: false,
         })
         .mockResolvedValueOnce({
           id: 3002,
@@ -423,6 +433,8 @@ describe("graph Integration Tests", () => {
           color: null,
           internal_tags_list: [],
           internal_tag_ids: [],
+          is_root: false,
+          is_nestable: false,
         });
 
       const spaceState: SpaceComponentsDataState = {
@@ -438,6 +450,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
             {
               id: 2,
@@ -456,6 +470,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [
@@ -475,12 +491,14 @@ describe("graph Integration Tests", () => {
             },
           ],
           presets: [],
+          datasources: [],
         },
         target: {
           components: new Map(),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -489,7 +507,7 @@ describe("graph Integration Tests", () => {
 
       // Verify that schema references were resolved
       const complexComponentCall = (upsertComponent as any).mock.calls.find(
-        (call) => call[1].name === "complex-component",
+        (call: [{}, { name?: string }]) => call[1].name === "complex-component",
       );
 
       expect(complexComponentCall).toBeDefined();
@@ -565,6 +583,8 @@ describe("graph Integration Tests", () => {
               color: undefined,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
             {
               id: 2,
@@ -583,6 +603,8 @@ describe("graph Integration Tests", () => {
               color: undefined,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [
@@ -590,8 +612,8 @@ describe("graph Integration Tests", () => {
               id: 300,
               name: "richtext-group",
               uuid: "richtext-group-uuid",
-              parent_id: undefined,
-              parent_uuid: undefined,
+              parent_id: null,
+              parent_uuid: null,
             },
           ],
           internalTags: [
@@ -617,9 +639,6 @@ describe("graph Integration Tests", () => {
 
       // Verify dependencies are correctly established
       const richtextComponentNode = graph.nodes.get("component:richtext-component")!;
-      const _allowedComponentNode = graph.nodes.get("component:allowed-component")!;
-      const _groupNode = graph.nodes.get("group:richtext-group-uuid")!;
-      const _tagNode = graph.nodes.get("tag:150")!;
 
       // Richtext component should depend on allowed component, group, and tag
       expect(richtextComponentNode.dependencies.has("component:allowed-component")).toBe(true);
@@ -630,7 +649,7 @@ describe("graph Integration Tests", () => {
 
       // Verify that schema references were resolved
       const richtextComponentCall = (upsertComponent as any).mock.calls.find(
-        (call) => call[1].name === "richtext-component",
+        (call: [{}, { name?: string }]) => call[1].name === "richtext-component",
       );
 
       expect(richtextComponentCall).toBeDefined();
@@ -719,6 +738,8 @@ describe("graph Integration Tests", () => {
               color: undefined,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
             {
               id: 2,
@@ -743,6 +764,8 @@ describe("graph Integration Tests", () => {
               color: undefined,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [
@@ -750,15 +773,15 @@ describe("graph Integration Tests", () => {
               id: 400,
               name: "bloks-group",
               uuid: "bloks-group-uuid",
-              parent_id: undefined,
-              parent_uuid: undefined,
+              parent_id: null,
+              parent_uuid: null,
             },
             {
               id: 500,
               name: "richtext-group",
               uuid: "richtext-group-uuid",
-              parent_id: undefined,
-              parent_uuid: undefined,
+              parent_id: null,
+              parent_uuid: null,
             },
           ],
           internalTags: [
@@ -801,7 +824,7 @@ describe("graph Integration Tests", () => {
 
       // Verify that schema references were resolved for both field types
       const mixedComponentCall = (upsertComponent as any).mock.calls.find(
-        (call) => call[1].name === "mixed-component",
+        (call: [{}, { name?: string }]) => call[1].name === "mixed-component",
       );
 
       expect(mixedComponentCall).toBeDefined();
@@ -883,6 +906,8 @@ describe("graph Integration Tests", () => {
               color: undefined,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
             {
               id: 2,
@@ -905,6 +930,8 @@ describe("graph Integration Tests", () => {
               color: undefined,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [
@@ -912,8 +939,8 @@ describe("graph Integration Tests", () => {
               id: 600,
               name: "nested-group",
               uuid: "nested-group-uuid",
-              parent_id: undefined,
-              parent_uuid: undefined,
+              parent_id: null,
+              parent_uuid: null,
             },
           ],
           internalTags: [
@@ -949,7 +976,7 @@ describe("graph Integration Tests", () => {
 
       // Verify that nested schema references were resolved
       const complexNestedComponentCall = (upsertComponent as any).mock.calls.find(
-        (call) => call[1].name === "complex-nested-component",
+        (call: [{}, { name?: string }]) => call[1].name === "complex-nested-component",
       );
 
       expect(complexNestedComponentCall).toBeDefined();
@@ -979,6 +1006,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [],
@@ -1011,6 +1040,7 @@ describe("graph Integration Tests", () => {
               description: "",
             },
           ],
+          datasources: [],
         },
         target: {
           components: new Map([
@@ -1026,12 +1056,15 @@ describe("graph Integration Tests", () => {
                 color: null,
                 internal_tags_list: [],
                 internal_tag_ids: [],
+                is_root: false,
+                is_nestable: false,
               },
             ],
           ]),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -1073,6 +1106,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [],
@@ -1105,6 +1140,7 @@ describe("graph Integration Tests", () => {
               description: "",
             },
           ],
+          datasources: [],
         },
         target: {
           components: new Map([
@@ -1120,12 +1156,15 @@ describe("graph Integration Tests", () => {
                 color: null,
                 internal_tags_list: [],
                 internal_tag_ids: [],
+                is_root: false,
+                is_nestable: false,
               },
             ],
           ]),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -1167,6 +1206,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [],
@@ -1199,6 +1240,7 @@ describe("graph Integration Tests", () => {
               description: "",
             },
           ],
+          datasources: [],
         },
         target: {
           components: new Map([
@@ -1214,12 +1256,15 @@ describe("graph Integration Tests", () => {
                 color: null,
                 internal_tags_list: [],
                 internal_tag_ids: [],
+                is_root: false,
+                is_nestable: false,
               },
             ],
           ]),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -1252,18 +1297,22 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: ["999"], // Non-existent tag
+              is_root: false,
+              is_nestable: false,
               component_group_uuid: "non-existent-group-uuid",
             },
           ],
           groups: [],
           internalTags: [],
           presets: [],
+          datasources: [],
         },
         target: {
           components: new Map(),
           groups: new Map(),
           tags: new Map(),
           presets: new Map(),
+          datasources: new Map(),
         },
       };
 
@@ -1293,6 +1342,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
             {
               id: 2,
@@ -1309,6 +1360,8 @@ describe("graph Integration Tests", () => {
               color: null,
               internal_tags_list: [],
               internal_tag_ids: [],
+              is_root: false,
+              is_nestable: false,
             },
           ],
           groups: [],

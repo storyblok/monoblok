@@ -31,6 +31,11 @@ would let a plain `pnpm install` silently change what the next regeneration prod
 `@hey-api/openapi-ts` is pinned to an exact version here. Bump it deliberately, regenerate every
 consumer in the same PR, and review the diff.
 
+Version `0.99.0` includes an upstream fix for redundant index-signature members and requires Node
+`>=22.18.0`. The shared CI setup reads `.nvmrc`, which currently selects Node 24, so the version is
+compatible with the effective CI runtime. This tool's AST pass remains necessary for the nested
+duplicate unions from #792 that `0.99.0` does not remove.
+
 ## Workflow
 
 ```sh

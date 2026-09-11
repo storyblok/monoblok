@@ -26,86 +26,180 @@ export type LivePreviewStory<TStory extends Story = Story> = Prettify<
 >;
 
 // ---------------------------------------------------------------------------
-// Broker — one bridge instance per unique options key, shared across all
-// subscribers with the same config. Prevents duplicate bridges, duplicate
-// `window.message` listeners, and duplicate overlay DOM when the same page
-// mounts several components that each subscribe to editor events.
+// Broker — one bridge instance per page, shared across all subscribers.
+// Relation options are unioned because the editor only supports one bridge
+// configuration per page.
 // ---------------------------------------------------------------------------
 
 type Subscriber = (story: LivePreviewStory) => void;
 
 type BridgeEntry = {
-  bridge: Promise<StoryblokBridge>;
-  subscribers: Set<Subscriber>;
+  bridge?: StoryblokBridge;
+  bridgePromise?: Promise<StoryblokBridge>;
+  subscribers: Map<symbol, Subscriber>;
+  options: BridgeParams;
+  optionsVersion: number;
+  appliedOptionsVersion: number;
+  reconciling: boolean;
 };
 
-const entries = new Map<string, BridgeEntry>();
-let unshareableCount = 0;
+let broker: BridgeEntry | undefined;
 
-/**
- * Returns a stable cache key for the given options, or `undefined` when the
- * options cannot be safely shared (contain function values or circular refs).
- * `initOnlyOnce` is excluded because it is always forced to `false`.
- */
-function optionsKey(options: BridgeParams | undefined): string | undefined {
-  try {
-    const { initOnlyOnce: _, ...rest } = options ?? {};
-    let hasFunction = false;
-    const key = JSON.stringify(rest, (_, value) => {
-      if (typeof value === "function") {
-        hasFunction = true;
-        return undefined;
-      }
-      return value;
-    });
-    return hasFunction ? undefined : key;
-  } catch {
-    return undefined;
+const scalarOptionKeys = [
+  "customParent",
+  "resolveLinks",
+  "preventClicks",
+  "fallbackLang",
+  "initOnlyOnce",
+] as const satisfies readonly (keyof BridgeParams)[];
+
+function mergeBridgeOptions(entry: BridgeEntry, options?: BridgeParams): boolean {
+  if (!options) return false;
+
+  let changed = false;
+  const currentRelations = entry.options.resolveRelations ?? [];
+  const newRelations = options.resolveRelations ?? [];
+  const relations = [...new Set([...currentRelations, ...newRelations])];
+
+  if (relations.length !== currentRelations.length) {
+    entry.options.resolveRelations = relations;
+    changed = true;
   }
+
+  for (const key of scalarOptionKeys) {
+    const value = options[key];
+    if (value === undefined) continue;
+
+    if (entry.options[key] === undefined) {
+      switch (key) {
+        case "customParent":
+          entry.options.customParent = options.customParent;
+          break;
+        case "resolveLinks":
+          entry.options.resolveLinks = options.resolveLinks;
+          break;
+        case "preventClicks":
+          entry.options.preventClicks = options.preventClicks;
+          break;
+        case "fallbackLang":
+          entry.options.fallbackLang = options.fallbackLang;
+          break;
+        case "initOnlyOnce":
+          entry.options.initOnlyOnce = options.initOnlyOnce;
+          break;
+      }
+      changed = true;
+    } else if (entry.options[key] !== value) {
+      console.warn(
+        `[Storyblok] Conflicting live preview option "${key}" ignored; using the first value.`,
+      );
+    }
+  }
+
+  if (changed) entry.optionsVersion += 1;
+  return changed;
 }
 
-function acquire(key: string, bridgeOptions: BridgeParams | undefined): BridgeEntry {
-  const existing = entries.get(key);
-  if (existing) return existing;
+function attachBridgeEvents(entry: BridgeEntry, bridge: StoryblokBridge): void {
+  bridge.on(["input", "change", "published"], (event) => {
+    if (!event) return;
 
-  const subscribers = new Set<Subscriber>();
-
-  // Cache the promise, not the resolved instance: two subscribers mounting in
-  // the same tick would otherwise both miss the cache and construct two bridges.
-  const bridge = loadStoryblokBridge({ ...bridgeOptions, initOnlyOnce: false }).then((instance) => {
-    instance.on(["input", "change", "published"], (event) => {
-      if (!event) return;
-
-      if (event.action === "input" && event.story) {
-        const story = event.story as LivePreviewStory;
-        for (const subscriber of subscribers) subscriber(story);
-        return;
+    if (event.action === "input" && event.story) {
+      const story = event.story as LivePreviewStory;
+      for (const subscriber of entry.subscribers.values()) {
+        try {
+          subscriber(story);
+        } catch (error) {
+          console.error("[Storyblok] Live preview subscriber threw:", error);
+        }
       }
+      return;
+    }
 
-      if ((event.action === "change" || event.action === "published") && subscribers.size > 0) {
-        window.location.reload();
-      }
-    });
-    return instance;
+    if ((event.action === "change" || event.action === "published") && entry.subscribers.size > 0) {
+      window.location.reload();
+    }
   });
-
-  const entry: BridgeEntry = { bridge, subscribers };
-  entries.set(key, entry);
-  return entry;
 }
 
-/** @internal For testing only — resets all shared broker state. */
-export function _resetBrokerState(): void {
-  entries.clear();
-  unshareableCount = 0;
+async function reconcileBridge(entry: BridgeEntry): Promise<StoryblokBridge> {
+  // Let other subscriptions made in the same tick contribute their options
+  // before constructing the bridge.
+  await Promise.resolve();
+
+  while (entry.appliedOptionsVersion < entry.optionsVersion) {
+    const optionsVersion = entry.optionsVersion;
+    const previousBridge = entry.bridge;
+    const bridge = await loadStoryblokBridge(entry.options);
+
+    if (broker !== entry || entry.subscribers.size === 0) {
+      bridge.destroy();
+      return previousBridge ?? bridge;
+    }
+
+    attachBridgeEvents(entry, bridge);
+    entry.bridge = bridge;
+    entry.appliedOptionsVersion = optionsVersion;
+    previousBridge?.destroy();
+  }
+
+  if (!entry.bridge) {
+    throw new Error("Storyblok live preview bridge was not created");
+  }
+
+  return entry.bridge;
+}
+
+function ensureBridge(entry: BridgeEntry): Promise<StoryblokBridge> {
+  if (
+    entry.bridgePromise &&
+    (entry.reconciling || entry.appliedOptionsVersion === entry.optionsVersion)
+  ) {
+    return entry.bridgePromise;
+  }
+
+  entry.reconciling = true;
+  const bridgePromise = reconcileBridge(entry);
+  entry.bridgePromise = bridgePromise;
+
+  void bridgePromise.then(
+    () => {
+      if (entry.bridgePromise === bridgePromise) entry.reconciling = false;
+    },
+    () => {
+      if (entry.bridgePromise !== bridgePromise) return;
+
+      entry.reconciling = false;
+      if (entry.bridge) {
+        entry.bridgePromise = Promise.resolve(entry.bridge);
+      } else if (broker === entry) {
+        broker = undefined;
+      }
+    },
+  );
+
+  return bridgePromise;
+}
+
+function getBroker(): BridgeEntry {
+  if (broker) return broker;
+
+  broker = {
+    subscribers: new Map(),
+    options: {},
+    optionsVersion: 1,
+    appliedOptionsVersion: 0,
+    reconciling: false,
+  };
+  return broker;
 }
 
 /**
  * Registers a callback for Storyblok Visual Editor live preview updates.
  *
- * Subscriptions with identical options share a single bridge instance. The
- * bridge is only constructed once per unique options key and torn down only
- * when every subscriber with that key has unsubscribed. This avoids duplicate
+ * All subscriptions on a page share a single bridge instance. The bridge
+ * unions relation options and is torn down only when every subscriber has
+ * unsubscribed. This avoids duplicate
  * `window.message` listeners and duplicate overlay DOM when multiple components
  * subscribe on the same page.
  *
@@ -124,7 +218,7 @@ export function _resetBrokerState(): void {
  *
  * @returns
  * A cleanup function that removes this subscriber. When it is the last
- * subscriber for its options key the bridge is also destroyed, removing all
+ * subscriber the bridge is also destroyed, removing all
  * event listeners and DOM. Call it when the subscribing component is
  * destroyed to prevent stale updates and memory leaks.
  *
@@ -146,19 +240,25 @@ export async function onStoryblokEditorEvent<TStory extends Story = Story>(
     return () => {};
   }
 
-  const key = optionsKey(bridgeOptions) ?? `unshareable:${++unshareableCount}`;
-  const entry = acquire(key, bridgeOptions);
-  const subscriber = callback as Subscriber;
-  entry.subscribers.add(subscriber);
-  await entry.bridge;
+  const entry = getBroker();
+  mergeBridgeOptions(entry, bridgeOptions);
+  const token = Symbol();
+  const subscriber: Subscriber = (story) => callback(story as LivePreviewStory<TStory>);
+  entry.subscribers.set(token, subscriber);
+
+  try {
+    await ensureBridge(entry);
+  } catch (error) {
+    entry.subscribers.delete(token);
+    throw error;
+  }
 
   return () => {
-    if (!entry.subscribers.delete(subscriber)) return;
+    if (!entry.subscribers.delete(token)) return;
     if (entry.subscribers.size > 0) return;
 
-    entries.delete(key);
-    entry.bridge.then((instance) => {
-      instance.destroy();
-    });
+    if (broker === entry) broker = undefined;
+    entry.bridge?.destroy();
+    entry.bridge = undefined;
   };
 }

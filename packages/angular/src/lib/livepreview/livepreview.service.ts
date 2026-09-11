@@ -59,7 +59,8 @@ export class LivePreviewService {
   /**
    * Subscribes to Storyblok Visual Editor live preview updates.
    *
-   * Returns a cleanup function that destroys the bridge when called.
+   * Returns a cleanup function that removes this subscription. The shared
+   * bridge is destroyed when the last subscription using it is removed.
    * For automatic cleanup tied to a component or service lifetime, prefer
    * {@link connect} which accepts a `DestroyRef` and handles teardown for you.
    *
@@ -89,7 +90,7 @@ export class LivePreviewService {
 
   /**
    * Subscribes to Storyblok Visual Editor live preview updates and
-   * automatically destroys the bridge when the provided `DestroyRef` fires.
+   * automatically removes the subscription when the provided `DestroyRef` fires.
    *
    * This is the preferred API for component use. It eliminates the need for
    * a manual cleanup field and an `ngOnDestroy` implementation, and correctly

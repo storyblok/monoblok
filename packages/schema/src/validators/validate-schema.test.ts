@@ -124,6 +124,28 @@ describe("validateSchema", () => {
     expect(codesFor(result)).toContain("unresolved_allow");
   });
 
+  it("warns on a restrict_type the editor does not recognize", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [defineField("body", { type: "bloks", restrict_type: "tag" })],
+    });
+    const result = validateSchema({ blocks: [block] });
+    // A warning, not an error: the API never validates this key, so a real space
+    // can hand back a value nothing recognizes.
+    expect(result.ok).toBe(true);
+    expect(codesFor(result)).toContain("unknown_restrict_type");
+  });
+
+  it("accepts every restrict_type the editor writes", () => {
+    for (const restrict_type of ["", "components", "groups", "tags"]) {
+      const block = defineBlock({
+        name: "page",
+        fields: [defineField("body", { type: "bloks", restrict_type })],
+      });
+      expect(codesFor(validateSchema({ blocks: [block] }))).not.toContain("unknown_restrict_type");
+    }
+  });
+
   it("flags a deny reference to an unknown block", () => {
     const block = defineBlock({
       name: "page",
@@ -152,6 +174,41 @@ describe("validateSchema", () => {
     });
     const result = validateSchema({ blocks: [block] });
     expect(codesFor(result)).not.toContain("unresolved_allow");
+  });
+
+  it("flags a field that mixes allow or deny with the wire keys they derive", () => {
+    // Bypass defineField, whose signature rejects the combination at compile time.
+    const block = {
+      name: "page",
+      fields: [
+        { name: "body", type: "bloks", allow: ["teaser"], component_whitelist: ["teaser"] },
+        { name: "aside", type: "bloks", deny: ["teaser"], restrict_components: true },
+      ],
+    } as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block, teaser] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(["conflicting_restriction", "conflicting_restriction"]);
+    expect(result.issues[0].path).toEqual(["blocks", "page", "body", "component_whitelist"]);
+    expect(result.issues[1].path).toEqual(["blocks", "page", "aside", "restrict_components"]);
+  });
+
+  it("does not flag the wire restriction keys used without allow or deny", () => {
+    // They stay legal as a lower-level escape hatch on their own.
+    const block = {
+      name: "page",
+      fields: [
+        {
+          name: "body",
+          type: "bloks",
+          component_whitelist: ["teaser"],
+          restrict_components: true,
+          restrict_type: "",
+        },
+      ],
+    } as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block, teaser] });
+    expect(result.ok).toBe(true);
+    expect(result.issues).toEqual([]);
   });
 
   it("flags a datasource reference to an unknown datasource", () => {

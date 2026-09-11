@@ -269,9 +269,14 @@ type ApplyDeny<TField, TBlocks> = TField extends {
 
 /**
  * Resolves the block union a `bloks` field accepts: `allow` narrows the registry
- * first, then `deny` removes from what is left, so the two compose. The editor
- * instead gives a non-empty `allow` precedence and ignores `deny` beside it, so on
- * a field carrying both these types are the stricter of the two views.
+ * first, then `deny` removes from what is left.
+ *
+ * The editor gives a non-empty `allow` precedence and ignores a `deny` beside it,
+ * so composing the two only matters for a field carrying both — which
+ * `defineField` rejects, precisely because the editor would ignore half of it. The
+ * composition is kept for the fields that reach these types without going through
+ * that guard: one written as a plain object, or one read off the wire. On those,
+ * the stricter of the two readings is the safer default.
  */
 type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
 
@@ -287,6 +292,43 @@ type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F
     : PluginFieldValue
   : PluginFieldValue;
 
+/** Whether a field declares a block restriction at all. */
+type HasRestriction<TField> = TField extends { allow: readonly unknown[] }
+  ? true
+  : TField extends { deny: readonly unknown[] }
+    ? true
+    : false;
+
+/**
+ * Substitutes `TBody` for the embedded-blok bodies of one richtext node,
+ * recursing through the nodes that nest other nodes.
+ *
+ * The generated node union is self-referential, so this walks it structurally
+ * rather than listing the node types: the `blok` arm is replaced, anything with a
+ * `content` array is rebuilt around the same substitution, and every other node
+ * (text, marks, images) passes through untouched.
+ */
+type RestrictRichTextNode<TNode, TBody> = TNode extends { type: "blok"; attrs: infer TAttrs }
+  ? Omit<TNode, "attrs"> & { attrs: Omit<TAttrs, "body"> & { body: TBody[] | null } }
+  : TNode extends { content?: infer TChildren }
+    ? TChildren extends readonly (infer TChild)[]
+      ? Omit<TNode, "content"> & { content?: RestrictRichTextNode<TChild, TBody>[] }
+      : TNode
+    : TNode;
+
+/**
+ * The richtext document type a restricted richtext field accepts: every embedded
+ * blok body, at any nesting depth, narrowed to `TBody`.
+ *
+ * Only applied to a field that declares `allow`/`deny`. An unrestricted richtext
+ * field keeps the loose document type, because narrowing it would newly reject
+ * every component that is not in the block registry — a much wider change than
+ * reflecting a restriction the field actually declares.
+ */
+type RestrictRichText<TDoc, TBody> = TDoc extends { content: readonly (infer TNode)[] }
+  ? Omit<TDoc, "content"> & { content: RestrictRichTextNode<TNode, TBody>[] }
+  : TDoc;
+
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
   TField extends Field = Field,
@@ -301,9 +343,20 @@ export type FieldValue<
       : [TBlocks] extends [Block]
         ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
         : BlockContentBase[]
-    : TField extends { type: "custom" }
-      ? ResolveCustom<TField, TFieldPlugins>
-      : FieldTypeValueMap[TField["type"]]
+    : TField extends { type: "richtext" }
+      ? [TBlocks] extends [never]
+        ? RichTextFieldValue
+        : [TBlocks] extends [Block]
+          ? HasRestriction<TField> extends true
+            ? RestrictRichText<
+                RichTextFieldValue,
+                BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>
+              >
+            : RichTextFieldValue
+          : RichTextFieldValue
+      : TField extends { type: "custom" }
+        ? ResolveCustom<TField, TFieldPlugins>
+        : FieldTypeValueMap[TField["type"]]
 >;
 
 /** Resolves a field definition to its input value type (write). */
@@ -320,7 +373,18 @@ export type FieldValueInput<
       : [TBlocks] extends [Block]
         ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
         : BlockContentInputBase[]
-    : TField extends { type: "custom" }
-      ? ResolveCustom<TField, TFieldPlugins>
-      : FieldTypeValueMap[TField["type"]]
+    : TField extends { type: "richtext" }
+      ? [TBlocks] extends [never]
+        ? RichTextFieldValue
+        : [TBlocks] extends [Block]
+          ? HasRestriction<TField> extends true
+            ? RestrictRichText<
+                RichTextFieldValue,
+                BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>
+              >
+            : RichTextFieldValue
+          : RichTextFieldValue
+      : TField extends { type: "custom" }
+        ? ResolveCustom<TField, TFieldPlugins>
+        : FieldTypeValueMap[TField["type"]]
 >;

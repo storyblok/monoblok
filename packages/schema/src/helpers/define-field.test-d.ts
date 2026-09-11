@@ -142,23 +142,22 @@ describe("defineField type inference", () => {
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero">();
   });
 
-  it("should compose `allow` and `deny` on the same bloks field", () => {
+  it("should compose `allow` and `deny` on a field that carries both", () => {
+    // `defineField` rejects the pair, so the field is written out longhand here,
+    // the way a plain-object schema or a field read off the wire reaches these
+    // types. The editor would ignore the denylist; the types take the stricter
+    // reading.
     const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
     const _teaserBlock = defineBlock({ name: "teaser", is_nestable: true, fields: [] });
     const _bannerBlock = defineBlock({ name: "banner", is_nestable: true, fields: [] });
-    const _pageBlock = defineBlock({
-      name: "page",
-      is_root: true,
-      fields: [
-        defineField("body", {
-          type: "bloks",
-          allow: ["hero", "teaser", "banner"],
-          deny: ["banner"],
-        }),
-      ],
-    });
+    const field = {
+      name: "body",
+      type: "bloks",
+      allow: ["hero", "teaser", "banner"],
+      deny: ["banner"],
+    } as const;
     type Body = FieldValue<
-      (typeof _pageBlock)["fields"][0],
+      typeof field,
       typeof _heroBlock | typeof _teaserBlock | typeof _bannerBlock
     >;
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
@@ -263,6 +262,69 @@ describe("defineField type inference", () => {
       typeof _heroBlock | typeof _teaserBlock
     >;
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero" | "teaser">();
+  });
+
+  it("should narrow bloks embedded in a richtext field by `deny`", () => {
+    const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
+    const _bannerBlock = defineBlock({ name: "banner", is_nestable: true, fields: [] });
+    const prose = defineField("prose", { type: "richtext", deny: ["banner"] });
+    type Doc = FieldValue<typeof prose, typeof _heroBlock | typeof _bannerBlock>;
+
+    const ok: Doc = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "x", body: [{ _uid: "u", component: "hero" }] } }],
+    };
+    expectTypeOf(ok).toBeObject();
+
+    const denied: Doc = {
+      type: "doc",
+      // @ts-expect-error `banner` is denied on this field
+      content: [{ type: "blok", attrs: { id: "x", body: [{ _uid: "u", component: "banner" }] } }],
+    };
+    expectTypeOf(denied).toBeObject();
+  });
+
+  it("should narrow bloks embedded deeper inside a richtext field", () => {
+    // The restriction has to survive the walk into a node that nests other nodes,
+    // or a denied blok slips in one paragraph down.
+    const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
+    const _bannerBlock = defineBlock({ name: "banner", is_nestable: true, fields: [] });
+    const prose = defineField("prose", { type: "richtext", deny: ["banner"] });
+    type Doc = FieldValue<typeof prose, typeof _heroBlock | typeof _bannerBlock>;
+
+    const denied: Doc = {
+      type: "doc",
+      content: [
+        {
+          type: "blockquote",
+          content: [
+            {
+              type: "blok",
+              attrs: {
+                id: "x",
+                // @ts-expect-error `banner` is denied at any depth
+                body: [{ _uid: "u", component: "banner" }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expectTypeOf(denied).toBeObject();
+  });
+
+  it("should leave an unrestricted richtext field loose", () => {
+    // Narrowing every richtext field would newly reject any component outside the
+    // registry, which is a far wider change than reflecting a declared restriction.
+    const _heroBlock = defineBlock({ name: "hero", is_nestable: true, fields: [] });
+    const plain = defineField("prose", { type: "richtext" });
+    type Doc = FieldValue<typeof plain, typeof _heroBlock>;
+
+    const anyComponent: Doc = {
+      type: "doc",
+      content: [{ type: "blok", attrs: { id: "x", body: [{ component: "whatever" }] } }],
+    };
+    expectTypeOf(anyComponent).toBeObject();
   });
 
   it("should not include `allow` when not provided on a bloks field", () => {

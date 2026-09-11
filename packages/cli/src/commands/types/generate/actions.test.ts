@@ -1139,7 +1139,10 @@ describe("component property type annotations", () => {
   });
 
   it("should skip malformed schema entries instead of failing", async () => {
+    // The management API types every schema entry as an object, but malformed spaces
+    // do occur. A single bad entry must not take down the whole command.
     const componentWithMalformedEntry = {
+      ...componentDefaults,
       name: "test_component",
       display_name: "Test Component",
       created_at: "2023-01-01T00:00:00Z",
@@ -1154,9 +1157,9 @@ describe("component property type annotations", () => {
       },
       internal_tags_list: [],
       internal_tag_ids: [],
-    };
+    } as unknown as Component;
 
-    const spaceData = {
+    const spaceData: SpaceComponentsData = {
       components: [componentWithMalformedEntry],
       datasources: [],
       groups: [],
@@ -1164,7 +1167,7 @@ describe("component property type annotations", () => {
       internalTags: [],
     };
 
-    const result = await Reflect.apply(generateTypes, undefined, [spaceData, { strict: false }]);
+    const result = await generateTypes(spaceData, { strict: false });
 
     expect(result).toContain("title: string");
     expect(result).not.toContain("broken");

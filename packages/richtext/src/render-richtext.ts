@@ -18,11 +18,7 @@ import type {
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
 } from "./static";
-import type {
-  RichTextFieldValueTextNode,
-  RichTextMark,
-  RichTextNode,
-} from "./generated/overlay/types.gen";
+import type { RichTextMark, RichTextNode } from "./generated/overlay/types.gen";
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.
@@ -195,7 +191,7 @@ function renderChildren(
 
 /** Renders a text node with its marks. */
 function renderTextNode(
-  node: RichTextFieldValueTextNode,
+  node: Extract<RichTextNode, { type: "text" }>,
   marks: RichTextMark[] | undefined,
   context?: StoryblokRichTextRenderContext,
 ): string {

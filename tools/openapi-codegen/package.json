@@ -32,7 +32,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@hey-api/openapi-ts": "0.92.4",
+    "@hey-api/openapi-ts": "0.99.0",
     "pathe": "catalog:",
     "typescript": "catalog:",
     "yaml": "^2.8.2"

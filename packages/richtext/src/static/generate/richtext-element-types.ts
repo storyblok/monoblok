@@ -53,7 +53,11 @@ function parseNodes(source: string): NodeEntry[] {
     if (!declaration) {
       continue;
     }
-    if (!declaration.name.startsWith("RichTextFieldValue")) {
+    if (
+      !declaration.name.startsWith("RichTextFieldValue") &&
+      !declaration.name.endsWith("Node") &&
+      !declaration.name.endsWith("Mark")
+    ) {
       continue;
     }
 

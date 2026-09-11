@@ -288,7 +288,7 @@ export type DraftStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     slug: string;
     full_slug: string;
@@ -362,7 +362,7 @@ export type PublishedStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     slug: string;
     full_slug: string;
@@ -460,13 +460,13 @@ export type Asset = {
      * Title of the asset.
      */
     title: string | null;
-    [key: string]: unknown | string | null | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | string | null | boolean | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type Story = ({
-    version?: 'draft';
+    version: 'draft';
 } & DraftStory) | ({
-    version?: 'published';
+    version: 'published';
 } & PublishedStory);
 
 export type GetAssetData = {

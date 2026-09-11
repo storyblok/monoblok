@@ -35,7 +35,7 @@ export type Component = {
              * Field ID
              */
             id?: string;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | undefined;
+            [key: string]: unknown;
         };
     };
     /**
@@ -181,7 +181,7 @@ export type MapiStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     published: boolean | null;
     /**

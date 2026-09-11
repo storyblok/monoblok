@@ -1,4 +1,4 @@
-import type { ConditionalSettingRoot } from "../generated/overlay/_internal.gen";
+import type { ConditionalSetting } from "../generated/overlay/_internal.gen";
 
 /**
  * One comparison against a sibling field in the same block.
@@ -24,7 +24,7 @@ export interface ConditionOptions {
 }
 
 /** The wire form of a single condition inside `rule_conditions`. */
-type RuleCondition = NonNullable<ConditionalSettingRoot["rule_conditions"]>[number];
+type RuleCondition = NonNullable<ConditionalSetting["rule_conditions"]>[number];
 
 function toRuleConditions(conditions: FieldCondition | FieldCondition[]): RuleCondition[] {
   const list = Array.isArray(conditions) ? conditions : [conditions];
@@ -52,7 +52,7 @@ function toRuleConditions(conditions: FieldCondition | FieldCondition[]): RuleCo
 export function hideWhen(
   conditions: FieldCondition | FieldCondition[],
   options: ConditionOptions = {},
-): ConditionalSettingRoot {
+): ConditionalSetting {
   return {
     modifications: [{ display: "hide" }],
     rule_match: options.match ?? "all",
@@ -77,7 +77,7 @@ export function hideWhen(
 export function requiredWhen(
   conditions: FieldCondition | FieldCondition[],
   options: ConditionOptions = {},
-): ConditionalSettingRoot {
+): ConditionalSetting {
   return {
     modifications: [{ required: true }],
     rule_match: options.match ?? "all",

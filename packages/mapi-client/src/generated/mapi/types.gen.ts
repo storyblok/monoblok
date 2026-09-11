@@ -628,14 +628,10 @@ export type ApiTrafficStatisticsResponse = {
             total_bytes: number;
         }>;
         [key: string]: Array<{
-            date: string;
-            api_requests: number;
-            total_bytes: number;
-        }> | Array<{
-            date: string;
-            api_requests: number;
-            total_bytes: number;
-        }> | undefined;
+    date: string;
+    api_requests: number;
+    total_bytes: number;
+}> | undefined;
     };
     /**
      * Raw traffic data per space grouped by date
@@ -649,9 +645,9 @@ export type ApiTrafficStatisticsResponse = {
 };
 
 export type App = ({
-    public?: 'true';
+    public: 'true';
 } & PublicApp) | ({
-    public?: 'false';
+    public: 'false';
 } & PrivateApp);
 
 export type AppProvisionRequest = {
@@ -1146,7 +1142,7 @@ export type ComponentCreateRequest = {
                  * Whether this field is translatable
                  */
                 translatable?: boolean;
-                [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | boolean | undefined;
+                [key: string]: unknown;
             };
         };
         /**
@@ -1247,7 +1243,7 @@ export type ComponentUpdateRequest = {
                  * Whether this field is translatable
                  */
                 translatable?: boolean;
-                [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | boolean | undefined;
+                [key: string]: unknown;
             };
         };
         /**
@@ -1290,9 +1286,7 @@ export type ConceptsWebhookRequest = {
     tiptapJson?: {
         [key: string]: unknown;
     } | null;
-    [key: string]: unknown | string | string | null | {
-        [key: string]: unknown;
-    } | null | undefined;
+    [key: string]: unknown;
 };
 
 export type ConfirmUserResponse = {
@@ -1470,14 +1464,7 @@ export type CreateCommentRequest = {
             content?: Array<{
                 [key: string]: unknown;
             }>;
-            [key: string]: unknown | string | {
-                /**
-                 * User ID for mention type blocks
-                 */
-                id?: number;
-            } | Array<{
-                [key: string]: unknown;
-            }> | undefined;
+            [key: string]: unknown;
         }>;
         /**
          * ID of the story this comment is associated with
@@ -1639,31 +1626,7 @@ export type CreateDiscussionCommentRequest = {
                     type?: string;
                 }>;
             }>;
-            [key: string]: unknown | string | {
-                /**
-                 * ID for mentions
-                 */
-                id?: number;
-                /**
-                 * Label for mentions
-                 */
-                label?: string;
-            } | Array<{
-                /**
-                 * Type of content (e.g., 'text', 'mention')
-                 */
-                type?: string;
-                /**
-                 * Text content
-                 */
-                text?: string;
-                /**
-                 * Formatting marks (e.g., 'bold', 'italic')
-                 */
-                marks?: Array<{
-                    type?: string;
-                }>;
-            }> | undefined;
+            [key: string]: unknown;
         }>;
         /**
          * Array of user IDs who have read the comment
@@ -2139,15 +2102,7 @@ export type CreateOrganizationResponse = {
         settings?: {
             [key: string]: unknown;
         } | null;
-        [key: string]: unknown | number | string | string | null | string | null | string | null | {
-            [key: string]: unknown;
-        } | null | {
-            [key: string]: unknown;
-        } | null | {
-            [key: string]: unknown;
-        } | null | string | null | Array<string> | null | string | null | {
-            [key: string]: unknown;
-        } | null | undefined;
+        [key: string]: unknown;
     };
 };
 
@@ -2887,9 +2842,7 @@ export type IdeasWebhookRequest = {
     tiptapJson?: {
         [key: string]: unknown;
     } | null;
-    [key: string]: unknown | string | string | null | {
-        [key: string]: unknown;
-    } | null | undefined;
+    [key: string]: unknown;
 };
 
 export type ImportDatasourceEntriesRequest = {
@@ -4277,14 +4230,7 @@ export type UpdateCommentRequest = {
             content?: Array<{
                 [key: string]: unknown;
             }>;
-            [key: string]: unknown | string | {
-                /**
-                 * User ID for mention type blocks
-                 */
-                id?: number;
-            } | Array<{
-                [key: string]: unknown;
-            }> | undefined;
+            [key: string]: unknown;
         }>;
     };
 };
@@ -4407,31 +4353,7 @@ export type UpdateDiscussionCommentRequest = {
                     type?: string;
                 }>;
             }>;
-            [key: string]: unknown | string | {
-                /**
-                 * ID for mentions
-                 */
-                id?: number;
-                /**
-                 * Label for mentions
-                 */
-                label?: string;
-            } | Array<{
-                /**
-                 * Type of content (e.g., 'text', 'mention')
-                 */
-                type?: string;
-                /**
-                 * Text content
-                 */
-                text?: string;
-                /**
-                 * Formatting marks (e.g., 'bold', 'italic')
-                 */
-                marks?: Array<{
-                    type?: string;
-                }>;
-            }> | undefined;
+            [key: string]: unknown;
         }>;
         /**
          * Array of user IDs who have read the comment
@@ -7306,7 +7228,7 @@ export type Component = {
              * Field ID
              */
             id?: string;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | undefined;
+            [key: string]: unknown;
         };
     };
     /**
@@ -7451,7 +7373,7 @@ export type ComponentVersion = {
              * Field ID
              */
             id?: string;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | undefined;
+            [key: string]: unknown;
         };
     };
 };
@@ -7649,7 +7571,7 @@ export type DraftStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     /**
      * URL-friendly identifier for the app category.
@@ -8059,7 +7981,7 @@ export type FieldVersion = {
              * Field ID
              */
             id?: string;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | undefined;
+            [key: string]: unknown;
         };
     };
 };
@@ -8595,24 +8517,7 @@ export type Org = {
      * Organization status
      */
     status?: string | null;
-    [key: string]: unknown | number | string | Array<OrgUser> | Array<OrgSpace> | BillingAddress | string | null | Array<Plan> | Array<OrgUser> | Array<OrgUser> | Array<Invitations> | string | null | string | null | string | null | boolean | null | Array<string> | boolean | number | null | boolean | null | {
-        allowed_apps?: Array<PublicApp>;
-    } | number | null | string | null | number | null | Array<{
-        key?: string;
-        origin?: string | null;
-        limit?: string | null;
-        limit_type?: string | null;
-        is_available?: boolean | null;
-        terms?: Array<{
-            [key: string]: unknown;
-        }>;
-    }> | {
-        [key: string]: unknown;
-    } | null | string | null | {
-        [key: string]: unknown;
-    } | null | {
-        [key: string]: unknown;
-    } | null | string | null | Array<string> | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type OrgActivity = {
@@ -9090,7 +8995,7 @@ export type PublishedStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     /**
      * URL-friendly identifier for the app category.
@@ -9487,9 +9392,7 @@ export type Space = {
      * Whether the Joyride trial traffic limit has been exceeded.
      */
     joyride_traffic_limit_exceeded?: boolean;
-    [key: string]: unknown | number | string | string | null | number | null | number | null | boolean | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | null | string | null | {
-        [key: string]: boolean | null;
-    } | string | null | Array<SpaceRole> | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type SpaceDetail = {
@@ -10043,65 +9946,7 @@ export type SpaceDetail = {
      * Number of yearly AI credits consumed, inherited from organization
      */
     yearly_ai_credits_used?: number | null;
-    [key: string]: unknown | number | string | string | null | string | null | string | null | {
-        [key: string]: unknown;
-    } | number | null | string | null | Array<{
-        name?: string;
-        location?: string;
-    }> | number | null | string | null | boolean | null | {
-        company?: string;
-        name?: string;
-        email?: string;
-        address_line1?: string;
-        address_city?: string;
-        address_zip?: string;
-        address_country?: string;
-        tax_number?: string;
-    } | null | Array<{
-        pattern?: string;
-        template?: string;
-    }> | string | null | boolean | {
-        [key: string]: unknown;
-    } | {
-        base_url?: string;
-        enabled?: boolean;
-    } | null | {
-        id?: number;
-        userid?: string;
-        real_email?: string;
-        friendly_name?: string;
-        avatar?: string | null;
-        disabled?: boolean;
-    } | null | {
-        name?: string;
-        ai_text_generator_disabled_in_org?: boolean;
-        custom_upload_limit_in_mb?: number | null;
-    } | null | Array<{
-        code?: string;
-        name?: string;
-        ai_translation_code?: string | null;
-    }> | Array<{
-        [key: string]: unknown;
-    }> | Array<SpaceRole> | Array<Collaborator> | number | null | number | null | string | null | {
-        [key: string]: boolean | null;
-    } | Array<number> | null | Array<{
-        /**
-         * The ID of the linked folder
-         */
-        folder_id: number;
-        /**
-         * The AI translation code for this folder
-         */
-        ai_translation_code: string | null;
-    }> | null | boolean | null | string | null | string | null | boolean | null | string | null | string | null | Array<{
-        [key: string]: unknown;
-    }> | {
-        [key: string]: unknown;
-    } | null | string | null | {
-        [key: string]: unknown;
-    } | null | number | null | string | null | string | null | string | null | string | null | string | null | boolean | null | string | null | string | null | string | null | string | null | string | null | string | null | string | null | number | null | string | null | string | null | string | null | boolean | null | Array<number> | number | null | boolean | null | boolean | null | Array<{
-        [key: string]: unknown;
-    }> | null | boolean | null | boolean | null | string | null | string | null | string | null | number | null | string | null | boolean | null | string | null | boolean | null | string | null | string | null | Array<string> | string | null | boolean | null | string | null | boolean | string | null | string | null | string | null | string | null | string | null | string | null | string | null | boolean | null | string | null | boolean | string | null | Array<string> | string | null | boolean | null | string | null | boolean | null | boolean | null | string | null | string | null | number | null | number | null | undefined;
+    [key: string]: unknown;
 };
 
 /**
@@ -10369,7 +10214,7 @@ export type Story = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     published: boolean | null;
     /**
@@ -11277,7 +11122,7 @@ export type Asset = {
      * User's job title or role.
      */
     title: string | null;
-    [key: string]: unknown | string | null | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | string | null | boolean | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type ErrorsMap = {
@@ -11290,7 +11135,7 @@ export type ErrorsMap = {
 export type ErrorsObject = {
     error?: string | Array<string> | ErrorsMap;
     errors?: ErrorsMap;
-    [key: string]: Array<string> | string | Array<string> | ErrorsMap | ErrorsMap | undefined;
+    [key: string]: Array<string> | string | ErrorsMap | undefined;
 };
 
 export type InvoiceShowResponseWritable = {
@@ -11385,7 +11230,7 @@ export type ComponentWritable = {
              * Field ID
              */
             id?: string;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | undefined;
+            [key: string]: unknown;
         };
     };
     /**
@@ -11849,24 +11694,7 @@ export type OrgWritable = {
      * Organization status
      */
     status?: string | null;
-    [key: string]: unknown | string | Array<OrgUser> | Array<OrgSpace> | BillingAddress | string | null | number | Array<Plan> | Array<OrgUser> | Array<OrgUser> | Array<Invitations> | string | null | string | null | string | null | boolean | null | Array<string> | boolean | number | null | boolean | null | {
-        allowed_apps?: Array<PublicApp>;
-    } | number | null | string | null | number | null | Array<{
-        key?: string;
-        origin?: string | null;
-        limit?: string | null;
-        limit_type?: string | null;
-        is_available?: boolean | null;
-        terms?: Array<{
-            [key: string]: unknown;
-        }>;
-    }> | {
-        [key: string]: unknown;
-    } | null | string | null | {
-        [key: string]: unknown;
-    } | null | {
-        [key: string]: unknown;
-    } | null | string | null | Array<string> | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 /**
@@ -12079,9 +11907,7 @@ export type SpaceWritable = {
      * Whether the Joyride trial traffic limit has been exceeded.
      */
     joyride_traffic_limit_exceeded?: boolean;
-    [key: string]: unknown | string | string | null | number | number | null | number | null | boolean | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | null | string | null | {
-        [key: string]: boolean | null;
-    } | string | null | Array<SpaceRole> | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type StoryWritable = {
@@ -12113,7 +11939,7 @@ export type StoryWritable = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     published: boolean | null;
     /**
@@ -12425,7 +12251,7 @@ export type AssetWritable = {
      * User's job title or role.
      */
     title: string | null;
-    [key: string]: unknown | string | null | number | null | number | null | string | null | string | null | string | null | string | string | null | boolean | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type AuthenticateAuth0Data = {
@@ -12767,7 +12593,7 @@ export type LoginUserResponses = {
          * List of configured 2FA options available to the user
          */
         configured_2fa_options?: Array<'otp_email' | 'otp_sms' | 'twilio_totp'>;
-        [key: string]: unknown | boolean | 'otp_email' | 'otp_sms' | 'password' | 'twilio_totp' | Array<'otp_email' | 'otp_sms' | 'twilio_totp'> | undefined;
+        [key: string]: unknown;
     };
 };
 
@@ -20466,7 +20292,7 @@ export type CreateDiscussionCommentErrors = {
         errors?: Array<string>;
         message?: Array<string>;
         message_json?: Array<string>;
-        [key: string]: Array<string> | Array<string> | Array<string> | Array<string> | undefined;
+        [key: string]: Array<string> | undefined;
     };
 };
 
@@ -20559,7 +20385,7 @@ export type UpdateDiscussionCommentErrors = {
         errors?: Array<string>;
         message?: Array<string>;
         message_json?: Array<string>;
-        [key: string]: Array<string> | Array<string> | Array<string> | Array<string> | undefined;
+        [key: string]: Array<string> | undefined;
     };
 };
 
@@ -20705,7 +20531,7 @@ export type CreateDiscussionForStoryErrors = {
     422: {
         errors?: Array<string>;
         error?: string;
-        [key: string]: unknown | Array<string> | string | undefined;
+        [key: string]: unknown;
     };
 };
 
@@ -20961,7 +20787,7 @@ export type UpdateDiscussionErrors = {
     422: {
         errors?: Array<string>;
         title?: Array<string>;
-        [key: string]: unknown | Array<string> | Array<string> | undefined;
+        [key: string]: unknown;
     };
 };
 
@@ -24109,7 +23935,7 @@ export type ListAssistedSpacesResponses = {
     200: Array<{
         id?: number;
         name?: string;
-        [key: string]: unknown | number | string | undefined;
+        [key: string]: unknown;
     }>;
 };
 
@@ -33926,7 +33752,7 @@ export type ExportStoryJsonResponses = {
         language: string;
         url: string;
         text_nodes: number;
-        [key: string]: unknown | string | number;
+        [key: string]: unknown;
     };
 };
 

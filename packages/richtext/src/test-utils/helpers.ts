@@ -1,6 +1,6 @@
 import type {
   RichTextDoc,
-  RichTextFieldValueLinkMark,
+  LinkMark,
   RichTextMark,
   RichTextNode,
 } from "../generated/overlay/types.gen";
@@ -20,7 +20,7 @@ export const linkMark = (
     anchor?: string;
     custom?: Record<string, unknown>;
   } = {},
-): RichTextFieldValueLinkMark => ({
+): LinkMark => ({
   type: "link",
   attrs: {
     href,

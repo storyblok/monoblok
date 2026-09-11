@@ -199,6 +199,40 @@ type ResolveComponents<T extends StoryblokTypesConfig> = T extends {
 type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<never, never>;
 
 /**
+ * The shape returned by `createApiClientBase`, named explicitly (rather than left for
+ * `createApiClientBase` to infer) so it can also serve as that function's return-type
+ * annotation.
+ *
+ * This matters specifically for `stories`: without an explicit annotation on
+ * `createApiClientBase`, the DTS bundler has to re-derive and print the full structural
+ * type of `stories.get(...)`'s return value when emitting this package's `.d.ts`. Doing
+ * that independently from how `ContentApiClient["stories"]` below references the same
+ * `ReturnType<typeof createStoriesResource<...>>` expression has, in practice, produced
+ * two differently-shaped printed types for what is meant to be the same "no schema
+ * provided" `Story` — e.g. `client.stories.get()`'s inferred `story` type failing to
+ * structurally match the plain `Story` type exported from this package's own public
+ * entry point. Giving `createApiClientBase` this explicit annotation means the bundler
+ * just echoes the reference instead of re-resolving it.
+ */
+type ApiClientBaseResult<
+  ThrowOnError extends boolean = false,
+  InlineRelations extends boolean = false,
+> = {
+  datasourceEntries: ReturnType<typeof createDatasourceEntriesResource<ThrowOnError>>;
+  datasources: ReturnType<typeof createDatasourcesResource<ThrowOnError>>;
+  experiments: ReturnType<typeof createExperimentsResource<ThrowOnError>>;
+  flushCache: () => Promise<void>;
+  get: (path: string, options?: HttpRequestOptions) => Promise<ApiResponse>;
+  interceptors: Client["interceptors"];
+  links: ReturnType<typeof createLinksResource<ThrowOnError>>;
+  spaces: ReturnType<typeof createSpacesResource<ThrowOnError>>;
+  stories: ReturnType<
+    typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
+  >;
+  tags: ReturnType<typeof createTagsResource<ThrowOnError>>;
+};
+
+/**
  * The return type of `createApiClient`, parameterised by `TComponents` and `InlineRelations`
  * so that `.withTypes<T>()` can change the story response types without touching the
  * runtime object.
@@ -208,7 +242,7 @@ export type ContentApiClient<
   TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   ThrowOnError extends boolean = false,
-> = Omit<ReturnType<typeof createApiClientBase>, "stories" | "withTypes"> & {
+> = Omit<ApiClientBaseResult<ThrowOnError, InlineRelations>, "stories" | "withTypes"> & {
   stories: ReturnType<
     typeof createStoriesResource<TComponents, TFieldPlugins, InlineRelations, ThrowOnError>
   >;
@@ -245,7 +279,7 @@ export const createApiClientBase = <
   InlineRelations extends boolean = false,
 >(
   config: ContentApiClientConfig<ThrowOnError, InlineRelations>,
-) => {
+): ApiClientBaseResult<ThrowOnError, InlineRelations> => {
   const {
     accessToken,
     region = "eu",
@@ -438,12 +472,22 @@ export const createApiClientBase = <
     throttleManager,
   };
 
-  const stories = createStoriesResource<
-    Component,
-    Record<never, never>,
-    InlineRelations,
-    ThrowOnError
-  >({
+  // Pinned to the named `ReturnType<typeof createStoriesResource<...>>` alias
+  // (matching `ContentApiClient["stories"]`) rather than left inferred: this
+  // function has no return-type annotation, so the DTS bundler must print
+  // whatever structural type it infers for `stories` when emitting this
+  // package's `.d.ts`. Left inferred, the bundler independently re-resolves
+  // `StoryResult`'s conditional for this call site and — for reasons specific
+  // to declaration-emit (no live type-checker, generics not yet substituted)
+  // — can pick a different, more expanded branch than the one a consumer
+  // sees when they reference the `Story`/`ContentApiClient` types directly.
+  // Concretely, that already showed up as `client.stories.get()`'s inferred
+  // `story` type failing to structurally match this package's own plain
+  // `Story` type, even though both are meant to be the same "no schema
+  // provided" shape.
+  const stories: ReturnType<
+    typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
+  > = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({
     ...resourceDeps,
     inlineRelations,
   });

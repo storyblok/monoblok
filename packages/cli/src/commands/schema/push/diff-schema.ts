@@ -1,39 +1,22 @@
 import { createTwoFilesPatch } from "diff";
 
 import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from "../types";
-import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS, isRecord } from "../utils";
+import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
-import { buildGroupPathByUuid } from "../folders";
+import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 
 type EntityType = "component" | "datasource";
 
 /**
- * Deep-copies a component's `schema`, translating each field's
- * `component_group_whitelist` uuid entries to slug paths so both sides diff in
- * the same slug-path space. Applied symmetrically to remote (whose whitelist is
- * always uuids) and local (which may carry raw uuids when produced by
- * `schema init`; slug-path entries are not uuid keys in the map and pass
- * through unchanged). Unknown uuids are left as-is so they still produce a
- * visible diff. The source schema objects are never mutated.
+ * Deep-copies a component's `schema`, translating each field's group list uuid
+ * entries to slug paths so both sides diff in the same slug-path space. Applied
+ * symmetrically to remote (whose lists are always uuids) and local (which may
+ * carry raw uuids when produced by `schema init`; slug-path entries are not uuid
+ * keys in the map and pass through unchanged). Unknown uuids are left as-is so
+ * they still produce a visible diff. The source schema objects are never mutated.
  */
-function translateGroupWhitelist(schema: unknown, uuidToPath: Map<string, string>): unknown {
-  if (!isRecord(schema)) {
-    return schema;
-  }
-  const result: Record<string, unknown> = {};
-  for (const [fieldName, field] of Object.entries(schema)) {
-    if (isRecord(field) && Array.isArray(field.component_group_whitelist)) {
-      result[fieldName] = {
-        ...field,
-        component_group_whitelist: field.component_group_whitelist.map((entry: unknown) =>
-          typeof entry === "string" ? (uuidToPath.get(entry) ?? entry) : entry,
-        ),
-      };
-    } else {
-      result[fieldName] = field;
-    }
-  }
-  return result;
+function translateGroupLists(schema: unknown, uuidToPath: Map<string, string>): unknown {
+  return mapSchemaGroupLists(schema, (entry) => uuidToPath.get(entry) ?? entry);
 }
 
 function diffEntity(
@@ -116,7 +99,7 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     // untouched and no false diff is produced.
     const includeGroupUuid = typeof comp.component_group_uuid === "string";
 
-    // Shallow copies so group membership (`folder`) and whitelist path
+    // Shallow copies so group membership (`folder`) and group list path
     // translation never mutate the local schema or the remote component map.
     const localForDiff: Record<string, unknown> = { ...comp };
     const remoteForDiff: Record<string, unknown> | undefined = remoteComp
@@ -141,12 +124,12 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
       }
     }
 
-    // Translate whitelist uuids → slug paths on both sides. `schema init` emits
-    // raw uuid whitelists locally; without translating the local copy too, a
-    // local uuid vs remote-translated path would diff dirty forever.
-    localForDiff.schema = translateGroupWhitelist(localForDiff.schema, uuidToPath);
+    // Translate group list uuids → slug paths on both sides. `schema init` emits
+    // raw uuid lists locally; without translating the local copy too, a local
+    // uuid vs remote-translated path would diff dirty forever.
+    localForDiff.schema = translateGroupLists(localForDiff.schema, uuidToPath);
     if (remoteForDiff) {
-      remoteForDiff.schema = translateGroupWhitelist(remoteForDiff.schema, uuidToPath);
+      remoteForDiff.schema = translateGroupLists(remoteForDiff.schema, uuidToPath);
     }
 
     const localSerialized = serializeComponent(applyDefaults(localForDiff, COMPONENT_DEFAULTS), {

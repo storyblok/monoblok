@@ -1,5 +1,6 @@
 import type { ComponentFolder } from "../../types";
 import { slugify } from "../../utils/format";
+import { isRecord } from "./utils";
 import type { LocalFolder } from "./types";
 
 /**
@@ -73,6 +74,45 @@ export function slugifyPath(displayPath: string): string {
     .map((segment) => slugify(segment))
     .filter(Boolean)
     .join("/");
+}
+
+/**
+ * The wire field keys holding component group references. Both the whitelist
+ * (`allow`) and the denylist (`deny`) name groups, so anything translating
+ * between the transient slug-path space and the server's uuid space has to walk
+ * both — translating only the whitelist would leave a denylist pointing at slug
+ * paths the API cannot resolve.
+ */
+export const GROUP_LIST_KEYS = ["component_group_whitelist", "component_group_denylist"] as const;
+
+/**
+ * Returns a copy of a wire `schema` record with every field's group list entries
+ * (see {@link GROUP_LIST_KEYS}) passed through `mapEntry`. Fields carrying
+ * neither key, and non-string entries, are copied through untouched; the source
+ * objects are never mutated. An entry `mapEntry` cannot translate should be
+ * returned as-is by the caller, so it still produces a visible diff or reaches
+ * the API for the server to reject.
+ */
+export function mapSchemaGroupLists(schema: unknown, mapEntry: (entry: string) => string): unknown {
+  if (!isRecord(schema)) {
+    return schema;
+  }
+  const result: Record<string, unknown> = {};
+  for (const [fieldName, field] of Object.entries(schema)) {
+    if (!isRecord(field) || !GROUP_LIST_KEYS.some((key) => Array.isArray(field[key]))) {
+      result[fieldName] = field;
+      continue;
+    }
+    const mapped: Record<string, unknown> = { ...field };
+    for (const key of GROUP_LIST_KEYS) {
+      const list = field[key];
+      if (Array.isArray(list)) {
+        mapped[key] = list.map((entry) => (typeof entry === "string" ? mapEntry(entry) : entry));
+      }
+    }
+    result[fieldName] = mapped;
+  }
+  return result;
 }
 
 /**

@@ -124,6 +124,26 @@ describe("validateSchema", () => {
     expect(codesFor(result)).toContain("unresolved_allow");
   });
 
+  it("flags a deny reference to an unknown block", () => {
+    const block = defineBlock({
+      name: "page",
+      fields: [defineField("body", { type: "bloks", deny: ["ghost"] })],
+    });
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain("unresolved_deny");
+  });
+
+  it("does not flag a folder deny entry as unresolved", () => {
+    const legacy = defineFolder({ name: "Legacy" });
+    const block = defineBlock({
+      name: "page",
+      fields: [defineField("body", { type: "bloks", deny: [legacy] })],
+    });
+    const result = validateSchema({ blocks: [block] });
+    expect(codesFor(result)).not.toContain("unresolved_deny");
+  });
+
   it("does not flag a folder allow entry as unresolved", () => {
     const layout = defineFolder({ name: "Layout" });
     const block = defineBlock({

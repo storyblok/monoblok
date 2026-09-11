@@ -22,7 +22,7 @@ export type { ConditionOptions, FieldCondition } from "./helpers/define-conditio
 export { defineDatasource } from "./helpers/define-datasource";
 export type { Datasource } from "./helpers/define-datasource";
 // Field
-export { defineField } from "./helpers/define-field";
+export { DENIABLE_FIELD_TYPES, defineField } from "./helpers/define-field";
 export type {
   AssetFieldValue,
   BlockContent,

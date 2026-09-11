@@ -271,7 +271,10 @@ describe("generateComponentFile", () => {
     });
   });
 
-  it("should map both a whitelist and a denylist back to allow and deny", () => {
+  it("should drop a denylist the editor ignores beside a non-empty whitelist", () => {
+    // The editor never consults the denylist while the allow list is non-empty, so
+    // the list is not in force and `defineField` rejects the pair. Emitting both
+    // would generate a schema the next push cannot load.
     const component = {
       id: 1,
       name: "page",
@@ -292,8 +295,27 @@ describe("generateComponentFile", () => {
     const result = generateComponentFile(component as any);
 
     expect(result).toContain("allow: [");
-    expect(result).toContain("deny: [");
+    expect(result).not.toContain("deny: [");
     expect(result).not.toContain("component_whitelist");
+    expect(result).not.toContain("component_denylist");
+  });
+
+  it("should drop a denylist on a field type that has no denylist", () => {
+    // A `text` field cannot carry a `deny` — `defineField` rejects it — so emitting
+    // one would make the push that follows `schema init` fail to load the schema.
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        title: { type: "text", pos: 0, component_denylist: ["banner"] },
+      },
+    };
+
+    const result = generateComponentFile(component as any);
+
+    expect(result).not.toContain("deny");
     expect(result).not.toContain("component_denylist");
   });
 
@@ -328,9 +350,10 @@ describe("generateComponentFile", () => {
     expect(result).not.toContain("restrict_components");
   });
 
-  it("should keep the raw group lists when only one of the two resolves to folder refs", () => {
-    // Emitting the resolvable half as DSL refs while dropping the other would lose
-    // a restriction that is in force, so the whole field keeps its wire form.
+  it("should drop a group denylist the editor ignores beside a non-empty group whitelist", () => {
+    // Same precedence as the block-name dimension: the group denylist is never
+    // consulted while the group whitelist has entries, so it is not in force and
+    // its unresolvable uuid costs nothing.
     const component = {
       id: 1,
       name: "landing",
@@ -355,12 +378,37 @@ describe("generateComponentFile", () => {
       new Map([["uuid-heros", "herosFolder"]]),
     );
 
-    expect(result).toContain("component_group_whitelist");
+    expect(result).toContain("allow: [");
+    expect(result).toContain("herosFolder,");
+    expect(result).not.toContain("deny");
+    expect(result).not.toContain("component_group_whitelist");
+    expect(result).not.toContain("component_group_denylist");
+  });
+
+  it("should keep a group denylist raw when its uuid does not resolve to a folder ref", () => {
+    // Emitting nothing would drop a restriction that *is* in force, so a deny-only
+    // field whose uuid is unknown keeps its wire form rather than losing the list.
+    const component = {
+      id: 1,
+      name: "landing",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "groups",
+          component_group_denylist: ["uuid-unknown"],
+        },
+      },
+    };
+
+    const result = generateComponentFile(component as any, undefined, undefined, new Map());
+
     expect(result).toContain("component_group_denylist");
     expect(result).toContain("restrict_components: true,");
-    expect(result).not.toContain("allow");
     expect(result).not.toContain("deny:");
-    expect(result).not.toContain("herosFolder");
   });
 
   it("should keep a disabled restriction disabled instead of mapping a stale denylist to deny", () => {

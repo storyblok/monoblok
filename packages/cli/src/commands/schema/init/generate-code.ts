@@ -1,3 +1,5 @@
+import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+
 import type { Component, ComponentFolder, Datasource } from "../../../types";
 import { slugify } from "../../../utils/format";
 import { buildGroupPathByUuid } from "../folders";
@@ -280,6 +282,14 @@ type FieldRestriction =
  * a round-trip hazard either way. The editor cannot author it (switching dimension
  * clears all six lists) and the Management API only backstops that for `bloks`
  * fields, so reaching it takes a `richtext` written through the API.
+ *
+ * A denylist is read back only where the editor reads one: on a field type that
+ * has a denylist, and only while the matching allow list is empty. Anywhere else
+ * the list is stored but inert, and emitting it as `deny` would generate code
+ * `defineField` rejects — the push after `schema init` would then fail to load the
+ * schema at all rather than for one field. A dropped denylist is not a silent loss
+ * of enforcement, because it was never enforced; push replaces the whole field, so
+ * the stray key is cleared from the space on the way through.
  */
 function resolveFieldRestriction(
   field: Record<string, unknown>,
@@ -288,8 +298,13 @@ function resolveFieldRestriction(
   if (field.restrict_components === false) {
     return { kind: "disabled" };
   }
+  // A denylist is only in force where the editor reads one: on a field type that
+  // has one at all, and only while the matching allow list is empty. Emitting an
+  // out-of-force list as `deny` would generate code `defineField` rejects, so the
+  // push that follows `schema init` could not even load the schema.
+  const denyIsReadable = DENIABLE_FIELD_TYPES.includes(String(field.type));
   const hasNameAllow = isNonEmptyList(field.component_whitelist);
-  const hasNameDeny = isNonEmptyList(field.component_denylist);
+  const hasNameDeny = denyIsReadable && !hasNameAllow && isNonEmptyList(field.component_denylist);
   if (hasNameAllow || hasNameDeny) {
     return {
       kind: "names",
@@ -298,7 +313,8 @@ function resolveFieldRestriction(
     };
   }
   const hasGroupAllow = isNonEmptyList(field.component_group_whitelist);
-  const hasGroupDeny = isNonEmptyList(field.component_group_denylist);
+  const hasGroupDeny =
+    denyIsReadable && !hasGroupAllow && isNonEmptyList(field.component_group_denylist);
   if (hasGroupAllow || hasGroupDeny) {
     const allow = hasGroupAllow
       ? resolveGroupRefs(field.component_group_whitelist, folderVarByUuid)
@@ -306,8 +322,8 @@ function resolveFieldRestriction(
     const deny = hasGroupDeny
       ? resolveGroupRefs(field.component_group_denylist, folderVarByUuid)
       : undefined;
-    // Partial resolution is not good enough: emitting the resolvable list as DSL
-    // refs while dropping the other would lose a restriction that is in force.
+    // Only one of the two is ever in force, and emitting nothing for a list that is
+    // would drop the restriction, so an unresolvable uuid keeps the whole field raw.
     return (!hasGroupAllow || allow) && (!hasGroupDeny || deny)
       ? { kind: "folders", allow, deny }
       : { kind: "raw" };

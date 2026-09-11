@@ -31,6 +31,11 @@ properties:
     description: Storyblok editor markup string for inline editing (present in draft/preview mode)
 additionalProperties:
   oneOf:
+    # Unset optional field. The CDN API returns `null` (not the key being
+    # absent) for any optional field that has no value, so every dynamic
+    # content key must accept it regardless of its underlying field type.
+    - type: 'null'
+      description: Optional field with no value
     # Simple field types (primitives)
     - type: string
       description: Text, textarea, markdown, datetime, or single-option field

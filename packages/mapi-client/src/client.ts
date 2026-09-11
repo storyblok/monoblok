@@ -200,7 +200,7 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
   );
 
   client.interceptors.error.use(
-    (error: unknown, response: Response) =>
+    (error: unknown, response?: Response) =>
       new ClientError(response?.statusText || "API request failed", {
         status: response?.status ?? 0,
         statusText: response?.statusText ?? "",

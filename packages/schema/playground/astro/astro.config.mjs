@@ -7,7 +7,6 @@ export default defineConfig({
   output: "server",
   adapter: node({ mode: "standalone" }),
   vite: {
-    // @ts-expect-error
     plugins: [tailwindcss()],
   },
 });

@@ -1,8 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { readComponentsFiles } from "./actions";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import { readComponentsFiles, upsertComponent } from "./actions";
 import type { Component, ComponentFolder, InternalTag, Preset } from "../constants";
 import { vol } from "memfs";
 import { FileSystemError } from "../../../utils";
+import { getMapiClient } from "../../../api";
+
+const server = setupServer();
+
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 // Mock components data
 const mockComponent1: Component = {
@@ -109,6 +118,7 @@ const mockTag1: InternalTag = {
 describe("push components actions", () => {
   beforeEach(() => {
     vol.reset();
+    getMapiClient({ personalAccessToken: "valid-token", region: "eu" });
   });
 
   afterEach(() => {
@@ -561,6 +571,36 @@ describe("push components actions", () => {
         expect(result.components).toContainEqual(mockComponent1);
         expect(result.components).toContainEqual(mockComponent2);
       });
+    });
+  });
+
+  describe("upsertComponent", () => {
+    it("should send preview_tmpl when creating a component", async () => {
+      const preview_tmpl = "<div>Component preview</div>";
+      server.use(
+        http.post("https://mapi.storyblok.com/v1/spaces/12345/components", async ({ request }) => {
+          expect(await request.json()).toEqual({
+            component: expect.objectContaining({ preview_tmpl }),
+          });
+          return HttpResponse.json({ component: mockComponent1 }, { status: 201 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, preview_tmpl });
+    });
+
+    it("should send preview_tmpl when updating a component", async () => {
+      const preview_tmpl = "<div>Updated component preview</div>";
+      server.use(
+        http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
+          expect(await request.json()).toEqual({
+            component: expect.objectContaining({ preview_tmpl }),
+          });
+          return HttpResponse.json({ component: mockComponent1 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, preview_tmpl }, 1);
     });
   });
 });

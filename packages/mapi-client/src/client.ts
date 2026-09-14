@@ -212,7 +212,13 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
     fn: () => Promise<unknown>,
     _throwOnError?: CurrentThrowOnError,
   ): Promise<ApiResponse<TData, CurrentThrowOnError>> {
-    return throttleManager.execute(() => fn() as Promise<ApiResponse<TData, CurrentThrowOnError>>);
+    return throttleManager.execute(async () => {
+      const result = (await fn()) as ApiResponse<TData, CurrentThrowOnError>;
+      const response = result.response ?? Response.error();
+      const request = result.request ?? new Request(baseUrl || getManagementBaseUrl(region));
+
+      return { ...result, response, request };
+    });
   }
 
   const deps: MapiResourceDeps<DefaultThrowOnError> = { client, spaceId, wrapRequest };

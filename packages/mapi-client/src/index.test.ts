@@ -368,6 +368,26 @@ describe("createManagementApiClient - HTTP method helpers", () => {
     expect(result.data).toBeUndefined();
     expect(result.response.status).toBe(404);
   });
+
+  it("should return a synthetic response for transport failures", async () => {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/123/custom", () => HttpResponse.error()),
+    );
+
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    const result = await client.get("/v1/spaces/123/custom");
+
+    expect(result.error).toBeDefined();
+    expect(result.data).toBeUndefined();
+    expect(result.response.status).toBe(0);
+  });
 });
 
 describe("createManagementApiClient - spaceId injection", () => {

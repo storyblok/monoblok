@@ -866,7 +866,7 @@ export type BlockContentRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: null | string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
 };
 
 /**

@@ -198,6 +198,25 @@ type ResolveComponents<T extends StoryblokTypesConfig> = T extends {
 /** Extracts the `fieldType → value` plugin map from a Schema, defaulting to an empty map. */
 type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<never, never>;
 
+/** Names the inferred shape so declaration output reuses the same story resource type. */
+type ApiClientBaseResult<
+  ThrowOnError extends boolean = false,
+  InlineRelations extends boolean = false,
+> = {
+  datasourceEntries: ReturnType<typeof createDatasourceEntriesResource<ThrowOnError>>;
+  datasources: ReturnType<typeof createDatasourcesResource<ThrowOnError>>;
+  experiments: ReturnType<typeof createExperimentsResource<ThrowOnError>>;
+  flushCache: () => Promise<void>;
+  get: (path: string, options?: HttpRequestOptions) => Promise<ApiResponse>;
+  interceptors: Client["interceptors"];
+  links: ReturnType<typeof createLinksResource<ThrowOnError>>;
+  spaces: ReturnType<typeof createSpacesResource<ThrowOnError>>;
+  stories: ReturnType<
+    typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
+  >;
+  tags: ReturnType<typeof createTagsResource<ThrowOnError>>;
+};
+
 /**
  * The return type of `createApiClient`, parameterised by `TComponents` and `InlineRelations`
  * so that `.withTypes<T>()` can change the story response types without touching the
@@ -208,7 +227,7 @@ export type ContentApiClient<
   TFieldPlugins = Record<never, never>,
   InlineRelations extends boolean = false,
   ThrowOnError extends boolean = false,
-> = Omit<ReturnType<typeof createApiClientBase>, "stories" | "withTypes"> & {
+> = Omit<ApiClientBaseResult<ThrowOnError, InlineRelations>, "stories" | "withTypes"> & {
   stories: ReturnType<
     typeof createStoriesResource<TComponents, TFieldPlugins, InlineRelations, ThrowOnError>
   >;
@@ -245,7 +264,7 @@ export const createApiClientBase = <
   InlineRelations extends boolean = false,
 >(
   config: ContentApiClientConfig<ThrowOnError, InlineRelations>,
-) => {
+): ApiClientBaseResult<ThrowOnError, InlineRelations> => {
   const {
     accessToken,
     region = "eu",
@@ -438,12 +457,10 @@ export const createApiClientBase = <
     throttleManager,
   };
 
-  const stories = createStoriesResource<
-    Component,
-    Record<never, never>,
-    InlineRelations,
-    ThrowOnError
-  >({
+  // Keep the declaration output aligned with ContentApiClient["stories"].
+  const stories: ReturnType<
+    typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
+  > = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({
     ...resourceDeps,
     inlineRelations,
   });

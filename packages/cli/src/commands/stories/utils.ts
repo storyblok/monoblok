@@ -42,10 +42,22 @@ export const findComponentSchemas = async (directoryPath: string) => {
 };
 
 /**
+ * A slug is remote data and is not constrained to a single path segment, so
+ * separators and `..` are collapsed before it becomes part of a file name.
+ * Applied on both the read and the write side, so a story still round-trips to
+ * the same file.
+ */
+const toPathSegment = (value: string): string =>
+  value
+    .replace(/[/\\]+/g, "-")
+    .replace(/\.{2,}/g, "")
+    .replace(/-{2,}/g, "-");
+
+/**
  * @method getStoryFilename
  * @param  {object} story - Story object with slug and uuid
  * @return {string} Filename in the format {slug}_{uuid}.json
  */
 export const getStoryFilename = (story: Pick<Story, "slug" | "uuid">) => {
-  return `${story.slug}_${story.uuid}.json`;
+  return `${toPathSegment(story.slug)}_${toPathSegment(story.uuid)}.json`;
 };

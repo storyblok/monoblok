@@ -18,6 +18,7 @@ interface MockComponent {
   schema: Record<string, Record<string, unknown>>;
   is_root?: boolean;
   is_nestable?: boolean;
+  internal_tag_ids?: string[];
 }
 
 interface MockFolder {

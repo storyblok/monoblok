@@ -20,3 +20,12 @@ export {
 export { storyblokEditable, type LivePreviewStory } from "@storyblok/live-preview";
 
 export { type StoryblokRichTextDoc } from "@storyblok/richtext";
+
+export {
+  StoryblokPreview,
+  type StoryblokPreviewProps,
+  useStoryblokEditorEvent,
+  type UseStoryblokEditorEventOptions,
+  useStoryblokState,
+  type UseStoryblokStateOptions,
+} from "./client";

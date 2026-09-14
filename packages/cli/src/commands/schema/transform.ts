@@ -39,7 +39,11 @@ function buildComponentPayload(input: unknown) {
     color: typeof input.color === "string" ? input.color : "",
     icon: typeof input.icon === "string" ? input.icon : "",
     preview_field: typeof input.preview_field === "string" ? input.preview_field : "",
-    internal_tag_ids: Array.isArray(input.internal_tag_ids) ? input.internal_tag_ids : [],
+    // The component serializer returns tag ids as strings while the create and
+    // update bodies take numbers, so whatever shape reaches here is normalized.
+    internal_tag_ids: Array.isArray(input.internal_tag_ids)
+      ? input.internal_tag_ids.map(Number)
+      : [],
     // Conditionally sent: only included when explicitly set in local schema
     ...(isRecord(input.schema) && { schema: toSchemaRecord(input.schema) }),
     ...(typeof input.is_root === "boolean" && { is_root: input.is_root }),

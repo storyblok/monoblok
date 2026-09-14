@@ -87,21 +87,31 @@ const preconditions = {
       ),
     );
   },
+  hasRemoteTags(internalTags: { id: number; name: string }[]) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/internal_tags`, () =>
+        HttpResponse.json({ internal_tags: internalTags }),
+      ),
+    );
+  },
   hasEmptyRemote() {
     this.hasRemoteComponents([]);
     this.hasRemoteFolders([]);
     this.hasRemoteDatasources([]);
+    this.hasRemoteTags([]);
   },
   hasRemoteSchema(
     options: {
       components?: MockComponent[];
       folders?: MockFolder[];
       datasources?: MockDatasource[];
+      internalTags?: { id: number; name: string }[];
     } = {},
   ) {
     this.hasRemoteComponents(options.components ?? []);
     this.hasRemoteFolders(options.folders ?? []);
     this.hasRemoteDatasources(options.datasources ?? []);
+    this.hasRemoteTags(options.internalTags ?? []);
   },
   failsToFetchRemote() {
     server.use(
@@ -196,6 +206,64 @@ describe("schema init command", () => {
     ) as string;
     expect(schemaFile).not.toContain("folders:");
     expect(schemaFile).not.toContain("./folders");
+  });
+
+  it("should emit block tags by name instead of space-local ids", async () => {
+    const comp = makeMockComponent({ name: "hero", internal_tag_ids: ["555"] });
+    preconditions.hasRemoteSchema({
+      components: [comp],
+      internalTags: [{ id: 555, name: "Marketing" }],
+    });
+
+    await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
+
+    const files = vol.toJSON();
+    const content = files[Object.keys(files).find((f) => f.includes("/blocks/hero.ts"))!];
+    expect(content).toContain("tags: [");
+    expect(content).toContain("'Marketing'");
+    expect(content).not.toContain("internal_tag_ids");
+  });
+
+  it("should emit a field's tag restriction as named tag refs", async () => {
+    const comp = makeMockComponent({
+      name: "hero",
+      schema: {
+        body: {
+          type: "bloks",
+          pos: 0,
+          restrict_components: true,
+          restrict_type: "tags",
+          component_tag_whitelist: [555],
+        },
+      },
+    });
+    preconditions.hasRemoteSchema({
+      components: [comp],
+      internalTags: [{ id: 555, name: "Marketing" }],
+    });
+
+    await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
+
+    const files = vol.toJSON();
+    const content = files[Object.keys(files).find((f) => f.includes("/blocks/hero.ts"))!];
+    expect(content).toContain("allow: [");
+    expect(content).toContain("tag: 'Marketing'");
+    expect(content).not.toContain("component_tag_whitelist");
+  });
+
+  it("should keep a tag id the space cannot name as the raw wire form", async () => {
+    const comp = makeMockComponent({ name: "hero", internal_tag_ids: ["999"] });
+    preconditions.hasRemoteSchema({
+      components: [comp],
+      internalTags: [{ id: 555, name: "Marketing" }],
+    });
+
+    await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
+
+    const files = vol.toJSON();
+    const content = files[Object.keys(files).find((f) => f.includes("/blocks/hero.ts"))!];
+    expect(content).toContain("internal_tag_ids");
+    expect(content).not.toContain("tags: [");
   });
 
   it("should generate datasource files", async () => {

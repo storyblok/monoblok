@@ -14,16 +14,19 @@ import type { Component } from "../../../types";
 import type { DiffResult, SchemaData } from "../types";
 import { displayPath, isRecord } from "../utils";
 import { GROUP_LIST_KEYS } from "../folders";
+import { TAG_LIST_KEYS } from "../tags";
 
 const DEFAULT_GROUPS_FILENAME = "groups.json";
 const CONSOLIDATED_COMPONENTS_FILENAME = "components.json";
 
 /**
  * Strips transient, push-time-only keys before a component is written to local
- * JSON. `folder` is an internal slug-path key that never belongs on disk, and
- * each field's group lists (`component_group_whitelist` /
+ * JSON. `folder` and `tags` are internal name-space keys that never belong on
+ * disk, and each field's group lists (`component_group_whitelist` /
  * `component_group_denylist`) here hold slug paths, not the group uuids that
- * local JSON consumers (e.g. `stories push` schema validation) expect. Only
+ * local JSON consumers (e.g. `stories push` schema validation) expect. A field's
+ * tag lists get the same treatment when they hold names, and are kept when they
+ * hold the raw ids a local JSON consumer can read. Only
  * `local` schema data reaches this function — the remote/created group set needed
  * to resolve paths → uuids is not available here — so the path-space lists are
  * dropped rather than written in a form no consumer can use. The escape-hatch
@@ -37,7 +40,7 @@ const CONSOLIDATED_COMPONENTS_FILENAME = "components.json";
  * has no `component_whitelist` or `component_denylist`.
  */
 function sanitizeForLocalWrite(component: Component): Record<string, unknown> {
-  const { folder, ...rest } = component as Record<string, unknown>;
+  const { folder, tags, ...rest } = component as Record<string, unknown>;
   if (isRecord(rest.schema)) {
     const schema: Record<string, unknown> = {};
     for (const [key, field] of Object.entries(rest.schema)) {
@@ -51,6 +54,18 @@ function sanitizeForLocalWrite(component: Component): Record<string, unknown> {
           delete fieldRest.restrict_type;
         }
         schema[key] = fieldRest;
+      } else if (isRecord(field) && TAG_LIST_KEYS.some((tagKey) => hasTagNames(field[tagKey]))) {
+        const fieldRest = { ...field };
+        for (const tagKey of TAG_LIST_KEYS) {
+          if (hasTagNames(fieldRest[tagKey])) {
+            delete fieldRest[tagKey];
+          }
+        }
+        delete fieldRest.restrict_components;
+        if (fieldRest.restrict_type === "tags") {
+          delete fieldRest.restrict_type;
+        }
+        schema[key] = fieldRest;
       } else {
         schema[key] = field;
       }
@@ -58,6 +73,11 @@ function sanitizeForLocalWrite(component: Component): Record<string, unknown> {
     rest.schema = schema;
   }
   return rest;
+}
+
+/** Whether a tag list holds names (the transient space) rather than server ids. */
+function hasTagNames(list: unknown): boolean {
+  return Array.isArray(list) && list.some((entry) => typeof entry === "string");
 }
 
 export interface WriteLocalComponentsParams {

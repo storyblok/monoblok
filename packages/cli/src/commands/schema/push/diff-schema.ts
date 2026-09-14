@@ -4,6 +4,7 @@ import type { DiffResult, EntityDiff, RemoteSchemaData, SchemaData } from "../ty
 import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
+import { mapSchemaTagLists } from "../tags";
 
 type EntityType = "component" | "datasource";
 
@@ -17,6 +18,30 @@ type EntityType = "component" | "datasource";
  */
 function translateGroupLists(schema: unknown, uuidToPath: Map<string, string>): unknown {
   return mapSchemaGroupLists(schema, (entry) => uuidToPath.get(entry) ?? entry);
+}
+
+/**
+ * Deep-copies a component's `schema`, translating each field's tag list id
+ * entries to tag names so both sides diff in the same name space. Applied
+ * symmetrically to remote (whose lists are always ids) and local (which carries
+ * names from the DSL, and ids from the raw escape hatch). An id with no known
+ * tag is left as-is so it still produces a visible diff. The source schema
+ * objects are never mutated.
+ */
+function translateTagLists(schema: unknown, nameById: Map<string, string>): unknown {
+  return mapSchemaTagLists(schema, (entry) => nameById.get(String(entry)) ?? entry);
+}
+
+/**
+ * The tag names a remote block carries, sorted. Tag order is not meaningful to
+ * Storyblok and the API does not preserve the order a push sent, so both sides
+ * are sorted before diffing rather than reporting a reordering as a change.
+ */
+function remoteTagNames(internalTagIds: unknown, nameById: Map<string, string>): string[] {
+  if (!Array.isArray(internalTagIds)) {
+    return [];
+  }
+  return internalTagIds.map((id) => nameById.get(String(id)) ?? String(id)).sort();
 }
 
 function diffEntity(
@@ -60,6 +85,15 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
     uuidToPath.set(uuid, segments.join("/"));
   }
   const remoteFolderPaths = new Set(uuidToPath.values());
+
+  // Block tags are referenced by name in a local schema and by id on the wire,
+  // so both sides are translated into name space before diffing.
+  const tagNameById = new Map<string, string>();
+  for (const tag of remote.internalTags.values()) {
+    if (tag.id !== undefined) {
+      tagNameById.set(String(tag.id), tag.name);
+    }
+  }
 
   // Diff folders (before components). Renames are unsupported, so a folder is
   // only ever `create`/`unchanged`/`stale` — display names matter at creation
@@ -124,12 +158,37 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
       }
     }
 
+    // Tag membership is only diffed when the local block manages it by name (a
+    // `tags` key). Synthesize the remote block's `tags` from its tag ids so both
+    // sides diff in name space, and drop the id key that backs it. A block
+    // managing its tags by raw id, or not at all, keeps diffing `internal_tag_ids`
+    // as before.
+    if ("tags" in comp) {
+      localForDiff.tags = [...(Array.isArray(comp.tags) ? comp.tags : [])].sort();
+      delete localForDiff.internal_tag_ids;
+      if (remoteForDiff) {
+        remoteForDiff.tags = remoteTagNames(remoteForDiff.internal_tag_ids, tagNameById);
+        delete remoteForDiff.internal_tag_ids;
+      }
+    } else {
+      delete localForDiff.tags;
+      if (remoteForDiff) {
+        delete remoteForDiff.tags;
+      }
+    }
+
     // Translate group list uuids → slug paths on both sides. `schema init` emits
     // raw uuid lists locally; without translating the local copy too, a local
     // uuid vs remote-translated path would diff dirty forever.
     localForDiff.schema = translateGroupLists(localForDiff.schema, uuidToPath);
     if (remoteForDiff) {
       remoteForDiff.schema = translateGroupLists(remoteForDiff.schema, uuidToPath);
+    }
+
+    // Same for the tag lists, in the id → name direction.
+    localForDiff.schema = translateTagLists(localForDiff.schema, tagNameById);
+    if (remoteForDiff) {
+      remoteForDiff.schema = translateTagLists(remoteForDiff.schema, tagNameById);
     }
 
     const localSerialized = serializeComponent(applyDefaults(localForDiff, COMPONENT_DEFAULTS), {

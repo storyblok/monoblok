@@ -184,7 +184,7 @@ type IsNestable<T> = T extends { is_nestable: false }
     ? true
     : true;
 
-type AllowEntry = string | { folder: string };
+type AllowEntry = string | { folder: string } | { tag: string };
 
 /**
  * Keeps `TBlock` when its `folder` is `TFolder` or any nested subfolder (mirrors
@@ -205,6 +205,24 @@ type MatchesFolder<TBlock, TFolder extends string> = TBlock extends {
     : never
   : never;
 
+/**
+ * Keeps `TBlock` when it declares `TTag` among its `tags`, the tag-dimension
+ * counterpart to {@link MatchesFolder}. Compared case-insensitively, like folder
+ * paths: tag identity is reconciled by exact name at push time, not here.
+ *
+ * A block that declares no `tags` never matches. Its remote tags may say
+ * otherwise — tags can be applied in the Storyblok UI to a block whose schema
+ * does not name them — so this narrows by what the schema declares, the same
+ * best-effort reading `folder` gets.
+ */
+type MatchesTag<TBlock, TTag extends string> = TBlock extends {
+  tags: ReadonlyArray<infer BT extends string>;
+}
+  ? Lowercase<TTag> extends Lowercase<BT>
+    ? TBlock
+    : never
+  : never;
+
 type ApplyAllow<TField, TBlocks> = TField extends {
   allow: ReadonlyArray<infer TAllowed extends AllowEntry>;
 }
@@ -216,7 +234,12 @@ type ApplyAllow<TField, TBlocks> = TField extends {
         TBlocks extends any
         ? MatchesFolder<TBlocks, F>
         : never
-      : never
+      : TAllowed extends { tag: infer T extends string }
+        ? // keep registry blocks declaring the tag
+          TBlocks extends any
+          ? MatchesTag<TBlocks, T>
+          : never
+        : never
   : // no `allow`: distribute over the registry, keeping nestable blocks
     TBlocks extends any
     ? IsNestable<TBlocks> extends true
@@ -236,6 +259,12 @@ type ApplyAllow<TField, TBlocks> = TField extends {
 type FolderOf<T> = Extract<T, { folder: string }>["folder"];
 
 /**
+ * The tag names given by the `{ tag: name }` entries of an `allow`/`deny` union.
+ * Written as an indexed access for the same reason as {@link FolderOf}.
+ */
+type TagOf<T> = Extract<T, { tag: string }>["tag"];
+
+/**
  * Removes the registry blocks in `TFolders` (or any nested folder), the
  * {@link MatchesFolder} counterpart for `deny`. A `never` folder set removes
  * nothing, so a block-name-only `deny` leaves the union untouched.
@@ -249,6 +278,19 @@ type DenyFolders<TBlocks, TFolders extends string> = [TFolders] extends [never]
     : never;
 
 /**
+ * Removes the registry blocks declaring one of `TTags`, the {@link MatchesTag}
+ * counterpart for `deny`. A `never` tag set removes nothing, so a `deny` naming
+ * no tag leaves the union untouched.
+ */
+type DenyTags<TBlocks, TTags extends string> = [TTags] extends [never]
+  ? TBlocks
+  : TBlocks extends any
+    ? [MatchesTag<TBlocks, TTags>] extends [never]
+      ? TBlocks
+      : never
+    : never;
+
+/**
  * Removes the registry blocks named in `deny`, or living in a folder it names,
  * the `Exclude` counterpart to {@link ApplyAllow}. A `deny` entry naming no known
  * block or folder is inert: it removes nothing rather than collapsing the field.
@@ -256,12 +298,15 @@ type DenyFolders<TBlocks, TFolders extends string> = [TFolders] extends [never]
  * `TDenied` is split with `Extract` rather than a `TDenied extends string`
  * conditional, because that conditional would distribute over the deny union and
  * union the per-entry `Exclude` results back together — re-admitting every denied
- * block. Names and folders are therefore removed in one pass each.
+ * block. Names, folders, and tags are therefore removed in one pass each.
  */
 type ApplyDeny<TField, TBlocks> = TField extends {
   deny: ReadonlyArray<infer TDenied extends AllowEntry>;
 }
-  ? DenyFolders<Exclude<TBlocks, { name: Extract<TDenied, string> }>, FolderOf<TDenied>>
+  ? DenyTags<
+      DenyFolders<Exclude<TBlocks, { name: Extract<TDenied, string> }>, FolderOf<TDenied>>,
+      TagOf<TDenied>
+    >
   : TBlocks;
 
 /**

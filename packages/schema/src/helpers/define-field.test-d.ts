@@ -181,6 +181,41 @@ describe("defineField type inference", () => {
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero">();
   });
 
+  it("should normalize tag allow entries to { tag: name } literals", () => {
+    const field = defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }] });
+    expectTypeOf(field.allow).toEqualTypeOf<readonly [{ tag: "Marketing" }]>();
+  });
+
+  it("should narrow bloks content by tag allow entries", () => {
+    const _heroBlock = defineBlock({ name: "hero", tags: ["Marketing"], fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _teaserBlock
+    >;
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero">();
+  });
+
+  it("should narrow bloks content by tag `deny` entries", () => {
+    const _heroBlock = defineBlock({ name: "hero", tags: ["Legacy"], fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: [{ tag: "Legacy" }] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _teaserBlock
+    >;
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"teaser">();
+  });
+
   it("should normalize folder refs in `deny` to tagged path entries", () => {
     const heros = defineFolder({ name: "Heros" });
     const f = defineField("body", { type: "bloks", deny: [heros] });
@@ -470,9 +505,9 @@ describe("defineField field option checking", () => {
     void defineField("body", { type: "bloks", restrict_components: false });
   });
 
-  it("should keep the tag restriction dimension legal", () => {
-    // `restrict_type: 'tags'` is the only way to activate the tag lists, and has
-    // no `allow` / `deny` equivalent.
+  it("should keep the raw tag restriction dimension legal", () => {
+    // The raw id form stays available as a same-space escape hatch beside the
+    // portable `allow: [{ tag }]` DSL form.
     void defineField("body", {
       type: "bloks",
       restrict_type: "tags",
@@ -742,14 +777,21 @@ describe("defineField `allow`/`deny` versus the wire restriction keys", () => {
     });
   });
 
-  it("should accept the tag keys and `restrict_type` beside the DSL keys", () => {
-    // Neither has a DSL replacement, so neither is part of the exclusivity.
-    void defineField("body", {
-      type: "bloks",
-      allow: ["teaser"],
-      restrict_type: "",
-      component_tag_whitelist: [1],
-      component_tag_denylist: [2],
-    });
+  it("should accept `restrict_type` beside the DSL keys", () => {
+    // Push overwrites it either way, and it carries no reference of its own, so
+    // it is not part of the exclusivity.
+    void defineField("body", { type: "bloks", allow: ["teaser"], restrict_type: "" });
+  });
+
+  it("should reject the wire tag lists beside the DSL keys", () => {
+    // @ts-expect-error the wire tag whitelist is derived from `allow`
+    void defineField("body", { type: "bloks", allow: ["teaser"], component_tag_whitelist: [1] });
+    // @ts-expect-error the wire tag denylist is derived from `deny`
+    void defineField("body", { type: "bloks", deny: ["banner"], component_tag_denylist: [2] });
+  });
+
+  it("should accept tag refs in the DSL keys", () => {
+    void defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }] });
+    void defineField("body", { type: "bloks", deny: [{ tag: "Legacy" }] });
   });
 });

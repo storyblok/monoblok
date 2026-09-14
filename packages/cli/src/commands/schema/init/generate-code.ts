@@ -246,6 +246,26 @@ function resolveGroupRefs(
   return vars.map((v) => new RawCode(v));
 }
 
+/**
+ * Resolves a field's tag list ids to their tag names, returning the ordered
+ * `{ tag: name }` entries `allow`/`deny` take. Returns `undefined` when there is
+ * nothing to resolve or any id is unknown, so the caller keeps the raw wire form
+ * (still valid in the space it was read from) rather than emitting a reference
+ * that names no tag.
+ */
+function resolveTagRefs(tagList: unknown, tagNameById?: Map<string, string>): TagRef[] | undefined {
+  if (!tagNameById || !Array.isArray(tagList) || tagList.length === 0) {
+    return undefined;
+  }
+  const names = tagList.map((id) =>
+    typeof id === "string" || typeof id === "number" ? tagNameById.get(String(id)) : undefined,
+  );
+  if (!names.every((name): name is string => typeof name === "string")) {
+    return undefined;
+  }
+  return names.map((tag) => ({ tag }));
+}
+
 /** Whether a wire restriction list holds entries (an absent or empty list is no restriction). */
 function isNonEmptyList(list: unknown): boolean {
   return Array.isArray(list) && list.length > 0;
@@ -259,6 +279,7 @@ function isNonEmptyList(list: unknown): boolean {
  * - `disabled` — `restrict_components: false`: the flag round-trips, the lists do not.
  * - `tags` — restricted by block tag: the tag lists and their flags keep their wire form.
  * - `names` — restricted by block name: `allow`/`deny` hold plain names.
+ * - `tagRefs` — restricted by block tag, every id resolved to its tag name.
  * - `folders` — restricted by folder, every uuid resolved to a `defineFolder` ref.
  * - `raw` — restricted by folder, but at least one uuid is unknown: keep the wire keys.
  * - `none` — no restriction in force.
@@ -266,10 +287,16 @@ function isNonEmptyList(list: unknown): boolean {
 type FieldRestriction =
   | { kind: "disabled" }
   | { kind: "tags" }
+  | { kind: "tagRefs"; allow?: TagRef[]; deny?: TagRef[] }
   | { kind: "names"; allow?: unknown; deny?: unknown }
   | { kind: "folders"; allow?: RawCode[]; deny?: RawCode[] }
   | { kind: "raw" }
   | { kind: "none" };
+
+/** A tag reference in the DSL form `allow`/`deny` take: `{ tag: name }`. */
+interface TagRef {
+  tag: string;
+}
 
 /**
  * The field types that own the component restriction keys (`restrict_components`,
@@ -332,21 +359,33 @@ const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
 function resolveFieldRestriction(
   field: Record<string, unknown>,
   folderVarByUuid?: Map<string, string>,
+  tagNameById?: Map<string, string>,
 ): FieldRestriction {
   if (field.restrict_components === false) {
     return { kind: "disabled" };
-  }
-  if (
-    field.restrict_type === "tags" &&
-    (isNonEmptyList(field.component_tag_whitelist) || isNonEmptyList(field.component_tag_denylist))
-  ) {
-    return { kind: "tags" };
   }
   // A denylist is only in force where the editor reads one: on a field type that
   // has one at all, and only while the matching allow list is empty. Emitting an
   // out-of-force list as `deny` would generate code `defineField` rejects, so the
   // push that follows `schema init` could not even load the schema.
   const denyIsReadable = DENIABLE_FIELD_TYPES.includes(String(field.type));
+  if (
+    field.restrict_type === "tags" &&
+    (isNonEmptyList(field.component_tag_whitelist) || isNonEmptyList(field.component_tag_denylist))
+  ) {
+    const hasTagAllow = isNonEmptyList(field.component_tag_whitelist);
+    const hasTagDeny =
+      denyIsReadable && !hasTagAllow && isNonEmptyList(field.component_tag_denylist);
+    const allow = hasTagAllow
+      ? resolveTagRefs(field.component_tag_whitelist, tagNameById)
+      : undefined;
+    const deny = hasTagDeny ? resolveTagRefs(field.component_tag_denylist, tagNameById) : undefined;
+    // Only one of the two is ever in force, and emitting nothing for a list that
+    // is would drop the restriction, so an unresolvable id keeps the wire form.
+    return (!hasTagAllow || allow) && (!hasTagDeny || deny)
+      ? { kind: "tagRefs", allow, deny }
+      : { kind: "tags" };
+  }
   // On `bloks`, the Management API clears the name lists when the editor switches
   // dimension, so a `component_whitelist`/`component_denylist` surviving next to an
   // empty-tag `restrict_type: 'tags'` is stale junk from before the switch, not a live
@@ -439,6 +478,7 @@ function resolveFieldRestriction(
 function toDslField(
   field: Record<string, unknown>,
   folderVarByUuid?: Map<string, string>,
+  tagNameById?: Map<string, string>,
 ): Record<string, unknown> {
   const {
     component_whitelist,
@@ -453,14 +493,15 @@ function toDslField(
     ...rest
   } = field;
   const out: Record<string, unknown> = { ...rest };
-  const restriction = resolveFieldRestriction(field, folderVarByUuid);
+  const restriction = resolveFieldRestriction(field, folderVarByUuid, tagNameById);
   // Stray restriction keys on a field type that does not own them are junk the
   // editor never wrote and never reads; emitting them would not compile.
   const restrictable = RESTRICTABLE_FIELD_TYPES.has(field.type as string);
 
-  // The tag lists have no DSL equivalent, so they pass through verbatim whenever
-  // the field type owns them, whichever dimension is actually in force.
-  if (restrictable) {
+  // A tag list the DSL could not name passes through verbatim whenever the field
+  // type owns it, whichever dimension is actually in force. A resolved one is
+  // emitted as `allow`/`deny` refs below instead, so it must not be written twice.
+  if (restrictable && restriction.kind !== "tagRefs") {
     if (component_tag_whitelist !== undefined) {
       out.component_tag_whitelist = component_tag_whitelist;
     }
@@ -488,6 +529,7 @@ function toDslField(
       break;
     case "names":
     case "folders":
+    case "tagRefs":
       if (restriction.allow !== undefined) {
         out.allow = restriction.allow;
       }
@@ -585,9 +627,10 @@ function generateFieldCode(
   fieldData: Record<string, unknown>,
   depth: number,
   folderVarByUuid?: Map<string, string>,
+  tagNameById?: Map<string, string>,
 ): string {
   const clean = omitEmptyArrays(
-    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid),
+    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid, tagNameById),
   );
   return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
 }
@@ -661,12 +704,18 @@ export function generateFoldersFile(resolved: ResolvedFolder[]): string {
  * field's group whitelist is emitted as `allow: [<folderVar>]` (symmetric with a
  * block-name `allow`) instead of raw uuids; every referenced folder is imported
  * from the same `folders.ts` alongside the block's own folder ref.
+ *
+ * `tagNameById` maps the space's block tag ids to their names, so the block's own
+ * tags are emitted as `tags: ['<name>']` and a field's tag list as
+ * `allow: [{ tag: '<name>' }]`. Tag ids are space-local; the names are what make
+ * the generated schema pushable to another space.
  */
 export function generateComponentFile(
   component: Component,
   varName?: string,
   folderRef?: { varName: string; segments: string[] },
   folderVarByUuid?: Map<string, string>,
+  tagNameById?: Map<string, string>,
 ): string {
   const lines: string[] = [];
 
@@ -706,6 +755,15 @@ export function generateComponentFile(
 
   // The group is encoded by the directory layout / folder ref, never emitted on the block.
   delete clean.component_group_uuid;
+
+  // Block tags are emitted by name, the identity push resolves against the
+  // target space. An id with no known tag keeps the raw list: it is still valid
+  // in the space it was read from, and inventing a name would be worse.
+  const tagNames = resolveTagRefs(clean.internal_tag_ids, tagNameById);
+  if (tagNames) {
+    delete clean.internal_tag_ids;
+    clean.tags = tagNames.map((ref) => ref.tag);
+  }
 
   // Enforce property order: name, display_name, is_root, is_nestable, folder, then rest, fields last
   const orderedKeys: string[] = [];
@@ -752,7 +810,7 @@ export function generateComponentFile(
     if (sortedFields.length > 0) {
       lines.push(`${INDENT}fields: [`);
       for (const [fieldName, fieldData] of sortedFields) {
-        const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid);
+        const fieldCode = generateFieldCode(fieldName, fieldData, 2, folderVarByUuid, tagNameById);
         lines.push(`${INDENT}${INDENT}${fieldCode},`);
       }
       lines.push(`${INDENT}],`);

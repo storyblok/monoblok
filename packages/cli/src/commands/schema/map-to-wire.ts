@@ -4,25 +4,27 @@ import type { Component, Datasource, Field } from "../../types";
 import { isRecord } from "./utils";
 import { slugifyPath } from "./folders";
 
-/** The two halves of an `allow`/`deny` list: block names and slugified folder paths. */
+/** The three halves of an `allow`/`deny` list: block names, slugified folder paths, and tag names. */
 interface SplitRestriction {
   names: unknown;
   folderPaths: string[];
+  tagNames: string[];
 }
 
 /**
- * Splits an `allow`/`deny` value into its block-name and folder halves. Folder
- * entries arrive as `{ folder: displayPath }` from `defineField` and are
+ * Splits an `allow`/`deny` value into its block-name, folder, and tag halves.
+ * Folder entries arrive as `{ folder: displayPath }` from `defineField` and are
  * slugified into the transient slug-path space that `schema push` later resolves
- * to group uuids. A non-array value is passed through as the name list, since
- * hand-written schema data may hold a bare name.
+ * to group uuids; tag entries arrive as `{ tag: name }` and stay names, the
+ * transient space push resolves to tag ids. A non-array value is passed through
+ * as the name list, since hand-written schema data may hold a bare name.
  */
 function splitRestriction(input: unknown): SplitRestriction | undefined {
   if (input === undefined) {
     return undefined;
   }
   if (!Array.isArray(input)) {
-    return { names: input, folderPaths: [] };
+    return { names: input, folderPaths: [], tagNames: [] };
   }
   return {
     names: input.filter((entry) => typeof entry === "string"),
@@ -31,6 +33,9 @@ function splitRestriction(input: unknown): SplitRestriction | undefined {
         (entry): entry is { folder: string } => isRecord(entry) && typeof entry.folder === "string",
       )
       .map((entry) => slugifyPath(entry.folder)),
+    tagNames: input
+      .filter((entry): entry is { tag: string } => isRecord(entry) && typeof entry.tag === "string")
+      .map((entry) => entry.tag),
   };
 }
 
@@ -38,18 +43,23 @@ function splitRestriction(input: unknown): SplitRestriction | undefined {
  * Maps a single content-shape DSL field to its MAPI wire form. The field's
  * `name` becomes the schema record key (returned separately); the DSL reference
  * keys are renamed to their wire equivalents:
- * - `allow` → `component_whitelist` (for block-name entries) or
- *   `component_group_whitelist` (for folder entries)
- * - `deny` → `component_denylist` / `component_group_denylist`, the same split
+ * - `allow` → `component_whitelist` (for block-name entries),
+ *   `component_group_whitelist` (for folder entries), or
+ *   `component_tag_whitelist` (for tag entries)
+ * - `deny` → `component_denylist` / `component_group_denylist` /
+ *   `component_tag_denylist`, the same split
  * - `datasource` → `datasource_slug` (the `source` selector passes through)
  *
  * A bare list is ignored by the editor, so a restriction from either key also
  * activates `restrict_components: true` on `bloks` and `richtext` fields, the two
  * types whose nested-block picker consults these lists, with `restrict_type:
- * 'groups'` for folder entries and `''` (the editor's v1-compatible spelling of
- * "by block name") otherwise. `defineField` rejects an `allow`/`deny` pair that
- * disagrees on which of the two dimensions to restrict by, so the folder dimension
- * of either key settles it for both.
+ * 'groups'` for folder entries, `'tags'` for tag entries, and `''` (the editor's
+ * v1-compatible spelling of "by block name") otherwise. `defineField` rejects an
+ * `allow`/`deny` pair that disagrees on which of the three dimensions to restrict
+ * by, so the dimension of either key settles it for both.
+ *
+ * The tag lists leave here holding names, not the ids the Management API takes:
+ * `schema push` resolves them against the target space (see `./tags`).
  *
  * On any other field type a `deny` is dropped: those types have no denylist, so
  * writing one would leave a key nothing reads. `allow` still passes through,
@@ -70,6 +80,8 @@ export function mapFieldToWire(field: Record<string, unknown>): { name: string; 
   if (allowed) {
     if (allowed.folderPaths.length > 0) {
       value.component_group_whitelist = allowed.folderPaths;
+    } else if (allowed.tagNames.length > 0) {
+      value.component_tag_whitelist = allowed.tagNames;
     } else {
       value.component_whitelist = allowed.names;
     }
@@ -82,14 +94,17 @@ export function mapFieldToWire(field: Record<string, unknown>): { name: string; 
   if (denied && isDeniable) {
     if (denied.folderPaths.length > 0) {
       value.component_group_denylist = denied.folderPaths;
+    } else if (denied.tagNames.length > 0) {
+      value.component_tag_denylist = denied.tagNames;
     } else {
       value.component_denylist = denied.names;
     }
   }
   if ((allowed || denied) && isDeniable) {
     const byFolder = Boolean(allowed?.folderPaths.length || denied?.folderPaths.length);
+    const byTag = Boolean(allowed?.tagNames.length || denied?.tagNames.length);
     value.restrict_components = true;
-    value.restrict_type = byFolder ? "groups" : "";
+    value.restrict_type = byFolder ? "groups" : byTag ? "tags" : "";
   }
   if (datasource !== undefined) {
     value.datasource_slug = datasource;

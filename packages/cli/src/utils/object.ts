@@ -13,6 +13,10 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+// Assigning these from an untrusted source (a config file, an API response) walks up to
+// Object.prototype and changes every object in the process.
+const PROTOTYPE_POLLUTING_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 export function mergeDeep<T extends PlainObject>(target: T, source?: PlainObject): T {
   if (!isPlainObject(source)) {
     return target;
@@ -21,6 +25,9 @@ export function mergeDeep<T extends PlainObject>(target: T, source?: PlainObject
   const targetRecord = target as PlainObject;
 
   for (const [key, value] of Object.entries(source)) {
+    if (PROTOTYPE_POLLUTING_KEYS.has(key)) {
+      continue;
+    }
     if (isPlainObject(value)) {
       const existing = targetRecord[key];
       const base = isPlainObject(existing) ? existing : {};

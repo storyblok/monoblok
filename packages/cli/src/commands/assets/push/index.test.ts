@@ -39,7 +39,7 @@ vi.spyOn(console, "log");
 vi.spyOn(console, "error");
 vi.spyOn(console, "warn");
 
-vi.spyOn(actions, "createAsset");
+const createAssetSpy = vi.spyOn(actions, "createAsset");
 vi.spyOn(actions, "updateAsset");
 vi.spyOn(actions, "createAssetFolder");
 vi.spyOn(actions, "updateAssetFolder");
@@ -82,11 +82,25 @@ const preconditions = {
   ) {
     const assetsDir = resolveCommandPath(directories.assets, space, basePath);
     const files = assets.map((asset) => [
-      join(assetsDir, getAssetBinaryFilename(asset)),
+      join(
+        assetsDir,
+        getAssetBinaryFilename({
+          id: asset.id,
+          filename: asset.filename,
+          short_filename: asset.short_filename,
+        }),
+      ),
       "binary-content",
     ]);
     const metadataFiles = assets.map((asset) => [
-      join(assetsDir, getAssetFilename(asset)),
+      join(
+        assetsDir,
+        getAssetFilename({
+          id: asset.id,
+          filename: asset.filename,
+          short_filename: asset.short_filename,
+        }),
+      ),
       JSON.stringify(asset),
     ]);
     vol.fromJSON(Object.fromEntries([...files, ...metadataFiles]));
@@ -1840,7 +1854,7 @@ describe("assets push command", () => {
       expect.anything(),
       expect.anything(),
     );
-    const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
+    const createPayload = createAssetSpy.mock.calls[0][0];
     expect(createPayload).not.toHaveProperty("internal_tags_list");
     expect(process.exitCode).not.toBe(1);
   });
@@ -1913,7 +1927,7 @@ describe("assets push command", () => {
       targetSpace,
     ]);
 
-    const createPayload = (actions.createAsset as unknown as Mock).mock.calls[0][0];
+    const createPayload = createAssetSpy.mock.calls[0][0];
     expect(createPayload).not.toHaveProperty("internal_tag_ids");
     expect(createPayload).not.toHaveProperty("internal_tags_list");
     expect(process.exitCode).not.toBe(1);

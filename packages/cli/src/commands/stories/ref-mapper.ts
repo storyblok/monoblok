@@ -216,19 +216,40 @@ const multiassetFieldRefMapper: RefMapper = (data, options) => {
 };
 
 /**
+ * An option field only holds a cross-space reference when its source is
+ * `internal_stories`: the value is then a story uuid (or id, with `use_uuid`
+ * off), which differs per space. Every other source is space-independent, so
+ * remapping it would corrupt the value: `self` holds the inline option's own
+ * `value`, `internal` and `external` hold a datasource entry's `value`, and
+ * `internal_languages` holds a language code.
+ */
+const mapOptionValue = (
+  value: unknown,
+  schema: SchemaFieldDefinition | undefined,
+  maps: RefMaps,
+): unknown => {
+  if (!schema || !("source" in schema) || schema.source !== "internal_stories") {
+    return value;
+  }
+
+  return maps.stories?.get(value) ?? value;
+};
+
+/**
+ * Single option field reference mapper.
+ */
+const optionFieldRefMapper: RefMapper = (data, { schema, maps }) =>
+  mapOptionValue(data, schema, maps) as any;
+
+/**
  * Options field reference mapper.
  */
 const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
-  if (
-    !schema ||
-    !("source" in schema) ||
-    schema.source !== "internal_stories" ||
-    !Array.isArray(data)
-  ) {
+  if (!Array.isArray(data)) {
     return data;
   }
 
-  return data.map((d: any) => maps.stories?.get(d) || d) as any;
+  return data.map((d: any) => mapOptionValue(d, schema, maps)) as any;
 };
 
 const fieldRefMappers = {
@@ -236,6 +257,7 @@ const fieldRefMappers = {
   bloks: bloksFieldRefMapper,
   multiasset: multiassetFieldRefMapper,
   multilink: multilinkFieldRefMapper,
+  option: optionFieldRefMapper,
   options: optionsFieldRefMapper,
   richtext: richtextFieldRefMapper,
 } as const;

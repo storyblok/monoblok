@@ -3,14 +3,22 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   pack: [
     {
-      entry: {
-        index: "./src/index.ts",
-        "config/index": "./src/entrypoints/config.ts",
-      },
+      entry: { index: "./src/index.ts" },
       format: ["esm"],
       outDir: "./dist",
       sourcemap: true,
       clean: true,
+      dts: true,
+    },
+    // The `storyblok/config` entrypoint also ships CJS: config loaders (jiti,
+    // ts-node, jest) resolve a user's `storyblok.config.ts` imports with
+    // require conditions, so an ESM-only subpath is unresolvable for them.
+    {
+      entry: { "config/index": "./src/entrypoints/config.ts" },
+      format: ["esm", "cjs"],
+      outDir: "./dist",
+      sourcemap: true,
+      clean: false,
       dts: true,
     },
     // `types generate` copies these declarations into the user's `types/storyblok.d.ts`,

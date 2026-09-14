@@ -142,6 +142,19 @@ trap cleanup EXIT
 # Helpers
 # ---------------------------------------------------------------------------
 
+# A staged components directory holds more than components: a scenario may ship
+# sidecars for component groups and internal tags. The CLI classifies what it
+# pushes by data shape rather than by filename — a top-level array is a sidecar,
+# a top-level object is a component — so everything here keys on shape too.
+# Matching on `groups.json`/`tags.json` instead would break silently the day a
+# scenario names its sidecar something else.
+is_component_file() {
+  node -e "
+    const json = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
+    process.exit(json !== null && typeof json === 'object' && !Array.isArray(json) ? 0 : 1);
+  " "$1"
+}
+
 # Counts staged files for a resource (assets are the non-JSON files; every
 # other resource is one *.json per entity).
 count_staged() {
@@ -153,6 +166,13 @@ count_staged() {
   fi
   if [ "${resource}" = "assets" ]; then
     find "${dir}" -maxdepth 1 -type f ! -name '*.json' ! -name '*.jsonl' | wc -l | tr -d ' '
+  elif [ "${resource}" = "components" ]; then
+    local count=0
+    for file in "${dir}"/*.json; do
+      [ -f "${file}" ] || continue
+      if is_component_file "${file}"; then count=$((count + 1)); fi
+    done
+    printf "%s" "${count}"
   else
     find "${dir}" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' '
   fi
@@ -204,6 +224,14 @@ printf "Staging scenario '%s' ... " "${scenario}"
 
 staged=()
 
+# Staging is additive (`cp` into a shared directory), so a run killed before its
+# EXIT trap fired leaves another scenario's files behind and they get pushed as
+# if they belonged to this one. Purge first: the staging tree is scratch space
+# owned by this script, never a place to accumulate.
+for resource in components stories assets datasources; do
+  rm -rf "${staging_dir}/${resource}/${FAKE_ID}"
+done
+
 # Stage default components first (every scenario gets them unless skipped)
 if [ "${skip_components}" = false ] && [ -d "${default_components_dir}/components" ]; then
   mkdir -p "${staging_dir}/components/${FAKE_ID}"
@@ -222,6 +250,7 @@ fi
 if [ "${skip_components}" = false ] && [ -d "${staging_dir}/components/${FAKE_ID}" ]; then
   for component_file in "${staging_dir}/components/${FAKE_ID}"/*.json; do
     [ -f "${component_file}" ] || continue
+    is_component_file "${component_file}" || continue
     if ! node -e "
       const json = JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'));
       process.exit('component_group_uuid' in json ? 0 : 1);

@@ -1,25 +1,39 @@
 {
   "id": 5,
-  "uuid": "5",
+  "uuid": "e5f80614-55b5-4d6e-8f70-4e91a2132435",
   "name": "Design Tips for Better UX",
   "slug": "blog-design-tips",
   "full_slug": "blog-index/blog-design-tips",
   "parent_id": 3,
   "content": {
+    "_uid": "64ea3210-f1eb-40fa-815d-370be17b251a",
     "component": "blog",
     "title": "Design Tips for Better UX",
     "featured_image": {
       "id": 2,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/bbbbbbbbbb/blog-cover.png",
+      "alt": "Design",
+      "title": "Blog Cover",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/blog-cover.png",
-      "alt": "Design"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "Design",
+        "title": "Blog Cover",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "author": "QA Bot",
     "category": "design",
     "related_post": {
       "fieldtype": "multilink",
       "linktype": "story",
-      "id": "4",
+      "id": "d4e7f503-64a4-4c5d-9e6f-3d8091a21324",
       "url": "",
       "cached_url": "blog-index/blog-tech-intro"
     },

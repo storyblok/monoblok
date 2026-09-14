@@ -19,8 +19,27 @@ export interface SchemaFieldLike {
   required?: boolean;
   /** Normalized block-name or folder-path references for `bloks` fields. */
   allow?: readonly (string | { folder: string })[];
+  /**
+   * The `deny` counterpart, same normalized shape. Only in force when `allow` is
+   * empty: the editor lets a non-empty allow list decide on its own.
+   */
+  deny?: readonly (string | { folder: string })[];
   /** Normalized datasource slug for option/options fields. */
   datasource?: string;
+  // The wire restriction keys `allow`/`deny` replace. Legal on their own, but
+  // `schema push` derives them, so setting both is reported as a conflict.
+  /** `bloks`/`richtext`/`multilink`: allowed block (or content type) names. */
+  component_whitelist?: readonly string[];
+  /** `bloks`/`richtext`: allowed component group references. */
+  component_group_whitelist?: readonly string[];
+  /** `bloks`/`richtext`: denied block names. */
+  component_denylist?: readonly string[];
+  /** `bloks`/`richtext`: denied component group references. */
+  component_group_denylist?: readonly string[];
+  /** `bloks`/`richtext`: whether the block restriction lists are in force. */
+  restrict_components?: boolean;
+  /** `bloks`/`richtext`: which restriction dimension the editor reads. */
+  restrict_type?: string;
   /** `option`/`options`: the self-sourced selectable options. */
   options?: readonly { name?: string; value?: string }[];
   /**
@@ -31,10 +50,14 @@ export interface SchemaFieldLike {
    */
   source?: string;
   // Value constraints enforced by `validateStory` (all optional).
-  /** `text`/`textarea`/`markdown`: maximum string length. */
-  max_length?: number;
+  /**
+   * `text`/`textarea`/`markdown`/`richtext`: maximum string length. Also a
+   * string on the wire, because the schema form persists the number input's raw
+   * value.
+   */
+  max_length?: number | string;
   /** `text`/`textarea`: legacy alias for `max_length`. */
-  maxlength?: number;
+  maxlength?: number | string;
   /** `text`/`textarea`: minimum string length. */
   minlength?: number;
   /** `number`: inclusive lower bound. */

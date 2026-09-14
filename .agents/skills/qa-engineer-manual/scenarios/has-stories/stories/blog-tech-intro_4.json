@@ -1,25 +1,39 @@
 {
   "id": 4,
-  "uuid": "4",
+  "uuid": "d4e7f503-64a4-4c5d-9e6f-3d8091a21324",
   "name": "Getting Started with Tech",
   "slug": "blog-tech-intro",
   "full_slug": "blog-index/blog-tech-intro",
   "parent_id": 3,
   "content": {
+    "_uid": "59bc40b3-6eb8-467d-84c0-6b394339accf",
     "component": "blog",
     "title": "Getting Started with Tech",
     "featured_image": {
       "id": 1,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/aaaaaaaaaa/hero.png",
+      "alt": "Tech",
+      "title": "Hero",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/hero.png",
-      "alt": "Tech"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "Tech",
+        "title": "Hero",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "author": "QA Bot",
     "category": "technology",
     "related_post": {
       "fieldtype": "multilink",
       "linktype": "story",
-      "id": "5",
+      "id": "e5f80614-55b5-4d6e-8f70-4e91a2132435",
       "url": "",
       "cached_url": "blog-index/blog-design-tips"
     },

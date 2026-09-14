@@ -1,4 +1,4 @@
-import { defineBlock, defineField } from "@storyblok/schema";
+import { defineBlock, defineField, hideWhen } from "@storyblok/schema";
 
 export const featureCardBlock = defineBlock({
   name: "feature_card",
@@ -15,7 +15,10 @@ export const featureCardBlock = defineBlock({
       type: "text",
       max_length: 7,
       description: "Hex color code",
-      conditional_settings: [{ field: "is_highlighted", value: true }],
+      // Inverted on purpose: the editor only offers "hide when". An unchecked
+      // boolean counts as empty, but an untouched one is absent, which reads as
+      // no match, so this is visible on a fresh story.
+      conditional_settings: [hideWhen({ field: "is_highlighted", is: "empty" })],
     }),
   ],
 });

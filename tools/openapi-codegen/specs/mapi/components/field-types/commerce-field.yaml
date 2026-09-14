@@ -1,0 +1,18 @@
+allOf:
+  - $ref: ./base-field.yaml
+  - $ref: ./value-field.yaml
+  - type: object
+    description: |
+      Commerce field configuration, provided by a commerce integration rather than
+      by the core editor. The Management API permits the type but exempts it from
+      content type-checking, and the integration owns both the schema options and
+      the stored value, so nothing beyond the discriminant is declared and the
+      value is typed as `unknown`. Narrow it in application code if you know which
+      integration wrote it.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [commerce]
+        description: Field type discriminant

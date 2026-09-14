@@ -356,13 +356,19 @@ describe("schema init command", () => {
     expect(files.some((f) => f.endsWith("/schema.ts"))).toBe(true);
   });
 
-  it("should warn that init is a bootstrap step", async () => {
+  it("should confirm success and print next steps", async () => {
     preconditions.hasEmptyRemote();
 
     await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
 
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("bootstrap step"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Success"));
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("Schema workspace initialized"),
+    );
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Next steps:"));
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("source of truth"));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("schema push"));
+    expect(console.warn).not.toHaveBeenCalled();
   });
 
   it("should strip API-only fields but preserve user-settable fields in generated code", async () => {

@@ -11,9 +11,9 @@ const schemas = {
     gallery: { type: "multiasset" },
     body: { type: "bloks" },
     tags: { type: "options", source: "internal_stories" },
-    user_ids: { type: "options", source: "internal_users" },
-    tag_ids: { type: "options", source: "internal_tags" },
-    datasource_ids: { type: "options", source: "internal_datasources" },
+    related: { type: "option", source: "internal_stories" },
+    categories: { type: "options", source: "internal" },
+    style: { type: "option" },
     content: { type: "richtext" },
     title: { type: "text" },
   },
@@ -187,28 +187,28 @@ describe("mapRefs", () => {
     expect(asRecord(asRecord(blockBody[0]).image).id).toBe(20);
   });
 
-  it("should remap options field using map source variants", () => {
+  // Only `internal_stories` holds a cross-space reference. `internal` (a
+  // datasource) and `self` (inline options) hold values that mean the same
+  // thing in every space, so remapping them would corrupt the content.
+  it("should remap story-sourced option and options fields and leave the others alone", () => {
     const story = makeStory({
       tags: [101, 102],
-      user_ids: [1],
-      tag_ids: [11],
-      datasource_ids: [21],
+      related: 101,
+      categories: ["electronics", "books"],
+      style: "dark",
     });
     const maps = {
       stories: new Map([
         [101, 201],
         [102, 202],
       ]),
-      users: new Map([[1, 2]]),
-      tags: new Map([[11, 12]]),
-      datasources: new Map([[21, 22]]),
     };
     const { mappedStory } = mapRefs(story as never, { schemas, maps });
 
     expect(asRecord(mappedStory.content).tags).toEqual([201, 202]);
-    expect(asRecord(mappedStory.content).user_ids).toEqual([2]);
-    expect(asRecord(mappedStory.content).tag_ids).toEqual([12]);
-    expect(asRecord(mappedStory.content).datasource_ids).toEqual([22]);
+    expect(asRecord(mappedStory.content).related).toBe(201);
+    expect(asRecord(mappedStory.content).categories).toEqual(["electronics", "books"]);
+    expect(asRecord(mappedStory.content).style).toBe("dark");
   });
 
   it("should preserve null parent_id for root-level stories", () => {

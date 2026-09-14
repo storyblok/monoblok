@@ -42,6 +42,32 @@ You seed Storyblok QA spaces with predefined test scenarios. Packages might defi
 - **Trust the seed's exit status, not just its log.** The seed now verifies each staged resource
   actually landed remotely and exits non-zero with a `Verification FAILED` message when a push
   reports success but creates nothing, so check the exit status.
+- **A green seed proves the API accepted your JSON, not that the JSON is shaped like something the
+  editor would produce.** The Management API checks a component schema field's `type` against a
+  closed list and 422s on an unknown one, but everything past that is an opaque blob: the rest of
+  the schema always, and story content unless the space enables field constraints. Seeding a fixture
+  and reading it back is circular, because you authored the input, so it can never validate a shape.
+  It is still a useful fixed-point check, and whatever the API enforces it can prove: a bogus `type`
+  returns a 422 listing the permitted values, and normalization and server-set defaults show up the
+  same way.
+
+### Grounding a shape
+
+When you need to know what a field option or content value really looks like, work down this list
+and stop at the first step that answers it:
+
+1. **Existing seeds.** Check the scenario fixtures for a field or value of that type. The corpus is
+   kept aligned with real wire formats, so a shape already in there is usually your answer.
+2. **`../storyrails`.** The backend truth for what is stored, normalized, and enforced.
+   `spec/integration/openapi/` is the source of truth for schemas and error shapes.
+3. **`../storyfront`.** The editor is what writes component schemas and content values.
+4. **Ask the user to author it in the UI.** Last resort, when the source does not settle it. Ask
+   them to create the field or story by hand in a QA space and give you the id, then read it back
+   via MAPI (`curl` the component or story) and copy the result into the fixture verbatim. This is
+   the only empirical evidence that exists - everything you push yourself is circular.
+
+Never infer a shape from the schema form alone: the editor offers options it does not write, and
+spaces hold keys the editor no longer offers.
 
 ### Prerequisites
 

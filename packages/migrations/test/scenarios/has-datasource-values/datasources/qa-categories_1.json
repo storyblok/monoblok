@@ -2,9 +2,10 @@
   "id": 1,
   "name": "QA Categories",
   "slug": "qa-categories",
+  "dimensions": [],
   "entries": [
-    { "name": "Electronics", "value": "electronics" },
-    { "name": "Clothing", "value": "clothing" },
-    { "name": "Books", "value": "books" }
+    { "id": 1, "name": "Electronics", "value": "electronics", "dimension_value": "" },
+    { "id": 2, "name": "Clothing", "value": "clothing", "dimension_value": "" },
+    { "id": 3, "name": "Books", "value": "books", "dimension_value": "" }
   ]
 }

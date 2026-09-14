@@ -240,6 +240,33 @@ describe("schema push command", () => {
     expect(files.some((f) => f.endsWith(`/components/${DEFAULT_SPACE}/hero.json`))).toBe(true);
   });
 
+  it("should confirm the push after the advisory warnings", async () => {
+    const localComp = makeMockComponent({ name: "hero" });
+    const staleComp = makeMockComponent({ name: "footer" });
+    preconditions.hasLocalSchema({
+      components: [localComp] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([staleComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.canCreateComponents([localComp]);
+
+    await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
+
+    const { calls, invocationCallOrder } = vi.mocked(console.error).mock;
+    const confirmation = calls.findIndex(([message]) =>
+      String(message).includes(`Schema pushed to space ${DEFAULT_SPACE}`),
+    );
+    const warnings = vi.mocked(console.warn).mock.invocationCallOrder;
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(String(calls[confirmation]?.[0])).toContain("1 created");
+    // The confirmation is the last thing the user sees, so a run that only
+    // surfaced advisory warnings does not read as a failure.
+    expect(invocationCallOrder[confirmation]).toBeGreaterThan(Math.max(...warnings));
+  });
+
   it("should skip writing local component files when --no-write-components is used", async () => {
     const localComp = makeMockComponent({ name: "hero" });
     preconditions.hasLocalSchema({

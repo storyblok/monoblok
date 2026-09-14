@@ -17,7 +17,7 @@ import { defineField } from "./define-field";
  *
  * `FieldValue` is the contract every consumer of a schema depends on, and the map
  * behind it is hand-maintained rather than derived from the OpenAPI spec — a
- * regenerate can silently change a mapping. Asserting all 17 types here makes the
+ * regenerate can silently change a mapping. Asserting all 19 types here makes the
  * map's exhaustiveness reviewable and turns any drift into a failing typecheck.
  */
 const _f = {
@@ -32,6 +32,8 @@ const _f = {
   options: defineField("a", { type: "options" }),
   asset: defineField("a", { type: "asset" }),
   multiasset: defineField("a", { type: "multiasset" }),
+  image: defineField("a", { type: "image" }),
+  file: defineField("a", { type: "file" }),
   multilink: defineField("a", { type: "multilink" }),
   bloks: defineField("a", { type: "bloks" }),
   table: defineField("a", { type: "table" }),
@@ -49,6 +51,9 @@ describe("FieldValue resolution per field type", () => {
     expectTypeOf<FieldValue<typeof _f.option>>().toEqualTypeOf<string>();
     // Stored as a string, not a JSON number — see `FieldTypeValueMap`.
     expectTypeOf<FieldValue<typeof _f.number>>().toEqualTypeOf<string>();
+    // The legacy `image`/`file` types store the bare, protocol-relative URL.
+    expectTypeOf<FieldValue<typeof _f.image>>().toEqualTypeOf<string>();
+    expectTypeOf<FieldValue<typeof _f.file>>().toEqualTypeOf<string>();
   });
 
   it("resolves the remaining scalar and structured field types", () => {
@@ -82,6 +87,8 @@ describe("FieldValueInput resolution per field type", () => {
     expectTypeOf<FieldValueInput<typeof _f.datetime>>().toEqualTypeOf<string>();
     expectTypeOf<FieldValueInput<typeof _f.option>>().toEqualTypeOf<string>();
     expectTypeOf<FieldValueInput<typeof _f.number>>().toEqualTypeOf<string>();
+    expectTypeOf<FieldValueInput<typeof _f.image>>().toEqualTypeOf<string>();
+    expectTypeOf<FieldValueInput<typeof _f.file>>().toEqualTypeOf<string>();
     expectTypeOf<FieldValueInput<typeof _f.boolean>>().toEqualTypeOf<boolean>();
     expectTypeOf<FieldValueInput<typeof _f.options>>().toEqualTypeOf<string[]>();
     expectTypeOf<FieldValueInput<typeof _f.section>>().toEqualTypeOf<never>();

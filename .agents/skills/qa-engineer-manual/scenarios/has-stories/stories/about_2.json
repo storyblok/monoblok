@@ -1,33 +1,60 @@
 {
   "id": 2,
-  "uuid": "2",
+  "uuid": "b2c5d3e1-82e2-4a3b-9c4d-1b6e7f809102",
   "name": "About",
   "slug": "about",
   "full_slug": "about",
   "content": {
+    "_uid": "b6a1f791-3aac-4aee-8469-b8576132a6c6",
     "component": "page",
     "headline": "About Us",
     "hero_image": {
       "id": 2,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/bbbbbbbbbb/blog-cover.png",
+      "alt": "About hero",
+      "title": "Blog Cover",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/blog-cover.png",
-      "alt": "About hero"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "About hero",
+        "title": "Blog Cover",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "body": [
       {
+        "_uid": "fd2f2548-e919-49c9-884f-15e7c2488aa2",
         "component": "hero",
-        "_uid": "hero-about-1",
         "title": "Who We Are",
         "image": {
           "id": 2,
+          "name": "",
+          "filename": "https://a.storyblok.com/f/1/1200x600/bbbbbbbbbb/blog-cover.png",
+          "alt": "About image",
+          "title": "Blog Cover",
+          "source": "",
+          "copyright": "",
+          "focus": "",
           "fieldtype": "asset",
-          "filename": "https://placeholder.example.com/blog-cover.png",
-          "alt": "About image"
+          "is_external_url": false,
+          "meta_data": {
+            "alt": "About image",
+            "title": "Blog Cover",
+            "source": "",
+            "copyright": "",
+            "size": "1200x600"
+          }
         },
         "link": {
           "fieldtype": "multilink",
           "linktype": "story",
-          "id": "1",
+          "id": "a1f4e2c0-91d1-4f2a-8b3c-0a5d6e7f8091",
           "url": "",
           "cached_url": "home"
         },

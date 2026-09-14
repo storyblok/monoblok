@@ -7,6 +7,7 @@ import { chunkArray } from "./array";
 const UUID_CHUNK_SIZE = 50;
 const QUERY_CONTEXT_KEYS = new Set([
   "cv",
+  "excluding_story_fields",
   "fallback_lang",
   "from_release",
   "language",

@@ -1,10 +1,11 @@
 {
   "id": 1,
-  "uuid": "1",
+  "uuid": "c95a650f-074d-4732-845d-42565ca4227f",
   "name": "QA Product Laptop",
   "slug": "qa-product-laptop",
   "full_slug": "qa-product-laptop",
   "content": {
+    "_uid": "e91ca9f4-b33f-4846-8fcb-5ba38f7ba533",
     "component": "qa_product",
     "title": "Laptop",
     "category": "electronics",

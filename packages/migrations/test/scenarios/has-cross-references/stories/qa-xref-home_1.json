@@ -1,37 +1,101 @@
 {
   "id": 1,
-  "uuid": "1",
+  "uuid": "a3d50cc9-eedc-4359-8f5d-7ee83a5d4b7e",
   "name": "QA XRef Home",
   "slug": "qa-xref-home",
   "full_slug": "qa-xref-home",
   "content": {
+    "_uid": "5a19a2b3-3018-4c6f-8a51-98abbb4dd0e4",
     "component": "qa_xref_page",
     "title": "Home",
     "cta_link": {
-      "fieldtype": "multilink",
-      "linktype": "story",
-      "id": 2,
+      "id": "6bb71916-7273-4530-8da6-95b1919a0198",
       "url": "",
+      "linktype": "story",
+      "fieldtype": "multilink",
       "cached_url": "qa-xref-about"
     },
     "hero_image": {
-      "fieldtype": "asset",
-      "id": 0,
-      "filename": "https://via.placeholder.com/100x100",
-      "name": "qa-placeholder.png",
+      "id": null,
       "alt": "Placeholder",
+      "name": "",
+      "focus": "",
+      "title": "",
+      "source": "",
+      "filename": "https://via.placeholder.com/100x100",
+      "copyright": "",
+      "fieldtype": "asset",
+      "meta_data": { "alt": "Placeholder", "title": "" },
       "is_external_url": true
+    },
+    "content": {
+      "type": "doc",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            { "type": "text", "text": "See " },
+            {
+              "type": "text",
+              "text": "the blog",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "/qa-xref-blog",
+                    "uuid": "fd709a55-cd88-4132-8b0a-5401515541b0",
+                    "anchor": null,
+                    "target": "_self",
+                    "linktype": "story"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "blok",
+          "attrs": {
+            "id": "8ba2ba3b-1e35-4de6-8a68-9f4f9ac67d10",
+            "body": [
+              {
+                "_uid": "i-1b7a5f68-3d54-4a26-8f2e-04a2a3cc9d17",
+                "component": "qa_xref_hero",
+                "heading": "Embedded in richtext",
+                "image": {
+                  "id": null,
+                  "alt": "",
+                  "name": "",
+                  "focus": "",
+                  "title": "",
+                  "source": "",
+                  "filename": "",
+                  "copyright": "",
+                  "fieldtype": "asset",
+                  "meta_data": {}
+                }
+              }
+            ]
+          }
+        }
+      ]
     },
     "body": [
       {
+        "_uid": "0c2b6a51-9a2f-4a1c-8f19-2a1c8f19a51c",
         "component": "qa_xref_hero",
         "heading": "Welcome",
         "image": {
-          "fieldtype": "asset",
-          "id": 0,
-          "filename": "https://via.placeholder.com/100x100",
-          "name": "qa-placeholder.png",
+          "id": null,
           "alt": "Hero image",
+          "name": "",
+          "focus": "",
+          "title": "",
+          "source": "",
+          "filename": "https://via.placeholder.com/100x100",
+          "copyright": "",
+          "fieldtype": "asset",
+          "meta_data": { "alt": "Hero image", "title": "" },
           "is_external_url": true
         }
       }

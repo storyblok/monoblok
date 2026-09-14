@@ -3,7 +3,13 @@ import { useRuntimeConfig } from "#imports";
 import type { H3Event } from "h3";
 import type { AllModuleOptions } from "../../types";
 
-export const serverStoryblokClient = (event: H3Event) => {
+declare module "h3" {
+  interface H3EventContext {
+    _storyblokClient?: StoryblokClient;
+  }
+}
+
+export const serverStoryblokClient = (event: H3Event): StoryblokClient => {
   const config = useRuntimeConfig();
   const { accessToken } = config.storyblok as AllModuleOptions;
   const { apiOptions = {} } = config.public.storyblok;

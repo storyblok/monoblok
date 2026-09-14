@@ -1,0 +1,47 @@
+allOf:
+  - $ref: ./base-field.yaml
+  - $ref: ./value-field.yaml
+  - type: object
+    description: |
+      Image field configuration. Legacy predecessor of `asset`: the value is a
+      protocol-relative URL string rather than an asset object. The editor no
+      longer offers it when adding a field, but existing spaces still hold it and
+      its schema form is still reachable, so it stays a first-class field type.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [image]
+        description: Field type discriminant
+      default_value:
+        type: string
+        description: Default value for the field
+      add_https:
+        type: boolean
+        description: Whether to prepend `https:` to the asset URL
+      image_crop:
+        type: boolean
+        description: Whether to force editors to crop the image to a fixed size
+      image_width:
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Crop width in pixels, applied when `image_crop` is true. The editor
+          writes an empty string when the input is cleared, so the value is not
+          always numeric.
+      image_height:
+        oneOf:
+          - type: integer
+          - type: string
+        description: |
+          Crop height in pixels, applied when `image_crop` is true. The editor
+          writes an empty string when the input is cleared, so the value is not
+          always numeric.
+      keep_image_size:
+        type: boolean
+        description: Whether to keep the original image size when `image_crop` is true
+      asset_folder_id:
+        type: integer
+        description: Numeric ID of the allowed asset folder

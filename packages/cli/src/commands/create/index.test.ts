@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createCommand } from "./";
-import { handleError, requireAuthentication, toHumanReadable } from "../../utils";
 import { confirm, input, select } from "@inquirer/prompts";
 
+import { createCommand } from "./";
+import type { SpaceDetail, User } from "../../types";
+import { handleError, requireAuthentication, toHumanReadable } from "../../utils";
 import { createSpace } from "../spaces";
-import type { Space } from "../spaces/actions";
 import { getMapiClient } from "../../api";
 import {
   fetchBlueprintRepositories,
@@ -14,7 +14,6 @@ import {
   openSpaceInBrowser,
 } from "./actions";
 import { getUser } from "../user/actions";
-import type { StoryblokUser } from "../../types";
 import { templates } from "./constants";
 import { regionCodes } from "../../constants";
 import type { SessionState } from "../../session";
@@ -43,7 +42,7 @@ vi.mock("../../api", () => ({
 }));
 
 vi.mock("../../utils", async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, any>;
+  const actual = await importOriginal<typeof import("../../utils")>();
   return {
     ...actual,
     requireAuthentication: vi.fn(),
@@ -77,13 +76,13 @@ vi.mock("../../lib/ui", () => ({
   getUI: vi.fn(() => mockedUI),
   stderrPromptContext: { output: process.stderr },
 }));
-// Helper function to create a complete Space mock object
-const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
+const createMockSpace = (overrides: Partial<SpaceDetail> = {}): SpaceDetail => ({
   name: "Test Space",
   domain: "test-domain.com",
   uniq_domain: "test-uniq-domain",
   plan: "starter",
   plan_level: 1,
+  limits: {},
   created_at: "2024-01-01T00:00:00Z",
   id: 12345,
   role: "admin",
@@ -93,36 +92,57 @@ const createMockSpace = (overrides: Partial<Space> = {}): Space => ({
   stories_count: 0,
   parent_id: 0,
   assets_count: 0,
-  searchblok_id: 0,
+  searchblok_id: "",
   duplicatable: false,
   request_count_today: 0,
+  api_requests: 0,
   exceeded_requests: 0,
   routes: [],
   trial: false,
   default_root: "",
   has_slack_webhook: false,
-  has_pending_tasks: false,
-  ai_translation_disabled: false,
   first_token: "space-token-123",
-  collaborator: [],
+  traffic_limit: 0,
+  ai_text_generator_disabled: false,
+  ai_text_generator_feature_disabled: false,
+  monthly_ai_tokens_traffic: 0,
+  monthly_ai_tokens_traffic_limit: 0,
+  has_pending_tasks: false,
+  options: {},
+  assistance_mode: false,
+  languages: [],
+  space_roles: [],
+  collaborators: [],
+  region: "eu",
+  feature_limit_exceeded_flags: {},
   ...overrides,
 });
 
-// Helper function to create a complete StoryblokUser mock object
-const createMockUser = (overrides: Partial<StoryblokUser> = {}): StoryblokUser => ({
+const createMockUser = (overrides: Partial<User> = {}): User => ({
   id: 1,
+  userid: "test-user",
   email: "test@example.com",
   username: "testuser",
+  use_username: true,
   friendly_name: "Test User",
-  otp_required: false,
-  access_token: "valid-token",
+  login_strategy: "password",
   has_org: false,
   org: {
     name: "Test Organization",
   },
   has_partner: false,
   created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
+  notified: [],
+  favourite_spaces: [],
+  favourite_ideas: [],
+  beta_user: true,
+  track_statistics: true,
+  ui_theme: {},
+  totp_factor_verified: false,
+  configured_2fa_options: ["otp_email"],
+  disclaimer_ids: [],
+  live_chat_enabled: false,
+  confirmed: true,
   ...overrides,
 });
 
@@ -544,9 +564,12 @@ describe("createCommand", () => {
       vi.mocked(select).mockResolvedValue("react");
 
       const mockValidate = vi.fn();
-      (vi.mocked(input) as any).mockImplementation(async (options: any) => {
-        mockValidate.mockImplementation(options.validate);
-        return "./valid-project";
+      vi.mocked(input).mockImplementation((options) => {
+        if (options.validate) {
+          mockValidate.mockImplementation(options.validate);
+        }
+
+        return Object.assign(Promise.resolve("./valid-project"), { cancel: vi.fn() });
       });
 
       const mockSpace = createMockSpace({ id: 12345, first_token: "space-token-123" });
@@ -863,68 +886,71 @@ describe("createCommand", () => {
       ["svelte", "SVELTE"],
       ["nuxt", "NUXT"],
       ["nextjs", "NEXTJS"],
-    ])("should handle %s template correctly", async (template, templateKey) => {
-      // Use createMockSpace to ensure the mock matches the Space type
-      const mockSpace = createMockSpace({ id: 12345, first_token: "space-token-123" });
+    ] satisfies [string, keyof typeof templates][])(
+      "should handle %s template correctly",
+      async (template, templateKey) => {
+        // Use createMockSpace to ensure the mock matches the Space type
+        const mockSpace = createMockSpace({ id: 12345, first_token: "space-token-123" });
 
-      vi.mocked(generateProject).mockResolvedValue(undefined);
-      vi.mocked(createSpace).mockResolvedValue(mockSpace);
-      vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
-      vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
-      vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
-        {
-          name: "React",
-          value: "react",
-          template: "",
-          location: "https://localhost:5173/",
-          description: "",
-          updated_at: "",
-        },
-        {
-          name: "Vue",
-          value: "vue",
-          template: "",
-          location: "https://localhost:5173/",
-          description: "",
-          updated_at: "",
-        },
-        {
-          name: "Svelte",
-          value: "svelte",
-          template: "",
-          location: "https://localhost:5173/",
-          description: "",
-          updated_at: "",
-        },
-        {
-          name: "Nuxt",
-          value: "nuxt",
-          template: "",
-          location: "https://localhost:3000/",
-          description: "",
-          updated_at: "",
-        },
-        {
-          name: "Next.js",
-          value: "nextjs",
-          template: "",
-          location: "https://localhost:3000/",
-          description: "",
-          updated_at: "",
-        },
-      ]);
+        vi.mocked(generateProject).mockResolvedValue(undefined);
+        vi.mocked(createSpace).mockResolvedValue(mockSpace);
+        vi.mocked(handleEnvFileCreation).mockResolvedValue(true);
+        vi.mocked(openSpaceInBrowser).mockResolvedValue(undefined);
+        vi.mocked(fetchBlueprintRepositories).mockResolvedValue([
+          {
+            name: "React",
+            value: "react",
+            template: "",
+            location: "https://localhost:5173/",
+            description: "",
+            updated_at: "",
+          },
+          {
+            name: "Vue",
+            value: "vue",
+            template: "",
+            location: "https://localhost:5173/",
+            description: "",
+            updated_at: "",
+          },
+          {
+            name: "Svelte",
+            value: "svelte",
+            template: "",
+            location: "https://localhost:5173/",
+            description: "",
+            updated_at: "",
+          },
+          {
+            name: "Nuxt",
+            value: "nuxt",
+            template: "",
+            location: "https://localhost:3000/",
+            description: "",
+            updated_at: "",
+          },
+          {
+            name: "Next.js",
+            value: "nextjs",
+            template: "",
+            location: "https://localhost:3000/",
+            description: "",
+            updated_at: "",
+          },
+        ]);
 
-      await createCommand.parseAsync(["node", "test", "my-project", "--template", template]);
+        await createCommand.parseAsync(["node", "test", "my-project", "--template", template]);
 
-      expect(generateProject).toHaveBeenCalledWith(template, "my-project", expect.any(String));
-      expect(createSpace).toHaveBeenCalledWith(
-        {
-          name: "My Project",
-          domain: templates[templateKey as keyof typeof templates].location,
-        },
-        {},
-      );
-    });
+        expect(generateProject).toHaveBeenCalledWith(template, "my-project", expect.any(String));
+        expect(createSpace).toHaveBeenCalledWith(
+          {
+            name: "My Project",
+            domain: templates[templateKey].location,
+          },
+          {},
+        );
+      },
+    );
   });
 
   describe("path handling", () => {

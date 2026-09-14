@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import mockedDatasources from "./datasource.mock.json" assert { type: "json" };
+import mockedDatasources from "./datasource.mock.json" with { type: "json" };
 import { getMapiClient } from "../../../api";
 import { fetchDatasource, fetchDatasources, saveDatasourcesToFiles } from "./actions";
 import { vol } from "memfs";
@@ -40,7 +40,7 @@ const handlers = [
 
       return HttpResponse.json(
         {
-          datasources: items.map(({ entries, ...rest }) => rest),
+          datasources: items.map(({ entries: _entries, ...rest }) => rest),
         },
         { headers },
       );

@@ -6,14 +6,50 @@
   "is_root": true,
   "is_nestable": false,
   "schema": {
-    "title": { "type": "text", "pos": 0 },
-    "body": { "type": "bloks", "pos": 1 },
-    "hero_image": { "type": "asset", "pos": 2, "filetypes": ["images"] },
-    "gallery": { "type": "multiasset", "pos": 3, "filetypes": ["images"] },
-    "cta_link": { "type": "multilink", "pos": 4 },
-    "content": { "type": "richtext", "pos": 5 },
-    "category": { "type": "option", "pos": 6, "source": "internal_datasources" },
-    "related_stories": { "type": "options", "pos": 7, "source": "internal_stories" }
+    "title": {
+      "type": "text",
+      "pos": 0
+    },
+    "body": {
+      "type": "bloks",
+      "pos": 1,
+      "restrict_components": true,
+      "restrict_type": "",
+      "component_whitelist": ["qa_hero", "qa_cta"],
+      "component_denylist": []
+    },
+    "hero_image": {
+      "type": "asset",
+      "pos": 2,
+      "filetypes": ["images"]
+    },
+    "gallery": {
+      "type": "multiasset",
+      "pos": 3,
+      "filetypes": ["images"]
+    },
+    "cta_link": {
+      "type": "multilink",
+      "pos": 4
+    },
+    "content": {
+      "type": "richtext",
+      "pos": 5
+    },
+    "category": {
+      "type": "option",
+      "pos": 6,
+      "source": "internal",
+      "datasource_slug": "qa-categories"
+    },
+    "related_stories": {
+      "type": "options",
+      "pos": 7,
+      "source": "internal_stories",
+      "use_uuid": true,
+      "filter_content_type": ["qa_page"],
+      "entry_appearance": "link"
+    }
   },
   "created_at": "2024-01-01T00:00:00.000Z",
   "updated_at": "2024-01-01T00:00:00.000Z"

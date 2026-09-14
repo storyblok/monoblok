@@ -1,10 +1,11 @@
 {
   "id": 1,
-  "uuid": "1",
+  "uuid": "e9e1ce97-01b3-4637-82bb-7280c32cf87a",
   "name": "QA Rich Content A",
   "slug": "qa-rich-content-a",
   "full_slug": "qa-rich-content-a",
   "content": {
+    "_uid": "a3d5e5a1-fd94-4dc6-8b6d-3b02b6dd7e6c",
     "component": "qa_rich_page",
     "title": "QA Story With Rich Content",
     "body_richtext": {
@@ -28,30 +29,107 @@
                   "type": "link",
                   "attrs": {
                     "href": "https://example.com",
+                    "uuid": null,
+                    "anchor": null,
+                    "target": "_blank",
                     "linktype": "url"
                   }
                 }
               ]
             }
           ]
+        },
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "Read part B",
+              "marks": [
+                {
+                  "type": "link",
+                  "attrs": {
+                    "href": "/qa-rich-content-b",
+                    "uuid": "b17bbbc0-1cc1-4fa8-8c43-7a23bd103781",
+                    "anchor": null,
+                    "target": "_self",
+                    "linktype": "story"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "blok",
+          "attrs": {
+            "id": "0a0a9d4c-2fc4-4b8f-9f1b-6f5cf7b7d0a2",
+            "body": [
+              {
+                "_uid": "i-72a3e2d1-6a97-4f5b-8ad0-9c2b1e3f4a5b",
+                "component": "qa_rich_teaser",
+                "heading": "Embedded teaser",
+                "target": {
+                  "id": "b17bbbc0-1cc1-4fa8-8c43-7a23bd103781",
+                  "url": "",
+                  "linktype": "story",
+                  "fieldtype": "multilink",
+                  "cached_url": "qa-rich-content-b"
+                }
+              }
+            ]
+          }
         }
       ]
     },
     "hero_image": {
-      "fieldtype": "asset",
-      "id": 0,
-      "filename": "https://via.placeholder.com/800x400",
-      "name": "placeholder.png",
+      "id": null,
       "alt": "Hero placeholder",
+      "name": "",
+      "focus": "",
+      "title": "",
+      "source": "",
+      "filename": "https://via.placeholder.com/800x400",
+      "copyright": "",
+      "fieldtype": "asset",
+      "meta_data": { "alt": "Hero placeholder", "title": "" },
       "is_external_url": true
     },
+    "gallery": [
+      {
+        "id": null,
+        "alt": "Gallery one",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://via.placeholder.com/400x400",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": { "alt": "Gallery one", "title": "" },
+        "is_external_url": true
+      },
+      {
+        "id": null,
+        "alt": "Gallery two",
+        "name": "",
+        "focus": "",
+        "title": "",
+        "source": "",
+        "filename": "https://via.placeholder.com/400x401",
+        "copyright": "",
+        "fieldtype": "asset",
+        "meta_data": { "alt": "Gallery two", "title": "" },
+        "is_external_url": true
+      }
+    ],
     "cta_link": {
-      "fieldtype": "multilink",
       "id": "",
       "url": "https://example.com/pricing",
-      "cached_url": "https://example.com/pricing",
+      "target": "_blank",
       "linktype": "url",
-      "target": "_blank"
+      "fieldtype": "multilink",
+      "cached_url": "https://example.com/pricing"
     }
   }
 }

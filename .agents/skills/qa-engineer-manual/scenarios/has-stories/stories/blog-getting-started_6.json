@@ -1,25 +1,39 @@
 {
   "id": 6,
-  "uuid": "6",
+  "uuid": "f6091725-46c6-4e7f-9081-5fa213243546",
   "name": "Blog Getting Started",
   "slug": "blog-getting-started",
   "full_slug": "blog-index/blog-getting-started",
   "parent_id": 3,
   "content": {
+    "_uid": "72928fd8-9b68-4bd4-853d-90ed34768f2f",
     "component": "blog",
     "title": "Blog Getting Started",
     "featured_image": {
       "id": 1,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/aaaaaaaaaa/hero.png",
+      "alt": "Start",
+      "title": "Hero",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/hero.png",
-      "alt": "Start"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "Start",
+        "title": "Hero",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "author": "QA Bot",
     "category": "technology",
     "related_post": {
       "fieldtype": "multilink",
       "linktype": "story",
-      "id": "4",
+      "id": "d4e7f503-64a4-4c5d-9e6f-3d8091a21324",
       "url": "",
       "cached_url": "blog-index/blog-tech-intro"
     },

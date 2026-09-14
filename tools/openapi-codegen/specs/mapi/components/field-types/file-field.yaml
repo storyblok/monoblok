@@ -1,0 +1,25 @@
+allOf:
+  - $ref: ./base-field.yaml
+  - $ref: ./value-field.yaml
+  - type: object
+    description: |
+      File field configuration. Legacy predecessor of `asset` for non-image
+      files: the value is a protocol-relative URL string rather than an asset
+      object. The editor no longer offers it when adding a field, but existing
+      spaces still hold it, so it stays a first-class field type.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [file]
+        description: Field type discriminant
+      default_value:
+        type: string
+        description: Default value for the field
+      add_https:
+        type: boolean
+        description: Whether to prepend `https:` to the asset URL
+      asset_folder_id:
+        type: integer
+        description: Numeric ID of the allowed asset folder

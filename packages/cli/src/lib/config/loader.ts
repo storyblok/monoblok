@@ -1,5 +1,9 @@
 import { loadConfig as c12LoadConfig, SUPPORTED_EXTENSIONS } from "c12";
 
+import { defineConfig } from "./types";
+
+const CONFIG_ENTRYPOINT_SPECIFIER = "storyblok/config";
+
 export { SUPPORTED_EXTENSIONS };
 
 /**
@@ -27,6 +31,13 @@ export async function loadConfig(options: {
       // jiti's own JITI_TSCONFIG_PATHS default is overridden by this explicit
       // option, so honour it here to leave users a way out.
       tsconfigPaths: process.env.JITI_TSCONFIG_PATHS !== "false",
+      // A CLI run through `npx`, `dlx`, or a global install is not resolvable
+      // from the user's project, so the documented
+      // `import { defineConfig } from "storyblok/config"` has nothing to
+      // resolve to. Serve the helper from the running CLI instead of failing.
+      virtualModules: {
+        [CONFIG_ENTRYPOINT_SPECIFIER]: { defineConfig },
+      },
     },
   });
 }

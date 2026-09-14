@@ -129,4 +129,18 @@ describe("loadConfig", () => {
 
     expect(config).toMatchObject({ space: "56789" });
   });
+
+  it("should load a config file that imports defineConfig from the CLI's own package", async () => {
+    const cwd = await createProject({
+      "storyblok.config.ts": `
+import { defineConfig } from 'storyblok/config';
+
+export default defineConfig({ space: '78901' });
+`,
+    });
+
+    const { config } = await loadProjectConfig(cwd);
+
+    expect(config).toMatchObject({ space: "78901" });
+  });
 });

@@ -52,12 +52,14 @@ vi.mock("vue", () => ({
 }));
 
 import { useAsyncStoryblok } from "./useAsyncStoryblok";
+import { useAsyncData } from "#app";
 
 describe("useAsyncStoryblok", () => {
   beforeEach(() => {
     mockRuntimeConfig.public.storyblok = { accessToken: "test-token" };
     apiGet.mockClear();
     useStoryblokBridge.mockClear();
+    vi.mocked(useAsyncData).mockClear();
   });
 
   it("throws when the access token is not available client-side (regression)", async () => {
@@ -96,6 +98,13 @@ describe("useAsyncStoryblok", () => {
       resolveRelations: "author",
       resolveLinks: "url",
     });
+  });
+
+  it("separates the url and stringified api params in the cache key (regression)", async () => {
+    await useAsyncStoryblok("home", { api: { version: "draft" } });
+    const key = (vi.mocked(useAsyncData).mock.calls[0]![0] as () => string)();
+
+    expect(key.startsWith("home::")).toBe(true);
   });
 
   it("lets an explicit bridge option override the api-derived defaults", async () => {

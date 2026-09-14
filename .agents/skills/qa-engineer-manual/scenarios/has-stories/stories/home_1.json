@@ -1,46 +1,73 @@
 {
   "id": 1,
-  "uuid": "1",
+  "uuid": "a1f4e2c0-91d1-4f2a-8b3c-0a5d6e7f8091",
   "name": "Home",
   "slug": "home",
   "full_slug": "home",
   "content": {
+    "_uid": "9679d637-59e7-4f5b-85a6-57838f27b586",
     "component": "page",
     "headline": "Welcome Home",
     "hero_image": {
       "id": 1,
+      "name": "",
+      "filename": "https://a.storyblok.com/f/1/1200x600/aaaaaaaaaa/hero.png",
+      "alt": "Hero image",
+      "title": "Hero",
+      "source": "",
+      "copyright": "",
+      "focus": "",
       "fieldtype": "asset",
-      "filename": "https://placeholder.example.com/hero.png",
-      "alt": "Hero image"
+      "is_external_url": false,
+      "meta_data": {
+        "alt": "Hero image",
+        "title": "Hero",
+        "source": "",
+        "copyright": "",
+        "size": "1200x600"
+      }
     },
     "body": [
       {
+        "_uid": "40754cda-5a78-4299-8cea-cd49bb299137",
         "component": "hero",
-        "_uid": "hero-home-1",
         "title": "Main Hero",
         "image": {
           "id": 1,
+          "name": "",
+          "filename": "https://a.storyblok.com/f/1/1200x600/aaaaaaaaaa/hero.png",
+          "alt": "Hero",
+          "title": "Hero",
+          "source": "",
+          "copyright": "",
+          "focus": "",
           "fieldtype": "asset",
-          "filename": "https://placeholder.example.com/hero.png",
-          "alt": "Hero"
+          "is_external_url": false,
+          "meta_data": {
+            "alt": "Hero",
+            "title": "Hero",
+            "source": "",
+            "copyright": "",
+            "size": "1200x600"
+          }
         },
         "link": {
           "fieldtype": "multilink",
           "linktype": "story",
-          "id": "2",
+          "id": "b2c5d3e1-82e2-4a3b-9c4d-1b6e7f809102",
           "url": "",
           "cached_url": "about"
         },
         "subtitle": "Discover our story"
       },
       {
+        "_uid": "047df478-5fe7-4534-83de-169f0a00318e",
         "component": "cta",
-        "_uid": "cta-home-1",
         "label": "Read our blog",
         "link": {
           "fieldtype": "multilink",
           "linktype": "story",
-          "id": "3",
+          "id": "c3d6e4f2-73f3-4b4c-8d5e-2c7f8091a213",
           "url": "",
           "cached_url": "blog-index"
         }

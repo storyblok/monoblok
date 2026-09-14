@@ -21,6 +21,11 @@ properties:
     description: Position of the field within the block
   conditional_settings:
     type: array
-    description: Conditions set on the field for conditional visibility
+    description: |
+      Conditions set on the field for conditional visibility. The editor writes
+      one setting and reads only the first, so an extra entry is invisible to it.
+      It is not inert server-side: the conditional-required check requires every
+      setting to match, so a second entry can only make a field harder to leave
+      empty. Write one setting unless you mean that.
     items:
-      type: object
+      $ref: ./conditional-setting.yaml

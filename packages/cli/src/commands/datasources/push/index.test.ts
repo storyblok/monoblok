@@ -74,11 +74,11 @@ describe("push datasources", () => {
     loggerInfoMock.mockReset();
     vol.reset();
     // Reset the option values
-    (datasourcesCommand as any)._optionValues = {};
-    (datasourcesCommand as any)._optionValueSources = {};
+    Reflect.set(datasourcesCommand, "_optionValues", {});
+    Reflect.set(datasourcesCommand, "_optionValueSources", {});
     for (const command of datasourcesCommand.commands) {
-      (command as any)._optionValueSources = {};
-      (command as any)._optionValues = {};
+      Reflect.set(command, "_optionValueSources", {});
+      Reflect.set(command, "_optionValues", {});
     }
   });
 
@@ -196,6 +196,7 @@ describe("push datasources", () => {
         slug: "test",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
       vi.mocked(fetchDatasources).mockResolvedValue([]);
       vol.fromJSON({
@@ -301,7 +302,7 @@ describe("push datasources", () => {
       created_at: "2021-01-01T00:00:00Z",
       updated_at: "2021-01-01T00:00:00Z",
       dimensions: [],
-      entries: [{ id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 }],
+      entries: [{ id: 10, name: "blue", value: "#0000ff" }],
     };
 
     it("should delete target entries that are not in the local source", async () => {
@@ -311,6 +312,7 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
       vol.fromJSON({
         ".storyblok/datasources/12345/datasources.json": JSON.stringify([localDatasource]),
@@ -321,8 +323,8 @@ describe("push datasources", () => {
         {
           ...localDatasource,
           entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-            { id: 11, name: "red", value: "#ff0000", dimension_value: "", datasource_id: 1 },
+            { id: 10, name: "blue", value: "#0000ff" },
+            { id: 11, name: "red", value: "#ff0000" },
           ],
         },
       ]);
@@ -348,6 +350,7 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
       vol.fromJSON({
         ".storyblok/datasources/12345/datasources.json": JSON.stringify([localDatasource]),
@@ -356,9 +359,7 @@ describe("push datasources", () => {
       vi.mocked(fetchDatasources).mockResolvedValue([
         {
           ...localDatasource,
-          entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-          ],
+          entries: [{ id: 10, name: "blue", value: "#0000ff" }],
         },
       ]);
 
@@ -374,12 +375,13 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
       const multiEntryDatasource: SpaceDatasource = {
         ...localDatasource,
         entries: [
-          { id: 10, name: "blue", value: "#0000ee", dimension_value: "", datasource_id: 1 },
-          { id: 11, name: "red", value: "#ee0000", dimension_value: "", datasource_id: 1 },
+          { id: 10, name: "blue", value: "#0000ee" },
+          { id: 11, name: "red", value: "#ee0000" },
         ],
       };
 
@@ -392,8 +394,8 @@ describe("push datasources", () => {
         {
           ...localDatasource,
           entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-            { id: 11, name: "red", value: "#ff0000", dimension_value: "", datasource_id: 1 },
+            { id: 10, name: "blue", value: "#0000ff" },
+            { id: 11, name: "red", value: "#ff0000" },
           ],
         },
       ]);
@@ -423,6 +425,7 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
 
       vol.fromJSON({
@@ -433,9 +436,7 @@ describe("push datasources", () => {
       vi.mocked(fetchDatasources).mockResolvedValue([
         {
           ...localDatasource,
-          entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-          ],
+          entries: [{ id: 10, name: "blue", value: "#0000ff" }],
         },
       ]);
 
@@ -455,13 +456,14 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
       // Local has entries in reversed order compared to target
       const reorderedDatasource: SpaceDatasource = {
         ...localDatasource,
         entries: [
-          { id: 11, name: "red", value: "#ff0000", dimension_value: "", datasource_id: 1 },
-          { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
+          { id: 11, name: "red", value: "#ff0000" },
+          { id: 10, name: "blue", value: "#0000ff" },
         ],
       };
 
@@ -474,8 +476,8 @@ describe("push datasources", () => {
         {
           ...localDatasource,
           entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-            { id: 11, name: "red", value: "#ff0000", dimension_value: "", datasource_id: 1 },
+            { id: 10, name: "blue", value: "#0000ff" },
+            { id: 11, name: "red", value: "#ff0000" },
           ],
         },
       ]);
@@ -501,12 +503,11 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
       const renamedDatasource: SpaceDatasource = {
         ...localDatasource,
-        entries: [
-          { id: 10, name: "navy", value: "#000080", dimension_value: "", datasource_id: 1 },
-        ],
+        entries: [{ id: 10, name: "navy", value: "#000080" }],
       };
 
       vol.fromJSON({
@@ -517,9 +518,7 @@ describe("push datasources", () => {
       vi.mocked(fetchDatasources).mockResolvedValue([
         {
           ...localDatasource,
-          entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-          ],
+          entries: [{ id: 10, name: "blue", value: "#0000ff" }],
         },
       ]);
 
@@ -552,6 +551,7 @@ describe("push datasources", () => {
         slug: "colors",
         created_at: "",
         updated_at: "",
+        dimensions: [],
       });
 
       const emptyDatasource: SpaceDatasource = {
@@ -567,8 +567,8 @@ describe("push datasources", () => {
         {
           ...localDatasource,
           entries: [
-            { id: 10, name: "blue", value: "#0000ff", dimension_value: "", datasource_id: 1 },
-            { id: 11, name: "red", value: "#ff0000", dimension_value: "", datasource_id: 1 },
+            { id: 10, name: "blue", value: "#0000ff" },
+            { id: 11, name: "red", value: "#ff0000" },
           ],
         },
       ]);
@@ -589,8 +589,8 @@ describe("push datasources", () => {
       created_at: "",
       updated_at: "",
       dimensions: [
-        { id: 1, name: "English", entry_value: "en", datasource_id: 1 },
-        { id: 2, name: "German", entry_value: "de", datasource_id: 1 },
+        { id: 1, name: "English", entry_value: "en" },
+        { id: 2, name: "German", entry_value: "de" },
       ],
       entries: [
         {
@@ -598,14 +598,13 @@ describe("push datasources", () => {
           name: "hello",
           value: "hello",
           dimension_values: { en: "hi", de: "hallo" },
-          datasource_id: 1,
         },
       ],
     };
     // Target space uses different dimension ids for the same codes.
     const targetDimensions = [
-      { id: 101, name: "English", entry_value: "en", datasource_id: 1 },
-      { id: 102, name: "German", entry_value: "de", datasource_id: 1 },
+      { id: 101, name: "English", entry_value: "en" },
+      { id: 102, name: "German", entry_value: "de" },
     ];
 
     it("should write per-dimension values resolved to target dimension ids", async () => {
@@ -625,7 +624,7 @@ describe("push datasources", () => {
         {
           ...localDatasource,
           dimensions: targetDimensions,
-          entries: [{ id: 10, name: "hello", value: "hello", datasource_id: 1 }],
+          entries: [{ id: 10, name: "hello", value: "hello" }],
         },
       ]);
 
@@ -681,7 +680,6 @@ describe("push datasources", () => {
             name: "hello",
             value: "hello-updated",
             dimension_values: { en: "hi", de: "hallo" },
-            datasource_id: 1,
           },
         ],
       };
@@ -718,7 +716,6 @@ describe("push datasources", () => {
             name: "hello",
             value: "hello",
             dimension_values: { en: "hi" },
-            datasource_id: 1,
           },
         ],
       };
@@ -754,7 +751,7 @@ describe("push datasources", () => {
       // e.g. pulled before this feature or from a dimensionless space.
       const withoutDimensionValues: SpaceDatasource = {
         ...localDatasource,
-        entries: [{ id: 10, name: "hello", value: "hello", datasource_id: 1 }],
+        entries: [{ id: 10, name: "hello", value: "hello" }],
       };
       vi.mocked(upsertDatasource).mockResolvedValue({
         id: 1,
@@ -780,7 +777,7 @@ describe("push datasources", () => {
 
     it("should warn and skip a dimension with no matching dimension in the target space", async () => {
       // Target only defines the "en" dimension.
-      const enOnly = [{ id: 101, name: "English", entry_value: "en", datasource_id: 1 }];
+      const enOnly = [{ id: 101, name: "English", entry_value: "en" }];
       vi.mocked(upsertDatasource).mockResolvedValue({
         id: 1,
         name: "greetings",
@@ -796,7 +793,7 @@ describe("push datasources", () => {
         {
           ...localDatasource,
           dimensions: enOnly,
-          entries: [{ id: 10, name: "hello", value: "hello", datasource_id: 1 }],
+          entries: [{ id: 10, name: "hello", value: "hello" }],
         },
       ]);
 

@@ -1,10 +1,11 @@
 {
   "id": 2,
-  "uuid": "2",
+  "uuid": "b17bbbc0-1cc1-4fa8-8c43-7a23bd103781",
   "name": "QA Rich Content B",
   "slug": "qa-rich-content-b",
   "full_slug": "qa-rich-content-b",
   "content": {
+    "_uid": "1cd89d5b-8adb-4387-8858-6a1e7ff13be7",
     "component": "qa_rich_page",
     "title": "QA Simple Story",
     "body_richtext": {
@@ -12,7 +13,12 @@
       "content": [
         {
           "type": "paragraph",
-          "content": [{ "type": "text", "text": "A simple paragraph." }]
+          "content": [
+            {
+              "type": "text",
+              "text": "A simple paragraph."
+            }
+          ]
         }
       ]
     }

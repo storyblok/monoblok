@@ -17,8 +17,7 @@ import {
   toDatasourceCreate,
   toDatasourceUpdate,
 } from "../transform";
-import { buildGroupPathByUuid } from "../folders";
-import { isRecord } from "../utils";
+import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
 
 /** A resolved component group reference: its numeric id and server uuid. */
 interface GroupRef {
@@ -29,12 +28,11 @@ interface GroupRef {
 /**
  * Resolves a local block's transient path-space group keys to server uuids and
  * strips the `folder` key. A `folder` string path becomes `component_group_uuid`
- * (the resolved group's uuid); `folder: null` clears it. Each field's
- * `component_group_whitelist` slug paths are mapped to uuids (unknown paths —
- * e.g. already-uuid entries — are left as-is). Blocks without a `folder` key are
- * untouched. An unresolvable `folder` path throws a {@link CommandError}: this
- * is a defensive invariant, since folder creation precedes this step and aborts
- * the push on failure.
+ * (the resolved group's uuid); `folder: null` clears it. Each field's group list
+ * slug paths are mapped to uuids (unknown paths — e.g. already-uuid entries — are
+ * left as-is). Blocks without a `folder` key are untouched. An unresolvable
+ * `folder` path throws a {@link CommandError}: this is a defensive invariant,
+ * since folder creation precedes this step and aborts the push on failure.
  */
 function resolveGroupRefs(comp: Component, groupByPath: Map<string, GroupRef>): Component {
   const { folder, ...rest } = comp as Record<string, unknown>;
@@ -53,22 +51,10 @@ function resolveGroupRefs(comp: Component, groupByPath: Map<string, GroupRef>): 
     resolved.component_group_uuid = null;
   }
 
-  if (isRecord(resolved.schema)) {
-    const schema: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(resolved.schema)) {
-      if (isRecord(field) && Array.isArray(field.component_group_whitelist)) {
-        schema[key] = {
-          ...field,
-          component_group_whitelist: field.component_group_whitelist.map((path) =>
-            typeof path === "string" ? (groupByPath.get(path)?.uuid ?? path) : path,
-          ),
-        };
-      } else {
-        schema[key] = field;
-      }
-    }
-    resolved.schema = schema;
-  }
+  resolved.schema = mapSchemaGroupLists(
+    resolved.schema,
+    (path) => groupByPath.get(path)?.uuid ?? path,
+  );
 
   return resolved as unknown as Component;
 }

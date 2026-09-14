@@ -15,6 +15,9 @@ export type { Story } from "./generated/types/story";
 export { defineBlock } from "./helpers/define-block";
 
 export type { Block, BlockFields, NestableBlock, RootBlock } from "./helpers/define-block";
+// Conditional settings
+export { hideWhen, requiredWhen } from "./helpers/define-condition";
+export type { ConditionOptions, FieldCondition } from "./helpers/define-condition";
 // Datasource
 export { defineDatasource } from "./helpers/define-datasource";
 export type { Datasource } from "./helpers/define-datasource";
@@ -25,6 +28,7 @@ export type {
   BlockContent,
   BlockContentInput,
   BlocksFieldValue,
+  CheckedField,
   DefinedField,
   Field,
   FieldInput,
@@ -51,6 +55,13 @@ export type { BlockFolder } from "./helpers/define-folder";
 export { defineSchema } from "./helpers/define-schema";
 export type { Schema } from "./helpers/schema-type";
 
+// Restrictions
+export {
+  DENIABLE_FIELD_TYPES,
+  DERIVED_RESTRICTION_KEYS,
+  EDITOR_RESTRICT_TYPES,
+} from "./restrictions";
+export type { DerivedRestrictionKey } from "./restrictions";
 // Validators (Zod-powered, non-throwing)
 export { createStoryValidator } from "./validators/create-story-validator";
 // Loose structural input shapes accepted by the validators — exported so

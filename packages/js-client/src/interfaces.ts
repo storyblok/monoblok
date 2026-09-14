@@ -2,6 +2,31 @@ import type { ResponseFn } from "./sbFetch";
 import type Method from "./constants";
 import type { StoryblokContentVersionKeys } from "./constants";
 
+/**
+ * Top-level story fields that can be excluded from CDN API responses via
+ * the `excluding_story_fields` parameter. Fields not in this list are
+ * silently ignored by the API.
+ */
+export type ExcludableStoryField =
+  | "alternates"
+  | "created_at"
+  | "default_full_slug"
+  | "first_published_at"
+  | "group_id"
+  | "is_startpage"
+  | "lang"
+  | "meta_data"
+  | "parent_id"
+  | "path"
+  | "position"
+  | "published_at"
+  | "release_id"
+  | "sort_by_date"
+  | "tag_list"
+  | "taxonomy_terms"
+  | "translated_slugs"
+  | "updated_at";
+
 export interface ISbStoriesParams
   extends Partial<ISbStoryData>, ISbMultipleStoriesData, ISbAssetsParams {
   resolve_level?: number;
@@ -17,6 +42,7 @@ export interface ISbStoriesParams
   excluding_fields?: string;
   excluding_ids?: string;
   excluding_slugs?: string;
+  excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
   fallback_lang?: string;
   filename?: string;
   filter_query?: any;
@@ -56,6 +82,7 @@ export interface ISbStoryParams {
   from_release?: string;
   language?: string;
   fallback_lang?: string;
+  excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
 }
 
 interface Dimension {

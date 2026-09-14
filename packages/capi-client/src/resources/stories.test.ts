@@ -235,6 +235,67 @@ describe("stories.get()", () => {
 
     expect(new URL(capturedUrl!).searchParams.has("find_by")).toBe(false);
   });
+
+  it("should join excluding_story_fields array into a comma-separated query param", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          story: makeStory("home", { component: "page", _uid: "uid-1" }),
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.stories.get("home", {
+      query: { excluding_story_fields: ["translated_slugs", "alternates"] },
+    });
+
+    expect(new URL(capturedUrl!).searchParams.get("excluding_story_fields")).toBe(
+      "translated_slugs,alternates",
+    );
+  });
+
+  it("should forward excluding_story_fields string unchanged", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          story: makeStory("home", { component: "page", _uid: "uid-1" }),
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.stories.get("home", {
+      query: { excluding_story_fields: "translated_slugs" },
+    });
+
+    expect(new URL(capturedUrl!).searchParams.get("excluding_story_fields")).toBe(
+      "translated_slugs",
+    );
+  });
+
+  it("should omit excluding_story_fields when passed an empty array", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({
+          story: makeStory("home", { component: "page", _uid: "uid-1" }),
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.stories.get("home", {
+      query: { excluding_story_fields: [] as any },
+    });
+
+    expect(new URL(capturedUrl!).searchParams.has("excluding_story_fields")).toBe(false);
+  });
 });
 
 describe("stories.list()", () => {
@@ -252,6 +313,61 @@ describe("stories.list()", () => {
 
     expect(result.error).toBeUndefined();
     expect(Array.isArray(result.data?.stories)).toBe(true);
+  });
+
+  it("should join excluding_story_fields array into a comma-separated query param", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.stories.list({
+      query: { excluding_story_fields: ["translated_slugs", "alternates", "created_at"] },
+    });
+
+    expect(new URL(capturedUrl!).searchParams.get("excluding_story_fields")).toBe(
+      "translated_slugs,alternates,created_at",
+    );
+  });
+
+  it("should forward excluding_story_fields string unchanged", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.stories.list({
+      query: { excluding_story_fields: "translated_slugs" },
+    });
+
+    expect(new URL(capturedUrl!).searchParams.get("excluding_story_fields")).toBe(
+      "translated_slugs",
+    );
+  });
+
+  it("should omit excluding_story_fields when passed an empty array", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ stories: [] });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await client.stories.list({
+      query: { excluding_story_fields: [] as any },
+    });
+
+    expect(new URL(capturedUrl!).searchParams.has("excluding_story_fields")).toBe(false);
   });
 });
 

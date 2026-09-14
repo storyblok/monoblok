@@ -1,0 +1,17 @@
+allOf:
+  - $ref: ./base-field.yaml
+  - type: object
+    description: |
+      Group (layout) field configuration. Like `section` and `tab` it holds no
+      content value: the editor skips it when seeding defaults, and the Management
+      API skips it when type-checking content. The editor's current field-group
+      feature nests fields under a `section` instead, so `group` only appears in
+      spaces that predate that. No key beyond the discriminant is grounded in
+      either runtime, which is why none is declared here.
+    required:
+      - type
+    properties:
+      type:
+        type: string
+        enum: [group]
+        description: Field type discriminant

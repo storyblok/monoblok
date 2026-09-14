@@ -135,7 +135,7 @@ export async function useAsyncStoryblok<T = any>(
 ): Promise<UseAsyncStoryblokResult<T>> {
   const storyblokApiInstance = useStoryblokApi();
   const { api, bridge, ...rest } = options;
-  const uniqueKey = (): string => `${stableStringify(toValue(api))}${url}`;
+  const uniqueKey = (): string => `${url}::${stableStringify(toValue(api))}`;
   const bridgeEnabled = bridge !== false;
   const { storyblok } = useRuntimeConfig().public;
   if (!storyblok?.accessToken) {

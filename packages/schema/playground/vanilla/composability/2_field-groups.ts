@@ -1,4 +1,4 @@
-import { defineField } from "@storyblok/schema";
+import { defineField, hideWhen } from "@storyblok/schema";
 
 export function seoFields() {
   return [
@@ -21,7 +21,10 @@ export function styleFields() {
     defineField("overlay_color", {
       type: "text",
       max_length: 7,
-      conditional_settings: [{ field: "use_overlay", value: true }],
+      // Inverted on purpose: the editor only offers "hide when". An unchecked
+      // boolean counts as empty, but an untouched one is absent, which reads as
+      // no match, so this is visible on a fresh story.
+      conditional_settings: [hideWhen({ field: "use_overlay", is: "empty" })],
     }),
   ];
 }

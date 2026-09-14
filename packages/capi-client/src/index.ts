@@ -52,7 +52,7 @@ export type { Space, StoryLocalizedPath, StoryTranslatedSlug } from "./generated
 export type { Block as Component } from "./generated/types/block";
 export type { Story } from "./generated/types/story";
 // Resource types
-export type { StoryWithInlinedRelations } from "./resources/stories";
+export type { ExcludableStoryField, StoryWithInlinedRelations } from "./resources/stories";
 // Cache types
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
 

@@ -730,6 +730,54 @@ describe("executePush - folders", () => {
     expect(schema.blocks.component_group_whitelist).toEqual(["uuid-layout"]);
   });
 
+  it("resolves component_group_denylist slug paths to remote group uuids", async () => {
+    let capturedComponent: Record<string, unknown> | undefined;
+    server.use(
+      http.post(CREATE_COMPONENTS_URL, async ({ request }) => {
+        const body = (await request.json()) as { component: Record<string, unknown> };
+        capturedComponent = body.component;
+        return HttpResponse.json({ component: { id: 302, name: "grid" } }, { status: 201 });
+      }),
+    );
+
+    const local: SchemaData = {
+      components: [
+        {
+          name: "grid",
+          schema: {
+            blocks: {
+              type: "bloks",
+              component_group_whitelist: ["layout"],
+              component_group_denylist: ["legacy"],
+            },
+          },
+        } as unknown as Component,
+      ],
+      folders: [],
+      datasources: [],
+    };
+    const remote: RemoteSchemaData = {
+      components: new Map(),
+      componentFolders: new Map([
+        ["Layout", { id: 10, uuid: "uuid-layout", name: "Layout" } as unknown as ComponentFolder],
+        ["Legacy", { id: 11, uuid: "uuid-legacy", name: "Legacy" } as unknown as ComponentFolder],
+      ]),
+      datasources: new Map(),
+    };
+    const diffResult = makeDiffResult([
+      { type: "component", name: "grid", action: "create", diff: null, local: null, remote: null },
+    ]);
+
+    await executePush("12345", local, remote, diffResult, { delete: false });
+
+    const schema = capturedComponent!.schema as Record<
+      string,
+      { component_group_whitelist: string[]; component_group_denylist: string[] }
+    >;
+    expect(schema.blocks.component_group_whitelist).toEqual(["uuid-layout"]);
+    expect(schema.blocks.component_group_denylist).toEqual(["uuid-legacy"]);
+  });
+
   it("leaves an already-uuid component_group_whitelist untouched (schema init round-trip)", async () => {
     let capturedComponent: Record<string, unknown> | undefined;
     server.use(

@@ -1,0 +1,157 @@
+{
+  "id": 205,
+  "name": "kitchen_sink",
+  "display_name": "Kitchen Sink",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "layout_tab": {
+      "type": "tab",
+      "pos": 0,
+      "keys": ["notes", "spec_table"]
+    },
+    "notes": {
+      "type": "markdown",
+      "pos": 1,
+      "allow_multiline": true,
+      "customize_toolbar": true,
+      "rich_markdown": true,
+      "toolbar": ["bold", "italic", "link"]
+    },
+    "spec_table": {
+      "type": "table",
+      "pos": 2
+    },
+    "headline": {
+      "type": "text",
+      "pos": 3,
+      "max_length": "120"
+    },
+    "media_section": {
+      "type": "section",
+      "pos": 4,
+      "keys": ["gallery", "legacy_image", "legacy_image_cleared", "legacy_file", "legacy_link"]
+    },
+    "gallery": {
+      "type": "multiasset",
+      "pos": 5,
+      "filetypes": ["images"],
+      "maximum_entries": 4,
+      "minimum_entries": 1,
+      "conditional_settings": [
+        {
+          "modifications": [{ "display": "hide" }],
+          "rule_match": "any",
+          "rule_conditions": [
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "related",
+                "field_attr": "value"
+              },
+              "validation": "empty",
+              "value": null
+            }
+          ]
+        }
+      ]
+    },
+    "legacy_image": {
+      "type": "image",
+      "pos": 6,
+      "add_https": true,
+      "image_crop": true,
+      "image_width": 800,
+      "image_height": 600,
+      "keep_image_size": false
+    },
+    "legacy_image_cleared": {
+      "type": "image",
+      "pos": 7,
+      "image_crop": true,
+      "image_width": "",
+      "image_height": ""
+    },
+    "legacy_file": {
+      "type": "file",
+      "pos": 8,
+      "add_https": true,
+      "conditional_settings": [
+        {
+          "modifications": [{ "required": true }],
+          "rule_match": "all",
+          "rule_conditions": [
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "notes",
+                "field_attr": "value"
+              },
+              "validation": "not_empty",
+              "value": null
+            },
+            {
+              "validated_object": {
+                "type": "field",
+                "field_key": "related",
+                "field_attr": "value"
+              },
+              "validation": "not_empty",
+              "value": null
+            }
+          ]
+        }
+      ]
+    },
+    "legacy_link": {
+      "type": "link",
+      "pos": 9
+    },
+    "reference_group": {
+      "type": "group",
+      "pos": 10
+    },
+    "primary_reference": {
+      "type": "option",
+      "pos": 11,
+      "source": "internal_stories",
+      "use_uuid": true,
+      "exclude_empty_option": true
+    },
+    "related": {
+      "type": "options",
+      "pos": 12,
+      "source": "internal_stories",
+      "is_reference_type": true,
+      "folder_slug": "blog-index/",
+      "filter_content_type": ["blog"],
+      "entry_appearance": "card",
+      "allow_advanced_search": true,
+      "exclude_empty_option": true,
+      "use_uuid": true
+    },
+    "prose": {
+      "type": "richtext",
+      "pos": 13,
+      "customize_toolbar": true,
+      "toolbar": ["bold", "italic", "link", "blok"],
+      "style_options": [
+        {
+          "name": "Lead",
+          "value": "lead"
+        }
+      ],
+      "allow_target_blank": true,
+      "max_length": 500,
+      "link_scope": "blog-index/",
+      "rtl": false,
+      "restrict_components": true,
+      "restrict_type": "",
+      "component_whitelist": ["feature_item"],
+      "component_denylist": []
+    }
+  },
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}

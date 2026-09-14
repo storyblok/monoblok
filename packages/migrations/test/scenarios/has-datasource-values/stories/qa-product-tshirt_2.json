@@ -1,10 +1,11 @@
 {
   "id": 2,
-  "uuid": "2",
+  "uuid": "c98157c3-d004-439f-8ff1-72340ac567f9",
   "name": "QA Product T-Shirt",
   "slug": "qa-product-tshirt",
   "full_slug": "qa-product-tshirt",
   "content": {
+    "_uid": "9c0595f9-600e-400a-869e-415879d31ffd",
     "component": "qa_product",
     "title": "T-Shirt",
     "category": "clothing",

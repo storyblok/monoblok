@@ -58,7 +58,7 @@
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/visual-editor-qa": "workspace:*",
     "@types/node": "catalog:",
-    "nuxt": "^4.2.2",
+    "nuxt": "^4.5.2",
     "oxlint": "catalog:",
     "vitest": "catalog:"
   },

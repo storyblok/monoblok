@@ -112,6 +112,7 @@ testing, linting, and formatting, and standardize script names on one vocabulary
   It is isolated in its own commit so the toolchain change stays reviewable.
 - **Markdown prose is now hard-wrapped** at the print width (`proseWrap: "always"`), so authors keep
   writing paragraphs as single long lines and the formatter places the line breaks.
-- **Vite+ is young and pre-1.0.** The version is pinned in `.viteplus-version`, which CI installs,
-  so an upstream change cannot arrive unannounced. The escape hatch is that each `vp` subcommand
-  fronts a tool that can be run directly.
+- **Vite+ is young and pre-1.0.** The version is pinned as a root `devDependency`, so the lockfile
+  records an integrity hash for `vite-plus` and its platform binaries and an upstream change cannot
+  arrive unannounced. The escape hatch is that each `vp` subcommand fronts a tool that can be run
+  directly.

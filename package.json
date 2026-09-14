@@ -47,10 +47,8 @@
   "packageManager": "pnpm@10.27.0",
   "pnpm": {
     "overrides": {
-      "@apidevtools/json-schema-ref-parser": "^15.5.1",
-      "defu": "^6.1.7",
-      "lodash": "^4.18.1",
-      "ws": "^8.21.3"
+      "@microsoft/api-extractor>lodash": "^4.18.1",
+      "release-it>lodash": "^4.18.1"
     }
   }
 }

@@ -4,6 +4,7 @@ import { FileSystemError, toError } from "../../../utils/error";
 import { join } from "pathe";
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from "./constants";
 import { createRegexFromGlob } from "../../../utils";
+import { getMigrationComponentSegment, migrationTargetsComponent } from "../migration-filename";
 import type { BlokContent } from "../../stories/constants";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -101,12 +102,12 @@ export function applyMigrationToAllBlocks(
     return processed;
   }
 
-  // Get the base component name (everything before the first dot)
-  const baseTargetComponent = targetComponent.split(".")[0];
+  // `targetComponent` comes from the migration file name, where the component
+  // name was sanitized, so the block's name has to go through the same mapping.
+  const baseTargetComponent = getMigrationComponentSegment(targetComponent);
 
-  // If the content has a component property and it matches the base component name
   let migratedContent = null;
-  if (content.component === baseTargetComponent) {
+  if (migrationTargetsComponent(baseTargetComponent, content.component)) {
     migratedContent = migrationFunction({ ...content });
     processed = true;
   }

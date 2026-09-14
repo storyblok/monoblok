@@ -36,14 +36,19 @@ export function resolveScopeBaseDir(scope: Scope, basePath: string | undefined):
 
 /**
  * A library ID arrives from the API, where it is typed but not validated, so it
- * is confirmed to be an integer before it becomes a directory segment.
+ * is confirmed to be an integer before it becomes a directory segment. Checked
+ * on the raw value: coercing first would accept `""` and `null` as `0` and send
+ * every library's assets to the same directory.
  */
+export function isLibraryId(libraryId: unknown): libraryId is number {
+  return Number.isInteger(libraryId) && (libraryId as number) >= 0;
+}
+
 function libraryDirSegment(libraryId: number): string {
-  const id = Number(libraryId);
-  if (!Number.isInteger(id) || id < 0) {
+  if (!isLibraryId(libraryId)) {
     throw new Error(`Unexpected shared library ID: ${String(libraryId)}`);
   }
-  return String(id);
+  return String(libraryId);
 }
 
 /**

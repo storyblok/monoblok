@@ -17,8 +17,11 @@ describe("resolveScopeBaseDir", () => {
     expect(resolveScopeBaseDir(scope, undefined).replace(/\\/g, "/")).toContain("assets/shared/7");
   });
 
-  it("rejects a library ID that is not an integer", () => {
-    const scope = { kind: "library", libraryId: "../../../../etc" } as unknown as Scope;
-    expect(() => resolveScopeBaseDir(scope, undefined)).toThrow(/Unexpected shared library ID/);
-  });
+  it.each([["../../../../etc"], [""], [null], [undefined], ["7"], [1.5], [Number.NaN], [-1]])(
+    "should reject the library ID %p instead of mapping it to a directory",
+    (libraryId) => {
+      const scope = { kind: "library", libraryId } as unknown as Scope;
+      expect(() => resolveScopeBaseDir(scope, undefined)).toThrow(/Unexpected shared library ID/);
+    },
+  );
 });

@@ -13,8 +13,10 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Assigning these from an untrusted source (a config file, an API response) walks up to
-// Object.prototype and changes every object in the process.
+// `__proto__` and `constructor` are the two keys that reach Object.prototype
+// from a plain merge target, so assigning either would change every object in
+// the process. `prototype` reaches nothing on its own and is skipped only so a
+// source cannot set up a later `constructor.prototype` walk.
 const PROTOTYPE_POLLUTING_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 export function mergeDeep<T extends PlainObject>(target: T, source?: PlainObject): T {

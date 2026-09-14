@@ -129,13 +129,19 @@ describe("getStoryFilename", () => {
 
   it("should keep a traversing slug inside a single path segment", () => {
     expect(getStoryFilename({ slug: "../../etc/passwd", uuid: "abc-123" })).toBe(
-      "-etc-passwd_abc-123.json",
+      "..-..-etc-passwd_abc-123.json",
     );
   });
 
   it("should keep a traversing uuid inside a single path segment", () => {
     expect(getStoryFilename({ slug: "about-us", uuid: "../../../evil" })).toBe(
-      "about-us_-evil.json",
+      "about-us_..-..-..-evil.json",
+    );
+  });
+
+  it("should preserve consecutive hyphens so the file round-trips to the story", () => {
+    expect(getStoryFilename({ slug: "summer--sale", uuid: "abc-123" })).toBe(
+      "summer--sale_abc-123.json",
     );
   });
 });

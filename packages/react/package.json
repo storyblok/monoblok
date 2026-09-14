@@ -33,16 +33,6 @@
         "default": "./dist/index.cjs"
       }
     },
-    "./client": {
-      "import": {
-        "types": "./dist/client.d.mts",
-        "default": "./dist/client.mjs"
-      },
-      "require": {
-        "types": "./dist/client.d.cts",
-        "default": "./dist/client.cjs"
-      }
-    },
     "./rsc": {
       "import": {
         "types": "./dist/rsc.d.mts",

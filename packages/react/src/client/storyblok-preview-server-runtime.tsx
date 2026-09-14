@@ -21,7 +21,7 @@ import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
  * Props for {@link StoryblokPreviewServerRuntime}.
  *
  * This component is an internal implementation detail. It is not exported
- * from `@storyblok/react/client` — it is only ever rendered by the `async`
+ * from `@storyblok/react/rsc` — it is only ever rendered by the `async`
  * `StoryblokPreview` in `@storyblok/react/rsc`, after that component has
  * already awaited `renderContent` once for the initial paint.
  */
@@ -167,7 +167,7 @@ export function StoryblokPreviewServerRuntime({
   if (typeof reactUse !== "function") {
     throw new Error(
       "[Storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
-        "(React.use is not available). Use StoryblokPreview from @storyblok/react/client for React 17/18.",
+        "(React.use is not available). Use StoryblokPreview from @storyblok/react for React 17/18.",
     );
   }
 

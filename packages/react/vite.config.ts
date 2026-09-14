@@ -10,7 +10,6 @@ export default defineConfig({
       dts: true,
       entry: {
         index: "./src/index.ts",
-        client: "./src/client/index.ts",
         rsc: "./src/rsc/index.ts",
       },
       format: ["esm", "cjs"],

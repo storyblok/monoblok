@@ -38,10 +38,10 @@ export interface StoryblokPreviewProps {
  * update, streaming the result in via Suspense while keeping the current
  * tree on screen (no full page reload, no duplicate-DOM flash).
  *
- * Same props shape as `StoryblokPreview` from `@storyblok/react/client`
+ * Same props shape as `StoryblokPreview` from `@storyblok/react`
  * (`story` + `renderContent`) — the only difference is that `renderContent`
  * here is `async` and reruns on the server. Requires React 19 (`React.use`)
- * and Server Actions; use `@storyblok/react/client` on React 17/18 or with
+ * and Server Actions; use `@storyblok/react` on React 17/18 or with
  * `output: 'export'`.
  *
  * @example

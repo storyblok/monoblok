@@ -206,7 +206,7 @@ uses SWR:
 
 ```tsx
 import { type Story } from "@storyblok/react";
-import { StoryblokPreview } from "@storyblok/react/client";
+import { StoryblokPreview } from "@storyblok/react";
 import useSWR from "swr";
 import { apiClient, StoryblokComponent } from "./lib/storyblok";
 
@@ -269,13 +269,12 @@ For more details, refer to the Next.js documentation on
 
 ## Choosing the Right Export
 
-`@storyblok/react` ships three entry points:
+`@storyblok/react` ships two entry points:
 
-| Export                    | Use Case                                                                                       |
-| ------------------------- | ---------------------------------------------------------------------------------------------- |
-| `@storyblok/react`        | All environments — initialization, rendering, richtext, `storyblokEditable`                    |
-| `@storyblok/react/client` | Client-only — `StoryblokPreview` (client mode), `useStoryblokState`, `useStoryblokEditorEvent` |
-| `@storyblok/react/rsc`    | RSC-only — `StoryblokPreview` (RSC mode, Server Actions + Suspense streaming)                  |
+| Export                 | Use Case                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `@storyblok/react`     | Initialization, rendering, richtext, `storyblokEditable`, and client-mode live editing |
+| `@storyblok/react/rsc` | RSC-only — `StoryblokPreview` (RSC mode, Server Actions + Suspense streaming)          |
 
 ### When to Use Each Export
 
@@ -285,7 +284,7 @@ For more details, refer to the Next.js documentation on
 - Block components (`storyblokEditable`, `StoryblokRichText`)
 - Any code that runs on the server or in shared modules
 
-**Use `@storyblok/react/client`** for:
+**Use `@storyblok/react`** for:
 
 - Subscribing to Visual Editor events in the browser
 - `StoryblokPreview` — client component. Pass `story` and a `renderContent` function; it holds the
@@ -300,9 +299,9 @@ For more details, refer to the Next.js documentation on
   Action); it awaits `renderContent(story)` for the initial render, then re-invokes it on every
   editor update, streaming the result in via Suspense. Requires React 19 and Server Actions.
 
-> [!NOTE] `@storyblok/react/client` exports are marked `"use client"` and must not be imported from
-> Server Components directly. `@storyblok/react/rsc` exports are Server-Component-only and must not
-> be imported from `"use client"` files.
+> [!NOTE] Client-mode exports from `@storyblok/react` are marked `"use client"` and must not be
+> imported from Server Components directly. `@storyblok/react/rsc` exports are Server-Component-only
+> and must not be imported from `"use client"` files.
 
 ## Next.js using App Router
 
@@ -356,15 +355,15 @@ export default async function Page({ params }: { params: Promise<{ slug?: string
 
 ### 3a. Live Editing with `StoryblokPreview` in client mode (simpler)
 
-For most apps, wrap the story in a `"use client"` component that uses `StoryblokPreview` from
-`@storyblok/react/client`, passing `story` and a `renderContent` function:
+For most apps, wrap the story in a `"use client"` component that uses the client-mode
+`StoryblokPreview` from `@storyblok/react`, passing `story` and a `renderContent` function:
 
 ```tsx
 // components/StoryContent.tsx
 "use client";
 
 import type { Story } from "@storyblok/react";
-import { StoryblokPreview } from "@storyblok/react/client";
+import { StoryblokPreview } from "@storyblok/react";
 import { StoryblokComponent } from "@/lib/storyblok";
 
 export function StoryContent({ story }: { story: Story }) {
@@ -522,14 +521,15 @@ export const getStaticProps: GetStaticProps<Props> = async () => {
 
 ### 3. Listening to Storyblok Visual Editor events
 
-To enable live editing, wrap your content in `StoryblokPreview` from `@storyblok/react/client`. It
-holds the latest story in state and calls `renderContent` again on every Visual Editor update:
+To enable live editing, wrap your content in the client-mode `StoryblokPreview` from
+`@storyblok/react`. It holds the latest story in state and calls `renderContent` again on every
+Visual Editor update:
 
 ```tsx
 // pages/index.tsx
 import type { GetStaticProps } from "next";
 import type { Story } from "@storyblok/react";
-import { StoryblokPreview } from "@storyblok/react/client";
+import { StoryblokPreview } from "@storyblok/react";
 import { apiClient, StoryblokComponent } from "@/lib/storyblok";
 
 interface Props {
@@ -766,7 +766,7 @@ with static exports. Switch to the client-mode `StoryblokPreview` instead:
 
 ```diff
 - import { StoryblokPreview } from "@storyblok/react/rsc";
-+ import { StoryblokPreview } from "@storyblok/react/client";
++ import { StoryblokPreview } from "@storyblok/react";
 
 - <StoryblokPreview story={story} renderContent={renderContent} />
 + <StoryblokPreview story={story} renderContent={(live) => <StoryContent story={live} />} />
@@ -779,8 +779,8 @@ with static exports. Switch to the client-mode `StoryblokPreview` instead:
 **Possible solutions:**
 
 1. **Not using a preview component**: Wrap your content in `StoryblokPreview`, either from
-   `@storyblok/react/client` (sync `renderContent`) or `@storyblok/react/rsc`
-   (`async renderContent`, a Server Action). Live editing requires one of these.
+   `@storyblok/react` (sync `renderContent`) or `@storyblok/react/rsc` (`async renderContent`, a
+   Server Action). Live editing requires one of these.
 
 2. **Development mode**: The Visual Editor bridge only activates when the page is loaded inside the
    Storyblok Visual Editor.
@@ -803,10 +803,10 @@ export const { StoryblokComponent } = defineStoryblokComponents({
 
 ### TypeScript Import Errors
 
-**Issue:** TypeScript can't find exports from `@storyblok/react/client`.
+**Issue:** TypeScript can't find the client-mode exports from `@storyblok/react`.
 
-**Solution:** Ensure you're on `@storyblok/react` v7 or later, which includes the `/client` entry
-point.
+**Solution:** Ensure you're on `@storyblok/react` v7 or later, which includes the client-mode
+exports from the root entry point.
 
 ## The Storyblok JavaScript SDK Ecosystem
 

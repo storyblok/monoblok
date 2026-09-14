@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { getMapiClient } from "../../api";
-import { fetchAllSpaceAssetIds, transferAsset, transferAssets } from "./actions";
+import { downloadFile, fetchAllSpaceAssetIds, transferAsset, transferAssets } from "./actions";
 import { APIError } from "../../utils/error/api-error";
 
 const server = setupServer();
@@ -143,5 +143,31 @@ describe("transferAssets", () => {
 
     expect(results.find((r) => r.assetId === 2)?.status).toBe("failed");
     expect(results.filter((r) => r.status === "transferred")).toHaveLength(2);
+  });
+});
+
+describe("downloadFile", () => {
+  it("should download an http(s) URL", async () => {
+    server.use(
+      http.get("https://a.storyblok.com/f/123/image.png", () =>
+        HttpResponse.arrayBuffer(new Uint8Array([1, 2, 3]).buffer),
+      ),
+    );
+
+    const buffer = await downloadFile("https://a.storyblok.com/f/123/image.png");
+
+    expect(buffer.byteLength).toBe(3);
+  });
+
+  it("should refuse a non-http(s) URL", async () => {
+    await expect(downloadFile("file:///etc/passwd")).rejects.toThrow(
+      "only http(s) URLs are supported",
+    );
+  });
+
+  it("should refuse a path that is not a URL", async () => {
+    await expect(downloadFile("../../etc/passwd")).rejects.toThrow(
+      "only http(s) URLs are supported",
+    );
   });
 });

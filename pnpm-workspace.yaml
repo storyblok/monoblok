@@ -21,7 +21,7 @@ catalog:
   typescript: 6.0.3
   vite-plugin-dts: ^5.0.3
   vitest: ^4.1.10
-  zod: ^4.3.6
+  zod: ^4.6.5
 
 # Named catalogs pin the framework version matrix the playgrounds exist to
 # cover. Keep them separate from `catalog:` so bumping the toolchain never

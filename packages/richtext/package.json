@@ -80,7 +80,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@tiptap/core": "^3.22.3",
+    "@tiptap/core": "^3.30.4",
     "@tiptap/extension-blockquote": "^3.22.3",
     "@tiptap/extension-bold": "^3.22.3",
     "@tiptap/extension-code": "^3.22.3",

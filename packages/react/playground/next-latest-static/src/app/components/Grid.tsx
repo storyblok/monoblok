@@ -1,11 +1,12 @@
-import { storyblokEditable } from "@storyblok/react/ssr";
+import type { StoryblokComponentProps } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
 
-const Grid = ({ blok }: { blok: any }) => {
-  return (
-    <h2 data-cy="teaser" {...storyblokEditable(blok)}>
-      This is a Grid component
-    </h2>
-  );
-};
+type GridProps = StoryblokComponentProps<object>;
+
+const Grid = ({ block }: GridProps) => (
+  <h2 data-test="grid" {...storyblokEditable(block)}>
+    This is a Grid component
+  </h2>
+);
 
 export default Grid;

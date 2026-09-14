@@ -1,17 +1,11 @@
-import React from "react";
-import type { SbBlokData } from "@storyblok/react";
+import type { StoryblokComponentProps } from "@storyblok/react";
 
-interface FallbackComponentProps {
-  blok: SbBlokData;
-}
+type FallbackComponentProps = StoryblokComponentProps<{}>;
 
-const FallbackComponent = ({ blok }: FallbackComponentProps) => (
-  <>
-    <p>
-      This is a custom fallback component that we want to show in case a React Component was not
-      created for blok <strong>{blok.component}</strong>.
-    </p>
-  </>
+const FallbackComponent = ({ block }: FallbackComponentProps) => (
+  <p>
+    Custom fallback for block <strong>{block.component}</strong>.
+  </p>
 );
 
 export default FallbackComponent;

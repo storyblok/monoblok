@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@storyblok/api-client": "workspace:^",
     "@storyblok/react": "workspace:*",
     "@tailwindcss/typography": "^0.5.16",
     "next": "catalog:next16",

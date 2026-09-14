@@ -1,7 +1,7 @@
 "use client";
 
-import React, { type FC, useEffect, useState } from "react";
-import type { SbBlokData } from "@storyblok/react";
+import { type FC, useEffect, useState } from "react";
+import type { StoryblokComponentProps } from "@storyblok/react";
 
 const useIsClient = () => {
   const [isClient, setIsClient] = useState(false);
@@ -13,22 +13,14 @@ const useIsClient = () => {
   return isClient;
 };
 
-interface EmojiRandomizerProps {
-  blok: SbBlokData & {
-    label?: string;
-  };
-}
+type EmojiRandomizerProps = StoryblokComponentProps<{ label?: string }>;
 
 /**
  * A component that displays a label and a random emoji that changes on click
  */
-const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ blok }) => {
-  console.log("EmojiRandomizer", blok);
-
-  // List of fun emojis to randomly choose from
+const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ block }) => {
   const emojis = ["😊", "🎉", "🚀", "✨", "🌈", "🎨", "🎸", "🎮", "🍕", "🌺"];
 
-  // State to track current emoji
   const [currentEmoji, setCurrentEmoji] = useState(
     () => emojis[Math.floor(Math.random() * emojis.length)],
   );
@@ -38,9 +30,6 @@ const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ blok }) => {
     return null;
   }
 
-  /**
-   * Generates a new random emoji different from the current one
-   */
   const randomizeEmoji = () => {
     let newEmoji;
     do {
@@ -57,7 +46,7 @@ const EmojiRandomizer: FC<EmojiRandomizerProps> = ({ blok }) => {
         onClick={randomizeEmoji}
         className="px-6 py-3 rounded-lg bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-small transition-colors duration-200 dark:bg-blue-600 dark:hover:bg-blue-700 dark:active:bg-blue-800"
       >
-        {blok.label || "Randomize Emoji"}
+        {block.label || "Randomize Emoji"}
       </button>
     </div>
   );

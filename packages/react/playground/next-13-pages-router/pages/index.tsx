@@ -1,6 +1,5 @@
 import type { GetStaticProps } from "next";
-import type { Story } from "@storyblok/react";
-import { StoryblokPreview } from "@storyblok/react/client";
+import { StoryblokPreview, type Story } from "@storyblok/react";
 import { apiClient, StoryblokComponent } from "../lib/storyblok";
 
 interface Props {

@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { StoryblokPreview } from "@storyblok/react/client";
+import { StoryblokPreview } from "@storyblok/react";
 import { useStoryblokStory } from "../hooks/use-story";
 import { StoryblokComponent } from "../storyblok";
 import type { BlockContent } from "@storyblok/react";

@@ -7,8 +7,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "paths": {
-      "@storyblok/react": ["../../src"],
-      "@storyblok/react/client": ["../../src/client"]
+      "@storyblok/react": ["../../src"]
     },
     "resolveJsonModule": true,
     "strict": true,

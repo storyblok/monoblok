@@ -1,4 +1,4 @@
-import { resolvePath, saveToFile } from "../../../utils/filesystem";
+import { resolvePath, sanitizeFilename, saveToFile } from "../../../utils/filesystem";
 import type { Component } from "../../components/constants";
 import { join } from "pathe";
 import { handleFileSystemError } from "../../../utils";
@@ -27,7 +27,8 @@ export const generateMigration = async (
 ) => {
   const resolvedPath = resolvePath(path, `migrations/${space}`);
 
-  const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
+  const name = sanitizeFilename(component.name);
+  const fileName = suffix ? `${name}.${suffix}.js` : `${name}.js`;
   const migrationPath = join(resolvedPath, fileName);
 
   try {

@@ -28,8 +28,22 @@ export interface Library {
  */
 export function resolveScopeBaseDir(scope: Scope, basePath: string | undefined): string {
   const segment =
-    scope.kind === "space" ? String(scope.spaceId) : join("shared", String(scope.libraryId));
+    scope.kind === "space"
+      ? String(scope.spaceId)
+      : join("shared", libraryDirSegment(scope.libraryId));
   return resolveCommandPath(directories.assets, segment, basePath);
+}
+
+/**
+ * A library ID arrives from the API, where it is typed but not validated, so it
+ * is confirmed to be an integer before it becomes a directory segment.
+ */
+function libraryDirSegment(libraryId: number): string {
+  const id = Number(libraryId);
+  if (!Number.isInteger(id) || id < 0) {
+    throw new Error(`Unexpected shared library ID: ${String(libraryId)}`);
+  }
+  return String(id);
 }
 
 /**

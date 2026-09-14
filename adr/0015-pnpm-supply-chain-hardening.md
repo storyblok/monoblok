@@ -16,23 +16,23 @@ target:
 
 1. Any dependency could run arbitrary code at install time. `onlyBuiltDependencies` listed the two
    we wanted built, but a newly introduced package with a lifecycle script was skipped with a
-   non-blocking warning that nobody acted on — the change never reached review.
+   non-blocking warning that nobody acted on, so the change never reached review.
 2. Nothing stopped us from resolving a version published minutes ago into the lockfile.
-3. Nothing noticed if a package that previously shipped with npm provenance suddenly stopped — the
-   exact signal a hijacked publishing pipeline produces.
+3. Nothing noticed if a package that previously shipped with npm provenance suddenly stopped, which
+   is the exact signal a hijacked publishing pipeline produces.
 
 ## Decision
 
 Adopt the three controls pnpm ships for this, all in `pnpm-workspace.yaml`:
 
-- **`strictDepBuilds: true`** — an unreviewed lifecycle script fails the install instead of being
+- **`strictDepBuilds: true`**: an unreviewed lifecycle script fails the install instead of being
   skipped with a warning. Every package that may run one is in `onlyBuiltDependencies`; every
   package we deliberately do not build is in `ignoredBuiltDependencies`. A new entry in either list
   is a reviewable diff.
-- **`minimumReleaseAge: 1440`** — no version published in the last 24 hours can be resolved. This is
+- **`minimumReleaseAge: 1440`**: no version published in the last 24 hours can be resolved. This is
   the single highest-value control: it converts "published minutes ago" from an exposure into a
   non-event, because a compromised release is normally pulled well inside that window.
-- **`trustPolicy: no-downgrade`** — a version whose publish attestation is weaker than that of any
+- **`trustPolicy: no-downgrade`**: a version whose publish attestation is weaker than that of any
   earlier-published version of the same package fails to resolve. Losing provenance is a hijack
   signature, not a routine release.
 
@@ -50,7 +50,7 @@ re-verify the lockfile on frozen installs; revisit this section when the pin mov
 ## Alternatives Considered
 
 - **`allowBuilds` instead of `onlyBuiltDependencies` + `ignoredBuiltDependencies`.** pnpm 11
-  deprecates the two lists in favour of a single `allowBuilds` map. Rejected for now: on 10.27.0,
+  deprecates the two lists in favor of a single `allowBuilds` map. Rejected for now: on 10.27.0,
   `allowBuilds` entries set to `false` still fail `pnpm install --frozen-lockfile` with
   `ERR_PNPM_IGNORED_BUILDS`, so only the two-list form works with `strictDepBuilds` at the pinned
   version. Migrate when the `packageManager` pin moves to 11.

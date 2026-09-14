@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ProgressBar, UI } from "../ui";
+import type { PhaseDefinition } from "./phases";
 import { createPhaseTracker, formatMark, toPhaseSummary } from "./phases";
 
 /** Records what each bar was told, so the tracker's arithmetic is observable. */
@@ -21,26 +22,32 @@ function fakeUI() {
 }
 
 /** The shape `stories find` declares: each phase loses something to the next. */
-const phasesOf = ({ capi, skipContent }: { capi: boolean; skipContent: boolean }) => [
+const phasesOf = ({
+  capi,
+  skipContent,
+}: {
+  capi: boolean;
+  skipContent: boolean;
+}): PhaseDefinition[] => [
   {
     key: "list",
     label: "Fetching stories",
     counters: ["succeeded", "skipped"],
-    outflow: (counts: { total: number; skipped: number }) => counts.total - counts.skipped,
+    outflow: (counts) => counts.total - counts.skipped,
   },
   {
     key: "capiFilter",
     label: "Filtering via CAPI",
     enabled: capi,
     counters: ["pruned"],
-    outflow: (counts: { total: number; pruned: number }) => counts.total - counts.pruned,
+    outflow: (counts) => counts.total - counts.pruned,
   },
   {
     key: "content",
     label: "Fetching stories content",
     enabled: !skipContent,
     counters: ["failed"],
-    outflow: (counts: { total: number; failed: number }) => counts.total - counts.failed,
+    outflow: (counts) => counts.total - counts.failed,
   },
   { key: "process", label: "Applying client-side filters", counters: ["succeeded"] },
 ];

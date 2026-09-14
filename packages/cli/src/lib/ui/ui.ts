@@ -5,6 +5,7 @@ import { colorPalette } from "../../constants";
 import { DEFAULT_GLOBAL_CONFIG } from "../config/defaults";
 import { getActiveConfig } from "../config/store";
 import { capitalize } from "../../utils/format";
+import { getStderrTarget } from "./stream-target";
 
 interface InfoOptions {
   header?: boolean;
@@ -248,6 +249,47 @@ export class UI {
   }
 
   /**
+   * Whether stderr can host UI that redraws itself.
+   *
+   * A spinner or a progress bar animates by emitting ANSI cursor escapes to move
+   * back over what it just wrote. That only means anything to a terminal: sent to
+   * a file or a pipe the escapes are just bytes, so `sb stories find 2> run.log`
+   * collects every frame it ever drew plus its control codes instead of one line
+   * that updates in place.
+   *
+   * `cli-progress` already refuses to render on a non-terminal stream, but
+   * `@topcli/spinner` has no such check and writes escapes unconditionally. The
+   * guard lives here so the rule holds whichever library backs a given widget.
+   */
+  private get canRedraw(): boolean {
+    return getStderrTarget() === "terminal";
+  }
+
+  /**
+   * Stand-in for a spinner on a stream that cannot animate: CI logs, `2> run.log`.
+   *
+   * Prints the title once and the outcome once. A plain noop would be simpler but
+   * strictly worse: the spinner's text is the only trace a long fetch leaves, so
+   * dropping it turns a CI log silent for the whole of a slow command.
+   */
+  private plainSpinner(title: string): CLISpinner {
+    const startedAt = Date.now();
+    this.console?.error(title);
+
+    const finish = (symbol: string, text?: string) => {
+      this.console?.error(`${symbol} ${text ?? title}`);
+    };
+
+    return {
+      succeed: (text?: string) => finish(chalk.green("✔"), text),
+      failed: (text?: string) => finish(chalk.red("✖"), text),
+      get elapsedTime() {
+        return Date.now() - startedAt;
+      },
+    };
+  }
+
+  /**
    * Drops in-place progress rendering for the rest of the run, leaving the text
    * output alone.
    *
@@ -262,7 +304,7 @@ export class UI {
   }
 
   createProgressBar(options: { title: string }): ProgressBar {
-    if (this.progressSuppressed) {
+    if (this.progressSuppressed || !this.canRedraw) {
       return noopProgressBar;
     }
     const bar = this.multiBar?.create(0, 0, options);
@@ -290,6 +332,9 @@ export class UI {
   createSpinner(title: string): CLISpinner {
     if (!this.enabled || this.progressSuppressed) {
       return noopSpinner;
+    }
+    if (!this.canRedraw) {
+      return this.plainSpinner(title);
     }
     const spinner = new Spinner({ verbose: getActiveConfig().verbose });
     spinner.stream = process.stderr;

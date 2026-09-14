@@ -70,8 +70,8 @@ describe("mergeFilterQuery", () => {
   });
 
   it("should combine different operations on the same field", () => {
-    expect(mergeFilterQuery({ priority: { gt_int: "1" } }, { priority: { lt_int: "5" } })).toEqual({
-      priority: { gt_int: "1", lt_int: "5" },
+    expect(mergeFilterQuery({ priority: { gt_int: 1 } }, { priority: { lt_int: 5 } })).toEqual({
+      priority: { gt_int: 1, lt_int: 5 },
     });
   });
 

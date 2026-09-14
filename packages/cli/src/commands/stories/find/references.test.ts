@@ -21,7 +21,13 @@ function makeComponent(name: string, schema: Record<string, Record<string, unkno
 }
 
 function makeStory(content: Record<string, unknown>): Story {
-  return { id: 1, uuid: UUID_A, full_slug: "test", content, is_published: true } as Story;
+  return {
+    id: 1,
+    uuid: UUID_A,
+    full_slug: "test",
+    content,
+    is_published: true,
+  } as unknown as Story;
 }
 
 describe("buildRelationFieldMap", () => {

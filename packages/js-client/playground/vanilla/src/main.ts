@@ -30,27 +30,28 @@ const checkTokens = () => {
   return missingTokens;
 };
 
+// Renders JSON as text, never as markup: the payload is an API response and
+// would otherwise be parsed as HTML.
+const renderJson = (value: unknown, codeClass: string) => {
+  const container = document.querySelector<HTMLDivElement>("#result")!;
+  const pre = document.createElement("pre");
+  pre.className = "p-4 m-0 whitespace-pre-wrap";
+  const code = document.createElement("code");
+  code.className = codeClass;
+  code.textContent = JSON.stringify(value, null, 2);
+  pre.append(code);
+  container.replaceChildren(pre);
+};
+
 // Function to display results in the UI
 const displayResult = (result: any) => {
-  document.querySelector<HTMLDivElement>("#result")!.innerHTML = `
-    <pre class="p-4 m-0 whitespace-pre-wrap">
-      <code class="font-mono text-sm">
-        ${JSON.stringify(result, null, 2)}
-      </code>
-    </pre>
-  `;
+  renderJson(result, "font-mono text-sm");
 };
 
 // Function to handle errors
 const handleError = (error: any) => {
   console.error(error);
-  document.querySelector<HTMLDivElement>("#result")!.innerHTML = `
-    <pre class="p-4 m-0 whitespace-pre-wrap bg-red-100 text-red-600">
-      <code class="font-mono text-sm">
-        ${JSON.stringify(error, null, 2)}
-      </code>
-    </pre>
-  `;
+  renderJson(error, "font-mono text-sm text-red-600");
 };
 
 // API call functions

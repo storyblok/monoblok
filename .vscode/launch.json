@@ -29,7 +29,7 @@
       "request": "launch",
       "name": "Debug login by token",
       "program": "${workspaceFolder}/packages/cli/dist/index.mjs",
-      "args": ["login", "--token", "1234567890"],
+      "args": ["login", "--token", "${input:managementToken}"],
       "cwd": "${workspaceFolder}/packages/cli",
       "console": "integratedTerminal",
       "sourceMaps": true,
@@ -482,6 +482,14 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "managementToken",
+      "type": "promptString",
+      "description": "Storyblok personal access token",
+      "password": true
     }
   ]
 }

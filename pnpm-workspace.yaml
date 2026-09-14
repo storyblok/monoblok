@@ -60,17 +60,17 @@ injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:
   - build
 
-# Supply chain hardening. A dependency may only run install lifecycle scripts
-# if it is listed below; `strictDepBuilds` turns an unlisted one into an install
-# failure instead of a silently skipped build.
+# Supply chain hardening. Rationale, where each control acts, and the escape
+# hatches are in adr/0015-pnpm-supply-chain-hardening.md.
 strictDepBuilds: true
+
+# May run install scripts; the workspace needs their build output.
 onlyBuiltDependencies:
   - cypress
   - esbuild
 
-# Their install scripts have never run here and the workspace builds and tests
-# without them. Listed explicitly so that a package newly asking to run one is a
-# reviewable diff rather than a silently skipped build.
+# Ask to run install scripts but do not need to. New packages go here by
+# default: `pnpm approve-builds '!<pkg>'`.
 ignoredBuiltDependencies:
   - "@parcel/watcher"
   - "@swc/core"
@@ -81,10 +81,8 @@ ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
 
-# Do not install a version published less than 24h ago: most malicious releases
-# are pulled from the registry within that window.
+# 24h. Resolution-time only; does not re-check a frozen lockfile.
 minimumReleaseAge: 1440
 
-# Refuse a version whose publish attestation is weaker than one we already
-# resolved — a dropped provenance signature is how a hijacked account ships.
+# Resolution-time only; for false positives prefer `trustPolicyIgnoreAfter`.
 trustPolicy: no-downgrade

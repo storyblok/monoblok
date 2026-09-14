@@ -35,7 +35,7 @@ export type Component = {
              * Field ID
              */
             id?: string;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | undefined;
+            [key: string]: unknown;
         };
     };
     /**
@@ -218,7 +218,7 @@ export type ComponentCreate = {
              * Whether this field is translatable
              */
             translatable?: boolean;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | boolean | undefined;
+            [key: string]: unknown;
         };
     };
     /**
@@ -304,7 +304,7 @@ export type ComponentUpdate = {
              * Whether this field is translatable
              */
             translatable?: boolean;
-            [key: string]: unknown | 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group' | string | boolean | undefined;
+            [key: string]: unknown;
         };
     };
     /**
@@ -1087,9 +1087,7 @@ export type Space = {
      * Whether the Joyride trial traffic limit has been exceeded.
      */
     joyride_traffic_limit_exceeded?: boolean;
-    [key: string]: unknown | number | string | string | null | number | null | number | null | boolean | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | null | string | null | {
-        [key: string]: boolean | null;
-    } | string | null | Array<SpaceRole> | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 export type SpaceCreate = {

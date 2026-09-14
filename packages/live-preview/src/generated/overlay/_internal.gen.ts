@@ -3,23 +3,23 @@
 /**
  * A component schema field. Discriminated by the literal `type` enum on each variant.
  */
-export type Field = TextFieldRoot | TextareaFieldRoot | RichtextFieldRoot | MarkdownFieldRoot | NumberFieldRoot | DatetimeFieldRoot | BooleanFieldRoot | OptionFieldRoot | OptionsFieldRoot | AssetFieldRoot | MultiassetFieldRoot | ImageFieldRoot | FileFieldRoot | MultilinkFieldRoot | LinkFieldRoot | BloksFieldRoot | TableFieldRoot | SectionFieldRoot | TabFieldRoot | GroupFieldRoot | CommerceFieldRoot | CustomFieldRoot;
+export type Field = TextField | TextareaField | RichtextField | MarkdownField | NumberField | DatetimeField | BooleanField | OptionField | OptionsField | AssetField | MultiassetField | ImageField | FileField | MultilinkField | LinkField | BloksField | TableField | SectionField | TabField | GroupField | CommerceField | CustomField;
 
-export type AssetFieldValue = AssetFieldValueRoot;
+export type AssetFieldValue = AssetFieldValue2;
 
-export type BlockContentBase = BlockContentRoot;
+export type BlockContentBase = BlockContent2;
 
-export type BlockContentInputBase = BlockContentInputRoot;
+export type BlockContentInputBase = BlockContentInput2;
 
-export type MultilinkFieldValue = MultilinkFieldValueRoot;
+export type MultilinkFieldValue = MultilinkFieldValue2;
 
-export type PluginFieldValue = PluginFieldValueRoot;
+export type PluginFieldValue = PluginFieldValue2;
 
-export type RichTextFieldValue = RichTextFieldValueRoot;
+export type RichTextFieldValue = RichTextFieldValue2;
 
-export type TableFieldValue = TableFieldValueRoot;
+export type TableFieldValue = TableFieldValue2;
 
-export type TextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type TextField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -53,7 +53,7 @@ export type TextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     rtl?: boolean;
 };
 
-export type TextareaFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type TextareaField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -95,7 +95,7 @@ export type TextareaFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     markdown?: boolean;
 };
 
-export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type RichtextField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -186,7 +186,7 @@ export type RichtextFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     rtl?: boolean;
 };
 
-export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type MarkdownField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -224,7 +224,7 @@ export type MarkdownFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     max_length?: number | string;
 };
 
-export type NumberFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type NumberField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -251,7 +251,7 @@ export type NumberFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     steps?: number;
 };
 
-export type DatetimeFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type DatetimeField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -266,7 +266,7 @@ export type DatetimeFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     disable_time?: boolean;
 };
 
-export type BooleanFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type BooleanField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -281,7 +281,7 @@ export type BooleanFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     inline_label?: boolean;
 };
 
-export type OptionFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type OptionField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -352,7 +352,7 @@ export type OptionFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     multiple?: boolean;
 };
 
-export type OptionsFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type OptionsField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -425,7 +425,7 @@ export type OptionsFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     multiple?: boolean;
 };
 
-export type AssetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type AssetField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -464,7 +464,7 @@ export type AssetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     asset_whitelist?: Array<string>;
 };
 
-export type MultiassetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type MultiassetField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -511,7 +511,7 @@ export type MultiassetFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     minimum_entries?: number;
 };
 
-export type ImageFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type ImageField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -552,7 +552,7 @@ export type ImageFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     asset_folder_id?: number;
 };
 
-export type FileFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type FileField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -571,7 +571,7 @@ export type FileFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     asset_folder_id?: number;
 };
 
-export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type MultilinkField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -618,7 +618,7 @@ export type MultilinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     asset_link_type?: boolean;
 };
 
-export type LinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type LinkField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -629,7 +629,7 @@ export type LinkFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     default_value?: string;
 };
 
-export type BloksFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type BloksField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -692,7 +692,7 @@ export type BloksFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     minimum_entries?: number;
 };
 
-export type TableFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type TableField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -703,7 +703,7 @@ export type TableFieldRoot = BaseFieldRoot & ValueFieldRoot & {
     default_value?: string;
 };
 
-export type SectionFieldRoot = BaseFieldRoot & {
+export type SectionField = BaseField & {
     /**
      * Field type discriminant
      */
@@ -735,7 +735,7 @@ export type SectionFieldRoot = BaseFieldRoot & {
     };
 };
 
-export type TabFieldRoot = BaseFieldRoot & {
+export type TabField = BaseField & {
     /**
      * Field type discriminant
      */
@@ -746,21 +746,21 @@ export type TabFieldRoot = BaseFieldRoot & {
     keys?: Array<string>;
 };
 
-export type GroupFieldRoot = BaseFieldRoot & {
+export type GroupField = BaseField & {
     /**
      * Field type discriminant
      */
     type: 'group';
 };
 
-export type CommerceFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type CommerceField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
     type: 'commerce';
 };
 
-export type CustomFieldRoot = BaseFieldRoot & ValueFieldRoot & {
+export type CustomField = BaseField & ValueField & {
     /**
      * Field type discriminant
      */
@@ -801,7 +801,7 @@ export type CustomFieldRoot = BaseFieldRoot & ValueFieldRoot & {
 /**
  * Asset field type - single asset (image, video, audio, or document)
  */
-export type AssetFieldValueRoot = {
+export type AssetFieldValue2 = {
     /**
      * Identifies this as an asset field
      */
@@ -853,7 +853,7 @@ export type AssetFieldValueRoot = {
 /**
  * Content object representing a component instance. Contains a _uid, a component technical name, and dynamic fields whose values depend on the component's schema field types (text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, multilink, bloks, table, section, custom/plugin).
  */
-export type BlockContentRoot = {
+export type BlockContent2 = {
     /**
      * Unique identifier for this component instance
      */
@@ -866,13 +866,13 @@ export type BlockContentRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: string | number | boolean | Array<string | AssetFieldValue2 | BlockContent2> | AssetFieldValue2 | MultilinkFieldValue2 | TableFieldValue2 | RichTextFieldValue2 | PluginFieldValue2 | undefined;
 };
 
 /**
  * Content object for creating or updating a component instance. Contains a component technical name and dynamic fields whose values depend on the component's schema field types. The _uid is optional — Storyblok will auto-generate one if not provided.
  */
-export type BlockContentInputRoot = {
+export type BlockContentInput2 = {
     /**
      * Unique identifier for this component instance (auto-generated when omitted)
      */
@@ -885,18 +885,18 @@ export type BlockContentInputRoot = {
      * Storyblok editor markup string for inline editing (present in draft/preview mode)
      */
     _editable?: string;
-    [key: string]: null | string | number | boolean | Array<string | AssetFieldValueRoot | BlockContentInputRoot> | AssetFieldValueRoot | MultilinkFieldValueRoot | TableFieldValueRoot | RichTextFieldValueRoot | PluginFieldValueRoot | string | undefined;
+    [key: string]: null | string | number | boolean | Array<string | AssetFieldValue2 | BlockContentInput2> | AssetFieldValue2 | MultilinkFieldValue2 | TableFieldValue2 | RichTextFieldValue2 | PluginFieldValue2 | undefined;
 };
 
 /**
  * Multilink field type - link to internal stories, external URLs, emails, or assets.
  */
-export type MultilinkFieldValueRoot = MultilinkFieldValueStoryLink | MultilinkFieldValueUrlLink | MultilinkFieldValueEmailLink | MultilinkFieldValueAssetLink;
+export type MultilinkFieldValue2 = StoryLink | UrlLink | EmailLink | AssetLink;
 
 /**
  * Plugin/Custom field type - field plugin with custom structure
  */
-export type PluginFieldValueRoot = {
+export type PluginFieldValue2 = {
     /**
      * Technical name of the field plugin
      */
@@ -905,13 +905,13 @@ export type PluginFieldValueRoot = {
      * Unique identifier for this plugin field instance
      */
     _uid?: string;
-    [key: string]: unknown | string | undefined;
+    [key: string]: unknown;
 };
 
 /**
  * Rich text field type - structured rich text document (ProseMirror/Tiptap format)
  */
-export type RichTextFieldValueRoot = {
+export type RichTextFieldValue2 = {
     /**
      * Root node type — always "doc"
      */
@@ -925,7 +925,7 @@ export type RichTextFieldValueRoot = {
 /**
  * Table field type - structured table data
  */
-export type TableFieldValueRoot = {
+export type TableFieldValue2 = {
     /**
      * Table header cells
      */
@@ -960,7 +960,7 @@ export type TableFieldValueRoot = {
 /**
  * Universal identity and display properties shared by every field type
  */
-export type BaseFieldRoot = {
+export type BaseField = {
     /**
      * Field type discriminant
      */
@@ -993,7 +993,7 @@ export type BaseFieldRoot = {
      * empty. Write one setting unless you mean that.
      *
      */
-    conditional_settings?: Array<ConditionalSettingRoot>;
+    conditional_settings?: Array<ConditionalSetting>;
 };
 
 /**
@@ -1006,7 +1006,7 @@ export type BaseFieldRoot = {
  * intersect into `never` instead of replacing. Each field type declares its own.
  *
  */
-export type ValueFieldRoot = {
+export type ValueField = {
     /**
      * Whether the field is required
      */
@@ -1044,7 +1044,7 @@ export type ValueFieldRoot = {
 /**
  * Link to an internal Storyblok story.
  */
-export type MultilinkFieldValueStoryLink = MultilinkFieldValueSharedLink & {
+export type StoryLink = SharedLink & {
     linktype: 'story';
     /**
      * Anchor/fragment identifier for the story link
@@ -1065,7 +1065,7 @@ export type MultilinkFieldValueStoryLink = MultilinkFieldValueSharedLink & {
 /**
  * Link to an external URL.
  */
-export type MultilinkFieldValueUrlLink = MultilinkFieldValueSharedLink & {
+export type UrlLink = SharedLink & {
     linktype: 'url';
     /**
      * Link relationship attribute
@@ -1082,7 +1082,7 @@ export type MultilinkFieldValueUrlLink = MultilinkFieldValueSharedLink & {
 /**
  * Link to an email address.
  */
-export type MultilinkFieldValueEmailLink = MultilinkFieldValueSharedLink & {
+export type EmailLink = SharedLink & {
     linktype: 'email';
     /**
      * Email address
@@ -1093,14 +1093,14 @@ export type MultilinkFieldValueEmailLink = MultilinkFieldValueSharedLink & {
 /**
  * Link to a Storyblok asset.
  */
-export type MultilinkFieldValueAssetLink = MultilinkFieldValueSharedLink & {
+export type AssetLink = SharedLink & {
     linktype: 'asset';
 };
 
 /**
  * A rich text document node
  */
-export type RichTextFieldValueRichTextNode = RichTextFieldValueParagraphNode | RichTextFieldValueTextNode | RichTextFieldValueHeadingNode | RichTextFieldValueBlockquoteNode | RichTextFieldValueBulletListNode | RichTextFieldValueOrderedListNode | RichTextFieldValueListItemNode | RichTextFieldValueCodeBlockNode | RichTextFieldValueHardBreakNode | RichTextFieldValueHorizontalRuleNode | RichTextFieldValueImageNode | RichTextFieldValueEmojiNode | RichTextFieldValueTableNode | RichTextFieldValueTableRowNode | RichTextFieldValueTableCellNode | RichTextFieldValueTableHeaderNode | RichTextFieldValueBlockNode;
+export type RichTextFieldValueRichTextNode = ParagraphNode | TextNode | HeadingNode | BlockquoteNode | BulletListNode | OrderedListNode | ListItemNode | CodeBlockNode | HardBreakNode | HorizontalRuleNode | ImageNode | EmojiNode | TableNode | TableRowNode | TableCellNode | TableHeaderNode | BlockNode;
 
 /**
  * A conditional rule attached to a field: when `rule_conditions` match the
@@ -1111,7 +1111,7 @@ export type RichTextFieldValueRichTextNode = RichTextFieldValueParagraphNode | R
  * half-configured setting.
  *
  */
-export type ConditionalSettingRoot = {
+export type ConditionalSetting = {
     /**
      * Whether every condition must match (`all`) or any one of them (`any`).
      * A setting the editor creates starts out as `any`.
@@ -1183,7 +1183,7 @@ export type ConditionalSettingRoot = {
     }>;
 };
 
-export type MultilinkFieldValueSharedLink = {
+export type SharedLink = {
     /**
      * Identifies this as a multilink field
      */
@@ -1210,7 +1210,7 @@ export type MultilinkFieldValueSharedLink = {
     target?: '_self' | '_blank';
 };
 
-export type RichTextFieldValueParagraphNode = {
+export type ParagraphNode = {
     type: 'paragraph';
     attrs?: {
         /**
@@ -1226,7 +1226,7 @@ export type RichTextFieldValueParagraphNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueTextNode = {
+export type TextNode = {
     type: 'text';
     /**
      * The text content
@@ -1235,7 +1235,7 @@ export type RichTextFieldValueTextNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueHeadingNode = {
+export type HeadingNode = {
     type: 'heading';
     attrs: {
         /**
@@ -1255,7 +1255,7 @@ export type RichTextFieldValueHeadingNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueBlockquoteNode = {
+export type BlockquoteNode = {
     type: 'blockquote';
     attrs?: {
         /**
@@ -1267,13 +1267,13 @@ export type RichTextFieldValueBlockquoteNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueBulletListNode = {
+export type BulletListNode = {
     type: 'bullet_list';
     content?: Array<RichTextFieldValueRichTextNode>;
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueOrderedListNode = {
+export type OrderedListNode = {
     type: 'ordered_list';
     attrs: {
         /**
@@ -1285,7 +1285,7 @@ export type RichTextFieldValueOrderedListNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueListItemNode = {
+export type ListItemNode = {
     type: 'list_item';
     attrs?: {
         /**
@@ -1297,7 +1297,7 @@ export type RichTextFieldValueListItemNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueCodeBlockNode = {
+export type CodeBlockNode = {
     type: 'code_block';
     attrs: {
         /**
@@ -1313,15 +1313,15 @@ export type RichTextFieldValueCodeBlockNode = {
     marks?: Array<RichTextFieldValueRichTextMark>;
 };
 
-export type RichTextFieldValueHardBreakNode = {
+export type HardBreakNode = {
     type: 'hard_break';
 };
 
-export type RichTextFieldValueHorizontalRuleNode = {
+export type HorizontalRuleNode = {
     type: 'horizontal_rule';
 };
 
-export type RichTextFieldValueImageNode = {
+export type ImageNode = {
     type: 'image';
     attrs: {
         /**
@@ -1347,12 +1347,12 @@ export type RichTextFieldValueImageNode = {
             title?: string | null;
             source?: string | null;
             copyright?: string | null;
-            [key: string]: string | null | string | null | string | null | string | null | string | null | undefined;
+            [key: string]: string | null | undefined;
         } | null;
     };
 };
 
-export type RichTextFieldValueEmojiNode = {
+export type EmojiNode = {
     type: 'emoji';
     attrs: {
         /**
@@ -1370,17 +1370,17 @@ export type RichTextFieldValueEmojiNode = {
     };
 };
 
-export type RichTextFieldValueTableNode = {
+export type TableNode = {
     type: 'table';
     content?: Array<RichTextFieldValueRichTextNode>;
 };
 
-export type RichTextFieldValueTableRowNode = {
+export type TableRowNode = {
     type: 'tableRow';
     content?: Array<RichTextFieldValueRichTextNode>;
 };
 
-export type RichTextFieldValueTableCellNode = {
+export type TableCellNode = {
     type: 'tableCell';
     attrs: {
         colspan?: number;
@@ -1394,7 +1394,7 @@ export type RichTextFieldValueTableCellNode = {
     content?: Array<RichTextFieldValueRichTextNode>;
 };
 
-export type RichTextFieldValueTableHeaderNode = {
+export type TableHeaderNode = {
     type: 'tableHeader';
     attrs: {
         colspan?: number;
@@ -1407,7 +1407,7 @@ export type RichTextFieldValueTableHeaderNode = {
     content?: Array<RichTextFieldValueRichTextNode>;
 };
 
-export type RichTextFieldValueBlockNode = {
+export type BlockNode = {
     type: 'blok';
     attrs: {
         /**
@@ -1417,16 +1417,16 @@ export type RichTextFieldValueBlockNode = {
         /**
          * Array of embedded component instances
          */
-        body: Array<BlockContentInputRoot> | null;
+        body: Array<BlockContentInput2> | null;
     };
 };
 
 /**
  * Inline formatting mark applied to a text node
  */
-export type RichTextFieldValueRichTextMark = RichTextFieldValueLinkMark | RichTextFieldValueBoldMark | RichTextFieldValueItalicMark | RichTextFieldValueStrikeMark | RichTextFieldValueUnderlineMark | RichTextFieldValueCodeMark | RichTextFieldValueSuperscriptMark | RichTextFieldValueSubscriptMark | RichTextFieldValueHighlightMark | RichTextFieldValueTextStyleMark | RichTextFieldValueAnchorMark | RichTextFieldValueStyledMark;
+export type RichTextFieldValueRichTextMark = LinkMark | BoldMark | ItalicMark | StrikeMark | UnderlineMark | CodeMark | SuperscriptMark | SubscriptMark | HighlightMark | TextStyleMark | AnchorMark | StyledMark;
 
-export type RichTextFieldValueLinkMark = {
+export type LinkMark = {
     type: 'link';
     /**
      * Link attributes
@@ -1461,35 +1461,35 @@ export type RichTextFieldValueLinkMark = {
     };
 };
 
-export type RichTextFieldValueBoldMark = {
+export type BoldMark = {
     type: 'bold';
 };
 
-export type RichTextFieldValueItalicMark = {
+export type ItalicMark = {
     type: 'italic';
 };
 
-export type RichTextFieldValueStrikeMark = {
+export type StrikeMark = {
     type: 'strike';
 };
 
-export type RichTextFieldValueUnderlineMark = {
+export type UnderlineMark = {
     type: 'underline';
 };
 
-export type RichTextFieldValueCodeMark = {
+export type CodeMark = {
     type: 'code';
 };
 
-export type RichTextFieldValueSuperscriptMark = {
+export type SuperscriptMark = {
     type: 'superscript';
 };
 
-export type RichTextFieldValueSubscriptMark = {
+export type SubscriptMark = {
     type: 'subscript';
 };
 
-export type RichTextFieldValueHighlightMark = {
+export type HighlightMark = {
     type: 'highlight';
     attrs: {
         /**
@@ -1499,7 +1499,7 @@ export type RichTextFieldValueHighlightMark = {
     };
 };
 
-export type RichTextFieldValueTextStyleMark = {
+export type TextStyleMark = {
     type: 'textStyle';
     attrs: {
         color?: string | null;
@@ -1508,7 +1508,7 @@ export type RichTextFieldValueTextStyleMark = {
     };
 };
 
-export type RichTextFieldValueAnchorMark = {
+export type AnchorMark = {
     type: 'anchor';
     attrs: {
         /**
@@ -1518,7 +1518,7 @@ export type RichTextFieldValueAnchorMark = {
     };
 };
 
-export type RichTextFieldValueStyledMark = {
+export type StyledMark = {
     type: 'styled';
     attrs: {
         /**

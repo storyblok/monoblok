@@ -1,8 +1,9 @@
-import type { Client, ResolvedRequestOptions, RetryOptions } from "./generated/mapi/client";
+import type { Client, ResolvedRequestOptions } from "./generated/mapi/client";
 import type { Middleware } from "./generated/mapi/client/utils.gen";
 import { createClient, createConfig } from "./generated/mapi/client";
 import { getManagementBaseUrl } from "@storyblok/region-helper";
 import type { Region } from "@storyblok/region-helper";
+import type { RetryOptions } from "ky";
 import type { Block } from "./generated/types/block";
 import { ClientError } from "./error";
 import type { RateLimitConfig } from "./utils/rate-limit";
@@ -199,7 +200,7 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
   );
 
   client.interceptors.error.use(
-    (error: unknown, response: Response) =>
+    (error: unknown, response?: Response) =>
       new ClientError(response?.statusText || "API request failed", {
         status: response?.status ?? 0,
         statusText: response?.statusText ?? "",

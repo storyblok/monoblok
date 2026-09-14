@@ -14,64 +14,61 @@ import * as z from 'zod';
  * half-configured setting.
  *
  */
-export const zConditionalSettingRoot = z.object({
-    rule_match: z.optional(z.enum(['all', 'any'])),
-    rule_conditions: z.optional(z.array(z.object({
-        validated_object: z.optional(z.union([
-            z.object({
-                type: z.optional(z.enum(['field'])),
-                field_key: z.optional(z.string()),
-                field_attr: z.optional(z.enum(['value']))
-            }),
-            z.null()
-        ])),
-        validation: z.optional(z.nullable(z.enum([
+export const zConditionalSetting = z.object({
+    rule_match: z.enum(['all', 'any']).optional(),
+    rule_conditions: z.array(z.object({
+        validated_object: z.object({
+            type: z.enum(['field']).optional(),
+            field_key: z.string().optional(),
+            field_attr: z.enum(['value']).optional()
+        }).nullish(),
+        validation: z.enum([
             'equals',
             'not_equals',
             'empty',
             'not_empty',
             'gt',
             'lt'
-        ]))),
-        value: z.optional(z.unknown())
-    }))),
-    modifications: z.optional(z.array(z.object({
-        display: z.optional(z.enum(['hide', 'hidden'])),
-        required: z.optional(z.boolean())
-    })))
+        ]).nullish(),
+        value: z.unknown().optional()
+    })).optional(),
+    modifications: z.array(z.object({
+        display: z.enum(['hide', 'hidden']).optional(),
+        required: z.boolean().optional()
+    })).optional()
 });
 
 /**
  * Universal identity and display properties shared by every field type
  */
-export const zBaseFieldRoot = z.object({
-    type: z.optional(z.string()),
-    id: z.optional(z.string()),
-    display_name: z.optional(z.string()),
-    description: z.optional(z.string()),
-    tooltip: z.optional(z.boolean()),
-    pos: z.optional(z.int()),
-    conditional_settings: z.optional(z.array(zConditionalSettingRoot))
+export const zBaseField = z.object({
+    type: z.string().optional(),
+    id: z.string().optional(),
+    display_name: z.string().optional(),
+    description: z.string().optional(),
+    tooltip: z.boolean().optional(),
+    pos: z.int().optional(),
+    conditional_settings: z.array(zConditionalSetting).optional()
 });
 
-export const zGroupFieldRoot = zBaseFieldRoot.and(z.object({
+export const zGroupField = zBaseField.and(z.object({
     type: z.enum(['group'])
 }));
 
-export const zSectionFieldRoot = zBaseFieldRoot.and(z.object({
+export const zSectionField = zBaseField.and(z.object({
     type: z.enum(['section']),
-    keys: z.optional(z.array(z.string())),
-    fieldset: z.optional(z.object({
-        title: z.optional(z.string()),
-        description: z.optional(z.string()),
-        collapsible: z.optional(z.boolean()),
-        collapsed: z.optional(z.boolean())
-    }))
+    keys: z.array(z.string()).optional(),
+    fieldset: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        collapsible: z.boolean().optional(),
+        collapsed: z.boolean().optional()
+    }).optional()
 }));
 
-export const zTabFieldRoot = zBaseFieldRoot.and(z.object({
+export const zTabField = zBaseField.and(z.object({
     type: z.enum(['tab']),
-    keys: z.optional(z.array(z.string()))
+    keys: z.array(z.string()).optional()
 }));
 
 /**
@@ -84,115 +81,115 @@ export const zTabFieldRoot = zBaseFieldRoot.and(z.object({
  * intersect into `never` instead of replacing. Each field type declares its own.
  *
  */
-export const zValueFieldRoot = z.object({
-    required: z.optional(z.boolean()),
-    regex: z.optional(z.string()),
-    translatable: z.optional(z.boolean()),
-    no_translate: z.optional(z.boolean()),
-    exclude_from_ai_translation: z.optional(z.boolean()),
-    exclude_from_merge: z.optional(z.boolean()),
-    exclude_from_overwrite: z.optional(z.boolean()),
-    force_merge: z.optional(z.boolean())
+export const zValueField = z.object({
+    required: z.boolean().optional(),
+    regex: z.string().optional(),
+    translatable: z.boolean().optional(),
+    no_translate: z.boolean().optional(),
+    exclude_from_ai_translation: z.boolean().optional(),
+    exclude_from_merge: z.boolean().optional(),
+    exclude_from_overwrite: z.boolean().optional(),
+    force_merge: z.boolean().optional()
 });
 
-export const zAssetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zAssetField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['asset']),
-    default_value: z.optional(z.string()),
-    filetypes: z.optional(z.array(z.string())),
-    asset_folder_id: z.optional(z.int()),
-    allow_external_url: z.optional(z.boolean()),
-    height: z.optional(z.int()),
-    width: z.optional(z.int()),
-    restrict_assets: z.optional(z.boolean()),
-    asset_whitelist: z.optional(z.array(z.string()))
+    default_value: z.string().optional(),
+    filetypes: z.array(z.string()).optional(),
+    asset_folder_id: z.int().optional(),
+    allow_external_url: z.boolean().optional(),
+    height: z.int().optional(),
+    width: z.int().optional(),
+    restrict_assets: z.boolean().optional(),
+    asset_whitelist: z.array(z.string()).optional()
 }));
 
-export const zBloksFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zBloksField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['bloks']),
-    default_value: z.optional(z.union([
+    default_value: z.union([
         z.string(),
         z.array(z.record(z.string(), z.unknown()))
-    ])),
-    restrict_type: z.optional(z.string()),
-    restrict_components: z.optional(z.boolean()),
-    component_whitelist: z.optional(z.array(z.string())),
-    component_denylist: z.optional(z.array(z.string())),
-    component_tag_whitelist: z.optional(z.array(z.int())),
-    component_tag_denylist: z.optional(z.array(z.int())),
-    component_group_whitelist: z.optional(z.array(z.string())),
-    component_group_denylist: z.optional(z.array(z.string())),
-    minimum: z.optional(z.int()),
-    maximum: z.optional(z.int()),
-    maximum_entries: z.optional(z.int()),
-    minimum_entries: z.optional(z.int())
+    ]).optional(),
+    restrict_type: z.string().optional(),
+    restrict_components: z.boolean().optional(),
+    component_whitelist: z.array(z.string()).optional(),
+    component_denylist: z.array(z.string()).optional(),
+    component_tag_whitelist: z.array(z.int()).optional(),
+    component_tag_denylist: z.array(z.int()).optional(),
+    component_group_whitelist: z.array(z.string()).optional(),
+    component_group_denylist: z.array(z.string()).optional(),
+    minimum: z.int().optional(),
+    maximum: z.int().optional(),
+    maximum_entries: z.int().optional(),
+    minimum_entries: z.int().optional()
 }));
 
-export const zBooleanFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zBooleanField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['boolean']),
-    default_value: z.optional(z.boolean()),
-    inline_label: z.optional(z.boolean())
+    default_value: z.boolean().optional(),
+    inline_label: z.boolean().optional()
 }));
 
-export const zCommerceFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zCommerceField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['commerce'])
 }));
 
-export const zCustomFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zCustomField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['custom']),
-    default_value: z.optional(z.string()),
-    field_type: z.optional(z.string()),
-    options: z.optional(z.array(z.object({
-        name: z.optional(z.string()),
-        value: z.optional(z.string())
-    }))),
-    required_fields: z.optional(z.string()),
-    source: z.optional(z.enum(['self', 'internal'])),
-    datasource_slug: z.optional(z.string()),
-    external_datasource: z.optional(z.string())
+    default_value: z.string().optional(),
+    field_type: z.string().optional(),
+    options: z.array(z.object({
+        name: z.string().optional(),
+        value: z.string().optional()
+    })).optional(),
+    required_fields: z.string().optional(),
+    source: z.enum(['self', 'internal']).optional(),
+    datasource_slug: z.string().optional(),
+    external_datasource: z.string().optional()
 }));
 
-export const zDatetimeFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zDatetimeField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['datetime']),
-    default_value: z.optional(z.string()),
-    disable_time: z.optional(z.boolean())
+    default_value: z.string().optional(),
+    disable_time: z.boolean().optional()
 }));
 
-export const zFileFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zFileField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['file']),
-    default_value: z.optional(z.string()),
-    add_https: z.optional(z.boolean()),
-    asset_folder_id: z.optional(z.int())
+    default_value: z.string().optional(),
+    add_https: z.boolean().optional(),
+    asset_folder_id: z.int().optional()
 }));
 
-export const zImageFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zImageField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['image']),
-    default_value: z.optional(z.string()),
-    add_https: z.optional(z.boolean()),
-    image_crop: z.optional(z.boolean()),
-    image_width: z.optional(z.union([
+    default_value: z.string().optional(),
+    add_https: z.boolean().optional(),
+    image_crop: z.boolean().optional(),
+    image_width: z.union([
         z.int(),
         z.string()
-    ])),
-    image_height: z.optional(z.union([
+    ]).optional(),
+    image_height: z.union([
         z.int(),
         z.string()
-    ])),
-    keep_image_size: z.optional(z.boolean()),
-    asset_folder_id: z.optional(z.int())
+    ]).optional(),
+    keep_image_size: z.boolean().optional(),
+    asset_folder_id: z.int().optional()
 }));
 
-export const zLinkFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zLinkField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['link']),
-    default_value: z.optional(z.string())
+    default_value: z.string().optional()
 }));
 
-export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zMarkdownField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['markdown']),
-    default_value: z.optional(z.string()),
-    rich_markdown: z.optional(z.boolean()),
-    rtl: z.optional(z.boolean()),
-    customize_toolbar: z.optional(z.boolean()),
-    toolbar: z.optional(z.array(z.enum([
+    default_value: z.string().optional(),
+    rich_markdown: z.boolean().optional(),
+    rtl: z.boolean().optional(),
+    customize_toolbar: z.boolean().optional(),
+    toolbar: z.array(z.enum([
         'bold',
         'italic',
         'inlinecode',
@@ -215,105 +212,105 @@ export const zMarkdownFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
         'auto',
         'ltr',
         'rtl'
-    ]))),
-    allow_multiline: z.optional(z.boolean()),
-    max_length: z.optional(z.union([
+    ])).optional(),
+    allow_multiline: z.boolean().optional(),
+    max_length: z.union([
         z.int(),
         z.string()
-    ]))
+    ]).optional()
 }));
 
-export const zMultiassetFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zMultiassetField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['multiasset']),
-    default_value: z.optional(z.string()),
-    filetypes: z.optional(z.array(z.string())),
-    asset_folder_id: z.optional(z.int()),
-    allow_external_url: z.optional(z.boolean()),
-    height: z.optional(z.int()),
-    width: z.optional(z.int()),
-    restrict_assets: z.optional(z.boolean()),
-    asset_whitelist: z.optional(z.array(z.string())),
-    maximum_entries: z.optional(z.int()),
-    minimum_entries: z.optional(z.int())
+    default_value: z.string().optional(),
+    filetypes: z.array(z.string()).optional(),
+    asset_folder_id: z.int().optional(),
+    allow_external_url: z.boolean().optional(),
+    height: z.int().optional(),
+    width: z.int().optional(),
+    restrict_assets: z.boolean().optional(),
+    asset_whitelist: z.array(z.string()).optional(),
+    maximum_entries: z.int().optional(),
+    minimum_entries: z.int().optional()
 }));
 
-export const zMultilinkFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zMultilinkField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['multilink']),
-    default_value: z.optional(z.string()),
-    restrict_content_types: z.optional(z.boolean()),
-    component_whitelist: z.optional(z.array(z.string())),
-    allow_target_blank: z.optional(z.boolean()),
-    allow_custom_attributes: z.optional(z.boolean()),
-    force_link_scope: z.optional(z.boolean()),
-    link_scope: z.optional(z.string()),
-    show_anchor: z.optional(z.boolean()),
-    email_link_type: z.optional(z.boolean()),
-    asset_link_type: z.optional(z.boolean())
+    default_value: z.string().optional(),
+    restrict_content_types: z.boolean().optional(),
+    component_whitelist: z.array(z.string()).optional(),
+    allow_target_blank: z.boolean().optional(),
+    allow_custom_attributes: z.boolean().optional(),
+    force_link_scope: z.boolean().optional(),
+    link_scope: z.string().optional(),
+    show_anchor: z.boolean().optional(),
+    email_link_type: z.boolean().optional(),
+    asset_link_type: z.boolean().optional()
 }));
 
-export const zNumberFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zNumberField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['number']),
-    default_value: z.optional(z.string()),
-    min_value: z.optional(z.number()),
-    max_value: z.optional(z.number()),
-    decimals: z.optional(z.int()),
-    steps: z.optional(z.number())
+    default_value: z.string().optional(),
+    min_value: z.number().optional(),
+    max_value: z.number().optional(),
+    decimals: z.int().optional(),
+    steps: z.number().optional()
 }));
 
-export const zOptionFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zOptionField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['option']),
-    default_value: z.optional(z.string()),
-    options: z.optional(z.array(z.object({
-        _uid: z.optional(z.string()),
-        name: z.optional(z.string()),
-        value: z.optional(z.string())
-    }))),
-    source: z.optional(z.string()),
-    datasource_slug: z.optional(z.string()),
-    external_datasource: z.optional(z.string()),
-    folder_slug: z.optional(z.string()),
-    filter_content_type: z.optional(z.array(z.string())),
-    exclude_empty_option: z.optional(z.boolean()),
-    include_empty_option: z.optional(z.boolean()),
-    use_uuid: z.optional(z.boolean()),
-    entry_appearance: z.optional(z.string()),
-    allow_advanced_search: z.optional(z.boolean()),
-    max_options: z.optional(z.string()),
-    min_options: z.optional(z.string()),
-    multiple: z.optional(z.boolean())
+    default_value: z.string().optional(),
+    options: z.array(z.object({
+        _uid: z.string().optional(),
+        name: z.string().optional(),
+        value: z.string().optional()
+    })).optional(),
+    source: z.string().optional(),
+    datasource_slug: z.string().optional(),
+    external_datasource: z.string().optional(),
+    folder_slug: z.string().optional(),
+    filter_content_type: z.array(z.string()).optional(),
+    exclude_empty_option: z.boolean().optional(),
+    include_empty_option: z.boolean().optional(),
+    use_uuid: z.boolean().optional(),
+    entry_appearance: z.string().optional(),
+    allow_advanced_search: z.boolean().optional(),
+    max_options: z.string().optional(),
+    min_options: z.string().optional(),
+    multiple: z.boolean().optional()
 }));
 
-export const zOptionsFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zOptionsField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['options']),
-    default_value: z.optional(z.union([
+    default_value: z.union([
         z.string(),
         z.array(z.string())
-    ])),
-    options: z.optional(z.array(z.object({
-        _uid: z.optional(z.string()),
-        name: z.optional(z.string()),
-        value: z.optional(z.string())
-    }))),
-    source: z.optional(z.string()),
-    datasource_slug: z.optional(z.string()),
-    external_datasource: z.optional(z.string()),
-    folder_slug: z.optional(z.string()),
-    filter_content_type: z.optional(z.array(z.string())),
-    use_uuid: z.optional(z.boolean()),
-    exclude_empty_option: z.optional(z.boolean()),
-    is_reference_type: z.optional(z.boolean()),
-    entry_appearance: z.optional(z.string()),
-    allow_advanced_search: z.optional(z.boolean()),
-    max_options: z.optional(z.string()),
-    min_options: z.optional(z.string()),
-    multiple: z.optional(z.boolean())
+    ]).optional(),
+    options: z.array(z.object({
+        _uid: z.string().optional(),
+        name: z.string().optional(),
+        value: z.string().optional()
+    })).optional(),
+    source: z.string().optional(),
+    datasource_slug: z.string().optional(),
+    external_datasource: z.string().optional(),
+    folder_slug: z.string().optional(),
+    filter_content_type: z.array(z.string()).optional(),
+    use_uuid: z.boolean().optional(),
+    exclude_empty_option: z.boolean().optional(),
+    is_reference_type: z.boolean().optional(),
+    entry_appearance: z.string().optional(),
+    allow_advanced_search: z.boolean().optional(),
+    max_options: z.string().optional(),
+    min_options: z.string().optional(),
+    multiple: z.boolean().optional()
 }));
 
-export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zRichtextField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['richtext']),
-    default_value: z.optional(z.string()),
-    customize_toolbar: z.optional(z.boolean()),
-    toolbar: z.optional(z.array(z.enum([
+    default_value: z.string().optional(),
+    customize_toolbar: z.boolean().optional(),
+    toolbar: z.array(z.enum([
         'ai-complete',
         'ai-shorten',
         'ai-extend',
@@ -366,215 +363,191 @@ export const zRichtextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.obje
         'align-center',
         'align-right',
         'align-justify'
-    ]))),
-    style_options: z.optional(z.array(z.object({
-        _uid: z.optional(z.string()),
-        name: z.optional(z.string()),
-        value: z.optional(z.string())
-    }))),
-    restrict_type: z.optional(z.string()),
-    restrict_components: z.optional(z.boolean()),
-    component_whitelist: z.optional(z.array(z.string())),
-    component_denylist: z.optional(z.array(z.string())),
-    component_tag_whitelist: z.optional(z.array(z.int())),
-    component_tag_denylist: z.optional(z.array(z.int())),
-    component_group_whitelist: z.optional(z.array(z.string())),
-    component_group_denylist: z.optional(z.array(z.string())),
-    allow_target_blank: z.optional(z.boolean()),
-    allow_custom_attributes: z.optional(z.boolean()),
-    link_scope: z.optional(z.string()),
-    max_length: z.optional(z.union([
+    ])).optional(),
+    style_options: z.array(z.object({
+        _uid: z.string().optional(),
+        name: z.string().optional(),
+        value: z.string().optional()
+    })).optional(),
+    restrict_type: z.string().optional(),
+    restrict_components: z.boolean().optional(),
+    component_whitelist: z.array(z.string()).optional(),
+    component_denylist: z.array(z.string()).optional(),
+    component_tag_whitelist: z.array(z.int()).optional(),
+    component_tag_denylist: z.array(z.int()).optional(),
+    component_group_whitelist: z.array(z.string()).optional(),
+    component_group_denylist: z.array(z.string()).optional(),
+    allow_target_blank: z.boolean().optional(),
+    allow_custom_attributes: z.boolean().optional(),
+    link_scope: z.string().optional(),
+    max_length: z.union([
         z.int(),
         z.string()
-    ])),
-    rtl: z.optional(z.boolean())
+    ]).optional(),
+    rtl: z.boolean().optional()
 }));
 
-export const zTableFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zTableField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['table']),
-    default_value: z.optional(z.string())
+    default_value: z.string().optional()
 }));
 
-export const zTextFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zTextField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['text']),
-    default_value: z.optional(z.string()),
-    max_length: z.optional(z.union([
+    default_value: z.string().optional(),
+    max_length: z.union([
         z.int(),
         z.string()
-    ])),
-    maxlength: z.optional(z.int()),
-    minlength: z.optional(z.int()),
-    size: z.optional(z.string()),
-    rtl: z.optional(z.boolean())
+    ]).optional(),
+    maxlength: z.int().optional(),
+    minlength: z.int().optional(),
+    size: z.string().optional(),
+    rtl: z.boolean().optional()
 }));
 
-export const zTextareaFieldRoot = zBaseFieldRoot.and(zValueFieldRoot).and(z.object({
+export const zTextareaField = zBaseField.and(zValueField).and(z.object({
     type: z.enum(['textarea']),
-    default_value: z.optional(z.string()),
-    max_length: z.optional(z.union([
+    default_value: z.string().optional(),
+    max_length: z.union([
         z.int(),
         z.string()
-    ])),
-    maxlength: z.optional(z.int()),
-    minlength: z.optional(z.int()),
-    size: z.optional(z.string()),
-    rtl: z.optional(z.boolean()),
-    rich_text: z.optional(z.boolean()),
-    markdown: z.optional(z.boolean())
+    ]).optional(),
+    maxlength: z.int().optional(),
+    minlength: z.int().optional(),
+    size: z.string().optional(),
+    rtl: z.boolean().optional(),
+    rich_text: z.boolean().optional(),
+    markdown: z.boolean().optional()
 }));
 
 /**
  * A component schema field. Discriminated by the literal `type` enum on each variant.
  */
 export const zComponentSchemaField = z.union([
-    zTextFieldRoot,
-    zTextareaFieldRoot,
-    zRichtextFieldRoot,
-    zMarkdownFieldRoot,
-    zNumberFieldRoot,
-    zDatetimeFieldRoot,
-    zBooleanFieldRoot,
-    zOptionFieldRoot,
-    zOptionsFieldRoot,
-    zAssetFieldRoot,
-    zMultiassetFieldRoot,
-    zImageFieldRoot,
-    zFileFieldRoot,
-    zMultilinkFieldRoot,
-    zLinkFieldRoot,
-    zBloksFieldRoot,
-    zTableFieldRoot,
-    zSectionFieldRoot,
-    zTabFieldRoot,
-    zGroupFieldRoot,
-    zCommerceFieldRoot,
-    zCustomFieldRoot
+    zTextField,
+    zTextareaField,
+    zRichtextField,
+    zMarkdownField,
+    zNumberField,
+    zDatetimeField,
+    zBooleanField,
+    zOptionField,
+    zOptionsField,
+    zAssetField,
+    zMultiassetField,
+    zImageField,
+    zFileField,
+    zMultilinkField,
+    zLinkField,
+    zBloksField,
+    zTableField,
+    zSectionField,
+    zTabField,
+    zGroupField,
+    zCommerceField,
+    zCustomField
 ]);
 
 /**
  * Asset field type - single asset (image, video, audio, or document)
  */
-export const zAssetFieldValueRoot = z.object({
+export const zAssetFieldValue = z.object({
     fieldtype: z.enum(['asset']),
-    id: z.union([
-        z.int(),
-        z.null()
-    ]),
-    alt: z.union([
-        z.string(),
-        z.null()
-    ]),
-    name: z.optional(z.string()),
-    focus: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    title: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    source: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
+    id: z.int().nullable(),
+    alt: z.string().nullable(),
+    name: z.string().optional(),
+    focus: z.string().nullish(),
+    title: z.string().nullish(),
+    source: z.string().nullish(),
     filename: z.string(),
-    copyright: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    meta_data: z.optional(z.record(z.string(), z.unknown())),
-    is_external_url: z.optional(z.boolean())
+    copyright: z.string().nullish(),
+    meta_data: z.record(z.string(), z.unknown()).optional(),
+    is_external_url: z.boolean().optional()
 });
 
-export const zAssetFieldValue = zAssetFieldValueRoot;
+export const zAssetFieldValue2 = zAssetFieldValue;
 
-export const zMultilinkFieldValueSharedLink = z.object({
+export const zSharedLink = z.object({
     fieldtype: z.enum(['multilink']),
     linktype: z.string(),
     id: z.string(),
     url: z.string(),
     cached_url: z.string(),
-    target: z.optional(z.enum(['_self', '_blank']))
+    target: z.enum(['_self', '_blank']).optional()
 });
 
 /**
  * Link to a Storyblok asset.
  */
-export const zMultilinkFieldValueAssetLink = zMultilinkFieldValueSharedLink.and(z.object({
+export const zAssetLink = zSharedLink.and(z.object({
     linktype: z.enum(['asset'])
 }));
 
 /**
  * Link to an email address.
  */
-export const zMultilinkFieldValueEmailLink = zMultilinkFieldValueSharedLink.and(z.object({
+export const zEmailLink = zSharedLink.and(z.object({
     linktype: z.enum(['email']),
-    email: z.optional(z.string())
+    email: z.string().optional()
 }));
 
 /**
  * Link to an internal Storyblok story.
  */
-export const zMultilinkFieldValueStoryLink = zMultilinkFieldValueSharedLink.and(z.object({
+export const zStoryLink = zSharedLink.and(z.object({
     linktype: z.enum(['story']),
-    anchor: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
-    rel: z.optional(z.string()),
-    title: z.optional(z.string())
-})).and(z.record(z.string(), z.union([
-    z.string(),
-    z.null()
-])));
+    anchor: z.string().nullish(),
+    rel: z.string().optional(),
+    title: z.string().optional()
+})).and(z.record(z.string(), z.string().nullable()));
 
 /**
  * Link to an external URL.
  */
-export const zMultilinkFieldValueUrlLink = zMultilinkFieldValueSharedLink.and(z.object({
+export const zUrlLink = zSharedLink.and(z.object({
     linktype: z.enum(['url']),
-    rel: z.optional(z.string()),
-    title: z.optional(z.string())
+    rel: z.string().optional(),
+    title: z.string().optional()
 })).and(z.record(z.string(), z.string()));
 
 /**
  * Multilink field type - link to internal stories, external URLs, emails, or assets.
  */
-export const zMultilinkFieldValueRoot = z.union([
-    zMultilinkFieldValueStoryLink,
-    zMultilinkFieldValueUrlLink,
-    zMultilinkFieldValueEmailLink,
-    zMultilinkFieldValueAssetLink
+export const zMultilinkFieldValue = z.union([
+    zStoryLink,
+    zUrlLink,
+    zEmailLink,
+    zAssetLink
 ]);
 
-export const zMultilinkFieldValue = zMultilinkFieldValueRoot;
+export const zMultilinkFieldValue2 = zMultilinkFieldValue;
 
 /**
  * Plugin/Custom field type - field plugin with custom structure
  */
-export const zPluginFieldValueRoot = z.object({
+export const zPluginFieldValue = z.object({
     plugin: z.string(),
-    _uid: z.optional(z.uuid())
+    _uid: z.uuid().optional()
 });
 
-export const zPluginFieldValue = zPluginFieldValueRoot;
+export const zPluginFieldValue2 = zPluginFieldValue;
 
-export const zRichTextFieldValueAnchorMark = z.object({
+export const zAnchorMark = z.object({
     type: z.enum(['anchor']),
     attrs: z.object({
         id: z.string()
     })
 });
 
-export const zRichTextFieldValueBoldMark = z.object({
+export const zBoldMark = z.object({
     type: z.enum(['bold'])
 });
 
-export const zRichTextFieldValueCodeMark = z.object({
+export const zCodeMark = z.object({
     type: z.enum(['code'])
 });
 
-export const zRichTextFieldValueEmojiNode = z.object({
+export const zEmojiNode = z.object({
     type: z.enum(['emoji']),
     attrs: z.object({
         name: z.string(),
@@ -583,156 +556,94 @@ export const zRichTextFieldValueEmojiNode = z.object({
     })
 });
 
-export const zRichTextFieldValueHardBreakNode = z.object({
+export const zHardBreakNode = z.object({
     type: z.enum(['hard_break'])
 });
 
-export const zRichTextFieldValueHighlightMark = z.object({
+export const zHighlightMark = z.object({
     type: z.enum(['highlight']),
     attrs: z.object({
-        color: z.union([
-            z.string(),
-            z.null()
-        ])
+        color: z.string().nullable()
     })
 });
 
-export const zRichTextFieldValueHorizontalRuleNode = z.object({
+export const zHorizontalRuleNode = z.object({
     type: z.enum(['horizontal_rule'])
 });
 
-export const zRichTextFieldValueImageNode = z.object({
+export const zImageNode = z.object({
     type: z.enum(['image']),
     attrs: z.object({
-        id: z.union([
-            z.int(),
-            z.null()
-        ]),
-        src: z.union([
-            z.string(),
-            z.null()
-        ]),
-        alt: z.union([
-            z.string(),
-            z.null()
-        ]),
-        title: z.union([
-            z.string(),
-            z.null()
-        ]),
-        source: z.union([
-            z.string(),
-            z.null()
-        ]),
-        copyright: z.union([
-            z.string(),
-            z.null()
-        ]),
-        meta_data: z.union([
-            z.object({
-                alt: z.optional(z.union([
-                    z.string(),
-                    z.null()
-                ])),
-                title: z.optional(z.union([
-                    z.string(),
-                    z.null()
-                ])),
-                source: z.optional(z.union([
-                    z.string(),
-                    z.null()
-                ])),
-                copyright: z.optional(z.union([
-                    z.string(),
-                    z.null()
-                ]))
-            }),
-            z.null()
-        ])
+        id: z.int().nullable(),
+        src: z.string().nullable(),
+        alt: z.string().nullable(),
+        title: z.string().nullable(),
+        source: z.string().nullable(),
+        copyright: z.string().nullable(),
+        meta_data: z.object({
+            alt: z.string().nullish(),
+            title: z.string().nullish(),
+            source: z.string().nullish(),
+            copyright: z.string().nullish()
+        }).nullable()
     })
 });
 
-export const zRichTextFieldValueItalicMark = z.object({
+export const zItalicMark = z.object({
     type: z.enum(['italic'])
 });
 
-export const zRichTextFieldValueLinkMark = z.object({
+export const zLinkMark = z.object({
     type: z.enum(['link']),
     attrs: z.object({
-        href: z.union([
-            z.string(),
-            z.null()
-        ]),
-        uuid: z.union([
-            z.string(),
-            z.null()
-        ]),
-        anchor: z.union([
-            z.string(),
-            z.null()
-        ]),
+        href: z.string().nullable(),
+        uuid: z.string().nullable(),
+        anchor: z.string().nullable(),
         target: z.union([
             z.literal('_self'),
             z.literal('_blank'),
             z.literal('_parent'),
-            z.literal('_top'),
-            z.null()
-        ]),
+            z.literal('_top')
+        ]).nullable(),
         linktype: z.union([
             z.literal('story'),
             z.literal('url'),
             z.literal('email'),
-            z.literal('asset'),
-            z.null()
-        ]),
-        custom: z.optional(z.union([
-            z.record(z.string(), z.unknown()),
-            z.null()
-        ]))
+            z.literal('asset')
+        ]).nullable(),
+        custom: z.record(z.string(), z.unknown()).nullish()
     })
 });
 
-export const zRichTextFieldValueStrikeMark = z.object({
+export const zStrikeMark = z.object({
     type: z.enum(['strike'])
 });
 
-export const zRichTextFieldValueStyledMark = z.object({
+export const zStyledMark = z.object({
     type: z.enum(['styled']),
     attrs: z.object({
-        class: z.union([
-            z.string(),
-            z.null()
-        ])
+        class: z.string().nullable()
     })
 });
 
-export const zRichTextFieldValueSubscriptMark = z.object({
+export const zSubscriptMark = z.object({
     type: z.enum(['subscript'])
 });
 
-export const zRichTextFieldValueSuperscriptMark = z.object({
+export const zSuperscriptMark = z.object({
     type: z.enum(['superscript'])
 });
 
-export const zRichTextFieldValueTextStyleMark = z.object({
+export const zTextStyleMark = z.object({
     type: z.enum(['textStyle']),
     attrs: z.object({
-        color: z.optional(z.union([
-            z.string(),
-            z.null()
-        ])),
-        id: z.optional(z.union([
-            z.string(),
-            z.null()
-        ])),
-        class: z.optional(z.union([
-            z.string(),
-            z.null()
-        ]))
+        color: z.string().nullish(),
+        id: z.string().nullish(),
+        class: z.string().nullish()
     })
 });
 
-export const zRichTextFieldValueUnderlineMark = z.object({
+export const zUnderlineMark = z.object({
     type: z.enum(['underline'])
 });
 
@@ -740,143 +651,124 @@ export const zRichTextFieldValueUnderlineMark = z.object({
  * Inline formatting mark applied to a text node
  */
 export const zRichTextFieldValueRichTextMark = z.union([
-    zRichTextFieldValueLinkMark,
-    zRichTextFieldValueBoldMark,
-    zRichTextFieldValueItalicMark,
-    zRichTextFieldValueStrikeMark,
-    zRichTextFieldValueUnderlineMark,
-    zRichTextFieldValueCodeMark,
-    zRichTextFieldValueSuperscriptMark,
-    zRichTextFieldValueSubscriptMark,
-    zRichTextFieldValueHighlightMark,
-    zRichTextFieldValueTextStyleMark,
-    zRichTextFieldValueAnchorMark,
-    zRichTextFieldValueStyledMark
+    zLinkMark,
+    zBoldMark,
+    zItalicMark,
+    zStrikeMark,
+    zUnderlineMark,
+    zCodeMark,
+    zSuperscriptMark,
+    zSubscriptMark,
+    zHighlightMark,
+    zTextStyleMark,
+    zAnchorMark,
+    zStyledMark
 ]);
 
 export const zRichTextMark = zRichTextFieldValueRichTextMark;
 
-export const zRichTextFieldValueTextNode = z.object({
+export const zTextNode = z.object({
     type: z.enum(['text']),
     text: z.string(),
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
 /**
  * Table field type - structured table data
  */
-export const zTableFieldValueRoot = z.object({
+export const zTableFieldValue = z.object({
     thead: z.array(z.object({
-        _uid: z.optional(z.string()),
-        component: z.optional(z.enum(['_table_head'])),
-        value: z.optional(z.string())
+        _uid: z.string().optional(),
+        component: z.enum(['_table_head']).optional(),
+        value: z.string().optional()
     })),
     tbody: z.array(z.object({
-        _uid: z.optional(z.string()),
-        component: z.optional(z.enum(['_table_row'])),
-        body: z.optional(z.array(z.object({
-            _uid: z.optional(z.string()),
-            component: z.optional(z.enum(['_table_col'])),
-            value: z.optional(z.string())
-        })))
+        _uid: z.string().optional(),
+        component: z.enum(['_table_row']).optional(),
+        body: z.array(z.object({
+            _uid: z.string().optional(),
+            component: z.enum(['_table_col']).optional(),
+            value: z.string().optional()
+        })).optional()
     }))
 });
 
-export const zTableFieldValue = zTableFieldValueRoot;
+export const zTableFieldValue2 = zTableFieldValue;
 
-export const zBlockContent = z.lazy((): any => zBlockContentRoot);
+export const zBlockContent = z.lazy((): any => zBlockContent2);
 
-export const zBlockContentInput = z.lazy((): any => zBlockContentInputRoot);
+export const zBlockContentInput = z.lazy((): any => zBlockContentInput2);
 
-export const zRichTextFieldValue = z.lazy((): any => zRichTextFieldValueRoot);
+export const zRichTextFieldValue = z.lazy((): any => zRichTextFieldValue2);
 
 export const zRichTextNode = z.lazy((): any => zRichTextFieldValueRichTextNode);
 
 /**
  * Content object for creating or updating a component instance. Contains a component technical name and dynamic fields whose values depend on the component's schema field types. The _uid is optional — Storyblok will auto-generate one if not provided.
  */
-export const zBlockContentInputRoot = z.object({
-    _uid: z.optional(z.string()),
+export const zBlockContentInput2 = z.object({
+    _uid: z.string().optional(),
     component: z.string(),
-    _editable: z.optional(z.string())
+    _editable: z.string().optional()
 });
 
 /**
  * Content object representing a component instance. Contains a _uid, a component technical name, and dynamic fields whose values depend on the component's schema field types (text, textarea, richtext, markdown, number, datetime, boolean, option, options, asset, multiasset, multilink, bloks, table, section, custom/plugin).
  */
-export const zBlockContentRoot = z.object({
+export const zBlockContent2 = z.object({
     _uid: z.string(),
     component: z.string(),
-    _editable: z.optional(z.string())
+    _editable: z.string().optional()
 });
 
 /**
  * Rich text field type - structured rich text document (ProseMirror/Tiptap format)
  */
-export const zRichTextFieldValueRoot = z.object({
+export const zRichTextFieldValue2 = z.object({
     type: z.enum(['doc']),
-    get content() {
-        return z.array(z.lazy((): any => zRichTextFieldValueRichTextNode));
-    }
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode))
 });
 
-export const zRichTextFieldValueBlockNode = z.object({
+export const zBlockNode = z.object({
     type: z.enum(['blok']),
     attrs: z.object({
-        id: z.union([
-            z.string(),
-            z.null()
-        ]),
-        body: z.union([
-            z.array(zBlockContentInputRoot),
-            z.null()
-        ])
+        id: z.string().nullable(),
+        body: z.array(zBlockContentInput2).nullable()
     })
 });
 
-export const zRichTextFieldValueBlockquoteNode = z.object({
+export const zBlockquoteNode = z.object({
     type: z.enum(['blockquote']),
-    attrs: z.optional(z.object({
-        dir: z.optional(z.union([
+    attrs: z.object({
+        dir: z.union([
             z.literal('ltr'),
-            z.literal('rtl'),
-            z.null()
-        ]))
-    })),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+            z.literal('rtl')
+        ]).nullish()
+    }).optional(),
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
-export const zRichTextFieldValueBulletListNode = z.object({
+export const zBulletListNode = z.object({
     type: z.enum(['bullet_list']),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
-export const zRichTextFieldValueCodeBlockNode = z.object({
+export const zCodeBlockNode = z.object({
     type: z.enum(['code_block']),
     attrs: z.object({
-        class: z.union([
-            z.string(),
-            z.null()
-        ]),
-        dir: z.optional(z.union([
+        class: z.string().nullable(),
+        dir: z.union([
             z.literal('ltr'),
-            z.literal('rtl'),
-            z.null()
-        ]))
+            z.literal('rtl')
+        ]).nullish()
     }),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
-export const zRichTextFieldValueHeadingNode = z.object({
+export const zHeadingNode = z.object({
     type: z.enum(['heading']),
     attrs: z.object({
         level: z.union([
@@ -885,135 +777,112 @@ export const zRichTextFieldValueHeadingNode = z.object({
             z.literal(3),
             z.literal(4),
             z.literal(5),
-            z.literal(6),
-            z.null()
-        ]),
+            z.literal(6)
+        ]).nullable(),
         textAlign: z.union([
             z.literal('left'),
             z.literal('center'),
             z.literal('right'),
-            z.literal('justify'),
-            z.null()
-        ]),
-        dir: z.optional(z.union([
+            z.literal('justify')
+        ]).nullable(),
+        dir: z.union([
             z.literal('ltr'),
-            z.literal('rtl'),
-            z.null()
-        ]))
+            z.literal('rtl')
+        ]).nullish()
     }),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
-export const zRichTextFieldValueListItemNode = z.object({
+export const zListItemNode = z.object({
     type: z.enum(['list_item']),
-    attrs: z.optional(z.object({
-        dir: z.optional(z.union([
+    attrs: z.object({
+        dir: z.union([
             z.literal('ltr'),
-            z.literal('rtl'),
-            z.null()
-        ]))
-    })),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+            z.literal('rtl')
+        ]).nullish()
+    }).optional(),
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
-export const zRichTextFieldValueOrderedListNode = z.object({
+export const zOrderedListNode = z.object({
     type: z.enum(['ordered_list']),
     attrs: z.object({
-        order: z.optional(z.int())
+        order: z.int().optional()
     }),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
-export const zRichTextFieldValueParagraphNode = z.object({
+export const zParagraphNode = z.object({
     type: z.enum(['paragraph']),
-    attrs: z.optional(z.object({
+    attrs: z.object({
         textAlign: z.union([
             z.literal('left'),
             z.literal('center'),
             z.literal('right'),
-            z.literal('justify'),
-            z.null()
-        ]),
-        dir: z.optional(z.union([
+            z.literal('justify')
+        ]).nullable(),
+        dir: z.union([
             z.literal('ltr'),
-            z.literal('rtl'),
-            z.null()
-        ]))
-    })),
-    get content() {
-        return z.optional(z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)));
-    },
-    marks: z.optional(z.array(zRichTextFieldValueRichTextMark))
+            z.literal('rtl')
+        ]).nullish()
+    }).optional(),
+    content: z.array(z.lazy((): any => zRichTextFieldValueRichTextNode)).optional(),
+    marks: z.array(zRichTextFieldValueRichTextMark).optional()
 });
 
 /**
  * A rich text document node
  */
 export const zRichTextFieldValueRichTextNode = z.union([
-    zRichTextFieldValueParagraphNode,
-    zRichTextFieldValueTextNode,
-    zRichTextFieldValueHeadingNode,
-    zRichTextFieldValueBlockquoteNode,
-    zRichTextFieldValueBulletListNode,
-    zRichTextFieldValueOrderedListNode,
-    zRichTextFieldValueListItemNode,
-    zRichTextFieldValueCodeBlockNode,
-    zRichTextFieldValueHardBreakNode,
-    zRichTextFieldValueHorizontalRuleNode,
-    zRichTextFieldValueImageNode,
-    zRichTextFieldValueEmojiNode,
-    z.lazy((): any => zRichTextFieldValueTableNode),
-    z.lazy((): any => zRichTextFieldValueTableRowNode),
-    z.lazy((): any => zRichTextFieldValueTableCellNode),
-    z.lazy((): any => zRichTextFieldValueTableHeaderNode),
-    zRichTextFieldValueBlockNode
+    zParagraphNode,
+    zTextNode,
+    zHeadingNode,
+    zBlockquoteNode,
+    zBulletListNode,
+    zOrderedListNode,
+    zListItemNode,
+    zCodeBlockNode,
+    zHardBreakNode,
+    zHorizontalRuleNode,
+    zImageNode,
+    zEmojiNode,
+    z.lazy((): any => zTableNode),
+    z.lazy((): any => zTableRowNode),
+    z.lazy((): any => zTableCellNode),
+    z.lazy((): any => zTableHeaderNode),
+    zBlockNode
 ]);
 
-export const zRichTextFieldValueTableCellNode = z.object({
+export const zTableCellNode = z.object({
     type: z.enum(['tableCell']),
     attrs: z.object({
-        colspan: z.optional(z.int()),
-        rowspan: z.optional(z.int()),
-        colwidth: z.optional(z.union([
-            z.array(z.int()),
-            z.null()
-        ])),
-        backgroundColor: z.optional(z.union([
-            z.string(),
-            z.null()
-        ]))
+        colspan: z.int().optional(),
+        rowspan: z.int().optional(),
+        colwidth: z.array(z.int()).nullish(),
+        backgroundColor: z.string().nullish()
     }),
-    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+    content: z.array(zRichTextFieldValueRichTextNode).optional()
 });
 
-export const zRichTextFieldValueTableHeaderNode = z.object({
+export const zTableHeaderNode = z.object({
     type: z.enum(['tableHeader']),
     attrs: z.object({
-        colspan: z.optional(z.int()),
-        rowspan: z.optional(z.int()),
-        colwidth: z.optional(z.union([
-            z.array(z.int()),
-            z.null()
-        ]))
+        colspan: z.int().optional(),
+        rowspan: z.int().optional(),
+        colwidth: z.array(z.int()).nullish()
     }),
-    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+    content: z.array(zRichTextFieldValueRichTextNode).optional()
 });
 
-export const zRichTextFieldValueTableNode = z.object({
+export const zTableNode = z.object({
     type: z.enum(['table']),
-    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+    content: z.array(zRichTextFieldValueRichTextNode).optional()
 });
 
-export const zRichTextFieldValueTableRowNode = z.object({
+export const zTableRowNode = z.object({
     type: z.enum(['tableRow']),
-    content: z.optional(z.array(zRichTextFieldValueRichTextNode))
+    content: z.array(zRichTextFieldValueRichTextNode).optional()
 });

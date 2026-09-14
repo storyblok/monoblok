@@ -3,22 +3,22 @@
 import type {
   RichTextMark,
   RichTextNode,
-  RichTextFieldValueAnchorMark,
-  RichTextFieldValueBlockNode,
-  RichTextFieldValueBlockquoteNode,
-  RichTextFieldValueCodeBlockNode,
-  RichTextFieldValueEmojiNode,
-  RichTextFieldValueHeadingNode,
-  RichTextFieldValueHighlightMark,
-  RichTextFieldValueImageNode,
-  RichTextFieldValueLinkMark,
-  RichTextFieldValueListItemNode,
-  RichTextFieldValueOrderedListNode,
-  RichTextFieldValueParagraphNode,
-  RichTextFieldValueStyledMark,
-  RichTextFieldValueTableCellNode,
-  RichTextFieldValueTableHeaderNode,
-  RichTextFieldValueTextStyleMark,
+  AnchorMark,
+  BlockNode,
+  BlockquoteNode,
+  CodeBlockNode,
+  EmojiNode,
+  HeadingNode,
+  HighlightMark,
+  ImageNode,
+  LinkMark,
+  ListItemNode,
+  OrderedListNode,
+  ParagraphNode,
+  StyledMark,
+  TableCellNode,
+  TableHeaderNode,
+  TextStyleMark,
 } from "../generated/overlay/types.gen";
 
 export interface StoryblokRichTextElementByType<TContext = unknown> {
@@ -30,7 +30,7 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   paragraph: {
     type: "paragraph";
-    attrs?: RichTextFieldValueParagraphNode["attrs"];
+    attrs?: ParagraphNode["attrs"];
     content?: RichTextNode[];
     marks?: RichTextMark[];
     _key?: string;
@@ -45,7 +45,7 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   heading: {
     type: "heading";
-    attrs: RichTextFieldValueHeadingNode["attrs"];
+    attrs: HeadingNode["attrs"];
     content?: RichTextNode[];
     marks?: RichTextMark[];
     _key?: string;
@@ -53,7 +53,7 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   blockquote: {
     type: "blockquote";
-    attrs?: RichTextFieldValueBlockquoteNode["attrs"];
+    attrs?: BlockquoteNode["attrs"];
     content?: RichTextNode[];
     marks?: RichTextMark[];
     _key?: string;
@@ -68,7 +68,7 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   ordered_list: {
     type: "ordered_list";
-    attrs: RichTextFieldValueOrderedListNode["attrs"];
+    attrs: OrderedListNode["attrs"];
     content?: RichTextNode[];
     marks?: RichTextMark[];
     _key?: string;
@@ -76,7 +76,7 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   list_item: {
     type: "list_item";
-    attrs?: RichTextFieldValueListItemNode["attrs"];
+    attrs?: ListItemNode["attrs"];
     content?: RichTextNode[];
     marks?: RichTextMark[];
     _key?: string;
@@ -84,7 +84,7 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   code_block: {
     type: "code_block";
-    attrs: RichTextFieldValueCodeBlockNode["attrs"];
+    attrs: CodeBlockNode["attrs"];
     content?: RichTextNode[];
     marks?: RichTextMark[];
     _key?: string;
@@ -102,13 +102,13 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   image: {
     type: "image";
-    attrs: RichTextFieldValueImageNode["attrs"];
+    attrs: ImageNode["attrs"];
     _key?: string;
     context?: TContext;
   };
   emoji: {
     type: "emoji";
-    attrs: RichTextFieldValueEmojiNode["attrs"];
+    attrs: EmojiNode["attrs"];
     _key?: string;
     context?: TContext;
   };
@@ -126,27 +126,27 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   tableCell: {
     type: "tableCell";
-    attrs: RichTextFieldValueTableCellNode["attrs"];
+    attrs: TableCellNode["attrs"];
     content?: RichTextNode[];
     _key?: string;
     context?: TContext;
   };
   tableHeader: {
     type: "tableHeader";
-    attrs: RichTextFieldValueTableHeaderNode["attrs"];
+    attrs: TableHeaderNode["attrs"];
     content?: RichTextNode[];
     _key?: string;
     context?: TContext;
   };
   blok: {
     type: "blok";
-    attrs: RichTextFieldValueBlockNode["attrs"];
+    attrs: BlockNode["attrs"];
     _key?: string;
     context?: TContext;
   };
   link: {
     type: "link";
-    attrs: RichTextFieldValueLinkMark["attrs"];
+    attrs: LinkMark["attrs"];
     _key?: string;
     context?: TContext;
   };
@@ -187,25 +187,25 @@ export interface StoryblokRichTextElementByType<TContext = unknown> {
   };
   highlight: {
     type: "highlight";
-    attrs: RichTextFieldValueHighlightMark["attrs"];
+    attrs: HighlightMark["attrs"];
     _key?: string;
     context?: TContext;
   };
   textStyle: {
     type: "textStyle";
-    attrs: RichTextFieldValueTextStyleMark["attrs"];
+    attrs: TextStyleMark["attrs"];
     _key?: string;
     context?: TContext;
   };
   anchor: {
     type: "anchor";
-    attrs: RichTextFieldValueAnchorMark["attrs"];
+    attrs: AnchorMark["attrs"];
     _key?: string;
     context?: TContext;
   };
   styled: {
     type: "styled";
-    attrs: RichTextFieldValueStyledMark["attrs"];
+    attrs: StyledMark["attrs"];
     _key?: string;
     context?: TContext;
   };

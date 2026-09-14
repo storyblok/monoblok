@@ -93,7 +93,7 @@
     "@tiptap/extension-horizontal-rule": "^3.22.3",
     "@tiptap/extension-image": "^3.22.3",
     "@tiptap/extension-italic": "^3.22.3",
-    "@tiptap/extension-link": "^3.22.3",
+    "@tiptap/extension-link": "^3.27.0",
     "@tiptap/extension-list": "^3.22.3",
     "@tiptap/extension-paragraph": "^3.22.3",
     "@tiptap/extension-strike": "^3.22.3",

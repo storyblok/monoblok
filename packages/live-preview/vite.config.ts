@@ -6,6 +6,7 @@ export default defineConfig({
     exports: true,
     sourcemap: true,
     dts: true,
+    unbundle: true,
     attw: true,
     publint: true,
   },

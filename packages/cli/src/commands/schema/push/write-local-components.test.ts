@@ -114,6 +114,41 @@ describe("writeLocalComponents", () => {
     expect(content).toHaveProperty("component_group_uuid", null);
   });
 
+  it("drops a path-space group denylist and its restriction flags", async () => {
+    const resolved = makeSchema({
+      components: [
+        {
+          name: "hero",
+          folder: "layout/heros",
+          component_group_uuid: null,
+          schema: {
+            blocks: {
+              type: "bloks",
+              restrict_type: "groups",
+              restrict_components: true,
+              component_group_denylist: ["legacy"],
+            },
+          },
+        } as any,
+      ],
+    });
+
+    await writeLocalComponents({
+      space: SPACE,
+      basePath: undefined,
+      resolved,
+      diffResult: makeDiff([]),
+      deleteRemoved: false,
+      ui,
+      logger,
+    });
+
+    const files = Object.keys(vol.toJSON()).map(stripDriveLetter);
+    const heroFile = files.find((f) => f.endsWith(join(componentsDir, "hero.json")));
+    const content = JSON.parse(vol.readFileSync(heroFile!, "utf-8") as string);
+    expect(content.schema.blocks).toEqual({ type: "bloks" });
+  });
+
   it("drops orphaned group-restriction keys but leaves component-whitelist fields untouched", async () => {
     const resolved = makeSchema({
       components: [

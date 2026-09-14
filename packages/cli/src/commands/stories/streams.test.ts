@@ -2,14 +2,13 @@ import { randomUUID } from "node:crypto";
 import { join } from "pathe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
-import type { Story } from "@storyblok/management-api-client/resources/stories";
 import {
   createStoriesForLevel,
   groupStoriesByDepth,
   readLocalStoriesStream,
   scanLocalStoryIndex,
 } from "./streams";
-import type { ExistingTargetStories, StoryIndexEntry } from "./constants";
+import type { ExistingTargetStories, Story, StoryIndexEntry } from "./constants";
 import { normalizeFullSlug } from "./constants";
 import type { RefMaps } from "./ref-mapper";
 import * as actions from "./actions";
@@ -21,8 +20,10 @@ const writeStory = (story: Record<string, unknown>) => {
   vol.fromJSON({ [filePath]: JSON.stringify(story) });
 };
 
-const collectStream = async (stream: ReturnType<typeof readLocalStoriesStream>): Promise<any[]> => {
-  const results: any[] = [];
+const collectStream = async (
+  stream: ReturnType<typeof readLocalStoriesStream>,
+): Promise<Story[]> => {
+  const results: Story[] = [];
   for await (const story of stream) {
     results.push(story);
   }
@@ -354,6 +355,64 @@ describe("groupStoriesByDepth", () => {
 
 const mockCreateStory = vi.spyOn(actions, "createStory");
 
+const makeRemoteStory = ({
+  id,
+  uuid,
+  name,
+  slug,
+}: {
+  id: number;
+  uuid: string;
+  name?: string;
+  slug?: string;
+}): Story => ({
+  id,
+  uuid,
+  name: name ?? "",
+  slug: slug ?? "",
+  parent_id: null,
+  group_id: "",
+  alternates: [],
+  created_at: "2026-01-01T00:00:00.000Z",
+  deleted_at: null,
+  sort_by_date: null,
+  tag_list: [],
+  updated_at: "2026-01-01T00:00:00.000Z",
+  published_at: null,
+  is_folder: false,
+  content: {},
+  published: null,
+  path: null,
+  full_slug: slug ?? "",
+  default_root: null,
+  disble_fe_editor: false,
+  disable_fe_editor: false,
+  parent: null,
+  is_startpage: false,
+  unpublished_changes: null,
+  meta_data: null,
+  imported_at: null,
+  preview_token: { token: "", timestamp: "2026-01-01T00:00:00.000Z" },
+  pinned: false,
+  breadcrumbs: [],
+  publish_at: null,
+  expire_at: null,
+  first_published_at: null,
+  last_author: null,
+  last_author_id: null,
+  user_ids: [],
+  space_role_ids: [],
+  translated_slugs: [],
+  translated_stories: [],
+  localized_paths: [],
+  position: 0,
+  can_not_view: null,
+  is_scheduled: null,
+  scheduled_dates: null,
+  ideas: [],
+  favourite_for_user_ids: [],
+});
+
 describe("createStoriesForLevel", () => {
   const SPACE_ID = "12345";
   let remoteIdCounter = 9000;
@@ -367,14 +426,13 @@ describe("createStoriesForLevel", () => {
   });
 
   const fakeCreate = () =>
-    mockCreateStory.mockImplementation(
-      async (_spaceId, payload) =>
-        ({
-          id: ++remoteIdCounter,
-          uuid: randomUUID(),
-          slug: payload.story.slug,
-          name: payload.story.name,
-        }) as Story,
+    mockCreateStory.mockImplementation(async (_spaceId, payload) =>
+      makeRemoteStory({
+        id: ++remoteIdCounter,
+        uuid: randomUUID(),
+        slug: payload.story.slug,
+        name: payload.story.name,
+      }),
     );
 
   const makeEntry = (overrides: Partial<StoryIndexEntry> = {}): StoryIndexEntry => ({
@@ -406,7 +464,7 @@ describe("createStoriesForLevel", () => {
       const maps = emptyMaps();
       maps.stories!.set(100, 500);
       const targetStories = emptyTargetStories();
-      targetStories.byId.set(500, { id: 500, uuid: randomUUID() });
+      targetStories.byId.set(500, { id: 500, uuid: randomUUID(), is_folder: false });
 
       const skipped: StoryIndexEntry[] = [];
       await createStoriesForLevel({
@@ -431,7 +489,7 @@ describe("createStoriesForLevel", () => {
     it("should skip by full_slug in cross-space push (UUIDs always differ)", async () => {
       const entry = makeEntry({ full_slug: "blog/post-1" });
       const targetStories = emptyTargetStories();
-      targetStories.bySlug.set("blog/post-1", [{ id: 200, uuid: randomUUID() }]);
+      targetStories.bySlug.set("blog/post-1", [{ id: 200, uuid: randomUUID(), is_folder: false }]);
 
       const skipped: StoryIndexEntry[] = [];
       const manifest = vi.fn().mockResolvedValue(undefined);
@@ -460,7 +518,7 @@ describe("createStoriesForLevel", () => {
       // both would map to remote-500 causing data loss.
       const entryB = makeEntry({ full_slug: "about", component: "page" });
       const targetStories = emptyTargetStories();
-      targetStories.bySlug.set("about", [{ id: 500, uuid: randomUUID() }]);
+      targetStories.bySlug.set("about", [{ id: 500, uuid: randomUUID(), is_folder: false }]);
 
       // remote-500 was already claimed (e.g. by entry-a via manifest in a prior level)
       const claimed = new Set([500]);
@@ -494,8 +552,8 @@ describe("createStoriesForLevel", () => {
       const maps = emptyMaps();
       maps.stories!.set(100, 500);
       const targetStories = emptyTargetStories();
-      targetStories.byId.set(500, { id: 500, uuid: randomUUID() });
-      targetStories.bySlug.set("about", [{ id: 600, uuid: randomUUID() }]);
+      targetStories.byId.set(500, { id: 500, uuid: randomUUID(), is_folder: false });
+      targetStories.bySlug.set("about", [{ id: 600, uuid: randomUUID(), is_folder: false }]);
 
       const claimed = new Set<number>();
       await createStoriesForLevel({
@@ -553,7 +611,7 @@ describe("createStoriesForLevel", () => {
     it("should not skip by slug in same-space push when UUID differs", async () => {
       const entry = makeEntry({ full_slug: "about", component: "page" });
       const targetStories = emptyTargetStories();
-      targetStories.bySlug.set("about", [{ id: 200, uuid: randomUUID() }]);
+      targetStories.bySlug.set("about", [{ id: 200, uuid: randomUUID(), is_folder: false }]);
       fakeCreate();
 
       const successes: StoryIndexEntry[] = [];
@@ -611,6 +669,7 @@ describe("createStoriesForLevel", () => {
         maps: emptyMaps(),
         existingTargetStories: emptyTargetStories(),
         isCrossSpace: false,
+        claimedRemoteIds: new Set(),
         dryRun: true,
         appendToManifest: noopManifest,
         onStorySuccess(_e, remote) {
@@ -716,14 +775,13 @@ describe("push pipeline: scan -> group -> create level-by-level", () => {
   });
 
   const fakeCreate = () =>
-    mockCreateStory.mockImplementation(
-      async (_spaceId, payload) =>
-        ({
-          id: ++remoteIdCounter,
-          uuid: randomUUID(),
-          slug: payload.story.slug,
-          name: payload.story.name,
-        }) as Story,
+    mockCreateStory.mockImplementation(async (_spaceId, payload) =>
+      makeRemoteStory({
+        id: ++remoteIdCounter,
+        uuid: randomUUID(),
+        slug: payload.story.slug,
+        name: payload.story.name,
+      }),
     );
 
   it("should create a nested tree with correct parent_id and is_startpage", async () => {

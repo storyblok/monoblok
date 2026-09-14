@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComponentFolder } from "../../types";
-import { buildGroupPathByUuid, expandFolderPath, slugifyPath } from "./folders";
+import {
+  buildGroupPathByUuid,
+  expandFolderPath,
+  mapSchemaGroupLists,
+  slugifyPath,
+} from "./folders";
 
 function folder(
   partial: Partial<ComponentFolder> & { name: string; uuid: string },
@@ -94,5 +99,41 @@ describe("expandFolderPath", () => {
       { name: "Layout", path: "layout", parentPath: null },
       { name: "Heros", path: "layout/heros", parentPath: "layout" },
     ]);
+  });
+});
+
+describe("mapSchemaGroupLists", () => {
+  it("should map both the group whitelist and the group denylist", () => {
+    const schema = {
+      body: {
+        type: "bloks",
+        component_group_whitelist: ["path-a"],
+        component_group_denylist: ["path-b"],
+      },
+    };
+
+    expect(mapSchemaGroupLists(schema, (entry) => `uuid-${entry}`)).toEqual({
+      body: {
+        type: "bloks",
+        component_group_whitelist: ["uuid-path-a"],
+        component_group_denylist: ["uuid-path-b"],
+      },
+    });
+  });
+
+  it("should leave fields without a group list untouched and never mutate the source", () => {
+    const field = { type: "bloks", component_whitelist: ["hero"] };
+    const schema = { body: field };
+
+    expect(mapSchemaGroupLists(schema, () => "mapped")).toEqual(schema);
+    expect(field.component_whitelist).toEqual(["hero"]);
+  });
+
+  it("should keep non-string entries as they are", () => {
+    const schema = { body: { component_group_denylist: [null, "path-a"] } };
+
+    expect(mapSchemaGroupLists(schema, () => "mapped")).toEqual({
+      body: { component_group_denylist: [null, "mapped"] },
+    });
   });
 });

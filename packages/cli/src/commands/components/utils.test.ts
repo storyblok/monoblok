@@ -9,7 +9,16 @@ import {
 } from "./utils";
 
 function component(partial: Partial<Component> & { name: string }): Component {
-  return { id: 1, name: partial.name, schema: {}, ...partial } as Component;
+  return {
+    ...partial,
+    id: partial.id ?? 1,
+    name: partial.name,
+    created_at: partial.created_at ?? "",
+    updated_at: partial.updated_at ?? "",
+    schema: partial.schema ?? {},
+    is_root: partial.is_root ?? false,
+    is_nestable: partial.is_nestable ?? false,
+  };
 }
 
 function spaceData(
@@ -41,7 +50,13 @@ describe("collectAllDependencies (option A)", () => {
       parent_uuid: "parent-uuid",
       parent_id: 10,
     };
-    const parent: ComponentFolder = { id: 10, uuid: "parent-uuid", name: "Parent" };
+    const parent: ComponentFolder = {
+      id: 10,
+      uuid: "parent-uuid",
+      name: "Parent",
+      parent_id: null,
+      parent_uuid: null,
+    };
     const checkout = component({ name: "checkout", id: 1, component_group_uuid: "child-uuid" });
 
     const { filteredGroups } = collectAllDependencies([checkout], [checkout], [child, parent], []);
@@ -50,7 +65,13 @@ describe("collectAllDependencies (option A)", () => {
   });
 
   it("keeps groups and tags referenced by schema whitelists, plus group ancestors", () => {
-    const parent: ComponentFolder = { id: 10, uuid: "wl-parent", name: "WLParent" };
+    const parent: ComponentFolder = {
+      id: 10,
+      uuid: "wl-parent",
+      name: "WLParent",
+      parent_id: null,
+      parent_uuid: null,
+    };
     const wlGroup: ComponentFolder = {
       id: 11,
       uuid: "wl-group",
@@ -58,7 +79,7 @@ describe("collectAllDependencies (option A)", () => {
       parent_uuid: "wl-parent",
       parent_id: 10,
     };
-    const tag: InternalTag = { id: 5, name: "beta" };
+    const tag: InternalTag = { id: 5, name: "beta", object_type: "component" };
     const checkout = component({
       name: "checkout",
       id: 1,
@@ -83,7 +104,7 @@ describe("collectAllDependencies (option A)", () => {
   });
 
   it("keeps directly assigned tags", () => {
-    const tag: InternalTag = { id: 7, name: "checkout-team" };
+    const tag: InternalTag = { id: 7, name: "checkout-team", object_type: "component" };
     const checkout = component({ name: "checkout", id: 1, internal_tag_ids: ["7"] });
 
     const { filteredTags } = collectAllDependencies([checkout], [checkout], [], [tag]);
@@ -93,10 +114,10 @@ describe("collectAllDependencies (option A)", () => {
 });
 
 const groups: ComponentFolder[] = [
-  { id: 1, uuid: "marketing", name: "Marketing" },
+  { id: 1, uuid: "marketing", name: "Marketing", parent_id: null, parent_uuid: null },
   { id: 2, uuid: "checkout", name: "Checkout", parent_uuid: "marketing", parent_id: 1 },
   { id: 3, uuid: "checkout-forms", name: "Forms", parent_uuid: "checkout", parent_id: 2 },
-  { id: 4, uuid: "blog", name: "Blog" },
+  { id: 4, uuid: "blog", name: "Blog", parent_id: null, parent_uuid: null },
   { id: 5, uuid: "blog-forms", name: "Forms", parent_uuid: "blog", parent_id: 4 },
 ];
 
@@ -130,8 +151,8 @@ describe("resolveGroupSelector", () => {
 
   it("throws on an ambiguous bare name without hanging when parent_uuid chain is cyclic", () => {
     const cyclicGroups: ComponentFolder[] = [
-      { id: 1, uuid: "a", name: "Forms", parent_uuid: "b" },
-      { id: 2, uuid: "b", name: "Forms", parent_uuid: "a" },
+      { id: 1, uuid: "a", name: "Forms", parent_id: 2, parent_uuid: "b" },
+      { id: 2, uuid: "b", name: "Forms", parent_id: 1, parent_uuid: "a" },
     ];
     expect(() => resolveGroupSelector(cyclicGroups, "Forms")).toThrow(CommandError);
   });
@@ -143,8 +164,8 @@ describe("resolveGroupSelector", () => {
 
 describe("resolveTagSelector", () => {
   const tags: InternalTag[] = [
-    { id: 10, name: "beta" },
-    { id: 11, name: "checkout-team" },
+    { id: 10, name: "beta", object_type: "component" },
+    { id: 11, name: "checkout-team", object_type: "component" },
   ];
 
   it("maps names to ids", () => {

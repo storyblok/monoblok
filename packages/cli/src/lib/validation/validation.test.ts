@@ -268,7 +268,12 @@ describe("formatPretty", () => {
   });
 
   it("should report a clean run", () => {
-    const clean: ValidationRunResult = { unitNoun: "entities", unitsTotal: 14, groups: [] };
+    const clean: ValidationRunResult = {
+      unitNoun: "entities",
+      unitNounSingular: "entity",
+      unitsTotal: 14,
+      groups: [],
+    };
     expect(formatPretty(clean, "warning")).toContain(
       "0 errors, 0 warnings across 0 of 14 entities",
     );
@@ -400,6 +405,7 @@ describe("formatJson", () => {
   it("should omit the failure reasons when nothing failed", () => {
     const clean: ValidationRunResult = {
       unitNoun: "stories",
+      unitNounSingular: "story",
       unitsTotal: 5,
       groups: [],
       fetchErrors: [],
@@ -450,7 +456,12 @@ describe("formatJson", () => {
   });
 
   it("should not flag no-matches for an unfiltered run over an empty space", () => {
-    const empty: ValidationRunResult = { unitNoun: "stories", unitsTotal: 0, groups: [] };
+    const empty: ValidationRunResult = {
+      unitNoun: "stories",
+      unitNounSingular: "story",
+      unitsTotal: 0,
+      groups: [],
+    };
     const report = JSON.parse(formatJson(empty, "warning"));
     expect(report).not.toHaveProperty("noMatches");
     expect(report).not.toHaveProperty("filter");
@@ -478,6 +489,7 @@ describe("formatJson", () => {
   it("should report ok:true for a complete clean run", () => {
     const clean: ValidationRunResult = {
       unitNoun: "stories",
+      unitNounSingular: "story",
       unitsTotal: 5,
       groups: [],
       fetchFailures: 0,

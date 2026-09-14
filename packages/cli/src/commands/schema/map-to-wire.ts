@@ -1,51 +1,95 @@
+import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+
 import type { Component, Datasource, Field } from "../../types";
 import { isRecord } from "./utils";
 import { slugifyPath } from "./folders";
+
+/** The two halves of an `allow`/`deny` list: block names and slugified folder paths. */
+interface SplitRestriction {
+  names: unknown;
+  folderPaths: string[];
+}
+
+/**
+ * Splits an `allow`/`deny` value into its block-name and folder halves. Folder
+ * entries arrive as `{ folder: displayPath }` from `defineField` and are
+ * slugified into the transient slug-path space that `schema push` later resolves
+ * to group uuids. A non-array value is passed through as the name list, since
+ * hand-written schema data may hold a bare name.
+ */
+function splitRestriction(input: unknown): SplitRestriction | undefined {
+  if (input === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(input)) {
+    return { names: input, folderPaths: [] };
+  }
+  return {
+    names: input.filter((entry) => typeof entry === "string"),
+    folderPaths: input
+      .filter(
+        (entry): entry is { folder: string } => isRecord(entry) && typeof entry.folder === "string",
+      )
+      .map((entry) => slugifyPath(entry.folder)),
+  };
+}
 
 /**
  * Maps a single content-shape DSL field to its MAPI wire form. The field's
  * `name` becomes the schema record key (returned separately); the DSL reference
  * keys are renamed to their wire equivalents:
  * - `allow` → `component_whitelist` (for block-name entries) or
- *   `component_group_whitelist` (for folder entries), plus `restrict_components: true`
- *   and `restrict_type: ''` on `bloks` fields, or `restrict_type: 'groups'` for
- *   folder entries on both `bloks` and `richtext` fields. A bare whitelist is
- *   otherwise ignored by MAPI.
+ *   `component_group_whitelist` (for folder entries)
+ * - `deny` → `component_denylist` / `component_group_denylist`, the same split
  * - `datasource` → `datasource_slug` (the `source` selector passes through)
+ *
+ * A bare list is ignored by the editor, so a restriction from either key also
+ * activates `restrict_components: true` on `bloks` and `richtext` fields, the two
+ * types whose nested-block picker consults these lists, with `restrict_type:
+ * 'groups'` for folder entries and `''` (the editor's v1-compatible spelling of
+ * "by block name") otherwise. `defineField` rejects an `allow`/`deny` pair that
+ * disagrees on which of the two dimensions to restrict by, so the folder dimension
+ * of either key settles it for both.
+ *
+ * On any other field type a `deny` is dropped: those types have no denylist, so
+ * writing one would leave a key nothing reads. `allow` still passes through,
+ * because `component_whitelist` is real on `multilink`, where it selects story
+ * content types rather than blocks, and it keeps the plain list with no
+ * restriction flags.
  *
  * Every other key (`type`, `pos`, `source`, `required`, validation options, and
  * `type: 'custom'` plugin extras) is preserved verbatim.
  */
 export function mapFieldToWire(field: Record<string, unknown>): { name: string; value: Field } {
-  const { name, allow, datasource, ...rest } = field;
+  const { name, allow, deny, datasource, ...rest } = field;
 
   const value: Record<string, unknown> = { ...rest };
-  if (allow !== undefined && Array.isArray(allow)) {
-    const folderPaths = allow
-      .filter(
-        (entry): entry is { folder: string } => isRecord(entry) && typeof entry.folder === "string",
-      )
-      .map((entry) => slugifyPath(entry.folder));
-    const blockNames = allow.filter((entry) => typeof entry === "string");
-    if (folderPaths.length > 0) {
-      value.component_group_whitelist = folderPaths;
-      if (rest.type === "bloks" || rest.type === "richtext") {
-        value.restrict_components = true;
-        value.restrict_type = "groups";
-      }
+  const allowed = splitRestriction(allow);
+  const denied = splitRestriction(deny);
+
+  if (allowed) {
+    if (allowed.folderPaths.length > 0) {
+      value.component_group_whitelist = allowed.folderPaths;
     } else {
-      value.component_whitelist = blockNames;
-      if (rest.type === "bloks") {
-        value.restrict_components = true;
-        value.restrict_type = "";
-      }
+      value.component_whitelist = allowed.names;
     }
-  } else if (allow !== undefined) {
-    value.component_whitelist = allow;
-    if (rest.type === "bloks") {
-      value.restrict_components = true;
-      value.restrict_type = "";
+  }
+  // Only `bloks` and `richtext` have a denylist, so a `deny` elsewhere is
+  // dropped rather than written. `defineField` rejects it outright; this is the
+  // backstop for a schema authored in plain JavaScript, which never goes through
+  // that guard.
+  const isDeniable = DENIABLE_FIELD_TYPES.includes(String(rest.type));
+  if (denied && isDeniable) {
+    if (denied.folderPaths.length > 0) {
+      value.component_group_denylist = denied.folderPaths;
+    } else {
+      value.component_denylist = denied.names;
     }
+  }
+  if ((allowed || denied) && isDeniable) {
+    const byFolder = Boolean(allowed?.folderPaths.length || denied?.folderPaths.length);
+    value.restrict_components = true;
+    value.restrict_type = byFolder ? "groups" : "";
   }
   if (datasource !== undefined) {
     value.datasource_slug = datasource;

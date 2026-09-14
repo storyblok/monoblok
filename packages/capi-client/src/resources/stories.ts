@@ -22,6 +22,44 @@ import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
 import type { Block as Component, RootBlock as RootComponents } from "../generated/types/block";
 import type { Story } from "../generated/types/story";
 
+/**
+ * Top-level story fields that can be excluded from CDN API responses via
+ * the `excluding_story_fields` parameter. Fields not in this list are
+ * silently ignored by the API.
+ */
+export type ExcludableStoryField =
+  | "alternates"
+  | "created_at"
+  | "default_full_slug"
+  | "first_published_at"
+  | "group_id"
+  | "is_startpage"
+  | "lang"
+  | "meta_data"
+  | "parent_id"
+  | "path"
+  | "position"
+  | "published_at"
+  | "release_id"
+  | "sort_by_date"
+  | "tag_list"
+  | "taxonomy_terms"
+  | "translated_slugs"
+  | "updated_at";
+
+/**
+ * Returns a spread-ready query fragment for `excluding_story_fields`:
+ * - array with items  → `{ excluding_story_fields: "a,b,c" }`
+ * - empty array / undefined → `{}` (param omitted)
+ * - string → `{ excluding_story_fields: "a,b,c" }` (unchanged)
+ */
+function excludingStoryFieldsParam(
+  value: ExcludableStoryField | ExcludableStoryField[] | undefined,
+): { excluding_story_fields: string } | Record<never, never> {
+  const str = Array.isArray(value) ? (value.length > 0 ? value.join(",") : undefined) : value;
+  return str !== undefined ? { excluding_story_fields: str } : {};
+}
+
 type InlinedStoryContentField =
   | string
   | number
@@ -186,6 +224,7 @@ export function createStoriesResource<
       options: {
         query?: Omit<NonNullable<GetStoryByIdData["query"]>, "resolve_relations"> & {
           resolve_relations?: ResolveRelationsStr;
+          excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
         };
         signal?: AbortSignal;
         throwOnError?: ThrowOnError;
@@ -198,7 +237,12 @@ export function createStoriesResource<
       >
     > => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<GetStoryByIdData["query"]>;
+      const { excluding_story_fields, ...restQuery } = query;
+      const normalizedQuery = {
+        ...restQuery,
+        ...excludingStoryFieldsParam(excluding_story_fields),
+      };
+      const typedQuery = normalizedQuery as NonNullable<GetStoryByIdData["query"]>;
       const resolvedQuery =
         typeof identifier === "string" && UUID_RE.test(identifier) && !typedQuery.find_by
           ? { ...typedQuery, find_by: "uuid" }
@@ -265,6 +309,7 @@ export function createStoriesResource<
       options: {
         query?: Omit<NonNullable<ListStoriesData["query"]>, "resolve_relations"> & {
           resolve_relations?: ResolveRelationsStr;
+          excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
         };
         signal?: AbortSignal;
         throwOnError?: ThrowOnError;
@@ -277,7 +322,12 @@ export function createStoriesResource<
       >
     > => {
       const { query = {}, signal, throwOnError, fetchOptions } = options;
-      const typedQuery = (query ?? {}) as NonNullable<ListStoriesData["query"]>;
+      const { excluding_story_fields, ...restQuery } = query;
+      const normalizedQuery = {
+        ...restQuery,
+        ...excludingStoryFieldsParam(excluding_story_fields),
+      };
+      const typedQuery = normalizedQuery as NonNullable<ListStoriesData["query"]>;
       const requestPath = "/v2/cdn/stories";
       return requestWithCache(
         "GET",

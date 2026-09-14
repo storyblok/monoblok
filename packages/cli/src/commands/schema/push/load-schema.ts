@@ -1,3 +1,5 @@
+import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+
 import type { LocalFolder, SchemaData } from "../types";
 import { CommandError, isRecord } from "../../../utils";
 import { collectSchemaExports, loadSchemaModule } from "../../../utils/schema/classify-exports";
@@ -7,7 +9,7 @@ import { mapBlockToWire, mapDatasourceToWire } from "../map-to-wire";
 /**
  * Builds the deduped, parent-first {@link LocalFolder} list from harvested
  * display paths. `registered` paths come from `defineFolder()` objects;
- * `derived` paths come from block `folder` fields and `allow` entries.
+ * `derived` paths come from block `folder` fields and `allow`/`deny` entries.
  * Dedupe is by slug path. Display-name precedence: a registered `defineFolder`
  * wins over a derived segment. Two registered folders resolving to the same
  * slug path with different display names is a conflict.
@@ -121,6 +123,8 @@ function assertUniqueIdentities(
   }
 }
 
+const toArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
 /**
  * Classifies a module's exports into wire components, datasources, and folders,
  * mapping the content-shape DSL (`fields`/`allow`/`datasource`/`folder`) to the
@@ -133,8 +137,16 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
   assertUniqueIdentities(components, datasources);
 
   // Harvest derived (unregistered) folder display paths from each component's
-  // `folder` field and its `allow` entries. Reads the raw DSL objects, before
-  // `mapBlockToWire` slugifies wire-side keys and loses display names.
+  // `folder` field and from both of its restriction lists. Reads the raw DSL
+  // objects, before `mapBlockToWire` slugifies wire-side keys and loses display
+  // names.
+  //
+  // A folder that only ever appears in a restriction still has to be harvested.
+  // Push resolves group lists from path to uuid against the folders it knows
+  // about, and passes an unknown path straight through, so an unharvested folder
+  // reaches the wire as a slug where a uuid belongs and the restriction matches
+  // nothing. `push --delete` compounds it: a remote folder missing from the local
+  // set reads as stale and gets deleted.
   const registered = folders.map((folder) => folder.path as string);
   const derived: string[] = [];
   for (const component of components) {
@@ -143,10 +155,18 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
     }
     if (Array.isArray(component.fields)) {
       for (const field of component.fields) {
-        if (!isRecord(field) || !Array.isArray(field.allow)) {
+        if (!isRecord(field)) {
           continue;
         }
-        for (const entry of field.allow) {
+        // `deny` is only harvested from where it survives the wire mapping. That
+        // mapping drops a `deny` on a field type with no denylist, so harvesting it
+        // anyway would create a component group for a restriction nothing goes on
+        // to reference. Reachable only from a schema written as plain objects;
+        // `defineField` rejects the same field outright.
+        const restrictions = DENIABLE_FIELD_TYPES.includes(String(field.type))
+          ? [...toArray(field.allow), ...toArray(field.deny)]
+          : toArray(field.allow);
+        for (const entry of restrictions) {
           if (isRecord(entry) && typeof entry.folder === "string") {
             derived.push(entry.folder);
           }

@@ -198,22 +198,7 @@ type ResolveComponents<T extends StoryblokTypesConfig> = T extends {
 /** Extracts the `fieldType → value` plugin map from a Schema, defaulting to an empty map. */
 type ResolveFieldPlugins<T> = T extends { fieldPlugins: infer P } ? P : Record<never, never>;
 
-/**
- * The shape returned by `createApiClientBase`, named explicitly (rather than left for
- * `createApiClientBase` to infer) so it can also serve as that function's return-type
- * annotation.
- *
- * This matters specifically for `stories`: without an explicit annotation on
- * `createApiClientBase`, the DTS bundler has to re-derive and print the full structural
- * type of `stories.get(...)`'s return value when emitting this package's `.d.ts`. Doing
- * that independently from how `ContentApiClient["stories"]` below references the same
- * `ReturnType<typeof createStoriesResource<...>>` expression has, in practice, produced
- * two differently-shaped printed types for what is meant to be the same "no schema
- * provided" `Story` — e.g. `client.stories.get()`'s inferred `story` type failing to
- * structurally match the plain `Story` type exported from this package's own public
- * entry point. Giving `createApiClientBase` this explicit annotation means the bundler
- * just echoes the reference instead of re-resolving it.
- */
+/** Names the inferred shape so declaration output reuses the same story resource type. */
 type ApiClientBaseResult<
   ThrowOnError extends boolean = false,
   InlineRelations extends boolean = false,
@@ -472,19 +457,7 @@ export const createApiClientBase = <
     throttleManager,
   };
 
-  // Pinned to the named `ReturnType<typeof createStoriesResource<...>>` alias
-  // (matching `ContentApiClient["stories"]`) rather than left inferred: this
-  // function has no return-type annotation, so the DTS bundler must print
-  // whatever structural type it infers for `stories` when emitting this
-  // package's `.d.ts`. Left inferred, the bundler independently re-resolves
-  // `StoryResult`'s conditional for this call site and — for reasons specific
-  // to declaration-emit (no live type-checker, generics not yet substituted)
-  // — can pick a different, more expanded branch than the one a consumer
-  // sees when they reference the `Story`/`ContentApiClient` types directly.
-  // Concretely, that already showed up as `client.stories.get()`'s inferred
-  // `story` type failing to structurally match this package's own plain
-  // `Story` type, even though both are meant to be the same "no schema
-  // provided" shape.
+  // Keep the declaration output aligned with ContentApiClient["stories"].
   const stories: ReturnType<
     typeof createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>
   > = createStoriesResource<Component, Record<never, never>, InlineRelations, ThrowOnError>({

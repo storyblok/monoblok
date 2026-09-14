@@ -209,9 +209,16 @@ type MatchesFolder<TBlock, TFolder extends string> = TBlock extends {
   : never;
 
 /**
- * Keeps `TBlock` when it declares `TTag` among its `tags`, the tag-dimension
- * counterpart to {@link MatchesFolder}. Compared case-insensitively, like folder
- * paths: tag identity is reconciled by exact name at push time, not here.
+ * Keeps `TBlock` when it declares any tag in `TTag` among its `tags`, the
+ * tag-dimension counterpart to {@link MatchesFolder}. Compared exactly, case
+ * included: a tag name is resolved verbatim against the target space at push
+ * time, so a differing case is a different tag, not the same one spelled
+ * another way. Folder paths are compared case-insensitively because both sides
+ * are slugified; tags have no such reconciliation.
+ *
+ * `TTag` may be a union, which is why the two tag sets are intersected rather
+ * than tested with `extends`: a union on the left of `extends` satisfies no
+ * single block's tag, which would make a multi-tag `deny` remove nothing.
  *
  * A block that declares no `tags` never matches. Its remote tags may say
  * otherwise — tags can be applied in the Storyblok UI to a block whose schema
@@ -221,9 +228,9 @@ type MatchesFolder<TBlock, TFolder extends string> = TBlock extends {
 type MatchesTag<TBlock, TTag extends string> = TBlock extends {
   tags: ReadonlyArray<infer BT extends string>;
 }
-  ? Lowercase<TTag> extends Lowercase<BT>
-    ? TBlock
-    : never
+  ? [Extract<BT, TTag>] extends [never]
+    ? never
+    : TBlock
   : never;
 
 type ApplyAllow<TField, TBlocks> = TField extends {

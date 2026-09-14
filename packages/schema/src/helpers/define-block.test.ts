@@ -115,6 +115,16 @@ describe("defineBlock", () => {
     );
   });
 
+  it("should trim surrounding whitespace from tag names", () => {
+    const block = defineBlock({ name: "hero", tags: [" Marketing "], fields: [] });
+    expect(block.tags).toEqual(["Marketing"]);
+  });
+
+  it("should apply a repeated tag once", () => {
+    const block = defineBlock({ name: "hero", tags: ["Marketing", "Marketing"], fields: [] });
+    expect(block.tags).toEqual(["Marketing"]);
+  });
+
   it("should omit tags entirely when not given", () => {
     expect(defineBlock({ name: "hero", fields: [] })).not.toHaveProperty("tags");
   });

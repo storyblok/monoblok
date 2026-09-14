@@ -32,6 +32,12 @@ const CONSOLIDATED_COMPONENTS_FILENAME = "components.json";
  * dropped rather than written in a form no consumer can use. The escape-hatch
  * `component_group_uuid` (a real uuid) is preserved.
  *
+ * A tag list holding names is dropped for the same reason, which leaves the
+ * written JSON without that restriction: a `stories push` validating against it
+ * accepts nested blocks the space itself will reject. Push does know the
+ * resolved ids by this point, so writing them instead is possible — it is left
+ * for a change that can weigh it against the rest of the local-JSON contract.
+ *
  * A field carrying either group list also has its `restrict_type: 'groups'` and
  * `restrict_components` keys dropped alongside them, so the written JSON never
  * has a group restriction with no group list left behind (orphaned keys). Folder

@@ -110,6 +110,32 @@ describe("diffSchema", () => {
     expect(result.diffs[0].action).toBe("unchanged");
   });
 
+  it("should not show diff when a raw internal_tag_ids entry differs only in JS type", () => {
+    // The component serializer returns tag ids as strings; a schema managing
+    // tags by raw id usually holds the numbers they were pasted from.
+    const localComp = {
+      ...makeComponent("page", { title: { type: "text", pos: 0 } }),
+      internal_tag_ids: [219987616121914],
+    };
+    const remoteComp = {
+      ...makeComponent("page", { title: { type: "text", pos: 0 } }),
+      internal_tag_ids: ["219987616121914"],
+    };
+
+    const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([["page", remoteComp]]),
+      internalTags: new Map(),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
+    expect(result.updates).toBe(0);
+    expect(result.diffs[0].action).toBe("unchanged");
+  });
+
   it("should show diff when local explicitly sets internal_tag_ids differently from remote", () => {
     const localComp = {
       ...makeComponent("page", { title: { type: "text", pos: 0 } }),

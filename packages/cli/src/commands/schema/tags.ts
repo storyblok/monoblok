@@ -1,26 +1,27 @@
-import { TAG_LIST_KEYS } from "@storyblok/schema";
-
-import type { Component } from "../../types";
-import { isRecord } from "./utils";
-
 /**
  * Block tags are managed in code by name. A block declares its own tags under a
  * transient `tags` key and a field restricts by tag through `{ tag: name }`
  * entries, which the wire mapping writes into `component_tag_whitelist` /
  * `component_tag_denylist` as names. `schema push` resolves every name to the
  * target space's tag id — creating the tag when the space does not have it yet —
- * so the same schema pushes to any space.
+ * so the same schema pushes to any Storyblok space.
  *
  * Tag ids remain legal in both places as a same-space escape hatch, and are what
- * the Management API hands back, so both spaces coexist in these keys: a string
- * entry is a name, a number is an id. Identity is the exact tag name; Storyblok
- * makes it unique per space and object type, and unlike a folder path it never
- * doubles as a directory name, so it is used verbatim rather than slugified.
+ * the Management API hands back, so a tag list may hold either form: a string
+ * entry is a name, a number is an id. Identity is the exact tag name, case
+ * included; Storyblok makes it unique per space and object type, and unlike a
+ * folder path it never doubles as a directory name, so it is used verbatim
+ * rather than slugified.
  */
+
+import { TAG_LIST_KEYS } from "@storyblok/schema";
+
+import type { Component } from "../../types";
+import { isRecord } from "./utils";
 
 export { TAG_LIST_KEYS };
 
-/** A tag entry in the transient name space (a name) or the server's id space. */
+/** A tag entry: a name in the transient form, or the id the server assigned. */
 export type TagEntry = string | number;
 
 /**

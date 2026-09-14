@@ -109,6 +109,7 @@ export function defineBlock(block: any) {
       `defineBlock: block "${block?.name ?? ""}" sets both "tags" and "internal_tag_ids"; use one`,
     );
   }
+  let normalizedTags: readonly string[] | undefined;
   if (tags !== undefined) {
     if (
       !Array.isArray(tags) ||
@@ -118,6 +119,10 @@ export function defineBlock(block: any) {
         `defineBlock: block "${block?.name ?? ""}" has an empty or non-string entry in "tags"`,
       );
     }
+    // A tag name is resolved verbatim against the target space, so surrounding
+    // whitespace would address a tag nobody can name in the UI, and a repeated
+    // name would apply the same tag twice.
+    normalizedTags = [...new Set((tags as readonly string[]).map((tag) => tag.trim()))];
   }
   if (folder !== undefined && typeof restBlock.component_group_uuid === "string") {
     throw new Error(
@@ -138,7 +143,7 @@ export function defineBlock(block: any) {
     ...BLOCK_DEFAULTS,
     ...restBlock,
     ...(folder !== undefined && { folder: normalizedFolder }),
-    ...(tags !== undefined && { tags }),
+    ...(normalizedTags !== undefined && { tags: normalizedTags }),
     fields,
   };
 }

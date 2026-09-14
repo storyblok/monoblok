@@ -39,7 +39,8 @@ Block tag identity is the **exact tag name**, resolved against the target space 
 
 Unlike folder paths, tag names are used verbatim rather than slugified: Storyblok makes a tag name
 unique per space and object type, and a tag name never doubles as a directory name, so there is no
-second spelling to reconcile.
+second spelling to reconcile. Case is therefore part of the identity — `Marketing` and `marketing`
+are two tags, in the type-level narrowing as much as at push time.
 
 ## Alternatives Considered
 
@@ -63,9 +64,11 @@ second spelling to reconcile.
 - **Diffing is in name space.** Remote tag ids are translated to names on both sides before diffing,
   and both sides are sorted, so tag order never shows up as a change.
 - **Compile-time narrowing by tag.** A field restricted to `{ tag: 'X' }` narrows its content type
-  to the registry blocks that declare `tags: ['X']`, mirroring folder narrowing. A block whose tags
-  are managed in the UI rather than in code is not narrowed in — the same best-effort reading
-  `folder` gets.
+  to the registry blocks that declare `tags: ['X']`, mirroring folder narrowing. Folder narrowing
+  compares case-insensitively because both sides are slugified; tag narrowing does not, so a
+  miscased tag name fails to narrow rather than silently resolving to a tag push would create. A
+  block whose tags are managed in the UI rather than in code is not narrowed in — the same
+  best-effort reading `folder` gets.
 - **Local component JSON drops name-space tag lists.** `schema push --write-components` writes the
   wire shape its consumers expect; a tag list still holding names is dropped rather than written in
   a form nothing can read, exactly as the group lists are.

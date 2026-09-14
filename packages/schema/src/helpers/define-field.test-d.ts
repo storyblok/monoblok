@@ -216,6 +216,48 @@ describe("defineField type inference", () => {
     expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"teaser">();
   });
 
+  it("should narrow bloks content by every tag a `deny` names", () => {
+    const _legacyBlock = defineBlock({ name: "legacy", tags: ["Legacy"], fields: [] });
+    const _oldBlock = defineBlock({ name: "old", tags: ["Old"], fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: [{ tag: "Legacy" }, { tag: "Old" }] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _legacyBlock | typeof _oldBlock | typeof _teaserBlock
+    >;
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"teaser">();
+  });
+
+  it("should narrow bloks content by a block's every declared tag", () => {
+    const _heroBlock = defineBlock({ name: "hero", tags: ["Marketing", "Legacy"], fields: [] });
+    const _teaserBlock = defineBlock({ name: "teaser", tags: ["Legacy"], fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }] })],
+    });
+    type Body = FieldValue<
+      (typeof _pageBlock)["fields"][0],
+      typeof _heroBlock | typeof _teaserBlock
+    >;
+    expectTypeOf<Body[number]["component"]>().toEqualTypeOf<"hero">();
+  });
+
+  it("should treat a tag spelled in another case as a different tag", () => {
+    const _heroBlock = defineBlock({ name: "hero", tags: ["Marketing"], fields: [] });
+    const _pageBlock = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", allow: [{ tag: "marketing" }] })],
+    });
+    type Body = FieldValue<(typeof _pageBlock)["fields"][0], typeof _heroBlock>;
+    expectTypeOf<Body>().toEqualTypeOf<never[]>();
+  });
+
   it("should normalize folder refs in `deny` to tagged path entries", () => {
     const heros = defineFolder({ name: "Heros" });
     const f = defineField("body", { type: "bloks", deny: [heros] });

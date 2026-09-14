@@ -4,7 +4,7 @@ import type { Component, Datasource, Field } from "../../types";
 import { isRecord } from "./utils";
 import { slugifyPath } from "./folders";
 
-/** The three halves of an `allow`/`deny` list: block names, slugified folder paths, and tag names. */
+/** The three parts of an `allow`/`deny` list: block names, slugified folder paths, and tag names. */
 interface SplitRestriction {
   names: unknown;
   folderPaths: string[];

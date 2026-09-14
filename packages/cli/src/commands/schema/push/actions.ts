@@ -70,7 +70,7 @@ function resolveGroupRefs(comp: Component, groupByPath: Map<string, GroupRef>): 
  * step and aborts the push on failure, so it can only mean an internal
  * inconsistency.
  */
-function resolveTagRefs(comp: Component, tagIdByName: Map<string, number>): Component {
+function resolveTagIds(comp: Component, tagIdByName: Map<string, number>): Component {
   const { tags, ...rest } = comp as Record<string, unknown>;
   const resolved: Record<string, unknown> = { ...rest };
 
@@ -299,7 +299,7 @@ export async function executePush(
     if (localComp) {
       resolvedComponents.set(
         diff.name,
-        resolveTagRefs(resolveGroupRefs(localComp, groupByPath), tagIdByName),
+        resolveTagIds(resolveGroupRefs(localComp, groupByPath), tagIdByName),
       );
     }
   }

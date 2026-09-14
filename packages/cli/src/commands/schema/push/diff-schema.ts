@@ -37,6 +37,14 @@ function translateTagLists(schema: unknown, nameById: Map<string, string>): unkn
  * Storyblok and the API does not preserve the order a push sent, so both sides
  * are sorted before diffing rather than reporting a reordering as a change.
  */
+/** Normalizes a raw `internal_tag_ids` list to strings, leaving a non-list value untouched. */
+function stringifyTagIds(internalTagIds: unknown): unknown {
+  if (!Array.isArray(internalTagIds)) {
+    return internalTagIds;
+  }
+  return internalTagIds.map((id) => (typeof id === "number" ? String(id) : id));
+}
+
 function remoteTagNames(internalTagIds: unknown, nameById: Map<string, string>): string[] {
   if (!Array.isArray(internalTagIds)) {
     return [];
@@ -174,6 +182,15 @@ export function diffSchema(local: SchemaData, remote: RemoteSchemaData): DiffRes
       delete localForDiff.tags;
       if (remoteForDiff) {
         delete remoteForDiff.tags;
+      }
+      // The raw-id escape hatch diffs in id space, where the two sides disagree
+      // on the JavaScript type: the component serializer returns tag ids as
+      // strings while a hand-written schema usually holds the numbers it was
+      // pasted from. Compare them as strings so an id that is already correct
+      // does not report the block as changed on every push.
+      localForDiff.internal_tag_ids = stringifyTagIds(localForDiff.internal_tag_ids);
+      if (remoteForDiff) {
+        remoteForDiff.internal_tag_ids = stringifyTagIds(remoteForDiff.internal_tag_ids);
       }
     }
 

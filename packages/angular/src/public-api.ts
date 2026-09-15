@@ -52,6 +52,7 @@ export type {
   StoryblokRichTextMarkWithKey,
   StoryblokRichTextNode,
   StoryblokRichTextNodeWithKey,
+  StoryblokRichTextDoc,
   StoryblokRichTextProps,
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,

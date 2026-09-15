@@ -82,7 +82,7 @@ describe("onStoryblokEditorEvent", () => {
     const config: BridgeParams = { resolveRelations: ["foo.bar"] };
     await subscribe(vi.fn(), config);
 
-    expect(loadStoryblokBridge).toHaveBeenCalledWith(config);
+    expect(loadStoryblokBridge).toHaveBeenCalledWith({ ...config, initOnlyOnce: false });
   });
 
   it("shares one bridge for different relation options and merges them", async () => {
@@ -96,6 +96,7 @@ describe("onStoryblokEditorEvent", () => {
     expect(loadStoryblokBridge).toHaveBeenCalledTimes(1);
     expect(loadStoryblokBridge).toHaveBeenCalledWith({
       resolveRelations: ["a.b", "c.d"],
+      initOnlyOnce: false,
     });
     cleanup1();
     cleanup2();
@@ -111,6 +112,7 @@ describe("onStoryblokEditorEvent", () => {
     expect(loadStoryblokBridge).toHaveBeenCalledTimes(2);
     expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
       resolveRelations: ["a.b", "c.d"],
+      initOnlyOnce: false,
     });
     await firstBridge;
     expect(destroyMock).toHaveBeenCalledOnce();
@@ -141,15 +143,16 @@ describe("onStoryblokEditorEvent", () => {
     cleanup2();
   });
 
-  it("treats caller-supplied initOnlyOnce as irrelevant for bridge sharing", async () => {
+  it("forces initOnlyOnce off for every shared bridge", async () => {
     inEditor();
 
     const cleanup1 = await subscribe(vi.fn(), { initOnlyOnce: true });
     const cleanup2 = await subscribe(vi.fn(), { initOnlyOnce: false });
     const cleanup3 = await subscribe(vi.fn());
 
-    // initOnlyOnce does not affect sharing — all three share one bridge
+    // initOnlyOnce does not affect sharing — all three share one bridge.
     expect(loadStoryblokBridge).toHaveBeenCalledTimes(1);
+    expect(loadStoryblokBridge).toHaveBeenCalledWith({ initOnlyOnce: false });
     cleanup1();
     cleanup2();
     cleanup3();
@@ -164,6 +167,7 @@ describe("onStoryblokEditorEvent", () => {
 
     expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
       preventClicks: true,
+      initOnlyOnce: false,
     });
     expect(warning).toHaveBeenCalledWith(
       '[Storyblok] Conflicting live preview option "preventClicks" ignored; using the first value.',
@@ -318,12 +322,12 @@ describe("onStoryblokEditorEvent", () => {
     expect(window.location.reload).toHaveBeenCalledOnce();
   });
 
-  it("passes caller-supplied initOnlyOnce to the shared bridge", async () => {
+  it("overrides caller-supplied initOnlyOnce", async () => {
     inEditor();
 
     await subscribe(vi.fn(), { initOnlyOnce: true });
 
-    expect(loadStoryblokBridge).toHaveBeenCalledWith({ initOnlyOnce: true });
+    expect(loadStoryblokBridge).toHaveBeenCalledWith({ initOnlyOnce: false });
   });
 
   it("does not reload on change or published after all subscribers clean up", async () => {

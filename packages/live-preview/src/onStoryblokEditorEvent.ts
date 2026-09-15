@@ -50,7 +50,6 @@ const scalarOptionKeys = [
   "resolveLinks",
   "preventClicks",
   "fallbackLang",
-  "initOnlyOnce",
 ] as const satisfies readonly (keyof BridgeParams)[];
 
 function mergeBridgeOptions(entry: BridgeEntry, options?: BridgeParams): boolean {
@@ -83,9 +82,6 @@ function mergeBridgeOptions(entry: BridgeEntry, options?: BridgeParams): boolean
           break;
         case "fallbackLang":
           entry.options.fallbackLang = options.fallbackLang;
-          break;
-        case "initOnlyOnce":
-          entry.options.initOnlyOnce = options.initOnlyOnce;
           break;
       }
       changed = true;
@@ -130,7 +126,7 @@ async function reconcileBridge(entry: BridgeEntry): Promise<StoryblokBridge> {
   while (entry.appliedOptionsVersion < entry.optionsVersion) {
     const optionsVersion = entry.optionsVersion;
     const previousBridge = entry.bridge;
-    const bridge = await loadStoryblokBridge(entry.options);
+    const bridge = await loadStoryblokBridge({ ...entry.options, initOnlyOnce: false });
 
     if (broker !== entry || entry.subscribers.size === 0) {
       bridge.destroy();

@@ -83,7 +83,10 @@ generateCmd.action(
       }
 
       const migrationPath = await generateMigration(space, path, component, suffix);
-      const displayPath = relative(process.cwd(), migrationPath);
+      // A `--path` outside the current directory relativizes to an unreadable
+      // chain of `..` segments, so show the absolute path instead.
+      const relativePath = relative(process.cwd(), migrationPath);
+      const displayPath = relativePath.startsWith("..") ? migrationPath : relativePath;
 
       spinner.succeed(
         `Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`,

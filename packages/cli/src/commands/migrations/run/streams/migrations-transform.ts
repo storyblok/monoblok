@@ -8,7 +8,7 @@ import {
   type SuccessfulMigration,
 } from "../constants";
 import { applyMigrationToAllBlocks, getMigrationFunction } from "../actions";
-import { getMigrationComponentSegment, migrationTargetsComponent } from "../../migration-filename";
+import { migrationTargetsComponent } from "../../migration-filename";
 import { hash } from "ohash";
 import { saveRollbackData } from "../../rollback/actions";
 import { getLogger } from "../../../../lib/logger/logger";
@@ -108,10 +108,7 @@ export class MigrationStream extends Transform {
     // Filter migrations based on component name if provided
     const relevantMigrations = this.options.componentName
       ? this.options.migrationFiles.filter((file) =>
-          migrationTargetsComponent(
-            getMigrationComponentSegment(file.name),
-            this.options.componentName,
-          ),
+          migrationTargetsComponent(file.name, this.options.componentName),
         )
       : this.options.migrationFiles;
 
@@ -181,11 +178,10 @@ export class MigrationStream extends Transform {
 
         // The file name is the single source of truth for what a migration
         // targets; `--component` only narrows which files are applied.
-        const targetComponent = getMigrationComponentSegment(migrationFile.name);
         const migrationProcessed = applyMigrationToAllBlocks(
           storyContent,
           migrationFunction,
-          targetComponent,
+          migrationFile.name,
         );
         processed = processed || migrationProcessed;
       }
@@ -238,13 +234,7 @@ export class MigrationStream extends Transform {
         return null;
       } else {
         const reason = migrationFiles
-          .map((migrationFile) => {
-            const baseComponent = getMigrationComponentSegment(migrationFile.name);
-            return !this.options.componentName ||
-              migrationTargetsComponent(baseComponent, this.options.componentName)
-              ? `No matching components found for ${migrationFile.name}`
-              : `Different component target ${migrationFile.name}`;
-          })
+          .map((migrationFile) => `No matching components found for ${migrationFile.name}`)
           .join("\n");
 
         this.results.skipped.push({

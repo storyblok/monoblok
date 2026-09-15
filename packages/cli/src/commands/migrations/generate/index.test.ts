@@ -91,11 +91,11 @@ describe("migrations generate command", () => {
     await migrationsCommand.parseAsync(["node", "test", "generate", "hero:v2", "--space", "12345"]);
 
     expect(Object.keys(vol.toJSON())).toEqual(
-      expect.arrayContaining([expect.stringContaining("migrations/12345/hero_v2.js")]),
+      expect.arrayContaining([expect.stringContaining("migrations/12345/hero_v2-c07e5b.js")]),
     );
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining(
-        "You can find the migration file in .storyblok/migrations/12345/hero_v2.js",
+        "You can find the migration file in .storyblok/migrations/12345/hero_v2-c07e5b.js",
       ),
     );
   });

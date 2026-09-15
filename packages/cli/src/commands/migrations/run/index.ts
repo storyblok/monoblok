@@ -11,7 +11,7 @@ import { migrationsCommand } from "../command";
 import { createStoriesStream } from "./streams/stories-stream";
 import { readMigrationFiles } from "./actions";
 import { MigrationStream } from "./streams/migrations-transform";
-import { getMigrationComponentSegment, migrationTargetsComponent } from "../migration-filename";
+import { migrationTargetsComponent } from "../migration-filename";
 import { UpdateStream } from "./streams/update-stream";
 import { pipeline } from "node:stream";
 
@@ -85,9 +85,7 @@ runCmd.action(
         filter,
       });
       const filteredMigrations = componentName
-        ? migrationFiles.filter((file) =>
-            migrationTargetsComponent(getMigrationComponentSegment(file.name), componentName),
-          )
+        ? migrationFiles.filter((file) => migrationTargetsComponent(file.name, componentName))
         : migrationFiles;
 
       if (filteredMigrations.length === 0) {

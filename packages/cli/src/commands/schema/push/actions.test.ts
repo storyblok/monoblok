@@ -790,7 +790,7 @@ describe("executePush - folders", () => {
       datasources: new Map(),
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "grid", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "grid", action: "create", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, remote, diffResult, { delete: false });

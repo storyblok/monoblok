@@ -1,5 +1,6 @@
 import type { SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
+import { FIELD_TYPES } from "../field-types";
 import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
@@ -7,9 +8,9 @@ import { isRecord, toValues } from "./shapes";
  * Validates a schema definition without throwing. Checks structural identity
  * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
- * resolves to a defined datasource; every `custom` field's `field_type`
- * resolves to a registered field plugin; no field mixes `allow`/`deny` with the
- * wire restriction keys they derive).
+ * resolves to a defined datasource; every field `type` is a known field type;
+ * every `custom` field's `field_type` resolves to a registered field plugin; no
+ * field mixes `allow`/`deny` with the wire restriction keys they derive).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -271,6 +272,26 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           path: ["blocks", blockKey, fieldName ?? index, "restrict_type"],
           entity: blockEntity,
           message: `Field "${fieldName}" sets "restrict_type" to "${restrictType}", which the editor does not recognize; the field's restriction lists are ignored. Expected one of ${EDITOR_RESTRICT_TYPES.map((value) => `"${value}"`).join(", ")}.`,
+        });
+      }
+
+      // Unlike `restrict_type`, the Management API does validate `type`: pushing
+      // an unknown one fails with "the field 'x' has an invalid type". So this
+      // is an error, and there is no stored value a space could legitimately
+      // hand back that it would break. `defineField` already rejects it at
+      // compile time; this covers schemas authored in plain JavaScript or
+      // assembled at runtime, which reach the validator untyped.
+      const fieldTypeValue = field.type;
+      if (
+        typeof fieldTypeValue === "string" &&
+        !(FIELD_TYPES as readonly string[]).includes(fieldTypeValue)
+      ) {
+        issues.push({
+          severity: "error",
+          code: "unknown_field_type",
+          path: ["blocks", blockKey, fieldName ?? index, "type"],
+          entity: blockEntity,
+          message: `Field "${fieldName}" in ${blockLabel} has unknown type "${fieldTypeValue}". Expected one of ${FIELD_TYPES.map((value) => `"${value}"`).join(", ")}.`,
         });
       }
 

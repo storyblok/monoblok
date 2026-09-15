@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { storyblokColorField } from "../field-plugins/storyblok-color-field";
+import { FIELD_TYPES } from "../field-types";
 import { defineBlock } from "../helpers/define-block";
 import { defineDatasource } from "../helpers/define-datasource";
 import { defineField } from "../helpers/define-field";
@@ -25,6 +26,30 @@ describe("validateSchema", () => {
     const result = validateSchema({ blocks: { page, teaser }, datasources: { colors } });
     expect(result.ok).toBe(true);
     expect(result.issues).toEqual([]);
+  });
+
+  // The Management API rejects an unknown field type on push, so catching it
+  // offline is the whole point of validating first. Reached through plain
+  // JavaScript here, since `defineField` rejects it at compile time.
+  it("flags a field whose type is not a known field type", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [{ name: "broken", type: "not_a_real_field_type" }],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain("unknown_field_type");
+  });
+
+  // Guards the other direction: the check must not reject any type the
+  // generated union actually declares.
+  it("accepts every field type the generated union declares", () => {
+    const block: SchemaBlockLike = {
+      name: "every_type",
+      fields: FIELD_TYPES.map((type, index) => ({ name: `field_${index}`, type })),
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(codesFor(result)).not.toContain("unknown_field_type");
   });
 
   it("flags duplicate block names", () => {

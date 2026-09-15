@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildMigrationFilename, migrationTargetsComponent } from "./migration-filename";
+import {
+  buildMigrationFilename,
+  isLegacyMigrationFilename,
+  migrationTargetsComponent,
+} from "./migration-filename";
 
 describe("buildMigrationFilename", () => {
   it("should name the file after the component", () => {
@@ -15,10 +19,14 @@ describe("buildMigrationFilename", () => {
     expect(filenames.every((filename) => filename.startsWith("hero_v2"))).toBe(true);
   });
 
-  it("should leave file-safe names untouched", () => {
+  it("should leave unambiguous file-safe names untouched", () => {
     expect(buildMigrationFilename("café")).toBe("café.js");
-    expect(buildMigrationFilename("my.component")).toBe("my.component.js");
-    expect(buildMigrationFilename(".hero")).toBe(".hero.js");
+    expect(buildMigrationFilename("hero-v2")).toBe("hero-v2.js");
+  });
+
+  it("should disambiguate a name a suffix could be mistaken for", () => {
+    expect(buildMigrationFilename("my.component")).toBe("my.component-2e0a80.js");
+    expect(buildMigrationFilename(".hero")).toBe(".hero-3a1ad7.js");
   });
 });
 
@@ -40,6 +48,17 @@ describe("migrationTargetsComponent", () => {
     expect(migrationTargetsComponent(".hero.js", ".other")).toBe(false);
   });
 
+  it("should read a suffixed file name as a suffix rather than a dotted component", () => {
+    expect(migrationTargetsComponent("my.component.js", "my")).toBe(true);
+    expect(migrationTargetsComponent("my.component.js", "my.component")).toBe(false);
+  });
+
+  it("should still match a file an older CLI version wrote under the raw name", () => {
+    expect(migrationTargetsComponent("hero:v2.js", "hero:v2")).toBe(true);
+    expect(migrationTargetsComponent("hero:v2.cleanup.js", "hero:v2")).toBe(true);
+    expect(migrationTargetsComponent("hero:v2.js", "hero_v2")).toBe(false);
+  });
+
   it("should match a file written in a different unicode normalization", () => {
     expect(migrationTargetsComponent("café.js".normalize("NFD"), "café".normalize("NFC"))).toBe(
       true,
@@ -49,5 +68,19 @@ describe("migrationTargetsComponent", () => {
   it("should not match a non-string component name", () => {
     expect(migrationTargetsComponent("hero.js", undefined)).toBe(false);
     expect(migrationTargetsComponent(".js", "")).toBe(false);
+  });
+});
+
+describe("isLegacyMigrationFilename", () => {
+  it("should recognize a file name an older CLI version wrote verbatim", () => {
+    expect(isLegacyMigrationFilename("hero:v2.js")).toBe(true);
+    expect(isLegacyMigrationFilename("hero:v2.cleanup.js")).toBe(true);
+  });
+
+  it("should not flag a file name the current naming rules produce", () => {
+    expect(isLegacyMigrationFilename("hero.js")).toBe(false);
+    expect(isLegacyMigrationFilename("hero_v2-c07e5b.js")).toBe(false);
+    expect(isLegacyMigrationFilename("my.component.js")).toBe(false);
+    expect(isLegacyMigrationFilename("café.js")).toBe(false);
   });
 });

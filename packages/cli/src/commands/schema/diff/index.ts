@@ -56,8 +56,12 @@ schemaCommand
       const compareGroupUuid = !isSpaceRef(from) && !isSpaceRef(to);
       const diffResult = diffSchema(fromSchema, toSchema, { compareGroupUuid });
 
+      // The diff itself goes to stdout while the surrounding chrome stays on
+      // stderr, so `schema diff --from a --to b > changes.diff` captures the
+      // diff and nothing else. Chalk drops its colors on its own when stdout is
+      // not a terminal.
       ui.br();
-      ui.log(formatSchemaDiff(diffResult, from, to));
+      ui.writeMachineOutput(formatSchemaDiff(diffResult, from, to));
 
       logger.info("Schema diff finished", {
         create: diffResult.creates,

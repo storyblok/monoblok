@@ -4,9 +4,14 @@ import { sanitizeFilename } from "../../utils/filesystem";
 /**
  * Migration files are named `<component>[.<suffix>].js`. A component name is
  * unconstrained remote data, so it is sanitized before it becomes a file name.
- * Sanitizing is many-to-one — `hero:v2`, `hero/v2` and `hero?v2` all collapse to
- * `hero_v2` — so a name the sanitizer altered carries a digest of the original
- * to keep distinct components on distinct file names.
+ *
+ * Two things make that mapping ambiguous, and both are closed by appending a
+ * digest of the original name:
+ *
+ * - Sanitizing is many-to-one: `hero:v2`, `hero/v2` and `hero?v2` all collapse
+ *   to `hero_v2`.
+ * - A dot separates the component from the optional suffix, so `my.component`
+ *   is indistinguishable from component `my` with suffix `component`.
  *
  * Names are compared in NFC because the sanitizer emits NFD while the API
  * returns NFC, and macOS stores either.
@@ -14,6 +19,10 @@ import { sanitizeFilename } from "../../utils/filesystem";
 const DIGEST_LENGTH = 6;
 
 const prefixCache = new Map<string, string>();
+
+const normalize = (value: string): string => value.normalize("NFC");
+
+const sanitize = (value: string): string => normalize(sanitizeFilename(value));
 
 /**
  * The file name a component's migrations live under, without the `.js`
@@ -26,13 +35,24 @@ export const getMigrationComponentPrefix = (componentName: string): string => {
     return cached;
   }
 
-  const normalizedName = componentName.normalize("NFC");
-  const sanitized = sanitizeFilename(normalizedName).normalize("NFC");
+  const normalizedName = normalize(componentName);
+  const sanitized = sanitize(normalizedName);
+  const isUnambiguous = sanitized === normalizedName && !normalizedName.includes(".");
   const digest = createHash("sha256").update(normalizedName).digest("hex").slice(0, DIGEST_LENGTH);
-  const prefix = !sanitized || sanitized === normalizedName ? sanitized : `${sanitized}-${digest}`;
+  const prefix = !sanitized || isUnambiguous ? sanitized : `${sanitized}-${digest}`;
 
   prefixCache.set(componentName, prefix);
   return prefix;
+};
+
+/**
+ * The file name CLI versions before the sanitizer wrote for a component, which
+ * is the raw name. Only names the sanitizer alters have one: every other name
+ * was already written the way it is written today. Empty when there is none.
+ */
+export const getLegacyMigrationComponentPrefix = (componentName: string): string => {
+  const normalizedName = normalize(componentName);
+  return sanitize(normalizedName) === normalizedName ? "" : normalizedName;
 };
 
 export const buildMigrationFilename = (componentName: string, suffix?: string): string => {
@@ -45,13 +65,24 @@ export const migrationFilenameMatchesPrefix = (filename: string, prefix: string)
     return false;
   }
 
-  const normalizedFilename = filename.normalize("NFC");
+  const normalizedFilename = normalize(filename);
   return (
     normalizedFilename === `${prefix}.js` ||
     (normalizedFilename.startsWith(`${prefix}.`) && normalizedFilename.endsWith(".js"))
   );
 };
 
+/**
+ * Whether a file was written under a name the sanitizer would not produce, i.e.
+ * by a CLI version that wrote component names verbatim. Recognizable from the
+ * file name alone, so it does not need the space's component list.
+ */
+export const isLegacyMigrationFilename = (filename: string): boolean => {
+  const basename = normalize(filename).replace(/\.js$/, "");
+  return basename !== sanitize(basename);
+};
+
 export const migrationTargetsComponent = (filename: string, componentName: unknown): boolean =>
   typeof componentName === "string" &&
-  migrationFilenameMatchesPrefix(filename, getMigrationComponentPrefix(componentName));
+  (migrationFilenameMatchesPrefix(filename, getMigrationComponentPrefix(componentName)) ||
+    migrationFilenameMatchesPrefix(filename, getLegacyMigrationComponentPrefix(componentName)));

@@ -199,6 +199,25 @@ describe("applyMigrationToAllBlocks", () => {
     expect(content.body).toEqual([{ _uid: "a", component: "my.other" }]);
   });
 
+  it("should read a dot in a file name as a suffix rather than a dotted component", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "my" },
+        { _uid: "b", component: "my.component" },
+      ],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(content, markMigrated, "my.component.js");
+
+    expect(processed).toBe(true);
+    expect(content.body).toEqual([
+      { _uid: "a", component: "my", migrated: true },
+      { _uid: "b", component: "my.component" },
+    ]);
+  });
+
   it("should migrate nested blocks of a component whose name needed sanitizing", () => {
     const content = {
       _uid: "root",

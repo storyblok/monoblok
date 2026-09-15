@@ -181,6 +181,21 @@ const preconditions = {
       Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }),
     );
   },
+  canMigrateComponentWithLegacyFilename() {
+    // Versions before file names were sanitized wrote the component name verbatim.
+    vi.mocked(fetchStories).mockResolvedValue({
+      stories: [UNSAFE_NAME_STORY],
+      headers: new Headers({ Total: "1", "Per-Page": "100" }),
+    });
+    vi.mocked(fetchStory).mockResolvedValue(UNSAFE_NAME_STORY);
+    this.canUpdateStory();
+    vol.fromJSON({
+      [`./.storyblok/migrations/12345/${UNSAFE_COMPONENT_NAME}.js`]: "only the filename matters!",
+    });
+    vi.spyOn(filesystem, "importModule").mockImplementation(() =>
+      Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }),
+    );
+  },
   canMigrateFromSpace() {
     this.canFetchStories();
     this.canFetchStory();
@@ -205,6 +220,35 @@ describe("migrations run command", () => {
 
   it("should apply a migration for a component whose name is not filename-safe", async () => {
     preconditions.canMigrateComponentWithUnsafeName();
+    resetLogger();
+
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      UNSAFE_COMPONENT_NAME,
+      "--space",
+      "12345",
+    ]);
+
+    expect(updateStory).toHaveBeenCalledWith(
+      "12345",
+      517473243,
+      expect.objectContaining({
+        story: expect.objectContaining({
+          content: expect.objectContaining({
+            body: [
+              expect.objectContaining({ component: UNSAFE_COMPONENT_NAME, migrated: true }),
+              COLLIDING_NAME_BLOCK,
+            ],
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("should apply a migration file an older version generated under the raw name", async () => {
+    preconditions.canMigrateComponentWithLegacyFilename();
     resetLogger();
 
     await migrationsCommand.parseAsync([

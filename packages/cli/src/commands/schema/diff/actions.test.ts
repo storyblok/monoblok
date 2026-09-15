@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { DiffResult, EntityDiff } from "../types";
-import { buildDiffReport, formatSchemaDiff, isSpaceRef } from "./actions";
+import { formatSchemaDiff, isSpaceRef } from "./actions";
 
 function makeResult(diffs: EntityDiff[]): DiffResult {
   return {
@@ -23,37 +23,6 @@ describe("isSpaceRef", () => {
     expect(isSpaceRef("./schema.ts")).toBe(false);
     expect(isSpaceRef("src/schema/index.ts")).toBe(false);
     expect(isSpaceRef("12/schema.ts")).toBe(false);
-  });
-});
-
-describe("buildDiffReport", () => {
-  it("should carry the summary counts and full entity list", () => {
-    const result = makeResult([
-      {
-        type: "component",
-        name: "hero",
-        action: "create",
-        changes: [],
-        before: null,
-        after: { name: "hero" },
-      },
-      {
-        type: "component",
-        name: "footer",
-        action: "stale",
-        changes: [],
-        before: { name: "footer" },
-        after: null,
-      },
-    ]);
-
-    const report = buildDiffReport(result, "111", "222");
-
-    expect(report.from).toBe("111");
-    expect(report.to).toBe("222");
-    expect(report.summary).toEqual({ create: 1, update: 0, unchanged: 0, stale: 1 });
-    expect(report.entities).toHaveLength(2);
-    expect(report.entities[0]).toMatchObject({ name: "hero", action: "create" });
   });
 });
 

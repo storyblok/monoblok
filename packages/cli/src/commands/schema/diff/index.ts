@@ -1,14 +1,12 @@
 import { colorPalette, commands } from "../../../constants";
 import { handleError, requireAuthentication, toError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
-import { getReporter } from "../../../lib/reporter/reporter";
 import { getUI } from "../../../lib/ui";
 import { session } from "../../../session";
 import { schemaCommand } from "../command";
 import { diffSchema } from "../diff-schema";
 import type { NormalizedSchema } from "../types";
-import { buildDiffReport, formatSchemaDiff, isSpaceRef, resolveSource } from "./actions";
-import type { SchemaDiffReport } from "./actions";
+import { formatSchemaDiff, isSpaceRef, resolveSource } from "./actions";
 
 schemaCommand
   .command("diff")
@@ -21,7 +19,6 @@ schemaCommand
   .action(async (options: { from: string; to: string }, command) => {
     const ui = getUI();
     const logger = getLogger();
-    const reporter = getReporter();
     const { verbose } = command.optsWithGlobals();
     const { state } = session();
     const { from, to } = options;
@@ -34,9 +31,6 @@ schemaCommand
       return;
     }
 
-    const summary = { total: 0, succeeded: 0, failed: 0 };
-    let report: SchemaDiffReport | undefined;
-
     try {
       const resolveSpinner = ui.createSpinner("Resolving schemas...");
       let fromSchema: NormalizedSchema;
@@ -48,7 +42,6 @@ schemaCommand
         ]);
       } catch (maybeError) {
         resolveSpinner.failed("Failed to resolve schemas");
-        summary.failed += 1;
         handleError(toError(maybeError), verbose);
         return;
       }
@@ -59,24 +52,17 @@ schemaCommand
       // files, where an explicit `component_group_uuid` is a deliberate choice.
       const compareGroupUuid = !isSpaceRef(from) && !isSpaceRef(to);
       const diffResult = diffSchema(fromSchema, toSchema, { compareGroupUuid });
-      report = buildDiffReport(diffResult, from, to);
 
       ui.br();
       ui.log(formatSchemaDiff(diffResult, from, to));
 
-      summary.total = diffResult.diffs.length;
-      summary.succeeded = summary.total;
+      logger.info("Schema diff finished", {
+        create: diffResult.creates,
+        update: diffResult.updates,
+        unchanged: diffResult.unchanged,
+        stale: diffResult.stale,
+      });
     } catch (maybeError) {
-      summary.failed += 1;
       handleError(toError(maybeError), verbose);
-    } finally {
-      logger.info("Schema diff finished", { summary });
-      reporter.addSummary("schemaDiffResults", summary);
-      // The full structured diff travels in the report's meta — the machine-readable
-      // "diff file" downstream space-to-space tooling reads (enabled via --report-enabled).
-      if (report) {
-        reporter.addMeta("diff", report);
-      }
-      reporter.finalize();
     }
   });

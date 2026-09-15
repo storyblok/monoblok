@@ -12,10 +12,13 @@ schemaCommand
   .command("diff")
   .description("Diff two schemas (space IDs or local entry files) and report what changed")
   .requiredOption(
-    "--from <source>",
+    "--from <space-id|path>",
     "Base schema to compare against: a space ID or a path to a schema entry file",
   )
-  .requiredOption("--to <source>", "Target schema: a space ID or a path to a schema entry file")
+  .requiredOption(
+    "--to <space-id|path>",
+    "Target schema: a space ID or a path to a schema entry file",
+  )
   .action(async (options: { from: string; to: string }, command) => {
     const ui = getUI();
     const logger = getLogger();

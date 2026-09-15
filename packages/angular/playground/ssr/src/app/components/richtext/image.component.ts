@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
-import { type SbAngularRichTextProps } from "@storyblok/angular";
+import { type StoryblokAngularRichTextProps } from "@storyblok/angular";
 import { buildStoryblokImage } from "@storyblok/richtext";
 
 /**
@@ -13,7 +13,7 @@ import { buildStoryblokImage } from "@storyblok/richtext";
     @if (optimizedImage().src) {
       <img
         [src]="optimizedImage().src"
-        [alt]="data().attrs?.alt ?? ''"
+        [alt]="data().attrs.alt ?? ''"
         [attr.width]="optimizedImage().attrs['width']"
         [attr.height]="optimizedImage().attrs['height']"
         [attr.loading]="optimizedImage().attrs['loading']"
@@ -23,7 +23,7 @@ import { buildStoryblokImage } from "@storyblok/richtext";
   host: { style: "display: contents" },
 })
 export class ImageComponent {
-  readonly data = input.required<SbAngularRichTextProps<"image">>();
+  readonly data = input.required<StoryblokAngularRichTextProps<"image">>();
 
   /** Apply Storyblok image optimization */
   readonly optimizedImage = computed(() => {

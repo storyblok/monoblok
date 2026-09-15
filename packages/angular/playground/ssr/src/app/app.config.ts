@@ -25,7 +25,7 @@ export const appConfig: ApplicationConfig = {
       sbConfig,
       withStoryblokComponents(storyblokComponents),
       withLivePreview({
-        resolveRelations: ["feature_posts.posts"],
+        resolveRelations: ["article.author"],
       }),
       withStoryblokRichtextComponents(storyblokRichtextComponents),
     ),

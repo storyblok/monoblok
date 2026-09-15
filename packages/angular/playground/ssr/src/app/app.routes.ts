@@ -9,6 +9,14 @@ export const routes: Routes = [
     loadComponent: () => import("./routes/home/home.component").then((m) => m.HomeComponent),
   },
   {
+    path: "angular/live-preview-qa",
+    title: "Live Preview QA | Storyblok Angular",
+    loadComponent: () =>
+      import("./routes/live-preview-qa/live-preview-qa.component").then(
+        (m) => m.LivePreviewQaComponent,
+      ),
+  },
+  {
     path: "**",
     title: "Catch All | Storyblok Angular",
     loadComponent: () =>

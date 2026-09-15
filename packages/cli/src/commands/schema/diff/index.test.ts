@@ -1,12 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { vol } from "memfs";
 
 import "../index";
 import { schemaCommand } from "../command";
 import type { SchemaData } from "../types";
-import { resetReporter } from "../../../lib/reporter/reporter";
 import { CommandError } from "../../../utils";
 import { loadSchema } from "../load-schema";
 
@@ -16,7 +14,7 @@ vi.mock("../load-schema", () => ({
   loadSchema: vi.fn(),
 }));
 
-vi.spyOn(console, "log");
+const consoleError = vi.spyOn(console, "error");
 
 const server = setupServer();
 
@@ -51,12 +49,16 @@ function spaceWith(space: string, components: MockComponent[]) {
   );
 }
 
-/** Reads the written diff report from the virtual filesystem. */
-function getDiffReport() {
-  const file = Object.entries(vol.toJSON()).find(
-    ([name]) => name.includes("schema-diff") && name.endsWith(".json"),
-  );
-  return file ? JSON.parse(file[1] as string) : undefined;
+/**
+ * Everything the command rendered, with color escapes removed so assertions hold
+ * whether or not the runner reports a color-capable terminal. The UI writes to
+ * stderr; only machine-readable output goes to stdout.
+ */
+function output(): string {
+  return consoleError.mock.calls
+    .flat()
+    .join("\n")
+    .replace(/\p{Cc}\[[0-9;]*m/gu, "");
 }
 
 describe("schema diff command", () => {
@@ -66,9 +68,7 @@ describe("schema diff command", () => {
     process.exitCode = undefined;
     vi.resetAllMocks();
     vi.clearAllMocks();
-    vol.reset();
     server.resetHandlers();
-    resetReporter();
   });
 
   afterAll(() => server.close());
@@ -82,14 +82,12 @@ describe("schema diff command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
 
-    const report = getDiffReport();
-    expect(report?.meta.diff.summary).toMatchObject({ create: 1, update: 1 });
-    const entities = report.meta.diff.entities as { name: string; action: string }[];
-    expect(entities.find((e) => e.name === "banner")?.action).toBe("create");
-    expect(entities.find((e) => e.name === "hero")?.action).toBe("update");
+    expect(output()).toContain("+ banner (added)");
+    expect(output()).toContain("~ hero (changed)");
+    expect(output()).toContain("1 added, 1 changed");
   });
 
-  it("should carry field-level changes in the report payload", async () => {
+  it("should report which field changed rather than the whole block", async () => {
     spaceWith("111", [comp("hero", { title: { type: "text", pos: 0 } })]);
     spaceWith("222", [
       comp("hero", { title: { type: "text", pos: 0 }, subtitle: { type: "text", pos: 1 } }, 2),
@@ -97,13 +95,7 @@ describe("schema diff command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
 
-    const report = getDiffReport();
-    const hero = (
-      report.meta.diff.entities as { name: string; changes: { field: string; change: string }[] }[]
-    ).find((e) => e.name === "hero");
-    expect(hero?.changes.some((c) => c.field === "schema.subtitle" && c.change === "added")).toBe(
-      true,
-    );
+    expect(output()).toContain("+ schema.subtitle:");
   });
 
   it("should diff a local entry file against a remote space", async () => {
@@ -130,13 +122,12 @@ describe("schema diff command", () => {
     ]);
 
     expect(loadSchema).toHaveBeenCalledWith("./schema.ts");
-    const report = getDiffReport();
-    // Local (to=remote 222 is empty, from=file has hero) → hero exists only in `from` → stale.
-    expect(report?.meta.diff.summary).toMatchObject({ stale: 1 });
+    // Local (to=remote 222 is empty, from=file has hero) → hero exists only in `from` → removed.
+    expect(output()).toContain("- hero (removed)");
   });
 
   it("should report which side failed to resolve when a file cannot be loaded", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleError.mockImplementation(() => {});
     vi.mocked(loadSchema).mockRejectedValue(new Error("Cannot find module /abs/missing.ts"));
     spaceWith("222", []);
 
@@ -150,31 +141,13 @@ describe("schema diff command", () => {
       "222",
     ]);
 
-    const message = consoleError.mock.calls.flat().join(" ");
-    expect(message).toContain("--from");
-    expect(message).toContain("schema entry file");
-  });
-
-  it("should mark the report as failed when a schema cannot be resolved", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.mocked(loadSchema).mockRejectedValue(new Error("Cannot find module /abs/missing.ts"));
-    spaceWith("222", []);
-
-    await schemaCommand.parseAsync([
-      "node",
-      "test",
-      "diff",
-      "--from",
-      "./missing.ts",
-      "--to",
-      "222",
-    ]);
-
-    expect(getDiffReport()?.status).toBe("FAILURE");
+    expect(output()).toContain("--from");
+    expect(output()).toContain("schema entry file");
+    expect(process.exitCode).toBe(1);
   });
 
   it("should surface a schema authoring mistake unchanged, with the user-error exit code", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    consoleError.mockImplementation(() => {});
     vi.mocked(loadSchema).mockRejectedValue(
       new CommandError(`Duplicate schema definitions: block name "hero".`),
     );
@@ -190,9 +163,8 @@ describe("schema diff command", () => {
       "222",
     ]);
 
-    const message = consoleError.mock.calls.flat().join(" ");
-    expect(message).toContain(`Duplicate schema definitions: block name "hero".`);
-    expect(message).not.toContain("Check the path");
+    expect(output()).toContain(`Duplicate schema definitions: block name "hero".`);
+    expect(output()).not.toContain("Check the path");
     expect(process.exitCode).toBe(2);
   });
 });

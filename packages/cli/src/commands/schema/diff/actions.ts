@@ -1,4 +1,4 @@
-import type { DiffResult, EntityDiff, NormalizedSchema } from "../types";
+import type { DiffResult, NormalizedSchema } from "../types";
 import { APIError, CommandError, toError } from "../../../utils";
 import { fetchRemoteSchema, localToNormalized, remoteToNormalized } from "../actions";
 import { formatDiff } from "../format-diff";
@@ -50,33 +50,10 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
   }
 }
 
-/** Machine-readable diff payload emitted via the reporter's `meta.diff`. */
-export type SchemaDiffReport = {
-  from: string;
-  to: string;
-  summary: { create: number; update: number; unchanged: number; stale: number };
-  entities: EntityDiff[];
-};
-
-/** Builds the serializable diff payload for the reporter. */
-export function buildDiffReport(result: DiffResult, from: string, to: string): SchemaDiffReport {
-  return {
-    from,
-    to,
-    summary: {
-      create: result.creates,
-      update: result.updates,
-      unchanged: result.unchanged,
-      stale: result.stale,
-    },
-    entities: result.diffs,
-  };
-}
-
 /**
  * Formats the diff for human terminal output with direction-aware wording.
  * Unchanged entities are omitted from the listing (they stay in the summary
- * count and in `meta.diff`) to keep space-to-space output readable.
+ * count) to keep space-to-space output readable.
  */
 export function formatSchemaDiff(result: DiffResult, from: string, to: string): string {
   const labels = { create: "added", update: "changed", unchanged: "unchanged", stale: "removed" };

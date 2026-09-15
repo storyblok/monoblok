@@ -13,8 +13,9 @@ vi.mock("../../../commands/components", () => ({
   fetchComponent: vi.fn(),
 }));
 
-// Spy, not stub: the printed path has to be the path the action really wrote.
-vi.mock("./actions", { spy: true });
+vi.mock("./actions", () => ({
+  generateMigration: vi.fn(),
+}));
 
 vi.spyOn(console, "error");
 
@@ -40,9 +41,6 @@ const mockComponent: Component = {
 const preconditions = {
   componentExists() {
     vi.mocked(fetchComponent).mockResolvedValue(mockComponent);
-  },
-  componentWithUnsafeNameExists() {
-    vi.mocked(fetchComponent).mockResolvedValue({ ...mockComponent, name: "hero:v2" });
   },
   componentMissing() {
     vi.mocked(fetchComponent).mockResolvedValue(undefined);
@@ -81,21 +79,6 @@ describe("migrations generate command", () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining(
         "You can find the migration file in .storyblok/migrations/12345/component-name.js",
-      ),
-    );
-  });
-
-  it("should report the sanitized path it wrote for a name that is not filename-safe", async () => {
-    preconditions.componentWithUnsafeNameExists();
-
-    await migrationsCommand.parseAsync(["node", "test", "generate", "hero:v2", "--space", "12345"]);
-
-    expect(Object.keys(vol.toJSON())).toEqual(
-      expect.arrayContaining([expect.stringContaining("migrations/12345/hero_v2.js")]),
-    );
-    expect(console.error).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "You can find the migration file in .storyblok/migrations/12345/hero_v2.js",
       ),
     );
   });

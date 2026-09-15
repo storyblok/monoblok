@@ -8,7 +8,7 @@ import {
   type SuccessfulMigration,
 } from "../constants";
 import { applyMigrationToAllBlocks, getMigrationFunction } from "../actions";
-import { getMigrationComponentSegment, migrationTargetsComponent } from "../../migration-filename";
+import { getComponentNameFromFilename } from "../../../../utils/filesystem";
 import { hash } from "ohash";
 import { saveRollbackData } from "../../rollback/actions";
 import { getLogger } from "../../../../lib/logger/logger";
@@ -107,12 +107,10 @@ export class MigrationStream extends Transform {
   > {
     // Filter migrations based on component name if provided
     const relevantMigrations = this.options.componentName
-      ? this.options.migrationFiles.filter((file) =>
-          migrationTargetsComponent(
-            getMigrationComponentSegment(file.name),
-            this.options.componentName,
-          ),
-        )
+      ? this.options.migrationFiles.filter((file) => {
+          const targetComponent = getComponentNameFromFilename(file.name);
+          return targetComponent.split(".")[0] === this.options.componentName;
+        })
       : this.options.migrationFiles;
 
     if (!story.content) {
@@ -179,9 +177,8 @@ export class MigrationStream extends Transform {
           return null;
         }
 
-        // The file name is the single source of truth for what a migration
-        // targets; `--component` only narrows which files are applied.
-        const targetComponent = getMigrationComponentSegment(migrationFile.name);
+        const targetComponent =
+          this.options.componentName || getComponentNameFromFilename(migrationFile.name);
         const migrationProcessed = applyMigrationToAllBlocks(
           storyContent,
           migrationFunction,
@@ -239,9 +236,10 @@ export class MigrationStream extends Transform {
       } else {
         const reason = migrationFiles
           .map((migrationFile) => {
-            const baseComponent = getMigrationComponentSegment(migrationFile.name);
-            return !this.options.componentName ||
-              migrationTargetsComponent(baseComponent, this.options.componentName)
+            const targetComponent =
+              this.options.componentName || getComponentNameFromFilename(migrationFile.name);
+            const baseComponent = targetComponent.split(".")[0];
+            return baseComponent === this.options.componentName
               ? `No matching components found for ${migrationFile.name}`
               : `Different component target ${migrationFile.name}`;
           })

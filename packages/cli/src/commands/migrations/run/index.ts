@@ -11,7 +11,6 @@ import { migrationsCommand } from "../command";
 import { createStoriesStream } from "./streams/stories-stream";
 import { readMigrationFiles } from "./actions";
 import { MigrationStream } from "./streams/migrations-transform";
-import { getMigrationComponentSegment, migrationTargetsComponent } from "../migration-filename";
 import { UpdateStream } from "./streams/update-stream";
 import { pipeline } from "node:stream";
 
@@ -85,9 +84,11 @@ runCmd.action(
         filter,
       });
       const filteredMigrations = componentName
-        ? migrationFiles.filter((file) =>
-            migrationTargetsComponent(getMigrationComponentSegment(file.name), componentName),
-          )
+        ? migrationFiles.filter((file) => {
+            // Match any migration file that starts with the component name and is followed by either
+            // the end of the filename or a dot
+            return file.name.match(new RegExp(`^${componentName}(\\..*)?.js$`));
+          })
         : migrationFiles;
 
       if (filteredMigrations.length === 0) {

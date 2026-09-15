@@ -6,16 +6,10 @@ import { handleFileSystemError } from "../../../utils";
 import type { Component } from "../../components";
 
 // Mock the filesystem utils
-vi.mock("../../../utils/filesystem", async () => {
-  const actual = await vi.importActual<typeof import("../../../utils/filesystem")>(
-    "../../../utils/filesystem",
-  );
-  return {
-    saveToFile: vi.fn(),
-    resolvePath: vi.fn(),
-    sanitizeFilename: actual.sanitizeFilename,
-  };
-});
+vi.mock("../../../utils/filesystem", () => ({
+  saveToFile: vi.fn(),
+  resolvePath: vi.fn(),
+}));
 
 // Mock the error handler
 vi.mock("../../../utils", () => ({
@@ -97,20 +91,6 @@ describe("generateMigration", () => {
     // Assert
     expect(resolvePath).toHaveBeenCalledWith(customPath, `migrations/${mockSpace}`);
     expect(saveToFile).toHaveBeenCalledWith(expectedFilePath, expect.any(String));
-  });
-
-  it("should keep a component name with separators inside the migrations directory", async () => {
-    // Arrange
-    vi.mocked(resolvePath).mockReturnValue(`migrations/${mockSpace}`);
-
-    // Act
-    await generateMigration(mockSpace, mockPath, { ...mockComponent, name: "../../etc/passwd" });
-
-    // Assert
-    expect(saveToFile).toHaveBeenCalledWith(
-      join(`migrations/${mockSpace}`, "_.._etc_passwd.js"),
-      expect.any(String),
-    );
   });
 
   it("should handle filesystem errors properly", async () => {

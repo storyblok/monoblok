@@ -11,6 +11,7 @@ import * as filesystem from "../../../utils/filesystem";
 import { resetLogger } from "../../../lib/logger/logger";
 import { resetReporter } from "../../../lib/reporter/reporter";
 import { getLogFileContents } from "../../__tests__/helpers";
+import { buildMigrationFilename } from "../migration-filename";
 
 vi.mock("../../stories/actions", () => ({
   fetchStories: vi.fn(),
@@ -92,6 +93,12 @@ const createMockStory = (overrides: Partial<Story> = {}): Story => {
 const mockStory = createMockStory();
 
 const UNSAFE_COMPONENT_NAME = "hero:v2";
+const COLLIDING_COMPONENT_NAME = "hero_v2";
+const COLLIDING_NAME_BLOCK = Object.freeze({
+  _uid: "6a0b6d3e-0d5e-4a1a-8a2f-6f2c5b1d7a90",
+  component: COLLIDING_COMPONENT_NAME,
+  unchanged: "unchanged",
+});
 const UNSAFE_NAME_STORY = createMockStory({
   content: {
     _uid: "4b16d1ea-4306-47c5-b901-9d67d5babf53",
@@ -102,6 +109,7 @@ const UNSAFE_NAME_STORY = createMockStory({
         component: UNSAFE_COMPONENT_NAME,
         unchanged: "unchanged",
       },
+      COLLIDING_NAME_BLOCK,
     ],
   },
 });
@@ -159,8 +167,6 @@ const preconditions = {
     this.canLoadMigrationFunction((block: any) => block);
   },
   canMigrateComponentWithUnsafeName() {
-    // `migrations generate` sanitizes the component name into the file name, so
-    // `hero:v2` is stored as `hero_v2.js`.
     vi.mocked(fetchStories).mockResolvedValue({
       stories: [UNSAFE_NAME_STORY],
       headers: new Headers({ Total: "1", "Per-Page": "100" }),
@@ -168,7 +174,8 @@ const preconditions = {
     vi.mocked(fetchStory).mockResolvedValue(UNSAFE_NAME_STORY);
     this.canUpdateStory();
     vol.fromJSON({
-      "./.storyblok/migrations/12345/hero_v2.js": "only the filename matters!",
+      [`./.storyblok/migrations/12345/${buildMigrationFilename(UNSAFE_COMPONENT_NAME)}`]:
+        "only the filename matters!",
     });
     vi.spyOn(filesystem, "importModule").mockImplementation(() =>
       Promise.resolve({ default: (block: any) => ({ ...block, migrated: true }) }),
@@ -215,7 +222,10 @@ describe("migrations run command", () => {
       expect.objectContaining({
         story: expect.objectContaining({
           content: expect.objectContaining({
-            body: [expect.objectContaining({ component: UNSAFE_COMPONENT_NAME, migrated: true })],
+            body: [
+              expect.objectContaining({ component: UNSAFE_COMPONENT_NAME, migrated: true }),
+              COLLIDING_NAME_BLOCK,
+            ],
           }),
         }),
       }),
@@ -234,7 +244,10 @@ describe("migrations run command", () => {
       expect.objectContaining({
         story: expect.objectContaining({
           content: expect.objectContaining({
-            body: [expect.objectContaining({ component: UNSAFE_COMPONENT_NAME, migrated: true })],
+            body: [
+              expect.objectContaining({ component: UNSAFE_COMPONENT_NAME, migrated: true }),
+              COLLIDING_NAME_BLOCK,
+            ],
           }),
         }),
       }),

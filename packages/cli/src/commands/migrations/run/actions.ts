@@ -4,7 +4,7 @@ import { FileSystemError, toError } from "../../../utils/error";
 import { join } from "pathe";
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from "./constants";
 import { createRegexFromGlob } from "../../../utils";
-import { getMigrationComponentSegment, migrationTargetsComponent } from "../migration-filename";
+import { migrationTargetsComponent } from "../migration-filename";
 import type { BlokContent } from "../../stories/constants";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -88,13 +88,13 @@ export async function getMigrationFunction(
  * Recursively applies a migration function to all blocks in a content object that match the target component
  * @param content - The content object to process
  * @param migrationFunction - The migration function to apply
- * @param targetComponent - The component name to target for migration
+ * @param migrationFilename - The migration file name, which identifies the component it targets
  * @returns Whether any blocks were modified
  */
 export function applyMigrationToAllBlocks(
   content: BlokContent,
   migrationFunction: (block: BlokContent) => BlokContent,
-  targetComponent: string,
+  migrationFilename: string,
 ): boolean {
   let processed = false;
 
@@ -102,12 +102,8 @@ export function applyMigrationToAllBlocks(
     return processed;
   }
 
-  // `targetComponent` comes from the migration file name, where the component
-  // name was sanitized, so the block's name has to go through the same mapping.
-  const baseTargetComponent = getMigrationComponentSegment(targetComponent);
-
   let migratedContent = null;
-  if (migrationTargetsComponent(baseTargetComponent, content.component)) {
+  if (migrationTargetsComponent(migrationFilename, content.component)) {
     migratedContent = migrationFunction({ ...content });
     processed = true;
   }
@@ -130,7 +126,7 @@ export function applyMigrationToAllBlocks(
           const blockProcessed = applyMigrationToAllBlocks(
             value as BlokContent,
             migrationFunction,
-            targetComponent,
+            migrationFilename,
           );
           processed = processed || blockProcessed;
         }
@@ -146,7 +142,7 @@ export function applyMigrationToAllBlocks(
       const blockProcessed = applyMigrationToAllBlocks(
         content[key] as unknown as BlokContent,
         migrationFunction,
-        targetComponent,
+        migrationFilename,
       );
       processed = processed || blockProcessed;
     }

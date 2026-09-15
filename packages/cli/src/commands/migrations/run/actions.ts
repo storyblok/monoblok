@@ -3,7 +3,7 @@ import { importModule, resolvePath } from "../../../utils/filesystem";
 import { FileSystemError, toError } from "../../../utils/error";
 import { join } from "pathe";
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from "./constants";
-import { createRegexFromGlob } from "../../../utils";
+import { migrationFilterMatches, migrationTargetsComponent } from "../migration-filename";
 import type { BlokContent } from "../../stories/constants";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -17,7 +17,6 @@ export async function readMigrationFiles(
   try {
     const dirFiles = await readdir(resolvedPath);
     const migrationFiles: MigrationFile[] = [];
-    const filterRegex = filter ? createRegexFromGlob(filter) : null;
 
     if (dirFiles.length > 0) {
       for (const file of dirFiles) {
@@ -26,7 +25,7 @@ export async function readMigrationFiles(
         }
 
         // Apply glob filter if provided
-        if (filterRegex && !filterRegex.test(file)) {
+        if (filter && !migrationFilterMatches(file, filter)) {
           continue;
         }
 
@@ -87,13 +86,13 @@ export async function getMigrationFunction(
  * Recursively applies a migration function to all blocks in a content object that match the target component
  * @param content - The content object to process
  * @param migrationFunction - The migration function to apply
- * @param targetComponent - The component name to target for migration
+ * @param migrationFilename - The migration file name, which identifies the component it targets
  * @returns Whether any blocks were modified
  */
 export function applyMigrationToAllBlocks(
   content: BlokContent,
   migrationFunction: (block: BlokContent) => BlokContent,
-  targetComponent: string,
+  migrationFilename: string,
 ): boolean {
   let processed = false;
 
@@ -101,12 +100,8 @@ export function applyMigrationToAllBlocks(
     return processed;
   }
 
-  // Get the base component name (everything before the first dot)
-  const baseTargetComponent = targetComponent.split(".")[0];
-
-  // If the content has a component property and it matches the base component name
   let migratedContent = null;
-  if (content.component === baseTargetComponent) {
+  if (migrationTargetsComponent(migrationFilename, content.component)) {
     migratedContent = migrationFunction({ ...content });
     processed = true;
   }
@@ -129,7 +124,7 @@ export function applyMigrationToAllBlocks(
           const blockProcessed = applyMigrationToAllBlocks(
             value as BlokContent,
             migrationFunction,
-            targetComponent,
+            migrationFilename,
           );
           processed = processed || blockProcessed;
         }
@@ -145,7 +140,7 @@ export function applyMigrationToAllBlocks(
       const blockProcessed = applyMigrationToAllBlocks(
         content[key] as unknown as BlokContent,
         migrationFunction,
-        targetComponent,
+        migrationFilename,
       );
       processed = processed || blockProcessed;
     }

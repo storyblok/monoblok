@@ -3,8 +3,7 @@ import { importModule, resolvePath } from "../../../utils/filesystem";
 import { FileSystemError, toError } from "../../../utils/error";
 import { join } from "pathe";
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from "./constants";
-import { createRegexFromGlob } from "../../../utils";
-import { migrationTargetsComponent } from "../migration-filename";
+import { migrationFilterMatches, migrationTargetsComponent } from "../migration-filename";
 import type { BlokContent } from "../../stories/constants";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -18,7 +17,6 @@ export async function readMigrationFiles(
   try {
     const dirFiles = await readdir(resolvedPath);
     const migrationFiles: MigrationFile[] = [];
-    const filterRegex = filter ? createRegexFromGlob(filter) : null;
 
     if (dirFiles.length > 0) {
       for (const file of dirFiles) {
@@ -27,7 +25,7 @@ export async function readMigrationFiles(
         }
 
         // Apply glob filter if provided
-        if (filterRegex && !filterRegex.test(file)) {
+        if (filter && !migrationFilterMatches(file, filter)) {
           continue;
         }
 

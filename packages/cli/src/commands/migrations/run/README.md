@@ -147,11 +147,6 @@ short digest appended, for example `hero:v2` as `hero_v2-c07e5b.js`. See the `mi
 README for the mapping. Both the component argument and `--filter` accept the component name, so
 `--filter "hero:v2*"` selects that file without you having to know its generated name.
 
-Pass the component name as the argument when you need to target exactly one component. A `--filter`
-glob is matched against the rewritten file names as well, and that rewriting is lossy, so
-`--filter "hero:v2*"` also selects components such as `hero_v2` whose names are rewritten the same
-way.
-
 Files generated before component names were mapped to file names carry the component name verbatim.
 They are still applied, and the command names them so you can regenerate them.
 

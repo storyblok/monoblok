@@ -21,26 +21,34 @@ storyblok stories find [text] --space <space> [options]
 | Option                 | Description                                                        |
 | ---------------------- | ------------------------------------------------------------------ |
 | `[text]`               | Free-text search across the space. Always case-insensitive.        |
-| `--search-mode <mode>` | `fulltext` (default). `semantic` is not available yet.             |
 | `--entry-type <type>`  | `all` (default), `story` (no folders), or `folder` (folders only). |
 | `--starts-with <path>` | Limit the search to a subtree, e.g. `en/blog`. No leading slash.   |
 
 ### Filtering
 
-| Option                      | Runs                        | Description                                                                  |
-| --------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
-| `--container-block <name>`  | **API**                     | Stories whose content type (root block) is this component.                   |
-| `--includes-block <names>`  | **API**                     | Stories containing these blocks at any depth. Comma-separated.               |
-| `-q, --query <query>`       | **API**                     | Filter on root-level content fields.                                         |
-| `--where <jsonpath>`        | **Client-side**             | Filter with a JSONPath expression. Repeatable; expressions combine with AND. |
-| `--publish-status <status>` | **API** + client-side check | `published`, `changed` (published with unpublished edits), or `draft`.       |
+| Option                      | Runs                        | Description                                                                             |
+| --------------------------- | --------------------------- | --------------------------------------------------------------------------------------- |
+| `--container-block <name>`  | **API**                     | Stories whose content type (root block) is this component.                              |
+| `--includes-block <names>`  | **API**                     | Stories containing these blocks at any depth. Comma-separated, **all** must be present. |
+| `--tag <names>`             | **API**                     | Stories carrying **any** of these tags. Comma-separated.                                |
+| `--workflow-stage <ids>`    | **API**                     | Stories at **any** of these workflow stage IDs. Comma-separated.                        |
+| `-q, --query <query>`       | **API**                     | Filter on root-level content fields.                                                    |
+| `--where <jsonpath>`        | **Client-side**             | Filter with a JSONPath expression. Repeatable; expressions combine with AND.            |
+| `--publish-status <status>` | **API** + client-side check | `published`, `changed` (published with unpublished edits), or `draft`.                  |
 
 ### References
 
-| Option                | Runs            | Description                                                           |
-| --------------------- | --------------- | --------------------------------------------------------------------- |
-| `--references <uuid>` | **API**         | Stories whose content references this story UUID.                     |
-| `--check-references`  | **Client-side** | Report broken references, unpublished targets and outdated link URLs. |
+| Option                 | Runs            | Description                                                           |
+| ---------------------- | --------------- | --------------------------------------------------------------------- |
+| `--references <uuids>` | **API**         | Stories whose content references these story UUIDs. Comma-separated.  |
+| `--check-references`   | **Client-side** | Report broken references, unpublished targets and outdated link URLs. |
+
+### Order and size
+
+| Option            | Description                                                                    |
+| ----------------- | ------------------------------------------------------------------------------ |
+| `--sort <fields>` | Order the results, e.g. `updated_at:desc`. Applied by the API.                 |
+| `--limit <n>`     | Stop once `n` results have been printed, leaving the rest of the scope unread. |
 
 ### Optimizations
 
@@ -136,7 +144,13 @@ output nobody will read. The summary on stderr says the scan was cut short, and 
 ```bash
 # prints five lines and stops, whatever the size of the scope
 storyblok stories find --space 12345 | head -5
+
+# the same, for a shell with no `head`, and reported as deliberate in the summary
+storyblok stories find --space 12345 --limit 5
 ```
+
+[`--limit`](#--limit) stops the run the same way, from the inside. Use `head` inside a pipe and
+`--limit` where there is no `head` to pipe into.
 
 Results are also written at the pace of whatever is reading them, so a slow consumer holds the run
 back rather than having the whole result set queued up in front of it.
@@ -165,7 +179,7 @@ the global `--no-ui-enabled` silences every non-result line while leaving stdout
 
 | Code | Meaning                                                                                                                                                               |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0`  | The run completed and the result set is complete. Also used when a reader closed the pipe early.                                                                      |
+| `0`  | The run completed and the result set is complete. Also used when a reader closed the pipe early, or `--limit` was reached.                                            |
 | `1`  | Something failed and the result set may be missing stories — a listing page, a content fetch, or a filter.                                                            |
 | `2`  | The command was invoked wrongly: an unknown flag, a malformed `--query` or `--where`, or a combination of flags that cannot answer one question. Nothing was fetched. |
 
@@ -207,6 +221,8 @@ All filters combine with **AND**, and every one of them runs in one of two place
 | `--starts-with`          | API                           | no                  |
 | `--container-block`      | API                           | no                  |
 | `--includes-block`       | API                           | no                  |
+| `--tag`                  | API                           | no                  |
+| `--workflow-stage`       | API                           | no                  |
 | `--query`                | API                           | no                  |
 | `--references`           | API                           | no                  |
 | `--publish-status`       | API, plus a client-side check | no                  |
@@ -367,6 +383,105 @@ fetched — the cheapest kind of narrowing there is. On a 4,000-story space,
 `--publish-status changed` can reduce 3,825 stories to 46 without fetching the other 3,779. The
 summary reports those as `skipped before fetch`.
 
+### `--tag`
+
+Stories carrying a [tag](https://www.storyblok.com/docs/guide/essentials/tags). Comma-separated, and
+a story matches when it has **any** of the listed tags.
+
+```bash
+# One tag
+storyblok stories find --space 12345 --tag campaign
+
+# Either tag
+storyblok stories find --space 12345 --tag campaign,legacy
+```
+
+This is the opposite of `--includes-block`, where every listed block must be present. The two read
+alike and mean different things, so it is worth stating out loud: `--tag a,b` is "a or b", while
+`--includes-block a,b` is "a and b".
+
+To match stories carrying **all** of several tags, chain a client-side check:
+
+```bash
+storyblok stories find --space 12345 --tag campaign --skip-content \
+  --where "$.tag_list[?(@ == 'legacy')]"
+```
+
+`tag_list` rides on the story listing, so that expression works under `--skip-content`.
+
+### `--workflow-stage`
+
+Stories at a given [workflow](https://www.storyblok.com/docs/manuals/workflows) stage, by stage ID.
+Comma-separated, matching **any** of them, and only the story's _active_ stage counts.
+
+```bash
+# One stage
+storyblok stories find --space 12345 --workflow-stage 42
+
+# Either stage
+storyblok stories find --space 12345 --workflow-stage 42,43
+```
+
+This is an API filter, so it narrows before anything is fetched. The per-language `stages` array on
+the story is the client-side alternative, and it answers a different question — which language is at
+which stage, rather than which stories are at a stage at all:
+
+```bash
+# German specifically, which the API filter cannot express
+storyblok stories find --space 12345 \
+  --where "$.stages[?(@.language == 'de' && @.workflow_stage_id == 42)]"
+```
+
+Prefer the flag where it fits: the `--where` form reads every story in the space to answer.
+
+### `--sort`
+
+Order the results. The API applies this, so it decides which stories are on the first page, which is
+what makes it meaningful with [`--limit`](#--limit).
+
+```bash
+# Most recently updated first
+storyblok stories find --space 12345 --sort updated_at:desc
+
+# Oldest published first, then by slug
+storyblok stories find --space 12345 --sort published_at:asc,slug:asc
+
+# A content field, cast so it sorts as a number rather than as text
+storyblok stories find --space 12345 --sort content.price:desc:float
+```
+
+The format is `field[:direction[:cast[:nulls]]]`, comma-separated for several:
+
+| Part        | Values                                              |
+| ----------- | --------------------------------------------------- |
+| `direction` | `asc` (default), `desc`                             |
+| `cast`      | `int`, `float`. Everything sorts as text otherwise. |
+| `nulls`     | `nulls_first`, `nulls_last` (default)               |
+
+Story fields are addressed by name (`updated_at`, `slug`, `name`), content fields with a `content.`
+prefix (`content.price`). A column the space cannot sort by is rejected by the API, which is the
+only place that knows the space's own schema.
+
+### `--limit`
+
+Stop once `n` results have been printed.
+
+```bash
+# Ten most recently updated stories, and nothing else read
+storyblok stories find --space 12345 --sort updated_at:desc --limit 10
+```
+
+The limit counts **results**, not stories examined, and it stops the run rather than trimming its
+output: once the last line is out, the listing and every fetch still in flight are abandoned. On a
+large space that is the difference between seconds and minutes.
+
+`| head -n` does the same thing and is the better habit inside a pipe. `--limit` exists for the two
+places `head` cannot go: a shell that does not have it (PowerShell), and the run's own summary,
+which reports the stop as deliberate rather than leaving the counts looking like a scan that found
+little.
+
+A limited run exits **0**. It produced what it was asked for.
+
 ## References
 
 Stories point at each other in two ways: through
@@ -379,14 +494,23 @@ keep a cached copy of the target's URL, which is what makes an outdated-URL chec
 ### `--references`
 
 Find every story referencing a given story UUID. Resolved by the API, and it covers all reference
-types.
+types. Several UUIDs can be given at once, comma-separated, matching stories that reference **any**
+of them. A story never counts as referencing itself.
+
+The value has to be a UUID. A story's own `full_slug` or name will not do, and is rejected rather
+than quietly answered: the API reads an unparseable value as a raw substring search over story
+content, which returns a plausible, slower, and entirely different result set.
 
 ```bash
 # Everything pointing at one story
-storyblok stories find --space 12345 --references "abc-def-123-456"
+storyblok stories find --space 12345 --references "0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e"
+
+# Everything pointing at either of two stories
+storyblok stories find --space 12345 \
+  --references "0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e,7a2b3c4d-1e2f-4a5b-9c8d-0e1f2a3b4c5d"
 
 # Combined with other filters
-storyblok stories find --space 12345 --references "abc-def-123-456" \
+storyblok stories find --space 12345 --references "0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e" \
   --container-block product --publish-status published
 ```
 
@@ -493,7 +617,7 @@ comes with caveats worth reading before it goes into a script.
 ### `--skip-content`
 
 If nothing in the query needs content, do not fetch it. The content phase disappears entirely and
-the run becomes the page walk, which moves 100 stories per request instead of one: the same
+the run becomes the page walk, which moves up to 1,000 stories per request instead of one: the same
 167-story scope that takes 29.1s with content takes **4.0s** without it.
 
 The output is the story listing —
@@ -755,6 +879,12 @@ storyblok stories find --space 12345 --entry-type folder --skip-content | jq -r 
 
 # The size of a subtree, before deciding how to process it
 storyblok stories find --space 12345 --starts-with en/blog --skip-content | wc -l
+
+# Everything tagged for a campaign
+storyblok stories find --space 12345 --tag black-friday --skip-content | jq -r '.full_slug'
+
+# A quick look at what a filter matches, without walking the whole space
+storyblok stories find --space 12345 --container-block product --skip-content --limit 5
 ```
 
 ### Publishing reviews
@@ -766,12 +896,23 @@ storyblok stories find --space 12345 --publish-status changed --skip-content \
 
 # Drafts that have never gone live, oldest first
 storyblok stories find --space 12345 --publish-status draft --skip-content \
-  | jq -s 'sort_by(.created_at) | .[] | .full_slug'
+  --sort created_at:asc | jq -r '.full_slug'
 
 # Live but untouched for a long time
 storyblok stories find --space 12345 --publish-status published \
   --where "$[?($.updated_at < '2024-01-01')]" | jq -r '.full_slug'
+
+# The ten stories edited most recently, and nothing else read
+storyblok stories find --space 12345 --skip-content --sort updated_at:desc --limit 10 \
+  | jq -r '[.full_slug, .updated_at] | @tsv'
+
+# Waiting on review, wherever the space's review stage is 42
+storyblok stories find --space 12345 --workflow-stage 42 --skip-content | jq -r '.full_slug'
 ```
+
+`--sort` replaces the `jq -s 'sort_by(...)'` habit for anything the API can order by, and it is
+strictly better in a pipe: `jq -s` has to buffer the whole result set before it can emit the first
+line, while a sorted run streams.
 
 ### Content quality audits
 
@@ -874,17 +1015,20 @@ storyblok stories find --space 12345 \
 `stages` array, one entry per language, each carrying a `workflow_stage_id`:
 
 ```bash
-# German at a specific stage
+# Any language at that stage: the API filter answers this without reading content
+storyblok stories find --space 12345 --workflow-stage 42
+
+# German specifically, which the API filter cannot express
 storyblok stories find --space 12345 \
   --where "$.stages[?(@.language == 'de' && @.workflow_stage_id == 42)]"
-
-# Any language at that stage
-storyblok stories find --space 12345 --where "$.stages[?(@.workflow_stage_id == 42)]"
 
 # German not yet past review
 storyblok stories find --space 12345 \
   --where "$.stages[?(@.language == 'de' && @.workflow_stage_id < 50)]"
 ```
+
+Reach for [`--workflow-stage`](#--workflow-stage) whenever the language does not matter: it narrows
+on the API, where the `--where` forms above read every story in the space to answer.
 
 ### Link and reference hygiene
 
@@ -898,7 +1042,7 @@ storyblok stories find --space 12345 --check-references \
   --where "$._ref_issues[?(@.type == 'stale_url')]" | jq -r '.full_slug'
 
 # What would break if a story were deleted
-storyblok stories find --space 12345 --references "abc-def-123-456" --skip-content \
+storyblok stories find --space 12345 --references "0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e" --skip-content \
   | jq -r '.full_slug'
 ```
 
@@ -1032,9 +1176,10 @@ Each of these is useful before the pipe exists, and none depends on the others.
   `find … --skip-content | jq -r .id | paste -sd,` feeds it today. One list request per 1,000 ids
   instead of a full page walk, and it composes with `pull`, `validate` and `delete` as well. Content
   still gets re-fetched, so it is a fraction of the win, for a fraction of the work.
-- **Larger list pages.** `fetchStoriesStream` asks for 100 stories per page; the Management API
-  accepts **1,000**. The same 3,951-story space is 4 list requests instead of 40, in every command
-  that shares the stream.
+- ~~**Larger list pages.**~~ Done: `fetchStoriesStream` asks for the Management API's maximum of
+  **1,000** stories per page rather than 100, so a 3,951-story space is 4 list requests instead of
+  40, in every command that shares the stream. The walk paginates on the `Per-Page` header the
+  response comes back with, so a server that answers with a smaller page is still read to the end.
 - **The two stages `find` has that nothing else does.** `filterListedStoriesStream` drops stories
   from list metadata alone, before the expensive stage; `capiFilterStream` reads content in bulk and
   prunes. Both take a plain `ClientFilter[]` and neither knows anything about `find`. `pull`,

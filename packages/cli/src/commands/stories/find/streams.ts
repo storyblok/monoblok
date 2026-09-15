@@ -143,6 +143,23 @@ export const capiFilterStream = ({
   const lock = createPipelineBackpressureLock(maxInFlightBatches);
   const processing = new Set<Promise<void>>();
   let batch: Story[] = [];
+  /**
+   * The first error a detached batch failed with.
+   *
+   * `transform` starts a batch without awaiting it, so a rejection has nowhere to
+   * surface at the moment it happens: that chunk's callback has already been
+   * called. Parking it here lets `flush` end the stage with it. Without that, a
+   * batch that died on the way to `push` would take its stories with it, the
+   * stage would still end cleanly, and the run would report a short result set as
+   * a complete one — the single outcome `find > out.jsonl || exit 1` has to be
+   * able to catch.
+   */
+  let failure: Error | undefined;
+
+  /** First failure wins; the ones after it are consequences of the same stop. */
+  const recordFailure = (error: unknown): void => {
+    failure ??= toError(error);
+  };
 
   /**
    * Resolves one batch and decides each of its stories.
@@ -210,10 +227,12 @@ export const capiFilterStream = ({
         // Awaited before the callback, so a saturated queue holds the pager back
         // rather than buffering the whole space in memory.
         await lock.acquire();
-        const task = settleBatch(pending, (resolved) => this.push(resolved)).finally(() => {
-          lock.release();
-          processing.delete(task);
-        });
+        const task = settleBatch(pending, (resolved) => this.push(resolved))
+          .catch(recordFailure)
+          .finally(() => {
+            lock.release();
+            processing.delete(task);
+          });
         processing.add(task);
 
         callback();
@@ -227,8 +246,15 @@ export const capiFilterStream = ({
       const tail = batch;
       batch = [];
       const remaining =
-        tail.length > 0 ? settleBatch(tail, (resolved) => this.push(resolved)) : Promise.resolve();
-      Promise.all([...processing, remaining]).finally(() => callback());
+        tail.length > 0
+          ? settleBatch(tail, (resolved) => this.push(resolved)).catch(recordFailure)
+          : Promise.resolve();
+      // `.finally` would run the callback and then re-throw into nothing, ending
+      // the stage successfully while an unhandled rejection escaped the process.
+      Promise.all([...processing, remaining]).then(
+        () => callback(failure),
+        (error: unknown) => callback(toError(error)),
+      );
     },
   });
 };

@@ -2,12 +2,20 @@ import chalk from "chalk";
 
 import type { DiffAction, DiffResult, EntityDiff, FieldChange } from "./types";
 
-/** Formats a field value on a single line for terminal display. */
+/**
+ * Longest single-line value rendered in full. A schema can hold values of
+ * unbounded size — a datasource with thousands of entries, a long template — and
+ * a terminal line that long is unreadable rather than informative.
+ */
+const MAX_INLINE_LENGTH = 200;
+
+/** Formats a field value on a single line for terminal display, elided when overlong. */
 function inlineValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
+  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? String(value));
+  if (text.length <= MAX_INLINE_LENGTH) {
+    return text;
   }
-  return JSON.stringify(value) ?? String(value);
+  return `${text.slice(0, MAX_INLINE_LENGTH)}… (${text.length} characters)`;
 }
 
 /**

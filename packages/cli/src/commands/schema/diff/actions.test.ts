@@ -72,6 +72,28 @@ describe("formatSchemaDiff", () => {
     expect(output).toContain("1 added, 1 changed, 1 removed");
   });
 
+  it("should elide an overlong value instead of emitting an unreadable line", () => {
+    const long = "x".repeat(5000);
+    const result = makeResult([
+      {
+        type: "datasource",
+        name: "colors",
+        action: "update",
+        changes: [{ field: "entries", change: "modified", before: long, after: `${long}y` }],
+        before: {},
+        after: {},
+      },
+    ]);
+
+    const longest = Math.max(
+      ...formatSchemaDiff(result, "111", "222")
+        .split("\n")
+        .map((l) => l.length),
+    );
+
+    expect(longest).toBeLessThan(300);
+  });
+
   it("should count an unchanged entity in the summary", () => {
     const result = makeResult([
       {

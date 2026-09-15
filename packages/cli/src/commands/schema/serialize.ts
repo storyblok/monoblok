@@ -3,6 +3,7 @@ import {
   DATASOURCE_DIMENSION_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
   formatValue,
+  RESTRICTION_LIST_KEYS,
   stripKeys,
 } from "./utils";
 
@@ -28,6 +29,15 @@ function sortSchemaByPos(
       // state and is kept.
       if (rest.restrict_type === "") {
         delete rest.restrict_type;
+      }
+      // An empty restriction list carries no more meaning than an absent key, and
+      // a space holds one for every dimension the field is not restricted by. Kept,
+      // it would diff forever against a DSL that simply omits the key.
+      for (const listKey of RESTRICTION_LIST_KEYS) {
+        const list = rest[listKey];
+        if (Array.isArray(list) && list.length === 0) {
+          delete rest[listKey];
+        }
       }
       return [key, rest];
     }),

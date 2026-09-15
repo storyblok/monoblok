@@ -385,6 +385,67 @@ describe("diffSchema", () => {
     expect(hero?.action).toBe("unchanged");
   });
 
+  it("should carry the folder of a block the target alone holds", () => {
+    // Replaying a `create` has to put the block in the folder the diff also
+    // reports creating; without `folder` on the payload it lands ungrouped.
+    const remoteComp = {
+      ...makeComponent("quote", {}),
+      component_group_uuid: "u-editorial",
+    } as Component;
+
+    const result = diffSchema(
+      normalized(),
+      normalizedRemote([remoteComp], [{ uuid: "u-editorial", name: "Editorial" }]),
+    );
+
+    const quote = result.diffs.find((d) => d.type === "component" && d.name === "quote");
+    expect(quote?.action).toBe("create");
+    expect(quote?.after).toMatchObject({ folder: "editorial" });
+  });
+
+  it("should carry the declared folder of a local block the base does not hold", () => {
+    const localComp = { ...makeComponent("promo", {}), folder: "promo-folder" } as Component;
+
+    const result = diffSchema(
+      normalized(),
+      normalized(
+        [localComp],
+        [],
+        [{ name: "Promo Folder", path: "promo-folder", parentPath: null }],
+      ),
+    );
+
+    const promo = result.diffs.find((d) => d.type === "component" && d.name === "promo");
+    expect(promo?.after).toMatchObject({ folder: "promo-folder" });
+  });
+
+  it("should carry the folder of a stale block the base alone holds", () => {
+    const remoteComp = {
+      ...makeComponent("quote", {}),
+      component_group_uuid: "u-editorial",
+    } as Component;
+
+    const result = diffSchema(
+      normalizedRemote([remoteComp], [{ uuid: "u-editorial", name: "Editorial" }]),
+      normalized(),
+    );
+
+    const quote = result.diffs.find((d) => d.type === "component" && d.name === "quote");
+    expect(quote?.action).toBe("stale");
+    expect(quote?.before).toMatchObject({ folder: "editorial" });
+  });
+
+  it("should treat an empty restriction list as equal to an omitted one", () => {
+    const remoteComp = makeComponent("page", {
+      body: { type: "bloks", pos: 0, component_group_whitelist: [], component_whitelist: [] },
+    });
+    const localComp = makeComponent("page", { body: { type: "bloks", pos: 0 } });
+
+    const result = diffSchema(normalized([remoteComp]), normalized([localComp]));
+
+    expect(result.diffs.find((d) => d.name === "page")?.action).toBe("unchanged");
+  });
+
   it("should translate component_group_whitelist uuids to slug paths before comparing", () => {
     const remoteComp = makeComponent("page", {
       body: { type: "bloks", pos: 0, restrict_components: true, component_group_whitelist: ["u1"] },

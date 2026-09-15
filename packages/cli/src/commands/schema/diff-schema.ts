@@ -141,12 +141,17 @@ function orderedNames<T>(from: Map<string, T>, to: Map<string, T>): string[] {
 /**
  * Whether a side can express this block's group membership: a schema read from a
  * space always can (membership lives in `component_group_uuid`), and a local
- * block does so by declaring a `folder` key. When either side cannot, membership
- * is unmanaged and `folder` is stripped from both, leaving the remote UI grouping
- * untouched instead of reporting a phantom change.
+ * block does so by declaring a `folder` key. When a side that holds the block
+ * cannot, membership is unmanaged and `folder` is stripped, leaving the remote UI
+ * grouping untouched instead of reporting a phantom change.
+ *
+ * A side that does not hold the block at all imposes no constraint. Requiring it
+ * to would strip `folder` from every `create` and `stale` entity, so a diff would
+ * report a new block and the folder it belongs in without saying they go
+ * together — and replaying it would land the block ungrouped.
  */
-function managesFolder(comp: Component | undefined, schema: NormalizedSchema): boolean {
-  return comp !== undefined && (schema.groupPathByUuid !== undefined || "folder" in comp);
+function canExpressFolder(comp: Component | undefined, schema: NormalizedSchema): boolean {
+  return comp === undefined || schema.groupPathByUuid !== undefined || "folder" in comp;
 }
 
 /**
@@ -192,7 +197,7 @@ function diffComponent(
   // spaces they never match and would flag every grouped block as changed, so
   // the field stays stripped on both sides unless both are opted in.
   const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === "string";
-  const manageFolder = managesFolder(fromComp, from) && managesFolder(toComp, to);
+  const manageFolder = canExpressFolder(fromComp, from) && canExpressFolder(toComp, to);
   const fromClean = fromComp
     ? cleanComponent(
         applyDefaults(toPathSpace(fromComp, uuidToPath, manageFolder), COMPONENT_DEFAULTS),

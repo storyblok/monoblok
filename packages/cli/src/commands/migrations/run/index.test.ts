@@ -276,6 +276,17 @@ describe("migrations run command", () => {
     );
   });
 
+  it("should warn that a migration file generated under a raw name needs regenerating", async () => {
+    preconditions.canMigrateComponentWithLegacyFilename();
+    resetLogger();
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`${UNSAFE_COMPONENT_NAME}.js`),
+    );
+  });
+
   it("should apply every migration when no component name narrows the run", async () => {
     preconditions.canMigrateComponentWithUnsafeName();
     resetLogger();

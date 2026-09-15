@@ -1,7 +1,8 @@
 import {
   createJsonlOutput,
   createPhaseTracker,
-  isDownstreamClosed,
+  isDeliberateStop,
+  isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
 import { findPhases, processStageName, resultsHeadline } from "./phases";
@@ -15,6 +16,7 @@ export async function runFind({
   preContentFilters,
   filters,
   skipContent = false,
+  limit,
   capi,
   ui,
   logger,
@@ -24,9 +26,11 @@ export async function runFind({
   preContentFilters: ClientFilter[];
   filters: ClientFilter[];
   skipContent?: boolean;
+  /** Stop once this many results have been written. */
+  limit?: number;
   capi?: CapiFilter;
 }): Promise<void> {
-  const output = createJsonlOutput();
+  const output = createJsonlOutput({ limit });
   const tracker = createPhaseTracker({
     ui,
     phases: findPhases({
@@ -40,6 +44,7 @@ export async function runFind({
     }),
   });
   let earlyExit = false;
+  let stoppedByLimit = false;
 
   try {
     await runStoryPipeline({
@@ -56,13 +61,15 @@ export async function runFind({
       verbose,
     });
   } catch (error) {
-    // `find | head -5` is a complete, successful use of the command, not a
-    // failure: the reader got what it asked for and left. Everything below still
-    // runs, so the summary on stderr reports what the run managed to do.
-    if (!isDownstreamClosed(error)) {
+    // `find | head -5` and `find --limit 5` are both complete, successful uses of
+    // the command rather than failures: the results asked for were produced, and
+    // the rest of the scope was never worth walking. Everything below still runs,
+    // so the summary on stderr reports what the run managed to do.
+    if (!isDeliberateStop(error)) {
       throw error;
     }
     earlyExit = true;
+    stoppedByLimit = isLimitReached(error);
   } finally {
     tracker.stop();
     output.close();
@@ -79,7 +86,9 @@ export async function runFind({
     // anything less explicit than "not an error" reads as one next to them.
     if (earlyExit) {
       ui.ok(
-        "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. " +
+        (stoppedByLimit
+          ? `Stopped early on purpose: --limit ${limit} was reached, so the rest of the scope was left unread. `
+          : "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. ") +
           "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran.",
       );
     }

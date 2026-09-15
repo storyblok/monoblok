@@ -94,12 +94,22 @@ const stdoutLineWriter = (ui: UI): LineWriter => ({
 export function createJsonlOutput({
   write,
   writer,
+  limit,
   ui = getUI(),
 }: {
   /** Convenience form for a caller that cannot be backpressured anyway. */
   write?: (line: string) => void;
   /** Full form, including the backpressure signal. Takes precedence. */
   writer?: LineWriter;
+  /**
+   * Stop the run once this many lines have gone out.
+   *
+   * Counted here rather than in a pipeline stage because this is the only place
+   * that knows a line has actually been written: a stage that counted what it
+   * pushed would abort while the last result was still queued in front of the
+   * sink, and truncate the output it was asked to produce.
+   */
+  limit?: number;
   ui?: UI;
 } = {}): MachineOutput {
   const lineWriter: LineWriter =
@@ -123,6 +133,21 @@ export function createJsonlOutput({
     controller.abort(new DownstreamClosedError());
   });
 
+  let written = 0;
+  /**
+   * Called once a line is out, which is what makes the stop safe: the run ends
+   * holding exactly the number of results it was asked for, never one short.
+   */
+  const countLine = (): void => {
+    if (limit === undefined) {
+      return;
+    }
+    written += 1;
+    if (written >= limit) {
+      controller.abort(new LimitReachedError(limit));
+    }
+  };
+
   const sink = new Writable({
     objectMode: true,
     write(value: unknown, _encoding, callback) {
@@ -141,7 +166,12 @@ export function createJsonlOutput({
         return;
       }
 
-      if (lineWriter.write(line)) {
+      // The line is written either way; the return value only says whether the
+      // destination's buffer has room left, so the count belongs here rather
+      // than behind the branch below.
+      const accepted = lineWriter.write(line);
+      countLine();
+      if (accepted) {
         callback();
         return;
       }
@@ -157,6 +187,7 @@ export function createJsonlOutput({
         return;
       }
       lineWriter.write(JSON.stringify(value));
+      countLine();
     },
     get sink() {
       return sink;
@@ -210,20 +241,54 @@ export class DownstreamClosedError extends Error {
   }
 }
 
-export function isDownstreamClosed(error: unknown): boolean {
-  // `stream.pipeline()` does not reject with the reason it was aborted for: it
-  // raises its own `AbortError` and moves that reason onto `cause`. Walking the
-  // chain rather than checking a single level keeps this working however many
-  // wrappers sit in between — one pipeline nested in another already makes two —
-  // while still not mistaking an unrelated abort for a closed pipe.
+/**
+ * Raised as the abort reason when `--limit` has been satisfied.
+ *
+ * A sibling of {@link DownstreamClosedError} rather than the same type: both end
+ * the run at 0, but only one of them means somebody else stopped listening, and
+ * the summary has to say which happened.
+ */
+export class LimitReachedError extends Error {
+  constructor(public readonly limit: number) {
+    super(`The run produced the ${limit} result(s) it was limited to.`);
+    this.name = "LimitReachedError";
+  }
+}
+
+/**
+ * Whether `error` is, or was caused by, an error of the given type.
+ *
+ * `stream.pipeline()` does not reject with the reason it was aborted for: it
+ * raises its own `AbortError` and moves that reason onto `cause`. Walking the
+ * chain rather than checking a single level keeps this working however many
+ * wrappers sit in between — one pipeline nested in another already makes two —
+ * while still not mistaking an unrelated abort for one of these.
+ */
+function hasCauseOfType(error: unknown, type: new (...args: never[]) => Error): boolean {
   const seen = new Set<unknown>();
   let current: unknown = error;
   while (current instanceof Error && !seen.has(current)) {
-    if (current instanceof DownstreamClosedError) {
+    // Read before the check: matching `type` narrows `current` to `never`, and
+    // the next link would then be unreachable to the type checker.
+    const cause: unknown = current.cause;
+    if (current instanceof type) {
       return true;
     }
     seen.add(current);
-    current = current.cause;
+    current = cause;
   }
   return false;
+}
+
+export function isDownstreamClosed(error: unknown): boolean {
+  return hasCauseOfType(error, DownstreamClosedError);
+}
+
+export function isLimitReached(error: unknown): boolean {
+  return hasCauseOfType(error, LimitReachedError);
+}
+
+/** Either way of stopping a run on purpose. Both are successful outcomes. */
+export function isDeliberateStop(error: unknown): boolean {
+  return isDownstreamClosed(error) || isLimitReached(error);
 }

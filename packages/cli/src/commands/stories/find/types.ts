@@ -8,14 +8,17 @@ export type EntryType = "all" | "story" | "folder";
 
 export interface FindOptions {
   space?: string;
-  searchMode?: string;
   entryType?: EntryType;
   startsWith?: string;
   containerBlock?: string;
   includesBlock?: string;
   query?: string;
   where?: string[];
+  tag?: string;
+  workflowStage?: string;
   publishStatus?: PublishStatus;
+  sort?: string;
+  limit?: string;
   references?: string;
   checkReferences?: boolean;
   skipContent?: boolean;

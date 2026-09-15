@@ -21,7 +21,7 @@ catalog:
   typescript: 6.0.3
   vite-plugin-dts: ^5.0.3
   vitest: ^4.1.10
-  zod: ^4.3.6
+  zod: ^4.6.5
 
 # Named catalogs pin the framework version matrix the playgrounds exist to
 # cover. Keep them separate from `catalog:` so bumping the toolchain never
@@ -49,7 +49,7 @@ catalogs:
     react: ^19.2.4
     react-dom: ^19.2.4
   next16:
-    next: ^16.0.0
+    next: ^16.2.11
 
 # Route newly added dependencies into the catalog automatically, and warn (not
 # fail) when a package asks for a version the catalog does not carry — the

@@ -16,4 +16,12 @@ describe("resolveScopeBaseDir", () => {
     const scope: Scope = { kind: "library", libraryId: 7 };
     expect(resolveScopeBaseDir(scope, undefined).replace(/\\/g, "/")).toContain("assets/shared/7");
   });
+
+  it.each([["../../../../etc"], [""], [null], [undefined], ["7"], [1.5], [Number.NaN], [-1]])(
+    "should reject the library ID %p instead of mapping it to a directory",
+    (libraryId) => {
+      const scope = { kind: "library", libraryId } as unknown as Scope;
+      expect(() => resolveScopeBaseDir(scope, undefined)).toThrow(/Unexpected shared library ID/);
+    },
+  );
 });

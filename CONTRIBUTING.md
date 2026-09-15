@@ -18,7 +18,6 @@ instructions for contributing to our monorepo.
 - Git
 - Node.js
 - pnpm
-- [Vite+](https://viteplus.dev/guide/) (`vp` CLI) — pin the version from `.viteplus-version`
 
 ### Setup
 
@@ -29,10 +28,7 @@ instructions for contributing to our monorepo.
 pnpm install
 ```
 
-3. Install Vite+ (`vp`) following the [official Vite+ install guide](https://viteplus.dev/guide/).
-   Pin the version listed in `.viteplus-version` to match CI, then verify with `vp --version`.
-
-4. (Optional) Rebuild the internal monoblok CLI tool. It is built on `pnpm install` automatically;
+3. (Optional) Rebuild the internal monoblok CLI tool. It is built on `pnpm install` automatically;
    rebuild manually only when changing it:
 
 ```bash

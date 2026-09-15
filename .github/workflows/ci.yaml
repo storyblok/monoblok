@@ -56,8 +56,6 @@ jobs:
 
       - uses: ./.github/actions/setup-node
 
-      - uses: ./.github/actions/setup-viteplus
-
       # Formatting is owned by the root Vite+ config, so it is checked once for
       # the whole repo rather than per project.
       - name: Check formatting

@@ -13,11 +13,11 @@
     "@astrojs/svelte": "^9.0.0",
     "@astrojs/vue": "^7.0.0",
     "@storyblok/astro": "workspace:*",
-    "astro": "^7.0.0",
+    "astro": "^7.2.8",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
-    "svelte": "^5.55.0",
-    "vue": "^3.5.30"
+    "svelte": "^5.55.7",
+    "vue": "^3.5.42"
   },
   "devDependencies": {
     "@types/react": "catalog:react19",

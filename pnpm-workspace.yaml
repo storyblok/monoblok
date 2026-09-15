@@ -60,6 +60,29 @@ injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:
   - build
 
+# Supply chain hardening. Rationale, where each control acts, and the escape
+# hatches are in adr/0015-pnpm-supply-chain-hardening.md.
+strictDepBuilds: true
+
+# May run install scripts; the workspace needs their build output.
 onlyBuiltDependencies:
   - cypress
   - esbuild
+
+# Ask to run install scripts but do not need to. New packages go here by
+# default: `pnpm approve-builds '!<pkg>'`.
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+  - "@swc/core"
+  - lmdb
+  - msgpackr-extract
+  - msw
+  - nx
+  - sharp
+  - unrs-resolver
+
+# 24h. Resolution-time only; does not re-check a frozen lockfile.
+minimumReleaseAge: 1440
+
+# Resolution-time only; for false positives prefer `trustPolicyIgnoreAfter`.
+trustPolicy: no-downgrade

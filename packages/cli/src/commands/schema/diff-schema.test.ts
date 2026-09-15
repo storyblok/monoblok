@@ -197,6 +197,53 @@ describe("diffSchema", () => {
     expect(result.diffs[0].changes.some((c) => c.field === "description")).toBe(true);
   });
 
+  it("should report the datasource entry that changed rather than the whole list", () => {
+    const entries = (value: string) => [
+      { name: "red", value: "#f00" },
+      { name: "blue", value },
+    ];
+    const from = normalized(
+      [],
+      [
+        {
+          ...makeDatasource("Colors", "colors"),
+          entries: entries("#00f"),
+        } as unknown as Datasource,
+      ],
+    );
+    const to = normalized(
+      [],
+      [
+        {
+          ...makeDatasource("Colors", "colors"),
+          entries: entries("#111"),
+        } as unknown as Datasource,
+      ],
+    );
+
+    const result = diffSchema(from, to);
+
+    expect(result.diffs[0].changes).toEqual([
+      { field: "entries.blue.value", change: "modified", before: "#00f", after: "#111" },
+    ]);
+  });
+
+  it("should not report a reordered entry list as a change without saying what changed", () => {
+    const red = { name: "red", value: "#f00" };
+    const blue = { name: "blue", value: "#00f" };
+    const from = normalized(
+      [],
+      [{ ...makeDatasource("Colors", "colors"), entries: [red, blue] } as unknown as Datasource],
+    );
+    const to = normalized(
+      [],
+      [{ ...makeDatasource("Colors", "colors"), entries: [blue, red] } as unknown as Datasource],
+    );
+
+    const changes = diffSchema(from, to).diffs[0].changes;
+    expect(changes.map((c) => c.field)).toEqual(["entries"]);
+  });
+
   it("should treat a datasource without dimensions as unchanged when base has empty dimensions", () => {
     const from = normalized(
       [],

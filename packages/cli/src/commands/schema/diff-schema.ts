@@ -46,10 +46,31 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
+ * An array that is really a set keyed by `name` — datasource entries and
+ * dimensions — as a name-keyed record, so a change reads as the entry that moved
+ * rather than two dumps of the whole list, and reordering alone is not a change.
+ * Returns `null` for any other array shape, including one whose duplicate names
+ * would make the mapping lossy.
+ */
+function asNameKeyed(value: unknown): Record<string, unknown> | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const keyed: Record<string, unknown> = {};
+  for (const item of value) {
+    if (!isRecord(item) || typeof item.name !== "string" || item.name in keyed) {
+      return null;
+    }
+    keyed[item.name] = item;
+  }
+  return keyed;
+}
+
+/**
  * Like {@link diffKeyed}, but recurses into nested records so a change reads as
  * the property that actually moved (`schema.body.maximum`) instead of two dumps
- * of the whole enclosing object. Recursion stops at non-record values, which are
- * reported whole.
+ * of the whole enclosing object. Name-keyed arrays are recursed into the same
+ * way (`entries.blue.value`); every other non-record value is reported whole.
  */
 function diffKeyedDeep(
   before: Record<string, unknown>,
@@ -68,8 +89,20 @@ function diffKeyedDeep(
     } else if (!inBefore && inAfter) {
       changes.push({ field, change: "added", after: after[key] });
     } else if (canonical(before[key]) !== canonical(after[key])) {
+      const beforeKeyed = asNameKeyed(before[key]);
+      const afterKeyed = asNameKeyed(after[key]);
       if (isRecord(before[key]) && isRecord(after[key])) {
         changes.push(...diffKeyedDeep(before[key], after[key], `${field}.`));
+      } else if (beforeKeyed && afterKeyed) {
+        // Two name-keyed lists can differ while no entry does — they were
+        // reordered. Report the field whole then, so a change is never listed
+        // without saying what it was.
+        const entryChanges = diffKeyedDeep(beforeKeyed, afterKeyed, `${field}.`);
+        changes.push(
+          ...(entryChanges.length > 0
+            ? entryChanges
+            : [{ field, change: "modified", before: before[key], after: after[key] } as const]),
+        );
       } else {
         changes.push({ field, change: "modified", before: before[key], after: after[key] });
       }
@@ -122,7 +155,9 @@ function buildEntityDiff(
   }
 
   const changes =
-    type === "component" ? componentChanges(fromClean!, toClean!) : diffKeyed(fromClean!, toClean!);
+    type === "component"
+      ? componentChanges(fromClean!, toClean!)
+      : diffKeyedDeep(fromClean!, toClean!, "");
 
   return { type, name, action: "update", changes, before: fromClean, after: toClean };
 }

@@ -13,15 +13,33 @@ import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
 import { parseCapiParams } from "./capi";
 
 /**
+ * One UUID in the canonical form, per RFC 4122 and RFC 9562.
+ *
+ * The version nibble is restricted to the versions Storyblok issues (1, 3, 4, 5,
+ * 7, 8) and the variant nibble to `8`-`b`, which is what the API itself matches.
+ * A looser pattern here would accept a value the server then rejects, which is
+ * the failure this check exists to prevent.
+ */
+const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[134578][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+
+/** One UUID, or several separated by commas. Mirrors the API's own list form. */
+const REFERENCE_UUIDS = new RegExp(`^\\s*(?:${UUID_PATTERN}\\s*,?\\s*)+$`, "i");
+
+/**
  * Rejects options the command accepts on the surface but cannot honour yet.
  *
  * Silently ignoring an explicitly passed flag is worse than failing: the user
  * gets a full, plausible result set that answers a different question.
  */
 export function assertSupportedOptions(options: FindOptions): void {
-  if (options.searchMode && options.searchMode !== "fulltext") {
+  // The API reads `reference_search` as a UUID list and, when it parses as none,
+  // silently falls back to a substring scan of raw story content. A typo'd UUID
+  // therefore returns a slow, plausible, and completely different result set
+  // rather than an error, so it has to be caught here.
+  if (options.references !== undefined && !REFERENCE_UUIDS.test(options.references)) {
     throw new CommandError(
-      `Search mode "${options.searchMode}" is not supported yet. Only "fulltext" is available.`,
+      `--references expects a story UUID, or several separated by commas, and got: ${options.references}\n` +
+        "A UUID looks like 0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e. `stories find <text>` is what searches content for a term.",
     );
   }
 
@@ -70,6 +88,25 @@ export function assertSupportedOptions(options: FindOptions): void {
   }
 }
 
+/**
+ * Reads `--limit` as a positive whole number of results.
+ *
+ * Commander hands every option over as a string, and the failure this guards
+ * against is quiet: `--limit 0` or `--limit abc` would become `NaN` or `0`, and
+ * a run that stopped at the first line would look like a search that matched
+ * almost nothing.
+ */
+export function parseLimit(raw: string | undefined): number | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new CommandError(`--limit expects a whole number of 1 or more, and got: ${raw}`);
+  }
+  return value;
+}
+
 export function buildQueryParams(
   text: string | undefined,
   options: FindOptions,
@@ -101,9 +138,28 @@ export function buildQueryParams(
     params.contain_component = options.includesBlock;
   }
 
+  // Tags and workflow stages are both "any of these" on the server: a story
+  // matches when it carries one of the listed values, unlike `--includes-block`,
+  // where the listed blocks must all be present.
+  if (options.tag) {
+    params.with_tag = options.tag;
+  }
+
+  if (options.workflowStage) {
+    params.in_workflow_stages = options.workflowStage;
+  }
+
   // Publish status (server-side part)
   if (options.publishStatus) {
     Object.assign(params, publishStatusToQueryParams(options.publishStatus));
+  }
+
+  // Ordering is the server's job: it decides which stories are on the first
+  // page, so it has to be applied before the walk rather than to the results.
+  // An unsortable column is rejected by the API, which is the only place that
+  // knows the space's own fields.
+  if (options.sort) {
+    params.sort_by = options.sort;
   }
 
   // Reference search (server-side)

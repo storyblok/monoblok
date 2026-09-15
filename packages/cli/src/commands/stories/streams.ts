@@ -38,6 +38,18 @@ const readPositiveIntHeader = (headers: Headers, name: string): number | undefin
   return Number.isFinite(value) && value > 0 ? value : undefined;
 };
 
+/**
+ * Stories asked for per listing request.
+ *
+ * The Management API caps a page at 1,000, and a listing carries no `content`,
+ * so a full page is metadata rather than documents. Asking for the cap turns a
+ * 4,000-story space into 4 requests instead of 40, in every command that shares
+ * this stream. Should the server ever answer with a smaller page, the `Per-Page`
+ * header below is what the walk actually paginates on, so the run stays correct
+ * rather than stopping short.
+ */
+const LIST_PAGE_SIZE = 1000;
+
 export const fetchStoriesStream = ({
   spaceId,
   params = {},
@@ -60,7 +72,7 @@ export const fetchStoriesStream = ({
   onPageError?: (error: Error, page: number, total: number) => void;
 }) => {
   const listGenerator = async function* storyListIterator() {
-    let perPage = 100;
+    let perPage = LIST_PAGE_SIZE;
     let page = 1;
     let totalPages = 1;
     // Set a default for total pages in case the first request fails.

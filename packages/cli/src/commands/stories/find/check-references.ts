@@ -28,6 +28,7 @@ export async function runCheckReferences({
   params,
   publishStatusFilters,
   whereFilters,
+  limit,
   capi,
   ui,
   logger,
@@ -36,7 +37,13 @@ export async function runCheckReferences({
 }: FindContext & {
   publishStatusFilters: ClientFilter[];
   whereFilters: ClientFilter[];
-  /** Bulk content source in place of the per-story MAPI fetch. */
+  /**
+   * Caps the stories reported, not the stories scanned.
+   *
+   * A reference is only decidable once every target is known, so the scan has to
+   * read the whole scope whichever way the limit is set. It bounds the report.
+   */
+  limit?: number;
   capi?: CapiFilter;
 }): Promise<void> {
   // Said before the scan rather than after it: the gap changes what a clean
@@ -75,7 +82,7 @@ export async function runCheckReferences({
     `Loaded ${components.length} components (${relationFieldMap.size} with relation fields)`,
   );
 
-  const output = createJsonlOutput();
+  const output = createJsonlOutput({ limit });
   const tracker = createPhaseTracker({
     ui,
     phases: findPhases({

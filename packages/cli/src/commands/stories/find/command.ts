@@ -13,6 +13,7 @@ import {
   buildPublishStatusFilters,
   buildQueryParams,
   buildWhereFilters,
+  parseLimit,
 } from "./actions";
 import { prepareCapiFilter } from "./pipeline";
 import { runFind } from "./run";
@@ -27,11 +28,6 @@ const findCmd = storiesCommand
   .command("find [text]")
   .description("Find stories matching filters. Outputs JSONL to stdout (one story JSON per line).")
   .option("-s, --space <space>", "space ID")
-  .addOption(
-    new Option("--search-mode <mode>", "search mode")
-      .choices(["fulltext", "semantic"])
-      .default("fulltext"),
-  )
   .addOption(
     new Option("--entry-type <type>", "filter by entry type")
       .choices(["all", "story", "folder"])
@@ -50,6 +46,11 @@ const findCmd = storiesCommand
     collectValues,
     [],
   )
+  .option("--tag <names>", "stories carrying any of these tags, comma-separated (server-side)")
+  .option(
+    "--workflow-stage <ids>",
+    "stories at any of these workflow stage IDs, comma-separated (server-side)",
+  )
   .addOption(
     new Option("--publish-status <status>", "filter by publish status").choices([
       "published",
@@ -57,7 +58,12 @@ const findCmd = storiesCommand
       "draft",
     ]),
   )
-  .option("--references <uuid>", "find stories referencing this UUID (server-side)")
+  .option("--sort <fields>", "order results server-side, e.g. 'updated_at:desc' (comma-separated)")
+  .option("--limit <n>", "stop after this many results")
+  .option(
+    "--references <uuids>",
+    "find stories referencing these story UUIDs, comma-separated (server-side)",
+  )
   .option("--check-references", "detect broken references and stale cached_url (client-side)")
   .option(
     "--skip-content",
@@ -101,6 +107,7 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     const params = buildQueryParams(text, options);
     const publishStatusFilters = buildPublishStatusFilters(options);
     const whereFilters = buildWhereFilters(options.where);
+    const limit = parseLimit(options.limit);
 
     const context = { spaceId: space, params, ui, logger, reporter, verbose };
 
@@ -119,13 +126,14 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
       : undefined;
 
     if (options.checkReferences) {
-      await runCheckReferences({ ...context, publishStatusFilters, whereFilters, capi });
+      await runCheckReferences({ ...context, publishStatusFilters, whereFilters, limit, capi });
     } else {
       await runFind({
         ...context,
         preContentFilters: publishStatusFilters,
         filters: whereFilters,
         skipContent: options.skipContent === true,
+        limit,
         capi,
       });
     }

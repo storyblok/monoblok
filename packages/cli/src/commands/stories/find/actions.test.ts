@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { assertSupportedOptions, buildQueryParams } from "./actions";
+import { assertSupportedOptions, buildQueryParams, parseLimit } from "./actions";
 import { CommandError } from "../../../utils/error/command-error";
 import type { FindOptions } from "./types";
 
 const options = (overrides: Partial<FindOptions> = {}): FindOptions => ({
-  searchMode: "fulltext",
   entryType: "all",
   where: [],
   ...overrides,
@@ -15,8 +14,43 @@ describe("assertSupportedOptions", () => {
     expect(() => assertSupportedOptions(options())).not.toThrow();
   });
 
-  it("rejects a search mode that is not implemented", () => {
-    expect(() => assertSupportedOptions(options({ searchMode: "semantic" }))).toThrow(CommandError);
+  describe("--references", () => {
+    const UUID = "0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e";
+    const OTHER = "7a2b3c4d-1e2f-4a5b-9c8d-0e1f2a3b4c5d";
+
+    it("should accept a single UUID", () => {
+      expect(() => assertSupportedOptions(options({ references: UUID }))).not.toThrow();
+    });
+
+    it("should accept several UUIDs separated by commas", () => {
+      expect(() =>
+        assertSupportedOptions(options({ references: `${UUID},${OTHER}` })),
+      ).not.toThrow();
+    });
+
+    // The API would take this as a substring scan of raw story content: slow,
+    // and a different question than the one the flag asks.
+    it("should reject a value that is not a UUID", () => {
+      expect(() => assertSupportedOptions(options({ references: "hero" }))).toThrow(CommandError);
+    });
+
+    it("should reject a UUID with a digit missing", () => {
+      expect(() =>
+        assertSupportedOptions(options({ references: "0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0" })),
+      ).toThrow(CommandError);
+    });
+
+    // Nil and the v2 range are outside what the API matches, so accepting them
+    // here would hand the user a silent fallback instead of an error.
+    it("should reject a UUID whose version the API does not issue", () => {
+      expect(() =>
+        assertSupportedOptions(options({ references: "00000000-0000-0000-0000-000000000000" })),
+      ).toThrow(CommandError);
+    });
+
+    it("should reject an empty value", () => {
+      expect(() => assertSupportedOptions(options({ references: "" }))).toThrow(CommandError);
+    });
   });
 
   describe("--skip-content", () => {
@@ -181,5 +215,48 @@ describe("buildQueryParams", () => {
   it("should request the content summary when the content fetch is skipped", () => {
     expect(buildQueryParams(undefined, options({ skipContent: true })).with_summary).toBe(true);
     expect(buildQueryParams(undefined, options()).with_summary).toBeUndefined();
+  });
+});
+
+describe("the server-side scope filters", () => {
+  it("should pass --tag through as a tag list", () => {
+    expect(buildQueryParams(undefined, options({ tag: "campaign,legacy" })).with_tag).toBe(
+      "campaign,legacy",
+    );
+  });
+
+  it("should pass --workflow-stage through as a stage list", () => {
+    expect(
+      buildQueryParams(undefined, options({ workflowStage: "42,43" })).in_workflow_stages,
+    ).toBe("42,43");
+  });
+
+  it("should pass --sort through untouched, since the API owns which columns sort", () => {
+    expect(buildQueryParams(undefined, options({ sort: "updated_at:desc" })).sort_by).toBe(
+      "updated_at:desc",
+    );
+  });
+
+  it("should leave all three out when the flags are absent", () => {
+    const params = buildQueryParams(undefined, options());
+    expect(params.with_tag).toBeUndefined();
+    expect(params.in_workflow_stages).toBeUndefined();
+    expect(params.sort_by).toBeUndefined();
+  });
+});
+
+describe("parseLimit", () => {
+  it("should read a positive whole number", () => {
+    expect(parseLimit("5")).toBe(5);
+  });
+
+  it("should be absent when the flag was not passed", () => {
+    expect(parseLimit(undefined)).toBeUndefined();
+  });
+
+  // A run that stopped at the first line would otherwise look like a search
+  // that matched almost nothing.
+  it.each(["0", "-1", "abc", "1.5", ""])("should reject %o", (raw) => {
+    expect(() => parseLimit(raw)).toThrow(CommandError);
   });
 });

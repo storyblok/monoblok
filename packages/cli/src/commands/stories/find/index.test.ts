@@ -176,6 +176,39 @@ describe("stories find command", () => {
     ]);
   });
 
+  // Placed before the closed-pipe test on purpose: that one leaves stdout closed
+  // for the life of the process, and a run after it would stop before any stage
+  // had work in flight.
+  it("should stop at --limit with exactly that many results, and leave the rest unread", async () => {
+    const total = 300;
+    preconditions.canFindStories(total, { slow: true });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    let contentFetches = 0;
+    const countContentFetch = ({ request }: { request: Request }): void => {
+      if (/\/stories\/\d+$/.test(new URL(request.url).pathname)) {
+        contentFetches += 1;
+      }
+    };
+    server.events.on("request:start", countContentFetch);
+
+    try {
+      await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345", "--limit", "5"]);
+    } finally {
+      server.events.removeListener("request:start", countContentFetch);
+    }
+
+    // Exactly what was asked for: never one short, never one over.
+    expect(written).toHaveLength(5);
+    // The point of the flag: the rest of the scope is never read.
+    expect(contentFetches).toBeLessThan(total);
+    const stderr = errorSpy.mock.calls.flat().join("\n");
+    expect(stderr).toMatch(/--limit 5 was reached/);
+    expect(stderr).not.toMatch(/operation was aborted/i);
+    // A limit that was reached is a successful run, so a script can trust this.
+    expect(process.exitCode).toBeFalsy();
+  });
+
   // Regression: aborting the pipeline tears every in-flight stage down at once,
   // and each one reported that teardown through its own error callback. The run
   // printed "▲ error The operation was aborted", counted a failed listing page,

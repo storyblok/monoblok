@@ -29,7 +29,10 @@ export {
   createCollectingSink,
   createJsonlOutput,
   DownstreamClosedError,
+  isDeliberateStop,
   isDownstreamClosed,
+  isLimitReached,
+  LimitReachedError,
 } from "./output";
 export type { LineWriter, MachineOutput } from "./output";
 export { createPhaseTracker, formatMark, toPhaseSummary } from "./phases";

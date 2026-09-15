@@ -231,6 +231,65 @@ describe("capiFilterStream", () => {
 
     expect(received.map((story) => story.id)).toEqual([2]);
   });
+
+  // Regression: the stage ended with `Promise.all(...).finally(() => callback())`,
+  // which ran the callback and then dropped the rejection. A batch that died on
+  // the way to `push` therefore took its stories with it, the stage still ended
+  // cleanly, and the run reported a short result set as a complete one while an
+  // unhandled rejection escaped the process.
+  it("fails the run when a detached batch dies, instead of ending short and clean", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on("unhandledRejection", onUnhandled);
+
+    const { fetchContent } = fetcherFor({});
+    const received: Story[] = [];
+
+    const run = pipeline(
+      Readable.from([makeStory(1), makeStory(2)]),
+      capiFilterStream({
+        fetchContent,
+        filters: [isPage],
+        // Everything lands in the flush tail, where the rejection used to vanish.
+        batchSize: 1000,
+        // Reached for every story, because the fetcher answers with no content.
+        onUnresolved: () => {
+          throw new Error("counter exploded");
+        },
+      }),
+      collect(received),
+    );
+
+    await expect(run).rejects.toThrow("counter exploded");
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    process.off("unhandledRejection", onUnhandled);
+    expect(unhandled).toEqual([]);
+  });
+
+  it("reports the first failure when several batches die", async () => {
+    const { fetchContent } = fetcherFor({});
+    const received: Story[] = [];
+    let seen = 0;
+
+    const run = pipeline(
+      Readable.from([makeStory(1), makeStory(2), makeStory(3), makeStory(4)]),
+      capiFilterStream({
+        fetchContent,
+        filters: [isPage],
+        batchSize: 2,
+        onUnresolved: () => {
+          seen += 1;
+          throw new Error(`failure ${seen}`);
+        },
+      }),
+      collect(received),
+    );
+
+    await expect(run).rejects.toThrow("failure 1");
+  });
 });
 
 describe("filterStoriesStream", () => {

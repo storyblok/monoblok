@@ -26,8 +26,14 @@ describe("buildMigrationFilename", () => {
   });
 
   it("should disambiguate a name a suffix could be mistaken for", () => {
-    expect(buildMigrationFilename("my.component")).toBe("my.component-2e0a80.js");
-    expect(buildMigrationFilename(".hero")).toBe(".hero-3a1ad7.js");
+    expect(buildMigrationFilename("my.component")).toBe("my_component-2e0a80.js");
+    expect(buildMigrationFilename(".hero")).toBe("_hero-3a1ad7.js");
+  });
+
+  it("should never put a dot in the generated name, so the first dot starts the suffix", () => {
+    for (const name of ["my.component", ".hero", "a.b.c"]) {
+      expect(buildMigrationFilename(name, "v2").split(".")).toHaveLength(3);
+    }
   });
 });
 
@@ -47,6 +53,14 @@ describe("migrationTargetsComponent", () => {
   it("should not match a component that only shares a leading dot segment", () => {
     expect(migrationTargetsComponent("my.component.js", "my.other")).toBe(false);
     expect(migrationTargetsComponent(".hero.js", ".other")).toBe(false);
+  });
+
+  it("should not match a component that is only the part before a dotted name", () => {
+    expect(migrationTargetsComponent(buildMigrationFilename("my.component"), "my")).toBe(false);
+    expect(migrationTargetsComponent(buildMigrationFilename("my.component", "v2"), "my")).toBe(
+      false,
+    );
+    expect(migrationTargetsComponent(buildMigrationFilename("hero.v2"), "hero")).toBe(false);
   });
 
   it("should read a suffixed file name as a suffix rather than a dotted component", () => {

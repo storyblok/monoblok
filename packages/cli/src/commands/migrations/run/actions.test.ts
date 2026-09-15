@@ -199,6 +199,29 @@ describe("applyMigrationToAllBlocks", () => {
     expect(content.body).toEqual([{ _uid: "a", component: "my.other" }]);
   });
 
+  it("should not migrate the component a dotted component name starts with", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "my" },
+        { _uid: "b", component: "my.component" },
+      ],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(
+      content,
+      markMigrated,
+      buildMigrationFilename("my.component"),
+    );
+
+    expect(processed).toBe(true);
+    expect(content.body).toEqual([
+      { _uid: "a", component: "my" },
+      { _uid: "b", component: "my.component", migrated: true },
+    ]);
+  });
+
   it("should read a dot in a file name as a suffix rather than a dotted component", () => {
     const content = {
       _uid: "root",

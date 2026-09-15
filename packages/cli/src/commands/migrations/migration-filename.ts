@@ -6,19 +6,23 @@ import { createRegexFromGlob } from "../../utils/format";
  * Migration files are named `<component>[.<suffix>].js`. A component name is
  * unconstrained remote data, so it is sanitized before it becomes a file name.
  *
- * Two things make that mapping ambiguous, and both are closed by appending a
- * digest of the original name:
+ * Two things make that mapping ambiguous, and both are closed by rewriting the
+ * name and appending a digest of the original:
  *
  * - Sanitizing is many-to-one: `hero:v2`, `hero/v2` and `hero?v2` all collapse
  *   to `hero_v2`.
  * - A dot separates the component from the optional suffix, so `my.component`
- *   is indistinguishable from component `my` with suffix `component`.
+ *   is indistinguishable from component `my` with suffix `component`. A
+ *   generated name therefore never contains a dot, which makes the first dot in
+ *   a file name always the start of the suffix.
  *
  * Names are compared in NFC because the sanitizer emits NFD while the API
  * returns NFC, and macOS stores either.
  */
 const DIGEST_LENGTH = 6;
 const GLOB_WILDCARD = "*";
+const SUFFIX_SEPARATOR = ".";
+const SEPARATOR_REPLACEMENT = "_";
 
 const prefixCache = new Map<string, string>();
 
@@ -39,9 +43,10 @@ export const getMigrationComponentPrefix = (componentName: string): string => {
 
   const normalizedName = normalize(componentName);
   const sanitized = sanitize(normalizedName);
-  const isUnambiguous = sanitized === normalizedName && !normalizedName.includes(".");
+  const isUnambiguous = sanitized === normalizedName && !normalizedName.includes(SUFFIX_SEPARATOR);
   const digest = createHash("sha256").update(normalizedName).digest("hex").slice(0, DIGEST_LENGTH);
-  const prefix = !sanitized || isUnambiguous ? sanitized : `${sanitized}-${digest}`;
+  const dotless = sanitized.replaceAll(SUFFIX_SEPARATOR, SEPARATOR_REPLACEMENT);
+  const prefix = !sanitized || isUnambiguous ? sanitized : `${dotless}-${digest}`;
 
   prefixCache.set(componentName, prefix);
   return prefix;

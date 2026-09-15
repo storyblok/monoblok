@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { sanitizeFilename } from "../../utils/filesystem";
+import { createRegexFromGlob } from "../../utils/format";
 
 /**
  * Migration files are named `<component>[.<suffix>].js`. A component name is
@@ -17,6 +18,7 @@ import { sanitizeFilename } from "../../utils/filesystem";
  * returns NFC, and macOS stores either.
  */
 const DIGEST_LENGTH = 6;
+const GLOB_WILDCARD = "*";
 
 const prefixCache = new Map<string, string>();
 
@@ -86,3 +88,21 @@ export const migrationTargetsComponent = (filename: string, componentName: unkno
   typeof componentName === "string" &&
   (migrationFilenameMatchesPrefix(filename, getMigrationComponentPrefix(componentName)) ||
     migrationFilenameMatchesPrefix(filename, getLegacyMigrationComponentPrefix(componentName)));
+
+/**
+ * Whether a `--filter` glob selects a file. The glob is matched against the
+ * file name, against the file name the same glob's literal parts would be
+ * written under, and against the file the filter targets when it is a plain
+ * component name — so a user can filter by the name they know the component by
+ * without knowing how it was mapped to a file name.
+ */
+export const migrationFilterMatches = (filename: string, filter: string): boolean => {
+  const normalizedFilename = normalize(filename);
+  const sanitizedFilter = filter.split(GLOB_WILDCARD).map(sanitize).join(GLOB_WILDCARD);
+
+  return (
+    createRegexFromGlob(filter).test(normalizedFilename) ||
+    createRegexFromGlob(sanitizedFilter).test(normalizedFilename) ||
+    migrationTargetsComponent(filename, filter)
+  );
+};

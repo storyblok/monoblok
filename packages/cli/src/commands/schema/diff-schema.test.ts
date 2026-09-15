@@ -159,7 +159,7 @@ describe("diffSchema", () => {
     const localComp = {
       ...makeComponent("page", { title: { type: "text", pos: 0 } }),
       internal_tag_ids: [10],
-    } as Component;
+    } as unknown as Component;
     const remoteComp = {
       ...makeComponent("page", { title: { type: "text", pos: 0 } }),
       internal_tag_ids: [],
@@ -395,6 +395,27 @@ describe("diffSchema", () => {
         pos: 0,
         restrict_components: true,
         component_group_whitelist: ["layout"],
+      },
+    });
+
+    const result = diffSchema(
+      normalizedRemote([remoteComp], [{ uuid: "u1", name: "Layout" }]),
+      normalized([localComp], [], [{ name: "Layout", path: "layout", parentPath: null }]),
+    );
+
+    expect(result.diffs.find((d) => d.name === "page")?.action).toBe("unchanged");
+  });
+
+  it("should translate component_group_denylist uuids to slug paths before comparing", () => {
+    const remoteComp = makeComponent("page", {
+      body: { type: "bloks", pos: 0, restrict_components: true, component_group_denylist: ["u1"] },
+    });
+    const localComp = makeComponent("page", {
+      body: {
+        type: "bloks",
+        pos: 0,
+        restrict_components: true,
+        component_group_denylist: ["layout"],
       },
     });
 

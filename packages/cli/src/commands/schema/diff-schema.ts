@@ -8,6 +8,7 @@ import {
   isRecord,
 } from "./utils";
 import { cleanComponent, cleanDatasource } from "./serialize";
+import { mapSchemaGroupLists } from "./folders";
 
 type EntityType = "component" | "datasource";
 
@@ -151,9 +152,9 @@ function managesFolder(comp: Component | undefined, schema: NormalizedSchema): b
 /**
  * Copies a component into slug-path identity space: group membership as a
  * `folder` key (synthesized from `component_group_uuid` for a space-read block)
- * and each field's `component_group_whitelist` uuids translated to paths. Both
- * sides go through this so a uuid never diffs against the path meaning the same
- * group. The source objects are never mutated.
+ * and each field's group list uuids translated to paths. Both sides go through
+ * this so a uuid never diffs against the path meaning the same group. The
+ * source objects are never mutated.
  */
 function toPathSpace(
   comp: Component,
@@ -171,22 +172,8 @@ function toPathSpace(
     delete copy.folder;
   }
 
-  if (isRecord(copy.schema)) {
-    const schema: Record<string, unknown> = {};
-    for (const [fieldName, field] of Object.entries(copy.schema)) {
-      // Unknown uuids pass through untranslated so they still surface as a diff.
-      schema[fieldName] =
-        isRecord(field) && Array.isArray(field.component_group_whitelist)
-          ? {
-              ...field,
-              component_group_whitelist: field.component_group_whitelist.map((entry: unknown) =>
-                typeof entry === "string" ? (uuidToPath.get(entry) ?? entry) : entry,
-              ),
-            }
-          : field;
-    }
-    copy.schema = schema;
-  }
+  // Unknown uuids pass through untranslated so they still surface as a diff.
+  copy.schema = mapSchemaGroupLists(copy.schema, (entry) => uuidToPath.get(entry) ?? entry);
 
   return copy;
 }

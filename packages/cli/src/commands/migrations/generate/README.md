@@ -101,8 +101,12 @@ original name is appended so that two components never share a file name:
 | `hero`         | `hero.js`                | Already a valid, unambiguous file name      |
 | `hero:v2`      | `hero_v2-c07e5b.js`      | `:` is not allowed in file names everywhere |
 | `hero_v2`      | `hero_v2.js`             | Distinct from `hero:v2` above               |
-| `my.component` | `my.component-2e0a80.js` | A dot already separates the suffix          |
+| `my.component` | `my_component-2e0a80.js` | A dot already separates the suffix          |
 | `con`          | `con_-1143da.js`         | Reserved device name on Windows             |
+
+A rewritten name never contains a dot, so the first dot in a migration file name always starts the
+suffix: `my_component-2e0a80.fix.js` is component `my.component` with suffix `fix`, and `my.fix.js`
+is component `my` with suffix `fix`.
 
 `migrations run` resolves the same mapping, so you never need to type a generated file name: pass
 the component name, and `--filter` accepts it too.

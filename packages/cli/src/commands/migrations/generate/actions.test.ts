@@ -108,7 +108,7 @@ describe("generateMigration", () => {
 
     // Assert
     expect(saveToFile).toHaveBeenCalledWith(
-      join(`migrations/${mockSpace}`, "_.._etc_passwd-3754d6.js"),
+      join(`migrations/${mockSpace}`, "____etc_passwd-3754d6.js"),
       expect.any(String),
     );
   });

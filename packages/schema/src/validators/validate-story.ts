@@ -427,18 +427,33 @@ function validateFieldValue(
   }
 }
 
-type RestrictionEntry = string | { folder: string };
+type RestrictionEntry = string | { folder: string } | { tag: string };
 
 /** Renders a restriction list the way the error message names it. */
 const describeRestriction = (entries: readonly RestrictionEntry[]): string =>
-  entries.map((entry) => (typeof entry === "string" ? entry : `folder:${entry.folder}`)).join(", ");
+  entries
+    .map((entry) =>
+      typeof entry === "string"
+        ? entry
+        : "folder" in entry
+          ? `folder:${entry.folder}`
+          : `tag:${entry.tag}`,
+    )
+    .join(", ");
 
 /**
- * Whether a block is named by a restriction list, directly or through a folder
- * it sits in. Both sides are canonicalized to slug space, so a folder referenced
- * two ways (a `defineFolder` ref vs. a string shorthand with different
- * casing/separators) matches the way the CLI and editor group it. A folder entry
- * covers its nested folders too, mirroring the editor.
+ * Whether a block is named by a restriction list: directly, through a folder it
+ * sits in, or through a tag it declares. Folder paths are canonicalized to slug
+ * space on both sides, so a folder referenced two ways (a `defineFolder` ref vs.
+ * a string shorthand with different casing/separators) matches the way the CLI
+ * and editor group it, and a folder entry covers its nested folders too,
+ * mirroring the editor. Tag names are compared verbatim, which is how the CLI
+ * resolves them against the space.
+ *
+ * A tag entry matches only what the block's own definition declares. Tags
+ * applied to a block in the Storyblok UI are invisible here, so content the
+ * editor accepts can read as denied; a schema restricting by tag should declare
+ * the same tags on its blocks.
  */
 function matchesRestriction(
   entries: readonly RestrictionEntry[],
@@ -448,13 +463,22 @@ function matchesRestriction(
   if (entries.includes(componentName)) {
     return true;
   }
+  const blockTags = block?.tags;
+  if (
+    Array.isArray(blockTags) &&
+    entries.some(
+      (entry) => typeof entry !== "string" && "tag" in entry && blockTags.includes(entry.tag),
+    )
+  ) {
+    return true;
+  }
   const blockFolder = block?.folder;
   if (typeof blockFolder !== "string") {
     return false;
   }
   const blockFolderSlug = slugifyFolderPath(blockFolder);
   return entries.some((entry) => {
-    if (typeof entry === "string") {
+    if (typeof entry === "string" || !("folder" in entry)) {
       return false;
     }
     const entrySlug = slugifyFolderPath(entry.folder);

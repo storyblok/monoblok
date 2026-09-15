@@ -60,6 +60,7 @@ export {
   DENIABLE_FIELD_TYPES,
   DERIVED_RESTRICTION_KEYS,
   EDITOR_RESTRICT_TYPES,
+  TAG_LIST_KEYS,
 } from "./restrictions";
 export type { DerivedRestrictionKey } from "./restrictions";
 // Validators (Zod-powered, non-throwing)

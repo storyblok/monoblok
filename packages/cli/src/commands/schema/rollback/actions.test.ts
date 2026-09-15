@@ -171,6 +171,7 @@ describe("executeRollback", () => {
 
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -230,6 +231,7 @@ describe("executeRollback", () => {
     ];
     const remote: RemoteSchemaData = {
       components: new Map([["hero", { id: 10, name: "hero" } as unknown as Component]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -278,6 +280,7 @@ describe("executeRollback", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         ["Layout", layout],
         ["Heros", heros],

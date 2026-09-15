@@ -103,10 +103,18 @@ const preconditions = {
       ),
     );
   },
+  hasRemoteTags(internalTags: { id: number; name: string }[]) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/internal_tags`, () =>
+        HttpResponse.json({ internal_tags: internalTags }),
+      ),
+    );
+  },
   hasEmptyRemote() {
     this.hasRemoteComponents([]);
     this.hasRemoteFolders([]);
     this.hasRemoteDatasources([]);
+    this.hasRemoteTags([]);
   },
   canCreateComponents(components: MockComponent[]) {
     const created = components.map((c) => ({ ...c, id: getID() }));
@@ -250,6 +258,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([staleComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canCreateComponents([localComp]);
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
@@ -310,6 +319,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([localComp, staleComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canDeleteComponents();
 
     await schemaCommand.parseAsync([
@@ -361,6 +371,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([comp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
@@ -384,6 +395,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([localComp, staleComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
@@ -406,6 +418,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([localComp, staleComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canDeleteComponents();
 
     await schemaCommand.parseAsync([
@@ -454,6 +467,134 @@ describe("schema push command", () => {
 
     expect(componentBody?.name).toBe("hero");
     expect(componentBody?.component_group_uuid).toBeUndefined();
+  });
+
+  describe("block tags", () => {
+    function capturesComponentCreate(comp: MockComponent) {
+      const bodies: { name: string; internal_tag_ids?: number[]; schema?: any }[] = [];
+      server.use(
+        http.post(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`,
+          async ({ request }) => {
+            const body = (await request.json()) as { component: (typeof bodies)[number] };
+            bodies.push(body.component);
+            return HttpResponse.json({ component: { ...comp, id: getID() } });
+          },
+        ),
+      );
+      return bodies;
+    }
+
+    it("should send the target space's id for a tag the space already has", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasLocalSchema({
+        components: [{ ...comp, tags: ["Marketing"] }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([{ id: 555, name: "Marketing" }]);
+      const bodies = capturesComponentCreate(comp);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(bodies[0]?.internal_tag_ids).toEqual([555]);
+    });
+
+    it("should create a tag the target space does not have and use its id", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasLocalSchema({
+        components: [{ ...comp, tags: ["Marketing"] }] as any,
+        datasources: [],
+      });
+      preconditions.hasEmptyRemote();
+      const created: { name: string; object_type: string }[] = [];
+      server.use(
+        http.post(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/internal_tags`,
+          async ({ request }) => {
+            const body = (await request.json()) as { internal_tag: (typeof created)[number] };
+            created.push(body.internal_tag);
+            return HttpResponse.json({ internal_tag: { id: 777, ...body.internal_tag } });
+          },
+        ),
+      );
+      const bodies = capturesComponentCreate(comp);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(created).toEqual([{ name: "Marketing", object_type: "component" }]);
+      expect(bodies[0]?.internal_tag_ids).toEqual([777]);
+    });
+
+    it("should resolve a field's tag restriction to target space ids", async () => {
+      const comp = makeMockComponent({
+        name: "hero",
+        schema: {
+          body: {
+            type: "bloks",
+            restrict_components: true,
+            restrict_type: "tags",
+            component_tag_whitelist: ["Marketing"],
+          },
+        },
+      });
+      preconditions.hasLocalSchema({ components: [comp] as any, datasources: [] });
+      preconditions.hasRemoteComponents([]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([{ id: 555, name: "Marketing" }]);
+      const bodies = capturesComponentCreate(comp);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(bodies[0]?.schema.body.component_tag_whitelist).toEqual([555]);
+    });
+
+    it("should report a block tagged the same as the remote block as unchanged", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasLocalSchema({
+        components: [{ ...comp, tags: ["Marketing"] }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([{ ...comp, internal_tag_ids: ["555"] } as any]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([{ id: 555, name: "Marketing" }]);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
+    });
   });
 
   it("should handle API errors gracefully", async () => {
@@ -544,6 +685,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteHero]);
     preconditions.hasRemoteFolders([{ id: 10, name: "Layout", uuid: "u-layout" }]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     server.use(
       http.delete(
         `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/component_groups/:id`,
@@ -578,6 +720,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([keepRemote, goneRemote]);
     preconditions.hasRemoteFolders([{ id: 10, name: "Layout", uuid: "u-layout" }]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     server.use(
       http.delete(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`, () =>
         HttpResponse.json({}),
@@ -621,6 +764,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([localComp, staleComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
@@ -655,6 +799,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
     preconditions.confirmsMigrations();
 
@@ -689,6 +834,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
 
     await schemaCommand.parseAsync([
@@ -729,6 +875,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
     preconditions.declinesPrompt();
 
@@ -761,6 +908,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
 
     await schemaCommand.parseAsync([
@@ -807,6 +955,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
 
     await schemaCommand.parseAsync([
@@ -846,6 +995,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
     preconditions.confirmsMigrations();
 
@@ -881,6 +1031,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
     preconditions.canUpdateComponents();
 
     await schemaCommand.parseAsync([
@@ -927,6 +1078,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
 
     await schemaCommand.parseAsync([
       "node",
@@ -968,6 +1120,7 @@ describe("schema push command", () => {
     preconditions.hasRemoteComponents([remoteComp]);
     preconditions.hasRemoteFolders([]);
     preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
 
     await schemaCommand.parseAsync([
       "node",

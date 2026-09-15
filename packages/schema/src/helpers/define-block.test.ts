@@ -97,4 +97,35 @@ describe("defineBlock", () => {
   it("should not throw when folder is a plain valid path", () => {
     expect(() => defineBlock({ name: "hero", folder: "Layout", fields: [] })).not.toThrow();
   });
+
+  it("should keep tags as the names given", () => {
+    const block = defineBlock({ name: "hero", tags: ["Marketing", "Beta"], fields: [] });
+    expect(block.tags).toEqual(["Marketing", "Beta"]);
+  });
+
+  it("should throw when tags and internal_tag_ids are both set", () => {
+    expect(() =>
+      defineBlock({ name: "hero", tags: ["Marketing"], internal_tag_ids: ["123"], fields: [] }),
+    ).toThrow('defineBlock: block "hero" sets both "tags" and "internal_tag_ids"; use one');
+  });
+
+  it("should throw when a tag name is blank", () => {
+    expect(() => defineBlock({ name: "hero", tags: ["Marketing", "  "], fields: [] })).toThrow(
+      'defineBlock: block "hero" has an empty or non-string entry in "tags"',
+    );
+  });
+
+  it("should trim surrounding whitespace from tag names", () => {
+    const block = defineBlock({ name: "hero", tags: [" Marketing "], fields: [] });
+    expect(block.tags).toEqual(["Marketing"]);
+  });
+
+  it("should apply a repeated tag once", () => {
+    const block = defineBlock({ name: "hero", tags: ["Marketing", "Marketing"], fields: [] });
+    expect(block.tags).toEqual(["Marketing"]);
+  });
+
+  it("should omit tags entirely when not given", () => {
+    expect(defineBlock({ name: "hero", fields: [] })).not.toHaveProperty("tags");
+  });
 });

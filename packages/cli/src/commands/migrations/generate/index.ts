@@ -1,5 +1,6 @@
 import type { Command } from "commander";
 import chalk from "chalk";
+import { relative } from "pathe";
 
 import type { MigrationsGenerateOptions } from "./constants";
 import { colorPalette, commands } from "../../../constants";
@@ -81,23 +82,20 @@ generateCmd.action(
         return;
       }
 
-      await generateMigration(space, path, component, suffix);
+      const migrationPath = await generateMigration(space, path, component, suffix);
+      const displayPath = relative(process.cwd(), migrationPath);
 
       spinner.succeed(
         `Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`,
       );
 
-      const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
-      const migrationPath = path
-        ? `${path}/migrations/${space}/${fileName}`
-        : `.storyblok/migrations/${space}/${fileName}`;
       ui.ok(
-        `You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(migrationPath)}`,
+        `You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(displayPath)}`,
       );
 
       logger.info("Migration generation finished", {
         componentName: component.name,
-        migrationPath,
+        migrationPath: displayPath,
         space,
         suffix,
       });

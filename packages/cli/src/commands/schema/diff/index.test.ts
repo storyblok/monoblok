@@ -15,6 +15,7 @@ vi.mock("../load-schema", () => ({
 }));
 
 const consoleError = vi.spyOn(console, "error");
+const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 
 const server = setupServer();
 
@@ -52,16 +53,19 @@ function spaceWith(space: string, components: MockComponent[]) {
   );
 }
 
-/**
- * Everything the command rendered, with color escapes removed so assertions hold
- * whether or not the runner reports a color-capable terminal. The UI writes to
- * stderr; only machine-readable output goes to stdout.
- */
+/** Strips color escapes so assertions hold whether or not the runner reports a color-capable terminal. */
+function plain(text: string): string {
+  return text.replace(/\p{Cc}\[[0-9;]*m/gu, "");
+}
+
+/** The diff document on stdout — what `schema diff ... > changes.diff` captures. */
+function diffOutput(): string {
+  return plain(stdout.mock.calls.flat().join(""));
+}
+
+/** The surrounding chrome and errors, which the UI writes to stderr. */
 function output(): string {
-  return consoleError.mock.calls
-    .flat()
-    .join("\n")
-    .replace(/\p{Cc}\[[0-9;]*m/gu, "");
+  return plain(consoleError.mock.calls.flat().join("\n"));
 }
 
 describe("schema diff command", () => {
@@ -72,6 +76,9 @@ describe("schema diff command", () => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     server.resetHandlers();
+    // `resetAllMocks` drops the implementation, which would let the next test
+    // write the diff to the real terminal.
+    stdout.mockReturnValue(true);
   });
 
   afterAll(() => server.close());
@@ -85,9 +92,9 @@ describe("schema diff command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
 
-    expect(output()).toContain("+ banner (added)");
-    expect(output()).toContain("~ hero (changed)");
-    expect(output()).toContain("1 added, 1 changed");
+    expect(diffOutput()).toContain("+ banner (added)");
+    expect(diffOutput()).toContain("~ hero (changed)");
+    expect(diffOutput()).toContain("1 added, 1 changed");
   });
 
   it("should report which field changed rather than the whole block", async () => {
@@ -98,7 +105,7 @@ describe("schema diff command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
 
-    expect(output()).toContain("+ schema.subtitle:");
+    expect(diffOutput()).toContain("+ schema.subtitle:");
   });
 
   it("should diff a local entry file against a remote space", async () => {
@@ -126,7 +133,7 @@ describe("schema diff command", () => {
 
     expect(loadSchema).toHaveBeenCalledWith("./schema.ts");
     // Local (to=remote 222 is empty, from=file has hero) → hero exists only in `from` → removed.
-    expect(output()).toContain("- hero (removed)");
+    expect(diffOutput()).toContain("- hero (removed)");
   });
 
   it("should report which side failed to resolve when a file cannot be loaded", async () => {

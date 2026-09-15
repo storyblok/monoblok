@@ -20,6 +20,21 @@ export const COMPONENT_STRIP_KEYS = new Set([
   "component_group_uuid", // UI grouping; stripped by default — kept for diffing only when a block opts into the group escape hatch
 ]);
 
+/**
+ * Every wire field key holding a restriction list. An empty list means what an
+ * absent key means — no restriction — because the editor clears all six when you
+ * switch restriction dimension, so a field restricted one way carries empty lists
+ * for the other two.
+ */
+export const RESTRICTION_LIST_KEYS = [
+  "component_whitelist",
+  "component_denylist",
+  "component_group_whitelist",
+  "component_group_denylist",
+  "component_tag_whitelist",
+  "component_tag_denylist",
+] as const;
+
 /** Fields to strip from Datasource before serialization. */
 export const DATASOURCE_STRIP_KEYS = new Set(["id", "created_at", "updated_at"]);
 

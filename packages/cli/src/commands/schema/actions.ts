@@ -1,6 +1,46 @@
-import type { RemoteSchemaData } from "./types";
+import type { LocalFolder, NormalizedSchema, RemoteSchemaData, SchemaData } from "./types";
 import { getMapiClient } from "../../api";
 import { fetchAllPages } from "../../utils";
+import { buildGroupPathByUuid } from "./folders";
+
+/**
+ * Reduces remote state to the common {@link NormalizedSchema} shape. Remote
+ * component groups are resolved into slug-path identity space (via their uuid
+ * parent chain) so folders diff against local folders in the same terms.
+ */
+export function remoteToNormalized(remote: RemoteSchemaData): NormalizedSchema {
+  const segmentsByUuid = buildGroupPathByUuid([...remote.componentFolders.values()]);
+  const folders = new Map<string, LocalFolder>();
+  const groupPathByUuid = new Map<string, string>();
+  for (const folder of remote.componentFolders.values()) {
+    const segments = segmentsByUuid.get(folder.uuid);
+    if (!segments || segments.length === 0) {
+      continue;
+    }
+    const path = segments.join("/");
+    groupPathByUuid.set(folder.uuid, path);
+    folders.set(path, {
+      name: folder.name,
+      path,
+      parentPath: segments.length > 1 ? segments.slice(0, -1).join("/") : null,
+    });
+  }
+  return {
+    components: remote.components,
+    datasources: remote.datasources,
+    folders,
+    groupPathByUuid,
+  };
+}
+
+/** Reduces locally-loaded schema arrays to the common {@link NormalizedSchema} shape. */
+export function localToNormalized(local: SchemaData): NormalizedSchema {
+  return {
+    components: new Map(local.components.map((c) => [c.name, c])),
+    datasources: new Map(local.datasources.map((d) => [d.name, d])),
+    folders: new Map(local.folders.map((f) => [f.path, f])),
+  };
+}
 
 /**
  * Fetches remote components, component folders, and datasources from the MAPI.

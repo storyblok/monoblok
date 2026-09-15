@@ -8,6 +8,7 @@ import { CommandError, handleError, requireAuthentication } from "../../../utils
 import { session } from "../../../session";
 import type { MigrationsRunOptions } from "./constants";
 import { migrationsCommand } from "../command";
+import { buildStoryScopeParams } from "../../stories/query-params";
 import { createStoriesStream } from "./streams/stories-stream";
 import { readMigrationFiles } from "./actions";
 import { MigrationStream } from "./streams/migrations-transform";
@@ -23,7 +24,7 @@ const runCmd = migrationsCommand
     "-q, --query <query>",
     'Filter stories by content attributes using Storyblok filter query syntax. Example: --query="[highlighted][in]=true"',
   )
-  .option("--starts-with <path>", 'Filter stories by path. Example: --starts-with="/en/blog/"')
+  .option("--starts-with <path>", 'Filter stories by path. Example: --starts-with="en/blog/"')
   .option(
     "--publish <publish>",
     "Options for publication mode: all | published | published-with-changes",
@@ -110,8 +111,10 @@ runCmd.action(
         spaceId: space,
         params: {
           componentName,
-          query,
-          starts_with: startsWith,
+          // `--starts-with` and `--query` are normalized the same way in every
+          // story-listing command, so they go through the shared builder rather
+          // than being passed to the API as typed.
+          ...buildStoryScopeParams({ startsWith, query }),
         },
         onTotal: (total) => {
           storiesProgress.setTotal(total);

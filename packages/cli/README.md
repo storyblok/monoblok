@@ -43,6 +43,8 @@
 - 👀 **Dry Run Mode** - Preview migrations changes before applying them to your Storyblok space
 - 🔍 **Filtering Capabilities** - Filter components and stories using glob patterns and Storyblok
   query syntax
+- 🔎 **Content Search** - Find stories by text, block usage, tags, workflow stage, or a JSONPath
+  expression over their content, and stream the matches as JSONL for `jq` and other commands
 - 📊 **Verbose Logging** - Improved error handling and detailed logging options for debugging and
   monitoring
 

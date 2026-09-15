@@ -1,7 +1,7 @@
 import { Transform, Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { Story } from "../constants";
-import { normalizeStartsWith } from "../constants";
+import { buildStoryScopeParams } from "../query-params";
 import { colorPalette, commands } from "../../../constants";
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
@@ -70,12 +70,10 @@ storiesCommand
   .option("--format <format>", "Output format: pretty|json", "pretty")
   .action(async (options: StoriesValidateOptions, command) => {
     const { schema: schemaEntry } = options;
-    // A leading slash would make `starts_with` match nothing; `/` alone leaves no
-    // prefix at all, which is the same as not filtering.
-    const startsWith =
-      options.startsWith === undefined
-        ? undefined
-        : normalizeStartsWith(options.startsWith) || undefined;
+    // Normalized by the builder every story-listing command shares, so the same
+    // `--starts-with` scopes `validate`, `find` and `pull` identically.
+    const scopeParams = buildStoryScopeParams({ startsWith: options.startsWith });
+    const startsWith = scopeParams.starts_with;
     const ui = getUI();
     const logger = getLogger();
     const reporter = getReporter();
@@ -177,7 +175,7 @@ storiesCommand
         await pipeline(
           fetchStoriesStream({
             spaceId: space,
-            params: { starts_with: startsWith },
+            params: scopeParams,
             setTotalStories: (total) => {
               listedTotal = total;
               syncProgressTotal();

@@ -38,16 +38,20 @@ export type {
 type BlockRef = string | { name: string };
 /** A folder reference for `allow`/`deny`: a defined folder object (no string shorthand — bare strings are block names). */
 type FolderRef = BlockFolder;
+/** A block tag reference for `allow`/`deny`, by tag name (no string shorthand — bare strings are block names). */
+type TagRef = { tag: string };
 /** A datasource reference for `datasource`: a defined datasource object or its slug. */
 type DatasourceRef = string | { slug: string };
 
 type NameOf<T> = T extends string ? T : T extends { name: infer N extends string } ? N : never;
 type SlugOf<T> = T extends string ? T : T extends { slug: infer S extends string } ? S : never;
 
-/** Normalizes a single `allow`/`deny` entry: folder refs to `{ folder: path }`, everything else to a name string. */
+/** Normalizes a single `allow`/`deny` entry: folder refs to `{ folder: path }`, tag refs unchanged, everything else to a name string. */
 type NormalizeRestrictionEntry<T> = T extends { path: infer P extends string }
   ? { folder: P }
-  : NameOf<T>;
+  : T extends { tag: infer G extends string }
+    ? { tag: G }
+    : NameOf<T>;
 /** Normalizes an `allow`/`deny` input (ref, name, or array thereof) to a tuple of normalized entries. */
 type NormalizeRestriction<T> = T extends readonly any[]
   ? { [I in keyof T]: NormalizeRestrictionEntry<T[I]> }
@@ -57,18 +61,33 @@ type NormalizeRestriction<T> = T extends readonly any[]
 const isFolderRef = (ref: unknown): ref is BlockFolder =>
   isRecord(ref) && typeof ref.path === "string" && !Array.isArray(ref.fields) && !("slug" in ref);
 
+/** Type guard for a tag ref: `{ tag: name }`. */
+const isTagRef = (ref: unknown): ref is TagRef => isRecord(ref) && typeof ref.tag === "string";
+
+/** The restriction dimensions, in the order an error lists them. */
+const DIMENSIONS = ["block", "folder", "tag"] as const;
+
+/** Which dimension a single `allow`/`deny` entry restricts by. */
+const dimensionOf = (ref: unknown): (typeof DIMENSIONS)[number] =>
+  isFolderRef(ref) ? "folder" : isTagRef(ref) ? "tag" : "block";
+
 /**
- * Normalizes an `allow`/`deny` input to plain block names and `{ folder: path }`
- * entries. The editor restricts by either blocks or folders, not both, so a list
- * mixing the two would leave part of itself inert and throws instead.
+ * Normalizes an `allow`/`deny` input to plain block names, `{ folder: path }`,
+ * and `{ tag: name }` entries. The editor restricts by exactly one of the three
+ * dimensions, so a list mixing them would leave part of itself inert and throws
+ * instead.
  */
 function normalizeRestriction(key: string, name: string, input: unknown): unknown[] {
   const refs = Array.isArray(input) ? input : [input];
-  const folderRefs = refs.filter(isFolderRef);
-  if (folderRefs.length > 0 && folderRefs.length < refs.length) {
+  const dimensions = new Set(refs.map(dimensionOf));
+  if (dimensions.size > 1) {
+    const mixed = DIMENSIONS.filter((dimension) => dimensions.has(dimension));
     throw new Error(
-      `defineField: "${key}" on field "${name}" mixes block and folder references; the editor restricts by either blocks or folders, not both`,
+      `defineField: "${key}" on field "${name}" mixes ${mixed.slice(0, -1).join(", ")} and ${mixed.at(-1)} references; the editor restricts by blocks, folders, or tags, not a combination`,
     );
+  }
+  if (dimensions.has("tag")) {
+    return normalizeTagRefs(key, name, refs as TagRef[]);
   }
   return refs.map((ref) =>
     isFolderRef(ref)
@@ -79,6 +98,21 @@ function normalizeRestriction(key: string, name: string, input: unknown): unknow
           ? ref.name
           : undefined,
   );
+}
+
+/**
+ * Normalizes `{ tag }` entries the way `defineBlock` normalizes a block's own
+ * `tags`, so the two sides of the same tag identity match. A tag name is
+ * resolved verbatim against the target space, so surrounding whitespace would
+ * address a tag nobody can name in the UI, and a repeated name would restrict by
+ * the same tag twice.
+ */
+function normalizeTagRefs(key: string, name: string, refs: readonly TagRef[]): TagRef[] {
+  const tags = refs.map((ref) => ref.tag.trim());
+  if (tags.some((tag) => tag === "")) {
+    throw new Error(`defineField: "${key}" on field "${name}" has an empty tag reference`);
+  }
+  return [...new Set(tags)].map((tag) => ({ tag }));
 }
 
 /** The wire restriction keys {@link FieldInput} redeclares, so it owns their docs. */
@@ -153,23 +187,31 @@ type WireRestrictionDocs = {
    */
   restrict_components?: boolean;
   /**
-   * Ids of the block tags this field accepts. Requires `restrict_type: 'tags'`,
-   * the one restriction dimension with no `allow` equivalent, so this key has no
-   * DSL replacement and is not discouraged.
+   * @deprecated Use `allow` with `{ tag: name }` entries instead. Tag ids are
+   * space-local, so a schema carrying them only pushes to the space it was read
+   * from; names are resolved to the target space's ids at push time, and the
+   * restriction flags are derived for you.
+   *
+   * @example
+   * defineField('body', { type: 'bloks', allow: [{ tag: 'Marketing' }] });
    */
   component_tag_whitelist?: number[];
   /**
-   * Ids of the block tags this field rejects. Requires `restrict_type: 'tags'`,
-   * the one restriction dimension with no `deny` equivalent, so this key has no
-   * DSL replacement and is not discouraged.
+   * @deprecated Use `deny` with `{ tag: name }` entries instead. Tag ids are
+   * space-local, so a schema carrying them only pushes to the space it was read
+   * from; names are resolved to the target space's ids at push time, and the
+   * restriction flags are derived for you.
+   *
+   * @example
+   * defineField('body', { type: 'bloks', deny: [{ tag: 'Legacy' }] });
    */
   component_tag_denylist?: number[];
   /**
    * Selects which restriction dimension the editor reads: `'groups'` for the
    * component group lists, `'tags'` for the tag lists, and `''` (or
-   * `'components'`) for the block-name lists. `allow` / `deny` derive it for the
-   * group and name dimensions, so set it by hand only for `'tags'`, the one
-   * dimension with no DSL equivalent.
+   * `'components'`) for the block-name lists. `allow` / `deny` derive it for
+   * every dimension, so set it by hand only beside hand-written restriction
+   * lists.
    */
   restrict_type?: string;
 };
@@ -179,10 +221,19 @@ type WireRestrictionDocs = {
  * {@link DslInputFor}, so this type is never used whole.
  */
 type DslInputAll = {
-  allow?: BlockRef | FolderRef | readonly (BlockRef | FolderRef)[];
   /**
-   * Blocks this field must not accept, by block ref/name or `defineFolder` ref.
-   * The `Exclude` counterpart to `allow`: it narrows the field's content type and
+   * Blocks this field accepts, by block ref/name, `defineFolder` ref, or
+   * `{ tag: name }`. The editor restricts by exactly one of those three
+   * dimensions, so a list mixing them throws.
+   *
+   * Tag names are resolved to the target space's tag ids at push time, and a tag
+   * the space does not have yet is created — the same schema pushes to any
+   * space, unlike the raw `component_tag_whitelist` ids it replaces.
+   */
+  allow?: BlockRef | FolderRef | TagRef | readonly (BlockRef | FolderRef | TagRef)[];
+  /**
+   * Blocks this field must not accept, by block ref/name, `defineFolder` ref, or
+   * `{ tag: name }`. The `Exclude` counterpart to `allow`: it narrows the field's content type and
    * `schema push` applies the matching editor restriction. Only `bloks` and
    * `richtext` fields have a denylist; anywhere else this throws.
    *
@@ -196,7 +247,7 @@ type DslInputAll = {
    * can still be pasted in. Treat `deny` as authoring guidance rather than a
    * boundary, and use `allow` where a block genuinely must never appear.
    */
-  deny?: BlockRef | FolderRef | readonly (BlockRef | FolderRef)[];
+  deny?: BlockRef | FolderRef | TagRef | readonly (BlockRef | FolderRef | TagRef)[];
   datasource?: DatasourceRef;
   required?: boolean;
 };

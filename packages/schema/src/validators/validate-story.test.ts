@@ -519,6 +519,68 @@ describe("validateStory — number wire format", () => {
   });
 });
 
+describe("validateStory — tag allow entries", () => {
+  const hero = defineBlock({
+    name: "hero",
+    tags: ["Marketing"],
+    fields: [defineField("title", { type: "text" })],
+  });
+  const teaserBlock = defineBlock({
+    name: "teaser",
+    fields: [defineField("text", { type: "text" })],
+  });
+  const pageWithTagAllow = defineBlock({
+    name: "page",
+    is_root: true,
+    fields: [defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }] })],
+  });
+  const tagSchema = { blocks: { page: pageWithTagAllow, hero, teaser: teaserBlock } };
+
+  it("allows components declaring an allowed tag", () => {
+    const result = validateStory(
+      { content: { component: "page", body: [{ component: "hero", title: "Hi" }] } },
+      tagSchema,
+    );
+    expect(result.issues.find((i) => i.code === "disallowed_component")).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects components that do not declare the allowed tag", () => {
+    const result = validateStory(
+      { content: { component: "page", body: [{ component: "teaser", text: "hi" }] } },
+      tagSchema,
+    );
+    const disallowed = result.issues.find((i) => i.code === "disallowed_component");
+    expect(disallowed?.message).toBe(
+      'Component "teaser" is not allowed in field "body"; allowed: tag:Marketing.',
+    );
+    expect(disallowed?.message).not.toContain("[object Object]");
+  });
+
+  it("rejects components declaring a denied tag", () => {
+    const legacy = defineBlock({
+      name: "old_banner",
+      tags: ["Legacy"],
+      fields: [defineField("text", { type: "text" })],
+    });
+    const page = defineBlock({
+      name: "page",
+      is_root: true,
+      fields: [defineField("body", { type: "bloks", deny: [{ tag: "Legacy" }] })],
+    });
+
+    const result = validateStory(
+      { content: { component: "page", body: [{ component: "old_banner", text: "hi" }] } },
+      { blocks: { page, old_banner: legacy } },
+    );
+
+    const denied = result.issues.find((i) => i.code === "disallowed_component");
+    expect(denied?.message).toBe(
+      'Component "old_banner" is denied in field "body"; denied: tag:Legacy.',
+    );
+  });
+});
+
 describe("validateStory — folder allow entries", () => {
   const layout = defineFolder({ name: "Layout" });
   const heros = defineFolder({ name: "Heros", parent: layout });

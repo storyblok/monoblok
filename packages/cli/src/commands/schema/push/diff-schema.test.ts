@@ -20,6 +20,7 @@ describe("diffSchema", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -40,6 +41,7 @@ describe("diffSchema", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map([["page", { ...comp, id: 99 }]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -57,6 +59,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["page", { ...remoteComp, id: 99 }]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -72,6 +75,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["footer", makeComponent("footer", {})]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -94,6 +98,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -101,6 +106,32 @@ describe("diffSchema", () => {
     const result = diffSchema(local, remote);
 
     expect(result.unchanged).toBe(1);
+    expect(result.updates).toBe(0);
+    expect(result.diffs[0].action).toBe("unchanged");
+  });
+
+  it("should not show diff when a raw internal_tag_ids entry differs only in JS type", () => {
+    // The component serializer returns tag ids as strings; a schema managing
+    // tags by raw id usually holds the numbers they were pasted from.
+    const localComp = {
+      ...makeComponent("page", { title: { type: "text", pos: 0 } }),
+      internal_tag_ids: [219987616121914],
+    };
+    const remoteComp = {
+      ...makeComponent("page", { title: { type: "text", pos: 0 } }),
+      internal_tag_ids: ["219987616121914"],
+    };
+
+    const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
+    const remote: RemoteSchemaData = {
+      components: new Map([["page", remoteComp]]),
+      internalTags: new Map(),
+      componentFolders: new Map(),
+      datasources: new Map(),
+    };
+
+    const result = diffSchema(local, remote);
+
     expect(result.updates).toBe(0);
     expect(result.diffs[0].action).toBe("unchanged");
   });
@@ -118,6 +149,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -138,6 +170,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["test", remoteComp]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -158,6 +191,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["test", remoteComp]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -176,6 +210,7 @@ describe("diffSchema", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map([
         ["Colors", { ...makeDatasource("Colors", "colors"), dimensions: [] } as any],
@@ -200,6 +235,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -223,6 +259,7 @@ describe("diffSchema", () => {
     const local: SchemaData = { components: [localComp], folders: [], datasources: [] };
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -242,6 +279,7 @@ describe("diffSchema", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -266,7 +304,12 @@ describe("diffSchema", () => {
         datasources: [],
         folders: [{ name: "Layout", path: "layout", parentPath: null }],
       },
-      { components: new Map(), datasources: new Map(), componentFolders: new Map() },
+      {
+        components: new Map(),
+        datasources: new Map(),
+        internalTags: new Map(),
+        componentFolders: new Map(),
+      },
     );
     expect(result.diffs).toContainEqual(
       expect.objectContaining({ type: "folder", name: "layout", action: "create" }),
@@ -279,6 +322,7 @@ describe("diffSchema", () => {
       {
         components: new Map(),
         datasources: new Map(),
+        internalTags: new Map(),
         componentFolders: remoteFolders([{ uuid: "u1", name: "Old" }]),
       },
     );
@@ -297,6 +341,7 @@ describe("diffSchema", () => {
       {
         components: new Map(),
         datasources: new Map(),
+        internalTags: new Map(),
         componentFolders: remoteFolders([{ uuid: "u1", name: "Layout" }]),
       },
     );
@@ -315,6 +360,7 @@ describe("diffSchema", () => {
     const remote: RemoteSchemaData = {
       components: new Map([["hero", remoteComp]]),
       datasources: new Map(),
+      internalTags: new Map(),
       componentFolders: remoteFolders([
         { uuid: "u1", name: "Layout" },
         { uuid: "u-other", name: "Other" },
@@ -336,6 +382,7 @@ describe("diffSchema", () => {
     const remote: RemoteSchemaData = {
       components: new Map([["hero", remoteComp]]),
       datasources: new Map(),
+      internalTags: new Map(),
       componentFolders: remoteFolders([{ uuid: "u-layout", name: "Layout" }]),
     };
     const diff = diffSchema(local, remote).diffs.find(
@@ -365,6 +412,7 @@ describe("diffSchema", () => {
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
       datasources: new Map(),
+      internalTags: new Map(),
       componentFolders: remoteFolders([{ uuid: "u1", name: "Layout" }]),
     };
     const diff = diffSchema(local, remote).diffs.find(
@@ -394,6 +442,7 @@ describe("diffSchema", () => {
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
       datasources: new Map(),
+      internalTags: new Map(),
       componentFolders: remoteFolders([{ uuid: "u1", name: "Layout" }]),
     };
     const diff = diffSchema(local, remote).diffs.find(
@@ -425,6 +474,7 @@ describe("diffSchema", () => {
     const remote: RemoteSchemaData = {
       components: new Map([["page", remoteComp]]),
       datasources: new Map(),
+      internalTags: new Map(),
       componentFolders: remoteFolders([{ uuid: "u1", name: "Layout" }]),
     };
     const diff = diffSchema(local, remote).diffs.find(
@@ -453,6 +503,7 @@ describe("diffSchema", () => {
     const remote: RemoteSchemaData = {
       components: new Map([["hero", remoteComp]]),
       datasources: new Map(),
+      internalTags: new Map(),
       componentFolders: remoteFolders([{ uuid: "u1", name: "Layout" }]),
     };
     const first = diffSchema(local, remote).diffs.find(

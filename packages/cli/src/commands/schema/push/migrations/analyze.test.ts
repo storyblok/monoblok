@@ -253,6 +253,7 @@ describe("analyzeBreakingChanges", () => {
           } as any,
         ],
       ]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -298,6 +299,7 @@ describe("analyzeBreakingChanges", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -337,6 +339,7 @@ describe("analyzeBreakingChanges", () => {
       components: new Map([
         ["hero", { name: "hero", schema: { title: { type: "text", pos: 0 } } } as any],
       ]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -373,6 +376,7 @@ describe("analyzeBreakingChanges", () => {
       components: new Map([
         ["hero", { name: "hero", schema: { title: { type: "text", pos: 0 } } } as any],
       ]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -419,6 +423,7 @@ describe("analyzeBreakingChanges", () => {
       components: new Map([
         ["hero", { name: "hero", schema: { title: { type: "text", pos: 0 } } } as any],
       ]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };

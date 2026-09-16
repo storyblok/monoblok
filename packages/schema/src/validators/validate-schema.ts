@@ -130,6 +130,20 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
     const blockLabel = named ? `block "${blockName}"` : `the block at index ${blockIndex}`;
     const blockEntity = named ? `block:${blockName}` : "schema";
     const blockKey: string | number = named ? blockName : blockIndex;
+    // A block names its tags either portably (`tags`) or by raw id
+    // (`internal_tag_ids`); push resolves the names and overwrites the ids, so
+    // setting both silently drops one. `defineBlock` throws on this; repeat it
+    // here for schemas authored in plain JavaScript.
+    if (block?.tags !== undefined && block?.internal_tag_ids !== undefined) {
+      issues.push({
+        severity: "error",
+        code: "conflicting_block_tags",
+        path: ["blocks", blockKey, "internal_tag_ids"],
+        entity: blockEntity,
+        message: `${blockLabel.charAt(0).toUpperCase()}${blockLabel.slice(1)} sets "internal_tag_ids" alongside "tags", which replaces it. Keep one of the two.`,
+      });
+    }
+
     const fieldNames = new Set<string>();
     const fields = block?.fields ?? [];
     for (let index = 0; index < fields.length; index++) {
@@ -196,6 +210,34 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         }
       }
 
+      // The editor reads exactly one restriction dimension per field, so a list
+      // naming blocks, folders, and/or tags at once leaves part of itself inert.
+      // `defineField` throws on this; repeat it here for plain JavaScript.
+      for (const key of ["allow", "deny"] as const) {
+        const entries = field[key];
+        if (!Array.isArray(entries)) {
+          continue;
+        }
+        const dimensions = new Set(
+          entries.map((entry) =>
+            isRecord(entry) && typeof entry.folder === "string"
+              ? "folder"
+              : isRecord(entry) && typeof entry.tag === "string"
+                ? "tag"
+                : "block",
+          ),
+        );
+        if (dimensions.size > 1) {
+          issues.push({
+            severity: "error",
+            code: "mixed_restriction_dimensions",
+            path: ["blocks", blockKey, fieldName ?? index, key],
+            entity: blockEntity,
+            message: `Field "${fieldName}" mixes block, folder, and tag references in "${key}"; the editor restricts by one of the three, not a combination.`,
+          });
+        }
+      }
+
       // `schema push` derives the wire restriction keys from `allow`/`deny` and
       // overwrites anything set by hand, so setting both silently drops one of
       // the two. `defineField` rejects this at compile time; repeat it here for
@@ -215,9 +257,9 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         }
       }
 
-      // `restrict_type` selects which restriction dimension the editor reads, and
-      // it is the one restriction key the DSL tells authors to set by hand, for
-      // the tag dimension. A typo silently unrestricts the field, so it is worth
+      // `restrict_type` selects which restriction dimension the editor reads.
+      // `allow`/`deny` derive it, so it is only ever set by hand beside the raw
+      // restriction lists. A typo silently unrestricts the field, so it is worth
       // flagging. A warning rather than an error: the API never validates this
       // key, so a space can legitimately hand back a value nothing recognizes,
       // and failing a build over what a space already stores would be wrong.

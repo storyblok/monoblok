@@ -45,6 +45,11 @@ describe("defineBlock", () => {
     expect(block.folder).toBe("Layout/Heros");
   });
 
+  it("should trim each segment of a folder path string", () => {
+    const block = defineBlock({ name: "hero", folder: " Layout / Heros ", fields: [] });
+    expect(block.folder).toBe("Layout/Heros");
+  });
+
   it("should keep folder: null (explicitly ungrouped)", () => {
     const block = defineBlock({ name: "hero", folder: null, fields: [] });
     expect(block.folder).toBeNull();

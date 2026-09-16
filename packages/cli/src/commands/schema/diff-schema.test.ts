@@ -578,6 +578,28 @@ describe("diffSchema", () => {
     );
   });
 
+  it("should report an explicitly ungrouped target block as null, not the cleaning sentinel", () => {
+    const remoteComp = { ...makeComponent("hero", {}), folder: "layout" } as unknown as Component;
+    const localComp = { ...makeComponent("hero", {}), folder: null } as unknown as Component;
+
+    const diff = diffSchema(normalized([remoteComp]), normalized([localComp])).diffs[0];
+
+    expect(diff.changes).toContainEqual(
+      expect.objectContaining({ field: "folder", before: "layout", after: null }),
+    );
+    expect(JSON.stringify(diff)).not.toContain("FOLDER_UNGROUPED");
+  });
+
+  it("should carry an ungrouped block's folder as null into the payload of a one-sided entity", () => {
+    const localComp = { ...makeComponent("hero", {}), folder: null } as unknown as Component;
+
+    const diff = diffSchema(normalized(), normalized([localComp])).diffs[0];
+
+    expect(diff.action).toBe("create");
+    expect(diff.after).toMatchObject({ folder: null });
+    expect(JSON.stringify(diff)).not.toContain("FOLDER_UNGROUPED");
+  });
+
   it("should treat a grouped remote block as unchanged when the target declares no folder", () => {
     // A block without a `folder` key does not manage its group, so the remote UI
     // grouping must not surface as a change and must not be pushed away.

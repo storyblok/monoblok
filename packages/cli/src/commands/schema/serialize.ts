@@ -51,7 +51,7 @@ function sortSchemaByPos(
  * diff — so `null` is carried through as this sentinel and rewritten to a
  * literal `null` in the final output.
  */
-const FOLDER_UNGROUPED = "__FOLDER_UNGROUPED__";
+export const FOLDER_UNGROUPED = "__FOLDER_UNGROUPED__";
 
 /**
  * Returns a component reduced to a normalized, stably-ordered object: API-assigned

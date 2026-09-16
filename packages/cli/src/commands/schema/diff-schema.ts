@@ -7,7 +7,7 @@ import {
   formatValue,
   isRecord,
 } from "./utils";
-import { cleanComponent, cleanDatasource } from "./serialize";
+import { cleanComponent, cleanDatasource, FOLDER_UNGROUPED } from "./serialize";
 import { mapSchemaGroupLists } from "./folders";
 import { mapSchemaTagLists } from "./tags";
 
@@ -205,6 +205,34 @@ function componentChanges(
 }
 
 /**
+ * `cleanComponent` marks an explicitly ungrouped block with a sentinel, because
+ * a literal `null` would be dropped by the canonical form and become
+ * indistinguishable from a block that does not manage its group at all. Once the
+ * comparison is done the distinction is carried by the diff itself, so the
+ * sentinel is resolved back to the `null` the user wrote before it reaches
+ * either the rendered output or the report payload.
+ */
+function resolveFolderSentinel(
+  entity: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  return entity?.folder === FOLDER_UNGROUPED ? { ...entity, folder: null } : entity;
+}
+
+function resolveFolderSentinelInChange(change: FieldChange): FieldChange {
+  if (change.field !== "folder") {
+    return change;
+  }
+  const resolved = { ...change };
+  if (resolved.before === FOLDER_UNGROUPED) {
+    resolved.before = null;
+  }
+  if (resolved.after === FOLDER_UNGROUPED) {
+    resolved.after = null;
+  }
+  return resolved;
+}
+
+/**
  * Builds an {@link EntityDiff} from the cleaned source/target objects. `before`
  * and `after` carry the cleaned forms — API-assigned ids, timestamps and
  * per-space group uuids are already stripped, so the payload is safe to replay
@@ -218,10 +246,24 @@ function buildEntityDiff(
   toClean: Record<string, unknown> | null,
 ): EntityDiff {
   if (!fromClean && toClean) {
-    return { type, name, action: "create", changes: [], before: null, after: toClean };
+    return {
+      type,
+      name,
+      action: "create",
+      changes: [],
+      before: null,
+      after: resolveFolderSentinel(toClean),
+    };
   }
   if (fromClean && !toClean) {
-    return { type, name, action: "stale", changes: [], before: fromClean, after: null };
+    return {
+      type,
+      name,
+      action: "stale",
+      changes: [],
+      before: resolveFolderSentinel(fromClean),
+      after: null,
+    };
   }
   if (canonical(fromClean) === canonical(toClean)) {
     return { type, name, action: "unchanged", changes: [], before: null, after: null };
@@ -232,7 +274,14 @@ function buildEntityDiff(
       ? componentChanges(fromClean!, toClean!)
       : diffKeyedDeep(fromClean!, toClean!, "");
 
-  return { type, name, action: "update", changes, before: fromClean, after: toClean };
+  return {
+    type,
+    name,
+    action: "update",
+    changes: changes.map(resolveFolderSentinelInChange),
+    before: resolveFolderSentinel(fromClean),
+    after: resolveFolderSentinel(toClean),
+  };
 }
 
 /** Names of `to` in insertion order, then any `from`-only names — mirrors the target's order. */

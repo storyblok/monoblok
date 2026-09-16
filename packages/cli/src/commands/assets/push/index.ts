@@ -61,6 +61,7 @@ import type { Story } from "../../stories/constants";
 import { makeWriteStoryAPITransport } from "../../stories/streams";
 import {
   assertLibraryWritable,
+  isLibraryId,
   listWritableLibraries,
   resolveScopeBaseDir,
   type Scope,
@@ -157,7 +158,17 @@ pushCmd.action(async (assetInput, options, command) => {
     return;
   }
 
-  const libraryId = options.library ? Number(options.library) : undefined;
+  const libraryId = options.library === undefined ? undefined : Number(options.library);
+  if (
+    libraryId !== undefined &&
+    (!/^\d+$/.test(String(options.library)) || !isLibraryId(libraryId))
+  ) {
+    handleError(
+      new CommandError(`--library expects a library ID, received "${options.library}".`),
+      verbose,
+    );
+    return;
+  }
   const assetBinaryPath =
     typeof assetInput === "string" && assetInput.trim().length > 0 ? assetInput : undefined;
   // Default the destination by mode: a single asset has exactly one
@@ -180,14 +191,14 @@ pushCmd.action(async (assetInput, options, command) => {
       );
       return;
     }
-    if (target === "shared" && !libraryId) {
+    if (target === "shared" && libraryId === undefined) {
       handleError(
         new CommandError("Pushing a single asset to a library requires --library YOUR_LIBRARY_ID."),
         verbose,
       );
       return;
     }
-    if (target === "space" && libraryId) {
+    if (target === "space" && libraryId !== undefined) {
       handleError(new CommandError("--library cannot be combined with --target=space."), verbose);
       return;
     }

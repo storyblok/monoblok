@@ -50,15 +50,15 @@
     "@storyblok/vue": "workspace:^"
   },
   "devDependencies": {
-    "@nuxt/kit": "^4.2.2",
+    "@nuxt/kit": "^4.5.2",
     "@nuxt/module-builder": "^1.0.0",
-    "@nuxt/schema": "^4.2.2",
+    "@nuxt/schema": "^4.5.2",
     "@nuxt/test-utils": "^4.1.0",
     "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/visual-editor-qa": "workspace:*",
     "@types/node": "catalog:",
-    "nuxt": "^4.2.2",
+    "nuxt": "^4.5.2",
     "oxlint": "catalog:",
     "vitest": "catalog:"
   },

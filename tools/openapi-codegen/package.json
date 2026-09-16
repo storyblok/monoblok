@@ -35,7 +35,7 @@
     "@hey-api/openapi-ts": "0.92.4",
     "pathe": "catalog:",
     "typescript": "catalog:",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",

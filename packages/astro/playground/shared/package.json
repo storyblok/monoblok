@@ -6,8 +6,8 @@
     "@storyblok/astro": "workspace:*",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
-    "svelte": "^5.55.0",
-    "vue": "^3.5.30"
+    "svelte": "^5.55.7",
+    "vue": "^3.5.42"
   },
   "devDependencies": {
     "@types/react": "catalog:react19",

@@ -80,7 +80,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@tiptap/core": "^3.22.3",
+    "@tiptap/core": "^3.30.4",
     "@tiptap/extension-blockquote": "^3.22.3",
     "@tiptap/extension-bold": "^3.22.3",
     "@tiptap/extension-code": "^3.22.3",
@@ -93,7 +93,7 @@
     "@tiptap/extension-horizontal-rule": "^3.22.3",
     "@tiptap/extension-image": "^3.22.3",
     "@tiptap/extension-italic": "^3.22.3",
-    "@tiptap/extension-link": "^3.22.3",
+    "@tiptap/extension-link": "^3.27.0",
     "@tiptap/extension-list": "^3.22.3",
     "@tiptap/extension-paragraph": "^3.22.3",
     "@tiptap/extension-strike": "^3.22.3",

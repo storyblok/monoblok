@@ -66,7 +66,6 @@ While we're actively working on this transition, please note:
 - Node.js (v18 or later)
 - pnpm (v10 or later)
 - Git
-- [Vite+](https://viteplus.dev/guide/) (`vp` CLI) — pin the version listed in `.viteplus-version`
 
 ### Setup
 

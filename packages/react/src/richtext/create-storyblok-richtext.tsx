@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { createRichTextRenderer } from "./renderer";
 import type { StoryblokReactRichTextComponentProps, StoryblokReactRichTextProps } from "./renderer";
-import type { BlockContent } from "../types";
+import type { StoryblokBlock } from "../types";
+
+function isStoryblokBlock(block: unknown): block is StoryblokBlock {
+  if (typeof block !== "object" || block === null) {
+    return false;
+  }
+
+  const candidate = block as { _uid?: unknown; component?: unknown };
+  return typeof candidate._uid === "string" && typeof candidate.component === "string";
+}
 
 /**
  * Returns a `StoryblokRichText` React component.
@@ -20,7 +29,7 @@ import type { BlockContent } from "../types";
  * the cache.
  */
 export function createStoryblokRichText(
-  StoryblokComponent?: ComponentType<{ block: BlockContent }>,
+  StoryblokComponent?: ComponentType<{ block: StoryblokBlock }>,
 ) {
   // Inlined from the deleted create-default-block.tsx (one call site).
   // Captured once per factory call — stable for the lifetime of the returned component.
@@ -30,7 +39,7 @@ export function createStoryblokRichText(
           return null;
         }
         return attrs.body.map((block) =>
-          block._uid ? <StoryblokComponent block={block as BlockContent} key={block._uid} /> : null,
+          isStoryblokBlock(block) ? <StoryblokComponent block={block} key={block._uid} /> : null,
         );
       }
     : undefined;

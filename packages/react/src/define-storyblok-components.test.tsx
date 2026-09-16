@@ -766,8 +766,8 @@ describe("StoryblokComponent — type safety", () => {
     void (<StoryblokComponent block={[pageBlock]} />);
   });
 
-  it("rejects a non-BlockContent value for block", () => {
-    // @ts-expect-error — string is not assignable to BlockContent | BlockContent[]
+  it("rejects a non-block value for block", () => {
+    // @ts-expect-error — string is not assignable to StoryblokBlock | StoryblokBlock[]
     void (<StoryblokComponent block="not-a-block" />);
   });
 

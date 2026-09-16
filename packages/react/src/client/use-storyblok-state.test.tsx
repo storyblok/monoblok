@@ -119,7 +119,7 @@ describe("useStoryblokState", () => {
     expect((result.current as any).slug).toBe("page-b");
   });
 
-  it("does not reset when the same story.id is re-rendered with a new reference", async () => {
+  it("resets when the same story.id is refreshed with a new reference", async () => {
     const story = makeStory({ id: 1, slug: "home" });
     const storyNewRef = makeStory({ id: 1, slug: "home-ref2" });
 
@@ -133,12 +133,12 @@ describe("useStoryblokState", () => {
     act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
     expect((result.current as any).slug).toBe("editor-updated");
 
-    // Re-render with same id but different reference — must NOT reset editor state
+    // A new prop reference represents refreshed route data and replaces editor state.
     await act(async () => {
       rerender({ s: storyNewRef });
     });
 
-    expect((result.current as any).slug).toBe("editor-updated");
+    expect((result.current as any).slug).toBe("home-ref2");
   });
 
   describe("with debounceMs option", () => {

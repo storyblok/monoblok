@@ -84,7 +84,17 @@ const reactUse = Reflect.get(React, "use") as (<T>(p: Promise<T>) => T) | undefi
  * `reactUse` is resolved via Reflect.get (not a static named import) so that
  * the module can be loaded on React <19 without a module-graph error.
  */
-function LiveContent({ promise }: { promise: Promise<ReactNode> }) {
+function LiveContent({
+  promise,
+  children,
+}: {
+  promise: Promise<ReactNode> | null;
+  children: ReactNode;
+}) {
+  if (!promise) {
+    return <>{children}</>;
+  }
+
   // reactUse is guaranteed to be defined here: StoryblokPreviewServerRuntime
   // throws before rendering LiveContent when React <19 is detected.
   const content = reactUse!(promise);
@@ -94,7 +104,7 @@ function LiveContent({ promise }: { promise: Promise<ReactNode> }) {
 // ── Error boundary ────────────────────────────────────────────────────────────
 
 interface LiveContentBoundaryProps {
-  promise: Promise<ReactNode>;
+  promise: Promise<ReactNode> | null;
   fallback: ReactNode;
   children: ReactNode;
 }
@@ -242,18 +252,10 @@ export function StoryblokPreviewServerRuntime({
     { debounceMs, bridgeOptions },
   );
 
-  // No editor update yet — return children with zero state involvement.
-  // This is the initial SSR/streaming path: Suspense boundaries inside the
-  // children tree (e.g. WeatherWidget) fire normally because nothing here
-  // interferes with them.
-  if (!livePromise) {
-    return <>{children}</>;
-  }
-
   return (
     <LiveContentBoundary promise={livePromise} fallback={<>{children}</>}>
       <Suspense fallback={<>{children}</>}>
-        <LiveContent promise={livePromise} />
+        <LiveContent promise={livePromise}>{children}</LiveContent>
       </Suspense>
     </LiveContentBoundary>
   );

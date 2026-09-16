@@ -1,4 +1,4 @@
-import { type ReactNode, StrictMode, Suspense } from "react";
+import { type ReactNode, StrictMode, Suspense, useState } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
@@ -75,6 +75,15 @@ function SuspendingChild({
   testId: string;
 }) {
   return <div data-testid={testId}>{resource.read()}</div>;
+}
+
+function StatefulContent({ label }: { label: string }) {
+  const [count, setCount] = useState(0);
+  return (
+    <button data-testid="stateful-content" onClick={() => setCount((value) => value + 1)}>
+      {label}:{count}
+    </button>
+  );
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -242,6 +251,26 @@ describe("StoryblokPreview (server mode)", () => {
 
     expect(getByTestId("live")).toBeInTheDocument();
     expect(getByTestId("live")).toHaveTextContent("live content");
+  });
+
+  it("preserves state across the first live update", async () => {
+    const story = makeStory();
+    const updatedStory = makeStory({ slug: "updated" });
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<StatefulContent label="initial" />)
+      .mockResolvedValueOnce(<StatefulContent label="updated" />);
+
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId } = render(element);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+    act(() => getByTestId("stateful-content").click());
+    expect(getByTestId("stateful-content")).toHaveTextContent("initial:1");
+
+    await fireEditorEvent(editorCallback!, updatedStory);
+
+    expect(getByTestId("stateful-content")).toHaveTextContent("updated:1");
   });
 
   it("shows the previous content while renderContent is pending for an update", async () => {

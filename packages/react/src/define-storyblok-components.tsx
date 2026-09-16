@@ -1,13 +1,13 @@
 import { type ComponentType, type ReactNode, Suspense } from "react";
 import { storyblokEditable } from "@storyblok/live-preview";
-import type { BlockContent } from "./types";
+import type { StoryblokBlock } from "./types";
 import { createStoryblokRichText } from "./richtext/create-storyblok-richtext";
 
 /** Attributes returned by {@link storyblokEditable} — spread onto the root element of a block component. */
 type EditableProps = ReturnType<typeof storyblokEditable>;
 
 /** Internal type: how the registry calls components (always passes BlockContent and editable). */
-type BlockComponentType = ComponentType<{ block: BlockContent; editable?: EditableProps }>;
+type BlockComponentType = ComponentType<{ block: StoryblokBlock; editable?: EditableProps }>;
 
 /**
  * Registration type: accepts any component whose block prop is a subtype of BlockContent.
@@ -64,7 +64,7 @@ export interface StoryblokComponentsResult {
    * ```
    */
   StoryblokComponent: <TExtraProps extends object = {}>(
-    props: { block: BlockContent | BlockContent[] } & TExtraProps,
+    props: { block: StoryblokBlock | StoryblokBlock[] } & TExtraProps,
   ) => ReactNode;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
@@ -149,7 +149,7 @@ export function defineStoryblokComponents(
   function StoryblokComponent({
     block,
     ...rest
-  }: { block: BlockContent | BlockContent[] } & Record<string, unknown>): ReactNode {
+  }: { block: StoryblokBlock | StoryblokBlock[] } & Record<string, unknown>): ReactNode {
     // ── Array path ──────────────────────────────────────────────────────────
     if (Array.isArray(block)) {
       if (block.length === 0) return null;

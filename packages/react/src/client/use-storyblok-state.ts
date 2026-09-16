@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Story } from "../types";
+import type { LivePreviewStory } from "@storyblok/live-preview";
+import type { StoryblokPreviewStory } from "../types";
 import {
   useStoryblokEditorEvent,
   type UseStoryblokEditorEventOptions,
@@ -26,19 +27,22 @@ export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions
  * }
  * ```
  */
-export function useStoryblokState(story: Story, options: UseStoryblokStateOptions = {}): Story {
-  const [current, setCurrent] = useState(story);
+export function useStoryblokState(
+  story: StoryblokPreviewStory,
+  options: UseStoryblokStateOptions = {},
+): StoryblokPreviewStory & LivePreviewStory {
+  const [current, setCurrent] = useState<StoryblokPreviewStory & LivePreviewStory>(story);
 
-  // Sync the prop into state when the story identity changes.
+  // Sync a new prop snapshot without overwriting editor updates on every render.
   // useState only uses the initial value on mount, so cross-route navigation
-  // or SWR keepPreviousData swaps that change `story.id` would otherwise render
-  // stale content forever on a reused component instance.
+  // or SWR refetches would otherwise render stale content forever on a reused
+  // component instance.
   useEffect(() => {
     setCurrent(story);
-  }, [story.id]); // oxlint-disable-line react-hooks/exhaustive-deps -- intentional: sync on id change only, not on every render-phase story reference
+  }, [story]);
 
   useStoryblokEditorEvent(
-    (updatedStory) => setCurrent((prev) => ({ ...prev, ...updatedStory }) as Story),
+    (updatedStory) => setCurrent((prev) => ({ ...prev, ...updatedStory })),
     options,
   );
   return current;

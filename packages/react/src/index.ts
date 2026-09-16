@@ -1,4 +1,11 @@
-export type { BlockContent, Story, StoryblokComponentProps, StoryblokEditableProps } from "./types";
+export type {
+  BlockContent,
+  BlockContentInput,
+  Story,
+  StoryblokComponentProps,
+  StoryblokEditableProps,
+} from "./types";
+export type { StoryblokBlock, StoryblokPreviewStory } from "./types";
 
 export {
   defineStoryblokComponents,
@@ -17,7 +24,8 @@ export {
   StoryblokRichText,
 } from "./richtext";
 
-export { storyblokEditable, type LivePreviewStory } from "@storyblok/live-preview";
+export { storyblokEditable } from "@storyblok/live-preview";
+export { type LivePreviewStory } from "@storyblok/live-preview";
 
 export { type StoryblokRichTextDoc } from "@storyblok/richtext";
 

@@ -1,6 +1,6 @@
 import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import type { ReactNode } from "react";
-import type { Story } from "../types";
+import type { StoryblokPreviewStory } from "../types";
 import { StoryblokPreviewServerRuntime } from "../client/storyblok-preview-server-runtime";
 
 /** Props for the {@link StoryblokPreview} component. */
@@ -8,7 +8,7 @@ export interface StoryblokPreviewProps {
   /**
    * Initial story fetched by the application.
    */
-  story: Story;
+  story: StoryblokPreviewStory;
   /**
    * Server Action responsible for rendering the story. Called once, awaited,
    * for the initial render, and again on every subsequent Visual Editor
@@ -59,10 +59,7 @@ export async function StoryblokPreview({
   debounceMs,
   bridgeOptions,
 }: StoryblokPreviewProps): Promise<ReactNode> {
-  // The bridge only ever sends the LivePreviewStory shape (id, and
-  // optionally uuid/content) to renderContent on updates. The initially
-  // fetched Story is always a superset of that, so this first call is safe.
-  const content = await renderContent(story as unknown as LivePreviewStory);
+  const content = await renderContent(story);
 
   return (
     <StoryblokPreviewServerRuntime

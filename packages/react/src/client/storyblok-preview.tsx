@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { Story } from "../types";
+import type { StoryblokPreviewStory } from "../types";
 import { useStoryblokState, type UseStoryblokStateOptions } from "./use-storyblok-state";
 
 /** Props for the {@link StoryblokPreview} component. */
@@ -9,12 +9,12 @@ export interface StoryblokPreviewProps extends UseStoryblokStateOptions {
   /**
    * Initial story fetched by the application.
    */
-  story: Story;
+  story: StoryblokPreviewStory;
   /**
    * Render function that receives the latest story on every Visual Editor
    * update and returns the UI for it.
    */
-  renderContent: (story: Story) => ReactNode;
+  renderContent: (story: StoryblokPreviewStory) => ReactNode;
 }
 
 /**

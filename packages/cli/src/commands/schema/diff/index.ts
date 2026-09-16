@@ -50,10 +50,12 @@ schemaCommand
       }
       resolveSpinner.succeed("Schemas resolved");
 
-      // Group UUIDs are per-space identifiers, so they are meaningless to
-      // compare against a remote space. Only diff them when both sides are local
-      // files, where an explicit `component_group_uuid` is a deliberate choice.
-      const compareGroupUuid = !isSpaceRef(from) && !isSpaceRef(to);
+      // Group UUIDs are per-space identifiers, so comparing two spaces by them
+      // says nothing. A block written in code that sets `component_group_uuid`
+      // explicitly is the deliberate escape hatch, and `schema push` diffs it —
+      // so whenever the target is a schema file, this reports what that push
+      // would do. The check itself only fires on a target block that sets it.
+      const compareGroupUuid = !isSpaceRef(to);
       const diffResult = diffSchema(fromSchema, toSchema, { compareGroupUuid });
 
       // The diff itself goes to stdout while the surrounding chrome stays on

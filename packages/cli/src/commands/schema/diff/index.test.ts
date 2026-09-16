@@ -108,6 +108,88 @@ describe("schema diff command", () => {
     expect(diffOutput()).toContain("+ schema.subtitle:");
   });
 
+  it("should report a target block's explicit component_group_uuid against a space, as push would", async () => {
+    // The raw-uuid escape hatch is what `schema push` acts on, so a diff whose
+    // target is a schema file must not stay silent about it.
+    const local: SchemaData = {
+      components: [
+        {
+          ...comp("hero", { title: { type: "text", pos: 0 } }),
+          component_group_uuid: "chosen-group",
+        } as unknown as SchemaData["components"][number],
+      ],
+      datasources: [],
+      folders: [],
+    };
+    vi.mocked(loadSchema).mockResolvedValue(local);
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/222/components", () =>
+        HttpResponse.json({
+          components: [
+            {
+              ...comp("hero", { title: { type: "text", pos: 0 } }),
+              component_group_uuid: "current-group",
+            },
+          ],
+        }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/222/component_groups", () =>
+        HttpResponse.json({ component_groups: [] }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/222/internal_tags", () =>
+        HttpResponse.json({ internal_tags: [] }, { headers: { Total: "0", "Per-Page": "100" } }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/222/datasources", () =>
+        HttpResponse.json({ datasources: [] }),
+      ),
+    );
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "222",
+      "--to",
+      "./schema.ts",
+    ]);
+
+    expect(diffOutput()).toContain("~ hero (changed)");
+    expect(diffOutput()).toContain("component_group_uuid");
+  });
+
+  it("should not compare component_group_uuid between two spaces", async () => {
+    // Group UUIDs are per-space, so comparing them would flag every grouped block.
+    for (const [space, uuid] of [
+      ["111", "group-in-a"],
+      ["222", "group-in-b"],
+    ]) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/components`, () =>
+          HttpResponse.json({
+            components: [
+              { ...comp("hero", { title: { type: "text", pos: 0 } }), component_group_uuid: uuid },
+            ],
+          }),
+        ),
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/component_groups`, () =>
+          HttpResponse.json({ component_groups: [] }),
+        ),
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/internal_tags`, () =>
+          HttpResponse.json({ internal_tags: [] }, { headers: { Total: "0", "Per-Page": "100" } }),
+        ),
+        http.get(`https://mapi.storyblok.com/v1/spaces/${space}/datasources`, () =>
+          HttpResponse.json({ datasources: [] }),
+        ),
+      );
+    }
+
+    await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
+
+    expect(diffOutput()).toContain("1 unchanged");
+    expect(diffOutput()).not.toContain("component_group_uuid");
+  });
+
   it("should diff a local entry file against a remote space", async () => {
     const local: SchemaData = {
       components: [

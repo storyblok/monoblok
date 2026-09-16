@@ -1,14 +1,13 @@
 "use client";
 
-import { StoryblokPreview, type Story } from "@storyblok/react";
+import { StoryblokPreview, type StoryblokPreviewStory } from "@storyblok/react";
 import { StoryblokComponent } from "@/lib/storyblok";
 
-export function StoryContent({ story }: { story: Story }) {
+export function StoryContent({ story }: { story: StoryblokPreviewStory }) {
   return (
     <StoryblokPreview
-      key={story.uuid}
       story={story}
-      renderContent={(live) => <StoryblokComponent block={live.content} />}
+      renderContent={(live) => (live.content ? <StoryblokComponent block={live.content} /> : null)}
     />
   );
 }

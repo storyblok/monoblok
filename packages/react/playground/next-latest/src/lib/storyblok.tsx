@@ -9,7 +9,7 @@ import { WeatherWidget } from "@/app/components/storyblok/WeatherWidget";
 import { WeatherWidgetSkeleton } from "@/app/components/storyblok/WeatherWidgetSkeleton";
 
 export const apiClient = createApiClient({
-  accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
+  accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
 export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({

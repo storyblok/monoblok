@@ -2,7 +2,6 @@ import { useParams } from "react-router";
 import { StoryblokPreview } from "@storyblok/react";
 import { useStoryblokStory } from "../hooks/use-story";
 import { StoryblokComponent } from "../storyblok";
-import type { BlockContent } from "@storyblok/react";
 
 function CatchAllPage() {
   const params = useParams();
@@ -16,9 +15,7 @@ function CatchAllPage() {
       key={story.uuid}
       story={story}
       renderContent={(live) => (
-        <div>
-          <StoryblokComponent block={live.content as BlockContent} />
-        </div>
+        <div>{live.content ? <StoryblokComponent block={live.content} /> : null}</div>
       )}
     />
   );

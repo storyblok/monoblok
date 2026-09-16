@@ -365,6 +365,48 @@ describe("diffSchema", () => {
     expect(result.diffs[0].action).toBe("unchanged");
   });
 
+  it("should compare tags by name when the base is the block written in code", () => {
+    // `--from <file> --to <space>` is the same comparison as push, reversed; the
+    // side declaring `tags` is the base here.
+    const localComp = {
+      ...makeComponent("page", {}),
+      tags: ["Marketing"],
+    } as unknown as Component;
+    const remoteComp = {
+      ...makeComponent("page", {}),
+      internal_tag_ids: ["7"],
+    } as unknown as Component;
+
+    const result = diffSchema(
+      normalized([localComp]),
+      normalizedRemote([remoteComp], [], [], [{ id: 7, name: "Marketing" }]),
+    );
+
+    expect(result.updates).toBe(0);
+    expect(result.diffs[0].action).toBe("unchanged");
+  });
+
+  it("should report a tag the target space dropped from a block written in code", () => {
+    const localComp = {
+      ...makeComponent("page", {}),
+      tags: ["Marketing"],
+    } as unknown as Component;
+    const remoteComp = {
+      ...makeComponent("page", {}),
+      internal_tag_ids: [],
+    } as unknown as Component;
+
+    const result = diffSchema(
+      normalized([localComp]),
+      normalizedRemote([remoteComp], [], [], [{ id: 7, name: "Marketing" }]),
+    );
+
+    expect(result.updates).toBe(1);
+    expect(result.diffs[0].changes).toContainEqual(
+      expect.objectContaining({ field: "tags", before: ["Marketing"], after: [] }),
+    );
+  });
+
   it("should treat two spaces naming a block's tags the same as unchanged", () => {
     // Tag ids are per-space. Neither side carries a `tags` key (the API returns
     // ids), so without resolving both to names every tagged block in the space

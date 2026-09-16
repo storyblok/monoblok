@@ -8,7 +8,7 @@ import EmojiRandomizer from "./components/emiji-randomizer";
 
 // https://app.storyblok.com/#/me/spaces/147897
 export const apiClient = createApiClient({
-  accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
+  accessToken: import.meta.env.VITE_STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
 export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({

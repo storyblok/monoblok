@@ -1,6 +1,7 @@
 import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
-import { storyblokEditable, StoryblokRichText } from "@storyblok/react";
+import { storyblokEditable } from "@storyblok/react";
 import { StoryblokComponent } from "@/lib/storyblok";
+import { StoryblokRichText } from "@/lib/storyblok";
 import { StoryblokRichTextDoc } from "@storyblok/richtext";
 
 type PageProps = StoryblokComponentProps<{

@@ -298,7 +298,7 @@ describe("diffSchema", () => {
     const localComp = {
       ...makeComponent("page", { title: { type: "text", pos: 0 } }),
       internal_tag_ids: [219987616121914],
-    } as Component;
+    } as unknown as Component;
     const remoteComp = {
       ...makeComponent("page", { title: { type: "text", pos: 0 } }),
       internal_tag_ids: ["219987616121914"],

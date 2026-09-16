@@ -38,14 +38,15 @@ export function defineFolder<
   const TParent extends BlockFolder | undefined = undefined,
 >(input: { name: TName; parent?: TParent }): DefinedFolder<TName, TParent>;
 export function defineFolder(input: { name: string; parent?: BlockFolder }): BlockFolder {
-  if (input.name.trim() === "") {
+  // A path segment is matched against the target space verbatim, so surrounding
+  // whitespace would address a folder nobody can name in the UI.
+  const name = input.name.trim();
+  if (name === "") {
     throw new Error(`defineFolder: folder name must not be empty`);
   }
-  if (input.name.includes("/")) {
+  if (name.includes("/")) {
     throw new Error(`defineFolder: folder name "${input.name}" must not contain "/"`);
   }
-  const path = input.parent ? `${input.parent.path}/${input.name}` : input.name;
-  return input.parent
-    ? { name: input.name, parent: input.parent, path }
-    : { name: input.name, path };
+  const path = input.parent ? `${input.parent.path}/${name}` : name;
+  return input.parent ? { name, parent: input.parent, path } : { name, path };
 }

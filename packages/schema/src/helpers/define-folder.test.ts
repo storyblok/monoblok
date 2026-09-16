@@ -21,6 +21,15 @@ describe("defineFolder", () => {
     expect(c.path).toBe("A/B/C");
   });
 
+  it("should trim surrounding whitespace from the folder name", () => {
+    expect(defineFolder({ name: " Layout " })).toEqual({ name: "Layout", path: "Layout" });
+  });
+
+  it("should trim each segment of a nested path", () => {
+    const heros = defineFolder({ name: " Heros ", parent: defineFolder({ name: " Layout " }) });
+    expect(heros.path).toBe("Layout/Heros");
+  });
+
   it('should throw on "/" in the folder name', () => {
     expect(() => defineFolder({ name: "Lay/out" })).toThrow(
       'defineFolder: folder name "Lay/out" must not contain "/"',

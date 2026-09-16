@@ -129,7 +129,11 @@ export function defineBlock(block: any) {
       `defineBlock: block "${block?.name ?? ""}" sets both "folder" and "component_group_uuid"; use one`,
     );
   }
-  if (typeof folder === "string" && !folder.split("/").some((segment) => segment.trim() !== "")) {
+  // The raw-path escape hatch is trimmed per segment so it addresses the same
+  // folder a `defineFolder` ref would.
+  const folderSegments =
+    typeof folder === "string" ? folder.split("/").map((segment) => segment.trim()) : [];
+  if (typeof folder === "string" && !folderSegments.some((segment) => segment !== "")) {
     throw new Error(`defineBlock: block "${block?.name ?? ""}" has an empty "folder" path`);
   }
   const normalizedFolder =
@@ -137,7 +141,9 @@ export function defineBlock(block: any) {
       ? undefined
       : folder !== null && typeof folder === "object"
         ? folder.path
-        : folder;
+        : typeof folder === "string"
+          ? folderSegments.join("/")
+          : folder;
 
   return {
     ...BLOCK_DEFAULTS,

@@ -41,7 +41,13 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
     }
   }
   try {
-    return localToNormalized(await loadSchema(value));
+    const local = await loadSchema(value);
+    if (local.components.length === 0 && local.datasources.length === 0) {
+      throw new CommandError(
+        `No blocks or datasources found in the schema entry file "${value}" (${label}). Verify the file exports schema definitions.`,
+      );
+    }
+    return localToNormalized(local);
   } catch (error) {
     throw withSourceContext(
       error,

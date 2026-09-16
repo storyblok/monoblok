@@ -190,6 +190,24 @@ describe("schema diff command", () => {
     expect(diffOutput()).not.toContain("component_group_uuid");
   });
 
+  it("should fail when an entry file exports no schema definitions", async () => {
+    vi.mocked(loadSchema).mockResolvedValue({ components: [], datasources: [], folders: [] });
+    spaceWith("222", []);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "./not-schema.ts",
+      "--to",
+      "222",
+    ]);
+
+    expect(output()).toContain("No blocks or datasources found");
+    expect(process.exitCode).toBe(2);
+  });
+
   it("should diff a local entry file against a remote space", async () => {
     const local: SchemaData = {
       components: [

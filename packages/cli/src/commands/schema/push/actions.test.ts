@@ -303,6 +303,7 @@ describe("buildChangesetEntries", () => {
       ["hero", remoteComp],
       ["footer", staleComp],
     ]),
+    internalTags: new Map(),
     componentFolders: new Map(),
     datasources: new Map(),
   };
@@ -408,6 +409,7 @@ describe("buildChangesetEntries", () => {
     } as unknown as ComponentFolder;
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([["Layout", remoteFolder]]),
       datasources: new Map(),
     };
@@ -445,7 +447,12 @@ describe("executePush - folders", () => {
   }
 
   function emptyRemote(): RemoteSchemaData {
-    return { components: new Map(), componentFolders: new Map(), datasources: new Map() };
+    return {
+      components: new Map(),
+      componentFolders: new Map(),
+      datasources: new Map(),
+      internalTags: new Map(),
+    };
   }
 
   const CREATE_GROUPS_URL = "https://mapi.storyblok.com/v1/spaces/12345/component_groups";
@@ -576,6 +583,7 @@ describe("executePush - folders", () => {
     // non-resolving path, so the delete would otherwise be skipped silently.
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         [
           "Old",
@@ -609,6 +617,7 @@ describe("executePush - folders", () => {
 
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         [
           "Old",
@@ -711,6 +720,7 @@ describe("executePush - folders", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         ["Layout", { id: 10, uuid: "uuid-layout", name: "Layout" } as unknown as ComponentFolder],
       ]),
@@ -758,6 +768,7 @@ describe("executePush - folders", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         ["Layout", { id: 10, uuid: "uuid-layout", name: "Layout" } as unknown as ComponentFolder],
         ["Legacy", { id: 11, uuid: "uuid-legacy", name: "Legacy" } as unknown as ComponentFolder],
@@ -800,6 +811,7 @@ describe("executePush - folders", () => {
     };
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         ["Layout", { id: 10, uuid: "uuid-layout", name: "Layout" } as unknown as ComponentFolder],
       ]),
@@ -845,6 +857,7 @@ describe("executePush - folders", () => {
           } as unknown as Component,
         ],
       ]),
+      internalTags: new Map(),
       componentFolders: new Map(),
       datasources: new Map(),
     };
@@ -872,6 +885,7 @@ describe("executePush - folders", () => {
 
     const remote: RemoteSchemaData = {
       components: new Map(),
+      internalTags: new Map(),
       componentFolders: new Map([
         [
           "Old",
@@ -932,6 +946,7 @@ describe("executePush - folders", () => {
 
     const remote: RemoteSchemaData = {
       components: new Map([["page", { id: 5, name: "page" } as unknown as Component]]),
+      internalTags: new Map(),
       componentFolders: new Map([
         [
           "Old",

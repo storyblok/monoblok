@@ -10,16 +10,18 @@
  * `schema push` derives them from the DSL keys and overwrites whatever was set by
  * hand, so one of the two silently loses.
  *
- * `restrict_type` is deliberately absent. Push overwrites it the same way, but it
- * is also the only way to reach the tag dimension, which `allow` / `deny` cannot
- * express, so rejecting it outright would remove the one legitimate reason to set
- * a restriction key by hand.
+ * `restrict_type` is deliberately absent. Push overwrites it the same way, but
+ * setting it by hand is how a field reaches a restriction dimension whose lists
+ * were written by hand too, so rejecting it outright would take away the escape
+ * hatch the raw keys exist for.
  */
 export const DERIVED_RESTRICTION_KEYS = [
   "component_whitelist",
   "component_group_whitelist",
   "component_denylist",
   "component_group_denylist",
+  "component_tag_whitelist",
+  "component_tag_denylist",
   "restrict_components",
 ] as const;
 
@@ -49,3 +51,11 @@ export const DENIABLE_FIELD_TYPES: readonly string[] = ["bloks", "richtext"];
  * catches the typo without breaking the read path.
  */
 export const EDITOR_RESTRICT_TYPES: readonly string[] = ["", "components", "groups", "tags"];
+
+/**
+ * The wire restriction keys holding block tag references. Both halves, for the
+ * same reason as the group lists: a denylist is as space-bound as its whitelist,
+ * so anything translating between the transient tag-name space and the server's
+ * id space has to walk both.
+ */
+export const TAG_LIST_KEYS = ["component_tag_whitelist", "component_tag_denylist"] as const;

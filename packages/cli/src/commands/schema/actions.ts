@@ -3,18 +3,29 @@ import { getMapiClient } from "../../api";
 import { fetchAllPages } from "../../utils";
 
 /**
- * Fetches remote components, component folders, and datasources from the MAPI.
- * Component folders are used by `schema init` (to mirror groups as local
- * directories) and by `schema push`, which diffs and manages them: creating,
- * resolving membership against, and (with `--delete`) removing component groups.
+ * Fetches remote components, component folders, block tags, and datasources from
+ * the MAPI. Component folders are used by `schema init` (to mirror groups as
+ * local directories) and by `schema push`, which diffs and manages them:
+ * creating, resolving membership against, and (with `--delete`) removing
+ * component groups. Block tags are what the name references in a local schema
+ * resolve against, on both commands.
  */
 export async function fetchRemoteSchema(spaceId: string) {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
 
-  const [componentsRes, foldersRes, rawDatasources] = await Promise.all([
+  const [componentsRes, foldersRes, rawInternalTags, rawDatasources] = await Promise.all([
     client.components.list({ path: { space_id: spaceIdNum }, throwOnError: true }),
     client.componentFolders.list({ path: { space_id: spaceIdNum }, throwOnError: true }),
+    fetchAllPages(
+      (page: number) =>
+        client.internalTags.list({
+          path: { space_id: spaceIdNum },
+          query: { page, by_object_type: "component" },
+          throwOnError: true,
+        }),
+      (data) => data?.internal_tags ?? [],
+    ),
     fetchAllPages(
       (page: number) =>
         client.datasources.list({
@@ -33,7 +44,8 @@ export async function fetchRemoteSchema(spaceId: string) {
     components: new Map(rawComponents.map((c) => [c.name, c])),
     componentFolders: new Map(rawComponentFolders.map((f) => [f.name, f])),
     datasources: new Map(rawDatasources.map((d) => [d.name, d])),
+    internalTags: new Map(rawInternalTags.map((t) => [t.name, t])),
   };
 
-  return { remote, rawComponents, rawComponentFolders, rawDatasources };
+  return { remote, rawComponents, rawComponentFolders, rawInternalTags, rawDatasources };
 }

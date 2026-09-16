@@ -42,6 +42,21 @@ export type Block<
      * leaves the remote group untouched).
      */
     folder?: string | null;
+    /**
+     * Block tags by name (e.g. `['Marketing']`). Names are resolved to the
+     * target space's tag ids at push time, and a tag the space does not have yet
+     * is created, so the same schema pushes to any space.
+     */
+    tags?: readonly string[];
+    /**
+     * Escape hatch for tagging this block by raw id. Tag ids are space-local, so
+     * a schema carrying them only pushes to the space it was read from; use
+     * `tags` to name the tags instead.
+     *
+     * @deprecated Prefer `tags`, which names the tags and is portable across
+     * spaces.
+     */
+    internal_tag_ids?: string[];
   }
 >;
 

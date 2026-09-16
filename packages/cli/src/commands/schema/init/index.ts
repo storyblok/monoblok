@@ -82,7 +82,7 @@ schemaCommand
         handleError(toError(maybeError), verbose);
         return;
       }
-      const { rawComponents, rawComponentFolders, rawDatasources } = fetchResult;
+      const { rawComponents, rawComponentFolders, rawInternalTags, rawDatasources } = fetchResult;
       fetchSpinner.succeed(
         `Found: ${rawComponents.length} components, ${rawComponentFolders.length} component folders, ${rawDatasources.length} datasources`,
       );
@@ -96,6 +96,7 @@ schemaCommand
         rawComponents,
         rawComponentFolders,
         rawDatasources,
+        rawInternalTags,
       );
 
       summary.total = writtenFiles.length;

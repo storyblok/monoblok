@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 import { dirname, join } from "pathe";
 
-import type { Component, ComponentFolder, Datasource } from "../../../types";
+import type { Component, ComponentFolder, Datasource, InternalTag } from "../../../types";
 import { buildGroupPathByUuid } from "../folders";
 import {
   generateComponentFile,
@@ -36,6 +36,7 @@ export async function writeSchemaFiles(
   components: Component[],
   componentFolders: ComponentFolder[],
   datasources: Datasource[],
+  internalTags: InternalTag[] = [],
 ): Promise<string[]> {
   const writtenFiles: string[] = [];
   const groupPathByUuid = buildGroupPathByUuid(componentFolders);
@@ -56,6 +57,13 @@ export async function writeSchemaFiles(
   // uuid → folders.ts var name, so a field's group whitelist can be re-encoded
   // as `allow: [<folderVar>]` instead of raw uuids.
   const folderVarByUuid = new Map([...folderByUuid].map(([uuid, r]) => [uuid, r.varName]));
+  // id → tag name, so a block's tags and a field's tag lists are emitted by name
+  // instead of ids that only mean something in the space they came from.
+  const tagNameById = new Map(
+    internalTags
+      .filter((tag) => tag.id !== undefined)
+      .map((tag) => [String(tag.id), tag.name] as const),
+  );
 
   // Write component files into their group directory, with a `folder` ref
   // when the component belonged to a remote group.
@@ -67,7 +75,7 @@ export async function writeSchemaFiles(
     const folderRef = folder && { varName: folder.varName, segments };
     await writeFileWithDirs(
       filePath,
-      generateComponentFile(component, varName, folderRef, folderVarByUuid),
+      generateComponentFile(component, varName, folderRef, folderVarByUuid, tagNameById),
     );
     writtenFiles.push(filePath);
   }

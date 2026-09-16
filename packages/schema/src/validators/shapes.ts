@@ -17,13 +17,13 @@ export interface SchemaFieldLike {
   /** `custom`: the field plugin discriminant, matched against registered `fieldPlugins`. */
   field_type?: string;
   required?: boolean;
-  /** Normalized block-name or folder-path references for `bloks` fields. */
-  allow?: readonly (string | { folder: string })[];
+  /** Normalized block-name, folder-path, or tag-name references for `bloks` fields. */
+  allow?: readonly (string | { folder: string } | { tag: string })[];
   /**
    * The `deny` counterpart, same normalized shape. Only in force when `allow` is
    * empty: the editor lets a non-empty allow list decide on its own.
    */
-  deny?: readonly (string | { folder: string })[];
+  deny?: readonly (string | { folder: string } | { tag: string })[];
   /** Normalized datasource slug for option/options fields. */
   datasource?: string;
   // The wire restriction keys `allow`/`deny` replace. Legal on their own, but
@@ -36,6 +36,10 @@ export interface SchemaFieldLike {
   component_denylist?: readonly string[];
   /** `bloks`/`richtext`: denied component group references. */
   component_group_denylist?: readonly string[];
+  /** `bloks`/`richtext`: allowed block tag ids. */
+  component_tag_whitelist?: readonly number[];
+  /** `bloks`/`richtext`: denied block tag ids. */
+  component_tag_denylist?: readonly number[];
   /** `bloks`/`richtext`: whether the block restriction lists are in force. */
   restrict_components?: boolean;
   /** `bloks`/`richtext`: which restriction dimension the editor reads. */
@@ -88,6 +92,10 @@ export interface SchemaBlockLike {
   fields?: readonly SchemaFieldLike[];
   /** Display path of the folder (component group) this block belongs to, if any. */
   folder?: string | null;
+  /** Names of the block tags this block carries, if it manages them by name. */
+  tags?: readonly string[];
+  /** Raw tag ids, the space-local escape hatch `tags` replaces. */
+  internal_tag_ids?: readonly string[];
 }
 
 /** A datasource definition (`defineDatasource` result). */

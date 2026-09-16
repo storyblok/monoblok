@@ -81,10 +81,18 @@ const preconditions = {
       ),
     );
   },
+  hasRemoteTags() {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/internal_tags`, () =>
+        HttpResponse.json({ internal_tags: [] }),
+      ),
+    );
+  },
   hasEmptyRemote() {
     this.hasRemoteComponents([]);
     this.hasRemoteFolders();
     this.hasRemoteDatasources();
+    this.hasRemoteTags();
   },
   canCreateComponents() {
     server.use(
@@ -217,6 +225,7 @@ describe("schema rollback command", () => {
     preconditions.hasRemoteComponents([comp]);
     preconditions.hasRemoteFolders();
     preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
     preconditions.canDeleteComponents();
 
     await schemaCommand.parseAsync([
@@ -244,6 +253,7 @@ describe("schema rollback command", () => {
     preconditions.hasRemoteComponents([comp]);
     preconditions.hasRemoteFolders();
     preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
     preconditions.canUpdateComponents();
 
     await schemaCommand.parseAsync([
@@ -335,6 +345,7 @@ describe("schema rollback command", () => {
     preconditions.hasRemoteComponents([comp]);
     preconditions.hasRemoteFolders();
     preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
     preconditions.canDeleteComponents();
 
     await schemaCommand.parseAsync([
@@ -362,6 +373,7 @@ describe("schema rollback command", () => {
     preconditions.hasRemoteComponents([comp]);
     preconditions.hasRemoteFolders();
     preconditions.hasRemoteDatasources();
+    preconditions.hasRemoteTags();
     preconditions.canDeleteComponents();
 
     await schemaCommand.parseAsync([

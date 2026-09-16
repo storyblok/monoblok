@@ -12,7 +12,59 @@ describe("defineField", () => {
   it("should throw when allow mixes blocks and folders", () => {
     const heros = defineFolder({ name: "Heros" });
     expect(() => defineField("body", { type: "bloks", allow: [heros, "teaser"] })).toThrow(
-      'defineField: "allow" on field "body" mixes block and folder references; the editor restricts by either blocks or folders, not both',
+      'defineField: "allow" on field "body" mixes block and folder references; the editor restricts by blocks, folders, or tags, not a combination',
+    );
+  });
+
+  it("should keep tag refs in allow as named tag entries", () => {
+    const field = defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }] });
+    expect(field.allow).toEqual([{ tag: "Marketing" }]);
+  });
+
+  it("should keep tag refs in deny as named tag entries", () => {
+    const field = defineField("body", { type: "bloks", deny: [{ tag: "Legacy" }] });
+    expect(field.deny).toEqual([{ tag: "Legacy" }]);
+  });
+
+  it("should trim surrounding whitespace from tag refs so they match a block's tags", () => {
+    const field = defineField("body", { type: "bloks", allow: [{ tag: " Marketing " }] });
+    expect(field.allow).toEqual([{ tag: "Marketing" }]);
+  });
+
+  it("should drop a tag named twice in allow", () => {
+    const field = defineField("body", {
+      type: "bloks",
+      allow: [{ tag: "Marketing" }, { tag: " Marketing" }],
+    });
+    expect(field.allow).toEqual([{ tag: "Marketing" }]);
+  });
+
+  it("should throw when a tag ref in allow is blank", () => {
+    expect(() => defineField("body", { type: "bloks", allow: [{ tag: "   " }] })).toThrow(
+      'defineField: "allow" on field "body" has an empty tag reference',
+    );
+  });
+
+  it("should throw when a tag ref in deny is blank", () => {
+    expect(() => defineField("body", { type: "bloks", deny: [{ tag: "" }] })).toThrow(
+      'defineField: "deny" on field "body" has an empty tag reference',
+    );
+  });
+
+  it("should throw when allow mixes tags and blocks", () => {
+    expect(() =>
+      defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }, "teaser"] }),
+    ).toThrow(
+      'defineField: "allow" on field "body" mixes block and tag references; the editor restricts by blocks, folders, or tags, not a combination',
+    );
+  });
+
+  it("should throw when allow mixes tags and folders", () => {
+    const heros = defineFolder({ name: "Heros" });
+    expect(() =>
+      defineField("body", { type: "bloks", allow: [{ tag: "Marketing" }, heros] }),
+    ).toThrow(
+      'defineField: "allow" on field "body" mixes folder and tag references; the editor restricts by blocks, folders, or tags, not a combination',
     );
   });
 
@@ -38,7 +90,7 @@ describe("defineField", () => {
   it("should throw when deny mixes blocks and folders", () => {
     const heros = defineFolder({ name: "Heros" });
     expect(() => defineField("body", { type: "bloks", deny: [heros, "teaser"] })).toThrow(
-      'defineField: "deny" on field "body" mixes block and folder references; the editor restricts by either blocks or folders, not both',
+      'defineField: "deny" on field "body" mixes block and folder references; the editor restricts by blocks, folders, or tags, not a combination',
     );
   });
 

@@ -315,11 +315,13 @@ function canExpressFolder(comp: Component | undefined, schema: NormalizedSchema)
  * Whether a block's own tag membership is compared as names rather than as raw
  * ids. A block written in code opts in by declaring a `tags` key, on whichever
  * side it sits: the comparison is symmetric, so which source is the base must
- * not change what a tag means. Two blocks read from spaces are opted in for
- * them, since neither carries `tags` (the API returns `internal_tag_ids`) yet
- * both sides can resolve their own ids to names — otherwise comparing two spaces
- * would diff per-space ids against each other and report every tagged block as
- * changed.
+ * not change what a tag means.
+ *
+ * Otherwise it is enough that one side can name the ids, since each side
+ * resolves through the other's table as well. A block read from a space carries
+ * `internal_tag_ids` and no `tags` key, so without this a space's tags would be
+ * reported as the bare per-space numbers a user cannot act on — against another
+ * space, and against a schema file that simply does not mention tags.
  *
  * A block that manages its tags by raw id, against a side that cannot resolve
  * ids, keeps diffing `internal_tag_ids` — the same-space escape hatch.
@@ -336,8 +338,7 @@ function comparesTagsByName(
   return (
     fromComp !== undefined &&
     toComp !== undefined &&
-    from.tagNameById !== undefined &&
-    to.tagNameById !== undefined
+    (from.tagNameById !== undefined || to.tagNameById !== undefined)
   );
 }
 

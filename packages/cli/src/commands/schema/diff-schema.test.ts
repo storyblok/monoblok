@@ -407,6 +407,25 @@ describe("diffSchema", () => {
     );
   });
 
+  it("should name the base space's tags when the target schema does not mention tags", () => {
+    // `schema init` emits no `tags` key for an untagged block, so this is the
+    // shape a user most often diffs a space against.
+    const remoteComp = {
+      ...makeComponent("hero", {}),
+      internal_tag_ids: ["220685625652618"],
+    } as unknown as Component;
+
+    const diff = diffSchema(
+      normalizedRemote([remoteComp], [], [], [{ id: 220685625652618, name: "promo" }]),
+      normalized([makeComponent("hero", {})]),
+    ).diffs[0];
+
+    expect(diff.changes).toContainEqual(
+      expect.objectContaining({ field: "tags", before: ["promo"], after: [] }),
+    );
+    expect(JSON.stringify(diff.changes)).not.toContain("220685625652618");
+  });
+
   it("should treat two spaces naming a block's tags the same as unchanged", () => {
     // Tag ids are per-space. Neither side carries a `tags` key (the API returns
     // ids), so without resolving both to names every tagged block in the space

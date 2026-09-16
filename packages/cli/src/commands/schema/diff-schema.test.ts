@@ -365,6 +365,68 @@ describe("diffSchema", () => {
     expect(result.diffs[0].action).toBe("unchanged");
   });
 
+  it("should treat two spaces naming a block's tags the same as unchanged", () => {
+    // Tag ids are per-space. Neither side carries a `tags` key (the API returns
+    // ids), so without resolving both to names every tagged block in the space
+    // would report as changed.
+    const inSpaceA = {
+      ...makeComponent("hero", {}),
+      internal_tag_ids: ["100"],
+    } as unknown as Component;
+    const inSpaceB = {
+      ...makeComponent("hero", {}),
+      internal_tag_ids: ["200"],
+    } as unknown as Component;
+
+    const result = diffSchema(
+      normalizedRemote([inSpaceA], [], [], [{ id: 100, name: "Marketing" }]),
+      normalizedRemote([inSpaceB], [], [], [{ id: 200, name: "Marketing" }]),
+    );
+
+    expect(result.updates).toBe(0);
+    expect(result.diffs[0].action).toBe("unchanged");
+  });
+
+  it("should show a change when two spaces tag a block differently", () => {
+    const inSpaceA = {
+      ...makeComponent("hero", {}),
+      internal_tag_ids: ["100"],
+    } as unknown as Component;
+    const inSpaceB = {
+      ...makeComponent("hero", {}),
+      internal_tag_ids: ["200"],
+    } as unknown as Component;
+
+    const result = diffSchema(
+      normalizedRemote([inSpaceA], [], [], [{ id: 100, name: "Marketing" }]),
+      normalizedRemote([inSpaceB], [], [], [{ id: 200, name: "Editorial" }]),
+    );
+
+    expect(result.updates).toBe(1);
+    expect(result.diffs[0].changes).toContainEqual(
+      expect.objectContaining({ field: "tags", before: ["Marketing"], after: ["Editorial"] }),
+    );
+  });
+
+  it("should resolve a target's raw tag id against the base space", () => {
+    // `schema init` emits raw ids, so a local block can hold an id the space it
+    // was pulled from is the only side able to name.
+    const localComp = makeComponent("page", {
+      body: { type: "bloks", pos: 0, component_tag_whitelist: [7] },
+    });
+    const remoteComp = makeComponent("page", {
+      body: { type: "bloks", pos: 0, component_tag_whitelist: ["Marketing"] },
+    });
+
+    const result = diffSchema(
+      normalizedRemote([remoteComp], [], [], [{ id: 7, name: "Marketing" }]),
+      normalized([localComp]),
+    );
+
+    expect(result.updates).toBe(0);
+    expect(result.diffs[0].action).toBe("unchanged");
+  });
+
   it("should treat components differing only by component_group_uuid as unchanged for space-to-space diffs", () => {
     // Group UUIDs are per-space identifiers; without opting in (the default, as
     // used for space-to-space diffs) they must not surface as a change.

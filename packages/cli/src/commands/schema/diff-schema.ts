@@ -263,6 +263,34 @@ function canExpressFolder(comp: Component | undefined, schema: NormalizedSchema)
 }
 
 /**
+ * Whether a block's own tag membership is compared as names rather than as raw
+ * ids. A local block opts in by declaring a `tags` key; two blocks read from
+ * spaces are opted in for them, since neither carries `tags` (the API returns
+ * `internal_tag_ids`) yet both sides can resolve their own ids to names. Without
+ * that second case, comparing two spaces would diff per-space ids against each
+ * other and report every tagged block as changed.
+ *
+ * A block that manages its tags by raw id, against a side that cannot resolve
+ * ids, keeps diffing `internal_tag_ids` — the same-space escape hatch.
+ */
+function comparesTagsByName(
+  fromComp: Component | undefined,
+  toComp: Component | undefined,
+  from: NormalizedSchema,
+  to: NormalizedSchema,
+): boolean {
+  if (toComp && "tags" in toComp) {
+    return true;
+  }
+  return (
+    fromComp !== undefined &&
+    toComp !== undefined &&
+    from.tagNameById !== undefined &&
+    to.tagNameById !== undefined
+  );
+}
+
+/**
  * Copies a component into slug-path identity space: group membership as a
  * `folder` key (synthesized from `component_group_uuid` for a space-read block)
  * and each field's group list uuids translated to paths. Both sides go through
@@ -311,9 +339,7 @@ function diffComponent(
   // spaces they never match and would flag every grouped block as changed, so
   // the field stays stripped on both sides unless both are opted in.
   const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === "string";
-  // Tag membership diffs by name whenever the target block declares a `tags`
-  // key; otherwise the raw ids are compared as-is.
-  const byTagName = toComp ? "tags" in toComp : false;
+  const byTagName = comparesTagsByName(fromComp, toComp, from, to);
   const manageFolder = canExpressFolder(fromComp, from) && canExpressFolder(toComp, to);
   const fromClean = fromComp
     ? cleanComponent(
@@ -380,9 +406,12 @@ function diffFolder(
  * Folders (component groups) are diffed by slug path. Component group UUIDs are
  * ignored by default (they are per-space identifiers); set `compareGroupUuid`
  * when the target is a local DSL, so a block that sets `component_group_uuid`
- * explicitly opts into having its group membership diffed and pushed. Group and
- * tag references inside a block are compared in name space, not in the id space
- * the API uses.
+ * explicitly opts into having its group membership diffed and pushed.
+ *
+ * A block's group and tag references are compared in name space rather than the
+ * id space the API uses: group lists always, and tag lists always, while its own
+ * tag membership does so unless a side is diffing by raw id (see
+ * {@link comparesTagsByName}).
  */
 export function diffSchema(
   from: NormalizedSchema,

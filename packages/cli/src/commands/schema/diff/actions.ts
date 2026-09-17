@@ -68,6 +68,10 @@ export function formatSchemaDiff(result: DiffResult, from: string, to: string): 
     tags: labels,
     summary: labels,
     showUnchanged: false,
+    unmanagedFolderNote: (names) =>
+      `Group membership not compared for ${names.join(", ")}: a schema file manages a block's ` +
+      `group only when the block declares a \`folder\`, so each of these keeps whichever group ` +
+      `the space already has it in.`,
     emptySummary: "no differences",
   });
 }

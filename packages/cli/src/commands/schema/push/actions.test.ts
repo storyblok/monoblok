@@ -286,6 +286,7 @@ describe("buildChangesetEntries", () => {
   function makeDiffResult(diffs: DiffResult["diffs"]): DiffResult {
     return {
       diffs,
+      unmanagedFolders: [],
       creates: diffs.filter((d) => d.action === "create").length,
       updates: diffs.filter((d) => d.action === "update").length,
       unchanged: diffs.filter((d) => d.action === "unchanged").length,
@@ -453,6 +454,7 @@ describe("executePush - folders", () => {
   function makeDiffResult(diffs: DiffResult["diffs"]): DiffResult {
     return {
       diffs,
+      unmanagedFolders: [],
       creates: diffs.filter((d) => d.action === "create").length,
       updates: diffs.filter((d) => d.action === "update").length,
       unchanged: diffs.filter((d) => d.action === "unchanged").length,
@@ -1032,6 +1034,7 @@ describe("formatDiffOutput", () => {
   function makeDiffResult(diffs: DiffResult["diffs"]): DiffResult {
     return {
       diffs,
+      unmanagedFolders: [],
       creates: diffs.filter((d) => d.action === "create").length,
       updates: diffs.filter((d) => d.action === "update").length,
       unchanged: diffs.filter((d) => d.action === "unchanged").length,

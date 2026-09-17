@@ -315,6 +315,20 @@ function canExpressFolder(comp: Component | undefined, schema: NormalizedSchema)
 }
 
 /**
+ * Whether either side actually places this block in a group. Group membership
+ * that goes uncompared is only worth reporting when there is membership to
+ * report: a block ungrouped everywhere loses nothing by not being compared.
+ */
+function hasGroupMembership(
+  fromComp: Component | undefined,
+  toComp: Component | undefined,
+): boolean {
+  return [fromComp, toComp].some(
+    (comp) => typeof comp?.component_group_uuid === "string" && comp.component_group_uuid !== "",
+  );
+}
+
+/**
  * Whether a block's own tag membership is compared as names rather than as raw
  * ids. A block written in code opts in by declaring a `tags` key, on whichever
  * side it sits: the comparison is symmetric, so which source is the base must
@@ -386,16 +400,16 @@ function diffComponent(
     to: NormalizedSchema;
   },
   compareGroupUuid: boolean,
+  manageFolder: boolean,
 ): EntityDiff {
-  const { uuidToPath, fromTag, toTag, from, to } = context;
+  const { uuidToPath, fromTag, toTag } = context;
   // Group UUIDs are per-space identifiers, so they only carry meaning when the
   // caller opts in (push, where the target is the local DSL and an explicit
   // `component_group_uuid` is a deliberate escape hatch). When comparing two
   // spaces they never match and would flag every grouped block as changed, so
   // the field stays stripped on both sides unless both are opted in.
   const includeGroupUuid = compareGroupUuid && typeof toComp?.component_group_uuid === "string";
-  const byTagName = comparesTagsByName(fromComp, toComp, from, to);
-  const manageFolder = canExpressFolder(fromComp, from) && canExpressFolder(toComp, to);
+  const byTagName = comparesTagsByName(fromComp, toComp, context.from, context.to);
   const fromClean = fromComp
     ? cleanComponent(
         applyDefaults(
@@ -501,16 +515,15 @@ export function diffSchema(
     diffs.push(diffFolder(name, from.folders.get(name), to.folders.get(name)));
   }
 
+  const unmanagedFolders: string[] = [];
   for (const name of orderedNames(from.components, to.components)) {
-    diffs.push(
-      diffComponent(
-        name,
-        from.components.get(name),
-        to.components.get(name),
-        context,
-        compareGroupUuid,
-      ),
-    );
+    const fromComp = from.components.get(name);
+    const toComp = to.components.get(name);
+    const manageFolder = canExpressFolder(fromComp, from) && canExpressFolder(toComp, to);
+    if (!manageFolder && hasGroupMembership(fromComp, toComp)) {
+      unmanagedFolders.push(name);
+    }
+    diffs.push(diffComponent(name, fromComp, toComp, context, compareGroupUuid, manageFolder));
   }
 
   for (const name of orderedNames(from.datasources, to.datasources)) {
@@ -519,6 +532,7 @@ export function diffSchema(
 
   return {
     diffs,
+    unmanagedFolders,
     creates: diffs.filter((d) => d.action === "create").length,
     updates: diffs.filter((d) => d.action === "update").length,
     unchanged: diffs.filter((d) => d.action === "unchanged").length,

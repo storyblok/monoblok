@@ -6,6 +6,7 @@ import { formatSchemaDiff, isSpaceRef } from "./actions";
 function makeResult(diffs: EntityDiff[]): DiffResult {
   return {
     diffs,
+    unmanagedFolders: [],
     creates: diffs.filter((d) => d.action === "create").length,
     updates: diffs.filter((d) => d.action === "update").length,
     unchanged: diffs.filter((d) => d.action === "unchanged").length,

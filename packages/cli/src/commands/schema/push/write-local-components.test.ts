@@ -23,6 +23,7 @@ function makeDiff(stale: string[]): DiffResult {
       before: null,
       after: null,
     })),
+    unmanagedFolders: [],
     creates: 0,
     updates: 0,
     unchanged: 0,

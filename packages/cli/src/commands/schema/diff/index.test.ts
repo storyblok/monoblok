@@ -277,4 +277,53 @@ describe("schema diff command", () => {
     expect(output()).not.toContain("Check the path");
     expect(process.exitCode).toBe(2);
   });
+  it("should say which blocks had their group membership left uncompared", async () => {
+    // The local block declares no `folder`, so its group is unmanaged and the
+    // diff cannot say whether it belongs in the group that just appeared.
+    const local: SchemaData = {
+      components: [
+        comp("hero", {
+          title: { type: "text", pos: 0 },
+        }) as unknown as SchemaData["components"][number],
+      ],
+      datasources: [],
+      folders: [],
+    };
+    vi.mocked(loadSchema).mockResolvedValue(local);
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/222/components", () =>
+        HttpResponse.json({
+          components: [
+            {
+              ...comp("hero", { title: { type: "text", pos: 0 } }),
+              component_group_uuid: "group-uuid",
+            },
+          ],
+        }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/222/component_groups", () =>
+        HttpResponse.json({
+          component_groups: [{ id: 1, name: "Layout", uuid: "group-uuid", parent_uuid: null }],
+        }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/222/internal_tags", () =>
+        HttpResponse.json({ internal_tags: [] }, { headers: { Total: "0", "Per-Page": "100" } }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/222/datasources", () =>
+        HttpResponse.json({ datasources: [] }),
+      ),
+    );
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "222",
+      "--to",
+      "./schema.ts",
+    ]);
+
+    expect(diffOutput()).toContain("Group membership not compared for hero");
+  });
 });

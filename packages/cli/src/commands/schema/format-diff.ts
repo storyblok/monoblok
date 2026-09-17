@@ -61,6 +61,11 @@ export type FormatDiffOptions = {
   showUnchanged?: boolean;
   /** Text shown after `Summary:` when both schemas are empty. */
   emptySummary?: string;
+  /**
+   * Sentence introducing {@link DiffResult.unmanagedFolders}, e.g. "not
+   * compared". Omit to leave the note out.
+   */
+  unmanagedFolderNote?: (names: string[]) => string;
 };
 
 const ACTION_ICONS: Record<DiffAction, string> = {
@@ -120,6 +125,11 @@ export function formatDiff(result: DiffResult, options: FormatDiffOptions): stri
     .join(", ");
 
   lines.push(`Summary: ${summary || options.emptySummary || ""}`);
+
+  if (options.unmanagedFolderNote && result.unmanagedFolders.length > 0) {
+    lines.push("");
+    lines.push(chalk.dim(options.unmanagedFolderNote(result.unmanagedFolders)));
+  }
 
   return lines.join("\n");
 }

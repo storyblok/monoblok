@@ -915,4 +915,21 @@ describe("diffSchema", () => {
 
     expect(names).toEqual(["marketing", "marketing/campaigns", "marketing/campaigns/2026"]);
   });
+  it("should flag a block whose group membership neither side can express", () => {
+    const remote = normalizedRemote(
+      [{ ...makeComponent("hero", {}), component_group_uuid: "group-uuid" } as Component],
+      [{ id: 1, name: "Layout", uuid: "group-uuid", parent_uuid: null } as ComponentFolder],
+    );
+    // Code-loaded and declaring no `folder`, so it cannot express membership.
+    const local = normalized([makeComponent("hero", {})]);
+
+    expect(diffSchema(remote, local).unmanagedFolders).toEqual(["hero"]);
+  });
+
+  it("should not flag a block that no side places in a group", () => {
+    const remote = normalizedRemote([makeComponent("hero", {})]);
+    const local = normalized([makeComponent("hero", {})]);
+
+    expect(diffSchema(remote, local).unmanagedFolders).toEqual([]);
+  });
 });

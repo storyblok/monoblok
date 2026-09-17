@@ -70,6 +70,12 @@ export interface EntityDiff {
 
 export interface DiffResult {
   diffs: EntityDiff[];
+  /**
+   * Blocks whose group membership neither side could express, so `folder` was
+   * left uncompared. Reported so a reader is not left to infer from a folder
+   * appearing or disappearing which block moved into or out of it.
+   */
+  unmanagedFolders: string[];
   creates: number;
   updates: number;
   unchanged: number;

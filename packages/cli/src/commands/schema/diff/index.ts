@@ -19,12 +19,25 @@ schemaCommand
     "--to <space-id|path>",
     "Target schema: a space ID or a path to a schema entry file",
   )
+  .addHelpText(
+    "after",
+    `
+Entities are reported as added, changed, or removed relative to --to.
+
+Use --from <space-id> --to <path> to mirror what \`schema push <path>\` would do to
+that space. Only that direction reports a block's explicit component_group_uuid,
+which is the escape hatch push acts on; between two spaces the per-space group
+uuids and tag ids are translated to folder paths and tag names before comparing.`,
+  )
   .action(async (options: { from: string; to: string }, command) => {
     const ui = getUI();
     const logger = getLogger();
     const { verbose } = command.optsWithGlobals();
     const { state } = session();
-    const { from, to } = options;
+    // Trimmed once here so a ref padded with whitespace resolves and prints the
+    // same way `resolveSource` reads it.
+    const from = options.from.trim();
+    const to = options.to.trim();
 
     ui.title(commands.SCHEMA, colorPalette.SCHEMA, "Diffing schema...");
     logger.info("Schema diff started", { from, to });

@@ -25,6 +25,7 @@ interface MockComponent {
   created_at: string;
   updated_at: string;
   schema: Record<string, Record<string, unknown>>;
+  color?: string;
 }
 
 function comp(
@@ -345,5 +346,21 @@ describe("schema diff command", () => {
 
     expect(output()).toContain(`Duplicate schema definitions: block name "hero". (--to)`);
     expect(process.exitCode).toBe(2);
+  });
+  it("should accept a space ID padded with whitespace and echo it trimmed", async () => {
+    spaceWith("111", []);
+    spaceWith("222", []);
+
+    await schemaCommand.parseAsync(["node", "test", "diff", "--from", " 111 ", "--to", "222"]);
+
+    expect(diffOutput()).toContain("from 111 → to 222");
+  });
+  it("should render a cleared value as an empty string rather than a bare dash", async () => {
+    spaceWith("111", [{ ...comp("hero", { title: { type: "text", pos: 0 } }), color: "#f00" }]);
+    spaceWith("222", [{ ...comp("hero", { title: { type: "text", pos: 0 } }, 2), color: "" }]);
+
+    await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
+
+    expect(diffOutput()).toContain('+ ""');
   });
 });

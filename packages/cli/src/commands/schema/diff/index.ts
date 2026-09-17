@@ -24,10 +24,14 @@ schemaCommand
     `
 Entities are reported as added, changed, or removed relative to --to.
 
-Use --from <space-id> --to <path> to mirror what \`schema push <path>\` would do to
-that space. Only that direction reports a block's explicit component_group_uuid,
-which is the escape hatch push acts on; between two spaces the per-space group
-uuids and tag ids are translated to folder paths and tag names before comparing.`,
+Use --from <space-id> --to <path> for the comparison \`schema push <path>\` makes
+against that space. Only that direction reports a block's explicit
+component_group_uuid, which is the escape hatch push acts on; between two spaces
+the per-space group uuids and tag ids are translated to folder paths and tag
+names before comparing.
+
+"removed" means absent from --to, not that a push would delete it: \`schema push\`
+leaves remote-only entities alone unless it is given --delete.`,
   )
   .action(async (options: { from: string; to: string }, command) => {
     const ui = getUI();

@@ -19,6 +19,8 @@ jobs:
       # `pull_request_target` checks out the base branch, so the commitlint
       # config and dependencies come from `main`, not from the PR.
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-node
 
       # The PR title becomes the squash commit message, so it has to satisfy

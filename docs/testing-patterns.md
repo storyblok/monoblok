@@ -50,21 +50,11 @@ CI runs on both macOS and Windows. These are the non-obvious gotchas:
 
 ## Astro end-to-end tests
 
-`astro dev` daemonizes when it detects an agentic environment: it forks the server, prints the pid,
-and the foreground process exits. `start-server-and-test` treats its child exiting as the server
-dying and aborts with "server closed unexpectedly", so the Astro suite fails for anyone running it
-from a coding agent while passing in CI.
+The e2e target starts the playground through `playground:test:foreground`, which sets two env vars:
 
-`ASTRO_DEV_BACKGROUND` suppresses that auto-detection, which is why the e2e target starts the
-playground through `playground:test:foreground` rather than `playground:test`. The name reads
-backwards: any non-empty value tells Astro the background decision has already been made, so it
-skips detection and stays in the foreground.
-
-The same script sets `STORYBLOK_E2E`, which the test playground reads to switch the dev toolbar off.
-The toolbar is loaded through a dynamic import that loses the race against Vite re-optimizing
-dependencies, and Cypress fails a test on any unhandled rejection. Manual playground runs do not set
-it and keep the toolbar.
-
-A daemon that does slip through outlives the run and keeps port 4321, and the next run then binds
-4322 and tests against the stale server.
-`pnpm --filter @storyblok/playground-astro-test exec astro dev stop` clears it.
+- **`ASTRO_DEV_BACKGROUND`** — `astro dev` daemonizes when it detects an agentic environment, and
+  `start-server-and-test` then aborts with "server closed unexpectedly". Any non-empty value skips
+  that detection. A daemon that slips through keeps port 4321 and the next run tests against it;
+  `pnpm --filter @storyblok/playground-astro-test exec astro dev stop` clears it.
+- **`STORYBLOK_E2E`** — switches the dev toolbar off. Its dynamic import loses the race against Vite
+  re-optimizing dependencies, and Cypress fails a test on any unhandled rejection.

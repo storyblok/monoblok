@@ -884,4 +884,35 @@ describe("diffSchema", () => {
     expect(result.creates).toBe(3);
     expect(result.diffs.map((d) => d.type)).toEqual(["folder", "component", "datasource"]);
   });
+  it("should order entities by name so a base-only block sits with its neighbours", () => {
+    // The base-only block must not be flushed to the end: a reader scanning for
+    // "zebra" should find it where the alphabet puts it, whichever side holds it.
+    const from = normalized([makeComponent("alpha", {}), makeComponent("zebra", {})]);
+    const to = normalized([makeComponent("mid", {}), makeComponent("alpha", {})]);
+
+    const names = diffSchema(from, to)
+      .diffs.filter((d) => d.type === "component")
+      .map((d) => d.name);
+
+    expect(names).toEqual(["alpha", "mid", "zebra"]);
+  });
+
+  it("should order folders parent-first so a push can create them in diff order", () => {
+    const folder = (path: string): LocalFolder => ({
+      name: path.split("/").pop() ?? path,
+      path,
+      parentPath: path.includes("/") ? path.split("/").slice(0, -1).join("/") : null,
+    });
+    const to = normalized(
+      [],
+      [],
+      [folder("marketing/campaigns/2026"), folder("marketing"), folder("marketing/campaigns")],
+    );
+
+    const names = diffSchema(normalized(), to)
+      .diffs.filter((d) => d.type === "folder")
+      .map((d) => d.name);
+
+    expect(names).toEqual(["marketing", "marketing/campaigns", "marketing/campaigns/2026"]);
+  });
 });

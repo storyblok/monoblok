@@ -285,15 +285,17 @@ function buildEntityDiff(
   };
 }
 
-/** Names of `to` in insertion order, then any `from`-only names — mirrors the target's order. */
+/**
+ * Every name across both sides, sorted, so a diff reads in one order regardless
+ * of which order the API happened to return entities in and an entity only on
+ * the base side sits next to its neighbours instead of after every other one.
+ *
+ * Code-unit order (not `localeCompare`) because folder paths must stay
+ * parent-first for `schema push`, which creates a group before the groups nested
+ * in it. A parent path is a prefix of its children, so it always compares lower.
+ */
 function orderedNames<T>(from: Map<string, T>, to: Map<string, T>): string[] {
-  const names = [...to.keys()];
-  for (const name of from.keys()) {
-    if (!to.has(name)) {
-      names.push(name);
-    }
-  }
-  return names;
+  return [...new Set([...to.keys(), ...from.keys()])].sort();
 }
 
 /**

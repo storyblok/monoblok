@@ -11,7 +11,6 @@ export default defineConfig({
       entry: {
         index: "./src/index.ts",
         rsc: "./src/rsc/index.ts",
-        ssr: "./src/ssr/index.ts",
       },
       format: ["esm", "cjs"],
       outDir: "./dist",

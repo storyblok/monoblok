@@ -1,58 +1,39 @@
-import { useEffect, useState } from "react";
-import { registerStoryblokBridge } from "@storyblok/js";
+export type {
+  BlockContent,
+  BlockContentInput,
+  Story,
+  StoryblokBlockData,
+  StoryblokComponentProps,
+  StoryblokEditableProps,
+} from "./types";
 
-import type { ISbStoriesParams, ISbStoryData, StoryblokBridgeConfigV2 } from "./types";
+export {
+  defineStoryblokComponents,
+  type StoryblokComponentEntry,
+  type StoryblokComponentsOptions,
+  type StoryblokComponentsResult,
+} from "./define-storyblok-components";
 
-import { getStoryblokApi } from "./core";
+export {
+  type StoryblokReactRichTextComponent,
+  type StoryblokReactRichTextComponentMap,
+  type StoryblokReactRichTextComponentProps,
+  type StoryblokReactRichTextProps,
+  type StoryblokReactRichTextRenderContext,
+  createRichTextRenderer,
+  StoryblokRichText,
+} from "./richtext";
 
-import { useStoryblokRichText } from "./richtext";
+export { storyblokEditable } from "@storyblok/live-preview";
+export { type LivePreviewStory } from "@storyblok/live-preview";
 
-export const useStoryblok = (
-  slug: string,
-  apiOptions: ISbStoriesParams = {},
-  bridgeOptions: StoryblokBridgeConfigV2 = {},
-): ISbStoryData | null => {
-  const [story, setStory] = useState<ISbStoryData>({} as ISbStoryData);
+export { type StoryblokRichTextDoc } from "@storyblok/richtext";
 
-  const isBridgeEnable =
-    typeof window !== "undefined" && typeof window.storyblokRegisterEvent !== "undefined";
-
-  const storyblokApiInstance = getStoryblokApi();
-
-  useEffect(() => {
-    if (!storyblokApiInstance) {
-      console.error("You can't use useStoryblok if you're not loading apiPlugin.");
-      return;
-    }
-    async function initStory() {
-      const { data } = await storyblokApiInstance.get(`cdn/stories/${slug}`, apiOptions);
-
-      setStory(data.story);
-
-      if (isBridgeEnable && data.story.id) {
-        registerStoryblokBridge(data.story.id, (story) => setStory(story), bridgeOptions);
-      }
-    }
-
-    initStory();
-  }, [slug, JSON.stringify(apiOptions), storyblokApiInstance]);
-
-  if (!storyblokApiInstance) {
-    return null;
-  }
-
-  bridgeOptions.resolveRelations = bridgeOptions.resolveRelations ?? apiOptions.resolve_relations;
-
-  bridgeOptions.resolveLinks = bridgeOptions.resolveLinks ?? apiOptions.resolve_links;
-
-  return story;
-};
-
-export * from "./core";
-
-// Export the main function
-export { useStoryblokRichText };
-
-export * from "./core/richtext";
-export { StoryblokRichText } from "./storyblok-rich-text";
-export * from "./utils";
+export {
+  StoryblokPreview,
+  type StoryblokPreviewProps,
+  useStoryblokEditorEvent,
+  type UseStoryblokEditorEventOptions,
+  useStoryblokState,
+  type UseStoryblokStateOptions,
+} from "./client";

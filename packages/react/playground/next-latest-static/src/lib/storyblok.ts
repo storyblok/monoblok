@@ -1,12 +1,15 @@
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
 import EmojiRandomizer from "@/app/components/EmojiRandomizer";
 import Grid from "@/app/components/Grid";
 import Page from "@/app/components/Page";
 import Teaser from "@/app/components/Teaser";
-import { apiPlugin, storyblokInit } from "@storyblok/react/ssr";
 
-export const getStoryblokApi = storyblokInit({
-  accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
-  use: [apiPlugin],
+export const apiClient = createApiClient({
+  accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
+});
+
+export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
   components: {
     teaser: Teaser,
     page: Page,

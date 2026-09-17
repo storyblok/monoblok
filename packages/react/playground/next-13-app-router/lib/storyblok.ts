@@ -1,12 +1,14 @@
+import { createApiClient } from "@storyblok/api-client";
+import { defineStoryblokComponents } from "@storyblok/react";
+import Feature from "@/components/Feature";
+import Grid from "@/components/Grid";
 import Page from "@/components/Page";
 import Teaser from "@/components/Teaser";
-import { apiPlugin, storyblokInit } from "@storyblok/react/rsc";
 
-export const getStoryblokApi = storyblokInit({
-  accessToken: "OurklwV5XsDJTIE1NJaD2wtt",
-  use: [apiPlugin],
-  components: {
-    teaser: Teaser,
-    page: Page,
-  },
+export const apiClient = createApiClient({
+  accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
+});
+
+export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
+  components: { teaser: Teaser, page: Page, grid: Grid, feature: Feature },
 });

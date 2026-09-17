@@ -17,6 +17,11 @@ export function isSpaceRef(ref: string): boolean {
  * written for commands that take a single schema, so without it a two-sided diff
  * leaves the reader guessing which file is meant. An {@link APIError} renders its
  * own message stack and is rethrown untouched.
+ *
+ * The hint speaks to reaching the file at all, so it is only added when the file
+ * could not be loaded. An error thrown *by* the module — a `define*()` rejecting
+ * its input, say — means the path and the install were fine, and telling the
+ * reader to check them sends them after a fault that is not there.
  */
 function withSourceContext(error: unknown, hint: string, label: string): Error {
   if (error instanceof CommandError) {
@@ -26,7 +31,22 @@ function withSourceContext(error: unknown, hint: string, label: string): Error {
     return error;
   }
   const cause = toError(error);
+  if (!isModuleResolutionError(cause)) {
+    return new Error(`${cause.message} (${label})`, { cause });
+  }
   return new Error(`${hint}: ${cause.message}`, { cause });
+}
+
+/**
+ * Whether an error is the module system failing to reach or parse the entry
+ * file, as opposed to the entry file running and throwing.
+ */
+function isModuleResolutionError(error: Error): boolean {
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND" || code === "ENOENT") {
+    return true;
+  }
+  return /cannot find module|failed to load|unexpected token|transform failed/i.test(error.message);
 }
 
 /**

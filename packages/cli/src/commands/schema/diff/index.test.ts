@@ -363,4 +363,28 @@ describe("schema diff command", () => {
 
     expect(diffOutput()).toContain('+ ""');
   });
+
+  it("should not blame the path or the install for an error the schema file itself threw", async () => {
+    consoleError.mockImplementation(() => {});
+    // A `define*()` helper rejecting its input is a plain Error, not a
+    // CommandError: the file resolved and ran, so the path and the install are
+    // both fine.
+    vi.mocked(loadSchema).mockRejectedValue(
+      new Error(`defineFolder: folder name "A/B" must not contain "/"`),
+    );
+    spaceWith("111", []);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "111",
+      "--to",
+      "./schema.ts",
+    ]);
+
+    expect(output()).toContain(`defineFolder: folder name "A/B" must not contain "/" (--to)`);
+    expect(output()).not.toContain("dependencies are installed");
+  });
 });

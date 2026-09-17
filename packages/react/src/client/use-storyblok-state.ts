@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { LivePreviewStory } from "@storyblok/live-preview";
-import type { StoryblokPreviewStory } from "../types";
+import type { Story } from "../types";
 import {
   useStoryblokEditorEvent,
   type UseStoryblokEditorEventOptions,
@@ -28,10 +28,10 @@ export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions
  * ```
  */
 export function useStoryblokState(
-  story: StoryblokPreviewStory,
+  story: Story,
   options: UseStoryblokStateOptions = {},
-): StoryblokPreviewStory & LivePreviewStory {
-  const [current, setCurrent] = useState<StoryblokPreviewStory & LivePreviewStory>(story);
+): LivePreviewStory<Story> {
+  const [current, setCurrent] = useState<LivePreviewStory<Story>>(story);
 
   // Sync a new prop snapshot without overwriting editor updates on every render.
   // useState only uses the initial value on mount, so cross-route navigation
@@ -41,7 +41,7 @@ export function useStoryblokState(
     setCurrent(story);
   }, [story]);
 
-  useStoryblokEditorEvent(
+  useStoryblokEditorEvent<Story>(
     (updatedStory) => setCurrent((prev) => ({ ...prev, ...updatedStory })),
     options,
   );

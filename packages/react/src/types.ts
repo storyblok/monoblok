@@ -1,6 +1,7 @@
 import type { storyblokEditable } from "@storyblok/live-preview";
 import type { BlockContent, BlockContentInput } from "./generated/types/field";
 import type { Story } from "./generated/types/story";
+import { Prettify } from "./generated/types/_utils";
 
 /**
  * Attributes returned by `storyblokEditable` — spread onto the root element of a
@@ -45,14 +46,8 @@ export interface StoryblokComponentProps<
 
 export type { BlockContent, BlockContentInput, Story };
 
-/** Loose block shape accepted by the React renderer from CAPI and Visual Editor payloads. */
-export type StoryblokBlock = {
-  _uid: string;
-  component: string;
-  _editable?: string;
+export type StoryblokBlockData = Prettify<
+  Pick<BlockContent, "_uid" | "component" | "_editable">
+> & {
   [key: string]: unknown;
-};
-
-export type StoryblokPreviewStory = Omit<Story, "content"> & {
-  content: StoryblokBlock;
 };

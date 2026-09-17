@@ -1,16 +1,16 @@
 import { type ComponentType, type ReactNode, Suspense } from "react";
 import { storyblokEditable } from "@storyblok/live-preview";
-import type { StoryblokBlock } from "./types";
+import type { StoryblokBlockData } from "./types";
 import { createStoryblokRichText } from "./richtext/create-storyblok-richtext";
 
 /** Attributes returned by {@link storyblokEditable} — spread onto the root element of a block component. */
 type EditableProps = ReturnType<typeof storyblokEditable>;
 
-/** Internal type: how the registry calls components (always passes BlockContent and editable). */
-type BlockComponentType = ComponentType<{ block: StoryblokBlock; editable?: EditableProps }>;
+/** Internal type: how the registry calls components (always passes StoryblokBlockData and editable). */
+type BlockComponentType = ComponentType<{ block: StoryblokBlockData; editable?: EditableProps }>;
 
 /**
- * Registration type: accepts any component whose block prop is a subtype of BlockContent.
+ * Registration type: accepts any component whose block prop is a subtype of StoryblokBlockData.
  * Using `any` intentionally avoids contravariance errors for components with specific block shapes.
  * `editable` is optional so existing components that don't declare it remain assignable.
  */
@@ -49,7 +49,7 @@ export interface StoryblokComponentsOptions {
 /** Components returned by {@link defineStoryblokComponents}, pre-wired to the same component map. */
 export interface StoryblokComponentsResult {
   /**
-   * Renders a single block or an array of blocks by looking up `block.component` in the map.
+   * Renders a single block by looking up `block.component` in the map.
    *
    * `TExtraProps` lets callers thread additional props through the tree without
    * widening the type to `Record<string, unknown>`, which would disable excess
@@ -58,13 +58,12 @@ export interface StoryblokComponentsResult {
    * @example
    * ```tsx
    * <StoryblokComponent block={story.content} />
-   * <StoryblokComponent block={story.content.body} />
    * // Extra props are forwarded to every rendered block component:
    * <StoryblokComponent block={story.content} locale="en" />
    * ```
    */
   StoryblokComponent: <TExtraProps extends object = {}>(
-    props: { block: StoryblokBlock | StoryblokBlock[] } & TExtraProps,
+    props: { block: StoryblokBlockData } & TExtraProps,
   ) => ReactNode;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
@@ -149,19 +148,7 @@ export function defineStoryblokComponents(
   function StoryblokComponent({
     block,
     ...rest
-  }: { block: StoryblokBlock | StoryblokBlock[] } & Record<string, unknown>): ReactNode {
-    // ── Array path ──────────────────────────────────────────────────────────
-    if (Array.isArray(block)) {
-      if (block.length === 0) return null;
-      return (
-        <>
-          {block.map((b, i) => (
-            <StoryblokComponent key={b._uid ?? i} block={b} {...rest} />
-          ))}
-        </>
-      );
-    }
-
+  }: { block: StoryblokBlockData } & Record<string, unknown>): ReactNode {
     // ── Null guard ──────────────────────────────────────────────────────────
     if (!block) {
       console.error("[Storyblok] StoryblokComponent: 'block' prop is required.");

@@ -64,6 +64,23 @@ describe("useStoryblokState", () => {
     expect(result.current).toStrictEqual(updated);
   });
 
+  it("preserves content when an editor event omits it", async () => {
+    const initial = makeStory({ content: { component: "page", _uid: "page-1" } });
+    const { result } = renderHook(() => useStoryblokState(initial));
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => {
+      editorCallback!({ id: 1, slug: "updated" });
+    });
+
+    expect(result.current).toMatchObject({
+      id: 1,
+      slug: "updated",
+      content: { component: "page", _uid: "page-1" },
+    });
+  });
+
   it("reflects multiple sequential editor updates", async () => {
     const initial = makeStory({ slug: "v1" });
     const { result } = renderHook(() => useStoryblokState(initial));

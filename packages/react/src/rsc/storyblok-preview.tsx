@@ -1,6 +1,6 @@
 import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 import type { ReactNode } from "react";
-import type { StoryblokPreviewStory } from "../types";
+import type { Story } from "../types";
 import { StoryblokPreviewServerRuntime } from "../client/storyblok-preview-server-runtime";
 
 /** Props for the {@link StoryblokPreview} component. */
@@ -8,13 +8,13 @@ export interface StoryblokPreviewProps {
   /**
    * Initial story fetched by the application.
    */
-  story: StoryblokPreviewStory;
+  story: Story;
   /**
    * Server Action responsible for rendering the story. Called once, awaited,
    * for the initial render, and again on every subsequent Visual Editor
    * update.
    */
-  renderContent: (story: LivePreviewStory) => Promise<ReactNode>;
+  renderContent: (story: LivePreviewStory<Story>) => Promise<ReactNode>;
   /**
    * Milliseconds to wait after the last editor event before triggering a
    * re-render. Prevents a Server Action call on every individual keystroke.

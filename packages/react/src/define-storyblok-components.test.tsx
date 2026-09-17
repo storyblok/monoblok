@@ -160,50 +160,6 @@ describe("defineStoryblokComponents", () => {
     });
   });
 
-  // ─── StoryblokComponent — array of blocks ─────────────────────────────────
-
-  describe("StoryblokComponent — array of blocks", () => {
-    it("renders every block in the array", () => {
-      const { StoryblokComponent } = defineStoryblokComponents({
-        components: { page: Page, teaser: Teaser },
-      });
-      const { getByTestId } = render(<StoryblokComponent block={[pageBlock, teaserBlock]} />);
-      expect(getByTestId("page")).toBeInTheDocument();
-      expect(getByTestId("teaser")).toBeInTheDocument();
-    });
-
-    it("returns null for an empty array", () => {
-      const { StoryblokComponent } = defineStoryblokComponents({ components: {} });
-      const { container } = render(<StoryblokComponent block={[]} />);
-      expect(container.firstChild).toBeNull();
-    });
-
-    it("renders the registry fallback for unknown block types within a list", () => {
-      const { StoryblokComponent } = defineStoryblokComponents({
-        components: { page: Page },
-        fallback: Fallback,
-      });
-      const { getByTestId, getAllByTestId } = render(
-        <StoryblokComponent block={[pageBlock, unknownBlock]} />,
-      );
-      expect(getByTestId("page")).toBeInTheDocument();
-      const fallbacks = getAllByTestId("fallback");
-      expect(fallbacks).toHaveLength(1);
-      expect(fallbacks[0]).toHaveTextContent("unknown");
-    });
-
-    it("uses block._uid as the React key (no key warning)", () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const { StoryblokComponent } = defineStoryblokComponents({ components: { page: Page } });
-      render(<StoryblokComponent block={[pageBlock]} />);
-      const keyWarning = (consoleSpy.mock.calls as string[][]).some((args) =>
-        args.some((a) => typeof a === "string" && a.toLowerCase().includes("key")),
-      );
-      expect(keyWarning).toBe(false);
-      consoleSpy.mockRestore();
-    });
-  });
-
   // ─── StoryblokRichText ─────────────────────────────────────────────────────
 
   describe("StoryblokRichText", () => {
@@ -373,7 +329,9 @@ describe("defineStoryblokComponents", () => {
         importFn().then((mod) => setComp(() => mod.default));
       }, []);
       // Default loading option is null in Pages Router dynamic.
-      if (!Comp) return null;
+      if (!Comp) {
+        return null;
+      }
       const AnyComp = Comp as ComponentType<any>;
       return <AnyComp {...props} />;
     });
@@ -707,24 +665,6 @@ describe("StoryblokComponent — editable injection", () => {
     render(<StoryblokComponent block={block} />);
     await waitFor(() => expect(received).toMatchObject({ "data-blok-uid": "s2-u2" }));
   });
-
-  it("passes editable to each block independently when rendering an array", () => {
-    const received: Array<unknown> = [];
-    function Widget({ block: _b, editable }: { block: BlockContent; editable?: unknown }) {
-      received.push(editable);
-      return <div data-testid="widget" />;
-    }
-    const { StoryblokComponent } = defineStoryblokComponents({ components: { widget: Widget } });
-    const blockA = makeBlockData({
-      component: "widget",
-      _uid: "a",
-      _editable: editableComment("s1", "a"),
-    });
-    const blockB = makeBlockData({ component: "widget", _uid: "b" }); // no _editable
-    render(<StoryblokComponent block={[blockA, blockB]} />);
-    expect(received[0]).toMatchObject({ "data-blok-uid": "s1-a" });
-    expect(received[1]).toEqual({});
-  });
 });
 
 // ─── StoryblokComponentProps type ────────────────────────────────────────────
@@ -762,12 +702,13 @@ describe("StoryblokComponent — type safety", () => {
     void (<StoryblokComponent block={pageBlock} />);
   });
 
-  it("accepts an array of BlockContent", () => {
+  it("rejects an array of BlockContent", () => {
+    // @ts-expect-error — StoryblokComponent accepts one block at a time
     void (<StoryblokComponent block={[pageBlock]} />);
   });
 
   it("rejects a non-block value for block", () => {
-    // @ts-expect-error — string is not assignable to StoryblokBlock | StoryblokBlock[]
+    // @ts-expect-error — string is not assignable to StoryblokBlockData
     void (<StoryblokComponent block="not-a-block" />);
   });
 
@@ -783,7 +724,7 @@ describe("StoryblokComponent — type safety", () => {
   // and excess-property checks for `block`.
   //
   // With `TExtraProps extends object = {}`, instantiating at TExtraProps = {}
-  // yields `{ block: BlockContent | BlockContent[] }` with no index signature,
+  // yields `{ block: BlockContent }` with no index signature,
   // so `keyof Props` is the literal union of known keys only.
 
   it("with TExtraProps = {}, the only known key is 'block'", () => {

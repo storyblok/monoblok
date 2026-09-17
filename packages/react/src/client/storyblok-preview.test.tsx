@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, act } from "@testing-library/react";
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
+import type { LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import { StoryblokPreview } from "./storyblok-preview";
 
@@ -40,7 +41,9 @@ describe("StoryblokPreview (client mode)", () => {
 
   it("calls renderContent with the initial story", () => {
     const story = makeStory({ slug: "initial" });
-    const renderContent = vi.fn((s: Story) => <div data-testid="content">{(s as any).slug}</div>);
+    const renderContent = vi.fn((s: LivePreviewStory<Story>) => (
+      <div data-testid="content">{(s as any).slug}</div>
+    ));
 
     const { getByTestId } = render(
       <StoryblokPreview story={story} renderContent={renderContent} />,

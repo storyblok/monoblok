@@ -2,10 +2,10 @@ export type {
   BlockContent,
   BlockContentInput,
   Story,
+  StoryblokBlockData,
   StoryblokComponentProps,
   StoryblokEditableProps,
 } from "./types";
-export type { StoryblokBlock, StoryblokPreviewStory } from "./types";
 
 export {
   defineStoryblokComponents,

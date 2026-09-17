@@ -2,6 +2,7 @@
 
 import { onStoryblokEditorEvent } from "@storyblok/live-preview";
 import type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
+import type { Story } from "../types";
 import { useEffect, useRef } from "react";
 
 /** Options for {@link useStoryblokEditorEvent}. */
@@ -27,8 +28,8 @@ export interface UseStoryblokEditorEventOptions {
  * subscription is established once on mount and never torn down/re-created
  * unless the component unmounts.
  */
-export function useStoryblokEditorEvent(
-  callback: (story: LivePreviewStory) => void,
+export function useStoryblokEditorEvent<TStory extends Story = Story>(
+  callback: (story: LivePreviewStory<TStory>) => void,
   { debounceMs, bridgeOptions }: UseStoryblokEditorEventOptions = {},
 ): void {
   const callbackRef = useRef(callback);
@@ -48,8 +49,10 @@ export function useStoryblokEditorEvent(
     let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
     const setup = async () => {
-      const fn = await onStoryblokEditorEvent((updatedStory) => {
-        if (!mounted) return;
+      const fn = await onStoryblokEditorEvent<TStory>((updatedStory) => {
+        if (!mounted) {
+          return;
+        }
 
         const ms = debounceRef.current;
 

@@ -22,16 +22,15 @@
     "test:types": "astro check"
   },
   "dependencies": {
-    "@astrojs/node": "^10.0.6",
+    "@astrojs/node": "^11.1.5",
     "@storyblok/api-client": "workspace:*",
     "@storyblok/richtext": "workspace:*",
     "@storyblok/schema": "workspace:*",
-    "astro": "^6.2.2",
+    "astro": "^7.3.2",
     "marked": "17.0.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "@storyblok/astro": "^9.0.5",
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
     "@tailwindcss/typography": "0.5.19",

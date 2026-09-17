@@ -18,6 +18,7 @@ import {
   toDatasourceUpdate,
 } from "../transform";
 import { buildGroupPathByUuid, mapSchemaGroupLists } from "../folders";
+import { collectTagNames, mapSchemaTagLists } from "../tags";
 
 /** A resolved component group reference: its numeric id and server uuid. */
 interface GroupRef {
@@ -54,6 +55,42 @@ function resolveGroupRefs(comp: Component, groupByPath: Map<string, GroupRef>): 
   resolved.schema = mapSchemaGroupLists(
     resolved.schema,
     (path) => groupByPath.get(path)?.uuid ?? path,
+  );
+
+  return resolved as unknown as Component;
+}
+
+/**
+ * Resolves a local block's tag references from names to the target space's tag
+ * ids and strips the transient `tags` key. A `tags` list becomes
+ * `internal_tag_ids`; each field's tag list names become ids. Entries that are
+ * already ids pass through — the raw escape hatch is space-local by definition,
+ * so there is nothing to resolve. Blocks with no tag reference are untouched. An
+ * unresolvable name throws a {@link CommandError}: tag creation precedes this
+ * step and aborts the push on failure, so it can only mean an internal
+ * inconsistency.
+ */
+function resolveTagIds(comp: Component, tagIdByName: Map<string, number>): Component {
+  const { tags, ...rest } = comp as Record<string, unknown>;
+  const resolved: Record<string, unknown> = { ...rest };
+
+  const toId = (name: string): number => {
+    const id = tagIdByName.get(name);
+    if (id === undefined) {
+      throw new CommandError(
+        `Unknown block tag "${name}" for component "${comp.name}": no matching tag exists. ` +
+          `Tag creation runs before component push, so this indicates an internal inconsistency.`,
+      );
+    }
+    return id;
+  };
+
+  if (Array.isArray(tags)) {
+    resolved.internal_tag_ids = tags.map((tag) => (typeof tag === "string" ? toId(tag) : tag));
+  }
+
+  resolved.schema = mapSchemaTagLists(resolved.schema, (entry) =>
+    typeof entry === "string" ? toId(entry) : entry,
   );
 
   return resolved as unknown as Component;
@@ -147,12 +184,13 @@ export async function executePush(
   remote: RemoteSchemaData,
   diffResult: DiffResult,
   options: { delete: boolean },
-): Promise<{ created: number; updated: number; deleted: number }> {
+): Promise<{ created: number; updated: number; deleted: number; createdTags: number }> {
   const client = getMapiClient();
   const spaceIdNum = Number(spaceId);
   let created = 0;
   let updated = 0;
   let deleted = 0;
+  let createdTags = 0;
 
   // 1. Create missing folders (component groups) parent-first, building a
   //    `slug path → { id, uuid }` map from the remote groups plus the ones we
@@ -194,6 +232,56 @@ export async function executePush(
     created++;
   }
 
+  // 1b. Create the block tags the blocks being pushed name but the space does
+  //     not have yet, building a `name → id` map from the remote tags plus the
+  //     ones we create. Tags are a dependency of the blocks that reference them
+  //     rather than an entity of their own: they are never diffed, and `--delete`
+  //     leaves them alone.
+  const pushedComponentNames = new Set(
+    diffResult.diffs
+      .filter((d) => d.type === "component" && (d.action === "create" || d.action === "update"))
+      .map((d) => d.name),
+  );
+  const tagIdByName = new Map<string, number>();
+  for (const tag of remote.internalTags.values()) {
+    if (tag.id !== undefined) {
+      tagIdByName.set(tag.name, tag.id);
+    }
+  }
+  const referencedTagNames = new Set(
+    local.components
+      .filter((comp) => pushedComponentNames.has(comp.name))
+      .flatMap((comp) => collectTagNames(comp)),
+  );
+  for (const name of referencedTagNames) {
+    if (tagIdByName.has(name)) {
+      continue;
+    }
+    let createdTag: { id?: number | null } | undefined;
+    try {
+      const res = await client.internalTags.create({
+        path: { space_id: spaceIdNum },
+        body: { internal_tag: { name, object_type: "component" } },
+        throwOnError: true,
+      });
+      createdTag = res.data?.internal_tag;
+    } catch (error) {
+      // `handleAPIError` always throws, so the response check below only runs on success.
+      handleAPIError("push_component_internal_tag", error, `Failed to create block tag ${name}`);
+    }
+    // A 2xx with a body missing the id would otherwise leave the tag
+    // unregistered while the push proceeds; fail loudly instead, since blocks
+    // that reference it can no longer be resolved.
+    if (createdTag?.id == null) {
+      throw new CommandError(
+        `Block tag "${name}" was created but the Management API response did not include an id; ` +
+          `blocks that reference this tag cannot be resolved.`,
+      );
+    }
+    tagIdByName.set(name, createdTag.id);
+    createdTags++;
+  }
+
   // 2. Upsert components. Each block's group membership is resolved from its
   //    transient `folder`/whitelist slug paths to server uuids just before the
   //    payload is built (`resolveGroupRefs`); the `folder` key never reaches the
@@ -209,7 +297,10 @@ export async function executePush(
     }
     const localComp = local.components.find((c) => c.name === diff.name);
     if (localComp) {
-      resolvedComponents.set(diff.name, resolveGroupRefs(localComp, groupByPath));
+      resolvedComponents.set(
+        diff.name,
+        resolveTagIds(resolveGroupRefs(localComp, groupByPath), tagIdByName),
+      );
     }
   }
   const componentResults = await Promise.allSettled(
@@ -413,7 +504,7 @@ export async function executePush(
     }
   }
 
-  return { created, updated, deleted };
+  return { created, updated, deleted, createdTags };
 }
 
 /** Builds changeset entries from diff results for storage. */

@@ -12,7 +12,8 @@ runs:
       if: ${{ inputs.cache == 'true' }}
 
     - name: Install pnpm
-      uses: pnpm/action-setup@v4 # no need to specify version, it reads from package.json -> packageManager
+      # Pinned to a commit SHA; the pnpm version itself comes from package.json -> packageManager.
+      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
     - name: Setup Node.js with cache
       if: ${{ inputs.cache == 'true' }}

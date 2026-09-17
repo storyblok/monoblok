@@ -115,6 +115,7 @@ export const upsertComponent = async (
     color,
     icon,
     preview_field,
+    preview_tmpl,
     internal_tag_ids,
   } = component;
   const payload = {
@@ -127,6 +128,7 @@ export const upsertComponent = async (
     color: color ?? undefined,
     icon: icon ?? undefined,
     preview_field: preview_field ?? undefined,
+    preview_tmpl: preview_tmpl ?? undefined,
     internal_tag_ids: toRequestTagIds(internal_tag_ids),
   };
 

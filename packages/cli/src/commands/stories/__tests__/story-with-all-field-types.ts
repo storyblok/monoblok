@@ -555,7 +555,7 @@ export const makeStoryWithAllFieldTypes = () =>
     meta_data: null,
     imported_at: null,
     preview_token: {
-      token: "24fa0ecf13df4537b53006a8632dd0e239c77360",
+      token: "0000000000000000000000000000000000000000",
       timestamp: "1764765973",
     },
     pinned: false,

@@ -30,27 +30,20 @@ const checkTokens = () => {
   return missingTokens;
 };
 
-// Function to display results in the UI
-const displayResult = (result: any) => {
-  document.querySelector<HTMLDivElement>("#result")!.innerHTML = `
-    <pre class="p-4 m-0 whitespace-pre-wrap">
-      <code class="font-mono text-sm">
-        ${JSON.stringify(result, null, 2)}
-      </code>
-    </pre>
-  `;
+// `textContent`, not `innerHTML`: the payload is an API response and would
+// otherwise be parsed as markup.
+const render = (value: unknown, isError: boolean) => {
+  const output = document.querySelector<HTMLElement>("#result-output")!;
+  output.textContent = JSON.stringify(value, null, 2);
+  output.classList.toggle("bg-red-100", isError);
+  output.classList.toggle("text-red-600", isError);
 };
 
-// Function to handle errors
-const handleError = (error: any) => {
+const displayResult = (result: unknown) => render(result, false);
+
+const handleError = (error: unknown) => {
   console.error(error);
-  document.querySelector<HTMLDivElement>("#result")!.innerHTML = `
-    <pre class="p-4 m-0 whitespace-pre-wrap bg-red-100 text-red-600">
-      <code class="font-mono text-sm">
-        ${JSON.stringify(error, null, 2)}
-      </code>
-    </pre>
-  `;
+  render(error, true);
 };
 
 // API call functions
@@ -112,7 +105,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <button id="post" class="!bg-purple-500 hover:!bg-purple-600 text-white font-semibold py-3 px-6 rounded">Create Component</button>
     </div>
     <div id="result" class="bg-gray-100 dark:bg-gray-800 rounded-lg overflow-auto max-h-[500px]">
-      <p class="p-4">Results will appear here...</p>
+      <pre class="p-4 m-0 whitespace-pre-wrap"><code id="result-output" class="font-mono text-sm">Results will appear here...</code></pre>
     </div>
   </div>
 `;

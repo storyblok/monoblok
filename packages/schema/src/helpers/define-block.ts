@@ -21,19 +21,24 @@ type FolderInput = BlockFolder | string | null;
 /** Normalizes a folder input type to the display path literal it resolves to. */
 type NormalizeFolder<T> = T extends { path: infer P extends string } ? P : T;
 
+/** Accepted input for a block's `tags`: the tag names, which push resolves to the target space's ids. */
+type TagsInput = readonly string[];
+
 type BlockInput<
   TName extends string = string,
   TFields extends BlockFields = BlockFields,
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
   TFolder extends FolderInput | undefined = undefined,
+  TTags extends TagsInput | undefined = undefined,
 > = Prettify<
-  Omit<Block, "name" | "fields" | "is_root" | "is_nestable" | "folder" | BlockOptional> & {
+  Omit<Block, "name" | "fields" | "is_root" | "is_nestable" | "folder" | "tags" | BlockOptional> & {
     name: TName;
     fields: TFields;
     is_root?: TIsRoot;
     is_nestable?: TIsNestable;
     folder?: TFolder;
+    tags?: TTags;
   } & Partial<Pick<Block, Exclude<BlockOptional, "is_root" | "is_nestable">>>
 >;
 
@@ -43,21 +48,24 @@ type DefinedBlock<
   TIsRoot extends boolean,
   TIsNestable extends boolean,
   TFolder extends FolderInput | undefined = undefined,
+  TTags extends TagsInput | undefined = undefined,
 > = Prettify<
-  Omit<Block, "name" | "fields" | "is_root" | "is_nestable" | "folder"> & {
+  Omit<Block, "name" | "fields" | "is_root" | "is_nestable" | "folder" | "tags"> & {
     name: TName;
     fields: TFields;
     is_root: TIsRoot;
     is_nestable: TIsNestable;
-  } & (TFolder extends undefined ? unknown : { folder: NormalizeFolder<TFolder> })
+  } & (TFolder extends undefined ? unknown : { folder: NormalizeFolder<TFolder> }) &
+    (TTags extends undefined ? unknown : { tags: TTags })
 >;
 
 /**
  * Returns a {@link Block} content-shape definition. The user-facing input is an
  * ordered array of `defineField` calls under `fields`; the array index becomes
  * each field's `pos`. A thin, strongly-typed helper — it does not map to the
- * MAPI wire shape (the CLI owns the DSL→wire mapping). Throws only on duplicate
- * field names (a programming error).
+ * MAPI wire shape (the CLI owns the DSL→wire mapping). Throws only on input that
+ * cannot mean anything: a duplicate field name, or a block naming its folder or
+ * tags twice through both the portable key and its raw-id escape hatch.
  *
  * @example
  * const pageBlock = defineBlock({
@@ -74,9 +82,10 @@ export function defineBlock<
   TIsRoot extends boolean = false,
   TIsNestable extends boolean = true,
   const TFolder extends FolderInput | undefined = undefined,
+  const TTags extends TagsInput | undefined = undefined,
 >(
-  block: BlockInput<TName, TFields, TIsRoot, TIsNestable, TFolder>,
-): DefinedBlock<TName, TFields, TIsRoot, TIsNestable, TFolder>;
+  block: BlockInput<TName, TFields, TIsRoot, TIsNestable, TFolder, TTags>,
+): DefinedBlock<TName, TFields, TIsRoot, TIsNestable, TFolder, TTags>;
 
 export function defineBlock(block: any) {
   const inputFields = Array.isArray(block?.fields) ? block.fields : [];
@@ -94,13 +103,37 @@ export function defineBlock(block: any) {
     return { ...field, pos: index };
   });
 
-  const { folder, ...restBlock } = block ?? {};
+  const { folder, tags, ...restBlock } = block ?? {};
+  if (tags !== undefined && restBlock.internal_tag_ids !== undefined) {
+    throw new Error(
+      `defineBlock: block "${block?.name ?? ""}" sets both "tags" and "internal_tag_ids"; use one`,
+    );
+  }
+  let normalizedTags: readonly string[] | undefined;
+  if (tags !== undefined) {
+    if (
+      !Array.isArray(tags) ||
+      tags.some((tag: unknown) => typeof tag !== "string" || !tag.trim())
+    ) {
+      throw new Error(
+        `defineBlock: block "${block?.name ?? ""}" has an empty or non-string entry in "tags"`,
+      );
+    }
+    // A tag name is resolved verbatim against the target space, so surrounding
+    // whitespace would address a tag nobody can name in the UI, and a repeated
+    // name would apply the same tag twice.
+    normalizedTags = [...new Set((tags as readonly string[]).map((tag) => tag.trim()))];
+  }
   if (folder !== undefined && typeof restBlock.component_group_uuid === "string") {
     throw new Error(
       `defineBlock: block "${block?.name ?? ""}" sets both "folder" and "component_group_uuid"; use one`,
     );
   }
-  if (typeof folder === "string" && !folder.split("/").some((segment) => segment.trim() !== "")) {
+  // The raw-path escape hatch is trimmed per segment so it addresses the same
+  // folder a `defineFolder` ref would.
+  const folderSegments =
+    typeof folder === "string" ? folder.split("/").map((segment) => segment.trim()) : [];
+  if (typeof folder === "string" && !folderSegments.some((segment) => segment !== "")) {
     throw new Error(`defineBlock: block "${block?.name ?? ""}" has an empty "folder" path`);
   }
   const normalizedFolder =
@@ -108,12 +141,15 @@ export function defineBlock(block: any) {
       ? undefined
       : folder !== null && typeof folder === "object"
         ? folder.path
-        : folder;
+        : typeof folder === "string"
+          ? folderSegments.join("/")
+          : folder;
 
   return {
     ...BLOCK_DEFAULTS,
     ...restBlock,
     ...(folder !== undefined && { folder: normalizedFolder }),
+    ...(normalizedTags !== undefined && { tags: normalizedTags }),
     fields,
   };
 }

@@ -306,6 +306,15 @@ schemaCommand
         pushSpinner.succeed(
           `Pushed ${pushResult.created} creations, ${pushResult.updated} updates${pushResult.deleted > 0 ? `, ${pushResult.deleted} deletions` : ""}.`,
         );
+
+        // Block tags are a dependency of the blocks that name them rather than a
+        // diffed entity, so a created tag never appears in the diff output above.
+        // Report it here so the space gaining a tag is not silent.
+        if (pushResult.createdTags > 0) {
+          ui.info(
+            `Created ${pushResult.createdTags} block tag(s) the target space did not have yet.`,
+          );
+        }
       }
 
       // 10. Write local component files (keeps disk in sync with intended schema state,

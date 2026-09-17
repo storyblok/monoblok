@@ -6,6 +6,7 @@ import { getResponseStatus, toError } from "../../utils/error/error";
 import { FetchError } from "../../utils/fetch";
 import { fetchAllPages } from "../../utils/pagination";
 import type { RegionCode } from "../../constants";
+import { isRemoteSource } from "./utils";
 import type {
   Asset,
   AssetFolderCreate,
@@ -150,6 +151,9 @@ export const createAssetInternalTag = async (
 };
 
 export const downloadFile = async (filename: string) => {
+  if (!isRemoteSource(filename)) {
+    throw new Error(`Refusing to download ${filename}: only http(s) URLs are supported.`);
+  }
   const response = await fetch(filename);
   if (!response.ok) {
     throw new Error(`Failed to download ${filename}`);

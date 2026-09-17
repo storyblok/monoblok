@@ -1,4 +1,4 @@
-import type { Component, ComponentFolder, Datasource } from "../../types";
+import type { Component, ComponentFolder, Datasource, InternalTag } from "../../types";
 
 /**
  * Local schema loaded from the user's TypeScript entry file: blocks, datasource
@@ -26,6 +26,8 @@ export interface RemoteSchemaData {
   components: Map<string, Component>;
   componentFolders: Map<string, ComponentFolder>;
   datasources: Map<string, Datasource>;
+  /** Block tags by name — the identity local schemas reference them by. */
+  internalTags: Map<string, InternalTag>;
 }
 
 export type DiffAction = "create" | "update" | "unchanged" | "stale";

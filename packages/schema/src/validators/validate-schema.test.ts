@@ -192,6 +192,43 @@ describe("validateSchema", () => {
     expect(result.issues[1].path).toEqual(["blocks", "page", "aside", "restrict_components"]);
   });
 
+  it("flags a field whose allow mixes reference dimensions", () => {
+    // Bypass defineField, which throws on the same combination.
+    const block = {
+      name: "page",
+      fields: [{ name: "body", type: "bloks", allow: ["teaser", { tag: "Marketing" }] }],
+    } as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block, teaser] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain("mixed_restriction_dimensions");
+  });
+
+  it("does not flag an allow made only of tag references", () => {
+    const block = {
+      name: "page",
+      fields: [{ name: "body", type: "bloks", allow: [{ tag: "Marketing" }] }],
+    } as SchemaBlockLike;
+    expect(codesFor(validateSchema({ blocks: [block] }))).toEqual([]);
+  });
+
+  it("flags a block that sets both tags and internal_tag_ids", () => {
+    const block = {
+      name: "page",
+      tags: ["Marketing"],
+      internal_tag_ids: ["123"],
+      fields: [],
+    } as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block] });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(["conflicting_block_tags"]);
+    expect(result.issues[0].path).toEqual(["blocks", "page", "internal_tag_ids"]);
+  });
+
+  it("does not flag a block tagged by name alone", () => {
+    const block = { name: "page", tags: ["Marketing"], fields: [] } as SchemaBlockLike;
+    expect(codesFor(validateSchema({ blocks: [block] }))).toEqual([]);
+  });
+
   it("does not flag the wire restriction keys used without allow or deny", () => {
     // They stay legal as a lower-level escape hatch on their own.
     const block = {

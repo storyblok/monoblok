@@ -318,14 +318,26 @@ function canExpressFolder(comp: Component | undefined, schema: NormalizedSchema)
  * Whether either side actually places this block in a group. Group membership
  * that goes uncompared is only worth reporting when there is membership to
  * report: a block ungrouped everywhere loses nothing by not being compared.
+ *
+ * Both spellings count. A block read from a space carries
+ * `component_group_uuid`, and a block written in code declares `folder` — so
+ * checking only the former would stay silent when the membership that goes
+ * uncompared is the one a schema file declares.
  */
 function hasGroupMembership(
   fromComp: Component | undefined,
   toComp: Component | undefined,
 ): boolean {
-  return [fromComp, toComp].some(
-    (comp) => typeof comp?.component_group_uuid === "string" && comp.component_group_uuid !== "",
-  );
+  return [fromComp, toComp].some((comp) => {
+    if (comp === undefined) {
+      return false;
+    }
+    const uuid = comp.component_group_uuid;
+    const folder = (comp as Record<string, unknown>).folder;
+    return (
+      (typeof uuid === "string" && uuid !== "") || (typeof folder === "string" && folder !== "")
+    );
+  });
 }
 
 /**

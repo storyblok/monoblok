@@ -932,4 +932,13 @@ describe("diffSchema", () => {
 
     expect(diffSchema(remote, local).unmanagedFolders).toEqual([]);
   });
+
+  it("should flag a local block whose declared folder the other side cannot express", () => {
+    // Neither side is a space, so the only spelling of membership in play is the
+    // `folder` key one file declares and the other omits.
+    const from = normalized([{ ...makeComponent("hero", {}), folder: "layout" } as Component]);
+    const to = normalized([makeComponent("hero", {})]);
+
+    expect(diffSchema(from, to).unmanagedFolders).toEqual(["hero"]);
+  });
 });

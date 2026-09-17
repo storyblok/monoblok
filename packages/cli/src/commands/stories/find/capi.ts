@@ -199,6 +199,11 @@ export async function createCapiContentFetcher({
     // A failed batch has to reach the stage's error callback to be counted and
     // reported, so an HTTP error must reject rather than resolve as `{ error }`.
     throwOnError: true,
+    // Off, and stated rather than left to the default. Turning it on would make
+    // `--capi-params resolve_relations` put each related story where its UUID
+    // was, so a `--where` expression could reach into a referenced story's
+    // content; as it stands the CDN's `rels` sidecar is ignored.
+    inlineRelations: false,
   });
 
   const query = { ...DEFAULT_CAPI_PARAMS, ...params };

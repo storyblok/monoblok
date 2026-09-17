@@ -119,8 +119,8 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 /**
- * An array that is really a set keyed by `name` — datasource entries and
- * dimensions — as a name-keyed record, so a change reads as the entry that moved
+ * An array that is really a set keyed by `name` — datasource dimensions — as a
+ * name-keyed record, so a change reads as the member that moved
  * rather than two dumps of the whole list, and reordering alone is not a change.
  * Returns `null` for any other array shape, including one whose duplicate names
  * would make the mapping lossy.
@@ -143,7 +143,8 @@ function asNameKeyed(value: unknown): Record<string, unknown> | null {
  * Like {@link diffKeyed}, but recurses into nested records so a change reads as
  * the property that actually moved (`schema.body.maximum`) instead of two dumps
  * of the whole enclosing object. Name-keyed arrays are recursed into the same
- * way (`entries.blue.value`); every other non-record value is reported whole.
+ * way (`dimensions.fr.entry_value`); every other non-record value is reported
+ * whole.
  */
 function diffKeyedDeep(
   before: Record<string, unknown>,

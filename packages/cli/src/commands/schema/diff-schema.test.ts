@@ -5,12 +5,24 @@ import type { LocalFolder, NormalizedSchema } from "./types";
 import { remoteToNormalized } from "./actions";
 import { diffSchema } from "./diff-schema";
 
+type Dimension = Datasource["dimensions"][number];
+
 function makeComponent(name: string, schema: Record<string, unknown>) {
   return { id: 1, name, created_at: "", updated_at: "", schema } as unknown as Component;
 }
 
+/** A datasource as a schema file defines it: no API-assigned dimension list. */
 function makeDatasource(name: string, slug: string) {
   return { id: 1, name, slug, created_at: "", updated_at: "" } as unknown as Datasource;
+}
+
+/** A datasource as a space returns it, dimension list included. */
+function makeDimensionedDatasource(
+  name: string,
+  slug: string,
+  dimensions: Dimension[],
+): Datasource {
+  return { ...makeDatasource(name, slug), dimensions };
 }
 
 /** Builds a {@link NormalizedSchema} the way a schema loaded from code is built. */
@@ -199,58 +211,44 @@ describe("diffSchema", () => {
     expect(result.diffs[0].changes.some((c) => c.field === "description")).toBe(true);
   });
 
-  it("should report the datasource entry that changed rather than the whole list", () => {
-    const entries = (value: string) => [
-      { name: "red", value: "#f00" },
-      { name: "blue", value },
+  it("should report the datasource dimension that changed rather than the whole list", () => {
+    const dimensions = (entryValue: string): Dimension[] => [
+      { id: 1, name: "de", entry_value: "farben" },
+      { id: 2, name: "fr", entry_value: entryValue },
     ];
     const from = normalized(
       [],
-      [
-        {
-          ...makeDatasource("Colors", "colors"),
-          entries: entries("#00f"),
-        } as unknown as Datasource,
-      ],
+      [makeDimensionedDatasource("Colors", "colors", dimensions("couleurs"))],
     );
     const to = normalized(
       [],
-      [
-        {
-          ...makeDatasource("Colors", "colors"),
-          entries: entries("#111"),
-        } as unknown as Datasource,
-      ],
+      [makeDimensionedDatasource("Colors", "colors", dimensions("teintes"))],
     );
 
     const result = diffSchema(from, to);
 
     expect(result.diffs[0].changes).toEqual([
-      { field: "entries.blue.value", change: "modified", before: "#00f", after: "#111" },
+      {
+        field: "dimensions.fr.entry_value",
+        change: "modified",
+        before: "couleurs",
+        after: "teintes",
+      },
     ]);
   });
 
-  it("should not report a reordered entry list as a change without saying what changed", () => {
-    const red = { name: "red", value: "#f00" };
-    const blue = { name: "blue", value: "#00f" };
-    const from = normalized(
-      [],
-      [{ ...makeDatasource("Colors", "colors"), entries: [red, blue] } as unknown as Datasource],
-    );
-    const to = normalized(
-      [],
-      [{ ...makeDatasource("Colors", "colors"), entries: [blue, red] } as unknown as Datasource],
-    );
+  it("should not report a reordered dimension list as a change without saying what changed", () => {
+    const de: Dimension = { id: 1, name: "de", entry_value: "farben" };
+    const fr: Dimension = { id: 2, name: "fr", entry_value: "couleurs" };
+    const from = normalized([], [makeDimensionedDatasource("Colors", "colors", [de, fr])]);
+    const to = normalized([], [makeDimensionedDatasource("Colors", "colors", [fr, de])]);
 
     const changes = diffSchema(from, to).diffs[0].changes;
-    expect(changes.map((c) => c.field)).toEqual(["entries"]);
+    expect(changes.map((c) => c.field)).toEqual(["dimensions"]);
   });
 
   it("should treat a datasource without dimensions as unchanged when base has empty dimensions", () => {
-    const from = normalized(
-      [],
-      [{ ...makeDatasource("Colors", "colors"), dimensions: [] } as unknown as Datasource],
-    );
+    const from = normalized([], [makeDimensionedDatasource("Colors", "colors", [])]);
     const to = normalized([], [makeDatasource("Colors", "colors")]);
 
     const result = diffSchema(from, to);

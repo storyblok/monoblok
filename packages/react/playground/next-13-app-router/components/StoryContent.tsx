@@ -1,9 +1,9 @@
 "use client";
 
-import { StoryblokPreview, type StoryblokPreviewStory } from "@storyblok/react";
+import { StoryblokPreview, type Story } from "@storyblok/react";
 import { StoryblokComponent } from "@/lib/storyblok";
 
-export function StoryContent({ story }: { story: StoryblokPreviewStory }) {
+export function StoryContent({ story }: { story: Story }) {
   return (
     <StoryblokPreview
       story={story}

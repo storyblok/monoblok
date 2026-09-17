@@ -1,10 +1,8 @@
 import { StoryblokComponent } from "@/lib/storyblok";
-import type { StoryblokBlock } from "@storyblok/react";
+import type { LivePreviewStory } from "@storyblok/react";
 import { Nav } from "@/app/components/Nav";
 
-type StoryContentProps = { story: { content?: StoryblokBlock } };
-
-export function StoryContent({ story }: StoryContentProps) {
+export function StoryContent({ story }: { story: LivePreviewStory }) {
   return (
     <main className="container mx-auto">
       <Nav />

@@ -60,6 +60,11 @@ playground through `playground:test:foreground` rather than `playground:test`. T
 backwards: any non-empty value tells Astro the background decision has already been made, so it
 skips detection and stays in the foreground.
 
+The same script sets `STORYBLOK_E2E`, which the test playground reads to switch the dev toolbar off.
+The toolbar is loaded through a dynamic import that loses the race against Vite re-optimizing
+dependencies, and Cypress fails a test on any unhandled rejection. Manual playground runs do not set
+it and keep the toolbar.
+
 A daemon that does slip through outlives the run and keeps port 4321, and the next run then binds
 4322 and tests against the stale server.
 `pnpm --filter @storyblok/playground-astro-test exec astro dev stop` clears it.

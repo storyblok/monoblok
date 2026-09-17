@@ -65,7 +65,7 @@
     "lint:playground:fix": "pnpm -r --parallel --filter='./playground/*' run lint:fix",
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:unit": "vp test run",
-    "playground:test:foreground": "ASTRO_DEV_BACKGROUND=1 pnpm run --filter ./playground/test dev",
+    "playground:test:foreground": "ASTRO_DEV_BACKGROUND=1 STORYBLOK_E2E=1 pnpm run --filter ./playground/test dev",
     "test:e2e": "start-server-and-test playground:test:foreground http://localhost:4321/ cy:run",
     "cy:run": "cypress run",
     "cy:open": "cypress open",

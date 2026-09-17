@@ -6,10 +6,10 @@ import { storyblok } from "@storyblok/astro";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  // The toolbar is dev-only, has no coverage here, and its dynamic import loses
-  // the race against Vite re-optimizing dependencies, which Cypress reports as
-  // an unhandled rejection and fails the run on.
-  devToolbar: { enabled: false },
+  // The toolbar's dynamic import loses the race against Vite re-optimizing
+  // dependencies, and Cypress fails a test on any unhandled rejection. Nothing
+  // covers the toolbar, so the e2e run turns it off and manual use keeps it.
+  devToolbar: { enabled: !process.env.STORYBLOK_E2E },
   integrations: [
     svelte(),
     vue(),

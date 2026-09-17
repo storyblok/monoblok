@@ -326,4 +326,24 @@ describe("schema diff command", () => {
 
     expect(diffOutput()).toContain("Group membership not compared for hero");
   });
+  it("should name the failing side on a schema authoring error", async () => {
+    consoleError.mockImplementation(() => {});
+    vi.mocked(loadSchema).mockRejectedValue(
+      new CommandError(`Duplicate schema definitions: block name "hero".`),
+    );
+    spaceWith("111", []);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "111",
+      "--to",
+      "./schema.ts",
+    ]);
+
+    expect(output()).toContain(`Duplicate schema definitions: block name "hero". (--to)`);
+    expect(process.exitCode).toBe(2);
+  });
 });

@@ -12,11 +12,17 @@ export function isSpaceRef(ref: string): boolean {
 /**
  * Adds "which side failed and what to check" context, but only to errors that do
  * not already explain themselves. A {@link CommandError} (a user mistake, exit
- * code 2) or an {@link APIError} (which renders its own message stack) is
- * rethrown untouched so the diagnosis and exit code match `schema push`.
+ * code 2) keeps its own diagnosis and exit code, gaining only the side label
+ * when it does not already name one — the shared loader and validator errors are
+ * written for commands that take a single schema, so without it a two-sided diff
+ * leaves the reader guessing which file is meant. An {@link APIError} renders its
+ * own message stack and is rethrown untouched.
  */
-function withSourceContext(error: unknown, hint: string): Error {
-  if (error instanceof CommandError || error instanceof APIError) {
+function withSourceContext(error: unknown, hint: string, label: string): Error {
+  if (error instanceof CommandError) {
+    return error.message.includes(label) ? error : new CommandError(`${error.message} (${label})`);
+  }
+  if (error instanceof APIError) {
     return error;
   }
   const cause = toError(error);
@@ -37,6 +43,7 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
       throw withSourceContext(
         error,
         `Could not load space "${value}" (${label}). Check the space ID and that you are logged in with access to it`,
+        label,
       );
     }
   }
@@ -52,6 +59,7 @@ export async function resolveSource(ref: string, label: string): Promise<Normali
     throw withSourceContext(
       error,
       `Could not load schema entry file "${value}" (${label}). Check the path, and that it is a project where the schema package and its dependencies are installed`,
+      label,
     );
   }
 }

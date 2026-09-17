@@ -6,6 +6,10 @@ import { storyblok } from "@storyblok/astro";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
+  // The toolbar is dev-only, has no coverage here, and its dynamic import loses
+  // the race against Vite re-optimizing dependencies, which Cypress reports as
+  // an unhandled rejection and fails the run on.
+  devToolbar: { enabled: false },
   integrations: [
     svelte(),
     vue(),

@@ -47,3 +47,19 @@ CI runs on both macOS and Windows. These are the non-obvious gotchas:
     return { ...actual, pathToFileURL: (p: string) => ({ href: p }) };
   });
   ```
+
+## Astro end-to-end tests
+
+`astro dev` daemonizes when it detects an agentic environment: it forks the server, prints the pid,
+and the foreground process exits. `start-server-and-test` treats its child exiting as the server
+dying and aborts with "server closed unexpectedly", so the Astro suite fails for anyone running it
+from a coding agent while passing in CI.
+
+`ASTRO_DEV_BACKGROUND` suppresses that auto-detection, which is why the e2e target starts the
+playground through `playground:test:foreground` rather than `playground:test`. The name reads
+backwards: any non-empty value tells Astro the background decision has already been made, so it
+skips detection and stays in the foreground.
+
+A daemon that does slip through outlives the run and keeps port 4321, and the next run then binds
+4322 and tests against the stale server.
+`pnpm --filter @storyblok/playground-astro-test exec astro dev stop` clears it.

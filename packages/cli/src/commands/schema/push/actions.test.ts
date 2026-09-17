@@ -286,6 +286,7 @@ describe("buildChangesetEntries", () => {
   function makeDiffResult(diffs: DiffResult["diffs"]): DiffResult {
     return {
       diffs,
+      unmanagedFolders: [],
       creates: diffs.filter((d) => d.action === "create").length,
       updates: diffs.filter((d) => d.action === "update").length,
       unchanged: diffs.filter((d) => d.action === "unchanged").length,
@@ -310,14 +311,14 @@ describe("buildChangesetEntries", () => {
 
   it("should map create and update actions correctly", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "update", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "update", changes: [], before: null, after: null },
       {
         type: "component",
         name: "new-comp",
         action: "create",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
     const local: SchemaData = {
@@ -339,9 +340,9 @@ describe("buildChangesetEntries", () => {
         type: "component",
         name: "hero",
         action: "unchanged",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 
@@ -352,7 +353,14 @@ describe("buildChangesetEntries", () => {
 
   it("should skip stale entries when delete option is false", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "footer", action: "stale", diff: null, local: null, remote: null },
+      {
+        type: "component",
+        name: "footer",
+        action: "stale",
+        changes: [],
+        before: null,
+        after: null,
+      },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -362,7 +370,14 @@ describe("buildChangesetEntries", () => {
 
   it("should include stale as delete when delete option is true", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "footer", action: "stale", diff: null, local: null, remote: null },
+      {
+        type: "component",
+        name: "footer",
+        action: "stale",
+        changes: [],
+        before: null,
+        after: null,
+      },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: true });
@@ -373,7 +388,7 @@ describe("buildChangesetEntries", () => {
 
   it("should include before/after snapshots", () => {
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "update", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "update", changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, baseRemote, { delete: false });
@@ -388,7 +403,7 @@ describe("buildChangesetEntries", () => {
     const localFolder = { name: "Layout", path: "layout", parentPath: null };
     const local: SchemaData = { components: [], folders: [localFolder], datasources: [] };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "layout", action: "create", diff: null, local: null, remote: null },
+      { type: "folder", name: "layout", action: "create", changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, local, baseRemote, { delete: false });
@@ -414,7 +429,7 @@ describe("buildChangesetEntries", () => {
       datasources: new Map(),
     };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "layout", action: "stale", diff: null, local: null, remote: null },
+      { type: "folder", name: "layout", action: "stale", changes: [], before: null, after: null },
     ]);
 
     const changes = buildChangesetEntries(diffResult, baseLocal, remote, { delete: true });
@@ -439,6 +454,7 @@ describe("executePush - folders", () => {
   function makeDiffResult(diffs: DiffResult["diffs"]): DiffResult {
     return {
       diffs,
+      unmanagedFolders: [],
       creates: diffs.filter((d) => d.action === "create").length,
       updates: diffs.filter((d) => d.action === "update").length,
       unchanged: diffs.filter((d) => d.action === "unchanged").length,
@@ -492,14 +508,14 @@ describe("executePush - folders", () => {
       datasources: [],
     };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "layout", action: "create", diff: null, local: null, remote: null },
+      { type: "folder", name: "layout", action: "create", changes: [], before: null, after: null },
       {
         type: "folder",
         name: "layout/heros",
         action: "create",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 
@@ -531,8 +547,8 @@ describe("executePush - folders", () => {
       datasources: [],
     };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "layout", action: "create", diff: null, local: null, remote: null },
-      { type: "component", name: "hero", action: "create", diff: null, local: null, remote: null },
+      { type: "folder", name: "layout", action: "create", changes: [], before: null, after: null },
+      { type: "component", name: "hero", action: "create", changes: [], before: null, after: null },
     ]);
 
     await expect(
@@ -560,8 +576,8 @@ describe("executePush - folders", () => {
       datasources: [],
     };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "layout", action: "create", diff: null, local: null, remote: null },
-      { type: "component", name: "hero", action: "create", diff: null, local: null, remote: null },
+      { type: "folder", name: "layout", action: "create", changes: [], before: null, after: null },
+      { type: "component", name: "hero", action: "create", changes: [], before: null, after: null },
     ]);
 
     await expect(
@@ -599,7 +615,7 @@ describe("executePush - folders", () => {
     };
     const local: SchemaData = { components: [], folders: [], datasources: [] };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "ghost", action: "stale", diff: null, local: null, remote: null },
+      { type: "folder", name: "ghost", action: "stale", changes: [], before: null, after: null },
     ]);
 
     await expect(executePush("12345", local, remote, diffResult, { delete: true })).rejects.toThrow(
@@ -633,7 +649,7 @@ describe("executePush - folders", () => {
     };
     const local: SchemaData = { components: [], folders: [], datasources: [] };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "old", action: "stale", diff: null, local: null, remote: null },
+      { type: "folder", name: "old", action: "stale", changes: [], before: null, after: null },
     ]);
 
     await expect(executePush("12345", local, remote, diffResult, { delete: true })).rejects.toThrow(
@@ -679,16 +695,16 @@ describe("executePush - folders", () => {
       datasources: [],
     };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "layout", action: "create", diff: null, local: null, remote: null },
+      { type: "folder", name: "layout", action: "create", changes: [], before: null, after: null },
       {
         type: "folder",
         name: "layout/heros",
         action: "create",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
-      { type: "component", name: "hero", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "create", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, emptyRemote(), diffResult, { delete: false });
@@ -727,7 +743,7 @@ describe("executePush - folders", () => {
       datasources: new Map(),
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "grid", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "grid", action: "create", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, remote, diffResult, { delete: false });
@@ -776,7 +792,7 @@ describe("executePush - folders", () => {
       datasources: new Map(),
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "grid", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "grid", action: "create", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, remote, diffResult, { delete: false });
@@ -818,7 +834,7 @@ describe("executePush - folders", () => {
       datasources: new Map(),
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "grid", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "grid", action: "create", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, remote, diffResult, { delete: false });
@@ -862,7 +878,7 @@ describe("executePush - folders", () => {
       datasources: new Map(),
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "update", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "update", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, remote, diffResult, { delete: false });
@@ -911,14 +927,14 @@ describe("executePush - folders", () => {
     };
     const local: SchemaData = { components: [], folders: [], datasources: [] };
     const diffResult = makeDiffResult([
-      { type: "folder", name: "old", action: "stale", diff: null, local: null, remote: null },
+      { type: "folder", name: "old", action: "stale", changes: [], before: null, after: null },
       {
         type: "folder",
         name: "old/nested",
         action: "stale",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 
@@ -962,8 +978,8 @@ describe("executePush - folders", () => {
     };
     const local: SchemaData = { components: [], folders: [], datasources: [] };
     const diffResult = makeDiffResult([
-      { type: "component", name: "page", action: "stale", diff: null, local: null, remote: null },
-      { type: "folder", name: "old", action: "stale", diff: null, local: null, remote: null },
+      { type: "component", name: "page", action: "stale", changes: [], before: null, after: null },
+      { type: "folder", name: "old", action: "stale", changes: [], before: null, after: null },
     ]);
 
     await expect(executePush("12345", local, remote, diffResult, { delete: true })).rejects.toThrow(
@@ -980,7 +996,7 @@ describe("executePush - folders", () => {
       datasources: [],
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "create", changes: [], before: null, after: null },
     ]);
 
     await expect(
@@ -1004,7 +1020,7 @@ describe("executePush - folders", () => {
       datasources: [],
     };
     const diffResult = makeDiffResult([
-      { type: "component", name: "hero", action: "create", diff: null, local: null, remote: null },
+      { type: "component", name: "hero", action: "create", changes: [], before: null, after: null },
     ]);
 
     await executePush("12345", local, emptyRemote(), diffResult, { delete: false });
@@ -1018,6 +1034,7 @@ describe("formatDiffOutput", () => {
   function makeDiffResult(diffs: DiffResult["diffs"]): DiffResult {
     return {
       diffs,
+      unmanagedFolders: [],
       creates: diffs.filter((d) => d.action === "create").length,
       updates: diffs.filter((d) => d.action === "update").length,
       unchanged: diffs.filter((d) => d.action === "unchanged").length,
@@ -1031,9 +1048,9 @@ describe("formatDiffOutput", () => {
         type: "datasource",
         name: "Page Categories",
         action: "stale",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 
@@ -1049,9 +1066,9 @@ describe("formatDiffOutput", () => {
         type: "datasource",
         name: "Page Categories",
         action: "stale",
-        diff: null,
-        local: null,
-        remote: null,
+        changes: [],
+        before: null,
+        after: null,
       },
     ]);
 

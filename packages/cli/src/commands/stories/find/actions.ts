@@ -74,15 +74,18 @@ export function assertSupportedOptions(options: FindOptions): void {
     // Asking the CDN for published content answers "what is live", but a story
     // with no published version is undecidable there: it passes through and is
     // settled against MAPI's *draft* content, so a run that reads as "what is
-    // live" reports stories that have never been published. `--publish-status
-    // published` is what removes them from the scope in the first place.
-    if (
-      capiParams.version !== undefined &&
-      capiParams.version !== "draft" &&
-      options.publishStatus !== "published"
-    ) {
+    // live" reports stories that have never been published. What removes them
+    // from the scope is a publish status that narrows to `is_published` on the
+    // server, which both `published` (live, no pending edits) and `changed`
+    // (live, with pending edits) do — a changed story is live, so its published
+    // content is exactly what the CDN can decide it on.
+    const narrowsToPublished =
+      options.publishStatus !== undefined &&
+      publishStatusToQueryParams(options.publishStatus).is_published === true;
+
+    if (capiParams.version !== undefined && capiParams.version !== "draft" && !narrowsToPublished) {
       throw new CommandError(
-        `--capi-params version=${String(capiParams.version)} needs --publish-status published: stories with no published content cannot be decided from CDN content, and would otherwise be matched against their draft instead.`,
+        `--capi-params version=${String(capiParams.version)} needs --publish-status published or --publish-status changed: stories with no published content cannot be decided from CDN content, and would otherwise be matched against their draft instead.`,
       );
     }
   }

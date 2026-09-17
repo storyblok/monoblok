@@ -160,6 +160,35 @@ describe("assertSupportedOptions", () => {
       ).not.toThrow();
     });
 
+    // A changed story is live: it has published content, and that content is
+    // exactly what the CDN can decide it on. Refusing it would push a "what is
+    // live" run into a filter that drops every live story with pending edits.
+    it("should accept a published --capi-params version alongside --publish-status changed", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({
+            capiFilter: true,
+            where: ["$.content"],
+            capiParams: "{version: published}",
+            publishStatus: "changed",
+          }),
+        ),
+      ).not.toThrow();
+    });
+
+    it("should reject a published --capi-params version alongside --publish-status draft", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({
+            capiFilter: true,
+            where: ["$.content"],
+            capiParams: "{version: published}",
+            publishStatus: "draft",
+          }),
+        ),
+      ).toThrow(/needs --publish-status published or --publish-status changed/);
+    });
+
     it("should accept an explicit draft --capi-params version, which matches what MAPI serves", () => {
       expect(() =>
         assertSupportedOptions(

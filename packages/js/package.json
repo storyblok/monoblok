@@ -53,7 +53,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/preview-bridge": "^2.1.6",
+    "@storyblok/preview-bridge": "^2.3.1",
     "@storyblok/richtext": "workspace:^",
     "storyblok-js-client": "workspace:^"
   },

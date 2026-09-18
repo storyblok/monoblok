@@ -179,6 +179,52 @@ describe("classifyExports duplicate identities", () => {
   });
 });
 
+// Regression: a field with no `name` never reaches the wire at all, and one with
+// no `type` reaches it as an empty object the Management API discards. Both push
+// green and leave the field missing from the component, so the load has to
+// refuse them.
+describe("classifyExports unpushable fields", () => {
+  it("should throw on a field with no name", () => {
+    expect(() => classifyExports({ hero: { name: "hero", fields: [{ type: "text" }] } })).toThrow(
+      'the field at index 0 in block "hero" has no "name"',
+    );
+  });
+
+  it("should throw on a field with no type", () => {
+    expect(() =>
+      classifyExports({ hero: { name: "hero", fields: [{ name: "headline" }] } }),
+    ).toThrow('field "headline" in block "hero" has no "type"');
+  });
+
+  it("should throw on a blank type", () => {
+    expect(() =>
+      classifyExports({ hero: { name: "hero", fields: [{ name: "headline", type: "  " }] } }),
+    ).toThrow('field "headline" in block "hero" has no "type"');
+  });
+
+  it("should throw on a field entry that is not an object", () => {
+    expect(() => classifyExports({ hero: { name: "hero", fields: ["headline"] } })).toThrow(
+      'the entry at index 0 in block "hero" is not an object',
+    );
+  });
+
+  it("should report every unpushable field in one error", () => {
+    expect(() =>
+      classifyExports({
+        hero: { name: "hero", fields: [{ name: "headline" }, { type: "text" }] },
+      }),
+    ).toThrow(
+      'field "headline" in block "hero" has no "type", the field at index 1 in block "hero" has no "name"',
+    );
+  });
+
+  it("should point at schema validate for the full report", () => {
+    expect(() =>
+      classifyExports({ hero: { name: "hero", fields: [{ name: "headline" }] } }),
+    ).toThrow("storyblok schema validate");
+  });
+});
+
 describe("classifyExports folders", () => {
   const folder = (name: string, parent?: any) => ({
     name,

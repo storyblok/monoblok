@@ -368,34 +368,26 @@ run() {
 }
 
 # ── Scenarios ─────────────────────────────────────────────────────────────────
-# Every entry is a real invocation, each sized to roughly 150-200 server-side
-# matches on the reference space: enough work to measure, ~30s to re-run. Add,
-# reorder or edit freely — the shape is `run <name> <description> <args…>`.
+# Every entry is a real invocation against the reference space. The first five
+# are the optimization matrix — the same question asked four ways plus the trap
+# — and the rest are the use cases from the README, each with the counts a
+# correct run produces. Add, reorder or edit freely; the shape is
+# `run <name> <description> <args…>`.
 #
 # The expected counts were taken from a full offline pass over the space and
 # confirmed against a real run, so a number that comes back different is either
 # content drift or a bug worth looking at.
 #
-#   faq  178 stories, all of content type `faq`; 34 of them nest a `hint` block
-#        somewhere in their body, which is what makes the same scope worth
-#        running both with and without `--where`.
 #   lp   210 entries: 197 published (6 of those with unpublished changes), ~1,200
 #        references, 27 stories with a reference issue — 25 of them holding stale
 #        multilink URLs, 2 pointing at unpublished targets. Of its 191 fully
 #        published stories, 94 hold a `customers_logos` with six or more logos, 67
 #        of those also nest a `card_with_*` block, and 21 of those are
-#        `enterprise_page` stories. The faq subtree has almost no references, so
-#        the reference check uses this scope rather than one where it finds nothing.
+#        `enterprise_page` stories.
+#   all  4,016 entries (3,951 stories, 65 folders), 176 components. 3,779
+#        published, 46 changed, 191 draft. 167 stories use `customers_logos`;
+#        1,770 hold an image with no alt text.
 scenarios() {
-  # run "server-scope" \
-  #   "Server-side filters only: one subtree, stories without folders. Every listed story is fetched and kept. Expect 178 listed, 178 matched." \
-  #   --entry-type story --starts-with faq
-
-  # run "where-block" \
-  #   "Same subtree, same fetch cost, narrowed client-side to stories nesting a 'hint' block at any depth. Expect 178 fetched, 34 matched." \
-  #   --entry-type story --starts-with faq \
-  #   --where "\$..[?(@.component == 'hint')]"
-
   run "client-filters" \
     "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
     --starts-with lp --publish-status published \
@@ -404,14 +396,28 @@ scenarios() {
     --where "\$[?(\$.content.component == 'enterprise_page')]"
 
   run "client-filters (optimized)" \
-    "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
+    "The same question with two of the three --where expressions pushed onto the server: --includes-block and --container-block answer them before anything is fetched. Same 21 stories, a fraction of the content fetches." \
     --starts-with lp --publish-status published --includes-block customers_logos --container-block enterprise_page \
     --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
     --where "\$..[?match(@.component, 'card_with_.*')]"
 
   run "client-filters (optimized with CAPI)" \
-    "Four client-side filters over one subtree, ANDed. --publish-status is decided from the list response, so the 6 stories with unpublished changes are never fetched. The three --where expressions then count a nested block list, match a component name by regular expression, and test a story-level property. Expect 197 listed, 6 skipped before fetch, 191 fetched, 21 matched." \
+    "The same question again, this time decided in bulk: the CDN serves 25 stories per request, --where runs against that payload, and only the matches cost an individual Management API fetch. Expect 21 matched, with most of the scope pruned before the content stage." \
     --starts-with lp --publish-status published --includes-block customers_logos --capi-filter \
+    --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
+    --where "\$..[?match(@.component, 'card_with_.*')]" \
+    --where "\$[?(\$.content.component == 'enterprise_page')]"
+
+  run "capi-filter + skip-content" \
+    "The same question a fourth time, now with no per-story fetch at all: the CDN decides every match and the output is list metadata only. This is the combination worth knowing — --where still filters ON story content even though content is not in the output. Expect the same 21 matched, and zero MAPI story fetches." \
+    --starts-with lp --publish-status published --includes-block customers_logos --capi-filter --skip-content \
+    --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
+    --where "\$..[?match(@.component, 'card_with_.*')]" \
+    --where "\$[?(\$.content.component == 'enterprise_page')]"
+
+  run "skip-content alone (the trap)" \
+    "The same question with --skip-content and no --capi-filter, which is the one combination that answers it wrongly: nothing read content, so the content expressions match nothing. Expect 0 matched and a warning on stderr naming exactly this. Run it next to the one above — same flags minus --capi-filter, 21 results against 0." \
+    --starts-with lp --publish-status published --includes-block customers_logos --skip-content \
     --where "\$..[?(@.component == 'customers_logos' && count(@.logos_list[*]) >= 6)]" \
     --where "\$..[?match(@.component, 'card_with_.*')]" \
     --where "\$[?(\$.content.component == 'enterprise_page')]"
@@ -422,21 +428,18 @@ scenarios() {
     --where "\$._ref_issues[?(@.type == 'stale_url')]"
 
   run "check-references (optimized)" \
-    "Reference integrity: loads the component schema, extracts every link and relation, resolves the targets it has not already listed, then reports the stories with issues. --where runs after that enrichment, which is what lets it select one kind of issue out of the \`_ref_issues\` the check attached. Expect 210 checked, ~274 external targets resolved, 27 with issues, 25 of them stale URLs." \
+    "The same audit reading content from the CDN in bulk instead of story by story. Nothing is pruned — the scan has to read every story in scope — so the flag acts purely as a content source, and no story is fetched from MAPI. Same 25 stories, an order of magnitude faster." \
     --check-references --starts-with lp --capi-filter \
     --where "\$._ref_issues[?(@.type == 'stale_url')]"
 
-  # ── The two optimizations ───────────────────────────────────────────────────
-  # Both are measured against a scenario above rather than a scope of their own,
-  # so the interesting number is the comparison: "skip-content" against
-  # "includes-block", which lists the same 167 stories and fetches every one of
-  # them, and "capi-filter" against "client-filters", which asks the same
-  # question over the same subtree and must return the same 21 stories.
+  run "release review" \
+    "What is waiting to go live: pages that are published but carry unpublished edits, newest first. --publish-status changed is decided from the list response and --sort is applied by the server, so the whole answer comes out of the page walk with no content read. Expect 3,825 listed server-side and 46 kept." \
+    --publish-status changed --skip-content --sort updated_at:desc
 
-  run "skip-content" \
-    "The same server-side scope as includes-block with the per-story content fetch dropped, which leaves one page walk and nothing else. Expect 167 listed, 0 fetched, 167 emitted as list metadata, in ~4s against the ~29s the same scope takes with content." \
-    --includes-block customers_logos --skip-content
-
+  run "alt-text audit" \
+    "The headline real-world case: every image with no alt text, across the whole space, at any depth. A content question over 3,951 stories answered without a single per-story fetch. Expect ~1,770 matched in under ten seconds, against roughly eleven minutes for the same query with no optimization flags." \
+    --entry-type story --capi-filter --skip-content \
+    --where "\$..[?(@.fieldtype == 'asset' && @.filename != '' && @.alt == '')]"
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────

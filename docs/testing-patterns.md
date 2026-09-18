@@ -47,3 +47,14 @@ CI runs on both macOS and Windows. These are the non-obvious gotchas:
     return { ...actual, pathToFileURL: (p: string) => ({ href: p }) };
   });
   ```
+
+## Astro end-to-end tests
+
+The e2e target starts the playground through `playground:test:foreground`, which sets two env vars:
+
+- **`ASTRO_DEV_BACKGROUND`** — `astro dev` daemonizes when it detects an agentic environment, and
+  `start-server-and-test` then aborts with "server closed unexpectedly". Any non-empty value skips
+  that detection. A daemon that slips through keeps port 4321 and the next run tests against it;
+  `pnpm --filter @storyblok/playground-astro-test exec astro dev stop` clears it.
+- **`STORYBLOK_E2E`** — switches the dev toolbar off. Its dynamic import loses the race against Vite
+  re-optimizing dependencies, and Cypress fails a test on any unhandled rejection.

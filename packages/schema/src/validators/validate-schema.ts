@@ -285,11 +285,9 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
       // rejects them at compile time; this covers schemas authored in plain
       // JavaScript or assembled at runtime, which reach the validator untyped.
       //
-      // FIELD_TYPES ships with this package, so a field type added to the API
-      // after a given release reads as unknown until the specs are regenerated
-      // and a new version goes out. Failing hard on that is deliberate: the
-      // same version's `defineField` would reject the type anyway, so a warning
-      // here would only split the two apart.
+      // FIELD_TYPES ships with this package, so a type the API gains after a
+      // release reads as unknown until the specs are regenerated, as it would
+      // to the same version's `defineField`.
       const fieldTypeValue = field.type;
       if (
         fieldTypeValue === undefined ||
@@ -309,8 +307,7 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           code: "unknown_field_type",
           path: ["blocks", blockKey, fieldName ?? index, "type"],
           entity: blockEntity,
-          // `JSON.stringify` so a non-string type reads as what it is: `123`
-          // and `"123"` are different mistakes and the message distinguishes them.
+          // `JSON.stringify` so `123` and `"123"` read as different mistakes.
           message: `${fieldLabel} in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
         });
       }

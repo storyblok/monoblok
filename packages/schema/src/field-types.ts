@@ -10,9 +10,8 @@ import type { FieldType } from "./generated/types/field";
  * authored in plain JavaScript, assembled at runtime, or read back from a space
  * reaches the validator with no compiler in the way.
  *
- * `satisfies` keeps every entry a real field type, and the equality assertion in
  * `field-types.test-d.ts` fails the type check if the generated union gains a
- * member this list is missing, so the two cannot drift apart unnoticed.
+ * member this list is missing.
  */
 export const FIELD_TYPES = [
   "text",

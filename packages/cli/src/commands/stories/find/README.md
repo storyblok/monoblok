@@ -473,36 +473,6 @@ storyblok stories find --space 12345 --check-references \
 Keep this filter in any pipeline that writes, because it survives annotations that did not exist
 when the script was written: it drops unknown `_` keys rather than naming the ones to remove.
 
-### Progress on stderr
-
-Progress and the run summary go to stderr, so a run is pipeable without a quiet flag. Redirect
-results with `> /dev/null` to see only the summary.
-
-```
- Fetching stories             [■■■■■■■■■■] 100% | 0s | 420/420 processed
- Fetching stories content     [■■■■■■■■■■] 100% | 0s | 420/420 processed
- Applying client-side filters [■■■■■■■■■■] 100% | 0s | 420/420 processed
-
-ℹ Results: 34 stories matched (420 fetched, 386 filtered out client-side)
-```
-
-The phases shown follow the work being done: `--skip-content` removes the content phase, and
-`--capi-filter` adds a bulk filtering phase ahead of it. A phase's total shrinks whenever a story is
-decided before reaching it, which is why the counts stop matching the first line.
-
-Progress bars are dropped when stdout is a terminal, because the results land on that same screen
-and the two would overwrite each other. Redirect or pipe stdout and the bars come back.
-
-```bash
-storyblok stories find --space 12345                        # results on screen, no bars
-storyblok stories find --space 12345 > stories.jsonl        # bars, results in the file
-storyblok stories find --space 12345 | jq -r .full_slug     # bars, results through jq
-```
-
-<Aside type="note">
-In the last case the bars are on stderr and `jq` prints to the same terminal, so the two interleave. The command cannot tell whether a downstream command writes to a terminal or to a file, so the choice is left to you: `2>/dev/null` drops the progress output, and the global `--no-ui-enabled` silences every non-result line while leaving stdout untouched.
-</Aside>
-
 ## Examples
 
 ### Check what breaks before deleting a story
@@ -869,13 +839,6 @@ storyblok stories find --space 12345 --starts-with lp --capi-filter \
 # Composes with the other filters as usual
 storyblok stories find --space 12345 --publish-status published --includes-block hero \
   --capi-filter --where "$..[?(@.component == 'hero' && @.headline == '')]"
-```
-
-The summary reports what it saved, as stories pruned before the fetch:
-
-```
-Filtering via CAPI: 21/191 candidates, 170 pruned before fetch, 0 undecided, 0 batch(es) failed.
-Fetching content: 21/21 succeeded, 0 failed.
 ```
 
 `--capi-filter` needs at least one `--where` expression to have anything to prune. Without one,

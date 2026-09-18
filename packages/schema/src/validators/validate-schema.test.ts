@@ -41,6 +41,36 @@ describe("validateSchema", () => {
     expect(codesFor(result)).toContain("unknown_field_type");
   });
 
+  // The API reports a non-string type the same way it reports an unknown one:
+  // `type: 123` fails the push with "has an invalid type: '123'".
+  it("flags a field whose type is not a string", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [{ name: "numeric", type: 123 }],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain("unknown_field_type");
+    // Rendered as `123`, not `"123"`, so the message names the actual mistake.
+    expect(result.issues[0]?.message).toContain("has unknown type 123.");
+  });
+
+  // The API reports these as "type can't be blank", a separate failure from an
+  // unknown type, so they get their own code.
+  it("flags a field that declares no type at all", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [{ name: "typeless" }, { name: "nulled", type: null }],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(["missing_field_type", "missing_field_type"]);
+    expect(result.issues[0]).toMatchObject({
+      entity: "block:hero",
+      path: ["blocks", "hero", "typeless", "type"],
+    });
+  });
+
   // Guards the other direction: the check must not reject any type the
   // generated union actually declares.
   it("accepts every field type the generated union declares", () => {
@@ -50,6 +80,7 @@ describe("validateSchema", () => {
     } as unknown as SchemaBlockLike;
     const result = validateSchema({ blocks: { block } });
     expect(codesFor(result)).not.toContain("unknown_field_type");
+    expect(codesFor(result)).not.toContain("missing_field_type");
   });
 
   it("flags duplicate block names", () => {

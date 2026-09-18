@@ -4,11 +4,13 @@ import { FIELD_TYPES } from "../field-types";
 import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
 
+const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
+
 /**
  * Validates a schema definition without throwing. Checks structural identity
  * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
- * resolves to a defined datasource; every field `type` is a known field type;
+ * resolves to a defined datasource; every field declares a known `type`;
  * every `custom` field's `field_type` resolves to a registered field plugin; no
  * field mixes `allow`/`deny` with the wire restriction keys they derive).
  *
@@ -275,23 +277,30 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         });
       }
 
-      // Unlike `restrict_type`, the Management API does validate `type`: pushing
-      // an unknown one fails with "the field 'x' has an invalid type". So this
-      // is an error, and there is no stored value a space could legitimately
-      // hand back that it would break. `defineField` already rejects it at
-      // compile time; this covers schemas authored in plain JavaScript or
-      // assembled at runtime, which reach the validator untyped.
+      // Unlike `restrict_type`, the Management API does validate `type`: it
+      // rejects an unknown one, a non-string one, and a missing one alike. So
+      // these are errors, and there is no stored value a space could
+      // legitimately hand back that they would break. `defineField` already
+      // rejects them at compile time; this covers schemas authored in plain
+      // JavaScript or assembled at runtime, which reach the validator untyped.
       const fieldTypeValue = field.type;
-      if (
-        typeof fieldTypeValue === "string" &&
-        !(FIELD_TYPES as readonly string[]).includes(fieldTypeValue)
-      ) {
+      if (fieldTypeValue === undefined || fieldTypeValue === null) {
+        issues.push({
+          severity: "error",
+          code: "missing_field_type",
+          path: ["blocks", blockKey, fieldName ?? index, "type"],
+          entity: blockEntity,
+          message: `Field "${fieldName}" in ${blockLabel} is missing a "type". Expected one of ${FIELD_TYPE_LIST}.`,
+        });
+      } else if (!(FIELD_TYPES as readonly unknown[]).includes(fieldTypeValue)) {
         issues.push({
           severity: "error",
           code: "unknown_field_type",
           path: ["blocks", blockKey, fieldName ?? index, "type"],
           entity: blockEntity,
-          message: `Field "${fieldName}" in ${blockLabel} has unknown type "${fieldTypeValue}". Expected one of ${FIELD_TYPES.map((value) => `"${value}"`).join(", ")}.`,
+          // `JSON.stringify` so a non-string type reads as what it is: `123`
+          // and `"123"` are different mistakes and the message distinguishes them.
+          message: `Field "${fieldName}" in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
         });
       }
 

@@ -164,6 +164,8 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         continue;
       }
       const fieldName = field.name;
+      const fieldLabel =
+        typeof fieldName === "string" ? `Field "${fieldName}"` : `Field at index ${index}`;
       if (typeof fieldName === "string") {
         if (fieldNames.has(fieldName)) {
           issues.push({
@@ -278,21 +280,30 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
       }
 
       // Unlike `restrict_type`, the Management API does validate `type`: it
-      // rejects an unknown one, a non-string one, and a missing one alike. So
-      // these are errors, and there is no stored value a space could
-      // legitimately hand back that they would break. `defineField` already
+      // rejects an unknown one, a non-string one, and a missing or blank one
+      // alike, so all of them are errors rather than warnings. `defineField`
       // rejects them at compile time; this covers schemas authored in plain
       // JavaScript or assembled at runtime, which reach the validator untyped.
+      //
+      // FIELD_TYPES ships with this package, so a field type added to the API
+      // after a given release reads as unknown until the specs are regenerated
+      // and a new version goes out. Failing hard on that is deliberate: the
+      // same version's `defineField` would reject the type anyway, so a warning
+      // here would only split the two apart.
       const fieldTypeValue = field.type;
-      if (fieldTypeValue === undefined || fieldTypeValue === null) {
+      if (
+        fieldTypeValue === undefined ||
+        fieldTypeValue === null ||
+        (typeof fieldTypeValue === "string" && fieldTypeValue.trim() === "")
+      ) {
         issues.push({
           severity: "error",
           code: "missing_field_type",
           path: ["blocks", blockKey, fieldName ?? index, "type"],
           entity: blockEntity,
-          message: `Field "${fieldName}" in ${blockLabel} is missing a "type". Expected one of ${FIELD_TYPE_LIST}.`,
+          message: `${fieldLabel} in ${blockLabel} is missing a "type". Expected one of ${FIELD_TYPE_LIST}.`,
         });
-      } else if (!(FIELD_TYPES as readonly unknown[]).includes(fieldTypeValue)) {
+      } else if (!FIELD_TYPES.includes(fieldTypeValue)) {
         issues.push({
           severity: "error",
           code: "unknown_field_type",
@@ -300,7 +311,7 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           entity: blockEntity,
           // `JSON.stringify` so a non-string type reads as what it is: `123`
           // and `"123"` are different mistakes and the message distinguishes them.
-          message: `Field "${fieldName}" in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
+          message: `${fieldLabel} in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
         });
       }
 

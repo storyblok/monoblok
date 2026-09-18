@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { storyblokColorField } from "../field-plugins/storyblok-color-field";
-import { FIELD_TYPES } from "../field-types";
 import { defineBlock } from "../helpers/define-block";
 import { defineDatasource } from "../helpers/define-datasource";
 import { defineField } from "../helpers/define-field";
@@ -71,16 +70,27 @@ describe("validateSchema", () => {
     });
   });
 
-  // Guards the other direction: the check must not reject any type the
-  // generated union actually declares.
-  it("accepts every field type the generated union declares", () => {
+  // The API folds a blank type into the same "type can't be blank" failure as
+  // an absent one, so reporting it as an unknown type would misname it.
+  it("treats a blank type as missing rather than unknown", () => {
     const block: SchemaBlockLike = {
-      name: "every_type",
-      fields: FIELD_TYPES.map((type, index) => ({ name: `field_${index}`, type })),
+      name: "hero",
+      fields: [
+        { name: "blank", type: "" },
+        { name: "spaces", type: "   " },
+      ],
     } as unknown as SchemaBlockLike;
     const result = validateSchema({ blocks: { block } });
-    expect(codesFor(result)).not.toContain("unknown_field_type");
-    expect(codesFor(result)).not.toContain("missing_field_type");
+    expect(codesFor(result)).toEqual(["missing_field_type", "missing_field_type"]);
+  });
+
+  // A field with no name has nothing to quote, so the message locates it by
+  // index instead of reading `Field "undefined"`.
+  it("locates a nameless field by index in the type message", () => {
+    const block = { name: "hero", fields: [{}] } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block] });
+    const missingType = result.issues.find((issue) => issue.code === "missing_field_type");
+    expect(missingType?.message).toContain('Field at index 0 in block "hero"');
   });
 
   it("flags duplicate block names", () => {

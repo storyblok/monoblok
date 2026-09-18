@@ -27,6 +27,72 @@ describe("validateSchema", () => {
     expect(result.issues).toEqual([]);
   });
 
+  // The Management API rejects an unknown field type on push, so catching it
+  // offline is the whole point of validating first. Reached through plain
+  // JavaScript here, since `defineField` rejects it at compile time.
+  it("flags a field whose type is not a known field type", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [{ name: "broken", type: "not_a_real_field_type" }],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain("unknown_field_type");
+  });
+
+  // The API reports a non-string type the same way it reports an unknown one:
+  // `type: 123` fails the push with "has an invalid type: '123'".
+  it("flags a field whose type is not a string", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [{ name: "numeric", type: 123 }],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toContain("unknown_field_type");
+    // Rendered as `123`, not `"123"`, so the message names the actual mistake.
+    expect(result.issues[0]?.message).toContain("has unknown type 123.");
+  });
+
+  // The API reports these as "type can't be blank", a separate failure from an
+  // unknown type, so they get their own code.
+  it("flags a field that declares no type at all", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [{ name: "typeless" }, { name: "nulled", type: null }],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(result.ok).toBe(false);
+    expect(codesFor(result)).toEqual(["missing_field_type", "missing_field_type"]);
+    expect(result.issues[0]).toMatchObject({
+      entity: "block:hero",
+      path: ["blocks", "hero", "typeless", "type"],
+    });
+  });
+
+  // The API folds a blank type into the same "type can't be blank" failure as
+  // an absent one, so reporting it as an unknown type would misname it.
+  it("treats a blank type as missing rather than unknown", () => {
+    const block: SchemaBlockLike = {
+      name: "hero",
+      fields: [
+        { name: "blank", type: "" },
+        { name: "spaces", type: "   " },
+      ],
+    } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: { block } });
+    expect(codesFor(result)).toEqual(["missing_field_type", "missing_field_type"]);
+  });
+
+  // A field with no name has nothing to quote, so the message locates it by
+  // index instead of reading `Field "undefined"`.
+  it("locates a nameless field by index in the type message", () => {
+    const block = { name: "hero", fields: [{}] } as unknown as SchemaBlockLike;
+    const result = validateSchema({ blocks: [block] });
+    const missingType = result.issues.find((issue) => issue.code === "missing_field_type");
+    expect(missingType?.message).toContain('Field at index 0 in block "hero"');
+  });
+
   it("flags duplicate block names", () => {
     const dup = defineBlock({ name: "teaser", fields: [] });
     const result = validateSchema({ blocks: [teaser, dup] });

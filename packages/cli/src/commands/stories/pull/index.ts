@@ -1,6 +1,5 @@
 import { pipeline } from "node:stream/promises";
 import type { Story } from "../constants";
-import { normalizeStartsWith } from "../constants";
 import { colorPalette, commands, directories } from "../../../constants";
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
@@ -14,7 +13,7 @@ import {
   makeWriteStoryFSTransport,
   writeStoryStream,
 } from "../streams";
-import { parseFilterQuery } from "../filter-query";
+import { buildStoryScopeParams } from "../query-params";
 import { requireAuthentication } from "../../../utils/auth";
 import { handleError, toError } from "../../../utils/error/error";
 import { CommandError } from "../../../utils/error/command-error";
@@ -71,15 +70,10 @@ pullCmd.action(async (options, command) => {
     await pipeline(
       fetchStoriesStream({
         spaceId: space,
-        params: {
-          filter_query: options.query ? parseFilterQuery(options.query) : undefined,
-          // A `full_slug` never starts with a slash and MAPI matches the prefix
-          // literally, so `/en/blog/` would pull nothing at all.
-          starts_with:
-            options.startsWith === undefined
-              ? undefined
-              : normalizeStartsWith(options.startsWith) || undefined,
-        },
+        params: buildStoryScopeParams({
+          startsWith: options.startsWith,
+          query: options.query,
+        }),
         setTotalPages: (totalPages) => {
           summary.fetchStoryPages.total = totalPages;
           fetchStoryPagesProgress.setTotal(totalPages);

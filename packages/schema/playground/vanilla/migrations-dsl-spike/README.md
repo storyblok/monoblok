@@ -90,3 +90,35 @@ how the surgical-rollback claim is checked against content the migration did not
 - **The API validates a field's `type` and nothing else.** A bogus `type` is a 422. A nonsense
   `restrict_type` and a `component_whitelist` naming a block that does not exist are both accepted
   verbatim. A successful push of a schema fixture proves storage, not shape.
+
+## What the editor run settled
+
+Driven with Playwright against the real Visual Editor (`scripts/drive-visual-editor.mjs`), reading
+every result back through the Management API. Fixtures in `fixtures/editor-*.json` are those
+read-backs verbatim; `test/editor-save.test.ts` runs the differ over them.
+
+- **The ignore-list is complete as a transport-key list.** An editor save writes no key the
+  Management API does not also write. No `_editable`, no reordering marker, no bookkeeping field, no
+  `_uid` churn — every block came back with the uid it went in with, at every depth including inside
+  a richtext field.
+- **A save that changes one field changes one field.** Editing one `og_title` through the editor UI
+  produced exactly one changed key in the whole tree, and the block it wrote is byte-identical in
+  shape to the same block written through MAPI. The differ emits the single expected `set`.
+- **A plain save changes nothing — unless the schema moved.** Opening a story and saving it without
+  touching anything wrote no content at all (identical read-back, `updated_at` unmoved).
+- **But the editor backfills schema defaults into the block in the form, and that is content.** Add
+  a field to a component, then merely open a story on that component and hit save: the block gains
+  that key with the field type's empty value — `""`, `false`, `[]`, an empty `multilink`, an empty
+  `asset`, an empty richtext `doc`. Six keys appeared on a save with no user edit at all. The same
+  happens to a nested block opened on its own (`/blok/<uid>`), and a key that is _absent_ comes back
+  as `""` rather than staying absent. Blocks not in the form are left alone.
+
+  This is the phantom-diff risk, and no ignore-list can address it: these are ordinary content keys
+  that a migration could legitimately own. Consequences for rollback:
+  - A migration that `unset`s a field can find it back as `""`, so the inverse `set` conflicts on
+    `expect: undefined`.
+  - Any story opened in the editor after a schema addition carries keys the migration's `before`
+    snapshot does not have, on exactly the stories real editors touched.
+
+  A rollback therefore has to treat "key absent → field-type empty value" as a non-conflict, or
+  accept a conflict on every story an editor has opened since the schema last grew.

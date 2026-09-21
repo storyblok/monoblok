@@ -109,11 +109,7 @@ const ADAPTIVE_DEFAULTS: Required<Omit<AdaptiveConfig, "increaseStep">> = {
 /** A bucket recovers its whole rate in approximately this many intervals. */
 const RECOVERY_INTERVALS = 25;
 
-/**
- * The status that means the request was refused for exceeding a quota. 503 is
- * deliberately not included: it usually reports an upstream problem, and
- * backing off the rate would not address it.
- */
+/** 503 is excluded: it reports an upstream problem that backing off would not address. */
 const THROTTLED_STATUS = 429;
 
 export interface DefaultRateLimiterOptions {
@@ -151,9 +147,6 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   const { adaptive = true, parseServerLimit } = options;
   const configured = typeof adaptive === "object" ? adaptive : {};
   const requestedDecrease = configured.decreaseFactor ?? ADAPTIVE_DEFAULTS.decreaseFactor;
-  // Tuning may make the back-off gentler or harsher, but never turn it into an
-  // increase, and never drop the rate to zero — which the window would read as
-  // no limit at all.
   const adaptiveConfig = {
     ...ADAPTIVE_DEFAULTS,
     ...configured,
@@ -227,9 +220,8 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       return;
     }
 
-    // The quota is whatever the latest response says, so a raised one lifts the
-    // ceiling again. Recording it as the new floor instead would pin the client
-    // to the lowest quota it ever saw for the rest of the process.
+    // The latest response's quota replaces the previous one. Ratcheting it down
+    // instead would pin the client to the lowest quota it ever saw.
     bucket.serverLimit = serverLimit;
     const ceiling = ceilingOf(bucket);
     if (!adaptationEnabled || bucket.throttle.getLimit() > ceiling) {

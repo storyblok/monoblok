@@ -76,8 +76,7 @@ export interface RateLimitConfig {
 
 export interface ThrottleManager {
   /**
-   * @deprecated Admission happens in `wrapFetch`. Kept so call sites that group
-   * a request with its path and query keep compiling; it only runs `fn`.
+   * @deprecated Admission happens in `wrapFetch`; this only runs `fn`.
    * @todo(next-major): Remove this method.
    */
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
@@ -153,7 +152,6 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
   return Math.min(Number.parseInt(match[1], 10), MAX_RATE_LIMIT);
 }
 
-/** Resolves the URL a `fetch` call targets, whichever of its input forms was used. */
 function getRequestUrl(input: RequestInfo | URL): string | undefined {
   if (typeof input === "string") {
     return input;
@@ -258,11 +256,9 @@ function createManager(
   return {
     execute: (_path, _query, fn) => fn(),
     wrapFetch: (fetchFn) => async (input, init) => {
-      // Admission sits here rather than around the call so that a retry, which
-      // the HTTP layer issues inside a single call, has to win a slot of its
-      // own. Gating the call alone would let one admitted request put
-      // `retry.limit + 1` requests on the wire, which is exactly what happens
-      // during the 429 storm the limiter exists to damp.
+      // Admission sits here rather than around the call because the HTTP layer
+      // retries inside one call: gating the call alone would let one admitted
+      // request put `retry.limit + 1` requests on the wire during a 429 storm.
       const context = contextFromUrl(getRequestUrl(input), toContext);
       await limiter.acquire(context);
 
@@ -281,15 +277,14 @@ function createManager(
 }
 
 /**
- * Runs a limiter's reporting hook. A limiter backed by shared storage fails
- * transiently, and neither reporting a response nor releasing a slot may turn a
- * served request into an error — or, inside the retry loop, into another
- * request.
+ * Swallows a reporting hook's failure. Shared storage can fail transiently, and
+ * neither recording a response nor releasing a slot may turn a served request
+ * into an error, or, inside the retry loop, into another request.
  */
 async function report(hook: () => void | Promise<void>): Promise<void> {
   try {
     await hook();
   } catch {
-    // A limiter's bookkeeping is not the caller's problem.
+    // Intentionally ignored.
   }
 }

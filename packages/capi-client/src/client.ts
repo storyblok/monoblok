@@ -313,9 +313,8 @@ export const createApiClientBase = <
         throwHttpErrors: true,
         timeout,
         retry: retryOptions,
-        // The limiter admits and observes requests here, so it sees the ones
-        // ky's retry issues too. `globalThis.fetch` is read per call so a fetch
-        // swapped in after the client was created still applies.
+        // `globalThis.fetch` is read per call so a fetch swapped in after the
+        // client was created still applies.
         fetch: throttleManager.wrapFetch(
           customFetch ?? ((input, init) => globalThis.fetch(input, init)),
         ),

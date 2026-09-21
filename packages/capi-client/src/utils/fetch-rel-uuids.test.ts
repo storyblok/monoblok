@@ -24,8 +24,8 @@ const createTestClient = (
     createConfig({
       auth: "test-token",
       baseUrl: "https://api.storyblok.com",
-      // The real client hands ky the wrapped fetch; that is where the limiter
-      // admits requests, so a test that leaves it out measures nothing.
+      // The limiter admits requests inside the wrapped fetch, so the client
+      // under test has to be built with it.
       kyOptions: {
         fetch: throttleManager.wrapFetch((input, init) => globalThis.fetch(input, init)),
       },

@@ -1,13 +1,10 @@
+// Several client instances sharing one token against a server that enforces the
+// quota per token: each instance paces itself correctly and the fleet still
+// overruns the quota between them.
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createThrottleManager } from "./rate-limit";
 import { createDefaultRateLimiter, type RateLimiter } from "./limiter";
-
-/**
- * Several client instances sharing one token against a server that enforces the
- * quota per token, which is the case the adaptive limiter exists for: each
- * instance paces itself correctly and the fleet still overruns the quota
- * between them.
- */
 
 const QUOTA_PER_SECOND = 10;
 const REQUESTS_PER_INSTANCE = 200;

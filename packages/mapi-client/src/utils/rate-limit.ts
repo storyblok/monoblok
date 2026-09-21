@@ -54,7 +54,6 @@ export interface ThrottleManager {
   wrapFetch: (fetchFn: typeof globalThis.fetch) => typeof globalThis.fetch;
 }
 
-/** Resolves the URL a `fetch` call targets, whichever of its input forms was used. */
 function getRequestUrl(input: RequestInfo | URL): string | undefined {
   if (typeof input === "string") {
     return input;
@@ -104,10 +103,9 @@ function createManager(limiter: RateLimiter, limit: number): ThrottleManager {
   return {
     execute: (fn) => fn(),
     wrapFetch: (fetchFn) => async (input, init) => {
-      // Admission sits here rather than around the call so that a retry, which
-      // the HTTP layer issues inside a single call, has to win a slot of its
-      // own. The default `retry.limit` is 12, so gating the call alone would
-      // let one admitted request put 13 on the wire.
+      // Admission sits here rather than around the call because the HTTP layer
+      // retries inside one call: with the default `retry.limit` of 12, gating
+      // the call alone would let one admitted request put 13 on the wire.
       const context: RateLimitContext = {
         path: pathOf(getRequestUrl(input)),
         query: {},
@@ -130,15 +128,14 @@ function createManager(limiter: RateLimiter, limit: number): ThrottleManager {
 }
 
 /**
- * Runs a limiter's reporting hook. A limiter backed by shared storage fails
- * transiently, and neither reporting a response nor releasing a slot may turn a
- * served request into an error — or, inside the retry loop, into another
- * request.
+ * Swallows a reporting hook's failure. Shared storage can fail transiently, and
+ * neither recording a response nor releasing a slot may turn a served request
+ * into an error, or, inside the retry loop, into another request.
  */
 async function report(hook: () => void | Promise<void>): Promise<void> {
   try {
     await hook();
   } catch {
-    // A limiter's bookkeeping is not the caller's problem.
+    // Intentionally ignored.
   }
 }

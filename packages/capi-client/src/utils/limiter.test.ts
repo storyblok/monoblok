@@ -44,14 +44,14 @@ async function settle(ms = 10_000) {
 describe("createDefaultRateLimiter()", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("admits at most `context.limit` requests per second", async () => {
+  it("should admit at most `context.limit` requests per second", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
 
     expect(await admittedImmediately(limiter, context({ limit: 3 }), 7)).toBe(3);
   });
 
-  it("paces each bucket independently", async () => {
+  it("should pace each bucket independently", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
     const small = context({ bucket: "small", limit: 2 });
@@ -61,7 +61,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, large, 6)).toBe(5);
   });
 
-  it("halves the rate after the API throttles a request", async () => {
+  it("should halve the rate after the API throttles a request", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
     const ctx = context({ limit: 8 });
@@ -74,7 +74,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(4);
   });
 
-  it("treats a burst of throttled responses as one event", async () => {
+  it("should treat a burst of throttled responses as one event", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
     const ctx = context({ limit: 8 });
@@ -89,7 +89,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(4);
   });
 
-  it("decreases again once the cooldown has passed", async () => {
+  it("should decrease again once the cooldown has passed", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
     const ctx = context({ limit: 8 });
@@ -102,7 +102,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(2);
   });
 
-  it("recovers additively while nothing is throttled", async () => {
+  it("should recover additively while nothing is throttled", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
     const ctx = context({ limit: 8 });
@@ -117,7 +117,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(5);
   });
 
-  it("never recovers past the limit the client asked for", async () => {
+  it("should never recover past the limit the client asked for", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();
     const ctx = context({ limit: 3 });
@@ -130,7 +130,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(3);
   });
 
-  it("does not drop below the configured floor", async () => {
+  it("should not drop below the configured floor", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ adaptive: { minRequestsPerSecond: 2 } });
     const ctx = context({ limit: 16 });
@@ -143,7 +143,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(2);
   });
 
-  it("holds the rate steady when adaptation is disabled", async () => {
+  it("should hold the rate steady when adaptation is disabled", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ adaptive: false });
     const ctx = context({ limit: 8 });
@@ -154,7 +154,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(8);
   });
 
-  it("lowers the ceiling to the quota a response advertises", async () => {
+  it("should lower the ceiling to the quota a response advertises", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ parseServerLimit: () => 2 });
     const ctx = context({ limit: 10 });
@@ -165,7 +165,7 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(2);
   });
 
-  it("keeps the advertised quota as the ceiling recovery cannot exceed", async () => {
+  it("should keep the advertised quota as the ceiling recovery cannot exceed", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ parseServerLimit: () => 4 });
     const ctx = context({ limit: 50 });
@@ -306,7 +306,7 @@ describe("createDefaultRateLimiter() recovery", () => {
 describe("createPassthroughRateLimiter()", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("admits every request immediately", async () => {
+  it("should admit every request immediately", async () => {
     vi.useFakeTimers();
 
     expect(await admittedImmediately(createPassthroughRateLimiter(), context(), 500)).toBe(500);

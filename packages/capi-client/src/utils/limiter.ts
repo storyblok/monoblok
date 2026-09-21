@@ -135,6 +135,32 @@ const RECOVERY_INTERVALS = 25;
  */
 const CACHE_SAMPLE_WINDOW = 50;
 
+/**
+ * Consecutive origin-served responses that put a bucket back on its configured
+ * limit at once, without waiting for the window's average to follow.
+ *
+ * A working set going cold — a new content version rotates every URL onto a key
+ * nothing has warmed — shows up as an unbroken run of misses well before the
+ * average moves, and the misses lead the first 429. Traffic a cache is actually
+ * serving does not produce a run this long. A single hit lifts it again, and
+ * the window is kept, so a brief cold patch costs the climb back and not the
+ * measurement.
+ */
+const COLD_RUN_LENGTH = 10;
+
+/**
+ * How far above its configured limit a bucket may be paced, however cached its
+ * traffic looks.
+ *
+ * When a working set goes cold, everything already admitted is in flight before
+ * the first response can report it, so the requests that overshoot the origin
+ * are roughly the ceiling times one round trip — a cost no feedback can react
+ * its way out of. Bounding the multiple bounds that burst for every tier at
+ * once, and costs little: the measured gain flattens well before the ceiling
+ * runs out of room.
+ */
+const MAX_CEILING_MULTIPLE = 8;
+
 /** 503 is excluded: it reports an upstream problem that backing off would not address. */
 const THROTTLED_STATUS = 429;
 
@@ -167,6 +193,8 @@ interface Bucket {
   cacheSamples: boolean[];
   cacheSampleCursor: number;
   cacheHitCount: number;
+  /** Origin-served responses since the last cache hit. */
+  consecutiveMisses: number;
 }
 
 /**
@@ -229,15 +257,20 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   const ceilingOf = (bucket: Bucket): number => {
     let ceiling = bucket.configuredLimit;
 
-    if (cacheAware && bucket.cacheSamples.length >= CACHE_SAMPLE_WINDOW) {
+    if (
+      cacheAware &&
+      bucket.cacheSamples.length >= CACHE_SAMPLE_WINDOW &&
+      bucket.consecutiveMisses < COLD_RUN_LENGTH
+    ) {
       const missShare = 1 - bucket.cacheHitCount / bucket.cacheSamples.length;
+      const headroom = Math.min(
+        cacheAware.cachedRequestsPerSecond,
+        bucket.configuredLimit * MAX_CEILING_MULTIPLE,
+      );
       ceiling =
         missShare <= 0
-          ? cacheAware.cachedRequestsPerSecond
-          : Math.min(
-              cacheAware.cachedRequestsPerSecond,
-              Math.floor(bucket.configuredLimit / missShare),
-            );
+          ? headroom
+          : Math.min(headroom, Math.floor(bucket.configuredLimit / missShare));
     }
 
     return Math.min(ceiling, bucket.serverLimit ?? Number.POSITIVE_INFINITY);
@@ -270,6 +303,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     if (hit) {
       bucket.cacheHitCount++;
     }
+    bucket.consecutiveMisses = hit ? 0 : bucket.consecutiveMisses + 1;
   };
 
   const getBucket = (context: RateLimitContext): Bucket => {
@@ -286,6 +320,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       cacheSamples: [],
       cacheSampleCursor: 0,
       cacheHitCount: 0,
+      consecutiveMisses: 0,
     };
     buckets.set(context.bucket, bucket);
     return bucket;

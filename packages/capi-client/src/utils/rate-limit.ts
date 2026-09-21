@@ -126,14 +126,20 @@ export function determineTier(path: string, query: Record<string, unknown>): Tie
 
 /** Policy names ending in this describe a cap on simultaneous requests, not a rate. */
 const CONCURRENCY_POLICY_SUFFIX = "concurrent-requests";
+/** One member of the policy list: a quoted name followed by its own `;k=v` parameters. */
+const POLICY_MEMBER = /"([^"]+)"((?:;[^,]*)*)/g;
 
 /**
- * Extracts the quota (`q=`) value from the `X-RateLimit-Policy` response header,
- * but only when the policy describes a rate limit rather than a concurrency one.
+ * Reads the per-second rate the API advertises in `X-RateLimit-Policy`.
  *
- * The API reports a cap on simultaneous requests under this header too, under
- * names such as `"space-concurrent-requests";q=30`. That quota is not a rate,
- * and adopting it as one would cap throughput far below what the API allows.
+ * The header carries one or more comma-separated policies, each a quoted name
+ * followed by its parameters: a quota (`q`) and the window in seconds it
+ * applies over (`w`). The rate is `q/w`, so a quota means nothing without its
+ * window, and a policy carrying only a quota is skipped.
+ *
+ * Some policies cap simultaneous requests rather than a rate. Their quota is a
+ * count, and adopting it as a rate would throttle far below what the API
+ * allows.
  */
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
   const policy = response.headers.get("x-ratelimit-policy");
@@ -141,19 +147,23 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
     return undefined;
   }
 
-  // Match the quoted policy name rather than searching for a fixed string: the
-  // name carries a prefix, so `"space-concurrent-requests"` has to be caught by
-  // its ending and not by an equality that only `"concurrent-requests"` meets.
-  const name = policy.match(/"([^"]+)"/)?.[1];
-  if (name === undefined || name.endsWith(CONCURRENCY_POLICY_SUFFIX)) {
-    return undefined;
+  for (const [, name, params] of policy.matchAll(POLICY_MEMBER)) {
+    if (name!.endsWith(CONCURRENCY_POLICY_SUFFIX)) {
+      continue;
+    }
+
+    const quota = Number(params!.match(/;q=(\d+)/)?.[1]);
+    const windowSeconds = Number(params!.match(/;w=(\d+)/)?.[1]);
+    if (!quota || !windowSeconds) {
+      continue;
+    }
+
+    // A rate below 1 would floor to zero, which reads as "no limit" to the
+    // window and would turn a ceiling into no pacing at all.
+    return Math.min(Math.max(1, Math.floor(quota / windowSeconds)), MAX_RATE_LIMIT);
   }
 
-  const match = policy.match(/q=(\d+)/);
-  if (!match) {
-    return undefined;
-  }
-  return Math.min(Number.parseInt(match[1], 10), MAX_RATE_LIMIT);
+  return undefined;
 }
 
 function getRequestUrl(input: RequestInfo | URL): string | undefined {

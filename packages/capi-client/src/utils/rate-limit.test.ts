@@ -134,43 +134,53 @@ describe("parseRateLimitPolicyHeader()", () => {
       headers: headerValue ? { "x-ratelimit-policy": headerValue } : {},
     });
 
-  it("should ignore a prefixed concurrent-requests policy", () => {
-    // The name the API sends carries a prefix, so a check for the bare name
-    // misses it and adopts a cap on simultaneous requests as a rate.
+  it("should ignore a concurrent-requests policy whatever its name", () => {
     expect(
-      parseRateLimitPolicyHeader(
-        new Response(null, {
-          headers: { "x-ratelimit-policy": '"space-concurrent-requests";q=30' },
-        }),
-      ),
+      parseRateLimitPolicyHeader(makeResponse('"space-concurrent-requests";q=30')),
     ).toBeUndefined();
     expect(
-      parseRateLimitPolicyHeader(
-        new Response(null, {
-          headers: { "x-ratelimit-policy": '"space-concurrent-requests";w=60;q=30' },
-        }),
-      ),
+      parseRateLimitPolicyHeader(makeResponse('"space-concurrent-requests";w=60;q=30')),
     ).toBeUndefined();
-  });
-
-  it("should ignore concurrent-requests policies", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=30'))).toBeUndefined();
   });
 
-  it("should parse the q= value from a rate-limit policy", () => {
-    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=50'))).toBe(50);
+  it("should read the rate as the quota over its window", () => {
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=50;w=1'))).toBe(50);
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=300;w=60'))).toBe(5);
+  });
+
+  it("should never read a rate below one request per second", () => {
+    // Flooring to zero would read as "no limit" and remove pacing entirely.
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=1;w=60'))).toBe(1);
+  });
+
+  it("should ignore a quota stated without a window", () => {
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=50'))).toBeUndefined();
+  });
+
+  it("should take the rate from the policy that states one, whichever it is", () => {
+    expect(
+      parseRateLimitPolicyHeader(
+        makeResponse('"space-concurrent-requests";q=30,"rate-limit";q=50;w=1'),
+      ),
+    ).toBe(50);
+    expect(
+      parseRateLimitPolicyHeader(
+        makeResponse('"rate-limit";q=50;w=1,"space-concurrent-requests";q=30'),
+      ),
+    ).toBe(50);
   });
 
   it("should return undefined when the header is absent", () => {
     expect(parseRateLimitPolicyHeader(makeResponse(null))).toBeUndefined();
   });
 
-  it("should return undefined when the header has no q= value", () => {
+  it("should return undefined when the header states no quota", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";r=5'))).toBeUndefined();
   });
 
   it("should cap the parsed value at 1000", () => {
-    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=9999'))).toBe(1000);
+    expect(parseRateLimitPolicyHeader(makeResponse('"rate-limit";q=9999;w=1'))).toBe(1000);
   });
 });
 
@@ -213,7 +223,7 @@ describe("createThrottleManager(number)", () => {
   it("should ignore concurrent-requests headers (not a rate limit)", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
-    await recordPolicyHeader(manager, "/v2/cdn/stories", '"concurrent-requests";q=5');
+    await recordPolicyHeader(manager, "/v2/cdn/stories", '"space-concurrent-requests";q=5');
 
     const { starts } = sendThrough(manager, 50, "/v2/cdn/stories", {});
 
@@ -225,7 +235,7 @@ describe("createThrottleManager(number)", () => {
   it("should adapt the limit from rate-limit server headers, respecting the user ceiling", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
-    await recordPolicyHeader(manager, "/v2/cdn/stories", '"rate-limit";q=5');
+    await recordPolicyHeader(manager, "/v2/cdn/stories", '"rate-limit";q=5;w=1');
 
     const { starts } = sendThrough(manager, 10, "/v2/cdn/stories", {});
 
@@ -240,7 +250,7 @@ describe("createThrottleManager(number)", () => {
   it("should not exceed the user ceiling even if the server reports higher", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(3);
-    await recordPolicyHeader(manager, "/v2/cdn/stories", '"rate-limit";q=100');
+    await recordPolicyHeader(manager, "/v2/cdn/stories", '"rate-limit";q=100;w=1');
 
     const { starts } = sendThrough(manager, 9, "/v2/cdn/stories", {});
 
@@ -321,7 +331,11 @@ describe("createThrottleManager({})", () => {
   it("should ignore concurrent-requests headers in auto-detect mode", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
-    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"concurrent-requests";q=10');
+    await recordPolicyHeader(
+      manager,
+      "/v2/cdn/stories/my-story",
+      '"space-concurrent-requests";q=10',
+    );
 
     const { starts } = sendThrough(manager, 50, "/v2/cdn/stories/my-story", {});
 
@@ -333,7 +347,7 @@ describe("createThrottleManager({})", () => {
   it("should adapt the SINGLE_OR_SMALL tier from rate-limit server headers", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
-    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"rate-limit";q=10');
+    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"rate-limit";q=10;w=1');
 
     const { starts } = sendThrough(manager, 20, "/v2/cdn/stories/my-story", {});
 
@@ -348,7 +362,7 @@ describe("createThrottleManager({})", () => {
   it("should ignore server headers when adaptToServerHeaders is false", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ adaptToServerHeaders: false });
-    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"rate-limit";q=1');
+    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"rate-limit";q=1;w=1');
 
     const { starts } = sendThrough(manager, 50, "/v2/cdn/stories/my-story", {});
 

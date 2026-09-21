@@ -355,3 +355,155 @@ describe("createPassthroughRateLimiter()", () => {
     expect(await admittedImmediately(createPassthroughRateLimiter(), context(), 500)).toBe(500);
   });
 });
+
+describe("createDefaultRateLimiter({ cacheAware })", () => {
+  afterEach(() => vi.useRealTimers());
+
+  const cached = () => new Response(null, { status: 200, headers: { "x-cache": "hit" } });
+  const fromOrigin = () => new Response(null, { status: 200, headers: { "x-cache": "miss" } });
+  /** A runtime that cannot read the cache status sees a response like this. */
+  const unknownOrigin = () => new Response(null, { status: 200 });
+
+  const cacheAware = {
+    cachedRequestsPerSecond: 1000,
+    detectCacheHit: (response: Response) => {
+      const status = response.headers.get("x-cache");
+      return status === null ? undefined : status === "hit";
+    },
+  };
+
+  /** Reports responses one per second, letting the limit recover between them. */
+  async function reportOverTime(
+    limiter: RateLimiter,
+    ctx: RateLimitContext,
+    response: () => Response,
+    count: number,
+  ) {
+    for (let i = 0; i < count; i++) {
+      await limiter.recordResponse?.(ctx, response());
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+  }
+
+  it("should keep the bucket at its limit while responses come from the origin", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, fromOrigin, 80);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+  });
+
+  it("should keep the bucket at its limit when responses carry no cache status", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, unknownOrigin, 80);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+  });
+
+  it("should keep the bucket at its limit when nothing describes the cache", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter();
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 80);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+  });
+
+  it("should let the bucket climb past its limit once the cache serves its responses", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 80);
+
+    expect(await admittedImmediately(limiter, ctx, 2000)).toBeGreaterThan(10);
+  });
+
+  it("should stop the climb at the rate the cache serves", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { ...cacheAware, cachedRequestsPerSecond: 40 },
+    });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 300);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(40);
+  });
+
+  it("should hold the origin-bound share of the traffic to the bucket's limit", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    // Half the responses reach the origin, so twice the limit still puts only
+    // the limit on the origin.
+    let n = 0;
+    await reportOverTime(limiter, ctx, () => (n++ % 2 === 0 ? cached() : fromOrigin()), 300);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(20);
+  });
+
+  it("should return to the bucket's limit as soon as the traffic stops being cached", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 80);
+    expect(await admittedImmediately(limiter, ctx, 2000)).toBeGreaterThan(10);
+    await settle();
+
+    // One window's worth of origin-served responses, reported back to back:
+    // the drop must not wait for a 429.
+    for (let i = 0; i < 50; i++) {
+      await limiter.recordResponse?.(ctx, fromOrigin());
+    }
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+  });
+
+  it("should still halve the rate when a cached workload is throttled", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { ...cacheAware, cachedRequestsPerSecond: 40 },
+    });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 300);
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(40);
+    await settle();
+
+    await limiter.recordResponse?.(ctx, throttled());
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(20);
+  });
+
+  it("should pin the bucket to its limit when adaptation is off", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ adaptive: false, cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 300);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+  });
+
+  it("should not climb past a quota the API advertises", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware,
+      parseServerLimit: () => 12,
+    });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 300);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(12);
+  });
+});

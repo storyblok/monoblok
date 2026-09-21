@@ -98,6 +98,26 @@ export interface AdaptiveConfig {
   decreaseCooldownMs?: number;
 }
 
+/**
+ * Lets a bucket's ceiling rise above its configured limit while an edge cache
+ * is absorbing the traffic, instead of pinning it to the origin's quota.
+ *
+ * Both fields are required, so the mechanism is inert wherever it is not
+ * configured — an API with no cache in front of it never opts in.
+ */
+export interface CacheAwareConfig {
+  /** Highest rate the cache serves; the ceiling never passes it. */
+  cachedRequestsPerSecond: number;
+  /**
+   * Whether the response was served from cache without reaching the origin.
+   *
+   * Returns `undefined` when the response carries no such signal — a runtime
+   * that hides the header among them — which keeps the bucket at its
+   * configured limit.
+   */
+  detectCacheHit: (response: Response) => boolean | undefined;
+}
+
 const ADAPTIVE_DEFAULTS: Required<Omit<AdaptiveConfig, "increaseStep">> = {
   decreaseFactor: 0.5,
   recoveryIntervalMs: 1000,
@@ -107,6 +127,13 @@ const ADAPTIVE_DEFAULTS: Required<Omit<AdaptiveConfig, "increaseStep">> = {
 
 /** A bucket recovers its whole rate in approximately this many intervals. */
 const RECOVERY_INTERVALS = 25;
+
+/**
+ * Responses a bucket's cache-hit share is measured over. The ceiling only
+ * leaves the configured limit once this many have been observed, and a run of
+ * origin-served responses flushes the window in the same number again.
+ */
+const CACHE_SAMPLE_WINDOW = 50;
 
 /** 503 is excluded: it reports an upstream problem that backing off would not address. */
 const THROTTLED_STATUS = 429;
@@ -119,6 +146,13 @@ export interface DefaultRateLimiterOptions {
    * Returns `undefined` when the response carries no applicable quota.
    */
   parseServerLimit?: (response: Response) => number | undefined;
+  /**
+   * Raises a bucket's ceiling in proportion to the share of its responses the
+   * cache serves. Omitted, the ceiling never passes the configured limit.
+   *
+   * Ignored when `adaptive` is `false`, which pins every bucket outright.
+   */
+  cacheAware?: CacheAwareConfig;
 }
 
 interface Bucket {
@@ -129,11 +163,11 @@ interface Bucket {
   serverLimit?: number;
   lastDecreaseAt: number;
   lastIncreaseAt: number;
+  /** Ring buffer of the last `CACHE_SAMPLE_WINDOW` cache observations. */
+  cacheSamples: boolean[];
+  cacheSampleCursor: number;
+  cacheHitCount: number;
 }
-
-/** Ceiling the effective limit recovers towards; never exceeded. */
-const ceilingOf = (bucket: Bucket): number =>
-  Math.min(bucket.configuredLimit, bucket.serverLimit ?? Number.POSITIVE_INFINITY);
 
 /**
  * Rejects a non-finite tuning value before it reaches `Math.max`, which
@@ -178,7 +212,65 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   const stepFor = (ceiling: number) =>
     adaptiveConfig.increaseStep ?? Math.max(1, Math.round(ceiling / RECOVERY_INTERVALS));
   const adaptationEnabled = adaptive !== false;
+  // `adaptive: false` means "pin every bucket to its base limit", so a
+  // discovered ceiling has no business overriding it.
+  const cacheAware = adaptationEnabled ? options.cacheAware : undefined;
   const buckets = new Map<string, Bucket>();
+
+  /**
+   * Ceiling the effective limit recovers towards; never exceeded.
+   *
+   * Only the share of requests that misses the cache reaches the origin, so a
+   * bucket whose responses are `hitShare` cached can run at
+   * `configuredLimit / (1 - hitShare)` and still put no more than
+   * `configuredLimit` requests per second on the origin. With no observations,
+   * or none of them hits, this is the configured limit exactly.
+   */
+  const ceilingOf = (bucket: Bucket): number => {
+    let ceiling = bucket.configuredLimit;
+
+    if (cacheAware && bucket.cacheSamples.length >= CACHE_SAMPLE_WINDOW) {
+      const missShare = 1 - bucket.cacheHitCount / bucket.cacheSamples.length;
+      ceiling =
+        missShare <= 0
+          ? cacheAware.cachedRequestsPerSecond
+          : Math.min(
+              cacheAware.cachedRequestsPerSecond,
+              Math.floor(bucket.configuredLimit / missShare),
+            );
+    }
+
+    return Math.min(ceiling, bucket.serverLimit ?? Number.POSITIVE_INFINITY);
+  };
+
+  /** Brings a limit back under a ceiling that has just fallen. */
+  const clampToCeiling = (bucket: Bucket) => {
+    const ceiling = ceilingOf(bucket);
+    if (bucket.throttle.getLimit() > ceiling) {
+      bucket.throttle.setLimit(ceiling);
+    }
+  };
+
+  const observeCacheStatus = (bucket: Bucket, response: Response) => {
+    const hit = cacheAware?.detectCacheHit(response);
+    if (hit === undefined) {
+      return;
+    }
+
+    if (bucket.cacheSamples.length < CACHE_SAMPLE_WINDOW) {
+      bucket.cacheSamples.push(hit);
+    } else {
+      if (bucket.cacheSamples[bucket.cacheSampleCursor]) {
+        bucket.cacheHitCount--;
+      }
+      bucket.cacheSamples[bucket.cacheSampleCursor] = hit;
+      bucket.cacheSampleCursor = (bucket.cacheSampleCursor + 1) % CACHE_SAMPLE_WINDOW;
+    }
+
+    if (hit) {
+      bucket.cacheHitCount++;
+    }
+  };
 
   const getBucket = (context: RateLimitContext): Bucket => {
     const existing = buckets.get(context.bucket);
@@ -191,6 +283,9 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       configuredLimit: context.limit,
       lastDecreaseAt: Number.NEGATIVE_INFINITY,
       lastIncreaseAt: Number.NEGATIVE_INFINITY,
+      cacheSamples: [],
+      cacheSampleCursor: 0,
+      cacheHitCount: 0,
     };
     buckets.set(context.bucket, bucket);
     return bucket;
@@ -248,10 +343,11 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       adaptiveConfig.minRequestsPerSecond,
       finiteOr(serverLimit, adaptiveConfig.minRequestsPerSecond),
     );
-    const ceiling = ceilingOf(bucket);
-    if (!adaptationEnabled || bucket.throttle.getLimit() > ceiling) {
-      bucket.throttle.setLimit(ceiling);
+    if (!adaptationEnabled) {
+      bucket.throttle.setLimit(ceilingOf(bucket));
+      return;
     }
+    clampToCeiling(bucket);
   };
 
   return {
@@ -263,6 +359,11 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       if (!adaptationEnabled) {
         return;
       }
+
+      observeCacheStatus(bucket, response);
+      // A ceiling that just fell — traffic turning cold — takes effect at once,
+      // rather than waiting for a 429 to bring the limit back down.
+      clampToCeiling(bucket);
 
       const now = Date.now();
       if (response.status === THROTTLED_STATUS) {

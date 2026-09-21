@@ -59,6 +59,7 @@ export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils
 export { createDefaultRateLimiter } from "./utils/limiter";
 export type {
   AdaptiveConfig,
+  CacheAwareConfig,
   DefaultRateLimiterOptions,
   RateLimitContext,
   RateLimiter,

@@ -126,6 +126,10 @@ rate the client would have used anyway and never below a floor of one request pe
 only ever make a client more conservative than it is today. It is on by default and switched off
 with `rateLimit.adaptive: false`.
 
+ADR-0017 supersedes the upper bound for the Content API client: where the CDN is observably serving
+the traffic, the ceiling rises above the tier limit rather than sitting on it. Everything else here
+stands.
+
 Admission happens around each HTTP request rather than around the call that triggered it. Retries
 are issued inside a single call, so gating the call would let one admitted request put
 `retry.limit + 1` requests on the wire — up to 13 for the Management API's default — precisely

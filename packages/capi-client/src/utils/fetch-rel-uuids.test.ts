@@ -17,11 +17,18 @@ afterEach(() => {
 });
 afterAll(() => server.close());
 
-const createTestClient = (): Client => {
+const createTestClient = (
+  throttleManager: ReturnType<typeof createThrottleManager> = passthroughThrottleManager,
+): Client => {
   return createClient(
     createConfig({
       auth: "test-token",
       baseUrl: "https://api.storyblok.com",
+      // The real client hands ky the wrapped fetch; that is where the limiter
+      // admits requests, so a test that leaves it out measures nothing.
+      kyOptions: {
+        fetch: throttleManager.wrapFetch((input, init) => globalThis.fetch(input, init)),
+      },
     }),
   );
 };
@@ -63,14 +70,12 @@ describe("fetchMissingRelations", () => {
     expect(stories.map((story) => story.uuid)).toEqual(["a", "b", "a"]);
   });
 
-  it("should respect the throttle manager concurrency limit", async () => {
+  it("should pace chunked requests at the configured rate", async () => {
     vi.useFakeTimers();
 
-    // Limit to 2 concurrent requests so we can verify the throttle is honoured.
     const limitedThrottleManager = createThrottleManager(2);
     const uuids = Array.from({ length: 150 }, (_, index) => `uuid-${index}`); // 3 chunks
-    let activeRequests = 0;
-    let maxActiveRequests = 0;
+    const requestTimes: number[] = [];
     let requestCount = 0;
 
     server.use(
@@ -78,12 +83,10 @@ describe("fetchMissingRelations", () => {
         "https://api.storyblok.com/v2/cdn/stories",
         async ({ request }: { request: Request }) => {
           requestCount++;
-          activeRequests++;
-          maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+          requestTimes.push(Date.now());
 
           await new Promise((resolve) => setTimeout(resolve, 10));
 
-          activeRequests--;
           const url = new URL(request.url);
           const byUuids = url.searchParams.get("by_uuids") ?? "";
 
@@ -96,7 +99,7 @@ describe("fetchMissingRelations", () => {
 
     const promise = fetchMissingRelations({
       baseQuery: {},
-      client: createTestClient(),
+      client: createTestClient(limitedThrottleManager),
       throttleManager: limitedThrottleManager,
       uuids,
     });
@@ -105,7 +108,8 @@ describe("fetchMissingRelations", () => {
     await promise;
 
     expect(requestCount).toBe(3);
-    expect(maxActiveRequests).toBeLessThanOrEqual(2);
+    // Two fit in the first one-second window; the third waits for the next.
+    expect(requestTimes[2]! - requestTimes[0]!).toBeGreaterThanOrEqual(1000);
   });
 
   it("should send per_page equal to chunk size to avoid silent truncation", async () => {

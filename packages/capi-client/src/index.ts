@@ -16,7 +16,6 @@ import {
   createThrottle as createThrottleInternal,
   parseRateLimitPolicyHeader as parseRateLimitPolicyHeaderInternal,
 } from "./utils/rate-limit";
-import type { RateLimitConfig as RateLimitConfigInternal } from "./utils/rate-limit";
 
 export { createApiClient } from "./client";
 export type {
@@ -57,11 +56,11 @@ export type { ExcludableStoryField, StoryWithInlinedRelations } from "./resource
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
 
 // Rate limiting
+export { createDefaultRateLimiter } from "./utils/limiter";
 export type { AdaptiveConfig, RateLimitContext, RateLimiter } from "./utils/limiter";
+export type { RateLimitConfig } from "./utils/rate-limit";
 
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
 export const createThrottle = createThrottleInternal;
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
 export const parseRateLimitPolicyHeader = parseRateLimitPolicyHeaderInternal;
-/** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
-export type RateLimitConfig = RateLimitConfigInternal;

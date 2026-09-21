@@ -42,10 +42,14 @@ export interface RateLimitConfig {
 }
 
 export interface ThrottleManager {
+  /**
+   * @deprecated Admission happens in `wrapFetch`; this only runs `fn`.
+   * @todo(next-major): Remove this method.
+   */
   execute: <T>(fn: () => Promise<T>) => Promise<T>;
   /**
-   * Wraps `fetch` so the limiter observes every HTTP response, including the
-   * ones a retry replaced.
+   * Wraps `fetch` so the limiter admits, observes and releases every HTTP
+   * request — retries included.
    */
   wrapFetch: (fetchFn: typeof globalThis.fetch) => typeof globalThis.fetch;
 }
@@ -97,32 +101,44 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
 }
 
 function createManager(limiter: RateLimiter, limit: number): ThrottleManager {
-  // A request's path is only known at the `fetch` boundary, so admission is
-  // decided from the quota alone — which is the whole of what MAPI enforces.
-  const context: RateLimitContext = { path: "", query: {}, bucket: BUCKET, limit };
-
   return {
-    execute: async (fn) => {
-      await limiter.acquire(context);
-      try {
-        return await fn();
-      } finally {
-        await limiter.release?.(context);
-      }
-    },
-    wrapFetch: (fetchFn) => {
-      if (limiter.recordResponse === undefined) {
-        return fetchFn;
-      }
-
-      return async (input, init) => {
-        const response = await fetchFn(input, init);
-        await limiter.recordResponse?.(
-          { ...context, path: pathOf(getRequestUrl(input)) },
-          response,
-        );
-        return response;
+    execute: (fn) => fn(),
+    wrapFetch: (fetchFn) => async (input, init) => {
+      // Admission sits here rather than around the call so that a retry, which
+      // the HTTP layer issues inside a single call, has to win a slot of its
+      // own. The default `retry.limit` is 12, so gating the call alone would
+      // let one admitted request put 13 on the wire.
+      const context: RateLimitContext = {
+        path: pathOf(getRequestUrl(input)),
+        query: {},
+        bucket: BUCKET,
+        limit,
       };
+      await limiter.acquire(context);
+
+      try {
+        const response = await fetchFn(input, init);
+        // The limiter gets a copy: reading the body of the response the caller
+        // is waiting for would consume it.
+        await report(() => limiter.recordResponse?.(context, response.clone()));
+        return response;
+      } finally {
+        await report(() => limiter.release?.(context));
+      }
     },
   };
+}
+
+/**
+ * Runs a limiter's reporting hook. A limiter backed by shared storage fails
+ * transiently, and neither reporting a response nor releasing a slot may turn a
+ * served request into an error — or, inside the retry loop, into another
+ * request.
+ */
+async function report(hook: () => void | Promise<void>): Promise<void> {
+  try {
+    await hook();
+  } catch {
+    // A limiter's bookkeeping is not the caller's problem.
+  }
 }

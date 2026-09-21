@@ -75,10 +75,15 @@ export interface RateLimitConfig {
 }
 
 export interface ThrottleManager {
+  /**
+   * @deprecated Admission happens in `wrapFetch`. Kept so call sites that group
+   * a request with its path and query keep compiling; it only runs `fn`.
+   * @todo(next-major): Remove this method.
+   */
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
   /**
-   * Wraps `fetch` so the limiter observes every HTTP response, including the
-   * ones a retry replaced.
+   * Wraps `fetch` so the limiter admits, observes and releases every HTTP
+   * request — retries included.
    */
   wrapFetch: (fetchFn: typeof globalThis.fetch) => typeof globalThis.fetch;
   /**
@@ -159,8 +164,11 @@ function getRequestUrl(input: RequestInfo | URL): string | undefined {
   return typeof input === "object" && input !== null && "url" in input ? input.url : undefined;
 }
 
+/** Query parameters that carry credentials and must not reach a limiter. */
+const CREDENTIAL_PARAMS = new Set(["token"]);
+
 /**
- * Rebuilds the limiter context from an outgoing request.
+ * Builds the limiter context from an outgoing request.
  *
  * The context is derived from the URL rather than carried alongside the call so
  * that it stays correct when several requests are in flight at once.
@@ -177,7 +185,9 @@ function contextFromUrl(
     const parsed = new URL(url);
     const query: Record<string, unknown> = {};
     for (const [key, value] of parsed.searchParams) {
-      query[key] = value;
+      if (!CREDENTIAL_PARAMS.has(key)) {
+        query[key] = value;
+      }
     }
     return toContext(parsed.pathname, query);
   } catch {
@@ -246,26 +256,40 @@ function createManager(
   toContext: (path: string, query: Record<string, unknown>) => RateLimitContext,
 ): ThrottleManager {
   return {
-    execute: async (path, query, fn) => {
-      const context = toContext(path, query);
+    execute: (_path, _query, fn) => fn(),
+    wrapFetch: (fetchFn) => async (input, init) => {
+      // Admission sits here rather than around the call so that a retry, which
+      // the HTTP layer issues inside a single call, has to win a slot of its
+      // own. Gating the call alone would let one admitted request put
+      // `retry.limit + 1` requests on the wire, which is exactly what happens
+      // during the 429 storm the limiter exists to damp.
+      const context = contextFromUrl(getRequestUrl(input), toContext);
       await limiter.acquire(context);
-      try {
-        return await fn();
-      } finally {
-        await limiter.release?.(context);
-      }
-    },
-    wrapFetch: (fetchFn) => {
-      if (limiter.recordResponse === undefined) {
-        return fetchFn;
-      }
 
-      return async (input, init) => {
+      try {
         const response = await fetchFn(input, init);
-        await limiter.recordResponse?.(contextFromUrl(getRequestUrl(input), toContext), response);
+        // The limiter gets a copy: reading the body of the response the caller
+        // is waiting for would consume it.
+        await report(() => limiter.recordResponse?.(context, response.clone()));
         return response;
-      };
+      } finally {
+        await report(() => limiter.release?.(context));
+      }
     },
     adaptToResponse: () => {},
   };
+}
+
+/**
+ * Runs a limiter's reporting hook. A limiter backed by shared storage fails
+ * transiently, and neither reporting a response nor releasing a slot may turn a
+ * served request into an error — or, inside the retry loop, into another
+ * request.
+ */
+async function report(hook: () => void | Promise<void>): Promise<void> {
+  try {
+    await hook();
+  } catch {
+    // A limiter's bookkeeping is not the caller's problem.
+  }
 }

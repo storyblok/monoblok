@@ -11,7 +11,7 @@ import { createThrottle, type Throttle } from "./throttle";
 export interface RateLimitContext {
   /** Request path, e.g. `/v2/cdn/stories/home`. */
   path: string;
-  /** Query parameters of the request. */
+  /** Query parameters of the request, less the access token. */
   query: Record<string, unknown>;
   /**
    * Name of the quota this request draws from. The Content API client buckets
@@ -31,19 +31,29 @@ export interface RateLimitContext {
 /**
  * Admission control for outgoing requests.
  *
- * The client calls `acquire` before every request and `release` once it has
- * settled. `recordResponse` is called for every HTTP response the request
- * produced, including the ones a retry replaced — a limiter that only saw the
- * final response would miss most of the throttling it is meant to react to.
- *
  * Implement this to coordinate a fleet of clients sharing one token, for
- * example against Redis. The in-memory default applies per-second windows
- * local to the instance.
+ * example against Redis. The in-memory default applies per-second windows local
+ * to the instance.
+ *
+ * The three hooks are called once per HTTP request, retries included, and are
+ * handed the same context object so a limiter can pair a release to its
+ * acquire. A rejection from `acquire` fails the request; one from either
+ * reporting hook is swallowed, so a blip in shared storage cannot turn a served
+ * request into an error.
  */
 export interface RateLimiter {
-  /** Resolves when the request may start. */
+  /**
+   * Resolves when the request may start. Nothing times this out, so a limiter
+   * that can stall must impose its own deadline.
+   */
   acquire: (context: RateLimitContext) => Promise<void>;
-  /** Reports an HTTP response the request produced. */
+  /**
+   * Reports a response, including one a retry went on to replace — a limiter
+   * that only saw a request's last response would miss most of the throttling
+   * it is meant to react to.
+   *
+   * The response is a clone, so reading its body is safe.
+   */
   recordResponse?: (context: RateLimitContext, response: Response) => void | Promise<void>;
   /** Reports that the request settled, whether or not it succeeded. */
   release?: (context: RateLimitContext) => void | Promise<void>;
@@ -55,7 +65,9 @@ export interface RateLimiter {
  */
 export interface AdaptiveConfig {
   /**
-   * Fraction the effective limit drops to when a request is throttled.
+   * Fraction the effective limit drops to when a request is throttled. A value
+   * outside `(0, 1)` would make a back-off an increase, and falls back to the
+   * default.
    * @default 0.5
    */
   decreaseFactor?: number;
@@ -70,7 +82,9 @@ export interface AdaptiveConfig {
    */
   recoveryIntervalMs?: number;
   /**
-   * Floor the effective limit never drops below.
+   * Floor the effective limit never drops below. Values below 1 are raised to
+   * 1: a rate of zero reads as "no limit" to the underlying window, which would
+   * turn a back-off into no pacing at all.
    * @default 1
    */
   minRequestsPerSecond?: number;
@@ -91,8 +105,12 @@ const ADAPTIVE_DEFAULTS: Required<AdaptiveConfig> = {
   decreaseCooldownMs: 1000,
 };
 
-/** Statuses that mean the request was refused for exceeding a quota. */
-const THROTTLED_STATUSES = new Set([429, 503]);
+/**
+ * The status that means the request was refused for exceeding a quota. 503 is
+ * deliberately not included: it usually reports an upstream problem, and
+ * backing off the rate would not address it.
+ */
+const THROTTLED_STATUS = 429;
 
 export interface DefaultRateLimiterOptions {
   /** AIMD adaptation. `false` pins every bucket to its base limit. @default true */
@@ -106,27 +124,41 @@ export interface DefaultRateLimiterOptions {
 
 interface Bucket {
   throttle: Throttle;
-  /** Ceiling the effective limit recovers towards; never exceeded. */
-  baseLimit: number;
+  /** Rate the client asked for. */
+  configuredLimit: number;
+  /** Most recent quota a response advertised, if any. */
+  serverLimit?: number;
   lastDecreaseAt: number;
   lastIncreaseAt: number;
 }
 
+/** Ceiling the effective limit recovers towards; never exceeded. */
+const ceilingOf = (bucket: Bucket): number =>
+  Math.min(bucket.configuredLimit, bucket.serverLimit ?? Number.POSITIVE_INFINITY);
+
 /**
  * Creates the in-memory limiter used unless the caller supplies its own.
  *
- * Each bucket gets a per-second window sized by `context.limit`. With adaptation
- * enabled the window shrinks multiplicatively whenever the API throttles a
- * request and recovers additively while it does not, so several instances
- * sharing one token converge on a rate the token actually sustains instead of
- * each pacing itself as though it were alone. The limit only ever moves between
- * the floor and the limit the client would have used anyway.
+ * Each bucket gets a per-second window sized by `context.limit`, shrinking
+ * multiplicatively on a throttled response and recovering additively while none
+ * is, bounded by the floor and by `context.limit`.
  */
 export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}): RateLimiter {
   const { adaptive = true, parseServerLimit } = options;
+  const configured = typeof adaptive === "object" ? adaptive : {};
+  const requestedDecrease = configured.decreaseFactor ?? ADAPTIVE_DEFAULTS.decreaseFactor;
+  // Tuning may make the back-off gentler or harsher, but never turn it into an
+  // increase, and never drop the rate to zero — which the window would read as
+  // no limit at all.
   const adaptiveConfig: Required<AdaptiveConfig> = {
     ...ADAPTIVE_DEFAULTS,
-    ...(typeof adaptive === "object" ? adaptive : {}),
+    ...configured,
+    decreaseFactor:
+      requestedDecrease > 0 && requestedDecrease < 1
+        ? requestedDecrease
+        : ADAPTIVE_DEFAULTS.decreaseFactor,
+    increaseStep: Math.max(0, configured.increaseStep ?? ADAPTIVE_DEFAULTS.increaseStep),
+    minRequestsPerSecond: Math.max(1, configured.minRequestsPerSecond ?? 1),
   };
   const adaptationEnabled = adaptive !== false;
   const buckets = new Map<string, Bucket>();
@@ -139,7 +171,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
 
     const bucket: Bucket = {
       throttle: createThrottle(context.limit),
-      baseLimit: context.limit,
+      configuredLimit: context.limit,
       lastDecreaseAt: Number.NEGATIVE_INFINITY,
       lastIncreaseAt: Number.NEGATIVE_INFINITY,
     };
@@ -153,9 +185,12 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     }
 
     const current = bucket.throttle.getLimit();
-    const next = Math.max(
-      adaptiveConfig.minRequestsPerSecond,
-      Math.floor(current * adaptiveConfig.decreaseFactor),
+    const next = Math.min(
+      ceilingOf(bucket),
+      Math.max(
+        adaptiveConfig.minRequestsPerSecond,
+        Math.floor(current * adaptiveConfig.decreaseFactor),
+      ),
     );
     bucket.lastDecreaseAt = now;
     // Recovery is measured from the decrease, so a limit that was just cut
@@ -165,8 +200,9 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   };
 
   const increase = (bucket: Bucket, now: number) => {
+    const ceiling = ceilingOf(bucket);
     const current = bucket.throttle.getLimit();
-    if (current >= bucket.baseLimit) {
+    if (current >= ceiling) {
       return;
     }
     if (now - bucket.lastIncreaseAt < adaptiveConfig.recoveryIntervalMs) {
@@ -174,7 +210,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     }
 
     bucket.lastIncreaseAt = now;
-    bucket.throttle.setLimit(Math.min(bucket.baseLimit, current + adaptiveConfig.increaseStep));
+    bucket.throttle.setLimit(Math.min(ceiling, current + adaptiveConfig.increaseStep));
   };
 
   const applyServerLimit = (bucket: Bucket, response: Response) => {
@@ -183,9 +219,13 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       return;
     }
 
-    bucket.baseLimit = Math.min(bucket.baseLimit, serverLimit);
-    if (bucket.throttle.getLimit() > bucket.baseLimit) {
-      bucket.throttle.setLimit(bucket.baseLimit);
+    // The quota is whatever the latest response says, so a raised one lifts the
+    // ceiling again. Recording it as the new floor instead would pin the client
+    // to the lowest quota it ever saw for the rest of the process.
+    bucket.serverLimit = serverLimit;
+    const ceiling = ceilingOf(bucket);
+    if (!adaptationEnabled || bucket.throttle.getLimit() > ceiling) {
+      bucket.throttle.setLimit(ceiling);
     }
   };
 
@@ -200,13 +240,14 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       }
 
       const now = Date.now();
-      if (THROTTLED_STATUSES.has(response.status)) {
+      if (response.status === THROTTLED_STATUS) {
         decrease(bucket, now);
         return;
       }
-      if (response.ok) {
-        increase(bucket, now);
-      }
+      // Any answer that is not a refusal counts as the quota holding, a 404
+      // among them: recovering only on 2xx would strand a client whose workload
+      // legitimately produces other statuses.
+      increase(bucket, now);
     },
   };
 }

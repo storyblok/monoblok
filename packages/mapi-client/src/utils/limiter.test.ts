@@ -185,6 +185,106 @@ describe("createDefaultRateLimiter()", () => {
   });
 });
 
+describe("createDefaultRateLimiter() tuning guards", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("should keep pacing when the floor is configured below one request", async () => {
+    vi.useFakeTimers();
+    // Zero reads as "no limit" to the underlying window, so an unguarded floor
+    // would turn sustained back-off into no pacing at all.
+    const limiter = createDefaultRateLimiter({
+      adaptive: { minRequestsPerSecond: 0, decreaseCooldownMs: 1 },
+    });
+    const ctx = context({ limit: 16 });
+
+    for (let i = 0; i < 10; i++) {
+      await limiter.recordResponse?.(ctx, throttled());
+      await settle(1000);
+    }
+
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(1);
+  });
+
+  it("should not let a back-off factor above one raise the rate", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ adaptive: { decreaseFactor: 2 } });
+    const ctx = context({ limit: 8 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 100)).toBe(4);
+  });
+
+  it("should not let a floor above the client's rate raise it", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ adaptive: { minRequestsPerSecond: 200 } });
+    const ctx = context({ limit: 8 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 100)).toBe(8);
+  });
+});
+
+describe("createDefaultRateLimiter() server quota", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("should follow the quota up again when a later response raises it", async () => {
+    vi.useFakeTimers();
+    let quota = 2;
+    const limiter = createDefaultRateLimiter({
+      adaptive: false,
+      parseServerLimit: () => quota,
+    });
+    const ctx = context({ limit: 10 });
+
+    await limiter.recordResponse?.(ctx, ok());
+    await settle();
+    expect(await admittedImmediately(limiter, ctx, 50)).toBe(2);
+    await settle();
+
+    // A transient low quota must not pin the client for the rest of its life.
+    quota = 10;
+    await limiter.recordResponse?.(ctx, ok());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 50)).toBe(10);
+  });
+});
+
+describe("createDefaultRateLimiter() recovery", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("should recover on answers that are not refusals, a 404 among them", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter();
+    const ctx = context({ limit: 8 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await settle();
+    expect(await admittedImmediately(limiter, ctx, 50)).toBe(4);
+    await settle();
+
+    await limiter.recordResponse?.(ctx, new Response(null, { status: 404 }));
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 50)).toBe(5);
+  });
+
+  it("should not back off on a server error, which is not a quota refusal", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter();
+    const ctx = context({ limit: 8 });
+
+    await limiter.recordResponse?.(ctx, new Response(null, { status: 503 }));
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 50)).toBe(8);
+  });
+});
+
 describe("createPassthroughRateLimiter()", () => {
   afterEach(() => vi.useRealTimers());
 

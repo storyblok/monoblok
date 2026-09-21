@@ -10,7 +10,6 @@ export interface Throttle {
   execute: <T>(fn: () => Promise<T>) => Promise<T>;
   /** Adjusts the per-second limit applied to subsequent windows. */
   setLimit: (limit: number) => void;
-  /** The limit currently in effect. */
   getLimit: () => number;
 }
 

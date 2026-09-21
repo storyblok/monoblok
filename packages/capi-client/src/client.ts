@@ -168,8 +168,10 @@ export interface ContentApiClientConfig<
    *
    * - `undefined` (default): auto-detect tier from path + `per_page` query param.
    * - `number`: fixed requests per second (single queue).
-   * - `{ requestsPerSecond?: number; adaptToServerHeaders?: boolean }`: full config.
    * - `false`: disable rate limiting entirely.
+   * - `RateLimitConfig`: `requestsPerSecond`, `adaptToServerHeaders`, `adaptive`
+   *   (back off on 429 and recover on success, on by default) and `limiter`
+   *   (replace the in-memory limiter with one shared across instances).
    */
   rateLimit?: RateLimitConfig | number | false;
   /**
@@ -311,9 +313,9 @@ export const createApiClientBase = <
         throwHttpErrors: true,
         timeout,
         retry: retryOptions,
-        // Always wrapped: the limiter has to see every response, including the
-        // ones ky's retry replaced. `globalThis.fetch` is read per call so a
-        // fetch swapped in after the client was created still applies.
+        // The limiter admits and observes requests here, so it sees the ones
+        // ky's retry issues too. `globalThis.fetch` is read per call so a fetch
+        // swapped in after the client was created still applies.
         fetch: throttleManager.wrapFetch(
           customFetch ?? ((input, init) => globalThis.fetch(input, init)),
         ),

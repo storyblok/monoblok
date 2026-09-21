@@ -77,6 +77,39 @@ function ownView(value: unknown): unknown {
   return value;
 }
 
+/**
+ * Block identity the whole patch scheme rests on: a `_uid` must be unique
+ * within a story and must be present. The backend regenerates the `_uid` of the
+ * second block that repeats one, and generates a `_uid` for a block that has
+ * none — in both cases the patch and inverse recorded locally would address a
+ * block that does not exist remotely, and the rollback would silently no-op.
+ */
+export function findUnstableUids(content: unknown): { duplicate: string[]; missing: number } {
+  const seen = new Set<string>();
+  const duplicate = new Set<string>();
+  let missing = 0;
+  const visit = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(visit);
+      return;
+    }
+    if (typeof node !== "object" || node === null) return;
+    const record = node as Record<string, unknown>;
+    if (typeof record.component === "string") {
+      if (typeof record._uid !== "string" || record._uid === "") {
+        missing++;
+      } else if (seen.has(record._uid)) {
+        duplicate.add(record._uid);
+      } else {
+        seen.add(record._uid);
+      }
+    }
+    Object.values(record).forEach(visit);
+  };
+  visit(content);
+  return { duplicate: [...duplicate], missing };
+}
+
 /** Indexes every block in a content tree by `_uid`, at any depth. */
 export function indexBlocks(
   content: unknown,
@@ -163,9 +196,50 @@ export interface ApplyResult {
 }
 
 /**
- * Replays patches against live content. A `set`/`unset` whose live value no
- * longer matches what the migration left behind is reported as a conflict and
- * skipped, so an edit made after the migration is never clobbered.
+ * Reports every op of a block patch whose live value no longer matches what the
+ * migration left behind.
+ */
+function conflictsOf(block: AnyBlock, patch: BlockPatch): ApplyConflict[] {
+  const conflicts: ApplyConflict[] = [];
+  for (const op of patch.ops) {
+    if (op.kind === "set" || op.kind === "unset") {
+      const expected = "expect" in op ? op.expect : undefined;
+      if (!deepEqual(ownView(block[op.key]), ownView(expected))) {
+        conflicts.push({
+          uid: patch.uid,
+          key: op.key,
+          reason: `live value differs from the value the migration wrote`,
+        });
+      }
+      continue;
+    }
+    if (op.kind === "listOrder") {
+      const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
+      const liveKnown = list
+        .filter(isBlock)
+        .map((item) => item._uid)
+        .filter((uid) => op.expect.includes(uid));
+      if (!deepEqual(liveKnown, op.expect)) {
+        conflicts.push({
+          uid: patch.uid,
+          key: op.key,
+          reason: `live order of "${op.key}" differs from the order the migration wrote`,
+        });
+      }
+    }
+  }
+  return conflicts;
+}
+
+/**
+ * Replays patches against live content. A block whose live content no longer
+ * matches what the migration left behind is reported as a conflict and skipped
+ * whole, so an edit made after the migration is never clobbered.
+ *
+ * The unit of conflict is the block, not the op: a rename shows up in the diff
+ * as an `unset` of the old key plus a `set` of the new one, and applying half of
+ * that pair would leave the block holding both names at once — content no
+ * schema describes and no editor could have produced.
  */
 export function applyPatches(
   content: unknown,
@@ -181,20 +255,15 @@ export function applyPatches(
       result.missing.push(patch.uid);
       continue;
     }
+    const conflicts = options.force ? [] : conflictsOf(block, patch);
+    if (conflicts.length > 0) {
+      result.conflicts.push(...conflicts);
+      continue;
+    }
     for (const op of patch.ops) {
       switch (op.kind) {
         case "set":
         case "unset": {
-          const live = block[op.key];
-          const expected = "expect" in op ? op.expect : undefined;
-          if (!options.force && !deepEqual(ownView(live), ownView(expected))) {
-            result.conflicts.push({
-              uid: patch.uid,
-              key: op.key,
-              reason: `live value differs from the value the migration wrote`,
-            });
-            continue;
-          }
           if (op.kind === "set") {
             block[op.key] = op.value;
           } else {
@@ -213,16 +282,6 @@ export function applyPatches(
         }
         case "listOrder": {
           const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
-          const liveOrder = list.filter(isBlock).map((item) => item._uid);
-          const liveKnown = liveOrder.filter((uid) => op.expect.includes(uid));
-          if (!options.force && !deepEqual(liveKnown, op.expect)) {
-            result.conflicts.push({
-              uid: patch.uid,
-              key: op.key,
-              reason: `live order of "${op.key}" differs from the order the migration wrote`,
-            });
-            continue;
-          }
           const rank = new Map(op.uids.map((uid, index) => [uid, index]));
           // Children the patch does not know about keep their live slot; the
           // known ones are re-dealt into the slots they already occupied.

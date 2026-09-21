@@ -10,6 +10,7 @@ import type { AssetFieldValue, MultilinkFieldValue } from "@storyblok/schema";
 import { defineMigration } from "../src/define-migration";
 import type { BlockNameOf, ContentOf, FieldPathOf, ValueOfPath } from "../src/types";
 import type { SpikeSchema } from "../fixtures/schema";
+import type { AfterRenameArticleAuthor, AfterRenameMetaAuthor } from "../fixtures/schema-after";
 import type { Schema as PlaygroundSchema } from "../../base/schema";
 
 /** Structural equality that tolerates the `Prettify` re-wrapping `toEqualTypeOf` treats as distinct. */
@@ -74,7 +75,77 @@ describe("field path union", () => {
 
   it("should accept a real path", () => {
     defineMigration<SpikeSchema>({
+      up: (m) => m.field("spike_article.author").remove(),
+    });
+  });
+});
+
+describe("two schema parameters", () => {
+  it("should read the source path from Before and the rename target from After", () => {
+    defineMigration<SpikeSchema, AfterRenameArticleAuthor>({
       up: (m) => m.field("spike_article.author").renameTo("byline"),
+    });
+  });
+
+  it("should reject a rename target the post-migration schema does not declare", () => {
+    defineMigration<SpikeSchema, AfterRenameArticleAuthor>({
+      // @ts-expect-error "by_line" is not a field of spike_article in After
+      up: (m) => m.field("spike_article.author").renameTo("by_line"),
+    });
+  });
+
+  it("should still reject a source path the pre-migration schema does not declare", () => {
+    defineMigration<SpikeSchema, AfterRenameArticleAuthor>({
+      // @ts-expect-error "byline" does not exist yet in Before
+      up: (m) => m.field("spike_article.byline").remove(),
+    });
+  });
+
+  it("should reject a rename to a name that only the pre-migration schema has", () => {
+    defineMigration<SpikeSchema, AfterRenameMetaAuthor>({
+      // @ts-expect-error After renamed it away, so "author" is no longer a target
+      up: (m) => m.field("spike_meta.og_title").moveTo("author"),
+    });
+  });
+
+  it("should leave the single-schema shorthand inferring both ends from one schema", () => {
+    defineMigration<SpikeSchema>({
+      up: (m) => m.field("spike_card.old_slug").moveTo("slug"),
+    });
+    defineMigration<SpikeSchema>({
+      // @ts-expect-error the shorthand cannot name a field the one schema lacks
+      up: (m) => m.field("spike_card.old_slug").moveTo("permalink"),
+    });
+  });
+});
+
+describe("location scoping", () => {
+  it("should accept a parent block name and keep the block's own typing", () => {
+    defineMigration<SpikeSchema>({
+      up: (m) =>
+        m
+          .block("spike_meta")
+          .under("spike_card")
+          .alter((block) => {
+            expectTypeOf(block.component).toEqualTypeOf<"spike_meta">();
+          }),
+    });
+  });
+
+  it("should reject a parent that is not a block in the schema", () => {
+    defineMigration<SpikeSchema>({
+      // @ts-expect-error no such block
+      up: (m) =>
+        m
+          .block("spike_meta")
+          .under("spike_nope")
+          .alter(() => {}),
+    });
+  });
+
+  it("should expose field ops on a scoped handle", () => {
+    defineMigration<SpikeSchema>({
+      up: (m) => m.block("spike_meta").under("spike_card").field("og_title").asString(),
     });
   });
 });
@@ -176,12 +247,14 @@ describe("value typing of a path", () => {
 });
 
 describe("content shape of a block", () => {
-  it("should include a section (UI-only) pseudo field as a content key", () => {
-    // `section` is an editor-layout field with no content value; it still shows
-    // up as a migratable path and as a key on the content type.
+  it("should keep a section (UI-only) pseudo field out of the migratable paths", () => {
+    // `section` lays out the editor form and holds no value, so addressing it
+    // in a migration could never do anything.
     expectTypeOf<
       "kitchen_sink.settings_section" extends FieldPathOf<PlaygroundSchema> ? true : false
-    >().toEqualTypeOf<true>();
+    >().toEqualTypeOf<false>();
+    // It remains a key on the content type — that is `@storyblok/schema`'s
+    // `BlockContent`, which the migration DSL does not own.
     expectTypeOf<
       "settings_section" extends keyof ContentOf<PlaygroundSchema, "kitchen_sink"> ? true : false
     >().toEqualTypeOf<true>();

@@ -71,8 +71,8 @@ export interface RateLimitConfig {
    * from the cache are far more generous. So a tier whose responses are mostly
    * cached is paced by a limit that does not apply to them. With this on, the
    * client measures the share of its responses the cache served and lets the
-   * tier climb by that much, never past 1000/s, keeping the requests that do
-   * reach the origin within the tier.
+   * tier climb by that much, up to eight times the tier, keeping the requests
+   * that do reach the origin within it.
    *
    * Traffic the cache does not serve leaves the tier at its limit, which is
    * also what a browser sees: the cache status is not among the headers the API

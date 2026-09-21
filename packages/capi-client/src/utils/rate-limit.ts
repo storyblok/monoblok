@@ -64,6 +64,24 @@ export interface RateLimitConfig {
    */
   adaptive?: boolean | AdaptiveConfig;
   /**
+   * Let a tier's rate rise above its limit while the CDN cache is serving the
+   * traffic.
+   *
+   * The per-second tiers apply to requests that reach the origin; ones answered
+   * from the cache are far more generous. So a tier whose responses are mostly
+   * cached is paced by a limit that does not apply to them. With this on, the
+   * client measures the share of its responses the cache served and lets the
+   * tier climb by that much, never past 1000/s, keeping the requests that do
+   * reach the origin within the tier.
+   *
+   * Traffic the cache does not serve leaves the tier at its limit, which is
+   * also what a browser sees: the cache status is not among the headers the API
+   * exposes to cross-origin script. Ignored alongside `requestsPerSecond`,
+   * which is an explicit rate, and when `adaptive` is `false`.
+   * @default true
+   */
+  cacheAware?: boolean;
+  /**
    * Replaces the in-memory limiter, which paces each instance independently.
    *
    * Supply one backed by shared storage (Redis, Upstash, …) to hold a fleet of
@@ -190,6 +208,29 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
   return Math.min(Math.max(1, Math.floor(strictest)), MAX_RATE_LIMIT);
 }
 
+/**
+ * A revalidated entry is reported with its own status ("RefreshHit"), and that
+ * revalidation reaches the origin, so only a plain hit is free.
+ */
+const CACHE_HIT_STATUS_PREFIX = "hit";
+
+/**
+ * Reads whether the CDN answered a response from its cache rather than from
+ * the origin.
+ *
+ * Returns `undefined` when the response carries no cache status. Browsers are
+ * the case that matters: the header is not among the ones the API exposes to
+ * cross-origin script, so a browser client can never observe a hit and stays
+ * at the origin tier.
+ */
+export function parseCacheStatusHeader(response: Response): boolean | undefined {
+  const status = response.headers.get("x-cache");
+  if (status === null) {
+    return undefined;
+  }
+  return status.trimStart().toLowerCase().startsWith(CACHE_HIT_STATUS_PREFIX);
+}
+
 function getRequestUrl(input: RequestInfo | URL): string | undefined {
   if (typeof input === "string") {
     return input;
@@ -259,6 +300,7 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     maxConcurrency,
     adaptToServerHeaders = true,
     adaptive = true,
+    cacheAware = true,
     limiter,
   } = resolvedConfig;
   // `maxConcurrency` is the deprecated alias for `requestsPerSecond`.
@@ -284,6 +326,13 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     createDefaultRateLimiter({
       adaptive,
       parseServerLimit: adaptToServerHeaders ? parseRateLimitPolicyHeader : undefined,
+      cacheAware:
+        cacheAware && fixedLimit === undefined
+          ? {
+              cachedRequestsPerSecond: MAX_RATE_LIMIT,
+              detectCacheHit: parseCacheStatusHeader,
+            }
+          : undefined,
     });
 
   return createManager(resolvedLimiter, toContext);

@@ -36,6 +36,31 @@ export interface BlockPatch {
  */
 const TRANSPORT_KEYS = new Set(["_uid", "component", "_editable"]);
 
+/**
+ * Field-level translation stores each non-default language beside the field it
+ * translates, in the same block: `author` holds the default language and
+ * `author__i18n__de` holds German. The language code is written with `-`
+ * replaced by `_`, so `en-US` becomes `author__i18n__en_US`.
+ *
+ * These are ordinary content keys. An op that moves or drops `author` without
+ * moving or dropping its translations leaves them addressed to a field name
+ * that no longer exists, and the delivery API drops a translation whose base
+ * field is no longer declared translatable — silent, unrecoverable data loss.
+ */
+export const TRANSLATION_SEPARATOR = "__i18n__";
+
+/** Every `<field>__i18n__<lang>` key a block holds for one field. */
+export function translationKeysFor(block: AnyBlock, field: string): string[] {
+  const prefix = `${field}${TRANSLATION_SEPARATOR}`;
+  return Object.keys(block).filter((key) => key.startsWith(prefix));
+}
+
+/** The base field name a key translates, or the key itself when it is not one. */
+export function baseFieldOf(key: string): string {
+  const at = key.indexOf(TRANSLATION_SEPARATOR);
+  return at === -1 ? key : key.slice(0, at);
+}
+
 export function isBlock(value: unknown): value is AnyBlock {
   return (
     typeof value === "object" &&

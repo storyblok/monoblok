@@ -12,6 +12,7 @@ import {
   findUnstableUids,
   indexBlocks,
   isBlock,
+  translationKeysFor,
 } from "./patch";
 
 export interface StoryMigrationResult {
@@ -55,22 +56,38 @@ function renameKey(block: AnyBlock, from: string, to: string): void {
   for (const [key, value] of entries) block[key] = value;
 }
 
+/**
+ * Every op that names a field names its translations too. A field is not one
+ * key but a family: the base key plus one `__i18n__<lang>` sibling per
+ * translated language.
+ */
+function renameFieldFamily(block: AnyBlock, from: string, to: string): void {
+  for (const key of [from, ...translationKeysFor(block, from)]) {
+    const target = `${to}${key.slice(from.length)}`;
+    // `moveTo` allows an occupied target; dropping it first keeps the moved
+    // value rather than the one it displaces.
+    if (key in block && target in block) delete block[target];
+    renameKey(block, key, target);
+  }
+}
+
 function applyOp(block: AnyBlock, op: MigrationOp): void {
   switch (op.type) {
     case "rename":
-      renameKey(block, op.from, op.to);
+      renameFieldFamily(block, op.from, op.to);
       break;
     case "move":
-      if (op.from in block) {
-        block[op.to] = block[op.from];
-        delete block[op.from];
-      }
+      renameFieldFamily(block, op.from, op.to);
       break;
     case "remove":
       delete block[op.field];
+      for (const key of translationKeysFor(block, op.field)) delete block[key];
       break;
     case "coerce":
       if (op.field in block) block[op.field] = coerce(block[op.field], op.to);
+      for (const key of translationKeysFor(block, op.field)) {
+        block[key] = coerce(block[key], op.to);
+      }
       break;
     case "reorder": {
       const list = block[op.field];

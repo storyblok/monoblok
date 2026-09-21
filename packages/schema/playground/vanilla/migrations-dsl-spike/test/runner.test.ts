@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { applyPatches, indexBlocks } from "../src/patch";
 import { runMigrationOnStory } from "../src/runner";
+import { defineMigration } from "../src/define-migration";
 import { validateMigration } from "../src/validate-migration";
 import { validateStory } from "@storyblok/schema";
 import {
@@ -21,7 +22,7 @@ import {
   scopedRename,
   twoBlocks,
 } from "../migrations";
-import { spikeSchema } from "../fixtures/schema";
+import { spikeSchema, type SpikeSchema } from "../fixtures/schema";
 import { articleStoryContent, pageStoryContent } from "../fixtures/stories";
 
 const schemaLike = { blocks: Object.values(spikeSchema.blocks) };
@@ -404,5 +405,65 @@ describe("transport-only keys", () => {
       "heading",
       "heading",
     ]);
+  });
+});
+
+describe("conflict granularity", () => {
+  it("should skip a renamed block whole rather than leave it holding both names", () => {
+    const run = runMigrationOnStory(renameNestedField, pageStoryContent());
+    const live = structuredClone(run.content);
+    (block(live, "meta-b1") as Record<string, unknown>).written_by = "Edited after the migration";
+
+    const result = applyPatches(live, run.inverse);
+
+    expect(result.conflicts).toEqual([
+      {
+        uid: "meta-b1",
+        key: "written_by",
+        reason: "live value differs from the value the migration wrote",
+      },
+    ]);
+    // The other half of the rename must not land: a block carrying both the old
+    // and the new field name matches no schema.
+    expect("author" in block(live, "meta-b1")).toBe(false);
+    expect(block(live, "meta-b1").written_by).toBe("Edited after the migration");
+    // Every other instance still rolls back.
+    expect(block(live, "meta-a1").author).toBe("Grace");
+    expect("written_by" in block(live, "meta-a1")).toBe(false);
+  });
+});
+
+describe("block identity", () => {
+  it("should report a duplicate _uid an alter introduced", () => {
+    const duplicating = defineMigration<SpikeSchema>({
+      up: (m) =>
+        m.block("spike_section").alter((block) => {
+          const first = block.items?.[0];
+          if (first) block.items = [...(block.items ?? []), structuredClone(first)];
+        }),
+    });
+
+    const run = runMigrationOnStory(duplicating, pageStoryContent());
+
+    // The backend regenerates the repeated uid on write, which would leave the
+    // recorded patch addressing a block that no longer exists.
+    expect(run.unstableUids.duplicate).toEqual(["card-a1", "meta-a1", "card-b1", "meta-b1"]);
+  });
+
+  it("should report a block an alter created without a _uid", () => {
+    const uidless = defineMigration<SpikeSchema>({
+      up: (m) =>
+        m.block("spike_section").alter((block) => {
+          // @ts-expect-error a block literal without _uid is exactly what this guards against
+          block.meta = [{ component: "spike_meta", og_title: "no uid" }];
+        }),
+    });
+
+    expect(runMigrationOnStory(uidless, pageStoryContent()).unstableUids.missing).toBe(2);
+  });
+
+  it("should report nothing for a migration that keeps identity intact", () => {
+    const run = runMigrationOnStory(renameNestedField, pageStoryContent());
+    expect(run.unstableUids).toEqual({ duplicate: [], missing: 0 });
   });
 });

@@ -5,7 +5,14 @@
  * produced plus the inverse patch a rollback would replay.
  */
 import type { AnyChild, CompiledMigration, MigrationOp } from "./define-migration";
-import { type AnyBlock, type BlockPatch, diffBlock, indexBlocks, isBlock } from "./patch";
+import {
+  type AnyBlock,
+  type BlockPatch,
+  diffBlock,
+  findUnstableUids,
+  indexBlocks,
+  isBlock,
+} from "./patch";
 
 export interface StoryMigrationResult {
   changed: boolean;
@@ -14,6 +21,12 @@ export interface StoryMigrationResult {
   matched: number;
   patches: BlockPatch[];
   inverse: BlockPatch[];
+  /**
+   * Blocks the migration left with a repeated or absent `_uid`. The backend
+   * re-uids these on write, which would strand the patch that addresses them —
+   * a runner must refuse to write content that reports any.
+   */
+  unstableUids: { duplicate: string[]; missing: number };
 }
 
 function coerce(value: unknown, to: "string" | "number" | "boolean"): unknown {
@@ -140,6 +153,7 @@ export function runMigrationOnStory(
     matched,
     patches,
     inverse,
+    unstableUids: findUnstableUids(after),
   };
 }
 

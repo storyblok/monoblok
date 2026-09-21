@@ -31,6 +31,9 @@ export function validateMigration(
   const issues: MigrationIssue[] = [];
 
   migration.ops.forEach((op, index) => {
+    if (op.under !== undefined && !known.has(op.under)) {
+      issues.push({ op: index, message: `Unknown parent block "${op.under}" in .under().` });
+    }
     const fields = known.get(op.block);
     if (!fields) {
       issues.push({
@@ -42,7 +45,7 @@ export function validateMigration(
     const sourceField =
       op.type === "rename" || op.type === "move"
         ? op.from
-        : op.type === "remove" || op.type === "coerce" || op.type === "setValue"
+        : op.type === "remove" || op.type === "coerce" || op.type === "reorder"
           ? op.field
           : undefined;
     if (sourceField !== undefined && !fields.has(sourceField)) {

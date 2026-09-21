@@ -1,45 +1,100 @@
 /**
  * SPIKE — prototype quality. Not a shipped API.
  *
- * `defineMigration<Schema>({ up })` under test. The builder records declarative
- * operations; the runner (see `runner.ts`) walks a story's content, applies
- * them per block instance, and diffs each touched instance to produce a patch
- * and its inverse.
+ * `defineMigration<Before, After>({ up })` under test.
+ *
+ * Two schema parameters, because one cannot describe both ends of a migration:
+ * `Before` types the paths the migration reads, `After` types every name and
+ * value it writes. `TAfter` defaults to `TBefore`, so the single-parameter
+ * shorthand `defineMigration<Schema>` is the same signature with the default
+ * filled in — no overload, and therefore no overload-resolution damage to the
+ * two-parameter form.
+ *
+ * The builder records declarative operations; the runner (see `runner.ts`)
+ * walks a story's content, applies them per block instance, and diffs each
+ * touched instance to produce a patch and its inverse.
  */
-import type { BlockNameOf, ContentOf, FieldPathOf, SchemaShape, ValueOfPath } from "./types";
+import type {
+  BlockNameOf,
+  ContentOf,
+  FieldNameIn,
+  FieldPathOf,
+  SchemaShape,
+  TargetFieldName,
+} from "./types";
 
 export type MigrationOp =
-  | { type: "rename"; block: string; from: string; to: string }
-  | { type: "remove"; block: string; field: string }
-  | { type: "coerce"; block: string; field: string; to: "string" | "number" | "boolean" }
-  | { type: "move"; block: string; from: string; to: string }
-  | { type: "setValue"; block: string; field: string; value: unknown }
-  | { type: "alter"; block: string; fn: (block: any) => any };
+  | { type: "rename"; block: string; from: string; to: string; under?: string }
+  | { type: "remove"; block: string; field: string; under?: string }
+  | {
+      type: "coerce";
+      block: string;
+      field: string;
+      to: "string" | "number" | "boolean";
+      under?: string;
+    }
+  | { type: "move"; block: string; from: string; to: string; under?: string }
+  /** Explicit reorder of a `bloks` array, so ordering never degrades to a whole-array replace. */
+  | {
+      type: "reorder";
+      block: string;
+      field: string;
+      compare: (a: AnyChild, b: AnyChild) => number;
+      under?: string;
+    }
+  | { type: "alter"; block: string; fn: (block: any) => any; under?: string };
 
-export interface FieldHandle<TSchema extends SchemaShape, TPath extends FieldPathOf<TSchema>> {
-  /** New name is free text: the target name is by definition not in the current schema. */
-  renameTo: (name: string) => void;
+/** A child block as the reorder comparator sees it. */
+export type AnyChild = Record<string, unknown> & { _uid: string; component: string };
+
+export interface FieldHandle<
+  TBefore extends SchemaShape,
+  TAfter extends SchemaShape,
+  TBlock extends string,
+> {
+  /** Target name comes from the *post*-migration schema. */
+  renameTo: (name: TargetFieldName<TAfter, TBlock>) => void;
   remove: () => void;
   asString: () => void;
   asNumber: () => void;
   asBoolean: () => void;
   /** Move this field's value onto another field of the same block. */
-  moveTo: (name: string) => void;
-  set: (value: ValueOfPath<TSchema, TPath>) => void;
+  moveTo: (name: TargetFieldName<TAfter, TBlock>) => void;
+  /** Reorder a `bloks` array in place. Emits an order op, not a whole-array set. */
+  reorder: (compare: (a: AnyChild, b: AnyChild) => number) => void;
 }
 
-export interface BlockHandle<TSchema extends SchemaShape, TName extends BlockNameOf<TSchema>> {
-  alter: (fn: (block: ContentOf<TSchema, TName>) => void | ContentOf<TSchema, TName>) => void;
+export interface BlockHandle<
+  TBefore extends SchemaShape,
+  TAfter extends SchemaShape,
+  TName extends BlockNameOf<TBefore>,
+> {
+  /**
+   * Reads the pre-migration shape, returns the post-migration shape. A mutating
+   * callback that returns nothing is still allowed for the common case where
+   * the two shapes agree.
+   */
+  alter: (
+    fn: (
+      block: ContentOf<TBefore, TName>,
+    ) => void | (TName extends BlockNameOf<TAfter> ? ContentOf<TAfter, TName> : never),
+  ) => void;
+  /** Field ops scoped to the same location as this handle. */
+  field: (name: FieldNameIn<TBefore, TName>) => FieldHandle<TBefore, TAfter, TName>;
+  /** Restrict every op recorded on this handle to instances nested under `parent`. */
+  under: (parent: BlockNameOf<TBefore>) => BlockHandle<TBefore, TAfter, TName>;
 }
 
-export interface MigrationBuilder<TSchema extends SchemaShape> {
-  field: <TPath extends FieldPathOf<TSchema>>(path: TPath) => FieldHandle<TSchema, TPath>;
-  block: <TName extends BlockNameOf<TSchema>>(name: TName) => BlockHandle<TSchema, TName>;
+export interface MigrationBuilder<TBefore extends SchemaShape, TAfter extends SchemaShape> {
+  field: <TPath extends FieldPathOf<TBefore>>(
+    path: TPath,
+  ) => FieldHandle<TBefore, TAfter, TPath extends `${infer B}.${string}` ? B : never>;
+  block: <TName extends BlockNameOf<TBefore>>(name: TName) => BlockHandle<TBefore, TAfter, TName>;
 }
 
-export interface MigrationDefinition<TSchema extends SchemaShape> {
+export interface MigrationDefinition<TBefore extends SchemaShape, TAfter extends SchemaShape> {
   name?: string;
-  up: (m: MigrationBuilder<TSchema>) => void;
+  up: (m: MigrationBuilder<TBefore, TAfter>) => void;
 }
 
 export interface CompiledMigration {
@@ -49,32 +104,36 @@ export interface CompiledMigration {
   targets: string[];
 }
 
-export function defineMigration<TSchema extends SchemaShape>(
-  definition: MigrationDefinition<TSchema>,
+export function defineMigration<TBefore extends SchemaShape, TAfter extends SchemaShape = TBefore>(
+  definition: MigrationDefinition<TBefore, TAfter>,
 ): CompiledMigration {
   const ops: MigrationOp[] = [];
+
+  const fieldHandle = (block: string, field: string, under?: string) => ({
+    renameTo: (name: string) =>
+      void ops.push({ type: "rename", block, from: field, to: name, under }),
+    remove: () => void ops.push({ type: "remove", block, field, under }),
+    asString: () => void ops.push({ type: "coerce", block, field, to: "string" as const, under }),
+    asNumber: () => void ops.push({ type: "coerce", block, field, to: "number" as const, under }),
+    asBoolean: () => void ops.push({ type: "coerce", block, field, to: "boolean" as const, under }),
+    moveTo: (name: string) => void ops.push({ type: "move", block, from: field, to: name, under }),
+    reorder: (compare: (a: AnyChild, b: AnyChild) => number) =>
+      void ops.push({ type: "reorder", block, field, compare, under }),
+  });
+
+  const blockHandle = (name: string, under?: string): Record<string, unknown> => ({
+    alter: (fn: (block: any) => any) => void ops.push({ type: "alter", block: name, fn, under }),
+    field: (field: string) => fieldHandle(name, field, under),
+    under: (parent: string) => blockHandle(name, parent),
+  });
 
   const builder = {
     field(path: string) {
       const dot = path.indexOf(".");
-      const block = path.slice(0, dot);
-      const field = path.slice(dot + 1);
-      return {
-        renameTo: (name: string) => void ops.push({ type: "rename", block, from: field, to: name }),
-        remove: () => void ops.push({ type: "remove", block, field }),
-        asString: () => void ops.push({ type: "coerce", block, field, to: "string" }),
-        asNumber: () => void ops.push({ type: "coerce", block, field, to: "number" }),
-        asBoolean: () => void ops.push({ type: "coerce", block, field, to: "boolean" }),
-        moveTo: (name: string) => void ops.push({ type: "move", block, from: field, to: name }),
-        set: (value: unknown) => void ops.push({ type: "setValue", block, field, value }),
-      };
+      return fieldHandle(path.slice(0, dot), path.slice(dot + 1));
     },
-    block(name: string) {
-      return {
-        alter: (fn: (block: any) => any) => void ops.push({ type: "alter", block: name, fn }),
-      };
-    },
-  } as unknown as MigrationBuilder<TSchema>;
+    block: (name: string) => blockHandle(name),
+  } as unknown as MigrationBuilder<TBefore, TAfter>;
 
   definition.up(builder);
 

@@ -72,8 +72,10 @@ export interface AdaptiveConfig {
    */
   decreaseFactor?: number;
   /**
-   * Requests per second added back per `recoveryIntervalMs` of sustained success.
-   * @default 1
+   * Requests per second added back per `recoveryIntervalMs` of sustained
+   * success. Defaults to a twenty-fifth of the bucket's rate, at least 1, so
+   * that recovery takes about as long on a 50/s tier as on a 6/s one instead of
+   * scaling with the tier.
    */
   increaseStep?: number;
   /**
@@ -97,13 +99,15 @@ export interface AdaptiveConfig {
   decreaseCooldownMs?: number;
 }
 
-const ADAPTIVE_DEFAULTS: Required<AdaptiveConfig> = {
+const ADAPTIVE_DEFAULTS: Required<Omit<AdaptiveConfig, "increaseStep">> = {
   decreaseFactor: 0.5,
-  increaseStep: 1,
   recoveryIntervalMs: 1000,
   minRequestsPerSecond: 1,
   decreaseCooldownMs: 1000,
 };
+
+/** A bucket recovers its whole rate in approximately this many intervals. */
+const RECOVERY_INTERVALS = 25;
 
 /**
  * The status that means the request was refused for exceeding a quota. 503 is
@@ -150,16 +154,20 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   // Tuning may make the back-off gentler or harsher, but never turn it into an
   // increase, and never drop the rate to zero — which the window would read as
   // no limit at all.
-  const adaptiveConfig: Required<AdaptiveConfig> = {
+  const adaptiveConfig = {
     ...ADAPTIVE_DEFAULTS,
     ...configured,
     decreaseFactor:
       requestedDecrease > 0 && requestedDecrease < 1
         ? requestedDecrease
         : ADAPTIVE_DEFAULTS.decreaseFactor,
-    increaseStep: Math.max(0, configured.increaseStep ?? ADAPTIVE_DEFAULTS.increaseStep),
+    increaseStep:
+      configured.increaseStep === undefined ? undefined : Math.max(0, configured.increaseStep),
     minRequestsPerSecond: Math.max(1, configured.minRequestsPerSecond ?? 1),
   };
+
+  const stepFor = (ceiling: number) =>
+    adaptiveConfig.increaseStep ?? Math.max(1, Math.round(ceiling / RECOVERY_INTERVALS));
   const adaptationEnabled = adaptive !== false;
   const buckets = new Map<string, Bucket>();
 
@@ -210,7 +218,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     }
 
     bucket.lastIncreaseAt = now;
-    bucket.throttle.setLimit(Math.min(ceiling, current + adaptiveConfig.increaseStep));
+    bucket.throttle.setLimit(Math.min(ceiling, current + stepFor(ceiling)));
   };
 
   const applyServerLimit = (bucket: Bucket, response: Response) => {

@@ -257,6 +257,24 @@ describe("createDefaultRateLimiter() server quota", () => {
 describe("createDefaultRateLimiter() recovery", () => {
   afterEach(() => vi.useRealTimers());
 
+  it("should recover a large bucket in the same time as a small one", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter();
+    const ctx = context({ bucket: "large", limit: 50 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await settle();
+    expect(await admittedImmediately(limiter, ctx, 100)).toBe(25);
+    await settle();
+
+    // A fixed step would take 25 intervals to undo one halving of a 50/s
+    // bucket, and one interval to undo it on a 2/s bucket.
+    await limiter.recordResponse?.(ctx, ok());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 100)).toBe(27);
+  });
+
   it("should recover on answers that are not refusals, a 404 among them", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter();

@@ -1,35 +1,59 @@
 # ADR-0017: Cache-Aware Rate-Limit Ceiling in the Content API Client
 
-**Status:** Accepted **Date:** 2026-09-21
+**Status:** Accepted  
+**Date:** 2026-09-21
 
 Amends ADR-0016.
 
 ## Context
 
 The Content Delivery API's per-second tiers — 50/s for a single story or a listing of at most 25
-items, 15/s for 26-50, 10/s for 51-75, 6/s for 76-100 — apply to requests that reach the origin. The
-documentation puts requests answered from the CDN cache at 1000/s, and those are answered at the
-edge, so they cost nothing against the tier.
+items, 15/s for 26-50, 10/s for 51-75, 6/s for 76-100 — apply to requests that reach the origin. A
+request the CDN answers from its cache never gets there, so it costs nothing against the tier.
 
-ADR-0016's ceiling is the tier limit, and adaptation can only move below it. A client whose traffic
-is mostly cached is therefore paced by a limit that does not apply to most of its requests: a
-published build fetching 100-item listings sits at 6/s while the edge would serve it far faster.
+ADR-0016's ceiling is the tier limit, and adaptation can only move below it. A client that re-reads
+warm URLs is therefore paced by a limit that does not apply to most of its requests: a build walking
+100-item listings a second time sits at 6/s while the edge would serve it far faster. A cold first
+pass gains nothing — 15 distinct URLs read once returned 15 misses and no hits — so the headroom is
+there for workloads that come back to keys they or someone else has already warmed, which is what
+repeated builds, previews and long-running renderers do.
 
-Two things had to be true before this was worth building, and both were measured against the live
-API rather than taken from the documentation.
+Three things had to be true before this was worth building, and all three were measured against the
+live API rather than taken from the documentation.
 
 **A client can tell a cache hit from a miss.** Every CDN response carries an `X-Cache` header, on
 the first request as much as the hundredth: `Hit from cloudfront` for an entry served from the edge,
 `Miss from cloudfront` for one that reached the origin, `RefreshHit from cloudfront` for one
-revalidated against the origin, `Error from cloudfront` for a 4xx. An `Age` header appears only
-alongside a hit. Only a plain hit is free — a revalidation is a request to the origin like any
-other.
+revalidated against the origin, `Error from cloudfront` for a 4xx. Only a plain hit is free — a
+revalidation is a request to the origin like any other. `X-Cache` is the only sound signal: `Age` is
+absent from about a quarter of genuine hits and present as `0` on plain hits, so it tells neither
+direction reliably.
 
 **The tiers behave as documented.** Paced at 10/s, forced-miss 100-item listings were throttled on
 17 of 40 requests; at 5/s, on 1 of 20. Forced-miss requests in the 50/s tier paced at 80/s were
 throttled; the same rate against a cached URL was not throttled once in over 200 requests. The 429
 carries no `Retry-After` and no rate-limit headers, so there is nothing to read off it but its
 status.
+
+**A cache hit spares the origin whichever content version was asked for.** This is the premise the
+whole design rests on, and it does not follow from a hit being reported: the point of the mechanism
+is that a hit does not draw on the tier, which only a rate above the tier can show. Measured on the
+6/s tier, with a forced-miss run as the positive control that the probe can see throttling at all:
+
+| traffic against one warm 100-item listing | rate attempted | outcome                                   |
+| ----------------------------------------- | -------------: | ----------------------------------------- |
+| forced misses (control)                   |         16.2/s | **29 of 30 throttled**                    |
+| published                                 |         16.6/s | 60 hits, **0 throttled**                  |
+| draft                                     |         18.1/s | 57 hits, 3 revalidations, **0 throttled** |
+| draft                                     |         33.0/s | 58 hits, 2 revalidations, **0 throttled** |
+| published                                 |         32.1/s | 60 hits, **0 throttled**                  |
+
+Draft traffic is cached exactly like published traffic and its hits cost the tier nothing, at five
+times the tier as readily as at three. Draft responses do carry
+`Cache-Control: max-age=0, private, must-revalidate`, which reads as though they could not be cached
+at all; the header describes what a client may store, not what the CDN serves, and the rates above
+are what the tier actually enforces. So the mechanism needs no notion of content version: it reads
+the cache status, and the cache status is right for both.
 
 One finding constrains the design rather than supporting it: the API's
 `Access-Control-Expose-Headers` lists `Api-Version, Token, Total, Per-Page`. `X-Cache` and `Age` are
@@ -59,14 +83,15 @@ publishing mid-run and following the new version onto cold keys, the transition 
 |      1x |                6 r/s |                      0 |                          — |
 |      4x |               24 r/s |                      8 |                       4.5s |
 |     10x |               59 r/s |                     12 |                       2.4s |
-|     20x |              120 r/s |                 24, 27 |                 1.7s, 1.6s |
+|     20x |              120 r/s |                 27, 24 |                 1.7s, 1.6s |
 
 The burst is not the window being slow. It is the requests already in flight when the first miss
 comes back: roughly the ceiling times one round trip, which no feedback can react its way out of. We
 built the obvious reactive fix first — clamp on a run of consecutive misses rather than waiting for
 the average — and measured it changing the burst from 27 to 24, inside the run-to-run spread. The
-clamp does work (a bucket at 120/s drops to its 6/s limit after ten misses, where the average alone
-would still allow 25/s); it just cannot touch the part of the burst that was already on the wire.
+clamp does work (a bucket at 120/s drops to its 6/s limit on a run of misses, where the average
+alone would still allow 25/s); it just cannot touch the part of the burst that was already on the
+wire.
 
 That leaves bounding the ceiling as the only lever with real leverage on the worst case.
 
@@ -74,12 +99,18 @@ That leaves bounding the ceiling as the only lever with real leverage on the wor
 
 The Content API client's ceiling is discovered rather than fixed. Each tier keeps a rolling window
 of the last 50 responses whose cache status it could read, and its ceiling becomes
-`tierLimit / (1 - hitShare)`, bounded by **eight times the tier** and by 1000/s.
+`tierLimit / (1 - hitShare)`, bounded by **eight times the tier**.
 
 That formula is the whole argument: only the share of requests that misses the cache reaches the
 origin, so a tier running at `tierLimit / (1 - hitShare)` still puts no more than `tierLimit`
 requests per second on the origin. It is the tier limit exactly when nothing is cached, twice it at
-a half-cached workload, ten times it at nine-tenths.
+a half-cached workload, and eight times it at seven-eighths, which is where the bound stops it.
+
+The argument assumes every request a tier issues is observable: the miss share is counted over the
+responses that carried a readable cache status, while the origin sees all of them. That holds as
+long as a runtime either reads the header on every response or on none — which is the case today,
+since the header is either exposed to the client or not — and it is what makes the measured share
+the same share the origin experiences.
 
 The ceiling only sets how far AIMD may recover to. The rate still climbs a twenty-fifth of the
 ceiling per quiet second and still halves on a 429, so a tier reaches a raised ceiling over tens of
@@ -92,7 +123,7 @@ configuration against the 6/s tier, the warm plateau is 48 r/s with no 429s at a
 transition issues 40 requests of which 7 are throttled, over 1.1s, with admissions back inside the
 tier two seconds after the new version appears.
 
-Six things keep the cold and mixed cases from regressing:
+Seven things keep the cold and mixed cases from regressing:
 
 - A response with no readable cache status is not an observation. A browser, or any runtime that
   cannot see the header, keeps an empty window and the tier limit — today's behaviour exactly.
@@ -101,9 +132,17 @@ Six things keep the cold and mixed cases from regressing:
 - The ceiling is recomputed on every response and the rate is clamped to it immediately. A workload
   that turns cold refills the window within 50 responses and drops back to the tier without waiting
   for a 429.
-- A run of ten consecutive origin-served responses puts a tier back on its limit at once, without
-  waiting for the average. A single hit lifts it again and the window is kept, so a brief cold patch
-  costs the climb back rather than the measurement.
+- A run of consecutive origin-served responses puts a tier back on its limit at once, without
+  waiting for the average. How long a run has to be is derived from the miss share the tier has been
+  measuring, not fixed: a run is evidence of a cold transition only if the measured traffic would
+  not produce one on its own. A fully cached tier is believed after three or four, where a fixed ten
+  would keep it paced far above the origin for twice as long; a half-cached one needs far more than
+  ten, where a fixed ten would trip on ordinary clustering and cost it its headroom repeatedly. A
+  single hit lifts the clamp again and the window is kept, so a brief cold patch costs the climb
+  back rather than the measurement.
+- A measurement a tier stops renewing is discarded after a minute of silence. The window carries no
+  time of its own, so without this a client that ran hot, idled and woke up would admit a whole
+  raised ceiling at once on the strength of a measurement describing traffic that was long over.
 - A revalidated entry and a 429 both count as reaching the origin, which is what they do.
 - An explicit `requestsPerSecond` is a rate the caller asked for, and `adaptive: false` pins every
   tier outright. Neither is overridden. `rateLimit.cacheAware: false` turns the mechanism off on its
@@ -116,7 +155,13 @@ file diverging between the two copies.
 
 ## Consequences
 
-- A client on warm published traffic finds its own headroom, up to 1000/s, without configuration.
+- A client re-reading warm URLs finds its own headroom without configuration, up to eight times its
+  tier: 400/s on the 50/s tier, 48/s on the 6/s one. Summed across the four tiers a client could in
+  principle drive 648/s, which is the global worst case.
+- The headroom is not free on arrival. The window has to fill before the ceiling moves at all —
+  about 9s at the 6/s tier — and AIMD then takes roughly another 20s to climb to 8x, so a run
+  shorter than half a minute sees little of it. A cold first pass sees none: nothing has warmed the
+  keys yet. The gain belongs to workloads that keep going, or that come back.
 - This reverses ADR-0016's guarantee that adaptation can only make a client more conservative. A
   working set going cold costs a bounded burst of 429s — 7 over about a second on the 6/s tier,
   where a client pinned to the tier would have had none. AIMD absorbs it by halving, which is the
@@ -128,8 +173,17 @@ file diverging between the two copies.
   unaffected, for better and for worse.
 - The hit share is measured per tier, not per URL, so a tier mixing a hot listing with cold ones is
   paced by their average. That is the correct aggregate: the origin sees the aggregate too.
-- The cached ceiling is a documented figure, not a measured one, and with the eight-times bound in
-  place no tier reaches it anyway: it now only matters for a caller configuring a rate of its own.
+- The cached-rate bound is dead in practice: eight times the tier binds first on every one of the
+  four, so no tier can reach it. It stays as an outer bound for a caller assembling a cache-aware
+  configuration of its own.
+- The ceiling also never passes a per-second quota the API advertises. The Content API advertises
+  none today, so this never binds; were it to start, the mechanism would go quiet rather than
+  overrun a rate the API had just named. It is the safe default, but it is an invisible coupling —
+  the feature would disappear without anything saying so.
+- Nothing about the rate is visible from outside the client unless it is asked for, so
+  `rateLimit.onRateLimitChange` reports the tier, the rate in effect, the discovered ceiling and the
+  measured hit share whenever a response moves them. Without it a 429 burst can only be explained by
+  timing requests.
 - A client pinned to an old content version never goes cold at all, since that version's entries are
   not purged. The cold transition is paid once per version the client follows, not once per publish
   it is unaware of.

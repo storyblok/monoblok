@@ -63,7 +63,11 @@ export type {
   DefaultRateLimiterOptions,
   RateLimitContext,
   RateLimiter,
+  RateLimitStatus,
 } from "./utils/limiter";
+// The stock `CacheAwareConfig.detectCacheHit`, so a caller assembling its own
+// cache-aware configuration does not have to reimplement it.
+export { parseCacheStatusHeader } from "./utils/rate-limit";
 export type { RateLimitConfig } from "./utils/rate-limit";
 
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */

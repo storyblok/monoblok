@@ -8,6 +8,7 @@ import {
   createPassthroughRateLimiter,
   type RateLimitContext,
   type RateLimiter,
+  type RateLimitStatus,
 } from "./limiter";
 
 const context = (overrides: Partial<RateLimitContext> = {}): RateLimitContext => ({
@@ -552,5 +553,205 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     await reportOverTime(limiter, ctx, cached, 120);
 
     expect(await admittedImmediately(limiter, ctx, 200)).toBe(12);
+  });
+});
+
+describe("createDefaultRateLimiter({ cacheAware }) — bounds and decay", () => {
+  afterEach(() => vi.useRealTimers());
+
+  const cached = () => new Response(null, { status: 200, headers: { "x-cache": "hit" } });
+  const fromOrigin = () => new Response(null, { status: 200, headers: { "x-cache": "miss" } });
+
+  const detectCacheHit = (response: Response) => {
+    const status = response.headers.get("x-cache");
+    return status === null ? undefined : status === "hit";
+  };
+
+  async function reportOverTime(
+    limiter: RateLimiter,
+    ctx: RateLimitContext,
+    response: () => Response,
+    count: number,
+  ) {
+    for (let i = 0; i < count; i++) {
+      await limiter.recordResponse?.(ctx, response());
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+  }
+
+  it.each([
+    ["zero", 0],
+    ["not a number", Number.NaN],
+    ["below the bucket's own limit", 3],
+  ])("should still pace the bucket when the cached rate is %s", async (_name, cachedRate) => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { cachedRequestsPerSecond: cachedRate, detectCacheHit },
+    });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 120);
+
+    // A cached rate the caller got wrong may cost the headroom, but it must
+    // never leave the bucket unpaced, nor paced slower than the limit it asked
+    // for.
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(10);
+  });
+
+  it("should forget a cache measurement the bucket has stopped renewing", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { cachedRequestsPerSecond: 1000, detectCacheHit },
+    });
+    const ctx = context({ limit: 6 });
+
+    await reportOverTime(limiter, ctx, cached, 120);
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(48);
+
+    await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
+
+    // The entries that measurement described are long gone, so waking up must
+    // not put the whole raised rate on the wire before a single response can
+    // say otherwise.
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(6);
+  });
+
+  it("should keep a raised rate across a pause short enough for the measurement to hold", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { cachedRequestsPerSecond: 1000, detectCacheHit },
+    });
+    const ctx = context({ limit: 6 });
+
+    await reportOverTime(limiter, ctx, cached, 120);
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(48);
+  });
+
+  it("should drop a fully cached bucket on a run of misses far shorter than the window", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { cachedRequestsPerSecond: 1000, detectCacheHit },
+    });
+    const ctx = context({ limit: 10 });
+
+    await reportOverTime(limiter, ctx, cached, 120);
+    await settle();
+
+    // Nothing else was missing, so a handful of misses in a row is already the
+    // traffic going cold rather than the workload's ordinary variation.
+    for (let i = 0; i < 5; i++) {
+      await limiter.recordResponse?.(ctx, fromOrigin());
+    }
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+  });
+
+  it("should not read a run of misses as going cold when the bucket misses that often anyway", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: { cachedRequestsPerSecond: 1000, detectCacheHit },
+    });
+    const ctx = context({ limit: 10 });
+
+    // Half the responses reach the origin, so runs of misses arrive on their
+    // own. Reading one as a cold transition would cost this workload its
+    // headroom over and over.
+    let n = 0;
+    await reportOverTime(limiter, ctx, () => (n++ % 2 === 0 ? cached() : fromOrigin()), 120);
+    await settle();
+
+    for (let i = 0; i < 10; i++) {
+      await limiter.recordResponse?.(ctx, fromOrigin());
+    }
+
+    expect(await admittedImmediately(limiter, ctx, 200)).toBeGreaterThan(10);
+  });
+});
+
+/** The most recent status an observer was handed. */
+function latest<T>(items: T[]): T | undefined {
+  return items[items.length - 1];
+}
+
+describe("createDefaultRateLimiter({ onRateLimitChange })", () => {
+  afterEach(() => vi.useRealTimers());
+
+  const cached = () => new Response(null, { status: 200, headers: { "x-cache": "hit" } });
+  const cacheAware = {
+    cachedRequestsPerSecond: 1000,
+    detectCacheHit: (response: Response) => {
+      const status = response.headers.get("x-cache");
+      return status === null ? undefined : status === "hit";
+    },
+  };
+
+  it("should report the rate a bucket has backed off to", async () => {
+    vi.useFakeTimers();
+    const reported: RateLimitStatus[] = [];
+    const limiter = createDefaultRateLimiter({ onRateLimitChange: (s) => reported.push(s) });
+    const ctx = context({ bucket: "listings", limit: 10 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+
+    expect(latest(reported)).toMatchObject({
+      bucket: "listings",
+      requestsPerSecond: 5,
+      ceiling: 10,
+      configuredLimit: 10,
+    });
+  });
+
+  it("should report the ceiling the cache measurement has opened up", async () => {
+    vi.useFakeTimers();
+    const reported: RateLimitStatus[] = [];
+    const limiter = createDefaultRateLimiter({
+      cacheAware,
+      onRateLimitChange: (s) => reported.push(s),
+    });
+    const ctx = context({ limit: 6 });
+
+    for (let i = 0; i < 60; i++) {
+      await limiter.recordResponse?.(ctx, cached());
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+
+    expect(latest(reported)).toMatchObject({ ceiling: 48, cacheHitShare: 1, configuredLimit: 6 });
+  });
+
+  it("should not open the ceiling up before the measurement covers a full window", async () => {
+    vi.useFakeTimers();
+    const reported: RateLimitStatus[] = [];
+    const limiter = createDefaultRateLimiter({
+      cacheAware,
+      onRateLimitChange: (s) => reported.push(s),
+    });
+    const ctx = context({ limit: 6 });
+
+    for (let i = 0; i < 49; i++) {
+      await limiter.recordResponse?.(ctx, cached());
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    // Every response so far has been a hit, so only the sample count is holding
+    // the ceiling down — a client must not extrapolate from a lucky handful.
+    expect(latest(reported)?.ceiling).toBe(6);
+
+    await limiter.recordResponse?.(ctx, cached());
+
+    expect(latest(reported)?.ceiling).toBe(48);
+  });
+
+  it("should keep serving requests when the observer throws", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      onRateLimitChange: () => {
+        throw new Error("observer exploded");
+      },
+    });
+    const ctx = context({ limit: 4 });
+
+    expect(() => limiter.recordResponse?.(ctx, ok())).not.toThrow();
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(4);
   });
 });

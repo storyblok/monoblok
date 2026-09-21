@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from "./rate-limit";
-import type { RateLimitContext, RateLimiter } from "./limiter";
+import {
+  createThrottleManager,
+  determineTier,
+  parseCacheStatusHeader,
+  parseRateLimitPolicyHeader,
+} from "./rate-limit";
+import type { RateLimitContext, RateLimiter, RateLimitStatus } from "./limiter";
 
 const BASE = "https://api.storyblok.com";
 
@@ -751,11 +756,75 @@ describe("createThrottleManager({ cacheAware })", () => {
 
   it("should raise only the tier whose requests the cache serves", async () => {
     vi.useFakeTimers();
-    const manager = createThrottleManager({});
+    const reported: RateLimitStatus[] = [];
+    const manager = createThrottleManager({ onRateLimitChange: (status) => reported.push(status) });
+    const send = manager.wrapFetch(
+      async () =>
+        new Response(null, { status: 200, headers: { "x-cache": "Hit from cloudfront" } }),
+    );
 
     await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
     await vi.advanceTimersByTimeAsync(10_000);
+    // One cached response on the single-story tier. A measurement shared
+    // between tiers would hand it the listing tier's headroom on the strength
+    // of this one response.
+    await send(urlFor("/v2/cdn/stories/home"));
 
-    expect(await admittedNow(manager, 100, "/v2/cdn/stories/home")).toBe(50);
+    const latestFor = (bucket: string) => {
+      const matching = reported.filter((status) => status.bucket === bucket);
+      return matching[matching.length - 1];
+    };
+    expect(latestFor("VERY_LARGE")?.ceiling).toBe(RAISED);
+    expect(latestFor("SINGLE_OR_SMALL")).toMatchObject({ ceiling: 50, configuredLimit: 50 });
+  });
+
+  it("should report the rate and the measurement behind it", async () => {
+    vi.useFakeTimers();
+    const reported: RateLimitStatus[] = [];
+    const manager = createThrottleManager({ onRateLimitChange: (status) => reported.push(status) });
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+
+    expect(reported[reported.length - 1]).toMatchObject({
+      bucket: "VERY_LARGE",
+      requestsPerSecond: RAISED,
+      ceiling: RAISED,
+      configuredLimit: 6,
+      cacheHitShare: 1,
+    });
+  });
+});
+
+describe("parseCacheStatusHeader()", () => {
+  const cacheStatus = (value: string) =>
+    parseCacheStatusHeader(new Response(null, { headers: { "x-cache": value } }));
+
+  it("should read a response the cache served as free of the origin", () => {
+    expect(cacheStatus("Hit from cloudfront")).toBe(true);
+  });
+
+  it.each(["Miss from cloudfront", "RefreshHit from cloudfront", "Error from cloudfront"])(
+    "should read %s as reaching the origin",
+    (value) => {
+      expect(cacheStatus(value)).toBe(false);
+    },
+  );
+
+  it("should report no signal when the response carries no cache status", () => {
+    expect(parseCacheStatusHeader(new Response(null))).toBeUndefined();
+  });
+
+  it.each([
+    ["Hit from cloudfront, Miss from cloudfront"],
+    ["Miss from cloudfront, Hit from cloudfront"],
+  ])("should count %s as reaching the origin whichever hop is listed first", (value) => {
+    // A response that passed through more than one cache arrives as one joined
+    // value. It only spared the origin if every hop served it, and the answer
+    // must not depend on the order.
+    expect(cacheStatus(value)).toBe(false);
+  });
+
+  it("should count a response every hop served as free of the origin", () => {
+    expect(cacheStatus("Hit from cloudfront, Hit from cloudfront")).toBe(true);
   });
 });

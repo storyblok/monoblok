@@ -19,21 +19,20 @@ requests until the throttle wedged, SSR handlers hung, and Cloudflare returned `
 The `capi` client did not have this hang: it released its slot on request completion (in the settled
 promise handler), not from a timer. It did, however, share the modeling bug described below.
 
-The other relevant question is what the server actually limits. Verified against the backend
-(storyrails):
+The other relevant question is what the server actually limits. Verified against the API's
+observable behaviour:
 
 - The numbers the clients pace against are enforced as **requests per second**, in a fixed
-  one-second window (a Redis counter keyed by the clock second, reset when the second rolls over).
-  The 429 body literally reads "Rate limit of N request per second has been reached." The
-  per-endpoint CDN tiers are `per_page <= 25 -> 50`, `26-50 -> 15`, `51-75 -> 10`, `76-100 -> 6` per
-  second (a single story counts as the `50` tier, for both `draft` and `published`), and the
-  Management API is `3` per second on the free plan and `6` on paid plans. A separate space-wide
-  hard limit of `1000` per second caps all CDN calls together; published reads are usually served
-  from the edge cache and rarely reach the origin throttles, which is why published traffic sustains
-  a much higher effective rate than draft, not a higher per-endpoint tier.
-- Separately, the backend also enforces a genuine **concurrency cap** (default 30 simultaneous
-  in-flight requests per space), implemented as an around-action that increments before and
-  decrements after each request. This is the only limit the
+  one-second window, counted per clock second and reset when the second rolls over. The 429 body
+  literally reads "Rate limit of N request per second has been reached." The per-endpoint CDN tiers
+  are `per_page <= 25 -> 50`, `26-50 -> 15`, `51-75 -> 10`, `76-100 -> 6` per second (a single story
+  counts as the `50` tier, for both `draft` and `published`), and the Management API is `3` per
+  second on the free plan and `6` on paid plans. A separate space-wide hard limit of `1000` per
+  second caps all CDN calls together; published reads are usually served from the edge cache and
+  rarely reach the origin throttles, which is why published traffic sustains a much higher effective
+  rate than draft, not a higher per-endpoint tier.
+- Separately, the API also enforces a genuine **concurrency cap** (default 30 simultaneous in-flight
+  requests per space), counted for the duration of each request. This is the only limit the
   `X-RateLimit-Policy: "space-concurrent-requests";q=N` header describes, and it is emitted only on
   `version=draft` requests.
 

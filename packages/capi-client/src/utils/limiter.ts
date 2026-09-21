@@ -73,9 +73,8 @@ export interface AdaptiveConfig {
   decreaseFactor?: number;
   /**
    * Requests per second added back per `recoveryIntervalMs` of sustained
-   * success. Defaults to a twenty-fifth of the bucket's rate, at least 1, so
-   * that recovery takes about as long on a 50/s tier as on a 6/s one instead of
-   * scaling with the tier.
+   * success. Defaults to a twenty-fifth of the bucket's ceiling, at least 1, so
+   * that recovery takes about as long on a 50/s tier as on a 6/s one.
    */
   increaseStep?: number;
   /**

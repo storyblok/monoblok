@@ -3,6 +3,13 @@
  *
  * `defineMigration<Before, After>({ up })` under test.
  *
+ * `up` and `name` are spike scaffolding, kept only so the probes stay readable;
+ * neither belongs in the proposed API. There is no `down`: the inverse of an
+ * `alter` is not writable without the values it overwrote, so rollback replays
+ * the patches recorded while the migration ran. With nothing to pair it with,
+ * `up` is a direction that does not exist, and the definition object holds one
+ * key — the shipped form takes the builder callback directly.
+ *
  * Two schema parameters, because one cannot describe both ends of a migration:
  * `Before` types the paths the migration reads, `After` types every name and
  * value it writes. `TAfter` defaults to `TBefore`, so the single-parameter
@@ -93,6 +100,10 @@ export interface MigrationBuilder<TBefore extends SchemaShape, TAfter extends Sc
 }
 
 export interface MigrationDefinition<TBefore extends SchemaShape, TAfter extends SchemaShape> {
+  /**
+   * Spike only: the probes share one module, so there is no filename to take an
+   * id from. Shipped migrations are one per file and keyed by that filename.
+   */
   name?: string;
   up: (m: MigrationBuilder<TBefore, TAfter>) => void;
 }

@@ -122,3 +122,38 @@ read-backs verbatim; `test/editor-save.test.ts` runs the differ over them.
 
   A rollback therefore has to treat "key absent → field-type empty value" as a non-conflict, or
   accept a conflict on every story an editor has opened since the schema last grew.
+
+## What the second space run settled
+
+Driven by `scripts/probe-write-paths.mjs` (Management + delivery API) and
+`fixtures/editor-i18n-*.json` (Visual Editor read-backs, verbatim), with the space switched to
+field-level translation and a second language added.
+
+- **A field-level translation is a sibling key in the same block.** `author` holds the default
+  language, `author__i18n__de` holds German; the language code is written with `-` replaced by `_`
+  (`en-US` → `author__i18n__en_US`). Turning the per-field translate toggle on without typing writes
+  the field type's empty value under the suffixed key.
+
+- **The editor's backfill is language-unaware.** Saving in German backfilled `price: ""` and
+  `promoted: false` on the bare keys and produced no `__i18n__` key at all. Only an actual write to
+  the field, or the translate toggle, creates one.
+
+- **A rename that moves only the base key destroys the translation.** With the component schema
+  renamed too, the delivery API served `byline: "Ada Lovelace"` for `language=de` — the
+  default-language value — because the orphan `author__i18n__de` no longer matches a translatable
+  field. Carrying the family across gave `byline: "Ada auf Deutsch"`. Every op that names a field
+  now names its `__i18n__` siblings; see `translationKeysFor` in `src/patch.ts`.
+
+- **Publish adds nothing and normalizes nothing.** A publish is a copy of the draft. But a
+  draft-only migration leaves the published version on the old shape until someone publishes, and a
+  draft-only rollback cannot take it back: after rollback the draft held `author` while the
+  published version still held `byline`.
+
+- **Field constraints validate the base keys only.** With them on, a JSON number in a `number` field
+  is a 422 (`must be a string with numbers and allow '-' and '.'`), `""` passes, a string in a
+  `boolean` field is a 422, and the check reaches blocks nested inside a richtext field. A
+  `__i18n__` key is never validated, whatever it holds.
+
+- **A release is a separate content record.** A story written in a release does not touch the
+  story's own content and is invisible to the plain story endpoints, so a migration over stories
+  cannot see it. Deploying the release overwrites the story's draft wholesale.

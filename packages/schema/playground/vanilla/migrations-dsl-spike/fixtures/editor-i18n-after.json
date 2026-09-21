@@ -1,0 +1,50 @@
+{
+  "_uid": "article-root",
+  "body": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "text": "Hello ",
+            "type": "text"
+          },
+          {
+            "text": "world",
+            "type": "text",
+            "marks": [
+              {
+                "type": "bold"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "blok",
+        "attrs": {
+          "id": "0a0a9d4c-2fc4-4b8f-9f1b-6f5cf7b7d0a2",
+          "body": [
+            {
+              "_uid": "meta-in-richtext",
+              "author": "Embedded",
+              "og_title": "RT",
+              "component": "spike_meta"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "price": "",
+  "title": "Spike Article",
+  "author": "Ada Lovelace",
+  "excerpt": "An excerpt.",
+  "promoted": false,
+  "subtitle": "",
+  "component": "spike_article",
+  "author__i18n__de": "Ada auf Deutsch",
+  "promoted__i18n__de": false,
+  "subtitle__i18n__de": ""
+}

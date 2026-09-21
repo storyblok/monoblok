@@ -134,10 +134,10 @@ describe("location scoping", () => {
 
   it("should reject a parent that is not a block in the schema", () => {
     defineMigration<SpikeSchema>({
-      // @ts-expect-error no such block
       up: (m) =>
         m
           .block("spike_meta")
+          // @ts-expect-error no such block
           .under("spike_nope")
           .alter(() => {}),
     });

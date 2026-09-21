@@ -1,0 +1,112 @@
+{
+  "_uid": "page-root",
+  "body": [
+    {
+      "_uid": "section-a",
+      "component": "spike_section",
+      "heading": "First section",
+      "items": [
+        {
+          "_uid": "card-a1",
+          "component": "spike_card",
+          "description": "First card",
+          "featured": "true",
+          "legacy_price": "19.99",
+          "meta": [
+            {
+              "_uid": "meta-a1",
+              "author": "Grace",
+              "component": "spike_meta",
+              "og_title": "A1"
+            }
+          ],
+          "old_slug": "card-a-1",
+          "slug": "",
+          "title": "Card A1"
+        },
+        {
+          "_uid": "card-a2",
+          "component": "spike_card",
+          "description": "Second card",
+          "featured": "",
+          "legacy_price": "not-a-number",
+          "meta": [],
+          "old_slug": "",
+          "slug": "kept",
+          "title": "Card A2"
+        }
+      ],
+      "meta": [
+        {
+          "_uid": "meta-a",
+          "component": "spike_meta",
+          "og_title": "A"
+        }
+      ]
+    },
+    {
+      "_uid": "section-b",
+      "component": "spike_section",
+      "heading": "Second section",
+      "items": [
+        {
+          "_uid": "card-b1",
+          "component": "spike_card",
+          "description": "Third card",
+          "featured": "false",
+          "legacy_price": "5",
+          "meta": [
+            {
+              "_uid": "meta-b1",
+              "author": "Alan",
+              "component": "spike_meta",
+              "og_title": "B1 EDITED"
+            }
+          ],
+          "old_slug": "card-b-1",
+          "slug": "",
+          "title": "Card B1"
+        }
+      ],
+      "meta": []
+    },
+    {
+      "_uid": "meta-top",
+      "author": "Editor",
+      "component": "spike_meta",
+      "og_title": "Top EDITED 2"
+    }
+  ],
+  "component": "spike_page",
+  "cover": {
+    "alt": null,
+    "copyright": null,
+    "fieldtype": "asset",
+    "filename": "",
+    "focus": null,
+    "id": null,
+    "meta_data": {},
+    "name": "",
+    "source": null,
+    "title": null
+  },
+  "hero_link": {
+    "cached_url": "",
+    "fieldtype": "multilink",
+    "id": "",
+    "linktype": "story",
+    "url": ""
+  },
+  "intro": {
+    "content": [
+      {
+        "type": "paragraph"
+      }
+    ],
+    "type": "doc"
+  },
+  "promoted": false,
+  "subtitle": "",
+  "tags": [],
+  "title": "Spike Page"
+}

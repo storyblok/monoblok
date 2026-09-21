@@ -1,5 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from "./rate-limit";
+import type { RateLimitContext, RateLimiter } from "./limiter";
+
+/**
+ * Feeds a response carrying a rate-limit policy header through the manager's
+ * `fetch` wrapper — the path by which the limiter sees responses.
+ */
+async function recordPolicyHeader(
+  manager: ReturnType<typeof createThrottleManager>,
+  path: string,
+  policy: string,
+) {
+  const fetchWithPolicy = manager.wrapFetch(
+    async () => new Response(null, { headers: { "x-ratelimit-policy": policy } }),
+  );
+  await fetchWithPolicy(`https://api.storyblok.com${path}`);
+}
 
 describe("determineTier()", () => {
   it("should return SINGLE_OR_SMALL for a single story path", () => {
@@ -122,9 +138,7 @@ describe("createThrottleManager(number)", () => {
   it("should ignore concurrent-requests headers (not a rate limit)", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
-    manager.adaptToResponse(
-      new Response(null, { headers: { "x-ratelimit-policy": '"concurrent-requests";q=5' } }),
-    );
+    await recordPolicyHeader(manager, "/v2/cdn/stories", '"concurrent-requests";q=5');
 
     const fn = vi.fn(async () => "done");
     for (let i = 0; i < 50; i++) {
@@ -139,9 +153,7 @@ describe("createThrottleManager(number)", () => {
   it("should adapt the limit from rate-limit server headers, respecting the user ceiling", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(50);
-    manager.adaptToResponse(
-      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=5' } }),
-    );
+    await recordPolicyHeader(manager, "/v2/cdn/stories", '"rate-limit";q=5');
 
     const fn = vi.fn(async () => "done");
     for (let i = 0; i < 10; i++) {
@@ -159,9 +171,7 @@ describe("createThrottleManager(number)", () => {
   it("should not exceed the user ceiling even if the server reports higher", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager(3);
-    manager.adaptToResponse(
-      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=100' } }),
-    );
+    await recordPolicyHeader(manager, "/v2/cdn/stories", '"rate-limit";q=100');
 
     const fn = vi.fn(async () => "done");
     for (let i = 0; i < 9; i++) {
@@ -265,9 +275,7 @@ describe("createThrottleManager({})", () => {
   it("should ignore concurrent-requests headers in auto-detect mode", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
-    manager.adaptToResponse(
-      new Response(null, { headers: { "x-ratelimit-policy": '"concurrent-requests";q=10' } }),
-    );
+    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"concurrent-requests";q=10');
 
     const fn = vi.fn(async () => "done");
     for (let i = 0; i < 50; i++) {
@@ -282,9 +290,7 @@ describe("createThrottleManager({})", () => {
   it("should adapt the SINGLE_OR_SMALL tier from rate-limit server headers", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({});
-    manager.adaptToResponse(
-      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=10' } }),
-    );
+    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"rate-limit";q=10');
 
     const fn = vi.fn(async () => "done");
     for (let i = 0; i < 20; i++) {
@@ -302,9 +308,7 @@ describe("createThrottleManager({})", () => {
   it("should ignore server headers when adaptToServerHeaders is false", async () => {
     vi.useFakeTimers();
     const manager = createThrottleManager({ adaptToServerHeaders: false });
-    manager.adaptToResponse(
-      new Response(null, { headers: { "x-ratelimit-policy": '"rate-limit";q=1' } }),
-    );
+    await recordPolicyHeader(manager, "/v2/cdn/stories/my-story", '"rate-limit";q=1');
 
     const fn = vi.fn(async () => "done");
     for (let i = 0; i < 50; i++) {
@@ -327,5 +331,173 @@ describe("createThrottleManager({})", () => {
   it("should treat adaptToResponse as a no-op when response is undefined", () => {
     const manager = createThrottleManager({});
     expect(() => manager.adaptToResponse(undefined)).not.toThrow();
+  });
+});
+
+describe("createThrottleManager({ limiter })", () => {
+  afterEach(() => vi.useRealTimers());
+
+  /** Records what the manager tells a custom limiter about each request. */
+  const createRecordingLimiter = () => {
+    const acquired: RateLimitContext[] = [];
+    const released: RateLimitContext[] = [];
+    const recorded: Array<{ context: RateLimitContext; status: number }> = [];
+
+    return {
+      acquired,
+      released,
+      recorded,
+      limiter: {
+        acquire: async (context) => {
+          acquired.push(context);
+        },
+        release: (context) => {
+          released.push(context);
+        },
+        recordResponse: (context, response) => {
+          recorded.push({ context, status: response.status });
+        },
+      } satisfies RateLimiter,
+    };
+  };
+
+  it("should ask the custom limiter for admission instead of throttling locally", async () => {
+    const { limiter, acquired } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+    const fn = vi.fn(async () => "done");
+
+    // Far more than any built-in tier allows: a custom limiter owns the pacing.
+    await Promise.all(
+      Array.from({ length: 200 }, () => manager.execute("/v2/cdn/stories/my-story", {}, fn)),
+    );
+
+    expect(fn).toHaveBeenCalledTimes(200);
+    expect(acquired).toHaveLength(200);
+  });
+
+  it("should tell the limiter which quota the request draws from and at what rate", async () => {
+    const { limiter, acquired } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+
+    await manager.execute("/v2/cdn/stories/my-story", {}, async () => "done");
+    await manager.execute("/v2/cdn/stories", { per_page: 100 }, async () => "done");
+
+    expect(acquired[0]).toMatchObject({ bucket: "SINGLE_OR_SMALL", limit: 50 });
+    expect(acquired[1]).toMatchObject({ bucket: "VERY_LARGE", limit: 6 });
+  });
+
+  it("should report a single bucket and the configured rate in fixed-limit mode", async () => {
+    const { limiter, acquired } = createRecordingLimiter();
+    const manager = createThrottleManager({ requestsPerSecond: 7, limiter });
+
+    await manager.execute("/v2/cdn/stories/my-story", {}, async () => "done");
+    await manager.execute("/v2/cdn/stories", { per_page: 100 }, async () => "done");
+
+    expect(acquired[0]).toMatchObject({ bucket: "fixed", limit: 7 });
+    expect(acquired[1]).toMatchObject({ bucket: "fixed", limit: 7 });
+  });
+
+  it("should release the slot even when the request fails", async () => {
+    const { limiter, released } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+
+    await expect(
+      manager.execute("/v2/cdn/stories", {}, async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+
+    expect(released).toHaveLength(1);
+  });
+
+  it("should report every response, including the ones a retry replaced", async () => {
+    const { limiter, recorded } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+    const statuses = [429, 429, 200];
+    let attempt = 0;
+    const fetchWithRetries = manager.wrapFetch(
+      async () => new Response(null, { status: statuses[attempt++] }),
+    );
+
+    for (const _ of statuses) {
+      await fetchWithRetries("https://api.storyblok.com/v2/cdn/stories?per_page=100");
+    }
+
+    expect(recorded.map((entry) => entry.status)).toEqual(statuses);
+  });
+
+  it("should derive the quota of a recorded response from the request URL", async () => {
+    const { limiter, recorded } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+    const fetchOk = manager.wrapFetch(async () => new Response(null, { status: 200 }));
+
+    await fetchOk("https://api.storyblok.com/v2/cdn/stories?per_page=100&token=abc");
+    await fetchOk(new Request("https://api.storyblok.com/v2/cdn/stories/home?token=abc"));
+
+    expect(recorded[0]?.context).toMatchObject({
+      bucket: "VERY_LARGE",
+      path: "/v2/cdn/stories",
+    });
+    expect(recorded[1]?.context).toMatchObject({
+      bucket: "SINGLE_OR_SMALL",
+      path: "/v2/cdn/stories/home",
+    });
+  });
+});
+
+describe("createThrottleManager({ adaptive })", () => {
+  afterEach(() => vi.useRealTimers());
+
+  /** Reports how many requests the manager starts without time advancing. */
+  const startedImmediately = async (
+    manager: ReturnType<typeof createThrottleManager>,
+    path: string,
+    count: number,
+    query: Record<string, unknown> = {},
+  ) => {
+    const fn = vi.fn(async () => "done");
+    for (let i = 0; i < count; i++) {
+      void manager.execute(path, query, fn);
+    }
+    await vi.advanceTimersByTimeAsync(0);
+    return fn.mock.calls.length;
+  };
+
+  it("should slow down after the API throttles a request", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ requestsPerSecond: 8 });
+    const fetchThrottled = manager.wrapFetch(async () => new Response(null, { status: 429 }));
+
+    expect(await startedImmediately(manager, "/v2/cdn/stories", 20)).toBe(8);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await fetchThrottled("https://api.storyblok.com/v2/cdn/stories");
+
+    expect(await startedImmediately(manager, "/v2/cdn/stories", 20)).toBe(4);
+  });
+
+  it("should hold the configured rate when adaptation is off", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ requestsPerSecond: 8, adaptive: false });
+    const fetchThrottled = manager.wrapFetch(async () => new Response(null, { status: 429 }));
+
+    await fetchThrottled("https://api.storyblok.com/v2/cdn/stories");
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(await startedImmediately(manager, "/v2/cdn/stories", 20)).toBe(8);
+  });
+
+  it("should slow down only the tier that was throttled", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+    const fetchThrottled = manager.wrapFetch(async () => new Response(null, { status: 429 }));
+
+    // A large listing is refused; small requests draw from a separate quota.
+    await fetchThrottled("https://api.storyblok.com/v2/cdn/stories?per_page=100");
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(await startedImmediately(manager, "/v2/cdn/stories", 20, { per_page: 100 })).toBe(3);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await startedImmediately(manager, "/v2/cdn/stories/home", 60)).toBe(50);
   });
 });

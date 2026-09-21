@@ -56,6 +56,9 @@ export type { ExcludableStoryField, StoryWithInlinedRelations } from "./resource
 // Cache types
 export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
 
+// Rate limiting
+export type { AdaptiveConfig, RateLimitContext, RateLimiter } from "./utils/limiter";
+
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */
 export const createThrottle = createThrottleInternal;
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */

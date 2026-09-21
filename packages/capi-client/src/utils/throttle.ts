@@ -4,10 +4,14 @@
 // so the two independently published clients keep no shared runtime dependency.
 
 export interface Throttle {
+  /** Resolves once a per-second slot is available. */
+  acquire: () => Promise<void>;
   /** Runs `fn` once a per-second slot is available and returns its result. */
   execute: <T>(fn: () => Promise<T>) => Promise<T>;
   /** Adjusts the per-second limit applied to subsequent windows. */
   setLimit: (limit: number) => void;
+  /** The limit currently in effect. */
+  getLimit: () => number;
 }
 
 /**
@@ -72,9 +76,11 @@ export function createThrottle(initialLimit: number): Throttle {
   };
 
   return {
+    acquire,
     execute: <T>(fn: () => Promise<T>): Promise<T> => acquire().then(fn),
     setLimit: (n: number) => {
       limit = n;
     },
+    getLimit: () => limit,
   };
 }

@@ -311,7 +311,12 @@ export const createApiClientBase = <
         throwHttpErrors: true,
         timeout,
         retry: retryOptions,
-        ...(customFetch && { fetch: customFetch }),
+        // Always wrapped: the limiter has to see every response, including the
+        // ones ky's retry replaced. `globalThis.fetch` is read per call so a
+        // fetch swapped in after the client was created still applies.
+        fetch: throttleManager.wrapFetch(
+          customFetch ?? ((input, init) => globalThis.fetch(input, init)),
+        ),
       },
     }),
   );
@@ -405,7 +410,6 @@ export const createApiClientBase = <
 
     if (!cacheEnabled) {
       const networkResult = await fetchFn(query);
-      throttleManager.adaptToResponse(networkResult.response);
       await updateCv(networkResult);
       return networkResult;
     }
@@ -419,7 +423,6 @@ export const createApiClientBase = <
 
     const loadNetwork = async () => {
       const result = await fetchFn(query);
-      throttleManager.adaptToResponse(result.response);
       return cacheSuccessResult(key, result);
     };
 

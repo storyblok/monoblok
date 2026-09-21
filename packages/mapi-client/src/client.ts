@@ -194,6 +194,10 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
         throwHttpErrors: true,
         timeout,
         retry,
+        // Always wrapped: the limiter has to see every response, including the
+        // ones ky's retry replaced. `globalThis.fetch` is read per call so a
+        // fetch swapped in after the client was created still applies.
+        fetch: throttleManager.wrapFetch((input, init) => globalThis.fetch(input, init)),
       },
     }),
   );

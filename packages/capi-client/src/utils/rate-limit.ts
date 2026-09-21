@@ -5,7 +5,10 @@
  * on request type (single story vs. listing) and the per_page query parameter,
  * mirroring the per-second tiers the Storyblok CDN enforces.
  */
-import { createThrottle, type Throttle } from "./throttle";
+import { createThrottle } from "./throttle";
+import type { RateLimitContext, RateLimiter } from "./limiter";
+import { createDefaultRateLimiter, createPassthroughRateLimiter } from "./limiter";
+import type { AdaptiveConfig } from "./limiter";
 
 export { createThrottle };
 
@@ -26,6 +29,7 @@ const PER_PAGE_THRESHOLDS = {
 
 const DEFAULT_PER_PAGE = 25;
 const MAX_RATE_LIMIT = 1_000;
+const FIXED_BUCKET = "fixed";
 
 export interface RateLimitConfig {
   /**
@@ -46,10 +50,41 @@ export interface RateLimitConfig {
    * @default true
    */
   adaptToServerHeaders?: boolean;
+  /**
+   * Adapt the rate to what the API actually sustains: back off multiplicatively
+   * whenever a request is throttled, recover additively while none is.
+   *
+   * Rate limits are enforced per token, but each client instance paces itself
+   * alone, so parallel builds or workers sharing a token overrun the quota
+   * between them. Adaptation lets them settle at a rate the token sustains.
+   * The limit never rises above the one the client would have used anyway.
+   *
+   * Pass an object to tune it, or `false` to pin each tier to its limit.
+   * @default true
+   */
+  adaptive?: boolean | AdaptiveConfig;
+  /**
+   * Replaces the in-memory limiter, which paces each instance independently.
+   *
+   * Supply one backed by shared storage (Redis, Upstash, …) to hold a fleet of
+   * instances to a single quota proactively rather than by reacting to 429s.
+   * `requestsPerSecond` and `adaptive` do not apply to a custom limiter; the
+   * rate the client would have used is passed to it as `context.limit`.
+   */
+  limiter?: RateLimiter;
 }
 
 export interface ThrottleManager {
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
+  /**
+   * Wraps `fetch` so the limiter observes every HTTP response, including the
+   * ones a retry replaced.
+   */
+  wrapFetch: (fetchFn: typeof globalThis.fetch) => typeof globalThis.fetch;
+  /**
+   * @deprecated Responses reach the limiter through `wrapFetch`. This is a no-op.
+   * @todo(next-major): Remove this method.
+   */
   adaptToResponse: (response: Response | undefined) => void;
 }
 
@@ -113,6 +148,43 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
   return Math.min(Number.parseInt(match[1], 10), MAX_RATE_LIMIT);
 }
 
+/** Resolves the URL a `fetch` call targets, whichever of its input forms was used. */
+function getRequestUrl(input: RequestInfo | URL): string | undefined {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return typeof input === "object" && input !== null && "url" in input ? input.url : undefined;
+}
+
+/**
+ * Rebuilds the limiter context from an outgoing request.
+ *
+ * The context is derived from the URL rather than carried alongside the call so
+ * that it stays correct when several requests are in flight at once.
+ */
+function contextFromUrl(
+  url: string | undefined,
+  toContext: (path: string, query: Record<string, unknown>) => RateLimitContext,
+): RateLimitContext {
+  if (url === undefined) {
+    return toContext("", {});
+  }
+
+  try {
+    const parsed = new URL(url);
+    const query: Record<string, unknown> = {};
+    for (const [key, value] of parsed.searchParams) {
+      query[key] = value;
+    }
+    return toContext(parsed.pathname, query);
+  } catch {
+    return toContext(url, {});
+  }
+}
+
 /**
  * Creates a `ThrottleManager` from the user-supplied `rateLimit` config.
  *
@@ -124,61 +196,76 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
   // Disabled — every request goes straight through.
   if (config === false) {
-    return {
-      execute: (_path, _query, fn) => fn(),
-      adaptToResponse: () => {},
-    };
+    return createManager(createPassthroughRateLimiter(), () => ({
+      path: "",
+      query: {},
+      bucket: FIXED_BUCKET,
+      limit: Number.POSITIVE_INFINITY,
+    }));
   }
 
   const resolvedConfig: RateLimitConfig =
     typeof config === "number" ? { requestsPerSecond: config } : config;
-  const { requestsPerSecond, maxConcurrency, adaptToServerHeaders = true } = resolvedConfig;
+  const {
+    requestsPerSecond,
+    maxConcurrency,
+    adaptToServerHeaders = true,
+    adaptive = true,
+    limiter,
+  } = resolvedConfig;
   // `maxConcurrency` is the deprecated alias for `requestsPerSecond`.
   const fixedLimit = requestsPerSecond ?? maxConcurrency;
 
-  // Fixed-limit mode — single queue, optional server-header adaptation.
-  if (fixedLimit !== undefined) {
-    const cappedLimit = Math.min(fixedLimit, MAX_RATE_LIMIT);
-    const throttle = createThrottle(cappedLimit);
+  const toContext =
+    fixedLimit !== undefined
+      ? // Fixed-limit mode — one bucket, tier detection off.
+        (path: string, query: Record<string, unknown>): RateLimitContext => ({
+          path,
+          query,
+          bucket: FIXED_BUCKET,
+          limit: Math.min(fixedLimit, MAX_RATE_LIMIT),
+        })
+      : // Auto-detect mode — one bucket per tier, tier chosen per request.
+        (path: string, query: Record<string, unknown>): RateLimitContext => {
+          const tier = determineTier(path, query);
+          return { path, query, bucket: tier, limit: TIER_LIMITS[tier] };
+        };
 
-    return {
-      execute: (_path, _query, fn) => throttle.execute(fn),
-      adaptToResponse: (response) => {
-        if (!adaptToServerHeaders || response === undefined) {
-          return;
-        }
-        const serverLimit = parseRateLimitPolicyHeader(response);
-        if (serverLimit !== undefined) {
-          // Never exceed the user-configured ceiling.
-          throttle.setLimit(Math.min(cappedLimit, serverLimit));
-        }
-      },
-    };
-  }
+  const resolvedLimiter =
+    limiter ??
+    createDefaultRateLimiter({
+      adaptive,
+      parseServerLimit: adaptToServerHeaders ? parseRateLimitPolicyHeader : undefined,
+    });
 
-  // Auto-detect mode — one throttle per tier, tier chosen per request.
-  const throttles: Record<TierName, Throttle> = {
-    SINGLE_OR_SMALL: createThrottle(TIER_LIMITS.SINGLE_OR_SMALL),
-    MEDIUM: createThrottle(TIER_LIMITS.MEDIUM),
-    LARGE: createThrottle(TIER_LIMITS.LARGE),
-    VERY_LARGE: createThrottle(TIER_LIMITS.VERY_LARGE),
-  };
+  return createManager(resolvedLimiter, toContext);
+}
 
+function createManager(
+  limiter: RateLimiter,
+  toContext: (path: string, query: Record<string, unknown>) => RateLimitContext,
+): ThrottleManager {
   return {
-    execute: (path, query, fn) => {
-      const tier = determineTier(path, query);
-      return throttles[tier].execute(fn);
-    },
-    adaptToResponse: (response) => {
-      if (!adaptToServerHeaders || response === undefined) {
-        return;
-      }
-      const serverLimit = parseRateLimitPolicyHeader(response);
-      if (serverLimit !== undefined) {
-        // The SINGLE_OR_SMALL tier is the most common; adapting it covers the
-        // majority of requests. Other tiers are already conservatively limited.
-        throttles.SINGLE_OR_SMALL.setLimit(Math.min(TIER_LIMITS.SINGLE_OR_SMALL, serverLimit));
+    execute: async (path, query, fn) => {
+      const context = toContext(path, query);
+      await limiter.acquire(context);
+      try {
+        return await fn();
+      } finally {
+        await limiter.release?.(context);
       }
     },
+    wrapFetch: (fetchFn) => {
+      if (limiter.recordResponse === undefined) {
+        return fetchFn;
+      }
+
+      return async (input, init) => {
+        const response = await fetchFn(input, init);
+        await limiter.recordResponse?.(contextFromUrl(getRequestUrl(input), toContext), response);
+        return response;
+      };
+    },
+    adaptToResponse: () => {},
   };
 }

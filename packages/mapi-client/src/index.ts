@@ -96,3 +96,4 @@ export type { StoryListQuery } from "./resources/stories";
 export { normalizeAssetUrl } from "./utils/normalize-asset-url";
 // Rate limit config
 export type { RateLimitConfig } from "./utils/rate-limit";
+export type { AdaptiveConfig, RateLimitContext, RateLimiter } from "./utils/limiter";

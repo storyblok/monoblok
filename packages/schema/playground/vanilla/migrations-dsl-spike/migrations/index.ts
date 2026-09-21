@@ -7,6 +7,9 @@
  * `0001-rename-article-author.before.ts`); `After` is the project's live schema
  * module. Migrations whose two ends differ only by fields they never read use
  * the single-schema shorthand.
+ *
+ * `name` exists here only because these probes share one module and so have no
+ * filename to be keyed by; shipped migrations take their id from the filename.
  */
 import { defineMigration } from "../src/define-migration";
 import type { SpikeSchema } from "../fixtures/schema";

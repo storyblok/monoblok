@@ -27,28 +27,33 @@ import { defineMigration } from "@storyblok/migrations";
 import type { After } from "../../../schema";
 import type { Before } from "./0007-rename-byline.before";
 
-export default defineMigration<Before, After>({
-  up: (m) => m.field("article.author").renameTo("byline"),
-});
+export default defineMigration<Before, After>((m) => m.field("article.author").renameTo("byline"));
 ```
 
-`id` comes from the filename. `blocks` is inferred from the paths the ops touch, so nothing declares
-the target twice. There is no `down`; see Rollback.
+`id` comes from the filename, so a rename moves the identity with the file and there is no second
+place to keep in sync. `blocks` is inferred from the paths the ops touch, so nothing declares the
+target twice.
+
+`defineMigration` takes the builder callback directly rather than `{ up }`. There is no `down` (see
+Rollback), and `up` without a `down` names a direction that doesn't exist; with the id coming from
+the filename, the wrapper object would carry a single key. Options, should any appear, go in a
+second argument. The spike's probes do pass `{ name, up }`, because they share one module and so
+have no filename to be keyed by.
 
 Several ops in one migration, applied in one pass over each story:
 
 ```ts
-up: (m) => [
+(m) => [
   m.field("article.author").renameTo("byline"),
   m.field("card.legacy_tags").remove(),
   m.field("article.price").asNumberField(),
-],
+];
 ```
 
 The escape hatch, typed both ends:
 
 ```ts
-up: (m) => m.block("meta").under("card").alter((block, ctx) => ({
+(m) => m.block("meta").under("card").alter((block, ctx) => ({
   ...block,
   title: typeof block.title === "string" ? `${block.title} | Blog` : block.title,
   meta: [ctx.newBlock("seo", { og_title: block.title ?? "" })],
@@ -174,9 +179,17 @@ parents. The dot appears only in `block.field`, so there's no ambiguity between 
 
 ### Rollback
 
-`up` produces patches; the runner applies them and records the inverse. The inverse needs no
+A migration produces patches; the runner applies them and records the inverse. The inverse needs no
 algebra, because it's `diff(after, before)` computed while both trees are in hand. `alter` gets a
 sound inverse for free, and no op has to be individually reversible.
+
+This is why the DSL has no hand-written `down`. A schema `down` is symbolic — the inverse of adding
+a column is dropping it, writable without reading a row — but the inverse of an `alter` depends on
+the values it overwrote, so it can only be recorded, never declared. Every forward-only tool in this
+space agrees: Sanity, contentful-migration, Prisma and Drizzle ship no down for data, and Rails'
+auto-inverse is documented as off-limits for data migrations. The cost is that patches are local, so
+rollback works only where the migration ran; elsewhere you roll forward with a new migration, which
+is the same code reviewed and logged rather than dead code nobody has executed.
 
 Patches address blocks by `_uid`, never by path, since array indices don't survive concurrent edits.
 A block's patch excludes its descendant blocks, which are collapsed to a reference before diffing;

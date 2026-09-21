@@ -15,13 +15,26 @@ export type BlockPatchOp =
   | { kind: "unset"; key: string; expect?: unknown }
   /** One child block put back into (or taken out of) a `bloks` array, by uid. */
   | { kind: "listInsert"; key: string; uid: string; index: number; block: AnyBlock }
-  | { kind: "listRemove"; key: string; uid: string };
+  | { kind: "listRemove"; key: string; uid: string }
+  /**
+   * Order of the surviving children of a `bloks` array, by uid. Carries only
+   * uids, so replaying it cannot clobber a concurrent edit to a child's own
+   * fields — unlike the whole-array `set` this replaces.
+   */
+  | { kind: "listOrder"; key: string; uids: string[]; expect: string[] };
 
 export interface BlockPatch {
   uid: string;
   component: string;
   ops: BlockPatchOp[];
 }
+
+/**
+ * Keys no migration owns. `_editable` is injected by the delivery API for the
+ * Visual Editor and never stored, so it only appears when content reaches the
+ * differ from a draft render rather than from the Management API.
+ */
+const TRANSPORT_KEYS = new Set(["_uid", "component", "_editable"]);
 
 export function isBlock(value: unknown): value is AnyBlock {
   return (
@@ -90,7 +103,7 @@ export function diffBlock(before: AnyBlock, after: AnyBlock): BlockPatch | null 
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
 
   for (const key of keys) {
-    if (key === "_uid" || key === "component") continue;
+    if (TRANSPORT_KEYS.has(key)) continue;
     const hadKey = key in before;
     const hasKey = key in after;
     const beforeValue = before[key];
@@ -122,12 +135,10 @@ export function diffBlock(before: AnyBlock, after: AnyBlock): BlockPatch | null 
       for (const uid of beforeUids) {
         if (!afterUids.includes(uid)) ops.push({ kind: "listRemove", key, uid });
       }
-      // Pure reordering is not expressible by uid-scoped insert/remove; fall back
-      // to a whole-value replacement, which a concurrent edit can conflict with.
       const survivorsBefore = beforeUids.filter((uid) => afterUids.includes(uid));
       const survivorsAfter = afterUids.filter((uid) => beforeUids.includes(uid));
       if (!deepEqual(survivorsBefore, survivorsAfter)) {
-        ops.push({ kind: "set", key, value: afterValue, expect: beforeValue });
+        ops.push({ kind: "listOrder", key, uids: survivorsAfter, expect: survivorsBefore });
       }
       continue;
     }
@@ -196,6 +207,35 @@ export function applyPatches(
           const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
           if (list.some((item) => isBlock(item) && item._uid === op.uid)) break;
           list.splice(Math.min(op.index, list.length), 0, op.block);
+          block[op.key] = list;
+          result.applied++;
+          break;
+        }
+        case "listOrder": {
+          const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
+          const liveOrder = list.filter(isBlock).map((item) => item._uid);
+          const liveKnown = liveOrder.filter((uid) => op.expect.includes(uid));
+          if (!options.force && !deepEqual(liveKnown, op.expect)) {
+            result.conflicts.push({
+              uid: patch.uid,
+              key: op.key,
+              reason: `live order of "${op.key}" differs from the order the migration wrote`,
+            });
+            continue;
+          }
+          const rank = new Map(op.uids.map((uid, index) => [uid, index]));
+          // Children the patch does not know about keep their live slot; the
+          // known ones are re-dealt into the slots they already occupied.
+          const slots: number[] = [];
+          list.forEach((item, index) => {
+            if (isBlock(item) && rank.has(item._uid)) slots.push(index);
+          });
+          const ordered = op.uids
+            .map((uid) => list.find((item) => isBlock(item) && item._uid === uid))
+            .filter((item): item is AnyBlock => item !== undefined);
+          slots.forEach((slot, index) => {
+            list[slot] = ordered[index]!;
+          });
           block[op.key] = list;
           result.applied++;
           break;

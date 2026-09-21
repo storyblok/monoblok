@@ -4,7 +4,7 @@
  * Applies a compiled migration to one story's content and returns the patch it
  * produced plus the inverse patch a rollback would replay.
  */
-import type { CompiledMigration, MigrationOp } from "./define-migration";
+import type { AnyChild, CompiledMigration, MigrationOp } from "./define-migration";
 import { type AnyBlock, type BlockPatch, diffBlock, indexBlocks, isBlock } from "./patch";
 
 export interface StoryMigrationResult {
@@ -20,8 +20,11 @@ function coerce(value: unknown, to: "string" | "number" | "boolean"): unknown {
   if (value === null || value === undefined) return value;
   if (to === "string") return typeof value === "string" ? value : String(value);
   if (to === "number") {
-    const asNumber = typeof value === "number" ? value : Number(value);
-    return Number.isNaN(asNumber) ? null : asNumber;
+    // A Storyblok `number` field stores its value as a string, and an unset one
+    // stores `""`. Writing a JSON number would leave every migrated story with
+    // a value no editor would have produced.
+    const asNumber = typeof value === "number" ? value : Number(String(value).trim());
+    return Number.isFinite(asNumber) && String(value).trim() !== "" ? String(asNumber) : "";
   }
   if (typeof value === "boolean") return value;
   if (value === "true" || value === "1" || value === 1) return true;
@@ -56,9 +59,13 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
     case "coerce":
       if (op.field in block) block[op.field] = coerce(block[op.field], op.to);
       break;
-    case "setValue":
-      block[op.field] = op.value;
+    case "reorder": {
+      const list = block[op.field];
+      if (Array.isArray(list) && list.every(isBlock)) {
+        block[op.field] = [...(list as AnyChild[])].sort(op.compare);
+      }
       break;
+    }
     case "alter": {
       const returned = op.fn(block);
       if (returned && returned !== block && typeof returned === "object") {
@@ -72,6 +79,27 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
   }
 }
 
+/**
+ * Component names of every block above each block in the tree, so an op scoped
+ * with `.under(parent)` can be limited to one location.
+ */
+export function indexAncestors(
+  content: unknown,
+  chain: readonly string[] = [],
+  into = new Map<string, Set<string>>(),
+): Map<string, Set<string>> {
+  if (Array.isArray(content)) {
+    for (const item of content) indexAncestors(item, chain, into);
+    return into;
+  }
+  if (typeof content === "object" && content !== null) {
+    const nextChain = isBlock(content) ? [...chain, content.component] : chain;
+    if (isBlock(content)) into.set(content._uid, new Set(chain));
+    for (const value of Object.values(content)) indexAncestors(value, nextChain, into);
+  }
+  return into;
+}
+
 export function runMigrationOnStory(
   migration: CompiledMigration,
   content: unknown,
@@ -80,11 +108,13 @@ export function runMigrationOnStory(
   const after = structuredClone(content);
 
   const beforeIndex = indexBlocks(before);
-  const afterIndex = indexBlocks(after);
+  const ancestors = indexAncestors(after);
 
   let matched = 0;
-  for (const block of afterIndex.values()) {
-    const ops = migration.ops.filter((op) => op.block === block.component);
+  for (const [uid, block] of indexBlocks(after)) {
+    const ops = migration.ops.filter(
+      (op) => op.block === block.component && (!op.under || ancestors.get(uid)?.has(op.under)),
+    );
     if (ops.length === 0) continue;
     matched++;
     for (const op of ops) applyOp(block, op);

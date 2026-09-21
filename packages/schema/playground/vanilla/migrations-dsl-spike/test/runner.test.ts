@@ -17,6 +17,8 @@ import {
   removeField,
   renameField,
   renameNestedField,
+  reorderItems,
+  scopedRename,
   twoBlocks,
 } from "../migrations";
 import { spikeSchema } from "../fixtures/schema";
@@ -92,13 +94,16 @@ describe("remove", () => {
 });
 
 describe("coercion", () => {
-  it("should coerce string to number and string to boolean", () => {
+  it("should coerce to each field type's wire form", () => {
     const run = runMigrationOnStory(coerceFields, pageStoryContent());
-    expect(block(run.content, "card-a1").legacy_price).toBe(19.99);
+    // A number field stores a numeric *string*; a boolean field stores a real
+    // boolean. `asNumber()` writing a JSON number would produce content no
+    // editor could have written.
+    expect(block(run.content, "card-a1").legacy_price).toBe("19.99");
     expect(block(run.content, "card-a1").featured).toBe(true);
     expect(block(run.content, "card-b1").featured).toBe(false);
-    // Unparseable input becomes null rather than NaN, which is not JSON.
-    expect(block(run.content, "card-a2").legacy_price).toBeNull();
+    // Unparseable input becomes the empty string an unset number field holds.
+    expect(block(run.content, "card-a2").legacy_price).toBe("");
   });
 
   it("should NOT round-trip a lossy coercion", () => {
@@ -303,5 +308,101 @@ describe("schema-aware validation", () => {
   it("should report the pre-migration fixture as clean", () => {
     const result = validateStory({ content: pageStoryContent() }, schemaLike);
     expect(result.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+  });
+});
+
+describe("location scoping with under()", () => {
+  it("should touch only the instances nested under the named parent", () => {
+    const run = runMigrationOnStory(scopedRename, pageStoryContent());
+
+    // Inside a spike_card.
+    expect(block(run.content, "meta-a1").og_title).toBe("card:A1");
+    expect(block(run.content, "meta-b1").og_title).toBe("card:B1");
+    // Directly on a section, and on the page root: untouched.
+    expect(block(run.content, "meta-a").og_title).toBe("A");
+    expect(block(run.content, "meta-top").og_title).toBe("Top");
+  });
+
+  it("should count only the scoped instances as matched", () => {
+    expect(runMigrationOnStory(scopedRename, pageStoryContent()).matched).toBe(2);
+  });
+});
+
+describe("reorder", () => {
+  it("should reorder a bloks array without replacing the whole array", () => {
+    const run = runMigrationOnStory(reorderItems, pageStoryContent());
+
+    const items = block(run.content, "section-a").items as { _uid: string }[];
+    expect(items.map((item) => item._uid)).toEqual(["card-a2", "card-a1"]);
+
+    const patch = run.patches.find((entry) => entry.uid === "section-a");
+    expect(patch?.ops).toEqual([
+      {
+        kind: "listOrder",
+        key: "items",
+        uids: ["card-a2", "card-a1"],
+        expect: ["card-a1", "card-a2"],
+      },
+    ]);
+  });
+
+  it("should roll the order back while preserving an edit to a reordered child", () => {
+    const run = runMigrationOnStory(reorderItems, pageStoryContent());
+    const live = structuredClone(run.content);
+    (block(live, "card-a1") as Record<string, unknown>).title = "Edited after the migration";
+
+    const result = applyPatches(live, run.inverse);
+
+    expect(result.conflicts).toEqual([]);
+    const items = block(live, "section-a").items as { _uid: string }[];
+    expect(items.map((item) => item._uid)).toEqual(["card-a1", "card-a2"]);
+    expect(block(live, "card-a1").title).toBe("Edited after the migration");
+  });
+
+  it("should report a conflict when the order itself changed after the migration", () => {
+    const run = runMigrationOnStory(reorderItems, pageStoryContent());
+    const live = structuredClone(run.content);
+    const section = block(live, "section-a") as Record<string, unknown>;
+    section.items = (section.items as unknown[]).slice().reverse();
+
+    const result = applyPatches(live, run.inverse);
+
+    expect(result.conflicts).toEqual([
+      {
+        uid: "section-a",
+        key: "items",
+        reason: 'live order of "items" differs from the order the migration wrote',
+      },
+    ]);
+  });
+
+  it("should keep a block the patch does not know about in its live slot", () => {
+    const run = runMigrationOnStory(reorderItems, pageStoryContent());
+    const live = structuredClone(run.content);
+    const section = block(live, "section-a") as Record<string, unknown>;
+    (section.items as unknown[]).push({ _uid: "card-new", component: "spike_card", title: "New" });
+
+    const result = applyPatches(live, run.inverse);
+
+    expect(result.conflicts).toEqual([]);
+    const items = block(live, "section-a").items as { _uid: string }[];
+    expect(items.map((item) => item._uid)).toEqual(["card-a1", "card-a2", "card-new"]);
+  });
+});
+
+describe("transport-only keys", () => {
+  it("should ignore the delivery API's _editable when diffing", () => {
+    const content = pageStoryContent();
+    const withEditable = structuredClone(content) as Record<string, unknown>;
+    for (const instance of indexBlocks(withEditable).values()) {
+      instance._editable = `<!--#storyblok#{"uid": "${instance._uid}"}-->`;
+    }
+
+    const run = runMigrationOnStory(alterString, withEditable);
+
+    expect(run.patches.flatMap((patch) => patch.ops.map((op) => op.key))).toEqual([
+      "heading",
+      "heading",
+    ]);
   });
 });

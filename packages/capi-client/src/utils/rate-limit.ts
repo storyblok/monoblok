@@ -124,27 +124,31 @@ export function determineTier(path: string, query: Record<string, unknown>): Tie
   return "VERY_LARGE";
 }
 
+/** Policy names ending in this describe a cap on simultaneous requests, not a rate. */
+const CONCURRENCY_POLICY_SUFFIX = "concurrent-requests";
+
 /**
  * Extracts the quota (`q=`) value from the `X-RateLimit-Policy` response header,
- * but only when the policy describes a rate limit — not a concurrency limit.
+ * but only when the policy describes a rate limit rather than a concurrency one.
  *
- * The Storyblok CDN currently returns `"concurrent-requests";q=30` which is a
- * concurrency limit (always ~30), not a rate limit. Applying that value to the
- * tier-based rate limiter would incorrectly cap throughput below what the API
- * allows. This function therefore ignores concurrency policies and only returns
- * a value for rate-limit policies (e.g. `"rate-limit";q=50`), which the API
- * does not send yet but may in the future.
+ * The API reports a cap on simultaneous requests under this header too, under
+ * names such as `"space-concurrent-requests";q=30`. That quota is not a rate,
+ * and adopting it as one would cap throughput far below what the API allows.
  */
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
   const policy = response.headers.get("x-ratelimit-policy");
   if (!policy) {
     return undefined;
   }
-  // Only act on rate-limit policies — skip concurrency limits like
-  // "concurrent-requests";q=30 which represent a different constraint.
-  if (policy.includes('"concurrent-requests"')) {
+
+  // Match the quoted policy name rather than searching for a fixed string: the
+  // name carries a prefix, so `"space-concurrent-requests"` has to be caught by
+  // its ending and not by an equality that only `"concurrent-requests"` meets.
+  const name = policy.match(/"([^"]+)"/)?.[1];
+  if (name === undefined || name.endsWith(CONCURRENCY_POLICY_SUFFIX)) {
     return undefined;
   }
+
   const match = policy.match(/q=(\d+)/);
   if (!match) {
     return undefined;

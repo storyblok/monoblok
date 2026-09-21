@@ -134,6 +134,25 @@ describe("parseRateLimitPolicyHeader()", () => {
       headers: headerValue ? { "x-ratelimit-policy": headerValue } : {},
     });
 
+  it("should ignore a prefixed concurrent-requests policy", () => {
+    // The name the API sends carries a prefix, so a check for the bare name
+    // misses it and adopts a cap on simultaneous requests as a rate.
+    expect(
+      parseRateLimitPolicyHeader(
+        new Response(null, {
+          headers: { "x-ratelimit-policy": '"space-concurrent-requests";q=30' },
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      parseRateLimitPolicyHeader(
+        new Response(null, {
+          headers: { "x-ratelimit-policy": '"space-concurrent-requests";w=60;q=30' },
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
   it("should ignore concurrent-requests policies", () => {
     expect(parseRateLimitPolicyHeader(makeResponse('"concurrent-requests";q=30'))).toBeUndefined();
   });

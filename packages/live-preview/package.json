@@ -50,7 +50,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/preview-bridge": "^2.3.0"
+    "@storyblok/preview-bridge": "^2.3.1"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",

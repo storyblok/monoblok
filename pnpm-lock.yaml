@@ -661,8 +661,8 @@ importers:
   packages/js:
     dependencies:
       '@storyblok/preview-bridge':
-        specifier: ^2.1.6
-        version: 2.1.6
+        specifier: ^2.3.1
+        version: 2.3.1
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
@@ -846,8 +846,8 @@ importers:
   packages/live-preview:
     dependencies:
       '@storyblok/preview-bridge':
-        specifier: ^2.3.0
-        version: 2.3.0
+        specifier: ^2.3.1
+        version: 2.3.1
     devDependencies:
       '@storyblok/lint-config':
         specifier: workspace:*
@@ -6713,11 +6713,8 @@ packages:
   '@storyblok/openapi-codegen@file:tools/openapi-codegen':
     resolution: {directory: tools/openapi-codegen, type: directory}
 
-  '@storyblok/preview-bridge@2.1.6':
-    resolution: {integrity: sha512-fj8tV3ZaPJGyqqfpobzezIpm/LZZr1hW6J2eqhQkC1OVdA5PJNNw8eEnrMTXgLDn/Wrpd28NYCrY3UNXYJgmjg==}
-
-  '@storyblok/preview-bridge@2.3.0':
-    resolution: {integrity: sha512-AeWDJljta1eyF0ZizVxxro9DszOlzCYH4QQ+WC6JE43sfzGgPUNBLZQF+6BqIAqs6FbPmoqY7f/qUXF17UCjAA==}
+  '@storyblok/preview-bridge@2.3.1':
+    resolution: {integrity: sha512-D9djbpn4sLZlS5m1H96TJZK7AKjoz1CvMs/qdMlehRV/EnUGzVd6fR2mpd9/I+aXgK9YVdOiZvSKDJkaiXrCwQ==}
 
   '@storyblok/react@file:packages/react':
     resolution: {directory: packages/react, type: directory}
@@ -21332,7 +21329,7 @@ snapshots:
 
   '@storyblok/js@file:packages/js':
     dependencies:
-      '@storyblok/preview-bridge': 2.3.0
+      '@storyblok/preview-bridge': 2.3.1
       '@storyblok/richtext': file:packages/richtext
       storyblok-js-client: file:packages/js-client
     transitivePeerDependencies:
@@ -21390,11 +21387,7 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@storyblok/preview-bridge@2.1.6':
-    dependencies:
-      pure-parse: 0.0.0-beta.8
-
-  '@storyblok/preview-bridge@2.3.0':
+  '@storyblok/preview-bridge@2.3.1':
     dependencies:
       pure-parse: 0.0.0-beta.8
 

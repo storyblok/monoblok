@@ -46,7 +46,13 @@ export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "u
 const getFailure = (result: ApiResponse): StrategyFailure | undefined =>
   result.error === undefined
     ? undefined
-    : { transient: isTransientStatus(result.response?.status ?? 0), error: result.error };
+    : {
+        // The generated client resolves transport failures with no response. There
+        // was no origin answer to classify, so network-first must treat this as
+        // transient and use its cached value.
+        transient: result.response.status === 0 || isTransientStatus(result.response.status),
+        error: result.error,
+      };
 
 /**
  * Describes the failure a rejection represents. A `ClientError` is an HTTP answer the
@@ -326,7 +332,7 @@ export const createApiClientBase = <
   );
 
   client.interceptors.error.use(
-    (error: unknown, response: Response) =>
+    (error: unknown, response?: Response) =>
       new ClientError(response?.statusText || "API request failed", {
         status: response?.status ?? 0,
         statusText: response?.statusText ?? "",
@@ -382,13 +388,19 @@ export const createApiClientBase = <
     query: Record<string, unknown>,
     options: HttpRequestOptions,
   ): Promise<ApiResponse> => {
-    return client.request<unknown, ClientError, boolean>({
+    const result = await client.request<unknown, ClientError, boolean>({
       ...options,
       method,
       query,
       security,
       url: path,
     });
+
+    // Keep the public response contract stable when Hey API represents a
+    // transport failure without Response/Request objects.
+    const response = result.response ?? Response.error();
+    const request = result.request ?? new Request(`${baseUrl || getRegionBaseUrl(region)}${path}`);
+    return { ...result, response, request };
   };
 
   /**

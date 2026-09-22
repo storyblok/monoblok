@@ -53,7 +53,16 @@ function parseNodes(source: string): NodeEntry[] {
     if (!declaration) {
       continue;
     }
-    if (!declaration.name.startsWith("RichTextFieldValue")) {
+    // Hey API has changed how it names these declarations across releases:
+    // prefixed with the union name (`RichTextFieldValueParagraphNode`) in
+    // older releases, bare (`ParagraphNode`) in newer ones. Match either so
+    // regenerating with a new generator version doesn't silently drop every
+    // node/mark down to just the `RichTextFieldValue*` root declaration.
+    if (
+      !declaration.name.startsWith("RichTextFieldValue") &&
+      !declaration.name.endsWith("Node") &&
+      !declaration.name.endsWith("Mark")
+    ) {
       continue;
     }
 

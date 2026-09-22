@@ -38,7 +38,7 @@ export type MapiStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     published: boolean | null;
     /**

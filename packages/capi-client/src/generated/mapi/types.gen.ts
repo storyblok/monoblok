@@ -170,9 +170,7 @@ export type Space = {
      * Whether the Joyride trial traffic limit has been exceeded.
      */
     joyride_traffic_limit_exceeded?: boolean;
-    [key: string]: unknown | number | string | string | null | number | null | number | null | boolean | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | null | string | null | {
-        [key: string]: boolean | null;
-    } | string | null | Array<SpaceRole> | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
 /**

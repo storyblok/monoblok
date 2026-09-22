@@ -974,6 +974,10 @@ export type Space = {
      */
     euid?: string | null;
     /**
+     * The domain associated with the space
+     */
+    domain?: string | null;
+    /**
      * The region where the space is hosted
      */
     region: string;
@@ -1021,6 +1025,18 @@ export type Space = {
      * The partner ID if space is associated with a partner
      */
     partner_id?: number | null;
+    /**
+     * ID of the origin (production) space when this space is an environment; null for production spaces
+     */
+    origin_id?: number | null;
+    /**
+     * Content duplication status when the space was created as a copy of another space (e.g. an environment); null for spaces created from scratch
+     */
+    duplication_status?: 'pending' | 'running' | 'done' | 'failed' | null;
+    /**
+     * Color of the space (max 255 chars)
+     */
+    color?: string | null;
     /**
      * The subscription status
      */
@@ -1254,7 +1270,7 @@ export type SpaceUpdate = {
      */
     default_lang_name?: string | null;
     /**
-     * Default AI translation language code (AiServices::TextService::LANGUAGES); defaults to en
+     * Default AI translation language code (Ai::Languages::ALL); defaults to en
      */
     default_ai_lang_code?: string | null;
     /**
@@ -1277,6 +1293,14 @@ export type SpaceUpdate = {
      * Whether visual mode is disabled
      */
     visual_mode_disable?: boolean;
+    /**
+     * Short description of the sandbox space's purpose (max 255 chars)
+     */
+    short_description?: string | null;
+    /**
+     * Whether the editor shows the environment identification bar (defaults to false)
+     */
+    show_environment_identification_bar?: boolean;
     /**
      * Whether AI text generation is disabled
      */
@@ -1321,6 +1345,14 @@ export type SpaceUpdate = {
      * Whether to disable the onboarding tour
      */
     onboarding_tour_disabled?: boolean;
+    /**
+     * Whether to hide language/country flags
+     */
+    hide_flag_icons?: boolean;
+    /**
+     * Whether flags represent country or language (only applies when hide_flag_icons is false)
+     */
+    flag_icons_display_mode?: 'country' | 'language';
     /**
      * Language configuration
      */
@@ -1433,20 +1465,7 @@ export type User = {
      * Delegated from partner association. Null if user has no partner.
      */
     partner_status?: string | null;
-    /**
-     * Organization details. Returns empty object {} when user has no organization.
-     */
-    org: {
-        id?: number;
-        /**
-         * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
-         */
-        settings?: {
-            [key: string]: unknown;
-        };
-        name?: string;
-        status?: 'active' | 'disabled' | 'deactivated';
-    };
+    org: UserOrg;
     timezone?: string | null;
     avatar?: string | null;
     /**
@@ -1727,4 +1746,85 @@ export type SpaceRole = {
      * Blocked asset folder IDs.
      */
     blocked_asset_folder_ids: Array<number>;
+};
+
+/**
+ * Organization details returned in user context. Empty object {} when user has no organization.
+ */
+export type UserOrg = {
+    id?: number;
+    name?: string;
+    status?: 'active' | 'disabled' | 'deactivated';
+    settings?: OrgSettings;
+};
+
+/**
+ * Organization settings stored as JSONB. All keys are optional.
+ */
+export type OrgSettings = {
+    aad_tenant?: string | null;
+    ab_testing_enabled?: boolean | null;
+    ai_credits_limit_alert_sent?: boolean | null;
+    ai_credits_limit_warning_sent?: boolean | null;
+    ai_features_disabled?: boolean | null;
+    ai_style_space_composition_mode?: 'combine' | 'override' | null;
+    ai_text_generator_disabled?: boolean | null;
+    ai_text_generator_feature_disabled?: boolean | null;
+    ai_translation_enabled?: boolean | null;
+    allow_dynamic_registration?: boolean | null;
+    allow_space_ai_styles?: boolean | null;
+    azure_ad_custom_service?: boolean | null;
+    case_insensitive_saml_email?: boolean | null;
+    cdn_force_filter_from_releases?: boolean | null;
+    concept_room_enabled?: boolean | null;
+    confidentiality_disclaimer_enabled?: boolean | null;
+    confidentiality_disclaimer_message?: string | null;
+    custom_upload_limit_in_mb?: number | null;
+    default_ai_configuration_id?: number | null;
+    default_server_location?: string | null;
+    disable_private_spaces?: boolean | null;
+    editor_url?: string | null;
+    enable_content_distributions_ai_translation?: boolean | null;
+    flow_motion_identifier?: string | null;
+    flowmotion_enabled?: boolean | null;
+    force_org_ai_styles?: boolean | null;
+    ideation_room_enabled?: boolean | null;
+    is_saml_sso_using_path?: boolean | null;
+    logo?: string | null;
+    merge_users?: boolean | null;
+    new_merge_enabled?: boolean | null;
+    password_rule_min_length?: number | null;
+    preserve_empty_cached_url?: boolean | null;
+    primary_bg_color?: string | null;
+    primary_color?: string | null;
+    propagate_field_defaults?: boolean | null;
+    propagate_field_removal?: boolean | null;
+    required_shared_asset_fields?: Array<string> | null;
+    restricted_regions?: Array<string> | null;
+    s3_asset_bucket?: string | null;
+    scim_allowed_ips?: Array<string> | null;
+    scim_provisioning_enabled?: boolean | null;
+    shared_asset_custom_meta_data_schema?: {
+        [key: string]: unknown;
+    } | null;
+    shared_asset_translatable_asset_fields?: Array<string> | null;
+    share_plugins?: boolean | null;
+    sign_saml_request?: boolean | null;
+    spaces_info?: {
+        [key: string]: unknown;
+    } | null;
+    sso_alt_email?: string | null;
+    sso_firstname?: string | null;
+    sso_lastname?: string | null;
+    sso_role_merge?: boolean | null;
+    sso_servers_webhook?: string | null;
+    storyblok_agents_enabled?: boolean | null;
+    strong_auth?: boolean | null;
+    token_timeout_in?: number | null;
+    track_statistics?: boolean | null;
+    trigger_release_webhook_first?: boolean | null;
+    users_info?: {
+        [key: string]: unknown;
+    } | null;
+    yearly_ai_credits_used?: number | null;
 };

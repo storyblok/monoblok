@@ -159,6 +159,10 @@ export type MapiStory = {
     sort_by_date: string | null;
     tag_list: Array<string>;
     /**
+     * Taxonomy terms selected on the story draft. Omitted unless the taxonomy feature is enabled for the space.
+     */
+    taxonomy_terms?: Array<AssignedTaxonomyTerm>;
+    /**
      * Latest update timestamp (format is ISO 8601 standard in UTC).
      */
     updated_at: string;
@@ -318,9 +322,15 @@ export type MapiStory = {
         is_private: boolean;
     }>;
     /**
-     * Workflow stage information (only included when show_stage is true)
+     * Workflow stage information (only included when show_stage is true). Deprecated: use stages instead.
+     *
+     * @deprecated
      */
     stage?: Stage | null;
+    /**
+     * Workflow stages per language, includes nil-language stages (only included when show_stage is true)
+     */
+    stages?: Array<Stage> | null;
     /**
      * List of user IDs
      */
@@ -362,6 +372,10 @@ export type StoryCreate = {
     pinned?: boolean;
     position?: number;
     tag_list?: Array<string>;
+    /**
+     * Ids of the taxonomy terms selected for the story draft. Replaces the current selection. Each term must belong to a taxonomy assigned to the story's content type, fall within that assignment's allowed set, and stay within its max_terms limit.
+     */
+    taxonomy_term_ids?: Array<string>;
     base_version_id?: number | null;
     /**
      * Array of translated slug attributes for creating or updating translated slugs.
@@ -415,6 +429,29 @@ export type Alternate = {
      * ID of parent space if this is a child space.
      */
     parent_id: number;
+};
+
+/**
+ * A taxonomy term selected on a story. Only present when the taxonomy feature is enabled for the space.
+ */
+export type AssignedTaxonomyTerm = {
+    /**
+     * Snowflake ID of the term
+     */
+    id: string;
+    /**
+     * Human-readable label
+     */
+    display_name: string;
+    /**
+     * URL-safe technical name
+     */
+    name: string;
+    /**
+     * ID of the taxonomy the term belongs to (its root term)
+     */
+    taxonomy_id: string;
+    taxonomy: AssignedTaxonomy;
 };
 
 export type Breadcrumb = {
@@ -516,4 +553,30 @@ export type Stage = {
      * Creation timestamp (format is ISO 8601 standard in UTC).
      */
     created_at: string;
+    /**
+     * The language code this stage applies to, or null for whole-story stages
+     */
+    language: string | null;
+};
+
+/**
+ * The taxonomy an assigned term belongs to — its root term. Archiving a taxonomy does not cascade to its terms, so a still-assigned term can belong to an archived taxonomy; it stays nameable here with `deleted_at` filled in. An archived *term* behaves differently: it drops out of the story's `taxonomy_terms` entirely.
+ */
+export type AssignedTaxonomy = {
+    /**
+     * Snowflake ID of the taxonomy
+     */
+    id: string;
+    /**
+     * URL-safe technical name
+     */
+    name: string;
+    /**
+     * Human-readable label
+     */
+    display_name: string;
+    /**
+     * When the taxonomy was archived. Null for a live taxonomy.
+     */
+    deleted_at: string | null;
 };

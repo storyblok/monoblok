@@ -41,7 +41,6 @@ const makeStory = (
     tag_list: [],
     translated_slugs: [],
     updated_at: "2024-01-01T00:00:00.000Z",
-    version: "published",
     uuid,
     meta_data: {},
     ...overrides,

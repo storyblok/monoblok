@@ -57,6 +57,10 @@ export type Space = {
      */
     euid?: string | null;
     /**
+     * The domain associated with the space
+     */
+    domain?: string | null;
+    /**
      * The region where the space is hosted
      */
     region: string;
@@ -104,6 +108,18 @@ export type Space = {
      * The partner ID if space is associated with a partner
      */
     partner_id?: number | null;
+    /**
+     * ID of the origin (production) space when this space is an environment; null for production spaces
+     */
+    origin_id?: number | null;
+    /**
+     * Content duplication status when the space was created as a copy of another space (e.g. an environment); null for spaces created from scratch
+     */
+    duplication_status?: 'pending' | 'running' | 'done' | 'failed' | null;
+    /**
+     * Color of the space (max 255 chars)
+     */
+    color?: string | null;
     /**
      * The subscription status
      */

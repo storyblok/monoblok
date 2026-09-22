@@ -43,6 +43,67 @@ export type ActivityIndexResponse = {
 };
 
 /**
+ * Typed references to the entities the user is currently viewing or has selected in the app. The frontend sends IDs only; the backend re-fetches each referenced entity (scoped to the space and the user's permissions) at the start of every turn, so the agent always works with fresh data. Unknown keys, and IDs outside the space, are dropped server-side (defence in depth).
+ */
+export type AgentContext = {
+    /**
+     * Stories currently in view or selected
+     */
+    story_ids?: Array<number> | null;
+    /**
+     * Assets currently in view or selected
+     */
+    asset_ids?: Array<number> | null;
+    /**
+     * Components (bloks) currently in view or selected
+     */
+    component_ids?: Array<number> | null;
+    /**
+     * Story folders currently in view or selected
+     */
+    folder_ids?: Array<number> | null;
+    /**
+     * Datasources currently in view or selected
+     */
+    datasource_ids?: Array<number> | null;
+    /**
+     * Releases currently in view or selected
+     */
+    release_ids?: Array<number> | null;
+    /**
+     * Active or target content language code
+     */
+    language?: string | null;
+};
+
+/**
+ * The recurrence, holding only the keys its `cadence_kind` uses — daily: `hour` + `minute`; weekly: `hour` + `minute` + `weekdays`; interval: `every` + `unit`. Keys that do not belong to the kind are dropped on write, so switching a daily schedule to an interval leaves no stale hour behind, and numbers sent as strings are stored as integers. A cadence that fails validation is rejected with 422 and never stored.
+ */
+export type AgentScheduleCadenceConfig = {
+    /**
+     * Hour of the run, in the schedule's `timezone` (daily and weekly)
+     */
+    hour?: number;
+    /**
+     * Minute of the run (daily and weekly)
+     */
+    minute?: number;
+    /**
+     * Days the schedule runs on, Ruby's Time#wday numbering (0 = Sunday). At least one day (weekly only).
+     */
+    weekdays?: Array<number>;
+    /**
+     * Interval length, counted in `unit`. The effective span is 1 hour to 30 days, whichever unit is used (interval only).
+     */
+    every?: number;
+    /**
+     * Unit `every` is counted in (interval only)
+     */
+    unit?: 'hours' | 'days';
+    [key: string]: unknown;
+};
+
+/**
  * Request body for updating AI branding rules.
  */
 export type AiBrandingRulesRequest = {
@@ -644,11 +705,7 @@ export type ApiTrafficStatisticsResponse = {
     }>;
 };
 
-export type App = ({
-    public: 'true';
-} & PublicApp) | ({
-    public: 'false';
-} & PrivateApp);
+export type App = PublicApp | PrivateApp;
 
 export type AppProvisionRequest = {
     app_provision: {
@@ -862,6 +919,15 @@ export type AssetsTrafficStatisticsResponse = {
          */
         total_bytes: number;
     }>;
+};
+
+export type AssignStoryTaxonomiesRequest = {
+    story: {
+        /**
+         * Ids of the taxonomy terms selected for the story draft. Replaces the current selection; an empty array clears it. Each term must belong to a taxonomy assigned to the story's content type, fall within that assignment's allowed set, and stay within its max_terms limit.
+         */
+        taxonomy_term_ids: Array<string>;
+    };
 };
 
 /**
@@ -1289,6 +1355,15 @@ export type ConceptsWebhookRequest = {
     [key: string]: unknown;
 };
 
+export type ConfirmAgentActionRequest = {
+    confirmation: {
+        /**
+         * Server-issued single-use confirmation token received in the SSE confirmation event. Sent in the body, never the URL.
+         */
+        token: string;
+    };
+};
+
 export type ConfirmUserResponse = {
     /**
      * Password reset token (only provided if user has an organization).
@@ -1359,6 +1434,104 @@ export type CrawlSuccessResponse = {
      * Indicates whether the operation was successful
      */
     success: boolean;
+};
+
+export type CreateAgentConversationRequest = {
+    /**
+     * Optional seed for the new conversation
+     */
+    conversation?: {
+        /**
+         * Start the conversation from a curated Agent Idea, addressed by its slug. Mutually exclusive with `custom_agent_id`; supplying both is a 422.
+         */
+        idea_slug?: string | null;
+        /**
+         * Start the conversation from a saved Custom Agent in this space, addressed by its numeric ID (a Custom Agent has no slug, and its name is editable, so the ID is the stable reference). An ID that is unknown, belongs to another space, or has been deleted is refused with the same 422 in every case. Mutually exclusive with `idea_slug`.
+         */
+        custom_agent_id?: number | null;
+        context?: AgentContext;
+    };
+};
+
+export type CreateAgentCustomAgentRequest = {
+    custom_agent: {
+        /**
+         * Display name, unique per space (case-insensitive)
+         */
+        name: string;
+        /**
+         * Short description shown in the library
+         */
+        description?: string;
+        /**
+         * The prompt template run when this agent is launched
+         */
+        prompt: string;
+        /**
+         * Icon identifier shown in the library
+         */
+        icon?: string;
+        /**
+         * Accent color shown in the library
+         */
+        color?: string;
+    };
+};
+
+export type CreateAgentEventTriggerRequest = {
+    event_trigger: {
+        /**
+         * Snowflake ID of the Custom Agent to run. Must belong to the same space.
+         */
+        custom_agent_id: number;
+        /**
+         * The dispatched webhook event that fires this trigger. Any action the webhook dispatcher emits is accepted. `story.saved` additionally requires the `save_stories_webhook` plan feature.
+         */
+        event_action: 'asset.created' | 'asset.replaced' | 'asset.deleted' | 'asset.restored' | 'story.published' | 'story.unpublished' | 'story.saved' | 'story.deleted' | 'user.added' | 'user.removed' | 'user.roles_updated' | 'story.moved' | 'datasource.entries_updated' | 'datasource.entries_deleted' | 'release.merged' | 'pipeline.deployed' | 'stage.changed' | 'discussion.created' | 'discussion.resolved' | 'discussion.comment_created' | 'discussion.comment_deleted' | 'discussion.comment_updated' | 'experiment.created' | 'experiment.started' | 'experiment.paused' | 'experiment.resumed' | 'experiment.completed' | 'experiment.winner_selected' | 'experiment.deleted';
+        /**
+         * The trigger's own instructions, appended to the Custom Agent's prompt for every run. The two composed must stay under 16000 bytes.
+         */
+        trigger_prompt?: string;
+    };
+};
+
+export type CreateAgentMessageRequest = {
+    /**
+     * The user message that opens a new agent turn
+     */
+    message: {
+        /**
+         * The user's prompt. Control characters (except tab and newline) are stripped server-side; the byte length is capped at 16000.
+         */
+        text: string;
+        context?: AgentContext;
+    };
+};
+
+export type CreateAgentScheduleRequest = {
+    schedule: {
+        /**
+         * The Custom Agent to run. Must belong to the same space, or the request is rejected with 422.
+         */
+        custom_agent_id: number;
+        /**
+         * Display name, unique per owner and target agent (case-insensitive)
+         */
+        name: string;
+        /**
+         * Which recurrence shape `cadence_config` carries
+         */
+        cadence_kind: 'daily' | 'weekly' | 'interval';
+        cadence_config: AgentScheduleCadenceConfig;
+        /**
+         * IANA identifier or Rails zone name the cadence's clock times are read in. An appended offset suffix ("Europe/Berlin (UTC+2)") is stripped. Defaults to UTC.
+         */
+        timezone?: string;
+        /**
+         * Required. Extra instructions appended to the Custom Agent's prompt for every run — a schedule with none of its own would just repeat the agent's bare prompt. The composed message must fit the agent message cap, which is checked at save time and reported as 422.
+         */
+        scheduler_prompt: string;
+    };
 };
 
 /**
@@ -1672,6 +1845,53 @@ export type CreateDiscussionRequest = {
     };
 };
 
+export type CreateDistributionLinkRequest = {
+    /**
+     * ID of the acting story in the current space. Becomes the link's source story.
+     */
+    story_id: number;
+    /**
+     * ID of the pre-existing story in the target space to associate. Becomes the link's target story.
+     */
+    target_story_id: number;
+    /**
+     * ID of the target space. Must be in the acting story's eligible-spaces set (same region).
+     */
+    target_space_id: number;
+};
+
+export type CreateDistributionSyncRequest = {
+    /**
+     * ID of the distribution link to sync
+     */
+    distribution_link_id: number;
+    /**
+     * Sync strategy to apply
+     */
+    strategy: 'overwrite' | 'merge';
+    /**
+     * ID of the story the sync is triggered from (the acting story). Its role in the link determines direction: if it is the link's source story, content flows source→target; if the target story, target→source. Must be one of the link's two endpoints.
+     */
+    story_id: number;
+    /**
+     * Language code to translate the written story into after sync (e.g. "de"). Requires the target space to have the locales app installed. When provided, the response includes a background_task_id for polling job progress.
+     */
+    ai_translate_language?: string;
+    /**
+     * Limit which component fields are translated. If omitted, all translatable fields are translated.
+     */
+    translatable_dimensions_app_fields?: Array<{
+        /**
+         * Component template ID or blok instance UID
+         */
+        uid: string;
+        /**
+         * Field name to translate
+         */
+        name: string;
+    }>;
+};
+
 export type CreateExperimentRequest = {
     experiment: {
         /**
@@ -1873,6 +2093,42 @@ export type CreateNoCcSubscriptionRequest = {
     collaborator_ids?: Array<number> | null;
 };
 
+/**
+ * Creation is two-step: only name and slug are required to create the client; the OAuth configuration (redirect URI, allowed scopes) can be supplied here or later via update. The client is not authorizable until fully configured.
+ */
+export type CreateOauthClientRequest = {
+    oauth_client: {
+        /**
+         * Name of the OAuth client
+         */
+        name: string;
+        /**
+         * URL-friendly identifier
+         */
+        slug: string;
+        /**
+         * Marketplace author display name (optional)
+         */
+        author?: string | null;
+        /**
+         * Production OAuth redirect URI (may be supplied later via update)
+         */
+        oauth_redirect_uri?: string | null;
+        /**
+         * Development OAuth redirect URI
+         */
+        dev_oauth_redirect_uri?: string | null;
+        /**
+         * OAuth scopes this client is permitted to request (may be supplied later via update)
+         */
+        allowed_scopes?: Array<string>;
+        /**
+         * Spaces this client may be authorized for; empty means no restriction
+         */
+        permitted_space_ids?: Array<number>;
+    };
+};
+
 export type CreateOrgSubscriptionRequest = {
     /**
      * Plan identifier (e.g., basic_1_2_month_usd)
@@ -2018,6 +2274,10 @@ export type CreateOrganizationRequest = {
          */
         ab_testing_enabled?: boolean;
         /**
+         * Enable Storyblok Agents for org spaces
+         */
+        storyblok_agents_enabled?: boolean;
+        /**
          * Enable confidentiality disclaimer
          */
         confidentiality_disclaimer_enabled?: boolean;
@@ -2033,6 +2293,10 @@ export type CreateOrganizationRequest = {
          * Disable private spaces
          */
         disable_private_spaces?: boolean;
+        /**
+         * Enable AI translation in the Content Distribution app
+         */
+        enable_content_distributions_ai_translation?: boolean;
         /**
          * Minimum password length requirement
          */
@@ -2298,6 +2562,26 @@ export type CreatePresetRequest = {
     };
 };
 
+export type CreateReferenceResolutionRequest = {
+    /**
+     * One entry per referenced story the user resolved in the review modal. Rows the user left untouched are omitted entirely — that is how "keep pointing at the source story" is expressed.
+     */
+    reference_resolutions: Array<{
+        /**
+         * UUID of the referenced story, as found in the target story's content.
+         */
+        source_story_uuid: string;
+        /**
+         * UUID of the story in the target space to resolve the reference to. Null clears the reference instead of pointing it at a new story. Required on every row — omitting this key is rejected, it must be sent explicitly as null to clear.
+         */
+        target_story_uuid: string | null;
+    }>;
+    /**
+     * Optimistic-lock token for the whole batch/target story — the target story's updated_at as last received by the client. Required; a mismatch or omission is rejected.
+     */
+    target_story_updated_at: string;
+};
+
 /**
  * Parameters for creating a SCIM bearer token
  */
@@ -2336,6 +2620,10 @@ export type CreateScopedPersonalAccessTokenRequest = {
      * When true, the token inherits the full permissions of the owning user. Cannot be combined with scopes or space_ids.
      */
     user_permission?: boolean;
+    /**
+     * When true, the token is restricted to environment spaces only. Cannot be combined with user_permission. When space_ids is omitted, grants access to all sandbox spaces.
+     */
+    environments_only?: boolean;
 };
 
 export type CreateSpaceRequest = {
@@ -2535,6 +2823,44 @@ export type CreateStripeSessionRequest = {
     version?: 'v1' | 'v2';
 };
 
+export type CreateTaxonomyTermRequest = {
+    taxonomy_term: {
+        /**
+         * Human-readable label
+         */
+        display_name: string;
+        /**
+         * URL-safe technical name; auto-generated from display_name if omitted
+         */
+        name?: string;
+        /**
+         * Optional free-text description
+         */
+        description?: string;
+        /**
+         * Omit or pass null to create a root taxonomy term, i.e. a new "taxonomy" (the response's parent_id will be null). Pass an existing term's id to create a nested term under it instead; that term's own taxonomy must already be assigned to this space.
+         */
+        parent_id?: string | null;
+        /**
+         * Per-language translations of display_name/description. Each entry's lang must be unique within this term.
+         */
+        translations_attributes?: Array<{
+            /**
+             * Language code, e.g. de or en-US
+             */
+            lang: string;
+            /**
+             * Translated label
+             */
+            display_name: string;
+            /**
+             * Translated description
+             */
+            description?: string;
+        }>;
+    };
+};
+
 /**
  * Request body for deleting templates
  */
@@ -2596,6 +2922,10 @@ export type CreateWorkflowRequest = {
             space_role_ids?: Array<number>;
             workflow_stage_ids?: Array<number>;
         }>;
+        /**
+         * Enable per-language stage tracking
+         */
+        per_language_stages?: boolean;
     };
 };
 
@@ -2613,6 +2943,10 @@ export type CreateWorkflowStageChangeRequest = {
          * Optional due date for this workflow stage
          */
         due_date?: string | null;
+        /**
+         * Language code for per-language workflow stage tracking
+         */
+        language?: string | null;
     };
     /**
      * Optional assignment of users and/or space roles to the story.
@@ -2717,6 +3051,212 @@ export type DeleteSchemaFieldsRequest = {
      * Component name to scope schema field deletion
      */
     component_name: string;
+};
+
+export type DistributionActivitiesIndexResponse = {
+    /**
+     * List of distribution activities with associated target story and user info
+     */
+    activities: Array<{
+        activity: DistributionActivity;
+        /**
+         * Target (receiver) story affected by the distribution action
+         */
+        trackable: {
+            /**
+             * ID of the target story
+             */
+            id?: number | null;
+            /**
+             * Name of the target story, or 'unknown story' if deleted
+             */
+            name: string;
+            /**
+             * ID of the target (receiver) space
+             */
+            space_id?: number | null;
+        };
+        /**
+         * User who performed the action, null if user no longer exists
+         */
+        user: {
+            id: number;
+            avatar?: string | null;
+            userid?: string | null;
+            friendly_name?: string | null;
+            /**
+             * Whether the user is active in this org
+             */
+            active: boolean;
+        } | null;
+    }>;
+    meta: PaginationMeta;
+};
+
+/**
+ * Row detail: one story across the reference space and every chosen target space, with the dates the grid leaves out. Not paginated — one story, at most six spaces
+ */
+export type DistributionStatusDetailResponse = {
+    /**
+     * One entry per space asked for, plus the reference space, which comes first with role reference. Targets follow in the order they were asked for. A space with no copy still gets an entry
+     */
+    spaces: Array<{
+        /**
+         * ID of the space
+         */
+        space_id: number;
+        /**
+         * Name of the space
+         */
+        space_name: string;
+        /**
+         * Whether this entry is the story's own space or a target space
+         */
+        role: 'reference' | 'target';
+        /**
+         * ID of the copy in this space, null when not_distributed
+         */
+        story_id: number | null;
+        /**
+         * Name of the copy in this space. Per space: a market can rename its copy, so this often differs from the grid's row heading. Null when not_distributed
+         */
+        name: string | null;
+        /**
+         * Slug of the copy in this space, null when not_distributed
+         */
+        slug: string | null;
+        /**
+         * Publish state of the copy in this space, or not_distributed when no copy exists. Never null
+         */
+        status: 'not_distributed' | 'published_with_scheduled' | 'draft_with_scheduled' | 'published_with_changes' | 'published' | 'draft';
+        /**
+         * Raw input the status derives from: the copy is live. Null when not_distributed
+         */
+        published: boolean | null;
+        /**
+         * Raw input the status derives from: the copy has newer unpublished edits. Null when not_distributed
+         */
+        unpublished_changes: boolean | null;
+        /**
+         * Raw input the status derives from: a pending scheduling exists. Null when not_distributed
+         */
+        is_scheduled: boolean | null;
+        /**
+         * When this copy last arrived — COALESCE(last_synced_at, distributed_at) on the link. Always null for the reference space, which received nothing, and null when not_distributed
+         */
+        distributed_at: string | null;
+        /**
+         * When someone last saved the story in that space. Null when not_distributed
+         */
+        updated_at: string | null;
+        /**
+         * When it last went live in that space. Null if it never has, and null when not_distributed
+         */
+        published_at: string | null;
+    }>;
+};
+
+/**
+ * Distribution Dashboard grid: the ordered columns, one page of rows, and the paging meta
+ */
+export type DistributionStatusIndexResponse = {
+    /**
+     * The grid columns in display order. The reference space is always first with role reference; the target spaces follow in the order they were requested
+     */
+    spaces: Array<{
+        /**
+         * ID of the space
+         */
+        space_id: number;
+        /**
+         * Name of the space
+         */
+        space_name: string;
+        /**
+         * Whether this column is the reference space or a target space
+         */
+        role: 'reference' | 'target';
+    }>;
+    /**
+     * One row per reference-space story distributed to a selected target space inside the window
+     */
+    rows: Array<{
+        /**
+         * The story in the reference space. A property of the row rather than the first entry of targets: it has no link and no distribution date, and its status is never not_distributed
+         */
+        reference_story: {
+            /**
+             * ID of the reference story
+             */
+            story_id: number;
+            /**
+             * ID of the reference space
+             */
+            space_id: number;
+            /**
+             * Name of the reference story
+             */
+            name: string;
+            /**
+             * Slug of the reference story
+             */
+            slug: string;
+            /**
+             * Publish state of the reference story
+             */
+            status: 'published_with_scheduled' | 'draft_with_scheduled' | 'published_with_changes' | 'published' | 'draft';
+            /**
+             * Raw input the status derives from: the story is live
+             */
+            published: boolean;
+            /**
+             * Raw input the status derives from: the story has newer unpublished edits
+             */
+            unpublished_changes: boolean;
+            /**
+             * Raw input the status derives from: a pending scheduling exists. Mirrors the content list, so a past-due scheduling whose job has not run still counts
+             */
+            is_scheduled: boolean;
+        };
+        /**
+         * Latest distribution or sync timestamp across this row's cells. The default sort key
+         */
+        last_distributed_at: string;
+        /**
+         * One entry per target space, always, in the same order as the target spaces in spaces. Same length on every row and page, so rows[i].targets[j] corresponds to spaces[j+1]. A missing copy is a not_distributed entry, never an omitted one
+         */
+        targets: Array<{
+            /**
+             * ID of the target space
+             */
+            space_id: number;
+            /**
+             * Publish state of the copy in this target space, or not_distributed when no live copy exists. Never null
+             */
+            status: 'not_distributed' | 'published_with_scheduled' | 'draft_with_scheduled' | 'published_with_changes' | 'published' | 'draft';
+            /**
+             * ID of the copy in the target space, null when not_distributed
+             */
+            story_id: number | null;
+            /**
+             * ID of the distribution link, null when not_distributed
+             */
+            distribution_link_id: number | null;
+            /**
+             * Raw input the status derives from, null when not_distributed
+             */
+            published: boolean | null;
+            /**
+             * Raw input the status derives from, null when not_distributed
+             */
+            unpublished_changes: boolean | null;
+            /**
+             * Raw input the status derives from, null when not_distributed
+             */
+            is_scheduled: boolean | null;
+        }>;
+    }>;
+    meta: PaginationMeta & unknown;
 };
 
 export type ErrorResponse = {
@@ -3058,6 +3598,77 @@ export type OrgActivitiesIndexResponse = {
     }>;
 };
 
+/**
+ * Organization settings stored as JSONB. All keys are optional.
+ */
+export type OrgSettings = {
+    aad_tenant?: string | null;
+    ab_testing_enabled?: boolean | null;
+    ai_credits_limit_alert_sent?: boolean | null;
+    ai_credits_limit_warning_sent?: boolean | null;
+    ai_features_disabled?: boolean | null;
+    ai_style_space_composition_mode?: 'combine' | 'override' | null;
+    ai_text_generator_disabled?: boolean | null;
+    ai_text_generator_feature_disabled?: boolean | null;
+    ai_translation_enabled?: boolean | null;
+    allow_dynamic_registration?: boolean | null;
+    allow_space_ai_styles?: boolean | null;
+    azure_ad_custom_service?: boolean | null;
+    case_insensitive_saml_email?: boolean | null;
+    cdn_force_filter_from_releases?: boolean | null;
+    concept_room_enabled?: boolean | null;
+    confidentiality_disclaimer_enabled?: boolean | null;
+    confidentiality_disclaimer_message?: string | null;
+    custom_upload_limit_in_mb?: number | null;
+    default_ai_configuration_id?: number | null;
+    default_server_location?: string | null;
+    disable_private_spaces?: boolean | null;
+    editor_url?: string | null;
+    enable_content_distributions_ai_translation?: boolean | null;
+    flow_motion_identifier?: string | null;
+    flowmotion_enabled?: boolean | null;
+    force_org_ai_styles?: boolean | null;
+    ideation_room_enabled?: boolean | null;
+    is_saml_sso_using_path?: boolean | null;
+    logo?: string | null;
+    merge_users?: boolean | null;
+    new_merge_enabled?: boolean | null;
+    password_rule_min_length?: number | null;
+    preserve_empty_cached_url?: boolean | null;
+    primary_bg_color?: string | null;
+    primary_color?: string | null;
+    propagate_field_defaults?: boolean | null;
+    propagate_field_removal?: boolean | null;
+    required_shared_asset_fields?: Array<string> | null;
+    restricted_regions?: Array<string> | null;
+    s3_asset_bucket?: string | null;
+    scim_allowed_ips?: Array<string> | null;
+    scim_provisioning_enabled?: boolean | null;
+    shared_asset_custom_meta_data_schema?: {
+        [key: string]: unknown;
+    } | null;
+    shared_asset_translatable_asset_fields?: Array<string> | null;
+    share_plugins?: boolean | null;
+    sign_saml_request?: boolean | null;
+    spaces_info?: {
+        [key: string]: unknown;
+    } | null;
+    sso_alt_email?: string | null;
+    sso_firstname?: string | null;
+    sso_lastname?: string | null;
+    sso_role_merge?: boolean | null;
+    sso_servers_webhook?: string | null;
+    storyblok_agents_enabled?: boolean | null;
+    strong_auth?: boolean | null;
+    token_timeout_in?: number | null;
+    track_statistics?: boolean | null;
+    trigger_release_webhook_first?: boolean | null;
+    users_info?: {
+        [key: string]: unknown;
+    } | null;
+    yearly_ai_credits_used?: number | null;
+};
+
 export type OrgSpace = {
     /**
      * Space ID.
@@ -3121,6 +3732,15 @@ export type OrgUserPendingResponse = {
 
 export type OrgUserShowResponse = {
     user: OrgUser;
+};
+
+export type PaginationMeta = {
+    page: number;
+    per_page: number;
+    total_count: number;
+    total_pages: number;
+    has_next_page: boolean;
+    has_prev_page: boolean;
 };
 
 export type PartnerInvoicesIndexResponse = {
@@ -3313,6 +3933,35 @@ export type RateLimitError = {
     error: string;
 };
 
+/**
+ * One MAPI deployment a client may route management requests to
+ */
+export type Region = {
+    /**
+     * AWS region code
+     */
+    code: string;
+    /**
+     * Human-readable region label
+     */
+    label: string;
+    /**
+     * Base URL for Management API requests to this region
+     */
+    mapi_base_url: string;
+};
+
+/**
+ * The caller's routing group: every MAPI region a client may route management requests to
+ */
+export type RegionsIndexResponse = {
+    /**
+     * AWS region code of the deployment that answered this request
+     */
+    current: string;
+    regions: Array<Region>;
+};
+
 export type ReleaseRequest = {
     release: {
         /**
@@ -3339,6 +3988,10 @@ export type ReleaseRequest = {
          * Whether the release is public or private
          */
         public?: boolean | null;
+        /**
+         * The hex color code used to visually distinguish this release. Accepts 3, 4, 6 or 8 hex digits (4 and 8 digits include an alpha channel).
+         */
+        color_code?: string | null;
         /**
          * Array of user IDs allowed to access this private release
          */
@@ -3461,6 +4114,10 @@ export type ScopedPersonalAccessTokenCreateResponse = {
      */
     user_permission: boolean;
     /**
+     * When true, the token is restricted to environment spaces only and cannot access origin spaces
+     */
+    environments_only: boolean;
+    /**
      * The full token string. Store it securely - it cannot be retrieved again.
      */
     full_token: string;
@@ -3560,6 +4217,135 @@ export type SharedInternalTagRequest = {
     };
 };
 
+/**
+ * An SSO connection for an organization (SAML or Azure AD).
+ */
+export type SsoConnection = {
+    id: number;
+    provider: 'saml' | 'azure_ad';
+    /**
+     * Server-generated, immutable identifier. Never client-supplied.
+     */
+    readonly sso_identifier: string;
+    name: string;
+    /**
+     * Login domains with their DNS verification status. Not enforced unique across orgs (the same domain may belong to more than one org).
+     */
+    domains?: Array<SsoConnectionDomain>;
+    /**
+     * The DNS record the org admin must create to prove ownership of each login domain: a CNAME at <host_prefix>.<domain> pointing to target.
+     */
+    domain_verification?: {
+        record_type: string;
+        host_prefix: string;
+        target: string;
+    };
+    /**
+     * Whether the connection is active. Read-only.
+     */
+    readonly active: boolean;
+    /**
+     * SAML IdP metadata XML (SAML connections only).
+     */
+    idp_meta?: string | null;
+    /**
+     * Azure AD tenant ID (Azure AD connections only).
+     */
+    aad_tenant?: string | null;
+    /**
+     * Read-only, org-sourced. Whether email matching is case-insensitive.
+     */
+    readonly case_insensitive_email_match?: boolean;
+    attribute_mappings?: SsoConnectionAttributeMappings;
+    /**
+     * SAML only. Whether the AuthnRequest is signed. Surfaced from the connection config.
+     */
+    sign_saml_request?: boolean;
+    readonly enforce_sso?: boolean;
+    /**
+     * Org-sourced. When enabled, existing email/password users logging in via SSO with a matching email are converted to SSO users. Org-wide setting shared across connections. Writable on update only.
+     */
+    merge_users?: boolean;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at?: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at?: string;
+};
+
+/**
+ * Maps IdP assertion attributes to Storyblok user fields.
+ */
+export type SsoConnectionAttributeMappings = {
+    firstname?: string;
+    lastname?: string;
+    alt_email?: string;
+};
+
+/**
+ * An SSO login domain and its DNS verification status.
+ */
+export type SsoConnectionDomain = {
+    name: string;
+    /**
+     * DNS verification status. Until the verification engine ships, every domain reports pending.
+     */
+    status: 'verified' | 'pending' | 'failed';
+};
+
+/**
+ * Writable fields for creating an SSO connection. provider is required and can only be set on create; domains is required on create with at least one entry. Read-only fields (sso_identifier, active, etc.) are ignored if supplied.
+ */
+export type SsoConnectionInput = {
+    sso_connection: {
+        provider: 'saml' | 'azure_ad';
+        name?: string;
+        /**
+         * Login domains.
+         */
+        domains: Array<string>;
+        idp_meta?: string;
+        aad_tenant?: string;
+        attribute_mappings?: SsoConnectionAttributeMappings;
+        sign_saml_request?: boolean;
+        enforce_sso?: boolean;
+    };
+};
+
+export type SsoConnectionResponse = {
+    sso_connection: SsoConnection;
+};
+
+/**
+ * Writable fields for updating an SSO connection. provider is immutable and ignored if supplied. Read-only fields (sso_identifier, etc.) are ignored if supplied.
+ */
+export type SsoConnectionUpdateInput = {
+    sso_connection: {
+        name?: string;
+        /**
+         * Full login-domain list; replaces the stored set. Omit to leave domains unchanged.
+         */
+        domains?: Array<string>;
+        idp_meta?: string;
+        aad_tenant?: string;
+        attribute_mappings?: SsoConnectionAttributeMappings;
+        sign_saml_request?: boolean;
+        enforce_sso?: boolean;
+        /**
+         * Org-wide setting: convert existing email/password users to SSO users when they log in via SSO with a matching email. Ignored on create.
+         */
+        merge_users?: boolean;
+    };
+};
+
+export type SsoConnectionsIndexResponse = {
+    sso_connections: Array<SsoConnection>;
+    meta: PaginationMeta;
+};
+
 export type Stage = {
     /**
      * The workflow ID
@@ -3581,6 +4367,10 @@ export type Stage = {
      * Creation timestamp (format is ISO 8601 standard in UTC).
      */
     created_at: string;
+    /**
+     * The language code this stage applies to, or null for whole-story stages
+     */
+    language: string | null;
 };
 
 /**
@@ -3923,6 +4713,92 @@ export type StatisticsNewVersionResponse = {
     }>;
 };
 
+/**
+ * Error shape used by the management Strata endpoints. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ */
+export type StrataErrorResponse = {
+    error: {
+        /**
+         * Human-readable description of the error.
+         */
+        message: string;
+        /**
+         * A fixed error code for this failure.
+         */
+        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
+        /**
+         * Extra structured data about the error.
+         */
+        details: {
+            [key: string]: unknown;
+        } | null;
+        /**
+         * When the error happened, in ISO 8601 format.
+         */
+        timestamp: string;
+    };
+};
+
+/**
+ * One indexing run. Each row is the history record for a single index or reindex of a space's stories.
+ */
+export type StrataRun = {
+    run_id: number;
+    /**
+     * The run's current state.
+     */
+    status: 'queued' | 'indexing' | 'completed' | 'stopped' | 'error';
+    triggered_at?: string | null;
+    started_at?: string | null;
+    finished_at?: string | null;
+    story_count: number;
+    error_count: number;
+    /**
+     * Which stories the run selected: every story (full), only changed/new ones (incremental), or a retry of ones that previously failed (retry_failed). Null if the run did not set a mode.
+     */
+    mode?: 'incremental' | 'full' | 'retry_failed' | null;
+    /**
+     * Which content version the run indexes: draft, published, or all for both.
+     */
+    version: 'draft' | 'published' | 'all';
+};
+
+/**
+ * One search result: a single piece of matching story content.
+ */
+export type StrataSearchHit = {
+    /**
+     * The matching snippet of story content.
+     */
+    excerpt: string;
+    /**
+     * How closely this result matches the search term. Higher means a closer match.
+     */
+    score: number;
+    /**
+     * The story this result comes from.
+     */
+    story: {
+        /**
+         * Numeric ID of the story.
+         */
+        id: number;
+        /**
+         * The story's full slug.
+         */
+        slug: string;
+        /**
+         * The story's name.
+         */
+        name: string;
+    };
+};
+
+/**
+ * Ranked results, best match first. Each entry is one matching piece of content. A story can appear more than once if it has multiple matches.
+ */
+export type StrataSearchResults = Array<StrataSearchHit>;
+
 export type TagBulkAssociationRequest = {
     tags: {
         /**
@@ -4142,6 +5018,80 @@ export type UnpublishedDependenciesRequest = {
      * The language code for this translation.
      */
     lang?: string | null;
+};
+
+export type UpdateAgentCustomAgentRequest = {
+    custom_agent: {
+        /**
+         * Display name, unique per space (case-insensitive)
+         */
+        name?: string;
+        /**
+         * Short description shown in the library
+         */
+        description?: string;
+        /**
+         * The prompt template run when this agent is launched
+         */
+        prompt?: string;
+        /**
+         * Icon identifier shown in the library
+         */
+        icon?: string;
+        /**
+         * Accent color shown in the library
+         */
+        color?: string;
+    };
+};
+
+/**
+ * Every field is optional; only what is sent is changed. `status` is not accepted here - pause and resume through the pause endpoint.
+ */
+export type UpdateAgentEventTriggerRequest = {
+    event_trigger: {
+        /**
+         * Snowflake ID of the Custom Agent to run. Must belong to the same space.
+         */
+        custom_agent_id?: number;
+        /**
+         * The dispatched webhook event that fires this trigger. Any action the webhook dispatcher emits is accepted. `story.saved` additionally requires the `save_stories_webhook` plan feature.
+         */
+        event_action?: 'asset.created' | 'asset.replaced' | 'asset.deleted' | 'asset.restored' | 'story.published' | 'story.unpublished' | 'story.saved' | 'story.deleted' | 'user.added' | 'user.removed' | 'user.roles_updated' | 'story.moved' | 'datasource.entries_updated' | 'datasource.entries_deleted' | 'release.merged' | 'pipeline.deployed' | 'stage.changed' | 'discussion.created' | 'discussion.resolved' | 'discussion.comment_created' | 'discussion.comment_deleted' | 'discussion.comment_updated' | 'experiment.created' | 'experiment.started' | 'experiment.paused' | 'experiment.resumed' | 'experiment.completed' | 'experiment.winner_selected' | 'experiment.deleted';
+        /**
+         * The trigger's own instructions, appended to the Custom Agent's prompt for every run. The two composed must stay under 16000 bytes.
+         */
+        trigger_prompt?: string;
+    };
+};
+
+/**
+ * Every field is optional; only what is sent is changed. `status` is not accepted here — pause and resume through the pause endpoint. A cadence or timezone change recomputes `next_run_at`.
+ */
+export type UpdateAgentScheduleRequest = {
+    schedule: {
+        /**
+         * Retarget the schedule at another Custom Agent in the same space
+         */
+        custom_agent_id?: number;
+        /**
+         * Display name, unique per owner and target agent (case-insensitive)
+         */
+        name?: string;
+        /**
+         * Which recurrence shape `cadence_config` carries. Send `cadence_config` with it — keys that do not belong to the new kind are dropped.
+         */
+        cadence_kind?: 'daily' | 'weekly' | 'interval';
+        cadence_config?: AgentScheduleCadenceConfig;
+        /**
+         * IANA identifier or Rails zone name the cadence's clock times are read in
+         */
+        timezone?: string;
+        /**
+         * Extra instructions appended to the Custom Agent's prompt for every run. Optional like every field here, but it cannot be blanked: sending an empty or whitespace-only value is a 422.
+         */
+        scheduler_prompt?: string;
+    };
 };
 
 /**
@@ -4512,6 +5462,42 @@ export type UpdateLeadRequest = {
     };
 };
 
+/**
+ * Updates validate the resulting client state: once persisted, the client must keep a non-empty oauth_redirect_uri and allowed_scopes. A client created with name+slug only (two-step creation) must be completed with both before it becomes authorizable; partial updates that leave them blank return 422.
+ */
+export type UpdateOauthClientRequest = {
+    oauth_client: {
+        /**
+         * Name of the OAuth client
+         */
+        name?: string;
+        /**
+         * URL-friendly identifier
+         */
+        slug?: string;
+        /**
+         * Marketplace author display name (optional)
+         */
+        author?: string | null;
+        /**
+         * Production OAuth redirect URI (must be present on the resulting client)
+         */
+        oauth_redirect_uri?: string | null;
+        /**
+         * Development OAuth redirect URI
+         */
+        dev_oauth_redirect_uri?: string | null;
+        /**
+         * OAuth scopes this client is permitted to request (must stay non-empty)
+         */
+        allowed_scopes?: Array<string>;
+        /**
+         * Spaces this client may be authorized for; empty means no restriction
+         */
+        permitted_space_ids?: Array<number>;
+    };
+};
+
 export type UpdateOrgSubscriptionRequest = {
     /**
      * Plan identifier (e.g., basic_1_2_month_usd)
@@ -4612,6 +5598,10 @@ export type UpdateOrganizationRequest = {
          */
         ab_testing_enabled?: boolean;
         /**
+         * Enable Storyblok Agents for org spaces
+         */
+        storyblok_agents_enabled?: boolean;
+        /**
          * Enable confidentiality disclaimer
          */
         confidentiality_disclaimer_enabled?: boolean;
@@ -4627,6 +5617,10 @@ export type UpdateOrganizationRequest = {
          * Disable private spaces
          */
         disable_private_spaces?: boolean;
+        /**
+         * Enable AI translation in the Content Distribution
+         */
+        enable_content_distributions_ai_translation?: boolean;
         /**
          * Minimum password length requirement
          */
@@ -4916,7 +5910,7 @@ export type UpdateSpaceRequest = {
          */
         default_lang_name?: string | null;
         /**
-         * Default AI translation language code (AiServices::TextService::LANGUAGES); defaults to en
+         * Default AI translation language code (Ai::Languages::ALL); defaults to en
          */
         default_ai_lang_code?: string | null;
         /**
@@ -4939,6 +5933,14 @@ export type UpdateSpaceRequest = {
          * Whether visual mode is disabled
          */
         visual_mode_disable?: boolean;
+        /**
+         * Short description of the sandbox space's purpose (max 255 chars)
+         */
+        short_description?: string | null;
+        /**
+         * Whether the editor shows the environment identification bar (defaults to false)
+         */
+        show_environment_identification_bar?: boolean;
         /**
          * Whether AI text generation is disabled
          */
@@ -4983,6 +5985,14 @@ export type UpdateSpaceRequest = {
          * Whether to disable the onboarding tour
          */
         onboarding_tour_disabled?: boolean;
+        /**
+         * Whether to hide language/country flags
+         */
+        hide_flag_icons?: boolean;
+        /**
+         * Whether flags represent country or language (only applies when hide_flag_icons is false)
+         */
+        flag_icons_display_mode?: 'country' | 'language';
         /**
          * Language configuration
          */
@@ -5208,6 +6218,10 @@ export type UpdateStoryRequest = {
         pinned?: boolean;
         position?: number;
         tag_list?: Array<string>;
+        /**
+         * Ids of the taxonomy terms selected for the story draft. Replaces the current selection. Each term must belong to a taxonomy assigned to the story's content type, fall within that assignment's allowed set, and stay within its max_terms limit.
+         */
+        taxonomy_term_ids?: Array<string>;
         base_version_id?: number | null;
         /**
          * Array of translated slug attributes for creating or updating translated slugs.
@@ -5290,6 +6304,52 @@ export type UpdateSubscriptionRequest = {
     collaborator_ids?: Array<number> | null;
 };
 
+export type UpdateTaxonomyTermRequest = {
+    taxonomy_term: {
+        /**
+         * Human-readable label
+         */
+        display_name?: string;
+        /**
+         * URL-safe technical name
+         */
+        name?: string;
+        /**
+         * Optional free-text description
+         */
+        description?: string;
+        /**
+         * Move a nested term to a new parent within the same taxonomy. Not accepted on a root term (a root can never gain a parent), and a nested term can never have this cleared to null.
+         */
+        parent_id?: string;
+        /**
+         * Per-language translations of display_name/description. Each entry's lang must be unique within this term. Pass id to update an existing translation, or id plus _destroy: true to remove it. Editable even when the term itself is locked.
+         */
+        translations_attributes?: Array<{
+            /**
+             * ID of an existing translation to update or remove
+             */
+            id?: string;
+            /**
+             * Language code, e.g. de or en-US
+             */
+            lang?: string;
+            /**
+             * Translated label
+             */
+            display_name?: string;
+            /**
+             * Translated description
+             */
+            description?: string;
+            /**
+             * Set to true, together with id, to remove that translation
+             */
+            _destroy?: boolean;
+        }>;
+    };
+};
+
 export type UpdateWorkflowRequest = {
     workflow: {
         /**
@@ -5307,6 +6367,10 @@ export type UpdateWorkflowRequest = {
             id: number;
             position?: number;
         }>;
+        /**
+         * Enable per-language stage tracking
+         */
+        per_language_stages?: boolean;
     };
 };
 
@@ -6148,12 +7212,7 @@ export type OrgSummary = {
      * Latest update timestamp (format is ISO 8601 standard in UTC).
      */
     updated_at: string;
-    /**
-     * Organization settings
-     */
-    settings: {
-        [key: string]: unknown;
-    };
+    settings: OrgSettings;
     /**
      * The organization's subscription plan
      */
@@ -6324,6 +7383,619 @@ export type UnauthorizedError = {
      * Unauthorized error message.
      */
     error: string;
+};
+
+/**
+ * Result of consuming a confirmation token for a destructive or bulk write.
+ */
+export type AgentConfirmation = {
+    /**
+     * The confirmation token that was consumed
+     */
+    token: string;
+    status: 'consumed' | 'expired' | 'invalid';
+    conversation_id: number;
+};
+
+/**
+ * A per-space Storyblok Agents conversation (session), scoped to a single space and user.
+ */
+export type AgentConversation = {
+    /**
+     * Snowflake ID of the conversation
+     */
+    id: number;
+    /**
+     * Container lifecycle: active = usable, streaming = a turn is currently running (convenience flag for list views), archived = retained but closed. Live per-turn state (queued/streaming/completed/cancelled/error) lives on the message, not here.
+     */
+    status: 'active' | 'streaming' | 'archived';
+    /**
+     * User's job title or role.
+     */
+    title: string | null;
+    source: AgentConversationSource;
+    /**
+     * Deprecated: read `source` instead. Mirrors `source.slug`, so it is null for a conversation launched from a Custom Agent even though that conversation does have a source. Retained only so clients can migrate to `source` without a lockstep deploy, and will be removed.
+     *
+     * @deprecated
+     */
+    idea_slug: string | null;
+    /**
+     * Number of messages in the conversation
+     */
+    message_count: number;
+    /**
+     * Timestamp of the most recent message; null for empty conversations
+     */
+    last_message_at: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+/**
+ * What a conversation was launched from, discriminated by `type`. `type` is also how a client tells an automated conversation from a hand-started one: `schedule` means an Agent Schedule ran it unattended, the other types mean a person opened it. Null for an ad-hoc chat, and also null when the source no longer resolves: a deleted Agent Idea clears the reference, and a deleted Custom Agent is no longer readable. The key set is fixed across all types, so `slug` is null for anything but an Agent Idea (the others are addressed by `id`) and `color` is null for an Agent Idea (which has no accent color). More automated types may be added, so treat an unrecognised `type` as a source you cannot render rather than as an ad-hoc chat.
+ */
+export type AgentConversationSource = {
+    /**
+     * Which kind of source this is: a curated Agent Idea, a saved Custom Agent, or an Agent Schedule — the last meaning the conversation is an unattended scheduled run rather than something a person started
+     */
+    type: 'idea' | 'custom_agent' | 'schedule';
+    /**
+     * Numeric ID of the source record
+     */
+    id: number;
+    /**
+     * URL-friendly identifier for the app category.
+     */
+    slug: string | null;
+    /**
+     * Display label for the source: the Agent Idea's title, the Custom Agent's name, or the schedule's name
+     */
+    name: string;
+    /**
+     * Icon identifier of the source, for rendering it in a list. For a `schedule` this is the icon of the Custom Agent the schedule runs, and it is null if that agent has since been deleted
+     */
+    icon: string | null;
+    /**
+     * Accent colour of the Custom Agent — for a `schedule`, of the agent that schedule runs. Always null when `type` is `idea`, and null for a `schedule` whose agent has since been deleted
+     */
+    color: string | null;
+} | null;
+
+/**
+ * A space-scoped, saved Storyblok Agents template. Any user with `use_agent` or `manage_agents` can read and launch it; only users with `manage_agents` can create, edit, or delete it.
+ */
+export type AgentCustomAgent = {
+    /**
+     * Snowflake ID of the custom agent
+     */
+    id: number;
+    /**
+     * Display name of the custom agent, unique per space (case-insensitive)
+     */
+    name: string;
+    /**
+     * Short description shown in the library
+     */
+    description: string | null;
+    /**
+     * The prompt template run when this agent is launched
+     */
+    prompt: string;
+    /**
+     * Icon identifier shown in the library
+     */
+    icon: string | null;
+    /**
+     * Accent color shown in the library
+     */
+    color: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+/**
+ * A Custom Agent as a schedule list row's target: what the row renders, without the agent's `prompt`. That field is deliberately unbounded, so it is served only by the single-schedule and Custom Agent endpoints.
+ */
+export type AgentCustomAgentSummary = {
+    /**
+     * Snowflake ID of the custom agent
+     */
+    id: number;
+    /**
+     * Display name of the custom agent
+     */
+    name: string;
+    /**
+     * Short description shown in the library
+     */
+    description: string | null;
+    /**
+     * Icon identifier shown in the library
+     */
+    icon: string | null;
+    /**
+     * Accent color shown in the library
+     */
+    color: string | null;
+};
+
+/**
+ * A rule that runs one Custom Agent whenever a dispatched event happens in the space. Each run opens a fresh conversation whose first message is the Custom Agent's prompt composed with this trigger's `trigger_prompt`. Unlike schedules, triggers are space-visible: reading or writing one requires the `manage agents` space permission.
+ */
+export type AgentEventTrigger = {
+    /**
+     * Snowflake ID of the event trigger
+     */
+    id: number;
+    /**
+     * The Custom Agent this trigger runs. Null when the target has been soft-deleted: the delete guard only covers the API path, so a trigger can outlive its agent.
+     */
+    custom_agent: AgentCustomAgent | null;
+    /**
+     * The dispatched webhook event that fires this trigger. Any action the webhook dispatcher emits is accepted. `story.saved` additionally requires the `save_stories_webhook` plan feature.
+     */
+    event_action: 'asset.created' | 'asset.replaced' | 'asset.deleted' | 'asset.restored' | 'story.published' | 'story.unpublished' | 'story.saved' | 'story.deleted' | 'user.added' | 'user.removed' | 'user.roles_updated' | 'story.moved' | 'datasource.entries_updated' | 'datasource.entries_deleted' | 'release.merged' | 'pipeline.deployed' | 'stage.changed' | 'discussion.created' | 'discussion.resolved' | 'discussion.comment_created' | 'discussion.comment_deleted' | 'discussion.comment_updated' | 'experiment.created' | 'experiment.started' | 'experiment.paused' | 'experiment.resumed' | 'experiment.completed' | 'experiment.winner_selected' | 'experiment.deleted';
+    /**
+     * The trigger's own instructions, appended to the Custom Agent's prompt for every run. Plain text, no placeholder interpolation.
+     */
+    trigger_prompt: string | null;
+    /**
+     * Only an active trigger is dispatched
+     */
+    status: 'active' | 'paused';
+    /**
+     * When the trigger last ran
+     */
+    last_run_at: string | null;
+    /**
+     * Verdict of the most recent run. Null until the trigger has run.
+     */
+    last_run_status: 'success' | 'failed' | null;
+    /**
+     * Snowflake ID of the conversation the most recent run opened
+     */
+    last_conversation_id: number | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+/**
+ * An event trigger as it appears in the space's trigger collection. Identical to V1AgentEventTrigger except for the embedded target, which omits the Custom Agent's unbounded `prompt` - a page may carry up to 1000 rows. Retrieve a single trigger to get the full target.
+ */
+export type AgentEventTriggerListItem = {
+    /**
+     * Snowflake ID of the event trigger
+     */
+    id: number;
+    /**
+     * The Custom Agent this trigger runs. Null when the target has been soft-deleted: the delete guard only covers the API path, so a trigger can outlive its agent.
+     */
+    custom_agent: AgentCustomAgentSummary | null;
+    /**
+     * The dispatched webhook event that fires this trigger. Any action the webhook dispatcher emits is accepted. `story.saved` additionally requires the `save_stories_webhook` plan feature.
+     */
+    event_action: 'asset.created' | 'asset.replaced' | 'asset.deleted' | 'asset.restored' | 'story.published' | 'story.unpublished' | 'story.saved' | 'story.deleted' | 'user.added' | 'user.removed' | 'user.roles_updated' | 'story.moved' | 'datasource.entries_updated' | 'datasource.entries_deleted' | 'release.merged' | 'pipeline.deployed' | 'stage.changed' | 'discussion.created' | 'discussion.resolved' | 'discussion.comment_created' | 'discussion.comment_deleted' | 'discussion.comment_updated' | 'experiment.created' | 'experiment.started' | 'experiment.paused' | 'experiment.resumed' | 'experiment.completed' | 'experiment.winner_selected' | 'experiment.deleted';
+    /**
+     * The trigger's own instructions, appended to the Custom Agent's prompt for every run. Plain text, no placeholder interpolation.
+     */
+    trigger_prompt: string | null;
+    /**
+     * Only an active trigger is dispatched
+     */
+    status: 'active' | 'paused';
+    /**
+     * When the trigger last ran
+     */
+    last_run_at: string | null;
+    /**
+     * Verdict of the most recent run. Null until the trigger has run.
+     */
+    last_run_status: 'success' | 'failed' | null;
+    /**
+     * Snowflake ID of the conversation the most recent run opened
+     */
+    last_conversation_id: number | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+/**
+ * One past run of an event trigger. A run is a conversation, so `status` is that conversation's lifecycle state rather than a success/failure verdict - only the newest run carries a verdict, on the trigger's own `last_run_status`. A run that failed before a conversation existed leaves nothing to list here.
+ */
+export type AgentEventTriggerRun = {
+    /**
+     * Snowflake ID of the conversation this run produced; use it against the conversation endpoints to read the transcript
+     */
+    conversation_id: number;
+    /**
+     * Lifecycle of the run's conversation: active = usable, streaming = the run's turn is still going, archived = retained but closed
+     */
+    status: 'active' | 'streaming' | 'archived';
+    /**
+     * User's job title or role.
+     */
+    title: string | null;
+    /**
+     * Number of messages the run produced
+     */
+    message_count: number;
+    /**
+     * Timestamp of the run's most recent message; null if it produced none
+     */
+    last_message_at: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+};
+
+/**
+ * A curated, read-only Agent Idea (starter prompt). Per-idea actions are limited to Send to chat and Copy.
+ */
+export type AgentIdea = {
+    /**
+     * URL-friendly identifier for the app category.
+     */
+    slug: string;
+    /**
+     * User's job title or role.
+     */
+    title: string;
+    description: string;
+    category: 'strategy' | 'content' | 'seo' | 'translation' | 'operations' | 'research';
+    /**
+     * The starter prompt text inserted into the composer
+     */
+    prompt: string;
+    /**
+     * Optional icon identifier
+     */
+    icon: string | null;
+    /**
+     * Allowed per-idea actions
+     */
+    actions: Array<'send_to_chat' | 'copy'>;
+};
+
+/**
+ * A single message turn in a Storyblok Agents conversation.
+ */
+export type AgentMessage = {
+    /**
+     * Snowflake ID of the message
+     */
+    id: number;
+    /**
+     * Author role
+     */
+    role: 'user' | 'assistant';
+    /**
+     * Processing state of the message
+     */
+    status: 'queued' | 'streaming' | 'completed' | 'cancelled' | 'error';
+    /**
+     * Rendered text content (Markdown). Null while queued before streaming begins.
+     */
+    content: string | null;
+    /**
+     * Set when status is error. One of: provider_unavailable, credits_exhausted, timeout, cancelled.
+     */
+    error_code: string | null;
+    /**
+     * Tool calls executed during this turn
+     */
+    tool_calls: Array<AgentToolCall>;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+};
+
+/**
+ * A recurring run of one Custom Agent, owned by the user who created it. Each run opens a fresh conversation whose first message is the Custom Agent's prompt composed with this schedule's `scheduler_prompt`. Schedules are private: the collection lists only the caller's own, and a schedule belonging to another user is a 404 rather than a 403.
+ */
+export type AgentSchedule = {
+    /**
+     * Snowflake ID of the schedule
+     */
+    id: number;
+    /**
+     * Display name, unique per owner and target agent (case-insensitive), max 100 characters
+     */
+    name: string;
+    /**
+     * The schedule's own instructions, appended to the Custom Agent's prompt for every run. Required on create and cannot be blanked on update.
+     */
+    scheduler_prompt: string;
+    /**
+     * Which recurrence shape `cadence_config` carries
+     */
+    cadence_kind: 'daily' | 'weekly' | 'interval';
+    cadence_config: AgentScheduleCadenceConfig;
+    /**
+     * IANA identifier or Rails zone name the cadence's clock times are read in. A client-appended offset suffix ("Europe/Berlin (UTC+2)") is stripped on write.
+     */
+    timezone: string;
+    /**
+     * When the schedule runs next, computed server-side from the cadence and timezone; a client-sent value is ignored. Stale while the schedule is paused, and recomputed on resume.
+     */
+    next_run_at: string | null;
+    /**
+     * Only an active schedule is dispatched. Toggled through the pause endpoint, not this resource's update.
+     */
+    status: 'active' | 'paused';
+    /**
+     * When the schedule last ran; null until the first run
+     */
+    last_run_at: string | null;
+    /**
+     * Outcome of the most recent run; null until the first run completes
+     */
+    last_run_status: 'success' | 'failed' | null;
+    /**
+     * Conversation the most recent run produced; null until the first run, and for a run that failed before a conversation existed
+     */
+    last_conversation_id: number | null;
+    /**
+     * Snowflake ID of the Custom Agent this schedule runs. Must belong to the same space.
+     */
+    custom_agent_id: number;
+    /**
+     * The Custom Agent this schedule runs. Null when the target has been soft-deleted — reachable because the Custom Agent delete guard cannot see a schedule created concurrently with the delete.
+     */
+    custom_agent: AgentCustomAgent | null;
+    /**
+     * The user this schedule runs as
+     */
+    owner: {
+        /**
+         * Numeric ID of the owner
+         */
+        id: number;
+        /**
+         * The owner's display name; null when the user record has none
+         */
+        friendly_name: string | null;
+        /**
+         * Storage path of the owner's avatar, as written by the avatar upload — not an absolute URL. Prepend the asset host to render it. Null when the user has no avatar.
+         */
+        avatar: string | null;
+    };
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+/**
+ * A schedule as it appears in the owner's schedule collection. Identical to V1AgentSchedule except for the embedded target, which omits the Custom Agent's unbounded `prompt` — a page may carry up to 1000 rows. Retrieve a single schedule to get the full target.
+ */
+export type AgentScheduleListItem = {
+    /**
+     * Snowflake ID of the schedule
+     */
+    id: number;
+    /**
+     * Display name, unique per owner and target agent (case-insensitive), max 100 characters
+     */
+    name: string;
+    /**
+     * The schedule's own instructions, appended to the Custom Agent's prompt for every run
+     */
+    scheduler_prompt: string;
+    /**
+     * Which recurrence shape `cadence_config` carries
+     */
+    cadence_kind: 'daily' | 'weekly' | 'interval';
+    cadence_config: AgentScheduleCadenceConfig;
+    /**
+     * IANA identifier or Rails zone name the cadence's clock times are read in
+     */
+    timezone: string;
+    /**
+     * When the schedule runs next. Rows are ordered by this value ascending, nulls last.
+     */
+    next_run_at: string | null;
+    /**
+     * Only an active schedule is dispatched
+     */
+    status: 'active' | 'paused';
+    /**
+     * When the schedule last ran; null until the first run
+     */
+    last_run_at: string | null;
+    /**
+     * Outcome of the most recent run; null until the first run completes
+     */
+    last_run_status: 'success' | 'failed' | null;
+    /**
+     * Conversation the most recent run produced; null until the first run
+     */
+    last_conversation_id: number | null;
+    /**
+     * Snowflake ID of the Custom Agent this schedule runs
+     */
+    custom_agent_id: number;
+    /**
+     * The Custom Agent this schedule runs, without its `prompt`. Null when the target has been soft-deleted.
+     */
+    custom_agent: AgentCustomAgentSummary | null;
+    /**
+     * The user this schedule runs as
+     */
+    owner: {
+        /**
+         * Numeric ID of the owner
+         */
+        id: number;
+        /**
+         * The owner's display name; null when the user record has none
+         */
+        friendly_name: string | null;
+        /**
+         * Storage path of the owner's avatar, as written by the avatar upload — not an absolute URL. Prepend the asset host to render it. Null when the user has no avatar.
+         */
+        avatar: string | null;
+    };
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+/**
+ * One past run of a schedule. A run is a conversation, so `status` is that conversation's lifecycle state rather than a success/failure verdict — only the newest run carries a verdict, on the schedule's own `last_run_status`. A run that failed before a conversation existed leaves nothing to list here.
+ */
+export type AgentScheduleRun = {
+    /**
+     * Snowflake ID of the conversation this run produced; use it against the conversation endpoints to read the transcript
+     */
+    conversation_id: number;
+    /**
+     * Lifecycle of the run's conversation: active = usable, streaming = the run's turn is still going, archived = retained but closed
+     */
+    status: 'active' | 'streaming' | 'archived';
+    /**
+     * User's job title or role.
+     */
+    title: string | null;
+    /**
+     * Number of messages the run produced
+     */
+    message_count: number;
+    /**
+     * Timestamp of the run's most recent message; null if it produced none
+     */
+    last_message_at: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+};
+
+/**
+ * A schedule as seen by a `manage agents` holder listing what blocks a Custom Agent's deletion. Deliberately narrower than V1AgentSchedule: schedules are private to their owner, so this cross-owner read carries who owns the schedule, what it is called, how often it runs and when it last and next fires — never the owner's `scheduler_prompt`, and never `last_conversation_id`, which would be a handle to another user's conversation.
+ */
+export type AgentScheduleSummary = {
+    /**
+     * Snowflake ID of the schedule
+     */
+    id: number;
+    /**
+     * Display name of the schedule
+     */
+    name: string;
+    /**
+     * Which recurrence shape `cadence_config` carries
+     */
+    cadence_kind: 'daily' | 'weekly' | 'interval';
+    cadence_config: AgentScheduleCadenceConfig;
+    /**
+     * Zone the cadence's clock times are read in
+     */
+    timezone: string;
+    /**
+     * A paused schedule blocks the deletion just the same: its target would read back as null on resume.
+     */
+    status: 'active' | 'paused';
+    /**
+     * When the schedule runs next. Stale while the schedule is paused, and recomputed on resume.
+     */
+    next_run_at: string | null;
+    /**
+     * When the schedule last ran; null until the first run
+     */
+    last_run_at: string | null;
+    /**
+     * Outcome of the most recent run; null until the first run completes
+     */
+    last_run_status: 'success' | 'failed' | null;
+    /**
+     * The user this schedule runs as
+     */
+    owner: {
+        /**
+         * Numeric ID of the owner
+         */
+        id: number;
+        /**
+         * The owner's display name; null when the user record has none
+         */
+        friendly_name: string | null;
+        /**
+         * Storage path of the owner's avatar, as written by the avatar upload — not an absolute URL. Prepend the asset host to render it. Null when the user has no avatar.
+         */
+        avatar: string | null;
+    };
+};
+
+/**
+ * A tool invocation performed by the agent during a turn. Tools mirror the Storyblok MCP behavior grouping (readonly / mutating / destructive).
+ */
+export type AgentToolCall = {
+    id: number;
+    /**
+     * Tool slug, e.g. list_stories, update_story, publish_story
+     */
+    name: string;
+    /**
+     * Display name for the tool call shown in the chat UI; unrecognized tool slugs fall back to the humanized slug
+     */
+    friendly_name: string;
+    /**
+     * Blast-radius group; destructive and bulk (>5 items) mutating calls require confirmation
+     */
+    group: 'readonly' | 'mutating' | 'destructive';
+    status: 'running' | 'completed' | 'error' | 'cancelled' | 'awaiting_confirmation' | 'resuming';
+    /**
+     * Human-readable one-line summary shown in the UI and confirmation dialog
+     */
+    summary: string | null;
+    /**
+     * True when an explicit user confirmation is required before execution
+     */
+    requires_confirmation: boolean;
+    /**
+     * Server-issued single-use token to confirm a destructive/bulk action; null unless awaiting_confirmation
+     */
+    confirmation_token: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
 };
 
 /**
@@ -6544,6 +8216,10 @@ export type PublicApp = {
      */
     slug: string;
     /**
+     * Coarse classification of the app
+     */
+    app_type?: 'extension' | 'integration';
+    /**
      * URL
      */
     icon?: string | null;
@@ -6666,6 +8342,10 @@ export type PrivateApp = {
      * URL-friendly identifier for the app category.
      */
     slug: string;
+    /**
+     * Coarse classification of the app
+     */
+    app_type?: 'extension' | 'integration';
     /**
      * URL
      */
@@ -6994,6 +8674,65 @@ export type AssetFolder = {
      */
     uuid: string;
     parent_uuid: string | null;
+};
+
+/**
+ * A content type that a root taxonomy term is assigned to, as returned by the reverse lookup. Deliberately slim — it identifies which content types still reference the term, not their schemas.
+ */
+export type AssignedComponent = {
+    /**
+     * Snowflake ID of the content type
+     */
+    id: number;
+    /**
+     * Technical name of the content type
+     */
+    name: string;
+};
+
+/**
+ * The taxonomy an assigned term belongs to — its root term. Archiving a taxonomy does not cascade to its terms, so a still-assigned term can belong to an archived taxonomy; it stays nameable here with `deleted_at` filled in. An archived *term* behaves differently: it drops out of the story's `taxonomy_terms` entirely.
+ */
+export type AssignedTaxonomy = {
+    /**
+     * Snowflake ID of the taxonomy
+     */
+    id: string;
+    /**
+     * URL-safe technical name
+     */
+    name: string;
+    /**
+     * Human-readable label
+     */
+    display_name: string;
+    /**
+     * When the taxonomy was archived. Null for a live taxonomy.
+     */
+    deleted_at: string | null;
+};
+
+/**
+ * A taxonomy term selected on a story. Only present when the taxonomy feature is enabled for the space.
+ */
+export type AssignedTaxonomyTerm = {
+    /**
+     * Snowflake ID of the term
+     */
+    id: string;
+    /**
+     * Human-readable label
+     */
+    display_name: string;
+    /**
+     * URL-safe technical name
+     */
+    name: string;
+    /**
+     * ID of the taxonomy the term belongs to (its root term)
+     */
+    taxonomy_id: string;
+    taxonomy: AssignedTaxonomy;
 };
 
 /**
@@ -7362,6 +9101,40 @@ export type ComponentGroup = {
     parent_uuid: string | null;
 };
 
+/**
+ * A taxonomy term (root or nested facet) assigned to a content type, together with the configuration that assignment carries. The assignment has no id of its own — it is addressed by the assigned term's id.
+ */
+export type ComponentTaxonomyTerm = {
+    /**
+     * Snowflake ID of the assigned taxonomy term (the taxonomy root or a nested facet within it)
+     */
+    id: string;
+    /**
+     * Human-readable label of the taxonomy
+     */
+    display_name: string;
+    /**
+     * URL-safe technical name of the taxonomy
+     */
+    name: string;
+    /**
+     * Whether stories of this content type must select at least one item from the taxonomy
+     */
+    required: boolean;
+    /**
+     * Maximum number of items from this taxonomy a story may select. Null means unlimited.
+     */
+    max_terms: number | null;
+    /**
+     * What the validation targets: the whole taxonomy or any term within it.
+     */
+    validation_scope: 'taxonomy' | 'any_term';
+    /**
+     * ID of the root taxonomy term for the assigned term's taxonomy. Equal to `id` itself when the assignment targets the root.
+     */
+    taxonomy_root_term_id: string;
+};
+
 export type ComponentVersion = {
     /**
      * Component field schema definition at this version
@@ -7543,6 +9316,66 @@ export type Discussion = {
 };
 
 /**
+ * An audit entry for a distribution action (distribute, sync overwrite, sync merge)
+ */
+export type DistributionActivity = {
+    /**
+     * Unique snowflake ID of the activity
+     */
+    id: number;
+    /**
+     * Activity key: 'distribution.distribute', 'distribution.overwrite', or 'distribution.merge'
+     */
+    key?: 'distribution.distribute' | 'distribution.overwrite' | 'distribution.merge';
+    /**
+     * ID of the DistributionLink that was acted on
+     */
+    trackable_id?: number | null;
+    /**
+     * Always 'DistributionLink' for distribution activities
+     */
+    trackable_type?: string | null;
+    /**
+     * ID of the user who performed the action
+     */
+    owner_id?: number | null;
+    /**
+     * Always 'User' for distribution activities
+     */
+    owner_type?: string | null;
+    /**
+     * ID of the receiver (target) space
+     */
+    space_id?: number | null;
+    /**
+     * ID of the org that owns this activity
+     */
+    recipient_id?: number | null;
+    /**
+     * Always 'Org' for distribution activities
+     */
+    recipient_type?: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at?: string | null;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at?: string | null;
+    /**
+     * Always null for distribution activities (scoped via recipient, not tenant)
+     */
+    tenant_id?: number | null;
+    /**
+     * Distribution metadata: correlation_id, direction, source_space_id, target_space_id, source_story_id, target_story_id
+     */
+    parameters: {
+        [key: string]: unknown;
+    };
+};
+
+/**
  * Draft version of a story, includes unpublished changes
  */
 export type DraftStory = {
@@ -7611,8 +9444,17 @@ export type DraftStory = {
         path: string;
         name: string | null;
         lang: string;
-        published: string | null;
+        published: boolean | null;
     }> | null;
+    /**
+     * Story's assigned taxonomy terms. Present only when `with_taxonomy_terms=1` is requested and the taxonomy feature is enabled for the space
+     */
+    taxonomy_terms?: Array<{
+        id: string;
+        display_name: string;
+        name: string;
+        taxonomy_id: string;
+    }>;
 };
 
 export type Experiment = {
@@ -7947,9 +9789,30 @@ export type FieldType = {
      */
     belongs_to_org: boolean;
     /**
-     * User who created the field type
+     * Minimal data of the user who created the field type. Null when there is no creator, or when the field type is public and the requester is not its creator.
      */
-    user?: User | null;
+    user: {
+        /**
+         * Unique identifier of the creator
+         */
+        id: number;
+        /**
+         * Username if set, otherwise email
+         */
+        userid: string;
+        /**
+         * Display name of the creator
+         */
+        friendly_name: string;
+        /**
+         * Avatar path of the creator
+         */
+        avatar: string | null;
+        /**
+         * Email of the creator
+         */
+        email: string;
+    } | null;
 };
 
 /**
@@ -8336,6 +10199,10 @@ export type MemberRoleOrg = {
      */
     name: string;
     /**
+     * Stable, immutable identifier used for SSO/SAML routing.
+     */
+    sso_identifier?: string | null;
+    /**
      * Whether statistics tracking is enabled
      */
     track_statistics: boolean;
@@ -8403,32 +10270,194 @@ export type MemberRoleOrg = {
      * AI style composition mode for spaces
      */
     ai_style_space_composition_mode: string;
+    /**
+     * Whether the confidentiality disclaimer is enabled
+     */
+    confidentiality_disclaimer_enabled?: boolean | null;
+    /**
+     * Confidentiality disclaimer message
+     */
+    confidentiality_disclaimer_message?: string | null;
+    /**
+     * Resolved feature limits for the organization
+     */
+    feature_limits: Array<{
+        key?: string;
+        origin?: string | null;
+        limit?: string | null;
+        limit_type?: string | null;
+        is_available?: boolean | null;
+        terms?: Array<{
+            [key: string]: unknown;
+        }>;
+    }>;
     settings: {
         users_info: {
             /**
              * Count of internal users
              */
-            saved_internal_users_count: number;
+            saved_internal_users_count: number | null;
             /**
              * Count of external users
              */
-            saved_external_users_count: number;
+            saved_external_users_count: number | null;
             /**
              * Count of pending invitations
              */
-            saved_invitations_count: number;
+            saved_invitations_count: number | null;
         };
         spaces_info: {
             /**
              * Count of standard spaces
              */
-            standard_spaces_count: number;
+            standard_spaces_count: number | null;
             /**
              * Count of pro spaces
              */
-            pro_spaces_count: number;
+            pro_spaces_count: number | null;
         };
     };
+};
+
+export type OauthClient = {
+    /**
+     * OAuth client UUID
+     */
+    id: string;
+    /**
+     * Name of the OAuth client
+     */
+    name: string;
+    /**
+     * URL-friendly identifier for the app category.
+     */
+    slug: string;
+    /**
+     * OAuth client ID
+     */
+    oauth_identifier?: string | null;
+    /**
+     * OAuth client secret (sensitive)
+     */
+    oauth_secret?: string | null;
+    /**
+     * Production OAuth redirect URI
+     */
+    oauth_redirect_uri?: string | null;
+    /**
+     * Development OAuth redirect URI
+     */
+    dev_oauth_redirect_uri?: string | null;
+    /**
+     * OAuth scopes this client is permitted to request
+     */
+    allowed_scopes: Array<string>;
+    /**
+     * Spaces this client may be authorized for; empty means no restriction
+     */
+    permitted_space_ids?: Array<number>;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+    /**
+     * Marketplace author display name
+     */
+    author?: string | null;
+    /**
+     * Org admin who created the client
+     */
+    creator: {
+        id: number;
+        /**
+         * Username or email
+         */
+        userid: string;
+        friendly_name: string;
+        avatar: string | null;
+    };
+};
+
+/**
+ * An OAuth grant the current user issued to an app, as listed in grant management.
+ */
+export type OauthGrant = {
+    /**
+     * Grant id
+     */
+    id: number;
+    /**
+     * Scopes granted to the app
+     */
+    scopes: Array<string>;
+    /**
+     * Spaces the grant is limited to; an empty array means all spaces the user can access
+     */
+    space_ids: Array<number>;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * When the access token expires
+     */
+    expires_at: string;
+    /**
+     * When the grant was last used to call the API
+     */
+    last_used_at: string | null;
+    /**
+     * When the grant was revoked; always null in the active list
+     */
+    revoked_at: string | null;
+    /**
+     * Name of the app the grant was issued to
+     */
+    app_name: string | null;
+};
+
+/**
+ * Self-introspection view of an OAuth grant for its owner.
+ */
+export type OauthGrantIntrospection = {
+    /**
+     * Scopes granted to this client
+     */
+    scopes: Array<string>;
+    /**
+     * When the access token expires
+     */
+    expires_at: string;
+    /**
+     * The OAuth client this grant was issued to
+     */
+    app: {
+        /**
+         * OAuth client id
+         */
+        client_id: string | null;
+        /**
+         * Client name
+         */
+        name: string | null;
+    };
+    /**
+     * Spaces this grant covers, each with the region it lives in (so the client can route cross-region MAPI calls). Region is "unknown" when it cannot be derived from the space id.
+     */
+    spaces: Array<{
+        /**
+         * Space id
+         */
+        id: number;
+        /**
+         * Region code (eu/us/ca/ap/cn) or "unknown"
+         */
+        region: string;
+    }>;
 };
 
 export type Org = {
@@ -8449,6 +10478,10 @@ export type Org = {
     external_users: Array<OrgUser>;
     extended_external_users: Array<OrgUser>;
     invitations: Array<Invitations>;
+    /**
+     * Stable, immutable identifier used for SSO/SAML routing.
+     */
+    sso_identifier?: string | null;
     sso_firstname?: string | null;
     sso_lastname?: string | null;
     sso_alt_email?: string | null;
@@ -8461,8 +10494,11 @@ export type Org = {
     concept_room_enabled: boolean;
     ab_testing_enabled?: boolean;
     ai_translation_enabled: boolean;
+    storyblok_agents_enabled?: boolean;
+    strata_available?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
+    enable_content_distributions_ai_translation?: boolean;
     storyblok_lab: {
         allowed_apps?: Array<PublicApp>;
     };
@@ -8472,6 +10508,7 @@ export type Org = {
     ai_style_space_composition_mode: string | null;
     flowmotion_access: boolean;
     scim_provisioning_enabled: boolean;
+    environments_count: number;
     password_rule_min_length?: number | null;
     feature_limits: Array<{
         key?: string;
@@ -8603,6 +10640,10 @@ export type OrgApp = {
      * URL-friendly identifier for the app category.
      */
     slug: string;
+    /**
+     * Coarse classification of the app
+     */
+    app_type?: 'extension' | 'integration';
     /**
      * URL
      */
@@ -9036,8 +11077,17 @@ export type PublishedStory = {
         path: string;
         name: string | null;
         lang: string;
-        published: string | null;
+        published: boolean | null;
     }> | null;
+    /**
+     * Story's assigned taxonomy terms. Present only when `with_taxonomy_terms=1` is requested and the taxonomy feature is enabled for the space
+     */
+    taxonomy_terms?: Array<{
+        id: string;
+        display_name: string;
+        name: string;
+        taxonomy_id: string;
+    }>;
 };
 
 export type Release = {
@@ -9089,6 +11139,10 @@ export type Release = {
      * Whether the release is public or private
      */
     public: boolean;
+    /**
+     * The hex color code used to visually distinguish this release. Accepts 3, 4, 6 or 8 hex digits (4 and 8 digits include an alpha channel).
+     */
+    color_code?: string | null;
     /**
      * Array of user IDs allowed to access this private release
      */
@@ -9229,6 +11283,10 @@ export type ScopedPersonalAccessToken = {
      * When true, the token inherits the full permissions of the owning user instead of using scoped access
      */
     user_permission: boolean;
+    /**
+     * When true, the token is restricted to environment spaces only and cannot access origin spaces
+     */
+    environments_only: boolean;
 };
 
 export type Session = {
@@ -9279,6 +11337,10 @@ export type Space = {
      */
     euid?: string | null;
     /**
+     * The domain associated with the space
+     */
+    domain?: string | null;
+    /**
      * The region where the space is hosted
      */
     region: string;
@@ -9326,6 +11388,18 @@ export type Space = {
      * The partner ID if space is associated with a partner
      */
     partner_id?: number | null;
+    /**
+     * ID of the origin (production) space when this space is an environment; null for production spaces
+     */
+    origin_id?: number | null;
+    /**
+     * Content duplication status when the space was created as a copy of another space (e.g. an environment); null for spaces created from scratch
+     */
+    duplication_status?: 'pending' | 'running' | 'done' | 'failed' | null;
+    /**
+     * Color of the space (max 255 chars)
+     */
+    color?: string | null;
     /**
      * The subscription status
      */
@@ -9439,6 +11513,10 @@ export type SpaceDetail = {
      */
     role: string;
     /**
+     * Language codes the current user may access based on their role configuration. null means no restrictions apply (owner/admin or no roles with language config).
+     */
+    user_accessible_languages: Array<string> | null;
+    /**
      * The ID of the space owner
      */
     owner_id?: number | null;
@@ -9465,6 +11543,26 @@ export type SpaceDetail = {
      * ID of parent space if this is a child space.
      */
     parent_id?: number | null;
+    /**
+     * ID of the origin (production) space when this space is an environment; null for production spaces
+     */
+    origin_id?: number | null;
+    /**
+     * Short description of the sandbox space's purpose
+     */
+    short_description?: string | null;
+    /**
+     * Whether the editor shows the environment identification bar (defaults to false)
+     */
+    show_environment_identification_bar?: boolean;
+    /**
+     * Content duplication status when the space was created as a copy of another space (e.g. an environment); null for spaces created from scratch
+     */
+    duplication_status?: 'pending' | 'running' | 'done' | 'failed' | null;
+    /**
+     * Color of the space (max 255 chars)
+     */
+    color?: string | null;
     /**
      * Searchblok integration ID.
      */
@@ -9550,9 +11648,17 @@ export type SpaceDetail = {
      */
     monthly_ai_credits_traffic?: number;
     /**
+     * Whether the space's effective AI configuration is a custom (bring-your-own-key) provider. When true, AI usage runs on the customer's own provider credits and does not count against Storyblok AI credit limits.
+     */
+    using_custom_ai_configuration?: boolean;
+    /**
      * Whether there are pending background tasks.
      */
     has_pending_tasks: boolean;
+    /**
+     * Whether Storyblok granted this space access to Strata (semantic index & search) — via its org's access, or a direct grant for org-less spaces. Distinct from options.strata_enabled, the space admin's own switch
+     */
+    org_strata_available?: boolean;
     /**
      * Various space options and settings
      */
@@ -9567,6 +11673,14 @@ export type SpaceDetail = {
      * Whether the onboarding tour is disabled.
      */
     onboarding_tour_disabled?: boolean;
+    /**
+     * Whether language/country flags are hidden
+     */
+    hide_flag_icons?: boolean;
+    /**
+     * Whether flags represent country or language (only applies when hide_flag_icons is false)
+     */
+    flag_icons_display_mode?: 'country' | 'language';
     /**
      * Web crawling configuration
      */
@@ -10067,6 +12181,20 @@ export type SpaceRole = {
     blocked_asset_folder_ids: Array<number>;
 };
 
+/**
+ * The assignment of a taxonomy (root taxonomy term) to a space.
+ */
+export type SpaceTaxonomyTerm = {
+    /**
+     * The unique identifier of the taxonomy (root taxonomy term)
+     */
+    taxonomy_term_id: number;
+    /**
+     * The space the taxonomy is assigned to
+     */
+    space_id: number;
+};
+
 export type Stories = {
     name: string;
     /**
@@ -10134,9 +12262,15 @@ export type Stories = {
      */
     main_version_id?: number | null;
     /**
-     * Workflow stage information for the story
+     * Workflow stage information for the story (nil-language stage only). Deprecated: use stages with with_stages=1 instead.
+     *
+     * @deprecated
      */
     stage: Stage | null;
+    /**
+     * Workflow stages per language. Only included when with_stages=1, otherwise null.
+     */
+    stages?: Array<Stage> | null;
     /**
      * Alternate language variants.
      */
@@ -10191,6 +12325,10 @@ export type Story = {
     deleted_at: string | null;
     sort_by_date: string | null;
     tag_list: Array<string>;
+    /**
+     * Taxonomy terms selected on the story draft. Omitted unless the taxonomy feature is enabled for the space.
+     */
+    taxonomy_terms?: Array<AssignedTaxonomyTerm>;
     /**
      * Latest update timestamp (format is ISO 8601 standard in UTC).
      */
@@ -10351,9 +12489,15 @@ export type Story = {
         is_private: boolean;
     }>;
     /**
-     * Workflow stage information (only included when show_stage is true)
+     * Workflow stage information (only included when show_stage is true). Deprecated: use stages instead.
+     *
+     * @deprecated
      */
     stage?: Stage | null;
+    /**
+     * Workflow stages per language, includes nil-language stages (only included when show_stage is true)
+     */
+    stages?: Array<Stage> | null;
     /**
      * List of user IDs
      */
@@ -10565,6 +12709,96 @@ export type Task = {
 };
 
 /**
+ * A row in the single taxonomy_terms table. A root taxonomy term (parent_id null) is what the client calls a "taxonomy"; every other row is a nested term within one.
+ */
+export type TaxonomyTerm = {
+    /**
+     * Snowflake ID of the term
+     */
+    id: string;
+    /**
+     * Human-readable label
+     */
+    display_name: string;
+    /**
+     * URL-safe technical name
+     */
+    name: string;
+    /**
+     * Optional free-text description
+     */
+    description: string | null;
+    /**
+     * ID of parent space if this is a child space.
+     */
+    parent_id: string | null;
+    /**
+     * User who created the term. Always present for root terms (taxonomies); may be null for nested terms.
+     */
+    last_author: {
+        /**
+         * User's numeric ID
+         */
+        id: number;
+        /**
+         * Username, or the user's email if no username is set
+         */
+        userid: string;
+        /**
+         * Display name derived from firstname/lastname, falling back to userid
+         */
+        friendly_name: string;
+        /**
+         * URL of the user's avatar image, null if not set
+         */
+        avatar?: string | null;
+    } | null;
+    /**
+     * ID of the user who created the term. Always present for root terms (taxonomies); may be null for nested terms.
+     */
+    last_author_id: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+    /**
+     * Nested child terms, recursively. Present on show/create/update/restore responses; omitted from the index listing.
+     */
+    children?: Array<TaxonomyTerm>;
+    /**
+     * Count of all descendant terms, any depth. Present only on the index listing.
+     */
+    terms_count?: number;
+    /**
+     * Timestamp of the most recent change anywhere in this taxonomy: the root itself or any nested term being added, edited, or archived. Present only on the index listing.
+     */
+    last_activity_at?: string;
+    /**
+     * Content currently assigned to this exact term (not its descendants), scoped to the requesting space. Only Story exists as a content type today; `type` is polymorphic so Asset can be added later without breaking this field. Present on the show response for the requested term and every nested term under `children`; always empty on a root term, since content can only ever be assigned to a nested term. Not present on the index listing -- use `GET /v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/associated_content` for the content assigned anywhere within a given term's subtree (e.g. to warn before deleting it).
+     */
+    associated_content?: Array<{
+        /**
+         * Snowflake ID of the content item
+         */
+        id: string;
+        /**
+         * Content type discriminator
+         */
+        type: 'Story';
+        name: string;
+        /**
+         * Present for Story entries
+         */
+        full_slug?: string;
+        updated_at: string;
+    }>;
+};
+
+/**
  * A content theme based on a Space
  */
 export type Theme = {
@@ -10719,6 +12953,10 @@ export type TranslatedStory = {
      * Whether this translation has unpublished changes
      */
     unpublished_changes: boolean | null;
+    /**
+     * Taxonomy terms in this language's published snapshot. Omitted unless the taxonomy feature is enabled for the space.
+     */
+    taxonomy_terms?: Array<AssignedTaxonomyTerm>;
 };
 
 export type User = {
@@ -10750,20 +12988,7 @@ export type User = {
      * Delegated from partner association. Null if user has no partner.
      */
     partner_status?: string | null;
-    /**
-     * Organization details. Returns empty object {} when user has no organization.
-     */
-    org: {
-        id?: number;
-        /**
-         * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
-         */
-        settings?: {
-            [key: string]: unknown;
-        };
-        name?: string;
-        status?: 'active' | 'disabled' | 'deactivated';
-    };
+    org: UserOrg;
     timezone?: string | null;
     avatar?: string | null;
     /**
@@ -10821,6 +13046,16 @@ export type User = {
      * True if user confirmed email or uses SSO
      */
     confirmed: boolean;
+};
+
+/**
+ * Organization details returned in user context. Empty object {} when user has no organization.
+ */
+export type UserOrg = {
+    id?: number;
+    name?: string;
+    status?: 'active' | 'disabled' | 'deactivated';
+    settings?: OrgSettings;
 };
 
 export type Users = {
@@ -10961,6 +13196,10 @@ export type Workflow = {
      * Array of workflow stages. Present only when include_stages=true.
      */
     workflow_stages?: Array<WorkflowStage> | null;
+    /**
+     * Whether stages are tracked per language
+     */
+    per_language_stages: boolean;
 };
 
 /**
@@ -11070,6 +13309,10 @@ export type WorkflowStageChange = {
      * Creation timestamp (format is ISO 8601 standard in UTC).
      */
     created_at: string;
+    /**
+     * Language code for per-language workflow stage tracking
+     */
+    language?: string | null;
 };
 
 export type Asset = {
@@ -11158,6 +13401,61 @@ export type PartnerInvoicesIndexResponseWritable = {
      * List of partner invoices
      */
     invoices: Array<InvoiceWritable>;
+};
+
+/**
+ * An SSO connection for an organization (SAML or Azure AD).
+ */
+export type SsoConnectionWritable = {
+    id: number;
+    provider: 'saml' | 'azure_ad';
+    name: string;
+    /**
+     * Login domains with their DNS verification status. Not enforced unique across orgs (the same domain may belong to more than one org).
+     */
+    domains?: Array<SsoConnectionDomain>;
+    /**
+     * The DNS record the org admin must create to prove ownership of each login domain: a CNAME at <host_prefix>.<domain> pointing to target.
+     */
+    domain_verification?: {
+        record_type: string;
+        host_prefix: string;
+        target: string;
+    };
+    /**
+     * SAML IdP metadata XML (SAML connections only).
+     */
+    idp_meta?: string | null;
+    /**
+     * Azure AD tenant ID (Azure AD connections only).
+     */
+    aad_tenant?: string | null;
+    attribute_mappings?: SsoConnectionAttributeMappings;
+    /**
+     * SAML only. Whether the AuthnRequest is signed. Surfaced from the connection config.
+     */
+    sign_saml_request?: boolean;
+    /**
+     * Org-sourced. When enabled, existing email/password users logging in via SSO with a matching email are converted to SSO users. Org-wide setting shared across connections. Writable on update only.
+     */
+    merge_users?: boolean;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at?: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at?: string;
+};
+
+export type SsoConnectionResponseWritable = {
+    sso_connection: SsoConnectionWritable;
+};
+
+export type SsoConnectionsIndexResponseWritable = {
+    sso_connections: Array<SsoConnectionWritable>;
+    meta: PaginationMeta;
 };
 
 export type CommentWritable = {
@@ -11457,61 +13755,6 @@ export type ExperimentDetailWritable = ExperimentWritable & {
     experiment_assigned_metrics?: Array<ExperimentAssignedMetric>;
 };
 
-/**
- * A custom field type that extends Storyblok's default field types
- */
-export type FieldTypeWritable = {
-    /**
-     * Unique identifier of the field type
-     */
-    id: number;
-    /**
-     * Name of the field type
-     */
-    name: string;
-    /**
-     * Source code of the field type
-     */
-    body?: string | null;
-    /**
-     * Compiled/transpiled version of the field type source code
-     */
-    compiled_body: string | null;
-    /**
-     * Array of space IDs where this field type is available
-     */
-    space_ids: Array<number>;
-    /**
-     * Configuration options for the field type
-     */
-    options: Array<{
-        /**
-         * Option name
-         */
-        name?: string;
-        /**
-         * Option value
-         */
-        value?: string;
-    }> | null;
-    /**
-     * Last 20 versions of the field type
-     */
-    last_versions: Array<Version>;
-    /**
-     * Whether this field type belongs to a partner
-     */
-    belongs_to_partner: boolean;
-    /**
-     * Whether this field type belongs to an organization
-     */
-    belongs_to_org: boolean;
-    /**
-     * User who created the field type
-     */
-    user?: UserWritable | null;
-};
-
 export type InvoiceWritable = {
     /**
      * Unique invoice number
@@ -11626,6 +13869,10 @@ export type OrgWritable = {
     external_users: Array<OrgUser>;
     extended_external_users: Array<OrgUser>;
     invitations: Array<Invitations>;
+    /**
+     * Stable, immutable identifier used for SSO/SAML routing.
+     */
+    sso_identifier?: string | null;
     sso_firstname?: string | null;
     sso_lastname?: string | null;
     sso_alt_email?: string | null;
@@ -11638,8 +13885,11 @@ export type OrgWritable = {
     concept_room_enabled: boolean;
     ab_testing_enabled?: boolean;
     ai_translation_enabled: boolean;
+    storyblok_agents_enabled?: boolean;
+    strata_available?: boolean;
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
+    enable_content_distributions_ai_translation?: boolean;
     storyblok_lab: {
         allowed_apps?: Array<PublicApp>;
     };
@@ -11649,6 +13899,7 @@ export type OrgWritable = {
     ai_style_space_composition_mode: string | null;
     flowmotion_access: boolean;
     scim_provisioning_enabled: boolean;
+    environments_count: number;
     password_rule_min_length?: number | null;
     feature_limits: Array<{
         key?: string;
@@ -11798,6 +14049,10 @@ export type SpaceWritable = {
      */
     euid?: string | null;
     /**
+     * The domain associated with the space
+     */
+    domain?: string | null;
+    /**
      * The region where the space is hosted
      */
     region: string;
@@ -11841,6 +14096,18 @@ export type SpaceWritable = {
      * The partner ID if space is associated with a partner
      */
     partner_id?: number | null;
+    /**
+     * ID of the origin (production) space when this space is an environment; null for production spaces
+     */
+    origin_id?: number | null;
+    /**
+     * Content duplication status when the space was created as a copy of another space (e.g. an environment); null for spaces created from scratch
+     */
+    duplication_status?: 'pending' | 'running' | 'done' | 'failed' | null;
+    /**
+     * Color of the space (max 255 chars)
+     */
+    color?: string | null;
     /**
      * The subscription status
      */
@@ -11921,6 +14188,10 @@ export type StoryWritable = {
     deleted_at: string | null;
     sort_by_date: string | null;
     tag_list: Array<string>;
+    /**
+     * Taxonomy terms selected on the story draft. Omitted unless the taxonomy feature is enabled for the space.
+     */
+    taxonomy_terms?: Array<AssignedTaxonomyTerm>;
     /**
      * Latest update timestamp (format is ISO 8601 standard in UTC).
      */
@@ -12076,9 +14347,15 @@ export type StoryWritable = {
         is_private: boolean;
     }>;
     /**
-     * Workflow stage information (only included when show_stage is true)
+     * Workflow stage information (only included when show_stage is true). Deprecated: use stages instead.
+     *
+     * @deprecated
      */
     stage?: Stage | null;
+    /**
+     * Workflow stages per language, includes nil-language stages (only included when show_stage is true)
+     */
+    stages?: Array<Stage> | null;
     /**
      * List of user IDs
      */
@@ -12117,20 +14394,7 @@ export type UserWritable = {
      * Delegated from partner association. Null if user has no partner.
      */
     partner_status?: string | null;
-    /**
-     * Organization details. Returns empty object {} when user has no organization.
-     */
-    org: {
-        id?: number;
-        /**
-         * Organization settings stored as JSONB. Contains keys like track_statistics, strong_auth, sso_servers_webhook, etc.
-         */
-        settings?: {
-            [key: string]: unknown;
-        };
-        name?: string;
-        status?: 'active' | 'disabled' | 'deactivated';
-    };
+    org: UserOrg;
     timezone?: string | null;
     avatar?: string | null;
     /**
@@ -12207,6 +14471,10 @@ export type WorkflowWritable = {
      * Array of workflow stages. Present only when include_stages=true.
      */
     workflow_stages?: Array<WorkflowStage> | null;
+    /**
+     * Whether stages are tracked per language
+     */
+    per_language_stages: boolean;
 };
 
 export type AssetWritable = {
@@ -12599,6 +14867,163 @@ export type LoginUserResponses = {
 
 export type LoginUserResponse = LoginUserResponses[keyof LoginUserResponses];
 
+export type ListSsoConnectionsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * The paginated page number.
+         */
+        page?: number;
+        /**
+         * Number of items per page.
+         */
+        per_page?: number;
+    };
+    url: '/v1/sso_connections';
+};
+
+export type ListSsoConnectionsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+};
+
+export type ListSsoConnectionsError = ListSsoConnectionsErrors[keyof ListSsoConnectionsErrors];
+
+export type ListSsoConnectionsResponses = {
+    /**
+     * Connections returned
+     */
+    200: SsoConnectionsIndexResponse;
+};
+
+export type ListSsoConnectionsResponse = ListSsoConnectionsResponses[keyof ListSsoConnectionsResponses];
+
+export type CreateSsoConnectionData = {
+    /**
+     * Connection attributes
+     */
+    body: SsoConnectionInput;
+    path?: never;
+    query?: never;
+    url: '/v1/sso_connections';
+};
+
+export type CreateSsoConnectionErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+};
+
+export type CreateSsoConnectionError = CreateSsoConnectionErrors[keyof CreateSsoConnectionErrors];
+
+export type CreateSsoConnectionResponses = {
+    /**
+     * Connection created
+     */
+    201: SsoConnectionResponse;
+};
+
+export type CreateSsoConnectionResponse = CreateSsoConnectionResponses[keyof CreateSsoConnectionResponses];
+
+export type GetSsoConnectionData = {
+    body?: never;
+    path: {
+        /**
+         * SSO connection ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/sso_connections/{id}';
+};
+
+export type GetSsoConnectionErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+};
+
+export type GetSsoConnectionError = GetSsoConnectionErrors[keyof GetSsoConnectionErrors];
+
+export type GetSsoConnectionResponses = {
+    /**
+     * Connection returned
+     */
+    200: SsoConnectionResponse;
+};
+
+export type GetSsoConnectionResponse = GetSsoConnectionResponses[keyof GetSsoConnectionResponses];
+
+export type UpdateSsoConnectionData = {
+    /**
+     * Connection attributes to update
+     */
+    body: SsoConnectionUpdateInput;
+    path: {
+        /**
+         * SSO connection ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/sso_connections/{id}';
+};
+
+export type UpdateSsoConnectionErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+};
+
+export type UpdateSsoConnectionError = UpdateSsoConnectionErrors[keyof UpdateSsoConnectionErrors];
+
+export type UpdateSsoConnectionResponses = {
+    /**
+     * Connection updated
+     */
+    200: SsoConnectionResponse;
+};
+
+export type UpdateSsoConnectionResponse = UpdateSsoConnectionResponses[keyof UpdateSsoConnectionResponses];
+
 export type ListActivitiesData = {
     body?: never;
     path: {
@@ -12826,6 +15251,7 @@ export type ListAiConfigurationsResponses = {
         ai_configurations: Array<AiConfiguration>;
         meta?: {
             default_ai_configuration_id?: number | null;
+            using_custom_ai_configuration?: boolean;
             org_default_ai_configuration_id?: number | null;
         };
     };
@@ -15455,6 +17881,10 @@ export type ListAppsData = {
          * Numeric ID of the space to include in the token payload.
          */
         space_id?: number;
+        /**
+         * Search term
+         */
+        search?: string;
         /**
          * Number of items per page.
          */
@@ -18155,6 +20585,254 @@ export type GetComponentVersionResponses = {
 
 export type GetComponentVersionResponse = GetComponentVersionResponses[keyof GetComponentVersionResponses];
 
+export type ListComponentTaxonomyTermsData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the content type
+         */
+        component_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/components/{component_id}/taxonomy_terms';
+};
+
+export type ListComponentTaxonomyTermsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListComponentTaxonomyTermsError = ListComponentTaxonomyTermsErrors[keyof ListComponentTaxonomyTermsErrors];
+
+export type ListComponentTaxonomyTermsResponses = {
+    /**
+     * Assigned taxonomy terms returned
+     */
+    200: {
+        taxonomy_terms: Array<ComponentTaxonomyTerm>;
+    };
+};
+
+export type ListComponentTaxonomyTermsResponse = ListComponentTaxonomyTermsResponses[keyof ListComponentTaxonomyTermsResponses];
+
+export type CreateComponentTaxonomyTermAssignmentData = {
+    body: {
+        /**
+         * ID of the taxonomy term to assign (the taxonomy root or a nested facet within it)
+         */
+        taxonomy_term_id: string;
+        /**
+         * Stories of this content type must select at least one item from the taxonomy
+         */
+        required?: boolean;
+        /**
+         * Maximum number of items a story may select. Omit or send null for unlimited.
+         */
+        max_terms?: number | null;
+        /**
+         * What the validation targets: the whole taxonomy or any term within it. Defaults to `taxonomy`.
+         */
+        validation_scope?: 'taxonomy' | 'any_term';
+    };
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the content type
+         */
+        component_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/components/{component_id}/taxonomy_terms';
+};
+
+export type CreateComponentTaxonomyTermAssignmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type CreateComponentTaxonomyTermAssignmentError = CreateComponentTaxonomyTermAssignmentErrors[keyof CreateComponentTaxonomyTermAssignmentErrors];
+
+export type CreateComponentTaxonomyTermAssignmentResponses = {
+    /**
+     * Taxonomy term assigned to the content type
+     */
+    201: {
+        taxonomy_term: ComponentTaxonomyTerm;
+    };
+};
+
+export type CreateComponentTaxonomyTermAssignmentResponse = CreateComponentTaxonomyTermAssignmentResponses[keyof CreateComponentTaxonomyTermAssignmentResponses];
+
+export type DeleteComponentTaxonomyTermAssignmentData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the content type
+         */
+        component_id: number;
+        /**
+         * Numeric ID of the assigned taxonomy term (root or nested facet)
+         */
+        taxonomy_term_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/components/{component_id}/taxonomy_terms/{taxonomy_term_id}';
+};
+
+export type DeleteComponentTaxonomyTermAssignmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type DeleteComponentTaxonomyTermAssignmentError = DeleteComponentTaxonomyTermAssignmentErrors[keyof DeleteComponentTaxonomyTermAssignmentErrors];
+
+export type DeleteComponentTaxonomyTermAssignmentResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeleteComponentTaxonomyTermAssignmentResponse = DeleteComponentTaxonomyTermAssignmentResponses[keyof DeleteComponentTaxonomyTermAssignmentResponses];
+
+export type UpdateComponentTaxonomyTermAssignmentData = {
+    body: {
+        /**
+         * Stories of this content type must select at least one item from the taxonomy
+         */
+        required?: boolean;
+        /**
+         * Maximum number of items a story may select. Send null to clear the limit.
+         */
+        max_terms?: number | null;
+        /**
+         * What the validation targets: the whole taxonomy or any term within it.
+         */
+        validation_scope?: 'taxonomy' | 'any_term';
+        /**
+         * Move this validation to target this taxonomy term instead (the taxonomy root or a nested facet within it). The assignment's `id` in the response changes accordingly. The target must not overlap another validation of the same content type.
+         */
+        new_taxonomy_term_id?: string;
+    };
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the content type
+         */
+        component_id: number;
+        /**
+         * Numeric ID of the assigned taxonomy term (root or nested facet)
+         */
+        taxonomy_term_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/components/{component_id}/taxonomy_terms/{taxonomy_term_id}';
+};
+
+export type UpdateComponentTaxonomyTermAssignmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type UpdateComponentTaxonomyTermAssignmentError = UpdateComponentTaxonomyTermAssignmentErrors[keyof UpdateComponentTaxonomyTermAssignmentErrors];
+
+export type UpdateComponentTaxonomyTermAssignmentResponses = {
+    /**
+     * Assignment updated
+     */
+    200: {
+        taxonomy_term: ComponentTaxonomyTerm;
+    };
+};
+
+export type UpdateComponentTaxonomyTermAssignmentResponse = UpdateComponentTaxonomyTermAssignmentResponses[keyof UpdateComponentTaxonomyTermAssignmentResponses];
+
 export type ListManagementComponentsData = {
     body?: never;
     path: {
@@ -20692,6 +23370,14 @@ export type ListMentionedDiscussionsForCurrentUserData = {
          * Filter by language code
          */
         lang?: string;
+        /**
+         * The paginated page number.
+         */
+        page?: number;
+        /**
+         * Number of items per page.
+         */
+        per_page?: number;
     };
     url: '/v1/spaces/{space_id}/mentioned_discussions/me';
 };
@@ -20803,6 +23489,291 @@ export type UpdateDiscussionResponses = {
 };
 
 export type UpdateDiscussionResponse = UpdateDiscussionResponses[keyof UpdateDiscussionResponses];
+
+export type ListEnvironmentsData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the origin (production) space
+         */
+        space_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/environments';
+};
+
+export type ListEnvironmentsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error: string;
+    };
+};
+
+export type ListEnvironmentsError = ListEnvironmentsErrors[keyof ListEnvironmentsErrors];
+
+export type ListEnvironmentsResponses = {
+    /**
+     * Environments returned
+     */
+    200: {
+        environments: Array<Space>;
+    };
+};
+
+export type ListEnvironmentsResponse = ListEnvironmentsResponses[keyof ListEnvironmentsResponses];
+
+export type CreateEnvironmentData = {
+    body: {
+        environment: {
+            /**
+             * Name of the environment
+             */
+            name: string;
+            /**
+             * Visual Editor location URL for the environment
+             */
+            location?: string;
+            /**
+             * Short description of the environment's purpose (max 255 chars)
+             */
+            short_description?: string;
+            /**
+             * Whether the editor shows the environment identification bar (defaults to false)
+             */
+            show_environment_identification_bar?: boolean;
+            /**
+             * Color of the environment (max 255 chars)
+             */
+            color?: string;
+        };
+        /**
+         * Optional toggles applied when creating the environment.
+         */
+        options?: {
+            /**
+             * Copy the origin space's asset folder structure and asset tags (the asset files themselves are not copied). Defaults to false.
+             */
+            duplicate_assets?: boolean;
+            /**
+             * Copy the origin space's collaborators and their custom roles into the environment. Pending invitations are not copied. Defaults to false.
+             */
+            duplicate_users?: boolean;
+            /**
+             * Copy the origin space's webhooks into the environment. The copies are created deactivated and have to be enabled manually. Defaults to false.
+             */
+            duplicate_webhooks?: boolean;
+        };
+    };
+    path: {
+        /**
+         * Numeric ID of the origin (production) space
+         */
+        space_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/environments';
+};
+
+export type CreateEnvironmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error: string;
+    };
+};
+
+export type CreateEnvironmentError = CreateEnvironmentErrors[keyof CreateEnvironmentErrors];
+
+export type CreateEnvironmentResponses = {
+    /**
+     * Environment created
+     */
+    201: {
+        environment: SpaceDetail;
+    };
+};
+
+export type CreateEnvironmentResponse = CreateEnvironmentResponses[keyof CreateEnvironmentResponses];
+
+export type ListAccessibleEnvironmentsData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the origin (production) space
+         */
+        space_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/environments/list';
+};
+
+export type ListAccessibleEnvironmentsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error: string;
+    };
+};
+
+export type ListAccessibleEnvironmentsError = ListAccessibleEnvironmentsErrors[keyof ListAccessibleEnvironmentsErrors];
+
+export type ListAccessibleEnvironmentsResponses = {
+    /**
+     * Environments returned
+     */
+    200: {
+        environments: Array<Space>;
+    };
+};
+
+export type ListAccessibleEnvironmentsResponse = ListAccessibleEnvironmentsResponses[keyof ListAccessibleEnvironmentsResponses];
+
+export type DeleteEnvironmentData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the origin (production) space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the environment
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/environments/{id}';
+};
+
+export type DeleteEnvironmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type DeleteEnvironmentError = DeleteEnvironmentErrors[keyof DeleteEnvironmentErrors];
+
+export type DeleteEnvironmentResponses = {
+    /**
+     * Environment deleted
+     */
+    200: {
+        environment: Space;
+    };
+};
+
+export type DeleteEnvironmentResponse = DeleteEnvironmentResponses[keyof DeleteEnvironmentResponses];
+
+export type GetEnvironmentData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the origin (production) space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the environment
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/environments/{id}';
+};
+
+export type GetEnvironmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type GetEnvironmentError = GetEnvironmentErrors[keyof GetEnvironmentErrors];
+
+export type GetEnvironmentResponses = {
+    /**
+     * Environment returned
+     */
+    200: {
+        environment: SpaceDetail;
+    };
+};
+
+export type GetEnvironmentResponse = GetEnvironmentResponses[keyof GetEnvironmentResponses];
+
+export type UpdateEnvironmentData = {
+    body: {
+        environment: {
+            /**
+             * Name of the environment
+             */
+            name?: string;
+            /**
+             * Visual Editor location URL for the environment
+             */
+            location?: string;
+            /**
+             * Short description of the environment's purpose (max 255 chars)
+             */
+            short_description?: string;
+            /**
+             * Whether the editor shows the environment identification bar (defaults to false)
+             */
+            show_environment_identification_bar?: boolean;
+            /**
+             * Color of the environment (max 255 chars)
+             */
+            color?: string;
+        };
+    };
+    path: {
+        /**
+         * Numeric ID of the origin (production) space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the environment
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/environments/{id}';
+};
+
+export type UpdateEnvironmentErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type UpdateEnvironmentError = UpdateEnvironmentErrors[keyof UpdateEnvironmentErrors];
+
+export type UpdateEnvironmentResponses = {
+    /**
+     * Environment updated
+     */
+    200: {
+        environment: SpaceDetail;
+    };
+};
+
+export type UpdateEnvironmentResponse = UpdateEnvironmentResponses[keyof UpdateEnvironmentResponses];
 
 export type GetExperimentResultsData = {
     body?: never;
@@ -21168,6 +24139,7 @@ export type ListExperimentsResponses = {
      */
     200: {
         experiments: Array<ExperimentDetail>;
+        meta: PaginationMeta;
     };
 };
 
@@ -24027,10 +26999,218 @@ export type CreateMessageResponses = {
 
 export type CreateMessageResponse = CreateMessageResponses[keyof CreateMessageResponses];
 
-export type ListOauthGrantsData = {
+export type ListOauthClientsData = {
     body?: never;
     path?: never;
     query?: never;
+    url: '/v1/oauth_clients';
+};
+
+export type ListOauthClientsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type ListOauthClientsError = ListOauthClientsErrors[keyof ListOauthClientsErrors];
+
+export type ListOauthClientsResponses = {
+    /**
+     * OAuth clients retrieved successfully
+     */
+    200: {
+        oauth_clients: Array<OauthClient>;
+    };
+};
+
+export type ListOauthClientsResponse = ListOauthClientsResponses[keyof ListOauthClientsResponses];
+
+export type CreateOauthClientData = {
+    body: CreateOauthClientRequest;
+    path?: never;
+    query?: never;
+    url: '/v1/oauth_clients';
+};
+
+export type CreateOauthClientErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+};
+
+export type CreateOauthClientError = CreateOauthClientErrors[keyof CreateOauthClientErrors];
+
+export type CreateOauthClientResponses = {
+    /**
+     * OAuth client created successfully
+     */
+    201: {
+        oauth_client: OauthClient;
+    };
+};
+
+export type CreateOauthClientResponse = CreateOauthClientResponses[keyof CreateOauthClientResponses];
+
+export type OauthClientMetadataData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/oauth_clients/metadata';
+};
+
+export type OauthClientMetadataErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type OauthClientMetadataError = OauthClientMetadataErrors[keyof OauthClientMetadataErrors];
+
+export type OauthClientMetadataResponses = {
+    /**
+     * Scope metadata retrieved successfully
+     */
+    200: {
+        available_scopes: Array<{
+            resource: string;
+            actions: Array<string>;
+        }>;
+        additional_scopes: Array<string>;
+    };
+};
+
+export type OauthClientMetadataResponse = OauthClientMetadataResponses[keyof OauthClientMetadataResponses];
+
+export type DeleteOauthClientData = {
+    body?: never;
+    path: {
+        /**
+         * OAuth client UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/oauth_clients/{id}';
+};
+
+export type DeleteOauthClientErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+};
+
+export type DeleteOauthClientError = DeleteOauthClientErrors[keyof DeleteOauthClientErrors];
+
+export type DeleteOauthClientResponses = {
+    /**
+     * OAuth client deleted successfully
+     */
+    204: void;
+};
+
+export type DeleteOauthClientResponse = DeleteOauthClientResponses[keyof DeleteOauthClientResponses];
+
+export type GetOauthClientData = {
+    body?: never;
+    path: {
+        /**
+         * OAuth client UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/oauth_clients/{id}';
+};
+
+export type GetOauthClientErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+};
+
+export type GetOauthClientError = GetOauthClientErrors[keyof GetOauthClientErrors];
+
+export type GetOauthClientResponses = {
+    /**
+     * OAuth client retrieved successfully
+     */
+    200: {
+        oauth_client: OauthClient;
+    };
+};
+
+export type GetOauthClientResponse = GetOauthClientResponses[keyof GetOauthClientResponses];
+
+export type UpdateOauthClientData = {
+    body: UpdateOauthClientRequest;
+    path: {
+        /**
+         * OAuth client UUID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/oauth_clients/{id}';
+};
+
+export type UpdateOauthClientErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+};
+
+export type UpdateOauthClientError = UpdateOauthClientErrors[keyof UpdateOauthClientErrors];
+
+export type UpdateOauthClientResponses = {
+    /**
+     * OAuth client updated successfully
+     */
+    200: {
+        oauth_client: OauthClient;
+    };
+};
+
+export type UpdateOauthClientResponse = UpdateOauthClientResponses[keyof UpdateOauthClientResponses];
+
+export type ListOauthGrantsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * The paginated page number.
+         */
+        page?: number;
+        /**
+         * Number of items per page.
+         */
+        per_page?: number;
+    };
     url: '/v1/oauth_grants';
 };
 
@@ -24051,8 +27231,13 @@ export type ListOauthGrantsResponses = {
     /**
      * Returns list of active grants.
      */
-    200: unknown;
+    200: {
+        oauth_grants: Array<OauthGrant>;
+        meta: PaginationMeta;
+    };
 };
+
+export type ListOauthGrantsResponse = ListOauthGrantsResponses[keyof ListOauthGrantsResponses];
 
 export type DeleteOauthGrantData = {
     body?: never;
@@ -24111,82 +27296,6 @@ export type RevokeOauthGrantsByAppResponses = {
 
 export type RevokeOauthGrantsByAppResponse = RevokeOauthGrantsByAppResponses[keyof RevokeOauthGrantsByAppResponses];
 
-export type ListOauthClientsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/oauth/register';
-};
-
-export type ListOauthClientsErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-};
-
-export type ListOauthClientsError = ListOauthClientsErrors[keyof ListOauthClientsErrors];
-
-export type ListOauthClientsResponses = {
-    /**
-     * Returns list of dynamic clients.
-     */
-    200: unknown;
-};
-
-export type RegisterOauthClientData = {
-    body?: {
-        client_name: string;
-        redirect_uris: Array<string>;
-        client_uri?: string;
-    };
-    path?: never;
-    query?: never;
-    url: '/oauth/register';
-};
-
-export type RegisterOauthClientErrors = {
-    /**
-     * Forbidden
-     */
-    403: unknown;
-};
-
-export type RegisterOauthClientResponses = {
-    /**
-     * Client registered
-     */
-    201: unknown;
-};
-
-export type DeleteOauthClientData = {
-    body?: never;
-    path: {
-        /**
-         * The client_id to deactivate.
-         */
-        id: string;
-    };
-    query?: never;
-    url: '/oauth/register/{id}';
-};
-
-export type DeleteOauthClientErrors = {
-    /**
-     * Invalid token or no custom complexity.
-     */
-    404: unknown;
-};
-
-export type DeleteOauthClientResponses = {
-    /**
-     * Client deactivated
-     */
-    204: void;
-};
-
-export type DeleteOauthClientResponse = DeleteOauthClientResponses[keyof DeleteOauthClientResponses];
-
 export type RevokeOauthTokenData = {
     body?: {
         /**
@@ -24214,7 +27323,7 @@ export type RevokeOauthTokenResponses = {
     200: unknown;
 };
 
-export type GetOAuthUserInfoData = {
+export type OauthUserInfoV1Data = {
     body?: never;
     headers: {
         /**
@@ -24227,7 +27336,7 @@ export type GetOAuthUserInfoData = {
     url: '/v1/oauth/user_info';
 };
 
-export type GetOAuthUserInfoErrors = {
+export type OauthUserInfoV1Errors = {
     /**
      * Unauthorized
      */
@@ -24239,9 +27348,9 @@ export type GetOAuthUserInfoErrors = {
     };
 };
 
-export type GetOAuthUserInfoError = GetOAuthUserInfoErrors[keyof GetOAuthUserInfoErrors];
+export type OauthUserInfoV1Error = OauthUserInfoV1Errors[keyof OauthUserInfoV1Errors];
 
-export type GetOAuthUserInfoResponses = {
+export type OauthUserInfoV1Responses = {
     /**
      * User info returned successfully.
      */
@@ -24255,7 +27364,7 @@ export type GetOAuthUserInfoResponses = {
              */
             id: number;
             /**
-             * User email address
+             * User email
              */
             email: string;
             /**
@@ -24285,7 +27394,7 @@ export type GetOAuthUserInfoResponses = {
     };
 };
 
-export type GetOAuthUserInfoResponse = GetOAuthUserInfoResponses[keyof GetOAuthUserInfoResponses];
+export type OauthUserInfoV1Response = OauthUserInfoV1Responses[keyof OauthUserInfoV1Responses];
 
 export type ListOrgActivitiesData = {
     body?: never;
@@ -27075,6 +30184,48 @@ export type UpdatePresetResponses = {
 
 export type UpdatePresetResponse = UpdatePresetResponses[keyof UpdatePresetResponses];
 
+export type CreatePurgeData = {
+    body?: never;
+    path: {
+        /**
+         * Space ID
+         */
+        space_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/purges';
+};
+
+export type CreatePurgeErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        error: string;
+    };
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type CreatePurgeError = CreatePurgeErrors[keyof CreatePurgeErrors];
+
+export type CreatePurgeResponses = {
+    /**
+     * Purge started
+     */
+    200: {
+        message: string;
+    };
+};
+
+export type CreatePurgeResponse = CreatePurgeResponses[keyof CreatePurgeResponses];
+
 export type CreateQuoteRequestData = {
     /**
      * Quote request parameters
@@ -27129,6 +30280,35 @@ export type CreateQuoteRequestResponses = {
 };
 
 export type CreateQuoteRequestResponse = CreateQuoteRequestResponses[keyof CreateQuoteRequestResponses];
+
+export type ListRegionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/regions';
+};
+
+export type ListRegionsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListRegionsError = ListRegionsErrors[keyof ListRegionsErrors];
+
+export type ListRegionsResponses = {
+    /**
+     * Regions returned
+     */
+    200: RegionsIndexResponse;
+};
+
+export type ListRegionsResponse = ListRegionsResponses[keyof ListRegionsResponses];
 
 export type ReleaseAllData = {
     body?: never;
@@ -27676,6 +30856,19 @@ export type CreateScopedPersonalAccessTokenErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        /**
+         * Why the token was refused
+         */
+        error: string;
+        /**
+         * The account must confirm its email address before creating credentials
+         */
+        requires_confirmation: boolean;
+    };
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -30646,6 +33839,10 @@ export type ListSpacesData = {
          * Search term
          */
         search?: string;
+        /**
+         * Whether to include environment spaces alongside their origin spaces
+         */
+        with_environments?: boolean;
     };
     url: '/v1/spaces';
 };
@@ -31029,14 +34226,9 @@ export type CheckSsoUserResponses = {
          */
         is_sso: boolean;
         /**
-         * Organization ID
+         * Organization ID. Only returned when is_sso is true. Clients must not rely on its presence: it may be omitted for email domains that map to more than one organization.
          */
-        org_id: number;
-    } | {
-        /**
-         * Whether the user is using the SSO login flow
-         */
-        is_sso: boolean;
+        org_id?: number;
     };
 };
 
@@ -31413,6 +34605,22 @@ export type ListStoriesData = {
          */
         with_tag?: string;
         /**
+         * Filter by taxonomy term id(s). IDs in a comma-separated group are ORed together;
+         * passing the parameter as an array ANDs across groups
+         */
+        by_taxonomy_term_ids?: string | Array<string>;
+        /**
+         * Filter by taxonomy term name(s). Names in a comma-separated group are ORed together;
+         * a 'root/leaf' path matches a term by its leaf name scoped to that root; passing the parameter
+         * as an array ANDs across groups
+         */
+        by_taxonomy_term_names?: string | Array<string>;
+        /**
+         * When set, expands by_taxonomy_term_ids/by_taxonomy_term_names to also match
+         * stories tagged only with a descendant of the requested term(s).
+         */
+        with_taxonomy_subterms?: '1';
+        /**
          * Folders Only.
          */
         folder_only?: boolean;
@@ -31440,6 +34648,10 @@ export type ListStoriesData = {
          * Is Published.
          */
         is_published?: boolean;
+        /**
+         * Has Unpublished Changes
+         */
+        has_unpublished_changes?: boolean;
         /**
          * Scheduled at greater than (Format: yyyy-MM-dd HH:mm).
          */
@@ -31514,17 +34726,78 @@ export type ListStoriesData = {
         filter_query?: {
             __or?: Array<{
                 [key: string]: {
-                    [key: string]: string;
+                    in?: string;
+                    not_in?: string;
+                    like?: string;
+                    not_like?: string;
+                    exists?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    any_in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    all_in_array?: string;
+                    gt_date?: string;
+                    lt_date?: string;
+                    gt_int?: number;
+                    lt_int?: number;
+                    gt_float?: number;
+                    lt_float?: number;
+                    is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
                 };
             }>;
+            __and?: {
+                [key: string]: {
+                    in?: string;
+                    not_in?: string;
+                    like?: string;
+                    not_like?: string;
+                    exists?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    any_in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    all_in_array?: string;
+                    gt_date?: string;
+                    lt_date?: string;
+                    gt_int?: number;
+                    lt_int?: number;
+                    gt_float?: number;
+                    lt_float?: number;
+                    is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
+                };
+            };
             [key: string]: {
                 in?: string;
                 not_in?: string;
                 like?: string;
                 not_like?: string;
                 exists?: string;
-                in_array?: Array<string>;
-                all_in_array?: Array<string>;
+                /**
+                 * CSV, e.g. 'a,b,c'
+                 */
+                in_array?: string;
+                /**
+                 * CSV, e.g. 'a,b,c'
+                 */
+                any_in_array?: string;
+                /**
+                 * CSV, e.g. 'a,b,c'
+                 */
+                all_in_array?: string;
                 gt_date?: string;
                 lt_date?: string;
                 gt_int?: number;
@@ -31534,9 +34807,59 @@ export type ListStoriesData = {
                 is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
             } | Array<{
                 [key: string]: {
-                    [key: string]: string;
+                    in?: string;
+                    not_in?: string;
+                    like?: string;
+                    not_like?: string;
+                    exists?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    any_in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    all_in_array?: string;
+                    gt_date?: string;
+                    lt_date?: string;
+                    gt_int?: number;
+                    lt_int?: number;
+                    gt_float?: number;
+                    lt_float?: number;
+                    is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
                 };
-            }> | undefined;
+            }> | {
+                [key: string]: {
+                    in?: string;
+                    not_in?: string;
+                    like?: string;
+                    not_like?: string;
+                    exists?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    any_in_array?: string;
+                    /**
+                     * CSV, e.g. 'a,b,c'
+                     */
+                    all_in_array?: string;
+                    gt_date?: string;
+                    lt_date?: string;
+                    gt_int?: number;
+                    lt_int?: number;
+                    gt_float?: number;
+                    lt_float?: number;
+                    is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
+                };
+            } | undefined;
         };
         /**
          * Number of items per page.
@@ -31567,12 +34890,7 @@ export type ListStoriesErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -31682,12 +35000,7 @@ export type FindAllInconsistenciesErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -31730,12 +35043,7 @@ export type RebuildIndexErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -31771,12 +35079,7 @@ export type FindInvalidParentsErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -31860,12 +35163,7 @@ export type BulkMoveStoriesErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -31903,12 +35201,7 @@ export type BulkUndeleteStoriesErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -31957,12 +35250,7 @@ export type GetReferenceCountsErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32007,12 +35295,7 @@ export type LaunchStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32060,12 +35343,7 @@ export type DeleteStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32127,12 +35405,7 @@ export type GetStoryByIdErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32234,6 +35507,54 @@ export type UpdateStoryResponses = {
 
 export type UpdateStoryResponse = UpdateStoryResponses[keyof UpdateStoryResponses];
 
+export type AssignStoryTaxonomiesData = {
+    body: AssignStoryTaxonomiesRequest;
+    path: {
+        /**
+         * ID
+         */
+        space_id: number;
+        /**
+         * Numeric ID
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/stories/{id}/assign_taxonomies';
+};
+
+export type AssignStoryTaxonomiesErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type AssignStoryTaxonomiesError = AssignStoryTaxonomiesErrors[keyof AssignStoryTaxonomiesErrors];
+
+export type AssignStoryTaxonomiesResponses = {
+    /**
+     * Taxonomy terms assigned
+     */
+    200: {
+        taxonomy_terms: Array<AssignedTaxonomyTerm>;
+    };
+};
+
+export type AssignStoryTaxonomiesResponse = AssignStoryTaxonomiesResponses[keyof AssignStoryTaxonomiesResponses];
+
 export type UpdateStoryUuidData = {
     body?: never;
     path: {
@@ -32264,16 +35585,10 @@ export type UpdateStoryUuidErrors = {
      * Invalid token or no custom complexity.
      */
     404: Array<string>;
-    422: ({
-        error: string;
-    } | {
-        error: Array<string>;
-    }) & {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32326,12 +35641,7 @@ export type DiscardStoryChangesErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32419,12 +35729,7 @@ export type AiTranslateStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32472,12 +35777,7 @@ export type RegenerateStoryUuidErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32530,12 +35830,7 @@ export type MoveStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32579,12 +35874,7 @@ export type UndeleteStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32642,12 +35932,7 @@ export type RestoreStoryWithVersionErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32700,12 +35985,7 @@ export type OverwriteStoryWithVersionErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32789,12 +36069,7 @@ export type DuplicateStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32847,12 +36122,7 @@ export type MergeStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32905,12 +36175,7 @@ export type PublishStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -32967,12 +36232,7 @@ export type UnpublishStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33006,25 +36266,29 @@ export type CompareStoryVersionsData = {
     };
     query?: {
         /**
-         * Version ID to compare from
+         * Baseline version ID (legacy; prefer from_version_v2)
          */
         from_version?: number;
         /**
-         * Version ID to compare to
+         * Target version ID (legacy; prefer version_v2)
          */
         version?: number;
         /**
-         * Version ID to compare from using v2 API
+         * Baseline version ID. When omitted, the baseline is computed automatically from the story's version history
          */
         from_version_v2?: number;
         /**
-         * Version ID to compare to using v2 API
+         * Target version ID. The baseline is found automatically from history; supply from_version_v2 to specify it explicitly
          */
         version_v2?: number;
         /**
-         * If true, returns full changes including content differences
+         * Return { changes, full } instead of a bare changes array. Only affects the legacy version param; version_v2 always returns the full object
          */
         full_changes?: boolean;
+        /**
+         * Release ID. When used with version_v2, the baseline prefers the latest earlier version within that release; if none exists (e.g. the first edit in a release), it falls back to the latest earlier non-release version
+         */
+        release_id?: number;
     };
     url: '/v1/spaces/{space_id}/stories/{id}/compare';
 };
@@ -33041,12 +36305,7 @@ export type CompareStoryVersionsErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33057,10 +36316,23 @@ export type CompareStoryVersionsError = CompareStoryVersionsErrors[keyof Compare
 
 export type CompareStoryVersionsResponses = {
     /**
-     * Story Versions Compared.
+     * Diff result between two story versions
      */
-    200: unknown;
+    200: {
+        /**
+         * Hashdiff operations. Each entry is [op, path, value] for '+' (added) and '-' (removed), or [op, path, oldValue, newValue] for '~' (changed). Path uses dot-notation with array indices (e.g. 'body.0.component').
+         */
+        changes: Array<Array<unknown>>;
+        /**
+         * Complete content of the target (newer) version. Always present, even when changes is empty. Fields in changes reflect mutations against this object.
+         */
+        full: {
+            [key: string]: unknown;
+        };
+    };
 };
+
+export type CompareStoryVersionsResponse = CompareStoryVersionsResponses[keyof CompareStoryVersionsResponses];
 
 export type UpdateDeletedStoryData = {
     body: {
@@ -33095,12 +36367,7 @@ export type UpdateDeletedStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33155,12 +36422,7 @@ export type PartialUpdateStoryErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33453,12 +36715,7 @@ export type GetStoryVersionsErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33520,12 +36777,7 @@ export type ImportStoryXmlErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33591,12 +36843,7 @@ export type ImportStoryJsonErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -33661,12 +36908,7 @@ export type ExportStoryXmlErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: unknown;
     /**
      * Rate limit reached
      */
@@ -33729,12 +36971,7 @@ export type ExportStoryJsonErrors = {
     /**
      * Unable to remove space - user is not a space admin.
      */
-    422: {
-        /**
-         * Error message
-         */
-        error: string;
-    };
+    422: ErrorsObject;
     /**
      * Rate limit reached
      */
@@ -34732,6 +37969,12 @@ export type CreateTaskExecutionErrors = {
      */
     404: Array<string>;
     /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        error: string;
+    };
+    /**
      * Rate limit reached
      */
     429: RateLimitError;
@@ -35006,6 +38249,519 @@ export type UpdateTaskResponses = {
 };
 
 export type UpdateTaskResponse = UpdateTaskResponses[keyof UpdateTaskResponses];
+
+export type UnassignTaxonomyData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the taxonomy (root taxonomy term)
+         */
+        taxonomy_term_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/space_assignment';
+};
+
+export type UnassignTaxonomyErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type UnassignTaxonomyError = UnassignTaxonomyErrors[keyof UnassignTaxonomyErrors];
+
+export type UnassignTaxonomyResponses = {
+    /**
+     * Taxonomy unassigned
+     */
+    204: void;
+};
+
+export type UnassignTaxonomyResponse = UnassignTaxonomyResponses[keyof UnassignTaxonomyResponses];
+
+export type AssignTaxonomyData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the taxonomy (root taxonomy term)
+         */
+        taxonomy_term_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/space_assignment';
+};
+
+export type AssignTaxonomyErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type AssignTaxonomyError = AssignTaxonomyErrors[keyof AssignTaxonomyErrors];
+
+export type AssignTaxonomyResponses = {
+    /**
+     * Taxonomy assigned
+     */
+    201: {
+        space_taxonomy_term: SpaceTaxonomyTerm;
+    };
+};
+
+export type AssignTaxonomyResponse = AssignTaxonomyResponses[keyof AssignTaxonomyResponses];
+
+export type DeleteTaxonomyTermPermanentlyData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Snowflake ID of the archived term
+         */
+        taxonomy_term_id: string;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/trash';
+};
+
+export type DeleteTaxonomyTermPermanentlyErrors = {
+    /**
+     * Unauthorized
+     */
+    401: unknown;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: unknown;
+    /**
+     * Rate limit reached
+     */
+    429: unknown;
+};
+
+export type DeleteTaxonomyTermPermanentlyResponses = {
+    /**
+     * Term permanently removed
+     */
+    204: void;
+};
+
+export type DeleteTaxonomyTermPermanentlyResponse = DeleteTaxonomyTermPermanentlyResponses[keyof DeleteTaxonomyTermPermanentlyResponses];
+
+export type RestoreTaxonomyTermData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Snowflake ID of the archived term
+         */
+        taxonomy_term_id: string;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/trash';
+};
+
+export type RestoreTaxonomyTermErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type RestoreTaxonomyTermError = RestoreTaxonomyTermErrors[keyof RestoreTaxonomyTermErrors];
+
+export type RestoreTaxonomyTermResponses = {
+    /**
+     * Term restored
+     */
+    200: {
+        taxonomy_term: TaxonomyTerm;
+    };
+};
+
+export type RestoreTaxonomyTermResponse = RestoreTaxonomyTermResponses[keyof RestoreTaxonomyTermResponses];
+
+export type ListTaxonomyTermComponentsData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Numeric ID of the taxonomy term (root or nested facet)
+         */
+        taxonomy_term_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/components';
+};
+
+export type ListTaxonomyTermComponentsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListTaxonomyTermComponentsError = ListTaxonomyTermComponentsErrors[keyof ListTaxonomyTermComponentsErrors];
+
+export type ListTaxonomyTermComponentsResponses = {
+    /**
+     * Assigned content types returned
+     */
+    200: {
+        components: Array<AssignedComponent>;
+    };
+};
+
+export type ListTaxonomyTermComponentsResponse = ListTaxonomyTermComponentsResponses[keyof ListTaxonomyTermComponentsResponses];
+
+export type ListTaxonomyTermsData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+    };
+    query?: {
+        /**
+         * Sort stories in ascending or descending order by a specific property. Possible properties are all default story properties and any custom fields defined in the schema of the story type.
+         * Default story properties can be used like this:
+         * - `sort_by=created_at:desc`
+         * - `sort_by=slug:asc`
+         *
+         * Custom fields can be used like this:
+         * - `sort_by=content.meta_description:asc`
+         * - `sort_by=content.event_title:desc`
+         *
+         * By default, all custom fields are sorted as strings. To sort custom fields with numeric values, it needs to be specified whether they should be treated as float or integer. Examples:
+         * - `sort_by=content.price:asc:float`
+         * - `sort_by=content.event_number:asc:int`
+         *
+         * Different sorts can be chained using commas like this:
+         * - `sort_by=name:desc,slug:asc`
+         *
+         * There is also a possibility to sort values keeping the null (or empty) ones first or last:
+         * - `sort_by=path:desc:nulls_first`
+         * - `sort_by=path:desc:nulls_last`
+         *
+         * `nulls_last` is the default behavior.
+         */
+        sort_by?: 'created_at:asc' | 'created_at:desc' | 'display_name:asc' | 'display_name:desc' | 'last_activity_at:asc' | 'last_activity_at:desc' | 'terms_count:asc' | 'terms_count:desc' | 'last_author_id:asc' | 'last_author_id:desc';
+        /**
+         * Search term
+         */
+        search?: string;
+        /**
+         * The paginated page number.
+         */
+        page?: number;
+        /**
+         * Number of items per page.
+         */
+        per_page?: number;
+    };
+    url: '/v1/spaces/{space_id}/taxonomy_terms';
+};
+
+export type ListTaxonomyTermsErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListTaxonomyTermsError = ListTaxonomyTermsErrors[keyof ListTaxonomyTermsErrors];
+
+export type ListTaxonomyTermsResponses = {
+    /**
+     * Root taxonomy terms filtered by search
+     */
+    200: {
+        taxonomy_terms: Array<TaxonomyTerm>;
+        meta: PaginationMeta & {
+            /**
+             * Total number of taxonomy terms used across every taxonomy in the space, counted against the space's max_taxonomy_terms plan limit.
+             */
+            total_taxonomy_terms_count: number;
+        };
+    };
+};
+
+export type ListTaxonomyTermsResponse = ListTaxonomyTermsResponses[keyof ListTaxonomyTermsResponses];
+
+export type CreateTaxonomyTermData = {
+    body: CreateTaxonomyTermRequest;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms';
+};
+
+export type CreateTaxonomyTermErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error?: string;
+    };
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type CreateTaxonomyTermError = CreateTaxonomyTermErrors[keyof CreateTaxonomyTermErrors];
+
+export type CreateTaxonomyTermResponses = {
+    /**
+     * Nested taxonomy term created
+     */
+    201: {
+        taxonomy_term: TaxonomyTerm;
+    };
+};
+
+export type CreateTaxonomyTermResponse = CreateTaxonomyTermResponses[keyof CreateTaxonomyTermResponses];
+
+export type DeleteTaxonomyTermData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Snowflake ID of the term (root or nested)
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{id}';
+};
+
+export type DeleteTaxonomyTermErrors = {
+    /**
+     * Unauthorized
+     */
+    401: unknown;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: unknown;
+    /**
+     * Rate limit reached
+     */
+    429: unknown;
+};
+
+export type DeleteTaxonomyTermResponses = {
+    /**
+     * Term deleted
+     */
+    204: void;
+};
+
+export type DeleteTaxonomyTermResponse = DeleteTaxonomyTermResponses[keyof DeleteTaxonomyTermResponses];
+
+export type GetTaxonomyTermData = {
+    body?: never;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Snowflake ID of the term (root or nested)
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{id}';
+};
+
+export type GetTaxonomyTermErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type GetTaxonomyTermError = GetTaxonomyTermErrors[keyof GetTaxonomyTermErrors];
+
+export type GetTaxonomyTermResponses = {
+    /**
+     * Term retrieved with content currently assigned to it
+     */
+    200: {
+        taxonomy_term: TaxonomyTerm;
+        meta: {
+            /**
+             * Total number of taxonomy terms used across every taxonomy in the space, counted against the space's max_taxonomy_terms plan limit.
+             */
+            total_taxonomy_terms_count: number;
+        };
+    };
+};
+
+export type GetTaxonomyTermResponse = GetTaxonomyTermResponses[keyof GetTaxonomyTermResponses];
+
+export type UpdateTaxonomyTermData = {
+    body: UpdateTaxonomyTermRequest;
+    path: {
+        /**
+         * Numeric ID of the space
+         */
+        space_id: number;
+        /**
+         * Snowflake ID of the term (root or nested)
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/spaces/{space_id}/taxonomy_terms/{id}';
+};
+
+export type UpdateTaxonomyTermErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: ErrorsObject;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type UpdateTaxonomyTermError = UpdateTaxonomyTermErrors[keyof UpdateTaxonomyTermErrors];
+
+export type UpdateTaxonomyTermResponses = {
+    /**
+     * Term updated
+     */
+    200: {
+        taxonomy_term: TaxonomyTerm;
+    };
+};
+
+export type UpdateTaxonomyTermResponse = UpdateTaxonomyTermResponses[keyof UpdateTaxonomyTermResponses];
 
 export type CreateTemplateDeletionData = {
     body: CreateTemplateDeletionRequest;
@@ -35447,6 +39203,19 @@ export type CreatePersonalAccessTokenErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        /**
+         * Why the token was refused
+         */
+        error: string;
+        /**
+         * The account must confirm its email address before creating credentials
+         */
+        requires_confirmation: boolean;
+    };
 };
 
 export type CreatePersonalAccessTokenError = CreatePersonalAccessTokenErrors[keyof CreatePersonalAccessTokenErrors];
@@ -36534,6 +40303,7 @@ export type ListWebhookLogsResponses = {
      */
     200: {
         webhook_logs: Array<WebhookLog>;
+        meta: PaginationMeta;
     };
 };
 
@@ -36672,6 +40442,10 @@ export type ListWorkflowStageChangesData = {
          * Filter comments by story IDs (comma-separated).
          */
         with_story?: number;
+        /**
+         * Filter workflow stage changes by language code. Use "[default]" to filter for changes without a language set
+         */
+        by_language?: string;
         /**
          * The paginated page number.
          */
@@ -37161,6 +40935,15 @@ export type DeleteWorkflowErrors = {
      * Invalid token or no custom complexity.
      */
     404: Array<string>;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        /**
+         * Error message
+         */
+        error: string;
+    };
 };
 
 export type DeleteWorkflowError = DeleteWorkflowErrors[keyof DeleteWorkflowErrors];
@@ -37381,3 +41164,32 @@ export type GetLivechatAuthResponses = {
 };
 
 export type GetLivechatAuthResponse = GetLivechatAuthResponses[keyof GetLivechatAuthResponses];
+
+export type GetOAuthGrantData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v1/oauth/grant';
+};
+
+export type GetOAuthGrantErrors = {
+    /**
+     * Unauthorized
+     */
+    401: {
+        error: string;
+    };
+};
+
+export type GetOAuthGrantError = GetOAuthGrantErrors[keyof GetOAuthGrantErrors];
+
+export type GetOAuthGrantResponses = {
+    /**
+     * Grant info returned successfully
+     */
+    200: {
+        grant: OauthGrantIntrospection;
+    };
+};
+
+export type GetOAuthGrantResponse = GetOAuthGrantResponses[keyof GetOAuthGrantResponses];

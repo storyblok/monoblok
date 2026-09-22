@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses } from './types.gen';
+import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, GetTaxonomyData, GetTaxonomyErrors, GetTaxonomyResponses, GetTaxonomyTermData, GetTaxonomyTermErrors, GetTaxonomyTermResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses, ListTaxonomiesData, ListTaxonomiesErrors, ListTaxonomiesResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -180,5 +180,50 @@ export const listTags = <ThrowOnError extends boolean = false>(options?: Options
             type: 'apiKey'
         }],
     url: '/v2/cdn/tags',
+    ...options
+});
+
+/**
+ * List taxonomies
+ *
+ * Retrieve the flat list of taxonomies (root terms) assigned to the space, without their descendant tree. Use show to retrieve one taxonomy's full tree.
+ */
+export const listTaxonomies = <ThrowOnError extends boolean = false>(options?: Options<ListTaxonomiesData, ThrowOnError>): RequestResult<ListTaxonomiesResponses, ListTaxonomiesErrors, ThrowOnError> => (options?.client ?? client).get<ListTaxonomiesResponses, ListTaxonomiesErrors, ThrowOnError>({
+    security: [{
+            in: 'query',
+            name: 'token',
+            type: 'apiKey'
+        }],
+    url: '/v2/cdn/taxonomies',
+    ...options
+});
+
+/**
+ * Retrieve a taxonomy and its full descendant tree
+ *
+ * Retrieve a single taxonomy (root term) with its full descendant tree, by numeric ID or by name.
+ */
+export const getTaxonomy = <ThrowOnError extends boolean = false>(options: Options<GetTaxonomyData, ThrowOnError>): RequestResult<GetTaxonomyResponses, GetTaxonomyErrors, ThrowOnError> => (options.client ?? client).get<GetTaxonomyResponses, GetTaxonomyErrors, ThrowOnError>({
+    security: [{
+            in: 'query',
+            name: 'token',
+            type: 'apiKey'
+        }],
+    url: '/v2/cdn/taxonomies/{id}',
+    ...options
+});
+
+/**
+ * Retrieve a taxonomy term and its own descendant subtree
+ *
+ * Retrieve a single taxonomy term, root or nested, with only its own descendant subtree attached, no siblings or ancestors.
+ */
+export const getTaxonomyTerm = <ThrowOnError extends boolean = false>(options: Options<GetTaxonomyTermData, ThrowOnError>): RequestResult<GetTaxonomyTermResponses, GetTaxonomyTermErrors, ThrowOnError> => (options.client ?? client).get<GetTaxonomyTermResponses, GetTaxonomyTermErrors, ThrowOnError>({
+    security: [{
+            in: 'query',
+            name: 'token',
+            type: 'apiKey'
+        }],
+    url: '/v2/cdn/taxonomy_terms/{id}',
     ...options
 });

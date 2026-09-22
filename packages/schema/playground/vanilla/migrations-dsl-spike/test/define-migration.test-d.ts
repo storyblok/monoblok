@@ -1,23 +1,50 @@
 /**
- * SPIKE — type-level probe of `defineMigration<Schema>`.
+ * SPIKE — type-level probe of `defineMigration<After, Before>` and the op
+ * factories.
  *
  * Asserts what the inference actually delivers, and pins the points where it
  * degrades, so the findings are checked by the compiler rather than asserted in
- * prose.
+ * prose. The first question the op-list surface raises that the builder did not:
+ * a factory is called in the argument list, where the schema appears in no
+ * argument, so everything below rests on TypeScript threading the type
+ * parameters through the contextual return type.
  */
 import { describe, expectTypeOf, it } from "vitest";
 import type { AssetFieldValue, MultilinkFieldValue } from "@storyblok/schema";
 import { defineMigration } from "../src/define-migration";
+import {
+  alterBlock,
+  alterField,
+  coerceField,
+  moveField,
+  removeField,
+  renameField,
+  reorderField,
+} from "../src/ops";
 import type { BlockNameOf, ContentOf, FieldPathOf, ValueOfPath } from "../src/types";
 import type { SpikeSchema } from "../fixtures/schema";
 import type { AfterRenameArticleAuthor, AfterRenameMetaAuthor } from "../fixtures/schema-after";
+import type { Before as ArticleBefore } from "../migrations/0001-rename-article-author.before";
 import type { Schema as PlaygroundSchema } from "../../base/schema";
 
 /** Structural equality that tolerates the `Prettify` re-wrapping `toEqualTypeOf` treats as distinct. */
 type MutuallyAssignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 
-describe("field path union", () => {
-  it("should be the exact set of block.field pairs in the schema", () => {
+describe("addressable names", () => {
+  it("should address blocks by name only, at any depth", () => {
+    expectTypeOf<BlockNameOf<SpikeSchema>>().toEqualTypeOf<
+      | "spike_page"
+      | "spike_article"
+      | "spike_section"
+      | "spike_card"
+      | "spike_meta"
+      | "spike_banner"
+    >();
+  });
+
+  it("should still derive the exact block/field pairs the schema declares", () => {
+    // No longer an addressing surface — there is no path grammar — but it is
+    // the set every op's `field` is checked against.
     expectTypeOf<FieldPathOf<SpikeSchema>>().toEqualTypeOf<
       | "spike_page.title"
       | "spike_page.body"
@@ -40,169 +67,250 @@ describe("field path union", () => {
       | "spike_banner.label"
     >();
   });
+});
 
-  it("should address blocks by name only, at any depth", () => {
-    expectTypeOf<BlockNameOf<SpikeSchema>>().toEqualTypeOf<
-      | "spike_page"
-      | "spike_article"
-      | "spike_section"
-      | "spike_card"
-      | "spike_meta"
-      | "spike_banner"
-    >();
-  });
-
-  it("should reject a typo in a field path", () => {
-    defineMigration<SpikeSchema>({
+describe("schema inference through the contextual return type", () => {
+  it("should reject a typo in a field name", () => {
+    defineMigration<AfterRenameArticleAuthor, SpikeSchema>([
       // @ts-expect-error "authr" is not a field of spike_article
-      up: (m) => m.field("spike_article.authr").renameTo("byline"),
-    });
+      removeField({ block: "spike_article", field: "authr" }),
+    ]);
   });
 
   it("should reject a field that exists on a different block", () => {
-    defineMigration<SpikeSchema>({
+    defineMigration<AfterRenameArticleAuthor, SpikeSchema>([
       // @ts-expect-error "heading" belongs to spike_section, not spike_card
-      up: (m) => m.field("spike_card.heading").remove(),
-    });
+      removeField({ block: "spike_card", field: "heading" }),
+    ]);
   });
 
   it("should reject an unknown block name", () => {
-    defineMigration<SpikeSchema>({
+    defineMigration<AfterRenameArticleAuthor, SpikeSchema>([
       // @ts-expect-error no such block
-      up: (m) => m.block("spike_nonexistent").alter(() => {}),
-    });
+      alterBlock({ block: "spike_nonexistent" }, () => {}),
+    ]);
   });
 
-  it("should accept a real path", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) => m.field("spike_article.author").remove(),
-    });
+  it("should accept a real field", () => {
+    defineMigration<AfterRenameArticleAuthor, SpikeSchema>([
+      removeField({ block: "spike_article", field: "author" }),
+    ]);
   });
 });
 
 describe("two schema parameters", () => {
-  it("should read the source path from Before and the rename target from After", () => {
-    defineMigration<SpikeSchema, AfterRenameArticleAuthor>({
-      up: (m) => m.field("spike_article.author").renameTo("byline"),
-    });
+  it("should read the source field from Before and the rename target from After", () => {
+    defineMigration<AfterRenameArticleAuthor, ArticleBefore>([
+      renameField({ block: "spike_article", field: "author", to: "byline" }),
+    ]);
   });
 
   it("should reject a rename target the post-migration schema does not declare", () => {
-    defineMigration<SpikeSchema, AfterRenameArticleAuthor>({
+    defineMigration<AfterRenameArticleAuthor, ArticleBefore>([
       // @ts-expect-error "by_line" is not a field of spike_article in After
-      up: (m) => m.field("spike_article.author").renameTo("by_line"),
-    });
+      renameField({ block: "spike_article", field: "author", to: "by_line" }),
+    ]);
   });
 
-  it("should still reject a source path the pre-migration schema does not declare", () => {
-    defineMigration<SpikeSchema, AfterRenameArticleAuthor>({
+  it("should still reject a source field the pre-migration schema does not declare", () => {
+    defineMigration<AfterRenameArticleAuthor, ArticleBefore>([
       // @ts-expect-error "byline" does not exist yet in Before
-      up: (m) => m.field("spike_article.byline").remove(),
-    });
+      removeField({ block: "spike_article", field: "byline" }),
+    ]);
   });
 
-  it("should reject a rename to a name that only the pre-migration schema has", () => {
-    defineMigration<SpikeSchema, AfterRenameMetaAuthor>({
+  it("should reject a move onto a name only the pre-migration schema has", () => {
+    defineMigration<AfterRenameMetaAuthor, SpikeSchema>([
       // @ts-expect-error After renamed it away, so "author" is no longer a target
-      up: (m) => m.field("spike_meta.og_title").moveTo("author"),
-    });
-  });
-
-  it("should leave the single-schema shorthand inferring both ends from one schema", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) => m.field("spike_card.old_slug").moveTo("slug"),
-    });
-    defineMigration<SpikeSchema>({
-      // @ts-expect-error the shorthand cannot name a field the one schema lacks
-      up: (m) => m.field("spike_card.old_slug").moveTo("permalink"),
-    });
+      moveField({ block: "spike_meta", field: "og_title", to: "author" }),
+    ]);
   });
 });
 
-describe("location scoping", () => {
-  it("should accept a parent block name and keep the block's own typing", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) =>
-        m
-          .block("spike_meta")
-          .under("spike_card")
-          .alter((block) => {
-            expectTypeOf(block.component).toEqualTypeOf<"spike_meta">();
-          }),
-    });
+describe("one schema parameter", () => {
+  it("should keep the rename target exact", () => {
+    defineMigration<SpikeSchema>([
+      moveField({ block: "spike_card", field: "old_slug", to: "slug" }),
+    ]);
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error the one schema does not declare "permalink"
+      moveField({ block: "spike_card", field: "old_slug", to: "permalink" }),
+    ]);
   });
 
-  it("should reject a parent that is not a block in the schema", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) =>
-        m
-          .block("spike_meta")
-          // @ts-expect-error no such block
-          .under("spike_nope")
-          .alter(() => {}),
-    });
-  });
-
-  it("should expose field ops on a scoped handle", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) => m.block("spike_meta").under("spike_card").field("og_title").asString(),
-    });
+  it("should widen reads, because the one schema is the post-migration one", () => {
+    // The cost of `After` first: under the shorthand a typo in a *source* name
+    // compiles. `validateMigration` is what catches it, at run time, against the
+    // schema the CLI pulled.
+    defineMigration<SpikeSchema>([
+      removeField({ block: "spike_card", field: "a_field_this_schema_never_had" }),
+      alterBlock({ block: "a_block_this_schema_never_had" }, () => {}),
+    ]);
   });
 });
 
-describe("alter() block typing", () => {
+describe("the under rule", () => {
+  it("should accept an ancestor name on a value op", () => {
+    defineMigration<SpikeSchema>([
+      alterField({ block: "spike_meta", field: "og_title", under: "spike_card" }, (value) => value),
+      alterBlock({ block: "spike_meta", under: "spike_card" }, () => {}),
+      reorderField({ block: "spike_section", field: "items", under: "spike_page" }, () => 0),
+    ]);
+  });
+
+  it("should accept an ordered chain of ancestor names", () => {
+    defineMigration<SpikeSchema>([
+      alterField(
+        { block: "spike_meta", field: "og_title", under: ["spike_section", "spike_card"] },
+        (value) => value,
+      ),
+    ]);
+  });
+
+  it("should reject an ancestor that is not a block in the schema", () => {
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error no such block
+      alterBlock({ block: "spike_meta", under: "spike_nope" }, () => {}),
+    ]);
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error no such block, inside a chain
+      alterBlock({ block: "spike_meta", under: ["spike_card", "spike_nope"] }, () => {}),
+    ]);
+  });
+
+  it("should refuse under on every key op", () => {
+    defineMigration<AfterRenameMetaAuthor, SpikeSchema>([
+      // @ts-expect-error a component's schema is global, so a key op cannot be scoped
+      renameField({ block: "spike_meta", field: "author", to: "written_by", under: "spike_card" }),
+    ]);
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error same for removeField
+      removeField({ block: "spike_card", field: "description", under: "spike_section" }),
+    ]);
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error same for moveField
+      moveField({ block: "spike_card", field: "old_slug", to: "slug", under: "spike_section" }),
+    ]);
+    defineMigration<SpikeSchema>([
+      coerceField({
+        block: "spike_card",
+        field: "featured",
+        to: "boolean",
+        // @ts-expect-error same for a coercion
+        under: "spike_section",
+      }),
+    ]);
+  });
+});
+
+describe("alterBlock() typing", () => {
   it("should type the block argument as that block's content shape", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) =>
-        m.block("spike_card").alter((block) => {
-          expectTypeOf(block.component).toEqualTypeOf<"spike_card">();
-          expectTypeOf(block._uid).toEqualTypeOf<string>();
-          // Required field: non-optional.
-          expectTypeOf(block.title).toEqualTypeOf<string>();
-          // Optional field: `| null | undefined`, which forces a guard before
-          // any string method — the single biggest ergonomic cost of the design.
-          expectTypeOf(block.description).toEqualTypeOf<string | null | undefined>();
-        }),
-    });
+    defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_card" }, (block) => {
+        expectTypeOf(block.component).toEqualTypeOf<"spike_card">();
+        expectTypeOf(block._uid).toEqualTypeOf<string>();
+        // Required field: non-optional.
+        expectTypeOf(block.title).toEqualTypeOf<string>();
+        // Optional field: `| null | undefined`, which forces a guard before any
+        // string method — the single biggest ergonomic cost of the design.
+        expectTypeOf(block.description).toEqualTypeOf<string | null | undefined>();
+      }),
+    ]);
   });
 
   it("should resolve a nested bloks field to the allowed child block content", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) =>
-        m.block("spike_card").alter((block) => {
-          const meta = block.meta?.[0];
-          expectTypeOf(meta).toEqualTypeOf<
-            | {
-                _uid: string;
-                component: "spike_meta";
-                _editable?: string;
-                author?: string | null;
-                og_title?: string | null;
-              }
-            | undefined
-          >();
-        }),
-    });
+    defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_card" }, (block) => {
+        const meta = block.meta?.[0];
+        expectTypeOf(meta).toEqualTypeOf<
+          | {
+              _uid: string;
+              component: "spike_meta";
+              _editable?: string;
+              author?: string | null;
+              og_title?: string | null;
+            }
+          | undefined
+        >();
+      }),
+    ]);
   });
 
   it("should reject writing an unknown key on the block", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) =>
-        m.block("spike_card").alter((block) => {
-          // @ts-expect-error not a field of spike_card
-          block.nope = 1;
-        }),
+    defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_card" }, (block) => {
+        // @ts-expect-error not a field of spike_card
+        block.nope = 1;
+      }),
+    ]);
+  });
+
+  it("should NOT let a block read a field the migration is about to create", () => {
+    defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_card" }, (block) => {
+        // @ts-expect-error the post-migration field does not exist in the pre-migration schema
+        block.price = Number(block.legacy_price);
+      }),
+    ]);
+  });
+
+  it("should keep the block's own typing under an ancestor filter", () => {
+    defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_meta", under: "spike_card" }, (block) => {
+        expectTypeOf(block.component).toEqualTypeOf<"spike_meta">();
+      }),
+    ]);
+  });
+});
+
+describe("alterField() typing", () => {
+  it("should type the value as that one field's value", () => {
+    defineMigration<SpikeSchema>([
+      alterField({ block: "spike_card", field: "description" }, (value, context) => {
+        expectTypeOf(value).toEqualTypeOf<string | null | undefined>();
+        expectTypeOf(context.language).toEqualTypeOf<string | undefined>();
+        expectTypeOf(context.key).toEqualTypeOf<string>();
+        return value;
+      }),
+    ]);
+  });
+
+  it("should resolve a bloks field to its child blocks", () => {
+    defineMigration<SpikeSchema>([
+      alterField({ block: "spike_section", field: "items" }, (value) => {
+        expectTypeOf<
+          NonNullable<typeof value>[number]["component"]
+        >().toEqualTypeOf<"spike_card">();
+        return value;
+      }),
+    ]);
+  });
+});
+
+describe("call shapes", () => {
+  it("should accept a bare array", () => {
+    defineMigration<SpikeSchema>([removeField({ block: "spike_card", field: "description" })]);
+  });
+
+  it("should accept title, up and down, with down read in the other direction", () => {
+    defineMigration<AfterRenameMetaAuthor, SpikeSchema>({
+      title: "Rename spike_meta.author",
+      up: [renameField({ block: "spike_meta", field: "author", to: "written_by" })],
+      down: [renameField({ block: "spike_meta", field: "written_by", to: "author" })],
     });
   });
 
-  it("should NOT reject reading a field the migration is about to create", () => {
-    defineMigration<SpikeSchema>({
-      up: (m) =>
-        m.block("spike_card").alter((block) => {
-          // @ts-expect-error the post-migration field does not exist in the pre-migration schema
-          block.price = Number(block.legacy_price);
-        }),
+  it("should reject a down whose source field only exists before the migration", () => {
+    defineMigration<AfterRenameMetaAuthor, SpikeSchema>({
+      up: [renameField({ block: "spike_meta", field: "author", to: "written_by" })],
+      // @ts-expect-error down reads the post-migration schema, where "author" is gone
+      down: [removeField({ block: "spike_meta", field: "author" })],
     });
+  });
+
+  it("should compose, because ops are values", () => {
+    const BLOCKS = ["spike_card", "spike_article"] as const;
+    defineMigration<SpikeSchema>(BLOCKS.map((block) => alterBlock({ block }, () => {})));
   });
 });
 

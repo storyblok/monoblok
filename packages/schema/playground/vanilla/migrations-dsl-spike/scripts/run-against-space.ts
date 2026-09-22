@@ -147,6 +147,14 @@ if (PHASE === "roundtrip") {
         );
         continue;
       }
+      if (run.nonIdempotent.length > 0) {
+        record(
+          `${name}:${story.slug}:idempotency`,
+          "PASS",
+          `alter ops that disagree with themselves on a rerun, refused before the write: ${JSON.stringify(run.nonIdempotent)}`,
+        );
+        continue;
+      }
 
       await writeAndVerify(story, run.content, `${name}:${story.slug}`);
 

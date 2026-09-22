@@ -75,9 +75,9 @@
   },
   "dependencies": {
     "@storyblok/js": "workspace:^",
+    "@storyblok/live-preview": "workspace:^",
     "@storyblok/richtext": "workspace:^",
-    "camelcase": "^8.0.0",
-    "morphdom": "^2.7.8"
+    "camelcase": "^8.0.0"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^7.3.4",

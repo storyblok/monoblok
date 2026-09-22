@@ -239,6 +239,9 @@ importers:
 
   packages/astro:
     dependencies:
+      '@storyblok/live-preview':
+        specifier: workspace:^
+        version: link:../live-preview
       '@storyblok/js':
         specifier: workspace:^
         version: file:packages/js
@@ -248,9 +251,6 @@ importers:
       camelcase:
         specifier: ^8.0.0
         version: 8.0.0
-      morphdom:
-        specifier: ^2.7.8
-        version: 2.7.8
     devDependencies:
       '@cypress/vite-dev-server':
         specifier: ^7.3.4

@@ -83,9 +83,7 @@ export interface AdaptiveConfig {
    */
   recoveryIntervalMs?: number;
   /**
-   * Floor the effective limit never drops below. Values below 1 are raised to
-   * 1: a rate of zero reads as "no limit" to the underlying window, which would
-   * turn a back-off into no pacing at all.
+   * Floor the effective limit never drops below. Values below 1 are raised to 1.
    * @default 1
    */
   minRequestsPerSecond?: number;
@@ -360,10 +358,8 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
 
     if (cacheAware && hitShare !== undefined && bucket.cacheSamples.length >= CACHE_SAMPLE_WINDOW) {
       const missShare = 1 - hitShare;
-      // Never below the configured limit: the headroom is what cache hits add,
-      // and a caller misconfiguring the cached rate must not end up paced
-      // slower than the origin quota it asked for, or — at zero — not paced at
-      // all.
+      // The headroom is what cache hits add, so a misconfigured cached rate
+      // must not pace the bucket below the origin quota it asked for.
       const headroom = clampRequestsPerSecond(
         Math.min(cacheAware.cachedRequestsPerSecond, bucket.configuredLimit * MAX_CEILING_MULTIPLE),
         bucket.configuredLimit,
@@ -411,7 +407,13 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   };
 
   const observeCacheStatus = (bucket: Bucket, response: Response, now: number) => {
-    const hit = cacheAware?.detectCacheHit(response);
+    let hit: boolean | undefined;
+    try {
+      hit = cacheAware?.detectCacheHit(response);
+    } catch {
+      // A detector that throws must not also cost the response its back-off.
+      return;
+    }
     if (hit === undefined) {
       return;
     }
@@ -545,9 +547,8 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     acquire: (context) => {
       const bucket = getBucket(context);
       if (cacheAware) {
-        // A bucket admits before it can be told anything, so a measurement that
-        // has gone stale has to be dropped on the way in rather than on the
-        // next response — by then the whole raised rate is already on the wire.
+        // A bucket admits before it can be told anything, so staleness has to
+        // be checked on the way in rather than on the next response.
         forgetIdleCacheWindow(bucket, Date.now());
         clampToCeiling(bucket);
       }

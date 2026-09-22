@@ -103,4 +103,5 @@ export type {
   DefaultRateLimiterOptions,
   RateLimitContext,
   RateLimiter,
+  RateLimitStatus,
 } from "./utils/limiter";

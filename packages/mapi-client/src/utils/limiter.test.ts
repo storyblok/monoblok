@@ -180,6 +180,24 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(1);
   });
 
+  it("should keep backing off when the cache detector throws", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      cacheAware: {
+        detectCacheHit: () => {
+          throw new Error("unreadable header");
+        },
+        cachedRequestsPerSecond: 1000,
+      },
+    });
+    const ctx = context({ limit: 8 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(4);
+  });
+
   it("should keep backing off when the quota parser throws", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({

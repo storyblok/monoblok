@@ -61,6 +61,40 @@ bridge.on(["input", "change", "published"], (event) => {
 });
 ```
 
+### Live preview handler
+
+For framework integrations or custom renderers, use `createLivePreviewHandler` to provide the
+content update strategy while the package handles debouncing, cancellation, and DOM updates.
+
+```ts
+import { createLivePreviewHandler } from "@storyblok/live-preview";
+
+const handler = createLivePreviewHandler({
+  currentRoot: () => document.body,
+  update: async ({ story, signal }) => {
+    const response = await fetch("/preview", {
+      method: "POST",
+      body: JSON.stringify({ story }),
+      signal,
+    });
+    return new DOMParser().parseFromString(await response.text(), "text/html").body;
+  },
+});
+
+storyblokInstance.on(["published", "change", "input"], handler.handle);
+```
+
+For lower-level control, `morphStoryblokDom` only handles DOM transformation. It does not fetch
+content or listen to Preview Bridge events.
+
+```ts
+import { morphStoryblokDom } from "@storyblok/live-preview";
+
+morphStoryblokDom(document.body, nextBody, {
+  focusedElement: document.querySelector('[data-blok-focused="true"]'),
+});
+```
+
 ## Documentation
 
 This package is intentionally minimal. More helpers and examples will be added over time as usage

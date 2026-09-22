@@ -848,6 +848,9 @@ importers:
       '@storyblok/preview-bridge':
         specifier: ^2.3.0
         version: 2.3.0
+      morphdom:
+        specifier: ^2.7.8
+        version: 2.7.8
     devDependencies:
       '@storyblok/lint-config':
         specifier: workspace:*

@@ -10,7 +10,10 @@ import { describe, expect, it } from "vitest";
 
 import { applyPatches, diffBlock, indexBlocks, translationKeysFor } from "../src/patch";
 import { runMigrationOnStory } from "../src/runner";
+import { defineMigration } from "../src/define-migration";
+import { alterField } from "../src/ops";
 import { renameField } from "../migrations";
+import type { SpikeSchema } from "../fixtures/schema";
 import editorI18nAfter from "../fixtures/editor-i18n-after.json" with { type: "json" };
 import editorI18nBefore from "../fixtures/editor-i18n-before.json" with { type: "json" };
 
@@ -93,5 +96,45 @@ describe("renameTo carries the whole field family", () => {
 
     expect(result.conflicts).toEqual([]);
     expect(rolledBack).toEqual(original);
+  });
+});
+
+describe("alterField over a translation family", () => {
+  it("should run the callback once per language, base key included", () => {
+    const seen: (string | undefined)[] = [];
+    const migration = defineMigration<SpikeSchema>([
+      alterField({ block: "spike_article", field: "author" }, (value, context) => {
+        seen.push(context.language);
+        return value;
+      }),
+    ]);
+
+    runMigrationOnStory(migration, structuredClone(editorI18nAfter) as Record<string, unknown>);
+
+    // `undefined` is the base key holding the default language. The list comes
+    // from the block's own keys, never from the schema: the language set is
+    // space state and differs between the spaces one migration runs against.
+    //
+    // Twice over, because the idempotency check replays every `alter` on a copy
+    // of the block and compares. That is the design working, but it means an
+    // author's callback is invoked twice per block and must not have side
+    // effects — the docs have to say so.
+    expect(seen).toEqual([undefined, "de", undefined, "de"]);
+  });
+
+  it("should let a callback treat one language differently", () => {
+    const migration = defineMigration<SpikeSchema>([
+      alterField({ block: "spike_article", field: "author" }, (value, { language }) =>
+        language === "de" ? `${value} (DE)` : value,
+      ),
+    ]);
+
+    const run = runMigrationOnStory(
+      migration,
+      structuredClone(editorI18nAfter) as Record<string, unknown>,
+    );
+
+    expect(block(run.content, "article-root").author).toBe("Ada Lovelace");
+    expect(block(run.content, "article-root").author__i18n__de).toBe("Ada auf Deutsch (DE)");
   });
 });

@@ -3,38 +3,102 @@
 **Status: spike. Prototype quality, not a shipped API.** Lives in the schema playground on purpose;
 placement is an open question.
 
-Probes the proposed content-migrations DSL that ties `@storyblok/migrations` to `@storyblok/schema`:
+Probes the proposed content-migrations DSL that ties `@storyblok/migrations` to `@storyblok/schema`.
+A migration is a list of ops — plain objects built by imported factories — not a script and not a
+chain:
 
 ```ts
-import type { Before } from "./0001-rename-byline.before";
-import type { Schema as After } from "../schema";
+import type { Schema } from "../schema";
 
-export default defineMigration<Before, After>({
-  up: (m) => m.field("article.author").renameTo("byline"),
-});
+export default defineMigration<Schema>([
+  renameField({ block: "article", field: "author", to: "byline" }),
+]);
 ```
 
-## Two schemas, not one
+## Ops are data
 
-`Before` types the paths the migration reads; `After` types every name and value it writes. One
-schema cannot do both: with only the pre-migration schema, `renameTo("byline")` names a field that
-does not exist yet; with only the post-migration schema, `field("article.author")` names one that no
-longer does. Either authoring order was a compile error.
+`renameField({…})` returns `{ kind: "renameField", block, field, to }`. Nothing runs at module load,
+which is what buys three things at once: `--dry-run` prints the plan without a network call, a key
+op inverts from the op alone (`src/derive-inverse.ts`), and anyone can add an op by writing a
+function that returns one. Ops compose because they are values —
+`BLOCKS.map((block) => removeField({ block, field: "gtm_id" }))` is a migration.
+
+The spike's first question is whether the typing survives the move off the builder. A factory is
+called in `defineMigration`'s argument list, where the schema appears in no argument, so every type
+parameter has to reach it through the contextual return type. It does:
+`test/define-migration.test-d.ts` pins a typo in a field name, a field borrowed from another block,
+an unknown block, and a rename target the post-migration schema does not declare, all as compile
+errors from a bare `defineMigration<After, Before>([…])`. The cost is a phantom property on every op
+type — the type parameters must occur in the return type for the channel to exist at all.
+
+## Two schemas, not one — and `After` first
+
+`Before` types the names the migration reads; `After` types every name and value it writes. One
+schema cannot do both: with only the pre-migration schema, `to: "byline"` names a field that does
+not exist yet; with only the post-migration schema, `field: "author"` names one that no longer does.
+
+`After` comes first because one type parameter has to mean the schema people actually have, so
+`TBefore` defaults to `TAfter` and the single-parameter shorthand is the same signature with the
+default filled in — no overload, nothing to wreck. Under that shorthand reads widen to
+`… | (string & {})`: a surviving name autocompletes, one the schema no longer has still compiles.
+Writes stay exact either way. The measured cost is pinned as a test: under one schema a typo in a
+_source_ name compiles, and `validateMigration` is what catches it, at run time, against the schema
+the CLI pulled.
 
 `Before` comes from a generated snapshot committed next to the migration and frozen once shipped
 (`scripts/generate-before-snapshot.mjs`, run by `schema push` in the real design). It is scoped to
 the blocks the migration touches plus everything reachable from them through a
 `component_whitelist`. For the rename above, that is two blocks and 35 lines.
 
-`TAfter` defaults to `TBefore`, so the single-schema shorthand `defineMigration<Schema>` is the same
-signature with the default filled in rather than an overload. Nothing to wreck.
+## The `under` rule, and chains
+
+`under` filters a selection by ancestry, matched anywhere on the ancestor chain rather than on the
+direct parent — so wrapping content one level deeper does not break the migration. It takes one
+block name, or an outermost-first chain in which each name must appear above the next, gaps allowed:
+
+```ts
+alterField({ block: "meta", field: "og_title", under: "card" }, fn);
+alterField({ block: "meta", field: "og_title", under: ["section", "card"] }, fn);
+```
+
+It appears only in the signatures of the value ops. A key op moves the component schema, which is
+global, so migrating a subset would leave every other instance holding a key no schema describes —
+passing `under` to `renameField`, `moveField`, `removeField` or `coerceField` is an excess-property
+error, and `validateMigration` repeats the check for a migration that never went through the type
+system. This is the one place the op list is weaker than the builder, where `.under()` returned a
+handle that structurally had no key ops: a better error message, not a different guarantee.
+
+## Three sources of an inverse
+
+1. **Recorded patches** (`src/patch.ts`, `src/runner.ts`) — the run has both trees, so it diffs each
+   touched block and stores the inverse. Only these know what the migration actually wrote, so only
+   they can tell an editor has since changed the field and skip that block.
+2. **Derived inverse** (`src/derive-inverse.ts`) — a pure function of the op list. `renameField` and
+   `moveField` invert to their mirror; a coercion inverts only when the author stated `from`.
+   `removeField` cannot (the values are gone), and neither `alter` can (the output depends on the
+   input). This tier exists only because `up` is data, and it is the one that covers "CI applied it,
+   you want it gone locally".
+3. **Authored `down`** — the object call shape, read in the other direction, so its schema
+   parameters swap. The compiler enforces that: a `down` reading a field the migration renamed away
+   is an error.
+
+Tiers 2 and 3 are blind — they cannot see a concurrent edit — so patches win whenever they exist.
+
+## Idempotency
+
+Every `alter` runs twice per block and the two results must agree; a disagreement is reported as
+`nonIdempotent` and the runner refuses the write. Key ops need no check: a rename is a no-op on the
+second pass by construction. The measured cost, pinned in `test/editor-i18n.test.ts`: an author's
+callback is invoked twice per block, so it must be free of side effects.
 
 ## Layout
 
 | Path                                   | What it is                                                              |
 | -------------------------------------- | ----------------------------------------------------------------------- |
 | `src/types.ts`                         | Path/name unions derived from a `Schema<typeof schema>`                 |
-| `src/define-migration.ts`              | The builder under test; compiles `up` into declarative ops              |
+| `src/define-migration.ts`              | The two call shapes; carries the op list, `title` and `down`            |
+| `src/ops.ts`                           | The op factories and the type rules they enforce                        |
+| `src/derive-inverse.ts`                | Rollback tier 2: the inverse computed from the op list alone            |
 | `src/patch.ts`                         | `_uid`-addressed per-block patches; diff, inverse, conflict-aware apply |
 | `src/runner.ts`                        | Applies a compiled migration to one story, emits patch + inverse        |
 | `src/validate-migration.ts`            | Rejects ops the local schema does not define                            |
@@ -44,8 +108,8 @@ signature with the default filled in rather than an overload. Nothing to wreck.
 | `scenarios/has-spike-dsl-content/`     | Seed fixtures for the same content, for a real space                    |
 | `scripts/generate-before-snapshot.mjs` | Emits the frozen `Before` snapshot from a space                         |
 | `scripts/run-against-space.ts`         | The end-to-end probe against a real space                               |
-| `test/*.test-d.ts`                     | Type-level assertions (24)                                              |
-| `test/runner.test.ts`                  | Behaviour, incl. the surgical-rollback claim (35)                       |
+| `test/*.test-d.ts`                     | Type-level assertions (33)                                              |
+| `test/runner.test.ts`                  | Behaviour, incl. the surgical-rollback claim (48)                       |
 | `test/validate-story.test.ts`          | Post-condition validation, against `After` (7)                          |
 | `test/today.test.ts`                   | The CLI's current runner on the same fixtures, for comparison (5)       |
 
@@ -53,8 +117,8 @@ signature with the default filled in rather than an overload. Nothing to wreck.
 
 ```bash
 cd packages/schema/playground/vanilla/migrations-dsl-spike
-../../../node_modules/.bin/vitest run --typecheck.enabled=false   # 47 behaviour tests
-../../../node_modules/.bin/vitest run --typecheck.only            # 24 type tests
+../../../node_modules/.bin/vitest run --typecheck.enabled=false   # 72 behaviour tests
+../../../node_modules/.bin/vitest run --typecheck.only            # 33 type tests
 ../../../node_modules/.bin/tsc --noEmit -p tsconfig.json
 ```
 

@@ -1,161 +1,72 @@
 /**
  * SPIKE — prototype quality. Not a shipped API.
  *
- * `defineMigration<Before, After>({ up })` under test.
+ * `defineMigration<After, Before>` under test: a migration is a list of ops —
+ * plain objects built by imported factories — not a script and not a chain.
  *
- * The probes here pass `{ name, up }`; the proposed API differs on both.
- * `name` exists only because the probes share one module and so have no
- * filename to be keyed by. The shipped form takes the builder callback directly
- * for the common forward-only case, and an object `{ title, up, down }` when the
- * author wants a hand-written inverse — recorded patches still take precedence
- * over `down`, since only they can tell that an editor changed the field since.
+ * Parameter order is `After` first because one type parameter has to mean the
+ * schema people actually have. Under the one-parameter shorthand, reads widen
+ * to `… | (string & {})`: a surviving name autocompletes, one the schema no
+ * longer has still compiles. Naming `Before` — generated as a snapshot next to
+ * the migration — tightens reads back to an error.
  *
- * Parameter order is also inverted from what is prototyped here. `After` comes
- * first (`defineMigration<After, Before = After>`), because one type parameter
- * has to mean the schema people actually have; under one parameter source paths
- * widen to `FieldPathOf<After> | (string & {})` rather than erroring.
+ * Two call shapes. The bare array is forward-only and is the common case; the
+ * object exists so a title and a hand-written inverse have somewhere to live,
+ * which is also what makes `up` an honest name. `down` is the last of three
+ * inverse sources, not an override: recorded patches still win, since only they
+ * can tell that an editor changed the field since.
  *
- * Two schema parameters, because one cannot describe both ends of a migration:
- * `Before` types the paths the migration reads, `After` types every name and
- * value it writes. `TAfter` defaults to `TBefore`, so the single-parameter
- * shorthand `defineMigration<Schema>` is the same signature with the default
- * filled in — no overload, and therefore no overload-resolution damage to the
- * two-parameter form.
- *
- * The builder records declarative operations; the runner (see `runner.ts`)
- * walks a story's content, applies them per block instance, and diffs each
- * touched instance to produce a patch and its inverse.
+ * The probes here pass `name` because they share one module and so have no
+ * filename to be keyed by; shipped migrations take their id from the filename.
  */
-import type {
-  BlockNameOf,
-  ContentOf,
-  FieldNameIn,
-  FieldPathOf,
-  SchemaShape,
-  TargetFieldName,
-} from "./types";
+import type { MigrationOp, MigrationOpOf } from "./ops";
+import type { SchemaShape } from "./types";
 
-export type MigrationOp =
-  | { type: "rename"; block: string; from: string; to: string; under?: string }
-  | { type: "remove"; block: string; field: string; under?: string }
-  | {
-      type: "coerce";
-      block: string;
-      field: string;
-      to: "string" | "number" | "boolean";
-      under?: string;
-    }
-  | { type: "move"; block: string; from: string; to: string; under?: string }
-  /** Explicit reorder of a `bloks` array, so ordering never degrades to a whole-array replace. */
-  | {
-      type: "reorder";
-      block: string;
-      field: string;
-      compare: (a: AnyChild, b: AnyChild) => number;
-      under?: string;
-    }
-  | { type: "alter"; block: string; fn: (block: any) => any; under?: string };
+export type { AlterFieldContext, AnyChild, MigrationOp } from "./ops";
 
-/** A child block as the reorder comparator sees it. */
-export type AnyChild = Record<string, unknown> & { _uid: string; component: string };
-
-export interface FieldHandle<
-  TBefore extends SchemaShape,
+/** An op list as authored. The element type is what the factories infer against. */
+export type MigrationOps<
   TAfter extends SchemaShape,
-  TBlock extends string,
-> {
-  /** Target name comes from the *post*-migration schema. */
-  renameTo: (name: TargetFieldName<TAfter, TBlock>) => void;
-  remove: () => void;
-  asString: () => void;
-  asNumber: () => void;
-  asBoolean: () => void;
-  /** Move this field's value onto another field of the same block. */
-  moveTo: (name: TargetFieldName<TAfter, TBlock>) => void;
-  /** Reorder a `bloks` array in place. Emits an order op, not a whole-array set. */
-  reorder: (compare: (a: AnyChild, b: AnyChild) => number) => void;
-}
-
-export interface BlockHandle<
   TBefore extends SchemaShape,
-  TAfter extends SchemaShape,
-  TName extends BlockNameOf<TBefore>,
-> {
-  /**
-   * Reads the pre-migration shape, returns the post-migration shape. A mutating
-   * callback that returns nothing is still allowed for the common case where
-   * the two shapes agree.
-   */
-  alter: (
-    fn: (
-      block: ContentOf<TBefore, TName>,
-    ) => void | (TName extends BlockNameOf<TAfter> ? ContentOf<TAfter, TName> : never),
-  ) => void;
-  /** Field ops scoped to the same location as this handle. */
-  field: (name: FieldNameIn<TBefore, TName>) => FieldHandle<TBefore, TAfter, TName>;
-  /** Restrict every op recorded on this handle to instances nested under `parent`. */
-  under: (parent: BlockNameOf<TBefore>) => BlockHandle<TBefore, TAfter, TName>;
-}
+> = readonly MigrationOpOf<TAfter, TBefore>[];
 
-export interface MigrationBuilder<TBefore extends SchemaShape, TAfter extends SchemaShape> {
-  field: <TPath extends FieldPathOf<TBefore>>(
-    path: TPath,
-  ) => FieldHandle<TBefore, TAfter, TPath extends `${infer B}.${string}` ? B : never>;
-  block: <TName extends BlockNameOf<TBefore>>(name: TName) => BlockHandle<TBefore, TAfter, TName>;
-}
-
-export interface MigrationDefinition<TBefore extends SchemaShape, TAfter extends SchemaShape> {
-  /**
-   * Spike only: the probes share one module, so there is no filename to take an
-   * id from. Shipped migrations are one per file and keyed by that filename.
-   */
+export interface MigrationDefinition<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  /** CLI output only; identity stays with the filename. */
+  title?: string;
+  /** Spike only — see the module comment. */
   name?: string;
-  up: (m: MigrationBuilder<TBefore, TAfter>) => void;
+  up: MigrationOps<TAfter, TBefore>;
+  /**
+   * A hand-written inverse, for the ops no inverse can be derived from. It is a
+   * migration in its own right — read in the other direction, so its schema
+   * parameters are swapped — and gets the same idempotency check, since it is
+   * the half nobody tests.
+   */
+  down?: MigrationOps<TBefore, TAfter>;
 }
 
 export interface CompiledMigration {
+  title?: string;
   name?: string;
   ops: MigrationOp[];
+  down?: MigrationOp[];
   /** Block names any op targets — used to skip stories that contain none of them. */
   targets: string[];
 }
 
-export function defineMigration<TBefore extends SchemaShape, TAfter extends SchemaShape = TBefore>(
-  definition: MigrationDefinition<TBefore, TAfter>,
+export function defineMigration<TAfter extends SchemaShape, TBefore extends SchemaShape = TAfter>(
+  definition: MigrationOps<TAfter, TBefore> | MigrationDefinition<TAfter, TBefore>,
 ): CompiledMigration {
-  const ops: MigrationOp[] = [];
-
-  const fieldHandle = (block: string, field: string, under?: string) => ({
-    renameTo: (name: string) =>
-      void ops.push({ type: "rename", block, from: field, to: name, under }),
-    remove: () => void ops.push({ type: "remove", block, field, under }),
-    asString: () => void ops.push({ type: "coerce", block, field, to: "string" as const, under }),
-    asNumber: () => void ops.push({ type: "coerce", block, field, to: "number" as const, under }),
-    asBoolean: () => void ops.push({ type: "coerce", block, field, to: "boolean" as const, under }),
-    moveTo: (name: string) => void ops.push({ type: "move", block, from: field, to: name, under }),
-    reorder: (compare: (a: AnyChild, b: AnyChild) => number) =>
-      void ops.push({ type: "reorder", block, field, compare, under }),
-  });
-
-  const blockHandle = (name: string, under?: string): Record<string, unknown> => ({
-    alter: (fn: (block: any) => any) => void ops.push({ type: "alter", block: name, fn, under }),
-    field: (field: string) => fieldHandle(name, field, under),
-    under: (parent: string) => blockHandle(name, parent),
-  });
-
-  const builder = {
-    field(path: string) {
-      const dot = path.indexOf(".");
-      return fieldHandle(path.slice(0, dot), path.slice(dot + 1));
-    },
-    block: (name: string) => blockHandle(name),
-  } as unknown as MigrationBuilder<TBefore, TAfter>;
-
-  definition.up(builder);
+  const spec = Array.isArray(definition)
+    ? { up: definition as MigrationOps<TAfter, TBefore> }
+    : (definition as MigrationDefinition<TAfter, TBefore>);
+  const ops = [...spec.up] as MigrationOp[];
 
   return {
-    name: definition.name,
+    title: spec.title,
+    name: spec.name,
     ops,
+    down: spec.down ? ([...spec.down] as MigrationOp[]) : undefined,
     targets: [...new Set(ops.map((op) => op.block))],
   };
 }

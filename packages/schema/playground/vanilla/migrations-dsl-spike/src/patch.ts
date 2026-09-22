@@ -55,6 +55,16 @@ export function translationKeysFor(block: AnyBlock, field: string): string[] {
   return Object.keys(block).filter((key) => key.startsWith(prefix));
 }
 
+/**
+ * The language a `<field>__i18n__<lang>` key carries, or `undefined` for a base
+ * key. The stored code writes `-` as `_`, so `author__i18n__en_US` is `en-US`.
+ */
+export function languageOfKey(key: string): string | undefined {
+  const at = key.indexOf(TRANSLATION_SEPARATOR);
+  if (at === -1) return undefined;
+  return key.slice(at + TRANSLATION_SEPARATOR.length).replace(/_/g, "-");
+}
+
 /** The base field name a key translates, or the key itself when it is not one. */
 export function baseFieldOf(key: string): string {
   const at = key.indexOf(TRANSLATION_SEPARATOR);

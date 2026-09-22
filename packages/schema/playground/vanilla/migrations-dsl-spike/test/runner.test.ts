@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { applyPatches, indexBlocks } from "../src/patch";
 import { runMigrationOnStory } from "../src/runner";
 import { defineMigration } from "../src/define-migration";
+import { alterBlock, alterField } from "../src/ops";
+import { deriveInverse } from "../src/derive-inverse";
 import { validateMigration } from "../src/validate-migration";
 import { validateStory } from "@storyblok/schema";
 import {
@@ -14,12 +16,15 @@ import {
   alterStructure,
   coerceFields,
   moveValue,
+  nestedUnder,
+  nestedUnderReversed,
   noMatches,
   removeField,
   renameField,
   renameNestedField,
   reorderItems,
-  scopedRename,
+  scopedAlter,
+  titledRename,
   twoBlocks,
 } from "../migrations";
 import { spikeSchema, type SpikeSchema } from "../fixtures/schema";
@@ -270,7 +275,7 @@ describe("schema-aware validation", () => {
     const bogus = {
       name: "x",
       targets: ["spike_card"],
-      ops: [{ type: "rename", block: "spike_card", from: "nope", to: "yep" }],
+      ops: [{ kind: "renameField", block: "spike_card", field: "nope", to: "yep" }],
     } as never;
     const issues = validateMigration(bogus, schemaLike);
     expect(issues).toHaveLength(1);
@@ -279,7 +284,7 @@ describe("schema-aware validation", () => {
 
   it("should reject a rename onto a field that already exists", () => {
     const issues = validateMigration(moveValue, schemaLike);
-    // `moveTo` is deliberately allowed onto an existing field; `renameTo` is not.
+    // `moveField` is deliberately allowed onto an existing field; `renameField` is not.
     expect(issues).toEqual([]);
   });
 
@@ -312,9 +317,9 @@ describe("schema-aware validation", () => {
   });
 });
 
-describe("location scoping with under()", () => {
+describe("location scoping with under", () => {
   it("should touch only the instances nested under the named parent", () => {
-    const run = runMigrationOnStory(scopedRename, pageStoryContent());
+    const run = runMigrationOnStory(scopedAlter, pageStoryContent());
 
     // Inside a spike_card.
     expect(block(run.content, "meta-a1").og_title).toBe("card:A1");
@@ -325,7 +330,7 @@ describe("location scoping with under()", () => {
   });
 
   it("should count only the scoped instances as matched", () => {
-    expect(runMigrationOnStory(scopedRename, pageStoryContent()).matched).toBe(2);
+    expect(runMigrationOnStory(scopedAlter, pageStoryContent()).matched).toBe(2);
   });
 });
 
@@ -435,13 +440,12 @@ describe("conflict granularity", () => {
 
 describe("block identity", () => {
   it("should report a duplicate _uid an alter introduced", () => {
-    const duplicating = defineMigration<SpikeSchema>({
-      up: (m) =>
-        m.block("spike_section").alter((block) => {
-          const first = block.items?.[0];
-          if (first) block.items = [...(block.items ?? []), structuredClone(first)];
-        }),
-    });
+    const duplicating = defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_section" }, (block) => {
+        const first = block.items?.[0];
+        if (first) block.items = [...(block.items ?? []), structuredClone(first)];
+      }),
+    ]);
 
     const run = runMigrationOnStory(duplicating, pageStoryContent());
 
@@ -451,13 +455,12 @@ describe("block identity", () => {
   });
 
   it("should report a block an alter created without a _uid", () => {
-    const uidless = defineMigration<SpikeSchema>({
-      up: (m) =>
-        m.block("spike_section").alter((block) => {
-          // @ts-expect-error a block literal without _uid is exactly what this guards against
-          block.meta = [{ component: "spike_meta", og_title: "no uid" }];
-        }),
-    });
+    const uidless = defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_section" }, (block) => {
+        // @ts-expect-error a block literal without _uid is exactly what this guards against
+        block.meta = [{ component: "spike_meta", og_title: "no uid" }];
+      }),
+    ]);
 
     expect(runMigrationOnStory(uidless, pageStoryContent()).unstableUids.missing).toBe(2);
   });
@@ -465,5 +468,126 @@ describe("block identity", () => {
   it("should report nothing for a migration that keeps identity intact", () => {
     const run = runMigrationOnStory(renameNestedField, pageStoryContent());
     expect(run.unstableUids).toEqual({ duplicate: [], missing: 0 });
+  });
+});
+
+describe("ancestor chains", () => {
+  it("should require every name in the chain, outermost first", () => {
+    const run = runMigrationOnStory(nestedUnder, pageStoryContent());
+
+    // spike_meta inside a spike_card inside a spike_section.
+    expect(block(run.content, "meta-a1").og_title).toBe("deep:A1");
+    expect(block(run.content, "meta-b1").og_title).toBe("deep:B1");
+    // Directly on a section, and on the page root: no spike_card above them.
+    expect(block(run.content, "meta-a").og_title).toBe("A");
+    expect(block(run.content, "meta-top").og_title).toBe("Top");
+  });
+
+  it("should match nothing when the chain names the ancestors in the wrong order", () => {
+    const run = runMigrationOnStory(nestedUnderReversed, pageStoryContent());
+    expect(run.matched).toBe(0);
+    expect(run.changed).toBe(false);
+  });
+
+  it("should tolerate a gap between the names in the chain", () => {
+    // spike_page > spike_section > spike_card > spike_meta: naming only the
+    // outermost and innermost still matches, so wrapping content one level
+    // deeper does not break the migration.
+    const gapped = defineMigration<SpikeSchema>([
+      alterField(
+        { block: "spike_meta", field: "og_title", under: ["spike_page", "spike_card"] },
+        (title) =>
+          typeof title === "string" && !title.startsWith("gap:") ? `gap:${title}` : title,
+      ),
+    ]);
+    const run = runMigrationOnStory(gapped, pageStoryContent());
+    expect(block(run.content, "meta-a1").og_title).toBe("gap:A1");
+    expect(block(run.content, "meta-top").og_title).toBe("Top");
+  });
+});
+
+describe("idempotency check", () => {
+  it("should report an alter that does not agree with itself on a second pass", () => {
+    const run = runMigrationOnStory(alterStructure, pageStoryContent());
+    expect(run.nonIdempotent.map((entry) => entry.uid).sort()).toEqual(["section-a", "section-b"]);
+  });
+
+  it("should report nothing for a guarded alter", () => {
+    expect(runMigrationOnStory(scopedAlter, pageStoryContent()).nonIdempotent).toEqual([]);
+    expect(runMigrationOnStory(alterString, pageStoryContent()).nonIdempotent).toEqual([]);
+  });
+
+  it("should not need the check for a key op, which is a no-op on a rerun by construction", () => {
+    expect(runMigrationOnStory(renameNestedField, pageStoryContent()).nonIdempotent).toEqual([]);
+  });
+});
+
+describe("derived inverse — rollback tier 2", () => {
+  it("should invert a rename from the op alone, with no run and no recorded state", () => {
+    const derived = deriveInverse(renameNestedField.ops);
+
+    expect(derived.derivable).toBe(true);
+    expect(derived.ops).toEqual([
+      { kind: "renameField", block: "spike_meta", field: "written_by", to: "author" },
+    ]);
+
+    // Replaying it on a machine that never applied the migration puts the
+    // content back — which is the case recorded patches cannot cover.
+    const migrated = runMigrationOnStory(renameNestedField, pageStoryContent()).content;
+    const rolledBack = runMigrationOnStory(
+      { ...renameNestedField, ops: derived.ops, targets: ["spike_meta"] },
+      migrated,
+    );
+    expect(rolledBack.content).toEqual(pageStoryContent());
+  });
+
+  it("should invert a coercion only when the author stated the original type", () => {
+    const withFrom = deriveInverse(coerceFields.ops);
+    expect(withFrom.derivable).toBe(true);
+    expect(withFrom.lossy).toEqual([0, 1]);
+
+    const withoutFrom = deriveInverse([
+      { kind: "coerceField", block: "spike_card", field: "featured", to: "boolean" },
+    ]);
+    expect(withoutFrom.derivable).toBe(false);
+    expect(withoutFrom.blocked[0].reason).toContain("`from`");
+  });
+
+  it("should refuse a removal, because the values are gone", () => {
+    const derived = deriveInverse(removeField.ops);
+    expect(derived.derivable).toBe(false);
+    expect(derived.blocked).toEqual([
+      { index: 0, kind: "removeField", reason: "the values are gone" },
+    ]);
+  });
+
+  it("should refuse an alter, because the output depends on the input", () => {
+    const derived = deriveInverse(alterString.ops);
+    expect(derived.derivable).toBe(false);
+    expect(derived.blocked[0].kind).toBe("alterField");
+  });
+
+  it("should reverse the op order, so a partially derivable migration reports which half survives", () => {
+    const derived = deriveInverse(twoBlocks.ops);
+    expect(derived.derivable).toBe(false);
+    expect(derived.ops).toEqual([
+      { kind: "coerceField", block: "spike_card", field: "title", to: "string", from: "string" },
+      { kind: "renameField", block: "spike_article", field: "summary", to: "excerpt" },
+    ]);
+    expect(derived.blocked.map((entry) => entry.kind)).toEqual(["alterBlock"]);
+  });
+});
+
+describe("the object call shape", () => {
+  it("should carry a title for CLI output and a hand-written down", () => {
+    expect(titledRename.title).toBe("Rename spike_meta.author to written_by");
+    expect(titledRename.down).toEqual([
+      { kind: "renameField", block: "spike_meta", field: "written_by", to: "author" },
+    ]);
+  });
+
+  it("should leave a bare-array migration without either", () => {
+    expect(alterString.title).toBeUndefined();
+    expect(alterString.down).toBeUndefined();
   });
 });

@@ -115,6 +115,7 @@ const createMockSpace = (overrides: Partial<SpaceDetail> = {}): SpaceDetail => (
   collaborators: [],
   region: "eu",
   feature_limit_exceeded_flags: {},
+  user_accessible_languages: null,
   ...overrides,
 });
 

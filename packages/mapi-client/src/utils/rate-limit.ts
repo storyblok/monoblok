@@ -64,14 +64,31 @@ function getRequestUrl(input: RequestInfo | URL): string | undefined {
   return typeof input === "object" && input !== null && "url" in input ? input.url : undefined;
 }
 
-function pathOf(url: string | undefined): string {
+/** Query parameters that carry credentials and must not reach a limiter. */
+const CREDENTIAL_PARAMS = new Set(["token"]);
+
+/**
+ * Splits an outgoing request URL into the path and query a limiter is given.
+ *
+ * A URL that will not parse must still not hand a token to a custom limiter,
+ * so the query is dropped rather than passed through unread.
+ */
+function requestParts(url: string | undefined): { path: string; query: Record<string, unknown> } {
   if (url === undefined) {
-    return "";
+    return { path: "", query: {} };
   }
+
   try {
-    return new URL(url).pathname;
+    const parsed = new URL(url);
+    const query: Record<string, unknown> = {};
+    for (const [key, value] of parsed.searchParams) {
+      if (!CREDENTIAL_PARAMS.has(key)) {
+        query[key] = value;
+      }
+    }
+    return { path: parsed.pathname, query };
   } catch {
-    return url;
+    return { path: url, query: {} };
   }
 }
 
@@ -107,8 +124,7 @@ function createManager(limiter: RateLimiter, limit: number): ThrottleManager {
       // retries inside one call: with the default `retry.limit` of 12, gating
       // the call alone would let one admitted request put 13 on the wire.
       const context: RateLimitContext = {
-        path: pathOf(getRequestUrl(input)),
-        query: {},
+        ...requestParts(getRequestUrl(input)),
         bucket: BUCKET,
         limit,
       };

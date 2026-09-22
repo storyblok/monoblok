@@ -135,6 +135,26 @@ describe("createThrottleManager({ limiter })", () => {
     });
   });
 
+  it("should give the limiter the query the request is sending", async () => {
+    const { limiter, acquired } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+    const send = manager.wrapFetch(async () => new Response(null));
+
+    await send(`${URL_UNDER_TEST}?page=2&per_page=100`);
+
+    expect(acquired[0]?.query).toEqual({ page: "2", per_page: "100" });
+  });
+
+  it("should never hand a credential parameter to the limiter", async () => {
+    const { limiter, acquired } = createRecordingLimiter();
+    const manager = createThrottleManager({ limiter });
+    const send = manager.wrapFetch(async () => new Response(null));
+
+    await send(`${URL_UNDER_TEST}?token=secret&per_page=100`);
+
+    expect(acquired[0]?.query).toEqual({ per_page: "100" });
+  });
+
   it("should release the slot even when the request fails", async () => {
     const { limiter, released } = createRecordingLimiter();
     const manager = createThrottleManager({ limiter });

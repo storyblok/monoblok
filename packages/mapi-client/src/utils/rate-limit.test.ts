@@ -145,7 +145,7 @@ describe("createThrottleManager({ limiter })", () => {
     expect(acquired[0]?.query).toEqual({ page: "2", per_page: "100" });
   });
 
-  it("should never hand a credential parameter to the limiter", async () => {
+  it("should keep the access token out of the limiter's query", async () => {
     const { limiter, acquired } = createRecordingLimiter();
     const manager = createThrottleManager({ limiter });
     const send = manager.wrapFetch(async () => new Response(null));

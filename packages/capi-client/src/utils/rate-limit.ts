@@ -81,8 +81,14 @@ export interface ThrottleManager {
    */
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
   /**
-   * Wraps `fetch` so the limiter admits, observes and releases every HTTP
-   * request — retries included.
+   * Waits for the limiter to admit one request. Register it as a hook that runs
+   * before the HTTP layer starts its timeout, so a queue longer than the
+   * timeout delays requests instead of failing them.
+   */
+  beforeRequest: (request: Request) => Promise<void>;
+  /**
+   * Wraps `fetch` so the limiter observes and releases every HTTP request —
+   * retries included — and admits the ones `beforeRequest` did not.
    */
   wrapFetch: (fetchFn: typeof globalThis.fetch) => typeof globalThis.fetch;
   /**
@@ -147,6 +153,10 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
     return undefined;
   }
 
+  // Exceeding any of the advertised policies gets the request throttled, so the
+  // strictest one governs. Reading only the first would let the order the
+  // header happens to list them in decide the rate.
+  let strictest: number | undefined;
   for (const [, name, params] of policy.matchAll(POLICY_MEMBER)) {
     if (name!.endsWith(CONCURRENCY_POLICY_SUFFIX)) {
       continue;
@@ -158,12 +168,17 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
       continue;
     }
 
-    // A rate below 1 would floor to zero, which reads as "no limit" to the
-    // window and would turn a ceiling into no pacing at all.
-    return Math.min(Math.max(1, Math.floor(quota / windowSeconds)), MAX_RATE_LIMIT);
+    const rate = quota / windowSeconds;
+    strictest = strictest === undefined ? rate : Math.min(strictest, rate);
   }
 
-  return undefined;
+  if (strictest === undefined) {
+    return undefined;
+  }
+
+  // A rate below 1 would floor to zero, which reads as "no limit" to the
+  // window and would turn a ceiling into no pacing at all.
+  return Math.min(Math.max(1, Math.floor(strictest)), MAX_RATE_LIMIT);
 }
 
 function getRequestUrl(input: RequestInfo | URL): string | undefined {
@@ -203,7 +218,9 @@ function contextFromUrl(
     }
     return toContext(parsed.pathname, query);
   } catch {
-    return toContext(url, {});
+    // A URL that will not parse must still not hand a token to a custom
+    // limiter, so the query is dropped rather than passed through unread.
+    return toContext(url.split("?")[0] ?? url, {});
   }
 }
 
@@ -267,14 +284,31 @@ function createManager(
   limiter: RateLimiter,
   toContext: (path: string, query: Record<string, unknown>) => RateLimitContext,
 ): ThrottleManager {
+  // Each attempt is admitted separately, because the HTTP layer retries inside
+  // one call: gating the call alone would let one admitted request put
+  // `retry.limit + 1` requests on the wire during a 429 storm. The request
+  // carries its context from admission to response so that a limiter pairing a
+  // release to its acquire by identity finds the one it admitted.
+  const admitted = new WeakMap<Request, RateLimitContext>();
+
+  const admit = async (url: string | undefined): Promise<RateLimitContext> => {
+    const context = contextFromUrl(url, toContext);
+    await limiter.acquire(context);
+    return context;
+  };
+
   return {
     execute: (_path, _query, fn) => fn(),
+    beforeRequest: async (request) => {
+      admitted.set(request, await admit(request.url));
+    },
     wrapFetch: (fetchFn) => async (input, init) => {
-      // Admission sits here rather than around the call because the HTTP layer
-      // retries inside one call: gating the call alone would let one admitted
-      // request put `retry.limit + 1` requests on the wire during a 429 storm.
-      const context = contextFromUrl(getRequestUrl(input), toContext);
-      await limiter.acquire(context);
+      // Queueing here would count against the request timeout, so admission
+      // belongs in `beforeRequest`. Waiting for it here regardless keeps a
+      // caller that only wraps `fetch` paced rather than unthrottled.
+      const context =
+        (input instanceof Request ? admitted.get(input) : undefined) ??
+        (await admit(getRequestUrl(input)));
 
       try {
         const response = await fetchFn(input, init);

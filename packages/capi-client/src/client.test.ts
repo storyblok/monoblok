@@ -9,6 +9,25 @@ const storyResponse = () =>
   });
 
 describe("createApiClient rate limiting", () => {
+  it("should not spend the request timeout on time queued behind the rate limit", async () => {
+    const client = createApiClient({
+      accessToken: "token",
+      // Three requests at one per second outlast the timeout while waiting
+      // their turn, though none of them is itself slow.
+      rateLimit: { requestsPerSecond: 1, adaptive: false },
+      timeout: 1000,
+      fetch: async () => storyResponse(),
+    });
+
+    const results = await Promise.allSettled([
+      client.stories.get("a"),
+      client.stories.get("b"),
+      client.stories.get("c"),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled", "fulfilled"]);
+  });
+
   it("should route real requests through a custom limiter", async () => {
     const acquired: RateLimitContext[] = [];
     const released: RateLimitContext[] = [];

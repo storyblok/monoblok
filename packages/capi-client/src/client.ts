@@ -312,6 +312,9 @@ export const createApiClientBase = <
         // catches `HTTPError`.
         throwHttpErrors: true,
         timeout,
+        // Admission waits here, before ky starts the timeout clock: a queue
+        // longer than `timeout` must delay requests, not fail them.
+        hooks: { beforeRequest: [throttleManager.beforeRequest] },
         retry: retryOptions,
         // `globalThis.fetch` is read per call so a fetch swapped in after the
         // client was created still applies.

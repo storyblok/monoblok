@@ -48,8 +48,14 @@ export interface ThrottleManager {
    */
   execute: <T>(fn: () => Promise<T>) => Promise<T>;
   /**
-   * Wraps `fetch` so the limiter admits, observes and releases every HTTP
-   * request — retries included.
+   * Waits for the limiter to admit one request. Register it as a hook that runs
+   * before the HTTP layer starts its timeout, so a queue longer than the
+   * timeout delays requests instead of failing them.
+   */
+  beforeRequest: (request: Request) => Promise<void>;
+  /**
+   * Wraps `fetch` so the limiter observes and releases every HTTP request —
+   * retries included — and admits the ones `beforeRequest` did not.
    */
   wrapFetch: (fetchFn: typeof globalThis.fetch) => typeof globalThis.fetch;
 }
@@ -70,8 +76,8 @@ const CREDENTIAL_PARAMS = new Set(["token"]);
 /**
  * Splits an outgoing request URL into the path and query a limiter is given.
  *
- * A URL that will not parse must still not hand a token to a custom limiter,
- * so the query is dropped rather than passed through unread.
+ * Read off the URL rather than carried alongside the call so that it stays
+ * correct when several requests are in flight at once.
  */
 function requestParts(url: string | undefined): { path: string; query: Record<string, unknown> } {
   if (url === undefined) {
@@ -88,7 +94,9 @@ function requestParts(url: string | undefined): { path: string; query: Record<st
     }
     return { path: parsed.pathname, query };
   } catch {
-    return { path: url, query: {} };
+    // A URL that will not parse must still not hand a token to a custom
+    // limiter, so the query is dropped rather than passed through unread.
+    return { path: url.split("?")[0] ?? url, query: {} };
   }
 }
 
@@ -117,18 +125,31 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
 }
 
 function createManager(limiter: RateLimiter, limit: number): ThrottleManager {
+  // Each attempt is admitted separately, because the HTTP layer retries inside
+  // one call: with the default `retry.limit` of 12, gating the call alone would
+  // let one admitted request put 13 on the wire. The request carries its
+  // context from admission to response so that a limiter pairing a release to
+  // its acquire by identity finds the one it admitted.
+  const admitted = new WeakMap<Request, RateLimitContext>();
+
+  const admit = async (url: string | undefined): Promise<RateLimitContext> => {
+    const context: RateLimitContext = { ...requestParts(url), bucket: BUCKET, limit };
+    await limiter.acquire(context);
+    return context;
+  };
+
   return {
     execute: (fn) => fn(),
+    beforeRequest: async (request) => {
+      admitted.set(request, await admit(request.url));
+    },
     wrapFetch: (fetchFn) => async (input, init) => {
-      // Admission sits here rather than around the call because the HTTP layer
-      // retries inside one call: with the default `retry.limit` of 12, gating
-      // the call alone would let one admitted request put 13 on the wire.
-      const context: RateLimitContext = {
-        ...requestParts(getRequestUrl(input)),
-        bucket: BUCKET,
-        limit,
-      };
-      await limiter.acquire(context);
+      // Queueing here would count against the request timeout, so admission
+      // belongs in `beforeRequest`. Waiting for it here regardless keeps a
+      // caller that only wraps `fetch` paced rather than unthrottled.
+      const context =
+        (input instanceof Request ? admitted.get(input) : undefined) ??
+        (await admit(getRequestUrl(input)));
 
       try {
         const response = await fetchFn(input, init);

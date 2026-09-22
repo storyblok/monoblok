@@ -479,6 +479,31 @@ describe("createManagementApiClient - throwOnError", () => {
 });
 
 describe("createManagementApiClient rate limiting", () => {
+  it("should not spend the request timeout on time queued behind the rate limit", async () => {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/123/stories", () =>
+        HttpResponse.json({ stories: [] }),
+      ),
+    );
+
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      // Three requests at one per second outlast the timeout while waiting
+      // their turn, though none of them is itself slow.
+      rateLimit: { requestsPerSecond: 1, adaptive: false },
+      timeout: 1000,
+    });
+
+    const results = await Promise.allSettled([
+      client.stories.list(),
+      client.stories.list(),
+      client.stories.list(),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled", "fulfilled"]);
+  });
+
   it("should route real requests through a custom limiter", async () => {
     server.use(
       http.get("https://mapi.storyblok.com/v1/spaces/123/stories", () =>

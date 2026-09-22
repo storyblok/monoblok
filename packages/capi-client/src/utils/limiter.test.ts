@@ -165,6 +165,49 @@ describe("createDefaultRateLimiter()", () => {
     expect(await admittedImmediately(limiter, ctx, 20)).toBe(2);
   });
 
+  it.each([
+    { label: "zero", quota: 0 },
+    { label: "not a number", quota: Number.NaN },
+  ])("should hold the floor when the advertised quota is $label", async ({ quota }) => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ parseServerLimit: () => quota });
+    const ctx = context({ limit: 10 });
+
+    await limiter.recordResponse?.(ctx, ok());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(1);
+  });
+
+  it("should keep backing off when the quota parser throws", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      parseServerLimit: () => {
+        throw new Error("unreadable header");
+      },
+    });
+    const ctx = context({ limit: 8 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(4);
+  });
+
+  it("should not admit past the limit when `increaseStep` is not a number", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({
+      adaptive: { increaseStep: Number.NaN, decreaseCooldownMs: 0, recoveryIntervalMs: 0 },
+    });
+    const ctx = context({ limit: 4 });
+
+    await limiter.recordResponse?.(ctx, throttled());
+    await limiter.recordResponse?.(ctx, ok());
+    await settle();
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBeLessThanOrEqual(4);
+  });
+
   it("should keep the advertised quota as the ceiling recovery cannot exceed", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ parseServerLimit: () => 4 });

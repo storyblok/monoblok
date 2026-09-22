@@ -76,7 +76,8 @@ export interface RateLimitConfig {
 
 export interface ThrottleManager {
   /**
-   * @deprecated Admission happens in `wrapFetch`; this only runs `fn`.
+   * @deprecated Admission happens in `beforeRequest`, or in `wrapFetch` for a
+   * caller that only wraps `fetch`; this only runs `fn`.
    * @todo(next-major): Remove this method.
    */
   execute: <T>(path: string, query: Record<string, unknown>, fn: () => Promise<T>) => Promise<T>;
@@ -147,6 +148,14 @@ const POLICY_MEMBER = /"([^"]+)"((?:;[^,]*)*)/g;
  * count, and adopting it as a rate would throttle far below what the API
  * allows.
  */
+/**
+ * Longest window whose quota still describes a rate rather than a budget. A
+ * daily allowance spread evenly would pace far below the rate the same header
+ * advertises for the second, and exhausting an allowance surfaces as the
+ * throttled responses the back-off already answers.
+ */
+const MAX_POLICY_WINDOW_SECONDS = 60;
+
 export function parseRateLimitPolicyHeader(response: Response): number | undefined {
   const policy = response.headers.get("x-ratelimit-policy");
   if (!policy) {
@@ -164,7 +173,7 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
 
     const quota = Number(params!.match(/;q=(\d+)/)?.[1]);
     const windowSeconds = Number(params!.match(/;w=(\d+)/)?.[1]);
-    if (!quota || !windowSeconds) {
+    if (!quota || !windowSeconds || windowSeconds > MAX_POLICY_WINDOW_SECONDS) {
       continue;
     }
 

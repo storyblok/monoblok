@@ -136,6 +136,13 @@ const ceilingOf = (bucket: Bucket): number =>
   Math.min(bucket.configuredLimit, bucket.serverLimit ?? Number.POSITIVE_INFINITY);
 
 /**
+ * Rejects a non-finite tuning value before it reaches `Math.max`, which
+ * propagates `NaN` rather than bounding it.
+ */
+const finiteOr = (value: number | undefined, fallback: number): number =>
+  value !== undefined && Number.isFinite(value) ? value : fallback;
+
+/**
  * Creates the in-memory limiter used unless the caller supplies its own.
  *
  * Each bucket gets a per-second window sized by `context.limit`, shrinking
@@ -154,8 +161,18 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
         ? requestedDecrease
         : ADAPTIVE_DEFAULTS.decreaseFactor,
     increaseStep:
-      configured.increaseStep === undefined ? undefined : Math.max(0, configured.increaseStep),
-    minRequestsPerSecond: Math.max(1, configured.minRequestsPerSecond ?? 1),
+      configured.increaseStep === undefined
+        ? undefined
+        : Math.max(0, finiteOr(configured.increaseStep, 0)),
+    recoveryIntervalMs: finiteOr(
+      configured.recoveryIntervalMs,
+      ADAPTIVE_DEFAULTS.recoveryIntervalMs,
+    ),
+    decreaseCooldownMs: finiteOr(
+      configured.decreaseCooldownMs,
+      ADAPTIVE_DEFAULTS.decreaseCooldownMs,
+    ),
+    minRequestsPerSecond: Math.max(1, finiteOr(configured.minRequestsPerSecond, 1)),
   };
 
   const stepFor = (ceiling: number) =>
@@ -214,14 +231,23 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   };
 
   const applyServerLimit = (bucket: Bucket, response: Response) => {
-    const serverLimit = parseServerLimit?.(response);
+    let serverLimit: number | undefined;
+    try {
+      serverLimit = parseServerLimit?.(response);
+    } catch {
+      // A parser that throws must not also cost the response its back-off.
+      return;
+    }
     if (serverLimit === undefined) {
       return;
     }
 
     // The latest response's quota replaces the previous one. Ratcheting it down
     // instead would pin the client to the lowest quota it ever saw.
-    bucket.serverLimit = serverLimit;
+    bucket.serverLimit = Math.max(
+      adaptiveConfig.minRequestsPerSecond,
+      finiteOr(serverLimit, adaptiveConfig.minRequestsPerSecond),
+    );
     const ceiling = ceilingOf(bucket);
     if (!adaptationEnabled || bucket.throttle.getLimit() > ceiling) {
       bucket.throttle.setLimit(ceiling);

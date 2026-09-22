@@ -171,6 +171,21 @@ describe("parseRateLimitPolicyHeader()", () => {
     ).toBe(50);
   });
 
+  it("should ignore an allowance stated over a window longer than a minute", () => {
+    const daily = '"daily";q=100000;w=86400';
+
+    expect(parseRateLimitPolicyHeader(makeResponse(daily))).toBeUndefined();
+    expect(parseRateLimitPolicyHeader(makeResponse(`${daily},"per-second";q=50;w=1`))).toBe(50);
+  });
+
+  it("should take the strictest policy, whatever order they are listed in", () => {
+    const strictLast = '"per-second";q=50;w=1,"burst";q=10;w=1';
+    const strictFirst = '"burst";q=10;w=1,"per-second";q=50;w=1';
+
+    expect(parseRateLimitPolicyHeader(makeResponse(strictLast))).toBe(10);
+    expect(parseRateLimitPolicyHeader(makeResponse(strictFirst))).toBe(10);
+  });
+
   it("should return undefined when the header is absent", () => {
     expect(parseRateLimitPolicyHeader(makeResponse(null))).toBeUndefined();
   });

@@ -43,7 +43,8 @@ export interface RateLimitConfig {
 
 export interface ThrottleManager {
   /**
-   * @deprecated Admission happens in `wrapFetch`; this only runs `fn`.
+   * @deprecated Admission happens in `beforeRequest`, or in `wrapFetch` for a
+   * caller that only wraps `fetch`; this only runs `fn`.
    * @todo(next-major): Remove this method.
    */
   execute: <T>(fn: () => Promise<T>) => Promise<T>;
@@ -76,7 +77,7 @@ const CREDENTIAL_PARAMS = new Set(["token"]);
 /**
  * Splits an outgoing request URL into the path and query a limiter is given.
  *
- * Read off the URL rather than carried alongside the call so that it stays
+ * Derived from the URL rather than carried alongside the call so that it stays
  * correct when several requests are in flight at once.
  */
 function requestParts(url: string | undefined): { path: string; query: Record<string, unknown> } {
@@ -103,10 +104,10 @@ function requestParts(url: string | undefined): { path: string; query: Record<st
 /**
  * Creates a `ThrottleManager` from the user-supplied `rateLimit` config.
  *
- * - `false`                       -> no throttling (passthrough)
- * - `number`                      -> N requests per second
- * - `{ requestsPerSecond: n }`    -> N requests per second
- * - `{}` / `undefined` (default)  -> DEFAULT_REQUESTS_PER_SECOND per second
+ * - `false`                       → no throttling (passthrough)
+ * - `number`                      → N requests per second
+ * - `{ requestsPerSecond: n }`    → N requests per second
+ * - `{}` / `undefined` (default)  → DEFAULT_REQUESTS_PER_SECOND per second
  */
 export function createThrottleManager(config: RateLimitConfig | number | false): ThrottleManager {
   if (config === false) {

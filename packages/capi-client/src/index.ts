@@ -57,7 +57,12 @@ export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils
 
 // Rate limiting
 export { createDefaultRateLimiter } from "./utils/limiter";
-export type { AdaptiveConfig, RateLimitContext, RateLimiter } from "./utils/limiter";
+export type {
+  AdaptiveConfig,
+  DefaultRateLimiterOptions,
+  RateLimitContext,
+  RateLimiter,
+} from "./utils/limiter";
 export type { RateLimitConfig } from "./utils/rate-limit";
 
 /** @deprecated Configure rate limiting via `createApiClient({ rateLimit })`. Will be removed in a future release. */

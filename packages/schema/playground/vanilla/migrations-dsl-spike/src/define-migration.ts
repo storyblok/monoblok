@@ -3,12 +3,17 @@
  *
  * `defineMigration<Before, After>({ up })` under test.
  *
- * `up` and `name` are spike scaffolding, kept only so the probes stay readable;
- * neither belongs in the proposed API. There is no `down`: the inverse of an
- * `alter` is not writable without the values it overwrote, so rollback replays
- * the patches recorded while the migration ran. With nothing to pair it with,
- * `up` is a direction that does not exist, and the definition object holds one
- * key — the shipped form takes the builder callback directly.
+ * The probes here pass `{ name, up }`; the proposed API differs on both.
+ * `name` exists only because the probes share one module and so have no
+ * filename to be keyed by. The shipped form takes the builder callback directly
+ * for the common forward-only case, and an object `{ title, up, down }` when the
+ * author wants a hand-written inverse — recorded patches still take precedence
+ * over `down`, since only they can tell that an editor changed the field since.
+ *
+ * Parameter order is also inverted from what is prototyped here. `After` comes
+ * first (`defineMigration<After, Before = After>`), because one type parameter
+ * has to mean the schema people actually have; under one parameter source paths
+ * widen to `FieldPathOf<After> | (string & {})` rather than erroring.
  *
  * Two schema parameters, because one cannot describe both ends of a migration:
  * `Before` types the paths the migration reads, `After` types every name and

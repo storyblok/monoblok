@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import type { Command } from "commander";
-import { runId, validateMigration } from "@storyblok/schema/migrations";
+import { blockComponents, runId, validateMigration } from "@storyblok/schema/migrations";
 import type { CompiledMigration, StoryInverse } from "@storyblok/schema/migrations";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication, toError } from "../../../utils";
@@ -61,18 +61,44 @@ async function findCandidateStories(
   return [...byId.values()];
 }
 
+/**
+ * The stories one migration runs against.
+ *
+ * `planned` holds content an earlier migration in the same invocation would have
+ * written but, under a dry run, did not. Without it a dry run of several
+ * migrations reads pre-migration content from the API, and a migration that
+ * targets a block an earlier one renames or creates finds no story at all: the
+ * dry run would report no work for something a real run does.
+ */
 async function readStoriesWithContent(
   space: string,
   candidates: CandidateStory[],
+  targets: readonly string[],
+  planned: Map<number, StoryForMigration>,
 ): Promise<StoryForMigration[]> {
-  const stories: StoryForMigration[] = [];
+  const byId = new Map<number, StoryForMigration>();
+
   for (const candidate of candidates) {
+    const carried = planned.get(candidate.id);
+    if (carried) {
+      byId.set(candidate.id, carried);
+      continue;
+    }
     const story = await fetchStory(space, candidate.id);
     if (story) {
-      stories.push({ id: candidate.id, slug: candidate.slug, content: story.content });
+      byId.set(candidate.id, { id: candidate.id, slug: candidate.slug, content: story.content });
     }
   }
-  return stories;
+
+  // The API filters on the content it holds, so a story that only contains a
+  // target block in its planned content is not among the candidates.
+  for (const [id, story] of planned) {
+    if (!byId.has(id) && blockComponents(story.content).some((name) => targets.includes(name))) {
+      byId.set(id, story);
+    }
+  }
+
+  return [...byId.values()];
 }
 
 function assertMigrationMatchesSchema(
@@ -152,11 +178,21 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
     }
 
     const journal = resolveJournal({ path: basePath });
+    const planned = new Map<number, StoryForMigration>();
+    const names = new Map<number, string>();
 
     for (const entry of selected) {
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
       const candidates = await findCandidateStories(space, entry.migration.targets);
-      const stories = await readStoriesWithContent(space, candidates);
+      for (const candidate of candidates) {
+        names.set(candidate.id, candidate.name);
+      }
+      const stories = await readStoriesWithContent(
+        space,
+        candidates,
+        entry.migration.targets,
+        planned,
+      );
       spinner.succeed(
         `${entry.id}: ${stories.length} ${stories.length === 1 ? "story contains" : "stories contain"} ${entry.migration.targets.join(", ")}`,
       );
@@ -166,7 +202,6 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
         id: entry.id,
         space,
         stories,
-        dryRun: Boolean(dryRun),
       });
 
       for (const refusal of outcome.refusals) {
@@ -174,13 +209,15 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
       }
 
       if (dryRun) {
+        for (const write of outcome.writes) {
+          planned.set(write.story.id, { ...write.story, content: write.content });
+        }
         ui.info(
           `${entry.id}: would change ${outcome.run.stories} ${outcome.run.stories === 1 ? "story" : "stories"} (${outcome.run.blocks} blocks).`,
         );
         continue;
       }
 
-      const names = new Map(candidates.map((candidate) => [candidate.id, candidate.name]));
       const inverseByStory = new Map(outcome.inverse.map((item) => [item.story, item]));
       // Only the stories that were actually written go into the record. A run
       // that half-succeeded must still leave a usable undo for the half that

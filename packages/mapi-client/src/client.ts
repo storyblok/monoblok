@@ -208,14 +208,59 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
   );
 
   client.interceptors.error.use(
-    (error: unknown, response?: Response) =>
-      new ClientError(response?.statusText || "API request failed", {
-        status: response?.status ?? 0,
-        statusText: response?.statusText ?? "",
+    (
+      error: unknown,
+      response: Response | undefined,
+      _request: Request | undefined,
+      options: ResolvedRequestOptions,
+    ) => {
+      if (!response) {
+        // A transport failure only ever reaches the interceptor through the generated
+        // client's outer catch, which — unlike the HTTP-error path below — passes the
+        // options as given to this call, not merged with the client-level default. A
+        // call that relies on that default rather than overriding `throwOnError` itself
+        // would otherwise read as `undefined` here regardless of the effective value.
+        if (options.throwOnError ?? throwOnError) {
+          // No HTTP answer at all — a timeout, an abort, a DNS failure. This rejects as-is
+          // rather than being wrapped, so its name, message, and `instanceof` checks (e.g.
+          // `AbortError`) survive.
+          return error;
+        }
+
+        // Without `throwOnError` this resolves as `result.error`, which `ApiResponse`
+        // types as `ClientError`. Wrap it here to keep that contract accurate — unlike the
+        // rejection path, callers can't narrow a resolved value by `instanceof` before
+        // touching it, so it has to already be the declared shape. The original error
+        // stays reachable via `cause`.
+        return new ClientError("API request failed", {
+          status: 0,
+          statusText: "",
+          data: undefined,
+          cause: error,
+        });
+      }
+
+      return new ClientError(response.statusText || "API request failed", {
+        status: response.status,
+        statusText: response.statusText,
         data: error,
-        cause: error,
-      }),
+      });
+    },
   );
+
+  /**
+   * Builds a placeholder `Request` for a call that never got far enough to produce one
+   * — a malformed `baseUrl` fails here too, in which case a request pointing nowhere in
+   * particular still beats losing `result.error`, which carries the original, more
+   * useful message (including the full attempted request URL).
+   */
+  const createFallbackRequest = (): Request => {
+    try {
+      return new Request(baseUrl || getManagementBaseUrl(region));
+    } catch {
+      return new Request("about:blank");
+    }
+  };
 
   function wrapRequest<TData, CurrentThrowOnError extends boolean = DefaultThrowOnError>(
     fn: () => Promise<unknown>,
@@ -224,7 +269,7 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
     return throttleManager.execute(async () => {
       const result = (await fn()) as ApiResponse<TData, CurrentThrowOnError>;
       const response = result.response ?? Response.error();
-      const request = result.request ?? new Request(baseUrl || getManagementBaseUrl(region));
+      const request = result.request ?? createFallbackRequest();
 
       return { ...result, response, request };
     });

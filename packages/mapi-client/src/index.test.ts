@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createManagementApiClient } from "./index";
 import type { RateLimitContext, RateLimiter } from "./utils/limiter";
+import { ClientError } from "./error";
 
 const server = setupServer();
 
@@ -386,8 +387,35 @@ describe("createManagementApiClient - HTTP method helpers", () => {
     const result = await client.get("/v1/spaces/123/custom");
 
     expect(result.error).toBeDefined();
+    // ApiResponse types `error` as `ClientError` unconditionally — a transport failure
+    // has to be wrapped to match, not passed through as the raw `TypeError`, or code
+    // written against the documented type (e.g. `result.error?.response.status`) throws
+    // at runtime on exactly the failure case this guards.
+    expect(result.error).toBeInstanceOf(ClientError);
+    expect(result.error?.response.status).toBe(0);
     expect(result.data).toBeUndefined();
     expect(result.response.status).toBe(0);
+  });
+
+  it("should keep the original error when baseUrl is unparseable on a transport failure", async () => {
+    // A malformed `baseUrl` makes the generated client's own `Request` construction
+    // throw before a request/response ever exists, so the fallback below has to build
+    // its own placeholder `Request` from that same broken `baseUrl` — and must not let
+    // that throw too, or it silently replaces `result.error.cause` (with the full
+    // attempted URL) with a less useful "baseUrl is invalid" error instead.
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      baseUrl: "not a url",
+      rateLimit: false,
+      retry: { limit: 0 },
+    });
+
+    const result = await client.get("/v1/spaces/123/custom");
+
+    expect(result.error).toBeDefined();
+    expect((result.error?.cause as Error | undefined)?.message).toContain("custom");
+    expect(result.request).toBeInstanceOf(Request);
   });
 });
 

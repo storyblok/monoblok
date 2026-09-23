@@ -1,0 +1,26 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'author'>;
+}
+
+const { block } = Astro.props;
+const fullName = [block.first_name, block.last_name].filter(Boolean).join(' ');
+---
+
+<div class="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-4" data-block="author">
+  {block.avatar?.filename && (
+    <img
+      src={block.avatar.filename}
+      alt={block.avatar.alt ?? ''}
+      class="h-12 w-12 rounded-full object-cover"
+      width="48"
+      height="48"
+    />
+  )}
+  <div>
+    <p class="font-semibold text-gray-900">{fullName || 'Unnamed author'}</p>
+    {block.bio && <p class="text-sm text-gray-600">{block.bio}</p>}
+  </div>
+</div>

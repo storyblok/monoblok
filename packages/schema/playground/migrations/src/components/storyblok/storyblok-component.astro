@@ -1,0 +1,60 @@
+---
+import type { AnyBlock } from '../../schema/schema';
+import Author from './author.astro';
+import Card from './card.astro';
+import Faq from './faq.astro';
+import FaqItem from './faq-item.astro';
+import Gallery from './gallery.astro';
+import Media from './media.astro';
+import Page from './page.astro';
+import PricingTable from './pricing-table.astro';
+import Quote from './quote.astro';
+import Section from './section.astro';
+import Teaser from './teaser.astro';
+
+interface Props {
+  block: AnyBlock;
+}
+
+const KNOWN_COMPONENTS = [
+  'page',
+  'section',
+  'card',
+  'author',
+  'teaser',
+  'gallery',
+  'media',
+  'quote',
+  'faq',
+  'faq_item',
+  'pricing_table',
+];
+
+const { block } = Astro.props;
+---
+
+{block.component === 'page' && (
+  <Page block={block}>
+    {block.body?.map(child => <Astro.self block={child} />)}
+  </Page>
+)}
+{block.component === 'section' && (
+  <Section block={block}>
+    {block.items?.map(child => <Astro.self block={child} />)}
+  </Section>
+)}
+{block.component === 'card' && <Card block={block} />}
+{block.component === 'author' && <Author block={block} />}
+{block.component === 'teaser' && <Teaser block={block} />}
+{block.component === 'gallery' && <Gallery block={block} />}
+{block.component === 'media' && <Media block={block} />}
+{block.component === 'quote' && <Quote block={block} />}
+{block.component === 'faq' && <Faq block={block} />}
+{block.component === 'faq_item' && <FaqItem block={block} />}
+{block.component === 'pricing_table' && <PricingTable block={block} />}
+{!KNOWN_COMPONENTS.includes(block.component) && (
+  <div class="rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+    Unknown component: <code>{block.component}</code>
+    <pre class="overflow-x-auto text-xs">{JSON.stringify(block, null, 2)}</pre>
+  </div>
+)}

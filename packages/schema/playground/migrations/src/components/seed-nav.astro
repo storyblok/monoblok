@@ -1,0 +1,10 @@
+---
+const SEED_SLUGS = ['home', 'team', 'pricing', 'translated'];
+---
+
+<nav class="border-b border-gray-200 bg-white px-6 py-3 text-sm">
+  <span class="mr-4 font-semibold text-gray-900">Migrations playground</span>
+  {SEED_SLUGS.map(slug => (
+    <a href={`/${slug}`} class="mr-3 text-indigo-600 hover:underline">{slug}</a>
+  ))}
+</nav>

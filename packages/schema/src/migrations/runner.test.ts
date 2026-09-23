@@ -1044,7 +1044,7 @@ describe("splitField", () => {
     ],
   });
 
-  it("replaces the source field with the split parts", () => {
+  it("should replace the source field with the split parts", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
       component: "page",
@@ -1058,7 +1058,7 @@ describe("splitField", () => {
     });
   });
 
-  it("splits a single-word value into the first part and an empty second", () => {
+  it("should split a single-word value into the first part and an empty second", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
       component: "page",
@@ -1071,7 +1071,7 @@ describe("splitField", () => {
   });
 
   // Review Focus 3: a field nobody filled in is an ordinary state of real content.
-  it("leaves a block whose source field is absent untouched", () => {
+  it("should leave a block whose source field is absent untouched", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
       component: "page",
@@ -1086,7 +1086,7 @@ describe("splitField", () => {
     });
   });
 
-  it("leaves a block whose source field is null untouched", () => {
+  it("should leave a block whose source field is null untouched", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
       component: "page",
@@ -1108,7 +1108,7 @@ describe("mergeFields", () => {
     ],
   });
 
-  it("replaces the source fields with the merged value", () => {
+  it("should replace the source fields with the merged value", () => {
     const result = runMigrationOnStory(mergeName, {
       _uid: "root",
       component: "page",
@@ -1122,7 +1122,7 @@ describe("mergeFields", () => {
     });
   });
 
-  it("merges what is there when one source field is missing", () => {
+  it("should merge what is there when one source field is missing", () => {
     const result = runMigrationOnStory(mergeName, {
       _uid: "root",
       component: "page",
@@ -1132,7 +1132,19 @@ describe("mergeFields", () => {
     expect(result.content).toMatchObject({ body: [{ name: "Ada" }] });
   });
 
-  it("leaves a block holding none of the source fields untouched", () => {
+  // Matches splitField's null coverage: `"name" in block` is true for a null
+  // value, so it is not treated as absent and flows into `merge` as-is.
+  it("should merge what is there when one source field is null", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: null }],
+    });
+
+    expect(result.content).toMatchObject({ body: [{ name: "Ada" }] });
+  });
+
+  it("should leave a block holding none of the source fields untouched", () => {
     const result = runMigrationOnStory(mergeName, {
       _uid: "root",
       component: "page",

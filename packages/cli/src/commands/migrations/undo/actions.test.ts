@@ -142,6 +142,110 @@ describe("undoRun", () => {
     expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
   });
 
+  it("should not offer a write for a story whose every block conflicted", async () => {
+    const journal = journalHolding([run], {
+      "run-1": [
+        {
+          story: "1",
+          patches: [
+            {
+              uid: "a",
+              component: "card",
+              ops: [{ kind: "set", key: "title", value: "Hi", expect: "Hi" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const outcome = await undoRun({
+      journal,
+      id: "run-1",
+      fetchStory: async () => ({
+        id: 1,
+        slug: "home",
+        content: {
+          _uid: "r",
+          component: "page",
+          body: [{ _uid: "a", component: "card", title: "edited since" }],
+        },
+      }),
+    });
+
+    expect(outcome.writes).toEqual([]);
+  });
+
+  it("should report blocks the story no longer holds and offer no write for them", async () => {
+    const journal = journalHolding([run], {
+      "run-1": [
+        {
+          story: "1",
+          patches: [
+            { uid: "gone", component: "card", ops: [{ kind: "set", key: "title", value: "Hi" }] },
+          ],
+        },
+      ],
+    });
+
+    const outcome = await undoRun({
+      journal,
+      id: "run-1",
+      fetchStory: async () => ({
+        id: 1,
+        slug: "home",
+        content: { _uid: "r", component: "page", body: [] },
+      }),
+    });
+
+    expect(outcome.missing).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([]);
+    expect(outcome.writes).toEqual([]);
+  });
+
+  it("should still write the blocks it could undo in a story that also has a conflict", async () => {
+    const journal = journalHolding([run], {
+      "run-1": [
+        {
+          story: "1",
+          patches: [
+            { uid: "a", component: "card", ops: [{ kind: "set", key: "title", value: "Hi" }] },
+            {
+              uid: "b",
+              component: "card",
+              ops: [{ kind: "set", key: "title", value: "Hi", expect: "Hi" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    const outcome = await undoRun({
+      journal,
+      id: "run-1",
+      fetchStory: async () => ({
+        id: 1,
+        slug: "home",
+        content: {
+          _uid: "r",
+          component: "page",
+          body: [
+            { _uid: "a", component: "card" },
+            { _uid: "b", component: "card", title: "edited since" },
+          ],
+        },
+      }),
+    });
+
+    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.writes).toHaveLength(1);
+    expect(outcome.writes[0]?.content).toMatchObject({
+      body: [
+        { _uid: "a", component: "card", title: "Hi" },
+        { _uid: "b", component: "card", title: "edited since" },
+      ],
+    });
+  });
+
   it("should replay every story the run recorded", async () => {
     const patchesFor = (uid: string): StoryInverse["patches"] => [
       { uid, component: "card", ops: [{ kind: "set", key: "title", value: "Hi" }] },

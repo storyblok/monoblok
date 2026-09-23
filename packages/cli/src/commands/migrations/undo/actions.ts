@@ -8,8 +8,16 @@ import type { Journal } from "@storyblok/schema/migrations";
 import type { StoryForMigration } from "../apply/actions";
 
 export type UndoOutcome = {
+  /**
+   * Only the stories the inverse actually changed. A story nothing landed on is
+   * left out rather than written back untouched: an identical write costs a
+   * story version and shows an editor a revision for an undo that did nothing.
+   */
   writes: { story: StoryForMigration; content: unknown }[];
+  /** Blocks left as they are because an editor changed them since the run. */
   conflicts: { slug: string; count: number }[];
+  /** Blocks the run recorded that the story no longer holds, so nothing to undo. */
+  missing: { slug: string; count: number }[];
 };
 
 export type UndoInput = {
@@ -32,16 +40,23 @@ export async function undoRun(input: UndoInput): Promise<UndoOutcome> {
   const inverse = await input.journal.readInverse(input.id);
   const writes: UndoOutcome["writes"] = [];
   const conflicts: UndoOutcome["conflicts"] = [];
+  const missing: UndoOutcome["missing"] = [];
 
   for (const entry of inverse) {
     const story = await input.fetchStory(Number(entry.story));
     const content = structuredClone(story.content);
-    const applied = applyPatches(content, entry.patches);
-    if (applied.conflicts.length > 0) {
-      conflicts.push({ slug: story.slug, count: applied.conflicts.length });
+    const result = applyPatches(content, entry.patches);
+    if (result.conflicts.length > 0) {
+      conflicts.push({ slug: story.slug, count: result.conflicts.length });
+    }
+    if (result.missing.length > 0) {
+      missing.push({ slug: story.slug, count: result.missing.length });
+    }
+    if (result.applied === 0) {
+      continue;
     }
     writes.push({ story, content });
   }
 
-  return { writes, conflicts };
+  return { writes, conflicts, missing };
 }

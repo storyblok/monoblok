@@ -159,6 +159,34 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
     case "renameBlock":
       block.component = op.to;
       break;
+    case "wrapChildren": {
+      const children = block[op.field];
+      if (!Array.isArray(children) || children.length === 0) break;
+      // Already wrapped: a rerun must not add a second layer.
+      if (children.length === 1 && isBlock(children[0]) && children[0].component === op.in) break;
+      block[op.field] = [
+        {
+          // Derived from the parent so a rerun produces the same uid, and so
+          // the backend has no reason to regenerate it on the write.
+          _uid: `${block._uid}-${op.in}`,
+          component: op.in,
+          [op.into]: children,
+        },
+      ];
+      break;
+    }
+    case "unwrapChildren": {
+      const children = block[op.field];
+      if (!Array.isArray(children)) break;
+      const flattened = children.flatMap((child) => {
+        if (!isBlock(child) || child.component !== op.unwrap) return [child];
+        const inner = child[op.from];
+        return Array.isArray(inner) ? inner : [];
+      });
+      if (deepEqual(flattened, children)) break;
+      block[op.field] = flattened;
+      break;
+    }
   }
 }
 

@@ -23,6 +23,8 @@ export {
   renameField,
   reorderField,
   splitField,
+  unwrapChildren,
+  wrapChildren,
 } from "./ops";
 export type {
   AddFieldOp,
@@ -35,6 +37,8 @@ export type {
   RenameBlockOp,
   SplitFieldOp,
   UnderOf,
+  UnwrapChildrenOp,
+  WrapChildrenOp,
 } from "./ops";
 
 export { applyPatches, diffBlock, indexBlocks, TRANSLATION_SEPARATOR } from "./patch";

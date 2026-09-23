@@ -35,6 +35,7 @@ export type {
   MigrationOp,
   MigrationOpOf,
   RenameBlockOp,
+  ReorderContext,
   SplitFieldOp,
   UnderOf,
   UnwrapChildrenOp,

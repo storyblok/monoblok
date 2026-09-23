@@ -89,11 +89,19 @@ export interface CoerceFieldOp<TAfter extends SchemaShape, TBefore extends Schem
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
+/** What a reorder comparator can see beyond the two items being compared. */
+export interface ReorderContext {
+  /** The array as it stood before the sort. */
+  siblings: readonly AnyChild[];
+  /** A child's position in `siblings`, or `-1` if it is not one. */
+  index: (child: AnyChild) => number;
+}
+
 export interface ReorderFieldOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   kind: "reorderField";
   block: string;
   field: string;
-  compare: (a: AnyChild, b: AnyChild) => number;
+  compare: (a: AnyChild, b: AnyChild, context: ReorderContext) => number;
   under?: string | readonly string[];
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
@@ -340,7 +348,7 @@ export function reorderField<
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(
   spec: ValueOpSpec<TAfter, TBefore, TBlock>,
-  compare: (a: AnyChild, b: AnyChild) => number,
+  compare: (a: AnyChild, b: AnyChild, context: ReorderContext) => number,
 ): ReorderFieldOp<TAfter, TBefore> {
   return {
     kind: "reorderField",

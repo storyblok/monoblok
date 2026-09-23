@@ -301,6 +301,17 @@ describe("schema-aware validation", () => {
     expect(issues).toEqual([]);
   });
 
+  it("should reject a renameBlock onto a block that already exists", () => {
+    const bogus = {
+      name: "x",
+      targets: ["spike_card"],
+      ops: [renameBlock({ block: "spike_card", to: "spike_section" })],
+    };
+    const issues = validateMigration(bogus, schemaLike);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain('Block "spike_section" already exists');
+  });
+
   it("should accept every probe migration against the pre-migration schema", () => {
     for (const migration of [
       renameField,
@@ -1239,7 +1250,7 @@ describe("renameBlock", () => {
     };
     const migrated = runMigrationOnStory(migration, original).content;
     const rolledBack = runMigrationOnStory(
-      { ...migration, ops: derived.ops, targets: ["teaser"] },
+      { ...migration, ops: derived.ops, targets: derived.targets },
       migrated,
     );
     expect(rolledBack.content).toEqual(original);

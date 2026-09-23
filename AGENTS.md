@@ -102,6 +102,8 @@ existing numbering convention (`0001-`, `0002-`, …).
   `git push --force-with-lease` instead.
 - **Branch naming:** `[fix|feat|chore]/DX-XXX-[title]` e.g. `feat/DX-351-type-safe-schema-support`,
   `fix/DX-391-push-stories-missing-story-identification`, or `chore/update-eslint-config`.
+- **Commit types:** `fix` and `feat` release the package, so use them only for changes its consumers
+  can observe. Tests, playgrounds, tooling, CI, and repo docs are `chore`.
 - **Commits:** If information is available, add `Fixes DX-*` and `Fixes #*` as footer lines at the
   end of commit messages for Linear and GitHub tracking.
 

@@ -90,6 +90,22 @@ function invert(op: MigrationOp): MigrationOp | string {
           };
     case "renameBlock":
       return { kind: "renameBlock", block: op.to, to: op.block };
+    case "wrapChildren":
+      return {
+        kind: "unwrapChildren",
+        block: op.block,
+        field: op.field,
+        unwrap: op.in,
+        from: op.into,
+      };
+    case "unwrapChildren":
+      return {
+        kind: "wrapChildren",
+        block: op.block,
+        field: op.field,
+        in: op.unwrap,
+        into: op.from,
+      };
   }
 }
 
@@ -110,11 +126,14 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
     // merging normalises whatever the merge discards (whitespace, a
     // separator), and merging then splitting cannot recover a separator the
     // merge already threw away.
+    // `unwrapChildren` collapses every container it dissolves into one
+    // rebuilt wrapper, and cannot recall which child came from which.
     if (
       op.kind === "moveField" ||
       op.kind === "coerceField" ||
       op.kind === "splitField" ||
-      op.kind === "mergeFields"
+      op.kind === "mergeFields" ||
+      op.kind === "unwrapChildren"
     ) {
       lossy.push(index);
     }

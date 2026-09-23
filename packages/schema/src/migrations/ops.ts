@@ -153,6 +153,28 @@ export interface RenameBlockOp<TAfter extends SchemaShape, TBefore extends Schem
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
+export interface WrapChildrenOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "wrapChildren";
+  block: string;
+  field: string;
+  /** The container block name. */
+  in: string;
+  /** The container's own field that will hold the children. */
+  into: string;
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
+export interface UnwrapChildrenOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "unwrapChildren";
+  block: string;
+  field: string;
+  /** The container block name to dissolve. */
+  unwrap: string;
+  /** The container's field holding the children to splice out. */
+  from: string;
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
 export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShape> =
   | RenameFieldOp<TAfter, TBefore>
   | MoveFieldOp<TAfter, TBefore>
@@ -164,7 +186,9 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
   | AddFieldOp<TAfter, TBefore>
   | SplitFieldOp<TAfter, TBefore>
   | MergeFieldsOp<TAfter, TBefore>
-  | RenameBlockOp<TAfter, TBefore>;
+  | RenameBlockOp<TAfter, TBefore>
+  | WrapChildrenOp<TAfter, TBefore>
+  | UnwrapChildrenOp<TAfter, TBefore>;
 
 /** An op as the runner sees it: the schema brand is phantom and carries nothing. */
 export type MigrationOp = MigrationOpOf<SchemaShape, SchemaShape>;
@@ -183,6 +207,8 @@ export const KEY_OP_KINDS = [
   "splitField",
   "mergeFields",
   "renameBlock",
+  "wrapChildren",
+  "unwrapChildren",
 ] as const;
 
 export function isKeyOp(op: MigrationOp): boolean {
@@ -466,4 +492,47 @@ export function renameBlock<
   to: BlockNameOf<TAfter> | (string & {});
 }): RenameBlockOp<TAfter, TBefore> {
   return { kind: "renameBlock", block: spec.block, to: spec.to };
+}
+
+/**
+ * Introduces a container level: every child of `field` moves into one new
+ * `in` block, under the container's `into` field.
+ */
+export function wrapChildren<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+>(spec: {
+  block: TBlock;
+  field: SourceFieldName<TAfter, TBefore, TBlock>;
+  in: BlockNameOf<TAfter> | (string & {});
+  into: string;
+}): WrapChildrenOp<TAfter, TBefore> {
+  return {
+    kind: "wrapChildren",
+    block: spec.block,
+    field: spec.field,
+    in: spec.in,
+    into: spec.into,
+  };
+}
+
+/** Dissolves a container level, splicing its children back into the parent. */
+export function unwrapChildren<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+>(spec: {
+  block: TBlock;
+  field: SourceFieldName<TAfter, TBefore, TBlock>;
+  unwrap: BlockNameOf<TBefore> | (string & {});
+  from: string;
+}): UnwrapChildrenOp<TAfter, TBefore> {
+  return {
+    kind: "unwrapChildren",
+    block: spec.block,
+    field: spec.field,
+    unwrap: spec.unwrap,
+    from: spec.from,
+  };
 }

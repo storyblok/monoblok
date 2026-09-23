@@ -48,6 +48,24 @@ jobs:
               - "!**/*.md"
               - "!docs/**"
 
+  # User-facing docs are drafted in a `DOCS.md` while a PR is open and must move
+  # to the docs platform before merge. See `docs/docs-platform.md`.
+  staged-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check for staged docs
+        run: |
+          files=$(git ls-files -- 'DOCS.md' '**/DOCS.md')
+          [ -z "$files" ] && exit 0
+          for file in $files; do
+            echo "::error file=$file::Open a docs platform PR from $file, then delete it before merging."
+          done
+          exit 1
+
   build:
     name: build (${{ matrix.name }})
     needs: changes

@@ -37,7 +37,9 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   writes into the page, the overlay/click-to-edit UI, or the bridge lifecycle.
 - `../storyblok-docs-platform` (docs site) - Consult when publishing or updating package reference
   docs; see `docs/docs-platform.md` for the monoblok-side conventions. User-facing documentation
-  lives there, not here: package READMEs stay minimal and link to the docs site.
+  lives there, not here: package READMEs stay minimal and link to the docs site. While a PR is open,
+  draft docs in a `DOCS.md` (package or repo root). Delete it before merge, and only once a docs
+  platform PR has been created from it.
 
 These sibling repos may not be available; ignore them if absent.
 
@@ -121,9 +123,8 @@ For more context, read relevant files in `docs/`:
 
 - `announcements.md` - announcement article format and tone. Load when drafting a
   release/announcement post.
-- `docs-platform.md` - Docs site conventions: library doc paths, versioning, badges, space IDs. Load
-  when changes need reference docs, when versioning docs for a major release, or when adding a
-  package to the site navigation.
+- `docs-platform.md` - Docs site conventions. Load when changes need reference docs, when versioning
+  docs for a major release, or when adding a package to the site navigation.
 - `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
 - `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
 - `testing-patterns.md` - Test stack, file layout, session mocking, and Windows gotchas. Load when

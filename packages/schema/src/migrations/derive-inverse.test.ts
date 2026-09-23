@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { defineMigration } from "./define-migration";
 import { deriveInverse } from "./derive-inverse";
-import { addField, mergeFields, removeField, renameField, splitField } from "./ops";
+import { addField, mergeFields, removeField, renameBlock, renameField, splitField } from "./ops";
 import { runMigrationOnStory } from "./runner";
 import type { SchemaShape } from "./types";
 
@@ -256,5 +256,45 @@ describe("deriveInverse", () => {
       component: "page",
       body: [{ _uid: "a", component: "author", first_name: "Lovelace", last_name: "" }],
     });
+  });
+
+  it("inverts renameBlock", () => {
+    const derived = deriveInverse([
+      renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),
+    ]);
+
+    expect(derived.derivable).toBe(true);
+    expect(derived.ops).toEqual([{ kind: "renameBlock", block: "teaser", to: "card" }]);
+    expect(derived.lossy).toEqual([]);
+  });
+
+  it("replays a derived renameBlock inverse and restores the original component name", () => {
+    const forward = defineMigration<AnySchema>({
+      ops: [renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" })],
+    });
+
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title: "one" }],
+    };
+
+    const migrated = runMigrationOnStory(forward, original);
+    expect(migrated.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "teaser", title: "one" }],
+    });
+
+    const derived = deriveInverse(forward.ops);
+    expect(derived.derivable).toBe(true);
+    expect(derived.lossy).toEqual([]);
+
+    const rolledBack = runMigrationOnStory(
+      { ...forward, ops: derived.ops, targets: ["teaser"] },
+      migrated.content,
+    );
+
+    expect(rolledBack.content).toEqual(original);
   });
 });

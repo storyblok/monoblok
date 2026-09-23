@@ -13,6 +13,7 @@ import {
   alterField,
   mergeFields,
   removeField as removeFieldOp,
+  renameBlock,
   renameField as renameFieldOp,
   splitField,
 } from "./ops";
@@ -1152,5 +1153,95 @@ describe("mergeFields", () => {
     });
 
     expect(result.changed).toBe(false);
+  });
+});
+
+describe("renameBlock", () => {
+  const migration = defineMigration<TestSchema>({
+    name: "rename-card",
+    ops: [renameBlock({ block: "card", to: "teaser" })],
+  });
+
+  it("should rewrite the component name wherever the block appears", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card", title: "one" },
+        {
+          _uid: "b",
+          component: "section",
+          items: [{ _uid: "c", component: "card", title: "two" }],
+        },
+      ],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "teaser", title: "one" },
+        {
+          _uid: "b",
+          component: "section",
+          items: [{ _uid: "c", component: "teaser", title: "two" }],
+        },
+      ],
+    });
+  });
+
+  it("should leave the uids alone", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    });
+
+    expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+  });
+
+  it("should be idempotent", () => {
+    const once = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    });
+    const twice = runMigrationOnStory(migration, once.content);
+
+    expect(twice.changed).toBe(false);
+  });
+
+  it("should record a patch that restores the original component name on rollback", () => {
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title: "one" }],
+    };
+    const run = runMigrationOnStory(migration, original);
+    expect(run.changed).toBe(true);
+
+    const rolledBack = structuredClone(run.content);
+    const result = applyPatches(rolledBack, run.inverse);
+    expect(result.conflicts).toEqual([]);
+    expect(rolledBack).toEqual(original);
+  });
+
+  it("should invert a renameBlock from the op alone, with no run and no recorded state", () => {
+    const derived = deriveInverse(migration.ops);
+    expect(derived.derivable).toBe(true);
+    expect(derived.lossy).toEqual([]);
+    expect(derived.ops).toEqual([{ kind: "renameBlock", block: "teaser", to: "card" }]);
+
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title: "one" }],
+    };
+    const migrated = runMigrationOnStory(migration, original).content;
+    const rolledBack = runMigrationOnStory(
+      { ...migration, ops: derived.ops, targets: ["teaser"] },
+      migrated,
+    );
+    expect(rolledBack.content).toEqual(original);
   });
 });

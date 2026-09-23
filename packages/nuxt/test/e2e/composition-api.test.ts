@@ -1,5 +1,3 @@
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $fetch, setup } from "@nuxt/test-utils/e2e";
 import { describe, expect, it } from "vitest";
@@ -23,16 +21,9 @@ const countOccurrences = (haystack: string, needle: string): number =>
 const teaserText = (html: string): string | undefined =>
   html.match(/data-test="teaser"[^>]*>([^<]*)</)?.[1]?.trim();
 
-const playgroundDir = fileURLToPath(new URL("../../playground", import.meta.url));
-
-// In dev, `@nuxt/test-utils` builds into the playground's own `.nuxt` and
-// deletes it on teardown if it created it, breaking a concurrent `nuxt build`.
-// The directory cannot move: the playground `tsconfig.json` extends it.
-mkdirSync(join(playgroundDir, ".nuxt"), { recursive: true });
-
 describe("@storyblok/nuxt playground (Composition API)", async () => {
   await setup({
-    rootDir: playgroundDir,
+    rootDir: fileURLToPath(new URL("../../playground", import.meta.url)),
     dev: true,
   });
 

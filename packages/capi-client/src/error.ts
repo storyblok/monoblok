@@ -15,13 +15,21 @@ export interface ApiErrorBody {
  */
 export class ClientError extends Error {
   readonly response: { status: number; statusText: string; data: ApiErrorBody | undefined };
+  /**
+   * The error the interceptor caught before wrapping it — an `AbortError`, a network
+   * failure, etc. `Error`'s own `cause` constructor option isn't available at this
+   * package's `lib` target, so this is declared and assigned as a plain own field
+   * instead.
+   */
+  readonly cause?: unknown;
 
   constructor(
     message: string,
     options: { status: number; statusText: string; data: unknown; cause?: unknown },
   ) {
-    super(message, options.cause !== undefined ? { cause: options.cause } : undefined);
+    super(message);
     this.name = "ClientError";
+    this.cause = options.cause;
     this.response = {
       status: options.status,
       statusText: options.statusText,

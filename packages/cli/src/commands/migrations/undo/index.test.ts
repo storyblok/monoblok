@@ -195,6 +195,22 @@ describe("migrations undo command", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("no longer in this story"));
   });
 
+  it("should refuse a run recorded for a different space instead of patching this one", async () => {
+    await preconditions.hasRecordedRun("2026-09-23T10-00-00-000Z-0001-rename", renameBack("Hi"), {
+      space: "99999",
+    });
+    preconditions.hasStories([storyWithHeadline("Hi")]);
+    preconditions.canUpdateStories();
+    const errorSpy = vi.spyOn(console, "error");
+
+    await undo("--run", "2026-09-23T10-00-00-000Z-0001-rename");
+
+    expect(updates).toEqual([]);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(`recorded for space 99999, not space ${DEFAULT_SPACE}`),
+    );
+  });
+
   it("should report when the space has no recorded runs", async () => {
     const errorSpy = vi.spyOn(console, "error");
 

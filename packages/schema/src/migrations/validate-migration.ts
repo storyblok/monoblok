@@ -92,6 +92,12 @@ export function validateMigration(
         message: `Block "${op.block}" already defines a field "${op.to}"; renaming "${op.field}" onto it would overwrite content.`,
       });
     }
+    if (op.kind === "renameBlock" && known.has(op.to)) {
+      issues.push({
+        op: index,
+        message: `Block "${op.to}" already exists; renaming "${op.block}" onto it would merge two components' content under one name, which cannot be undone.`,
+      });
+    }
   });
 
   return issues;

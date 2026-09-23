@@ -31,3 +31,6 @@ storyblok stories push --space YOUR_SPACE_ID
 
 - Component schemas are required to map story references correctly. Always run
   `storyblok components pull` to fetch the latest schemas before running `storyblok stories push`.
+- The command exits with code 1 if any story fails to push, even if most stories succeed. Check the
+  exit code in CI pipelines and scripts that run `storyblok stories push`, since a partial failure
+  no longer exits 0.

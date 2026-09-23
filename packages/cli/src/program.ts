@@ -12,8 +12,10 @@ import { ConsoleTransport } from "./lib/logger/logger-transport-console";
 import { resolveCommandPath } from "./utils/filesystem";
 import { session } from "./session";
 import { getMapiClient } from "./api";
+import { assertOAuthRegionAuthorized, isSessionCommand } from "./lib/oauth/region-guard";
 import { assertSpaceAllowed } from "./lib/oauth/space-guard";
 import { createOAuthTokenProvider } from "./lib/oauth/token-provider";
+import { setCredentialContext } from "./utils/error/credential-context";
 import {
   applyConfigToCommander,
   getCommandAncestry,
@@ -23,6 +25,15 @@ import {
 } from "./lib/config";
 
 const packageJson = getPackageJson();
+
+/** The top-level command name (`stories` for `storyblok stories pull`). */
+function getRootCommandName(command: Command): string {
+  let current = command;
+  while (current.parent?.parent) {
+    current = current.parent as Command;
+  }
+  return current.name();
+}
 
 // Declare a variable to hold the singleton instance
 let programInstance: Command | null = null;
@@ -73,8 +84,17 @@ export function getProgram(): Command {
       setActiveConfig(resolvedConfig);
 
       // Initialize mapiClient with the active credential (PAT or OAuth access token).
-      const { state, initializeSession } = session();
+      const { state, initializeSession, useOAuthRegion } = session();
       await initializeSession();
+
+      // Reconcile an explicit region with the OAuth session before any token work, so a
+      // refresh and the mapi client both target the region the command will actually use.
+      // A thrown CommandError here propagates out of the preAction hook, rejecting
+      // `program.parseAsync()` in index.ts, which handles it once at the top level.
+      if (state.authType === "oauth" && !isSessionCommand(getRootCommandName(targetCommand))) {
+        await assertOAuthRegionAuthorized(resolvedConfig.region, state.region, useOAuthRegion);
+      }
+
       if (state.authType === "oauth" && state.region) {
         // A provider rather than a token string: access tokens live 15 minutes, so a
         // command that runs longer refreshes mid-run instead of 401ing. Commands that
@@ -90,6 +110,14 @@ export function getProgram(): Command {
           region: state.region ?? resolvedConfig.region,
         });
       }
+
+      // Tell the error layer which credential is in play so 401/403 responses can name
+      // the right remedy. Set for every credential kind, including none at all.
+      setCredentialContext({
+        kind: state.authType ?? "unknown",
+        spaces: state.oauthSpaces,
+        space: targetCommand.optsWithGlobals().space,
+      });
 
       // Guard OAuth sessions against operating on spaces outside their consent grant.
       // A thrown CommandError here propagates out of the preAction hook, rejecting

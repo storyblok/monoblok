@@ -1,0 +1,82 @@
+{
+  "id": 1002,
+  "slug": "team",
+  "name": "Team",
+  "content": {
+    "_uid": "22222222-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "The team",
+    "seo_description": "Author blocks, including one with only half a name.",
+    "body": [
+      {
+        "_uid": "22222222-0000-4000-8000-000000000002",
+        "component": "section",
+        "heading": "Everyone",
+        "theme": "light",
+        "items": [
+          {
+            "_uid": "22222222-0000-4000-8000-000000000003",
+            "component": "author",
+            "first_name": "Grace",
+            "last_name": "Hopper",
+            "bio": "Both halves of the name are filled.",
+            "avatar": {
+              "id": 2000,
+              "alt": "About image",
+              "filename": "",
+              "fieldtype": "asset"
+            }
+          },
+          {
+            "_uid": "22222222-0000-4000-8000-000000000004",
+            "component": "author",
+            "first_name": "Prince",
+            "last_name": "",
+            "bio": "Only first_name is filled, so a merge has to decide what to do with the empty half.",
+            "avatar": null
+          },
+          {
+            "_uid": "22222222-0000-4000-8000-000000000005",
+            "component": "author",
+            "first_name": "Barbara",
+            "last_name": "Liskov",
+            "bio": "",
+            "avatar": null
+          }
+        ]
+      },
+      {
+        "_uid": "22222222-0000-4000-8000-000000000006",
+        "component": "author",
+        "first_name": "Alan",
+        "last_name": "Turing",
+        "bio": "An author directly on the page, outside any container.",
+        "avatar": null
+      },
+      {
+        "_uid": "22222222-0000-4000-8000-000000000007",
+        "component": "teaser",
+        "title": "Authors inside a teaser",
+        "description": "The same block appears at several depths so a rename has to reach all of them.",
+        "image": null,
+        "link": {
+          "id": "story-home",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "home"
+        },
+        "authors": [
+          {
+            "_uid": "22222222-0000-4000-8000-000000000008",
+            "component": "author",
+            "first_name": "Katherine",
+            "last_name": "Johnson",
+            "bio": "Nested two levels down.",
+            "avatar": null
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -292,19 +292,18 @@ describe("call shapes", () => {
     defineMigration<SpikeSchema>([removeField({ block: "spike_card", field: "description" })]);
   });
 
-  it("should accept title, up and down, with down read in the other direction", () => {
+  it("should accept a title alongside the op list", () => {
     defineMigration<AfterRenameMetaAuthor, SpikeSchema>({
       title: "Rename spike_meta.author",
-      up: [renameField({ block: "spike_meta", field: "author", to: "written_by" })],
-      down: [renameField({ block: "spike_meta", field: "written_by", to: "author" })],
+      ops: [renameField({ block: "spike_meta", field: "author", to: "written_by" })],
     });
   });
 
-  it("should reject a down whose source field only exists before the migration", () => {
+  it("should reject an inverse authored as a second op list", () => {
     defineMigration<AfterRenameMetaAuthor, SpikeSchema>({
-      up: [renameField({ block: "spike_meta", field: "author", to: "written_by" })],
-      // @ts-expect-error down reads the post-migration schema, where "author" is gone
-      down: [removeField({ block: "spike_meta", field: "author" })],
+      ops: [renameField({ block: "spike_meta", field: "author", to: "written_by" })],
+      // @ts-expect-error there is no `down`: an inverse is recorded or derived, never authored
+      down: [renameField({ block: "spike_meta", field: "written_by", to: "author" })],
     });
   });
 

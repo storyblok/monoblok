@@ -6,6 +6,7 @@ updating component structures or content.
 
 ## Subcommands
 
+- [`apply`](./apply/README.md): Apply content migrations and record each run so it can be undone.
 - [`generate`](./generate/README.md): Create a new migration file for a specific component.
 - [`run`](./run/README.md): Execute migrations on stories in your space.
 - [`rollback`](./rollback/README.md): Revert previously applied migrations.

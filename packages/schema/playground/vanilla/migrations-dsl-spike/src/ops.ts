@@ -145,6 +145,13 @@ interface KeyOpSpec<
 > {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
+  /**
+   * Declared, rather than merely absent, so the rule survives a spec that is not
+   * a fresh object literal: excess-property checking fires only on a literal, so
+   * a spread or a hoisted variable used to slip through. The type is the
+   * explanation, which is what the compiler then prints.
+   */
+  under?: "`under` is not allowed on a key op: a component's schema is global, so a key op applies to every instance";
 }
 
 /** A value op: the schema does not move, so a subset of instances is coherent. */
@@ -171,6 +178,15 @@ type SourceValue<
       : unknown
     : unknown;
 
+/**
+ * A key op never honours `under`, but it carries one through when a caller
+ * smuggled it past the type system, so `validateMigration` can name the problem
+ * instead of the op silently applying everywhere.
+ */
+function carriedUnder(spec: { under?: unknown }): { under?: string | readonly string[] } {
+  return spec.under === undefined ? {} : { under: spec.under as string | readonly string[] };
+}
+
 export function renameField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
@@ -178,7 +194,13 @@ export function renameField<
 >(
   spec: KeyOpSpec<TAfter, TBefore, TBlock> & { to: TargetFieldName<TAfter, TBlock> },
 ): RenameFieldOp<TAfter, TBefore> {
-  return { kind: "renameField", block: spec.block, field: spec.field, to: spec.to };
+  return {
+    kind: "renameField",
+    block: spec.block,
+    field: spec.field,
+    to: spec.to,
+    ...carriedUnder(spec),
+  };
 }
 
 /** Like `renameField`, but the target may already hold a value; it is overwritten. */
@@ -189,7 +211,13 @@ export function moveField<
 >(
   spec: KeyOpSpec<TAfter, TBefore, TBlock> & { to: TargetFieldName<TAfter, TBlock> },
 ): MoveFieldOp<TAfter, TBefore> {
-  return { kind: "moveField", block: spec.block, field: spec.field, to: spec.to };
+  return {
+    kind: "moveField",
+    block: spec.block,
+    field: spec.field,
+    to: spec.to,
+    ...carriedUnder(spec),
+  };
 }
 
 export function removeField<
@@ -197,7 +225,7 @@ export function removeField<
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(spec: KeyOpSpec<TAfter, TBefore, TBlock>): RemoveFieldOp<TAfter, TBefore> {
-  return { kind: "removeField", block: spec.block, field: spec.field };
+  return { kind: "removeField", block: spec.block, field: spec.field, ...carriedUnder(spec) };
 }
 
 /**
@@ -217,6 +245,7 @@ export function coerceField<
     field: spec.field,
     to: spec.to,
     ...(spec.from === undefined ? {} : { from: spec.from }),
+    ...carriedUnder(spec),
   };
 }
 

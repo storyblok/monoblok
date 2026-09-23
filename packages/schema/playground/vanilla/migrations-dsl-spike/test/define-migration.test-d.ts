@@ -374,3 +374,26 @@ describe("content shape of a block", () => {
     >();
   });
 });
+
+describe("under on a key op, past the object literal", () => {
+  const scoped = { under: "spike_card" } as const;
+
+  it("should reject a spread that carries it", () => {
+    defineMigration<AfterRenameMetaAuthor, SpikeSchema>([
+      // @ts-expect-error excess-property checking does not fire on a spread, so the key is declared instead
+      renameField({ block: "spike_meta", field: "author", to: "written_by", ...scoped }),
+    ]);
+  });
+
+  it("should reject a hoisted spec", () => {
+    const spec = { block: "spike_card", field: "description", under: "spike_section" } as const;
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error same rule, same error, from a variable rather than a literal
+      removeField(spec),
+    ]);
+  });
+
+  it("should keep accepting a value op built the same way", () => {
+    defineMigration<SpikeSchema>([alterBlock({ block: "spike_meta", ...scoped }, () => {})]);
+  });
+});

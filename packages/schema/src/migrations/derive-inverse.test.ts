@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { deriveInverse } from "./derive-inverse";
-import { addField, removeField, renameField } from "./ops";
+import { addField, mergeFields, removeField, renameField, splitField } from "./ops";
 import type { SchemaShape } from "./types";
 
 type AnySchema = SchemaShape;
@@ -41,5 +41,105 @@ describe("deriveInverse", () => {
       { kind: "renameField", block: "card", field: "d", to: "c" },
       { kind: "renameField", block: "card", field: "b", to: "a" },
     ]);
+  });
+
+  it("inverts splitField to mergeFields when the counterpart is given", () => {
+    const derived = deriveInverse([
+      splitField<AnySchema, AnySchema, "author">(
+        {
+          block: "author",
+          field: "name",
+          into: ["first_name", "last_name"],
+          merge: (values) => values.filter(Boolean).join(" "),
+        },
+        (name) => String(name).split(" ", 2),
+      ),
+    ]);
+
+    expect(derived.derivable).toBe(true);
+    expect(derived.ops[0]).toMatchObject({
+      kind: "mergeFields",
+      block: "author",
+      fields: ["first_name", "last_name"],
+      into: "name",
+    });
+  });
+
+  it("refuses to invert splitField without a counterpart", () => {
+    const derived = deriveInverse([
+      splitField<AnySchema, AnySchema, "author">(
+        { block: "author", field: "name", into: ["first_name", "last_name"] },
+        (name) => String(name).split(" ", 2),
+      ),
+    ]);
+
+    expect(derived.derivable).toBe(false);
+    expect(derived.blocked[0].reason).toContain("no `merge`");
+  });
+
+  it("marks a derivable splitField inverse as lossy", () => {
+    const derived = deriveInverse([
+      splitField<AnySchema, AnySchema, "author">(
+        {
+          block: "author",
+          field: "name",
+          into: ["first_name", "last_name"],
+          merge: (values) => values.filter(Boolean).join(" "),
+        },
+        (name) => String(name).split(" ", 2),
+      ),
+    ]);
+
+    expect(derived.lossy).toEqual([0]);
+  });
+
+  it("inverts mergeFields to splitField when the counterpart is given", () => {
+    const derived = deriveInverse([
+      mergeFields<AnySchema, AnySchema, "author">(
+        {
+          block: "author",
+          fields: ["first_name", "last_name"],
+          into: "name",
+          split: (name) => String(name).split(" ", 2),
+        },
+        (values) => values.filter(Boolean).join(" "),
+      ),
+    ]);
+
+    expect(derived.derivable).toBe(true);
+    expect(derived.ops[0]).toMatchObject({
+      kind: "splitField",
+      block: "author",
+      field: "name",
+      into: ["first_name", "last_name"],
+    });
+  });
+
+  it("refuses to invert mergeFields without a counterpart", () => {
+    const derived = deriveInverse([
+      mergeFields<AnySchema, AnySchema, "author">(
+        { block: "author", fields: ["first_name", "last_name"], into: "name" },
+        (values) => values.filter(Boolean).join(" "),
+      ),
+    ]);
+
+    expect(derived.derivable).toBe(false);
+    expect(derived.blocked[0].reason).toContain("no `split`");
+  });
+
+  it("marks a derivable mergeFields inverse as lossy", () => {
+    const derived = deriveInverse([
+      mergeFields<AnySchema, AnySchema, "author">(
+        {
+          block: "author",
+          fields: ["first_name", "last_name"],
+          into: "name",
+          split: (name) => String(name).split(" ", 2),
+        },
+        (values) => values.filter(Boolean).join(" "),
+      ),
+    ]);
+
+    expect(derived.lossy).toEqual([0]);
   });
 });

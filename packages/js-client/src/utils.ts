@@ -159,3 +159,39 @@ export const escapeHTML = (string: string): string => {
     ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
     : string;
 };
+
+/**
+ * Sorts every object key, at every depth, so that a value serializes the same way
+ * whichever order its keys happen to have been assigned in. Arrays keep their order:
+ * there it is part of the value, not of how the value was built.
+ */
+const sortKeysDeep = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(sortKeysDeep);
+  }
+
+  if (value !== null && typeof value === "object") {
+    return Object.entries(value)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .reduce<Record<string, unknown>>((sorted, [key, entry]) => {
+        sorted[key] = sortKeysDeep(entry);
+        return sorted;
+      }, {});
+  }
+
+  return value;
+};
+
+/**
+ * The cache key of a request. Identical requests have to produce an identical key, and
+ * {@link stringify} serializes in insertion order — so `{ cv, resolve_level }` and
+ * `{ resolve_level, cv }` describe one request under two keys. `parseParams` assigns the
+ * cv before `resolve_level` while a rebuilt params object appends it last, which is
+ * exactly that case: the entry lands under a key no read ever builds and the content is
+ * fetched again on every read. Sorting removes the dependency on assembly order.
+ *
+ * Only cache keys are sorted. Request query strings keep the order the caller and
+ * `parseParams` produced.
+ */
+export const createCacheKey = (url: string, params: ISbStoriesParams): string =>
+  stringify({ url, params: sortKeysDeep(params) });

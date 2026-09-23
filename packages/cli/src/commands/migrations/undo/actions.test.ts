@@ -42,6 +42,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({
         id: 1,
@@ -90,6 +91,7 @@ describe("undoRun", () => {
 
     await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({ id: 1, slug: "home", content: live }),
     });
@@ -103,10 +105,21 @@ describe("undoRun", () => {
     await expect(
       undoRun({
         journal,
+        space: "12345",
         id: "no-such-run",
         fetchStory: async () => ({ id: 1, slug: "home", content: {} }),
       }),
     ).rejects.toThrow(/no-such-run/);
+  });
+
+  it("should throw for a run recorded against a different space", async () => {
+    const journal = journalHolding([run], { "run-1": [] });
+    const fetchStory = vi.fn(async () => ({ id: 1, slug: "home", content: {} }));
+
+    await expect(undoRun({ journal, space: "99999", id: "run-1", fetchStory })).rejects.toThrow(
+      /recorded for space 12345, not space 99999/,
+    );
+    expect(fetchStory).not.toHaveBeenCalled();
   });
 
   it("should report blocks whose current value no longer matches what was recorded", async () => {
@@ -127,6 +140,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({
         id: 1,
@@ -163,6 +177,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({
         id: 1,
@@ -196,6 +211,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({
         id: 1,
@@ -225,6 +241,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({
         id: 1,
@@ -257,6 +274,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async () => ({
         id: 1,
@@ -295,6 +313,7 @@ describe("undoRun", () => {
 
     const outcome = await undoRun({
       journal,
+      space: "12345",
       id: "run-1",
       fetchStory: async (id) => ({
         id,

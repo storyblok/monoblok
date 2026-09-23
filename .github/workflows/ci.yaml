@@ -9,9 +9,6 @@ on:
       - beta
       - rc
       - "*-v[0-9]" # mantainance branches (IMPORTANT: naming must be <pkg>-vX (i.e.: react-sdk-v3, richtext-v5, etc)
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
   pull_request:
     branches:
       - main
@@ -20,9 +17,6 @@ on:
       - beta
       - rc
       - "*-v[0-9]"
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
 
 env:
   HUSKY: 0
@@ -32,8 +26,31 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - "**"
+              - "!**/*.md"
+              - "!docs/**"
+
   build:
     name: build (${{ matrix.name }})
+    needs: changes
     environment: test
     strategy:
       fail-fast: false
@@ -76,12 +93,15 @@ jobs:
         run: pnpm check:workspace-protocol
 
       - name: Check
+        if: needs.changes.outputs.code == 'true'
         run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}"
         env:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}
 
   licenses:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

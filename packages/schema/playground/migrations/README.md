@@ -47,12 +47,38 @@ stories. It is destructive: point it at a throwaway space.
 | `pricing`    | a table and an FAQ whose answer embeds a card                                          |
 | `translated` | `__i18n__de` / `__i18n__fr` siblings, some of them empty                               |
 
+## Fixtures and the offline runner
+
+`fixtures/` holds one JSON file per seed story. `pnpm migrate:offline` runs the migrations in
+`migrations/` against those files; `pnpm migrate --confirm-writes` runs the same migrations against
+the space. The only difference between the two is which content store the runner is handed, so an
+offline run is evidence about a live one — a migration that behaved differently offline would make
+every offline check worthless.
+
+Both runs record what they did, so `--undo <run-id>` can replay the inverse. Offline records live
+under `fixtures/.journal` and are not committed; live ones live under `.storyblok/migrations`.
+
+Fixtures are generated, never edited by hand:
+
+```sh
+pnpm seed && pnpm fixtures   # capture the seeded space
+pnpm fixtures --from-seed    # project .storyblok/stories/seed/ without a space
+```
+
+The capture is the better source, because it carries whatever the backend normalized on the way in.
+The committed fixtures were projected from the seed files instead: `section.accent_color` uses a
+field-type plugin that has to be installed per space, and the space available for this playground
+does not offer it, so `pnpm seed` cannot push the schema there.
+
 ## Commands
 
-| Command            | Action                                           |
-| :----------------- | :----------------------------------------------- |
-| `pnpm seed`        | Reset the space and reseed it from `.storyblok/` |
-| `pnpm dev`         | Run the site against the seeded space            |
-| `pnpm schema:push` | Push `src/schema/schema.ts` to the space         |
-| `pnpm build`       | Build the site                                   |
-| `pnpm test:types`  | Type-check the Astro app                         |
+| Command                | Action                                           |
+| :--------------------- | :----------------------------------------------- |
+| `pnpm seed`            | Reset the space and reseed it from `.storyblok/` |
+| `pnpm fixtures`        | Regenerate `fixtures/` from the seeded space     |
+| `pnpm migrate:offline` | Run the migrations against `fixtures/`           |
+| `pnpm migrate`         | Run them against the space (`--confirm-writes`)  |
+| `pnpm dev`             | Run the site against the seeded space            |
+| `pnpm schema:push`     | Push `src/schema/schema.ts` to the space         |
+| `pnpm build`           | Build the site                                   |
+| `pnpm test:types`      | Type-check the Astro app                         |

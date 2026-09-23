@@ -20,8 +20,7 @@ export default defineMigration<Schema>([
 `renameField({…})` returns `{ kind: "renameField", block, field, to }`. Nothing runs at module load,
 which is what buys three things at once: `--dry-run` prints the plan without a network call, a key
 op inverts from the op alone (`src/derive-inverse.ts`), and anyone can add an op by writing a
-function that returns one. Ops compose because they are values —
-`BLOCKS.map((block) => removeField({ block, field: "gtm_id" }))` is a migration.
+function that returns one.
 
 The spike's first question is whether the typing survives the move off the builder. A factory is
 called in `defineMigration`'s argument list, where the schema appears in no argument, so every type
@@ -30,6 +29,37 @@ parameter has to reach it through the contextual return type. It does:
 an unknown block, and a rename target the post-migration schema does not declare, all as compile
 errors from a bare `defineMigration<After, Before>([…])`. The cost is a phantom property on every op
 type — the type parameters must occur in the return type for the channel to exist at all.
+
+### Measured cost: ops compose only where a contextual type reaches them
+
+This is the one place the op list charges for what it buys, and the number is exact: an op has to be
+written where `defineMigration`'s parameter type can reach it. Hoist the same correct op into a
+variable and it stops compiling.
+
+```ts
+const op = removeField({ block: "article", field: "author" });
+defineMigration<After, Before>([op]);
+// TS2322: RemoveFieldOp<SchemaShape, SchemaShape> is not assignable to
+//         RemoveFieldOp<After, Before>
+```
+
+With no contextual type the parameters infer to their constraint, `SchemaShape`, and the phantom
+brand then blocks the assignment. Two consequences, and the second is the worse one. The error talks
+about the brand, never about the name that is actually wrong, and it points at the array element
+rather than at the call. And in that position the factory call is unchecked on the way in:
+`removeField({ block: "nope", field: "authr" })` raises nothing on its own line, because
+`SourceFieldName<SchemaShape, SchemaShape, …>` degrades to `string`.
+
+What still works, all verified: a direct literal;
+`BLOCKS.map((block) => removeField({ block, field: "gtm_id" }))`, because the arrow's return
+position is contextual; an inline ternary; `satisfies MigrationOps<After, Before>`; and a helper
+whose return type is written out as `MigrationOpOf<After, Before>`. So ops compose through callbacks
+but not through variables, and the workaround is the explicit annotation the DSL exists to avoid.
+
+Nothing here is fixable inside the op-list shape: it follows from a top-level factory having no
+other channel to the schema. A builder does not have the problem, because the handle carries the
+generics. That is the trade, stated plainly, and it belongs in the proposal rather than in a
+footnote.
 
 ## Two schemas, not one — and `After` first
 
@@ -61,12 +91,18 @@ alterField({ block: "meta", field: "og_title", under: "card" }, fn);
 alterField({ block: "meta", field: "og_title", under: ["section", "card"] }, fn);
 ```
 
-It appears only in the signatures of the value ops. A key op moves the component schema, which is
-global, so migrating a subset would leave every other instance holding a key no schema describes —
-passing `under` to `renameField`, `moveField`, `removeField` or `coerceField` is an excess-property
-error, and `validateMigration` repeats the check for a migration that never went through the type
-system. This is the one place the op list is weaker than the builder, where `.under()` returned a
-handle that structurally had no key ops: a better error message, not a different guarantee.
+A key op never takes one. It moves the component schema, which is global, so migrating a subset
+would leave every other instance holding a key no schema describes. Three guards enforce that, and
+the spike needed all three. The key op specs _declare_ `under`, typed as the sentence explaining the
+rule, rather than merely omitting it: excess-property checking fires only on a fresh object literal,
+so an omitted key let a spread or a hoisted spec through, and the declared key catches both and
+prints the reason. `validateMigration` refuses a migration whose key op carries one anyway, which is
+the net for a `.js` migration or an author who cast around the types. And the runner ignores it, so
+a key op that slipped past both still applies everywhere instead of half-applying.
+
+This remains the one place the op list is weaker than the builder, whose `.under()` returned a
+handle that structurally had no key ops. One rule, three enforcement points, versus one that could
+not be expressed wrongly.
 
 ## Three sources of an inverse
 
@@ -108,8 +144,8 @@ callback is invoked twice per block, so it must be free of side effects.
 | `scenarios/has-spike-dsl-content/`     | Seed fixtures for the same content, for a real space                    |
 | `scripts/generate-before-snapshot.mjs` | Emits the frozen `Before` snapshot from a space                         |
 | `scripts/run-against-space.ts`         | The end-to-end probe against a real space                               |
-| `test/*.test-d.ts`                     | Type-level assertions (33)                                              |
-| `test/runner.test.ts`                  | Behaviour, incl. the surgical-rollback claim (48)                       |
+| `test/*.test-d.ts`                     | Type-level assertions (36)                                              |
+| `test/runner.test.ts`                  | Behaviour, incl. the surgical-rollback claim (54)                       |
 | `test/validate-story.test.ts`          | Post-condition validation, against `After` (7)                          |
 | `test/today.test.ts`                   | The CLI's current runner on the same fixtures, for comparison (5)       |
 
@@ -117,8 +153,8 @@ callback is invoked twice per block, so it must be free of side effects.
 
 ```bash
 cd packages/schema/playground/vanilla/migrations-dsl-spike
-../../../node_modules/.bin/vitest run --typecheck.enabled=false   # 72 behaviour tests
-../../../node_modules/.bin/vitest run --typecheck.only            # 33 type tests
+../../../node_modules/.bin/vitest run --typecheck.enabled=false   # 78 behaviour tests
+../../../node_modules/.bin/vitest run --typecheck.only            # 36 type tests
 ../../../node_modules/.bin/tsc --noEmit -p tsconfig.json
 ```
 

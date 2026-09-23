@@ -158,18 +158,41 @@ describe("migrations undo command", () => {
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("No recorded run"));
   });
 
-  it("should leave a block an editor changed since the run alone and warn about it", async () => {
+  it("should not write back a story an editor changed since the run, and warn about it", async () => {
     await preconditions.hasRecordedRun("2026-09-23T10-00-00-000Z-0001-rename", renameBack("Hi"));
     preconditions.hasStories([storyWithHeadline("edited since")]);
+    preconditions.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    const info = vi.spyOn(getUI(), "info");
+
+    await undo("--run", "2026-09-23T10-00-00-000Z-0001-rename");
+
+    expect(updates).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("changed since the migration ran"));
+    expect(info).toHaveBeenCalledWith(expect.stringContaining("Undid 0 stories"));
+  });
+
+  it("should not write back a story whose recorded blocks it can no longer find", async () => {
+    await preconditions.hasRecordedRun("2026-09-23T10-00-00-000Z-0001-rename", [
+      {
+        story: "1",
+        patches: [
+          {
+            uid: "renumbered",
+            component: "card",
+            ops: [{ kind: "set", key: "title", value: "Hi" }],
+          },
+        ],
+      },
+    ]);
+    preconditions.hasStories([storyWithHeadline("Hi")]);
     preconditions.canUpdateStories();
     const warn = vi.spyOn(getUI(), "warn");
 
     await undo("--run", "2026-09-23T10-00-00-000Z-0001-rename");
 
-    expect(updates[0]?.content).toMatchObject({
-      body: [{ _uid: "card-1", component: "card", headline: "edited since" }],
-    });
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("home"));
+    expect(updates).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("no longer in this story"));
   });
 
   it("should report when the space has no recorded runs", async () => {

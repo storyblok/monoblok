@@ -115,6 +115,15 @@ export interface AlterBlockOp<TAfter extends SchemaShape, TBefore extends Schema
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
+export interface AddFieldOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "addField";
+  block: string;
+  field: string;
+  /** Returning `undefined` leaves the block untouched. */
+  fn: (block: never) => unknown;
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
 export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShape> =
   | RenameFieldOp<TAfter, TBefore>
   | MoveFieldOp<TAfter, TBefore>
@@ -122,13 +131,20 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
   | CoerceFieldOp<TAfter, TBefore>
   | ReorderFieldOp<TAfter, TBefore>
   | AlterFieldOp<TAfter, TBefore>
-  | AlterBlockOp<TAfter, TBefore>;
+  | AlterBlockOp<TAfter, TBefore>
+  | AddFieldOp<TAfter, TBefore>;
 
 /** An op as the runner sees it: the schema brand is phantom and carries nothing. */
 export type MigrationOp = MigrationOpOf<SchemaShape, SchemaShape>;
 
 /** The op kinds that move the component schema and so must apply everywhere. */
-export const KEY_OP_KINDS = ["renameField", "moveField", "removeField", "coerceField"] as const;
+export const KEY_OP_KINDS = [
+  "renameField",
+  "moveField",
+  "removeField",
+  "coerceField",
+  "addField",
+] as const;
 
 export function isKeyOp(op: MigrationOp): boolean {
   return (KEY_OP_KINDS as readonly string[]).includes(op.kind);
@@ -308,5 +324,30 @@ export function alterBlock<
     block: spec.block,
     fn: fn as AlterBlockOp<TAfter, TBefore>["fn"],
     ...(spec.under === undefined ? {} : { under: spec.under }),
+  };
+}
+
+/**
+ * Introduces a field, backfilled from the block it lands on. The backfill only
+ * runs where the field is absent, so a rerun cannot overwrite an editor's
+ * later correction — which is also what makes the op idempotent.
+ */
+export function addField<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+>(
+  spec: { block: TBlock; field: TargetFieldName<TAfter, TBlock> },
+  fn: (
+    block: TBlock extends BlockNameOf<TBefore>
+      ? ContentOf<TBefore, TBlock>
+      : Record<string, unknown>,
+  ) => unknown,
+): AddFieldOp<TAfter, TBefore> {
+  return {
+    kind: "addField",
+    block: spec.block,
+    field: spec.field,
+    fn: fn as AddFieldOp<TAfter, TBefore>["fn"],
   };
 }

@@ -10,6 +10,7 @@ export { defineMigration } from "./define-migration";
 export type { CompiledMigration, MigrationDefinition, MigrationOps } from "./define-migration";
 
 export {
+  addField,
   alterBlock,
   alterField,
   coerceField,
@@ -21,6 +22,7 @@ export {
   reorderField,
 } from "./ops";
 export type {
+  AddFieldOp,
   AlterFieldContext,
   AnyChild,
   CoercionTarget,

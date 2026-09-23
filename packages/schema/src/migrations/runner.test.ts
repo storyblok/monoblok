@@ -942,6 +942,62 @@ describe("addField", () => {
     expect(result.changed).toBe(false);
   });
 
+  it("should not throw and should write the guarded fallback when the source field is absent", () => {
+    const migration = defineMigration<SpikeSchema>({
+      name: "add-slug",
+      ops: [
+        addField({ block: "spike_card", field: "slug" }, (block) =>
+          String(block.title ?? "")
+            .toLowerCase()
+            .replace(/\s+/g, "-"),
+        ),
+      ],
+    });
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card" }],
+    });
+
+    // The runner never inspects the source field itself; whatever the closure
+    // does with an absent value is on the closure. This one's `?? ""` guard
+    // turns "absent" into an empty string, which is not `undefined`, so it is
+    // written rather than left as a skip.
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", slug: "" }],
+    });
+  });
+
+  it("should not throw and should write the guarded fallback when the source field is null", () => {
+    const migration = defineMigration<SpikeSchema>({
+      name: "add-slug",
+      ops: [
+        addField({ block: "spike_card", field: "slug" }, (block) =>
+          String(block.title ?? "")
+            .toLowerCase()
+            .replace(/\s+/g, "-"),
+        ),
+      ],
+    });
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: null }],
+    });
+
+    // `null ?? ""` takes the same fallback branch as "absent" above, so a
+    // field an editor cleared behaves identically to one that was never set.
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: null, slug: "" }],
+    });
+  });
+
   it("should stay a no-op on a rerun after backfilling once", () => {
     const migration = defineMigration<SpikeSchema>({
       name: "add-slug",

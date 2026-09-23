@@ -1,5 +1,6 @@
 ---
 import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'author'>;
@@ -23,4 +24,5 @@ const fullName = [block.first_name, block.last_name].filter(Boolean).join(' ');
     <p class="font-semibold text-gray-900">{fullName || 'Unnamed author'}</p>
     {block.bio && <p class="text-sm text-gray-600">{block.bio}</p>}
   </div>
+  <Translations block={block} />
 </div>

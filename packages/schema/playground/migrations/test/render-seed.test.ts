@@ -1,4 +1,5 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
+import { TRANSLATION_SEPARATOR } from "@storyblok/schema/migrations";
 import { describe, expect, it } from "vitest";
 
 import home from "../.storyblok/stories/seed/home_story-home.json";
@@ -19,6 +20,25 @@ async function renderSeedStories(): Promise<Record<string, string>> {
     });
   }
   return rendered;
+}
+
+/** Every `<field>__i18n__<locale>` key in a story's content, at any depth. */
+function translationKeysOf(value: unknown, found: Set<string> = new Set()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      translationKeysOf(entry, found);
+    }
+    return found;
+  }
+  if (typeof value === "object" && value !== null) {
+    for (const [key, nested] of Object.entries(value)) {
+      if (key.includes(TRANSLATION_SEPARATOR)) {
+        found.add(key.replace(TRANSLATION_SEPARATOR, ":"));
+      }
+      translationKeysOf(nested, found);
+    }
+  }
+  return found;
 }
 
 describe("the seeded space rendered as a website", () => {
@@ -43,5 +63,30 @@ describe("the seeded space rendered as a website", () => {
     const { home: renderedHome } = await renderSeedStories();
 
     expect(renderedHome).toContain("Card embedded in richtext");
+  });
+
+  it("renders every translated sibling the seed carries, so a dropped one is visible", async () => {
+    const { translated: renderedTranslated } = await renderSeedStories();
+    const shown = new Set(
+      [...renderedTranslated.matchAll(/data-translation="([^"]+)"/g)].map((match) => match[1]),
+    );
+
+    expect([...shown].sort()).toEqual([...translationKeysOf(translated.content)].sort());
+  });
+
+  it("shows a translated value, not just the locale it exists for", async () => {
+    const { translated: renderedTranslated } = await renderSeedStories();
+
+    expect(renderedTranslated).toContain("Vollständig übersetzte Karte");
+    expect(renderedTranslated).toContain("Une citation traduite.");
+    expect(renderedTranslated).toContain("Ja, das tut sie.");
+  });
+
+  it("marks an empty translated sibling as a gap rather than rendering nothing", async () => {
+    const { translated: renderedTranslated } = await renderSeedStories();
+    const emptyFrenchHeadline =
+      /data-translation="headline:fr"[^>]*>[\s\S]*?<span class="font-semibold text-red-600">missing<\/span>/;
+
+    expect(renderedTranslated).toMatch(emptyFrenchHeadline);
   });
 });

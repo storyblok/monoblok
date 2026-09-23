@@ -2,6 +2,7 @@
 import type { Block } from '../../schema/schema';
 import { linkHref } from '../../lib/links';
 import Author from './author.astro';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'teaser'>;
@@ -30,5 +31,6 @@ const href = linkHref(block.link);
         {block.authors.map(author => <Author block={author} />)}
       </div>
     ) : null}
+    <Translations block={block} />
   </div>
 </article>

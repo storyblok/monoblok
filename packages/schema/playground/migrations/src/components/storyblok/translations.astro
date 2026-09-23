@@ -1,0 +1,27 @@
+---
+import { translationsOf } from '../../lib/translations';
+
+interface Props {
+  block: unknown;
+}
+
+const { block } = Astro.props;
+const translations = translationsOf(block);
+---
+
+{translations.length > 0 && (
+  <ul class="mt-2 flex flex-wrap gap-2 text-xs" data-translations>
+    {translations.map(translation => (
+      <li
+        class="rounded bg-gray-100 px-2 py-1"
+        data-translation={`${translation.field}:${translation.locale}`}
+      >
+        <span class="font-mono text-gray-500">{translation.field}·{translation.locale}</span>{' '}
+        {translation.isEmpty
+          ? <span class="font-semibold text-red-600">missing</span>
+          : <span class="text-gray-800">{translation.preview}</span>
+        }
+      </li>
+    ))}
+  </ul>
+)}

@@ -133,6 +133,13 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       }
       break;
     }
+    case "addField": {
+      if (op.field in block) break;
+      const value = op.fn(block as never);
+      if (value === undefined) break;
+      block[op.field] = value;
+      break;
+    }
   }
 }
 

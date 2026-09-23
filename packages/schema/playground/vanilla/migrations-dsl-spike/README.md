@@ -104,7 +104,7 @@ This remains the one place the op list is weaker than the builder, whose `.under
 handle that structurally had no key ops. One rule, three enforcement points, versus one that could
 not be expressed wrongly.
 
-## Three sources of an inverse
+## Two sources of an inverse
 
 1. **Recorded patches** (`src/patch.ts`, `src/runner.ts`) — the run has both trees, so it diffs each
    touched block and stores the inverse. Only these know what the migration actually wrote, so only
@@ -112,13 +112,83 @@ not be expressed wrongly.
 2. **Derived inverse** (`src/derive-inverse.ts`) — a pure function of the op list. `renameField` and
    `moveField` invert to their mirror; a coercion inverts only when the author stated `from`.
    `removeField` cannot (the values are gone), and neither `alter` can (the output depends on the
-   input). This tier exists only because `up` is data, and it is the one that covers "CI applied it,
-   you want it gone locally".
-3. **Authored `down`** — the object call shape, read in the other direction, so its schema
-   parameters swap. The compiler enforces that: a `down` reading a field the migration renamed away
-   is an error.
+   input). This tier exists only because the op list is data, and it is the one that covers "CI
+   applied it, you want it gone locally".
 
-Tiers 2 and 3 are blind — they cannot see a concurrent edit — so patches win whenever they exist.
+The derived inverse is blind — it cannot see a concurrent edit — so patches win whenever they exist.
+
+## Why there is no `down`
+
+A schema `down` is symbolic: the inverse of adding a column is dropping it, and you can write it
+without reading a row. A content `down` is not. Between the migration running and the rollback,
+editors have been editing the very fields the migration touched, so an authored `down` replays a
+transformation against content that has moved underneath it.
+
+That makes `down` the weakest of the available inverses while looking like the strongest. A human
+wrote it, so a CLI that offered it would be trusted, but it is the only one of the three that knows
+neither what the migration wrote nor what has changed since. Recorded patches know both. The derived
+inverse knows neither either, but it is a pure function of the op list, so it can be checked, and it
+can declare itself underivable instead of guessing.
+
+So `down` is not a third fallback, it is a worse copy of the second with a false claim to authority.
+Dropping it also removes a whole reversed schema position from the type surface — `down` had to read
+`MigrationOps<Before, After>`, the only place in the API where the two parameters swapped. Where no
+inverse exists, you roll forward with a new migration: the same code, reviewed and logged, rather
+than dead code nobody has executed.
+
+Every forward-only tool in this space lands in the same place: Sanity, contentful-migration, Prisma
+and Drizzle ship no down for data, and Rails documents its auto-inverse as off-limits for data
+migrations.
+
+## The journal
+
+Removing `down` leaves recorded patches as the only inverse that knows anything, which makes where
+those patches live a load-bearing question rather than a detail. `src/journal.ts` is the interface:
+
+```ts
+interface Journal {
+  record(run: MigrationRun, inverse: StoryInverse[]): Promise<void>;
+  list(space: string): Promise<MigrationRun[]>;
+  read(id: string): Promise<MigrationRun | undefined>;
+  readInverse(id: string): Promise<StoryInverse[]>;
+}
+```
+
+**Two kinds of record, one interface.** A ledger entry is small, one per run, and is what a listing
+prints — and it is also what answers "has this migration already run against this space?", a
+question that is wrong to answer per-machine. The inverse patches are proportional to the content
+touched and are read only during a rollback; a whole-space migration can produce megabytes of them.
+Keeping them in separate methods is what lets a remote backend put the entry in a database row and
+the patches in blob storage, and what stops `list` from pulling patch bodies to print a table.
+
+They are not separate _interfaces_ because they share an id and a lifecycle: a run writes both or
+neither, and a rollback reads both. Splitting them would let a caller store one without the other,
+and the failure mode — an entry pointing at patches that were never written — only surfaces during
+an incident. `record` takes both for that reason, and implementations write the patches first: an
+orphaned patch object is inert, the reverse is not.
+
+`src/journal-local.ts` is the default, a directory per space under `.storyblok/migrations` with two
+files per run. `src/journal-mock-s3.ts` is the second implementation, which stores nothing and logs
+what a real backend would send. `test/journal.test.ts` runs the same assertions against both,
+because the point of the interface is that a rollback cannot tell which one it is reading from.
+`scripts/run-against-space.ts` takes `SPIKE_JOURNAL=mock-s3` to swap them, which is what
+demonstrates that its rollback phase reads through the interface rather than off a known path.
+
+The patch files want gitignoring. Whether the ledger is committed is a real question and not one the
+spike answers: committing it gives shared "has this run" for free at the cost of a merge conflict on
+every run, and a committed ledger records _your machine's_ runs, which is not what anyone means by
+shared.
+
+### Concurrent runs
+
+There is no locking, deliberately. The default backend is a local directory, and two machines do not
+share one — which is exactly the case a lock exists for, so a lease that only holds when nobody else
+is running would be theater. Lease semantics (TTL, renewal, breaking a lock held by a dead process)
+is where an interface like this actually gets decided, and designing it against zero backends that
+can enforce it would be guessing.
+
+This is not a regression: the concurrent-run race exists today with no journal at all. A shared
+journal makes it easier to notice, not easier to hit.
 
 ## Idempotency
 
@@ -132,12 +202,15 @@ callback is invoked twice per block, so it must be free of side effects.
 | Path                                   | What it is                                                              |
 | -------------------------------------- | ----------------------------------------------------------------------- |
 | `src/types.ts`                         | Path/name unions derived from a `Schema<typeof schema>`                 |
-| `src/define-migration.ts`              | The two call shapes; carries the op list, `title` and `down`            |
+| `src/define-migration.ts`              | The two call shapes; carries the op list and `title`                    |
 | `src/ops.ts`                           | The op factories and the type rules they enforce                        |
 | `src/derive-inverse.ts`                | Rollback tier 2: the inverse computed from the op list alone            |
 | `src/patch.ts`                         | `_uid`-addressed per-block patches; diff, inverse, conflict-aware apply |
 | `src/runner.ts`                        | Applies a compiled migration to one story, emits patch + inverse        |
 | `src/validate-migration.ts`            | Rejects ops the local schema does not define                            |
+| `src/journal.ts`                       | Where a run's ledger entry and inverse patches live                     |
+| `src/journal-local.ts`                 | The default journal: two files per run under `.storyblok/migrations`    |
+| `src/journal-mock-s3.ts`               | A second backend that logs instead of storing, to show the swap         |
 | `fixtures/schema.ts`                   | The pre-migration schema                                                |
 | `fixtures/schema-after.ts`             | One post-migration schema per migration under test                      |
 | `migrations/`                          | One migration per use case, plus a generated `.before.ts`               |

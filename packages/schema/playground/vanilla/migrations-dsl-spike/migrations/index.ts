@@ -38,18 +38,18 @@ import type { Before as ArticleBefore } from "./0001-rename-article-author.befor
  */
 export const renameField = defineMigration<AfterRenameArticleAuthor, ArticleBefore>({
   name: "0001-rename-article-author",
-  up: [renameFieldOp({ block: "spike_article", field: "author", to: "byline" })],
+  ops: [renameFieldOp({ block: "spike_article", field: "author", to: "byline" })],
 });
 
 /** Same block name at several depths, under two different parents. */
 export const renameNestedField = defineMigration<AfterRenameMetaAuthor, SpikeSchema>({
   name: "0002-rename-meta-author",
-  up: [renameFieldOp({ block: "spike_meta", field: "author", to: "written_by" })],
+  ops: [renameFieldOp({ block: "spike_meta", field: "author", to: "written_by" })],
 });
 
 export const removeField = defineMigration<AfterRemoveCardDescription, SpikeSchema>({
   name: "0003-remove-card-description",
-  up: [removeFieldOp({ block: "spike_card", field: "description" })],
+  ops: [removeFieldOp({ block: "spike_card", field: "description" })],
 });
 
 /**
@@ -58,7 +58,7 @@ export const removeField = defineMigration<AfterRemoveCardDescription, SpikeSche
  */
 export const coerceFields = defineMigration<AfterCoerceCardTypes, SpikeSchema>({
   name: "0004-coerce-card-types",
-  up: [
+  ops: [
     coerceField({ block: "spike_card", field: "legacy_price", from: "string", to: "number" }),
     coerceField({ block: "spike_card", field: "featured", from: "string", to: "boolean" }),
   ],
@@ -67,10 +67,10 @@ export const coerceFields = defineMigration<AfterCoerceCardTypes, SpikeSchema>({
 /** Single-schema shorthand: `slug` already exists, so `Before` and `After` agree. */
 export const moveValue = defineMigration<SpikeSchema>({
   name: "0005-move-old-slug",
-  up: [moveField({ block: "spike_card", field: "old_slug", to: "slug" })],
+  ops: [moveField({ block: "spike_card", field: "old_slug", to: "slug" })],
 });
 
-/** The bare-array call shape: forward-only, no title, no `down`. */
+/** The bare-array call shape: no title, nothing but the ops. */
 export const alterString = defineMigration<SpikeSchema>([
   alterField({ block: "spike_section", field: "heading" }, (heading) =>
     typeof heading === "string" ? heading.toUpperCase() : heading,
@@ -80,7 +80,7 @@ export const alterString = defineMigration<SpikeSchema>([
 /** Deliberately non-idempotent: a second pass keeps toggling `meta`. */
 export const alterStructure = defineMigration<SpikeSchema>({
   name: "0007-ensure-section-meta",
-  up: [
+  ops: [
     alterBlock({ block: "spike_section" }, (block) => {
       const meta = block.meta ?? [];
       if (meta.length === 0) {
@@ -101,7 +101,7 @@ export const alterStructure = defineMigration<SpikeSchema>({
 /** One migration file touching two different blocks. */
 export const twoBlocks = defineMigration<AfterTwoBlocks, SpikeSchema>({
   name: "0008-two-blocks",
-  up: [
+  ops: [
     renameFieldOp({ block: "spike_article", field: "excerpt", to: "summary" }),
     coerceField({ block: "spike_card", field: "title", from: "string", to: "string" }),
     alterBlock({ block: "spike_card" }, (block) => {
@@ -115,7 +115,7 @@ export const twoBlocks = defineMigration<AfterTwoBlocks, SpikeSchema>({
 /** Targets a block defined in the schema but present in no story. */
 export const noMatches = defineMigration<SpikeSchema>({
   name: "0009-no-matches",
-  up: [removeFieldOp({ block: "spike_banner", field: "label" })],
+  ops: [removeFieldOp({ block: "spike_banner", field: "label" })],
 });
 
 /**
@@ -125,7 +125,7 @@ export const noMatches = defineMigration<SpikeSchema>({
  */
 export const scopedAlter = defineMigration<SpikeSchema>({
   name: "0010-scoped-meta-og-title",
-  up: [
+  ops: [
     alterField({ block: "spike_meta", field: "og_title", under: "spike_card" }, (title) =>
       typeof title === "string" && !title.startsWith("card:") ? `card:${title}` : title,
     ),
@@ -135,7 +135,7 @@ export const scopedAlter = defineMigration<SpikeSchema>({
 /** Explicit reorder, so ordering does not degrade to a whole-array replace. */
 export const reorderItems = defineMigration<SpikeSchema>({
   name: "0011-sort-section-items",
-  up: [
+  ops: [
     reorderField({ block: "spike_section", field: "items" }, (a, b) =>
       String(b.title ?? "").localeCompare(String(a.title ?? "")),
     ),
@@ -149,7 +149,7 @@ export const reorderItems = defineMigration<SpikeSchema>({
  */
 export const nestedUnder = defineMigration<SpikeSchema>({
   name: "0012-meta-in-card-in-section",
-  up: [
+  ops: [
     alterField(
       { block: "spike_meta", field: "og_title", under: ["spike_section", "spike_card"] },
       (title) => (typeof title === "string" ? `deep:${title}` : title),
@@ -160,7 +160,7 @@ export const nestedUnder = defineMigration<SpikeSchema>({
 /** The same two names in the wrong order, which must match nothing. */
 export const nestedUnderReversed = defineMigration<SpikeSchema>({
   name: "0013-order-matters",
-  up: [
+  ops: [
     alterField(
       { block: "spike_meta", field: "og_title", under: ["spike_card", "spike_section"] },
       (title) => (typeof title === "string" ? `wrong:${title}` : title),
@@ -168,14 +168,9 @@ export const nestedUnderReversed = defineMigration<SpikeSchema>({
   ],
 });
 
-/**
- * The object call shape carrying both extras: a `title` for CLI output, and a
- * hand-written `down` for the case where the author knows the inverse and the
- * derivation cannot. Read in the other direction, so its schema parameters swap.
- */
+/** The object call shape: the op list plus a `title` for CLI output. */
 export const titledRename = defineMigration<AfterRenameMetaAuthor, SpikeSchema>({
   name: "0014-titled-rename",
   title: "Rename spike_meta.author to written_by",
-  up: [renameFieldOp({ block: "spike_meta", field: "author", to: "written_by" })],
-  down: [renameFieldOp({ block: "spike_meta", field: "written_by", to: "author" })],
+  ops: [renameFieldOp({ block: "spike_meta", field: "author", to: "written_by" })],
 });

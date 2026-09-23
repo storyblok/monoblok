@@ -424,7 +424,7 @@ describe("reorder", () => {
 });
 
 describe("reorderField context", () => {
-  it("lets a comparator read each item's position in the original array", () => {
+  it("should let a comparator read each item's position in the original array", () => {
     const migration = defineMigration<TestSchema>({
       name: "sort-but-pin-the-opener",
       ops: [
@@ -451,7 +451,7 @@ describe("reorderField context", () => {
     });
   });
 
-  it("exposes the whole sibling array", () => {
+  it("should expose the whole sibling array to the comparator", () => {
     let seen: readonly unknown[] = [];
     const migration = defineMigration<TestSchema>({
       name: "observe-siblings",

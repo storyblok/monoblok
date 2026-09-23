@@ -1,6 +1,7 @@
 ---
 import type { Block } from '../../schema/schema';
 import FaqItem from './faq-item.astro';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'faq'>;
@@ -17,4 +18,5 @@ const { block } = Astro.props;
   <div class="grid gap-3">
     {block.items?.map(item => <FaqItem block={item} />)}
   </div>
+  <Translations block={block} />
 </section>

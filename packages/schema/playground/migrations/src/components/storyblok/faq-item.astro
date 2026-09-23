@@ -1,6 +1,7 @@
 ---
 import type { Block } from '../../schema/schema';
 import Richtext from './richtext.astro';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'faq_item'>;
@@ -13,5 +14,6 @@ const { block } = Astro.props;
   <summary class="cursor-pointer font-medium text-gray-900">{block.question}</summary>
   <div class="mt-2 text-gray-600">
     <Richtext document={block.answer} />
+    <Translations block={block} />
   </div>
 </details>

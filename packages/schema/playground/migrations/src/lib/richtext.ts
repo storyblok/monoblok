@@ -1,14 +1,10 @@
 import { renderRichText } from "@storyblok/richtext";
 
-import { schema } from "../schema/schema";
+import { isKnownBlock } from "./blocks";
 import type { AnyBlock, Block } from "../schema/schema";
 
 type RichtextValue = NonNullable<Block<"card">["body"]>;
 type RichtextNode = RichtextValue["content"][number];
-
-const BLOCK_NAMES: ReadonlySet<string> = new Set(
-  Object.values(schema.blocks).map((block) => block.name),
-);
 
 /**
  * A richtext document rendered as an alternating run of HTML and embedded blocks.
@@ -17,23 +13,13 @@ const BLOCK_NAMES: ReadonlySet<string> = new Set(
  * same components as the rest of the page; a migration that rewrites a block only
  * inside richtext is otherwise invisible.
  *
- * `unrecognized` carries embedded values whose `component` is not in the schema —
+ * `unrecognized` carries embedded values whose `component` is not in the schema,
  * for instance a block a rename migration missed. They are rendered as-is rather
  * than skipped, so nothing disappears from the page unannounced.
  */
 export type RichtextSegment =
   | { kind: "html"; html: string }
   | { kind: "blocks"; blocks: AnyBlock[]; unrecognized: unknown[] };
-
-function isKnownBlock(value: unknown): value is AnyBlock {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "component" in value &&
-    typeof value.component === "string" &&
-    BLOCK_NAMES.has(value.component)
-  );
-}
 
 function embeddedValues(node: RichtextNode): unknown[] | null {
   if (node.type !== "blok") {

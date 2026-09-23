@@ -2,6 +2,7 @@
 import type { Block } from '../../schema/schema';
 import { linkHref } from '../../lib/links';
 import Richtext from './richtext.astro';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'card'>;
@@ -16,7 +17,7 @@ const href = linkHref(block.link);
   <p class="mt-1 text-xs text-gray-400">
     {block.slug && <span class="mr-3">/{block.slug}</span>}
     {block.category && <span class="mr-3">category: {block.category}</span>}
-    {block.price !== undefined && block.price !== null && <span>price: {block.price}</span>}
+    {block.price && <span>price: {block.price}</span>}
   </p>
   <Richtext document={block.body} />
   {block.images?.length ? (
@@ -33,4 +34,5 @@ const href = linkHref(block.link);
     </div>
   ) : null}
   {href && <a href={href} class="mt-4 inline-block text-sm text-indigo-600 hover:underline">Read more &rarr;</a>}
+  <Translations block={block} />
 </article>

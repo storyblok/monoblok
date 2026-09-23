@@ -1,5 +1,6 @@
 ---
 import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'pricing_table'>;
@@ -37,4 +38,5 @@ const table = block.table;
     {block.currency && <span class="mr-3">currency: {block.currency}</span>}
     {block.footnote}
   </p>
+  <Translations block={block} />
 </section>

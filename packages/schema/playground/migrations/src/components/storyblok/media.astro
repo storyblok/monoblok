@@ -1,5 +1,6 @@
 ---
 import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'media'>;
@@ -25,4 +26,5 @@ const { block } = Astro.props;
     {block.caption}
     {block.credit && <span class="ml-2 text-xs text-gray-400">© {block.credit}</span>}
   </figcaption>
+  <Translations block={block} />
 </figure>

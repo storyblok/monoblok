@@ -1,5 +1,6 @@
 ---
 import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'gallery'>;
@@ -28,4 +29,5 @@ const columns = Number(block.columns ?? 3);
     ))}
   </div>
   {!block.images?.length && <p class="text-sm text-gray-400">No images</p>}
+  <Translations block={block} />
 </section>

@@ -1,5 +1,6 @@
 ---
 import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
 
 interface Props {
   block: Block<'section'>;
@@ -19,5 +20,6 @@ const accentColor = block.accent_color?.color;
     </h2>
   )}
   <p class="mb-4 text-xs tracking-wide text-gray-400 uppercase">section · {block.theme ?? 'no theme'}</p>
+  <Translations block={block} />
   <slot />
 </section>

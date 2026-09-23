@@ -15,7 +15,7 @@
         "component": "card",
         "headline": "A loose card, directly on the page",
         "slug": "loose-card",
-        "price": 19,
+        "price": "19",
         "category": "story-team",
         "link": {
           "id": "story-team",
@@ -62,7 +62,7 @@
                     "component": "card",
                     "headline": "Card embedded in richtext",
                     "slug": "embedded-card",
-                    "price": 5,
+                    "price": "5",
                     "link": {
                       "id": "",
                       "url": "https://www.storyblok.com",
@@ -105,7 +105,7 @@
             "component": "card",
             "headline": "First card in the section",
             "slug": "section-card-one",
-            "price": 42,
+            "price": "42",
             "category": "story-pricing",
             "link": null,
             "images": [],

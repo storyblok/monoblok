@@ -92,7 +92,7 @@
                         "component": "card",
                         "headline": "Everything in Starter, plus seats",
                         "slug": "included",
-                        "price": 0,
+                        "price": "0",
                         "link": null,
                         "images": [],
                         "body": null

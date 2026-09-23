@@ -142,6 +142,42 @@ describe("undoRun", () => {
     expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
   });
 
+  it("should count one conflicting block once however many of its fields the run changed", async () => {
+    const journal = journalHolding([run], {
+      "run-1": [
+        {
+          story: "1",
+          patches: [
+            {
+              uid: "a",
+              component: "card",
+              ops: [
+                { kind: "set", key: "title", value: "Hi", expect: "Hi" },
+                { kind: "unset", key: "headline", expect: "Hi" },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const outcome = await undoRun({
+      journal,
+      id: "run-1",
+      fetchStory: async () => ({
+        id: 1,
+        slug: "home",
+        content: {
+          _uid: "r",
+          component: "page",
+          body: [{ _uid: "a", component: "card", title: "edited since" }],
+        },
+      }),
+    });
+
+    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+  });
+
   it("should not offer a write for a story whose every block conflicted", async () => {
     const journal = journalHolding([run], {
       "run-1": [

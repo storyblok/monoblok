@@ -1,15 +1,16 @@
 /**
- * SPIKE — the probe migrations, one per use case under test.
+ * Test fixtures: one migration per case the engine's tests exercise, each
+ * written the way a real one would be.
  *
- * Each entry is what the proposed DSL would put in
+ * A real migration lives in its own file, at
  * `.storyblok/migrations/<space>/NNNN-<name>.ts`. `After` comes first and is the
  * schema module the project already has; `Before` comes from the generated
  * snapshot committed next to the migration (see
  * `0001-rename-article-author.before.ts`). Migrations whose two ends differ only
  * by fields they never read use the single-schema shorthand.
  *
- * `name` exists here only because these probes share one module and so have no
- * filename to be keyed by; shipped migrations take their id from the filename.
+ * `name` is set on each because they share one module here and so have no
+ * filename to be keyed by; a real migration takes its id from the filename.
  */
 import { defineMigration } from "../define-migration";
 import {

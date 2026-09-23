@@ -1,7 +1,9 @@
 /**
  * Applies one content migration across a set of stories and reports what should
  * be written, without writing anything itself. Keeping the decision separate
- * from the I/O is what lets `--dry-run` be the same code path minus the write.
+ * from the I/O is what lets `--dry-run` be the same code path minus the write:
+ * there is no dry-run branch here, so a dry run and a real run cannot disagree
+ * about what a migration does. The caller decides whether to perform the writes.
  */
 import { runMigrationOnStory } from "@storyblok/schema/migrations";
 import type { CompiledMigration, MigrationRun, StoryInverse } from "@storyblok/schema/migrations";
@@ -19,13 +21,13 @@ export type ApplyInput = {
   id: string;
   space: string;
   stories: StoryForMigration[];
-  dryRun: boolean;
 };
 
 export type ApplyOutcome = {
   /** The ledger entry for this run. The caller fills in `id`; it owns the clock. */
   run: MigrationRun;
   inverse: StoryInverse[];
+  /** The writes the caller should perform; a dry run simply does not perform them. */
   writes: { story: StoryForMigration; content: Record<string, unknown> }[];
   refusals: { slug: string; reason: string }[];
 };
@@ -77,9 +79,7 @@ export async function applyMigration(input: ApplyInput): Promise<ApplyOutcome> {
     }
 
     inverse.push({ story: String(story.id), patches: result.inverse });
-    if (!input.dryRun) {
-      writes.push({ story, content: result.content });
-    }
+    writes.push({ story, content: result.content });
   }
 
   return {

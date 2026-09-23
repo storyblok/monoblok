@@ -2,8 +2,9 @@
  * Discovers content migration files in a space's migrations directory.
  *
  * Identity is the filename, not anything inside the file: that is what makes
- * "has this already run here?" answerable across machines. `*.before.ts`
- * snapshots sit beside migrations and are type-only, so they are skipped.
+ * "has this already run here?" answerable across machines. The name pattern
+ * admits no dots, so the `*.before.ts` schema snapshots that sit beside
+ * migrations, and anything else in the directory, are left alone.
  */
 import { readdir } from "node:fs/promises";
 import { join } from "pathe";
@@ -18,7 +19,6 @@ export type LoadedMigration = {
 };
 
 const MIGRATION_FILE = /^(\d+-[a-z0-9-]+)\.(?:ts|js|mjs)$/;
-const SNAPSHOT_SUFFIX = ".before.ts";
 
 function isCompiledMigration(value: unknown): value is CompiledMigration {
   return isRecord(value) && Array.isArray(value.ops) && Array.isArray(value.targets);
@@ -27,8 +27,9 @@ function isCompiledMigration(value: unknown): value is CompiledMigration {
 export async function loadMigrations(directory: string): Promise<LoadedMigration[]> {
   const files = await readdir(directory).catch((): string[] => []);
 
+  // Sorted by filename, because the numeric prefix is the order the migrations
+  // are meant to run in and a directory listing carries no order of its own.
   const candidates = files
-    .filter((file) => !file.endsWith(SNAPSHOT_SUFFIX))
     .flatMap((file) => {
       const match = MIGRATION_FILE.exec(file);
       return match ? [{ file, id: match[1] }] : [];

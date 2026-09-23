@@ -54,6 +54,23 @@ describe("stories.get()", () => {
     expect(typeof result.data?.story).toBe("object");
   });
 
+  it("should return a synthetic response for transport failures on resource calls", async () => {
+    // stories.get() goes through asApiResponse rather than the generic get()/request()
+    // path — this pins that it gets the same Response/Request normalization.
+    server.use(http.get("https://api.storyblok.com/v2/cdn/stories/*", () => HttpResponse.error()));
+    const client = createApiClient({
+      accessToken: "test-token",
+      retry: { limit: 0 },
+    });
+
+    const result = await client.stories.get("test-story");
+
+    expect(result.error).toBeDefined();
+    expect(result.data).toBeUndefined();
+    expect(result.response.status).toBe(0);
+    expect(result.request).toBeInstanceOf(Request);
+  });
+
   it("should retry on 429", async () => {
     vi.useFakeTimers();
     let requestCount = 0;
@@ -138,6 +155,19 @@ describe("stories.get()", () => {
     });
 
     await expect(client.stories.get("non-existent-story")).rejects.toThrow();
+  });
+
+  it("should preserve the original error as cause when throwOnError is true", async () => {
+    server.use(http.get("https://api.storyblok.com/v2/cdn/stories/*", () => HttpResponse.error()));
+    const client = createApiClient({
+      accessToken: "test-token",
+      throwOnError: true,
+      retry: { limit: 0 },
+    });
+
+    await expect(client.stories.get("non-existent-story")).rejects.toMatchObject({
+      cause: expect.anything(),
+    });
   });
 
   it("should allow overriding throwOnError per stories method call", async () => {

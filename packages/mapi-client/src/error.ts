@@ -15,8 +15,11 @@ export interface ApiErrorBody {
 export class ClientError extends Error {
   readonly response: { status: number; statusText: string; data: ApiErrorBody | undefined };
 
-  constructor(message: string, options: { status: number; statusText: string; data: unknown }) {
-    super(message);
+  constructor(
+    message: string,
+    options: { status: number; statusText: string; data: unknown; cause?: unknown },
+  ) {
+    super(message, options.cause !== undefined ? { cause: options.cause } : undefined);
     this.name = "ClientError";
     this.response = {
       status: options.status,

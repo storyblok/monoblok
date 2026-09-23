@@ -213,6 +213,7 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
         status: response?.status ?? 0,
         statusText: response?.statusText ?? "",
         data: error,
+        cause: error,
       }),
   );
 

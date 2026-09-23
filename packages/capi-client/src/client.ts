@@ -50,7 +50,8 @@ const getFailure = (result: ApiResponse): StrategyFailure | undefined =>
         // The generated client resolves transport failures with no response. There
         // was no origin answer to classify, so network-first must treat this as
         // transient and use its cached value.
-        transient: result.response.status === 0 || isTransientStatus(result.response.status),
+        transient:
+          (result.response?.status ?? 0) === 0 || isTransientStatus(result.response?.status ?? 0),
         error: result.error,
       };
 
@@ -337,6 +338,7 @@ export const createApiClientBase = <
         status: response?.status ?? 0,
         statusText: response?.statusText ?? "",
         data: error,
+        cause: error,
       }),
   );
 
@@ -382,36 +384,41 @@ export const createApiClientBase = <
     return result;
   };
 
-  const requestNetwork = async (
-    method: "GET",
-    path: string,
-    query: Record<string, unknown>,
-    options: HttpRequestOptions,
-  ): Promise<ApiResponse> => {
-    const result = await client.request<unknown, ClientError, boolean>({
-      ...options,
-      method,
-      query,
-      security,
-      url: path,
-    });
-
-    // Keep the public response contract stable when Hey API represents a
-    // transport failure without Response/Request objects.
-    const response = result.response ?? Response.error();
-    const request = result.request ?? new Request(`${baseUrl || getRegionBaseUrl(region)}${path}`);
-    return { ...result, response, request };
-  };
-
   /**
    * Wraps a raw SDK call to cast the `error: unknown` type returned by
    * generated code to `ClientError` — the error interceptor ensures the
-   * runtime value IS a ClientError.
+   * runtime value IS a ClientError. Also keeps the public response contract
+   * stable when Hey API represents a transport failure without Response/Request
+   * objects, so every resource call (not just `client.request()`) sees a
+   * synthetic `Response`/`Request` rather than `undefined`.
    */
   const asApiResponse = <TData, ThrowOnError extends boolean = false>(
     p: Promise<unknown>,
   ): Promise<ApiResponse<TData, ThrowOnError>> =>
-    p as unknown as Promise<ApiResponse<TData, ThrowOnError>>;
+    p.then((result) => {
+      const typedResult = result as ApiResponse<TData, ThrowOnError>;
+      return {
+        ...typedResult,
+        response: typedResult.response ?? Response.error(),
+        request: typedResult.request ?? new Request(baseUrl || getRegionBaseUrl(region)),
+      };
+    });
+
+  const requestNetwork = (
+    method: "GET",
+    path: string,
+    query: Record<string, unknown>,
+    options: HttpRequestOptions,
+  ): Promise<ApiResponse> =>
+    asApiResponse(
+      client.request<unknown, ClientError, boolean>({
+        ...options,
+        method,
+        query,
+        security,
+        url: path,
+      }),
+    );
 
   const requestWithCache = async <TData = unknown, ThrowOnError extends boolean = false>(
     method: "GET",

@@ -1,7 +1,7 @@
 import type { MarkSpec, NodeSpec } from "prosemirror-model";
-import type { RichTextDoc, RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
+import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
 
-type Extension = RichTextDoc | RichTextNode | RichTextMark;
+type Extension = RichTextNode | RichTextMark;
 export type ExtensionKey = Extension["type"];
 type ExtensionAttrMap = {
   [E in Extension as E["type"]]: E extends { attrs: infer A }
@@ -12,12 +12,6 @@ type ExtensionAttrMap = {
 };
 
 export type ExtensionAttrs<K extends ExtensionKey> = ExtensionAttrMap[K];
-export type NodeAttrTypeMap = {
-  [K in RichTextDoc["type"] | RichTextNode["type"]]: ExtensionAttrs<K>;
-};
-export type MarkAttrTypeMap = {
-  [K in RichTextMark["type"]]: ExtensionAttrs<K>;
-};
 /** Conditional typing for Node vs Mark */
 
 type NodeKey = RichTextNode["type"];

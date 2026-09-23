@@ -481,6 +481,22 @@ describe("createManagementApiClient - throwOnError", () => {
     await expect(client.spaces.list()).rejects.toThrow();
   });
 
+  it("should preserve the original error as cause when throwOnError is true", async () => {
+    server.use(http.get("https://mapi.storyblok.com/v1/spaces", () => HttpResponse.error()));
+    const client = createManagementApiClient({
+      personalAccessToken: "invalid-token",
+      spaceId: 123,
+      region: "eu",
+      rateLimit: false,
+      throwOnError: true,
+      retry: { limit: 0 },
+    });
+
+    await expect(client.spaces.list()).rejects.toMatchObject({
+      cause: expect.anything(),
+    });
+  });
+
   it("should allow overriding throwOnError per resource method call", async () => {
     server.use(
       http.get("https://mapi.storyblok.com/v1/spaces", () => {

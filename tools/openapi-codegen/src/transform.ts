@@ -41,7 +41,7 @@ export function deduplicateGeneratedUnions(sourceText: string): string {
 
   function visit(node: ts.Node): void {
     if (ts.isUnionTypeNode(node)) {
-      const deduplicated = deduplicateUnions(node, sourceText, comparisonPrinter);
+      const deduplicated = deduplicateUnions(node, source, comparisonPrinter);
       const changed =
         comparisonPrinter.printNode(ts.EmitHint.Unspecified, node, source) !==
         comparisonPrinter.printNode(ts.EmitHint.Unspecified, deduplicated, source);
@@ -145,7 +145,7 @@ export function transformGeneratedFile(
       }
     }
 
-    body = rewriteAndDeduplicate(body, renameMap, sourceText, comparisonPrinter);
+    body = rewriteAndDeduplicate(body, renameMap, src, comparisonPrinter);
 
     const newDecl = withLeadingComments(
       sourceText,
@@ -248,10 +248,9 @@ function extractProperty(typeNode: ts.TypeNode, propName: string): ts.TypeNode |
 function rewriteAndDeduplicate(
   node: ts.TypeNode,
   renameMap: ReadonlyMap<string, string>,
-  sourceText: string,
+  source: ts.SourceFile,
   printer: ts.Printer,
 ): ts.TypeNode {
-  const source = ts.createSourceFile("union.ts", sourceText, ts.ScriptTarget.Latest, false);
   const result = ts.transform(node, [
     (ctx) => {
       const visit: ts.Visitor = (n) => {
@@ -297,10 +296,9 @@ function rewriteAndDeduplicate(
 /** Remove structurally identical members from unions emitted by @hey-api/openapi-ts. */
 function deduplicateUnions(
   node: ts.TypeNode,
-  sourceText: string,
+  source: ts.SourceFile,
   printer: ts.Printer,
 ): ts.TypeNode {
-  const source = ts.createSourceFile("union.ts", sourceText, ts.ScriptTarget.Latest, false);
   const result = ts.transform(node, [
     (ctx) => {
       const visit: ts.Visitor = (n) => {

@@ -8,6 +8,7 @@ import { applyPatches, indexBlocks } from "./patch";
 import { runMigrationOnStory } from "./runner";
 import { defineMigration } from "./define-migration";
 import {
+  addField,
   alterBlock,
   alterField,
   removeField as removeFieldOp,
@@ -877,5 +878,93 @@ describe("uid instability the content already had", () => {
     });
 
     expect(result.unstableUids.missing).toBe(0);
+  });
+});
+
+describe("addField", () => {
+  it("should add the field with the computed value", () => {
+    const migration = defineMigration<SpikeSchema>({
+      name: "add-slug",
+      ops: [
+        addField({ block: "spike_card", field: "slug" }, (block) =>
+          String(block.title ?? "")
+            .toLowerCase()
+            .replace(/\s+/g, "-"),
+        ),
+      ],
+    });
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: "Hello World" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: "Hello World", slug: "hello-world" }],
+    });
+  });
+
+  it("should leave a block alone when the backfill returns undefined", () => {
+    const migration = defineMigration<SpikeSchema>({
+      name: "add-slug",
+      ops: [addField({ block: "spike_card", field: "slug" }, () => undefined)],
+    });
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: "Hello" }],
+    });
+
+    expect(result.changed).toBe(false);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: "Hello" }],
+    });
+  });
+
+  it("should not overwrite a value the field already holds", () => {
+    const migration = defineMigration<SpikeSchema>({
+      name: "add-slug",
+      ops: [addField({ block: "spike_card", field: "slug" }, () => "computed")],
+    });
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", slug: "hand-written" }],
+    });
+
+    expect(result.changed).toBe(false);
+  });
+
+  it("should stay a no-op on a rerun after backfilling once", () => {
+    const migration = defineMigration<SpikeSchema>({
+      name: "add-slug",
+      ops: [
+        addField({ block: "spike_card", field: "slug" }, (block) =>
+          String(block.title ?? "")
+            .toLowerCase()
+            .replace(/\s+/g, "-"),
+        ),
+      ],
+    });
+
+    const original = {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "a", component: "spike_card", title: "Hello World" }],
+    };
+
+    const first = runMigrationOnStory(migration, original);
+    expect(first.changed).toBe(true);
+
+    const second = runMigrationOnStory(migration, first.content);
+    expect(second.changed).toBe(false);
+    expect(second.content).toEqual(first.content);
   });
 });

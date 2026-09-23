@@ -77,11 +77,18 @@ export type ValueOfPath<TSchema extends SchemaShape, TPath extends FieldPathOf<T
  * A rename/move target on the *post*-migration schema: the names the block is
  * declared to have after the migration ran, minus the source name itself.
  *
- * Falls back to `string` when the block is absent from the target schema, so a
- * migration whose `After` snapshot is incomplete still compiles.
+ * Falls back to `string` when the block is absent from the target schema, or
+ * when the schema type carries no literal block/field names to resolve (the
+ * bare `SchemaShape` interface, as opposed to a schema inferred from a real
+ * `defineSchema` call), so a migration whose `After` snapshot is incomplete
+ * still compiles.
  */
 export type TargetFieldName<TAfter extends SchemaShape, TBlock extends string> =
-  TBlock extends BlockNameOf<TAfter> ? FieldNameIn<TAfter, TBlock> : string;
+  TBlock extends BlockNameOf<TAfter>
+    ? [FieldNameIn<TAfter, TBlock>] extends [never]
+      ? string
+      : FieldNameIn<TAfter, TBlock>
+    : string;
 
 /**
  * True when the caller gave `defineMigration` one schema rather than two.

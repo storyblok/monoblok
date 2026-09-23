@@ -54,6 +54,10 @@ function invert(op: MigrationOp): MigrationOp | string {
     case "alterField":
     case "alterBlock":
       return "the output depends on the input, so the closure would have to run backwards";
+    case "addField":
+      // Not lossy: removing a key the migration itself introduced restores
+      // exactly what was there.
+      return { kind: "removeField", block: op.block, field: op.field };
   }
 }
 

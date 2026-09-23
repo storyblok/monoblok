@@ -16,6 +16,7 @@ import {
   renameBlock,
   renameField as renameFieldOp,
   reorderField,
+  type ReorderContext,
   splitField,
   unwrapChildren,
   wrapChildren,
@@ -424,13 +425,22 @@ describe("reorder", () => {
 });
 
 describe("reorderField context", () => {
-  it("should let a comparator read each item's position in the original array", () => {
+  it("should keep reporting each item's pre-sort index and siblings after the field has been reordered", () => {
+    // A comparator that resolved `index`/`siblings` by searching the field's
+    // current value, instead of a frozen snapshot, would happen to agree with
+    // the snapshot for every call made *during* the sort — a native sort only
+    // writes its result back once, atomically, so there is no comparator call
+    // during which the field is partway reordered. The only place a live
+    // lookup and a snapshot provably diverge is *after* the field has been
+    // reassigned to the sorted array: a captured `context` held past that
+    // point reports the sorted array's contents under a live lookup, and the
+    // original array's under a snapshot.
+    let capturedContext: ReorderContext | undefined;
     const migration = defineMigration<TestSchema>({
-      name: "sort-but-pin-the-opener",
+      name: "capture-context",
       ops: [
         reorderField({ block: "page", field: "body" }, (a, b, context) => {
-          // Whatever opens the page stays there; sort the rest by title.
-          if (context.index(a) === 0 || context.index(b) === 0) return 0;
+          capturedContext ??= context;
           return String(a.title ?? "").localeCompare(String(b.title ?? ""));
         }),
       ],
@@ -446,33 +456,56 @@ describe("reorderField context", () => {
       ],
     });
 
-    expect(result.content).toMatchObject({
-      body: [{ title: "zebra" }, { title: "apple" }, { title: "cherry" }],
-    });
+    // Confirm the field genuinely got reordered, so the check below is not
+    // vacuous.
+    expect(
+      (result.content as { body: { _uid: string }[] }).body.map((child) => child._uid),
+    ).toEqual(["c", "b", "a"]);
+
+    // `capturedContext.siblings` holds the same object references the runner
+    // put through `op.compare` and ultimately into the sorted, reassigned
+    // field — so this checks the snapshot itself, not a separately
+    // constructed lookalike that a clone step could make a false match or
+    // mismatch against.
+    const [childA, childB, childC] = capturedContext!.siblings;
+    expect(capturedContext!.index(childA)).toBe(0);
+    expect(capturedContext!.index(childB)).toBe(1);
+    expect(capturedContext!.index(childC)).toBe(2);
+    expect(capturedContext!.siblings.map((child) => child._uid)).toEqual(["a", "b", "c"]);
   });
 
   it("should expose the whole sibling array to the comparator", () => {
-    let seen: readonly unknown[] = [];
+    // The comparator can only get this right by reading every sibling's
+    // priority, not just the two items being compared — a `siblings` that
+    // were missing an item, or held the wrong ones, would sum to something
+    // else and leave the list unsorted.
     const migration = defineMigration<TestSchema>({
       name: "observe-siblings",
       ops: [
         reorderField({ block: "page", field: "body" }, (a, b, context) => {
-          seen = context.siblings;
-          return 0;
+          const totalPriority = context.siblings.reduce(
+            (sum, child) => sum + (typeof child.priority === "number" ? child.priority : 0),
+            0,
+          );
+          if (totalPriority !== 3) return 0;
+          return String(b._uid).localeCompare(String(a._uid));
         }),
       ],
     });
 
-    runMigrationOnStory(migration, {
+    const result = runMigrationOnStory(migration, {
       _uid: "root",
       component: "page",
       body: [
-        { _uid: "a", component: "card" },
-        { _uid: "b", component: "card" },
+        { _uid: "a", component: "card", priority: 1 },
+        { _uid: "b", component: "card", priority: 1 },
+        { _uid: "c", component: "card", priority: 1 },
       ],
     });
 
-    expect(seen).toHaveLength(2);
+    expect(result.content).toMatchObject({
+      body: [{ _uid: "c" }, { _uid: "b" }, { _uid: "a" }],
+    });
   });
 });
 

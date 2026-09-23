@@ -49,16 +49,15 @@ it types every name and value the migration writes. With one parameter, source p
 name autocompletes while one the schema no longer has still compiles. Naming `Before` as well
 tightens reads, turning a misspelled source path back into an error. See Two schema versions.
 
-**Two call shapes.** The callback is the forward-only case. The object exists so a hand-written
-inverse has somewhere to live, which is also what makes `up` an honest name — it was only misleading
-while no `down` could exist.
+**Two call shapes.** The bare form is the common case. The object exists so a title has somewhere to
+live.
 
 ```ts
-defineMigration<Schema>({ title, up, down });
+defineMigration<Schema>({ title, ops });
 ```
 
-`title` is a label for CLI output, nothing more; identity stays with the filename. `down` is a
-fallback, not an override — see Rollback.
+`title` is a label for CLI output, nothing more; identity stays with the filename. There is no
+`down` — see Rollback.
 
 Several ops in one migration, applied in one pass over each story:
 
@@ -257,22 +256,24 @@ A migration produces patches; the runner applies them and records the inverse. T
 algebra, because it's `diff(after, before)` computed while both trees are in hand. `alter` gets a
 sound inverse for free, and no op has to be individually reversible.
 
-This is why a hand-written `down` is not the primary mechanism. A schema `down` is symbolic — the
-inverse of adding a column is dropping it, writable without reading a row — but the inverse of an
-`alter` depends on the values it overwrote, so it can only be recorded, never declared. Every
-forward-only tool in this space agrees: Sanity, contentful-migration, Prisma and Drizzle ship no
-down for data, and Rails' auto-inverse is documented as off-limits for data migrations.
+**There is no hand-written `down`.** A schema `down` is symbolic — the inverse of adding a column is
+dropping it, writable without reading a row — but the inverse of an `alter` depends on the values it
+overwrote, so it can only be recorded, never declared. Worse, a content `down` runs against content
+editors have kept editing since the migration ran, so it replays a transformation against a tree
+that has moved underneath it. It is the weakest inverse available while looking like the strongest,
+because a human wrote it. Every forward-only tool in this space lands in the same place: Sanity,
+contentful-migration, Prisma and Drizzle ship no down for data, and Rails' auto-inverse is
+documented as off-limits for data migrations.
 
-The cost is that patches are local, so rollback works only where the migration ran. That gap is what
-the optional `down` closes, and **recorded patches take precedence over it**. Only the patches know
-what the migration actually wrote, so only they can tell that an editor has since changed the field
-and skip that block; a `down` is blind and would overwrite it. Preferring `down` would trade the
-design's one real safety property for author convenience, silently, on the day of an incident.
+The second source is a **derived inverse**, computed from the op list alone: a rename and a move
+invert to their mirror, a coercion inverts when the author stated the source type, and a removal or
+an `alter` cannot invert at all and says so. This works on a machine that never ran the migration,
+which is the case recorded patches cannot cover. It is blind to concurrent edits, so **recorded
+patches take precedence over it** whenever they exist — only the patches know what the migration
+actually wrote, so only they can tell that an editor has since changed a field and skip that block.
 
-So: patches when they exist, `down` when there are none, `rollback --force-down` when the author
-knows the recorded inverse is wrong. `down` gets the same double-apply idempotency check as `up`,
-since it is the half nobody tests. With neither available you roll forward with a new migration,
-which is the same code reviewed and logged rather than dead code nobody has executed.
+With neither available you roll forward with a new migration, which is the same code reviewed and
+logged rather than dead code nobody has executed.
 
 Patches address blocks by `_uid`, never by path, since array indices don't survive concurrent edits.
 A block's patch excludes its descendant blocks, which are collapsed to a reference before diffing;

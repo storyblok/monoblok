@@ -579,16 +579,12 @@ describe("derived inverse — rollback tier 2", () => {
 });
 
 describe("the object call shape", () => {
-  it("should carry a title for CLI output and a hand-written down", () => {
+  it("should carry a title for CLI output", () => {
     expect(titledRename.title).toBe("Rename spike_meta.author to written_by");
-    expect(titledRename.down).toEqual([
-      { kind: "renameField", block: "spike_meta", field: "written_by", to: "author" },
-    ]);
   });
 
-  it("should leave a bare-array migration without either", () => {
+  it("should leave a bare-array migration without one", () => {
     expect(alterString.title).toBeUndefined();
-    expect(alterString.down).toBeUndefined();
   });
 });
 

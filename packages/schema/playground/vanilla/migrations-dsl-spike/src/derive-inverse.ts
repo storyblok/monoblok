@@ -30,7 +30,7 @@ export interface DerivedInverse {
   /**
    * Ops whose inverse exists but cannot restore the original value — a coercion
    * that narrowed, a move that overwrote. A CLI should refuse these without an
-   * explicit `--force-down`.
+   * explicit opt-in.
    */
   lossy: number[];
 }

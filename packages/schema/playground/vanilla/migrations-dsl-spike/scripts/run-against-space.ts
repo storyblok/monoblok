@@ -15,16 +15,22 @@
  * Phases:
  *   roundtrip  every probe migration, applied and rolled back immediately;
  *              checks uid stability and read-back fidelity at each step
- *   migrate    apply one migration and park its inverse on disk, so a human can
- *              edit the story in the Storyblok UI before the rollback runs
- *   rollback   replay the parked inverse against whatever the story now holds
+ *   migrate    apply one migration and record the run in the journal, so a human
+ *              can edit the story in the Storyblok UI before the rollback runs
+ *   rollback   replay a recorded run's inverse against whatever the story now
+ *              holds; takes `--run <id>`, or defaults to the latest run
+ *
+ * `SPIKE_JOURNAL=mock-s3` swaps the storage backend. Rollback still works, which
+ * is the point: it reads through the interface rather than off a known path.
  */
-import { readFileSync, writeFileSync } from "node:fs";
 import process from "node:process";
-import { applyPatches, type BlockPatch, indexBlocks } from "../src/patch";
+import { applyPatches, indexBlocks } from "../src/patch";
 import { runMigrationOnStory } from "../src/runner";
 import * as migrations from "../migrations";
 import type { CompiledMigration } from "../src/define-migration";
+import type { Journal, StoryInverse } from "../src/journal";
+import { localJournal, runId } from "../src/journal-local";
+import { mockS3Journal } from "../src/journal-mock-s3";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -36,7 +42,12 @@ const TOKEN = process.env.STORYBLOK_TOKEN;
 const SPACE = process.env.STORYBLOK_SPACE_ID;
 const BASE = "https://mapi.storyblok.com/v1";
 const PHASE = flag("phase") ?? "roundtrip";
-const INVERSE_FILE = flag("inverse-file") ?? ".spike-inverse.json";
+
+// Swapping this is the whole demonstration. Note that `mock-s3` keeps its
+// records in memory, so it cannot carry one across the `migrate` and `rollback`
+// phases, which are separate processes — use it against `roundtrip`.
+const journal: Journal =
+  process.env.SPIKE_JOURNAL === "mock-s3" ? mockS3Journal("storyblok-migrations") : localJournal();
 
 if (!args.includes("--confirm-writes")) {
   console.error("Refusing to run: this script writes to the space. Pass --confirm-writes.");
@@ -177,22 +188,39 @@ if (PHASE === "roundtrip") {
   const which = flag("migration") ?? "renameNestedField";
   const migration = (migrations as Record<string, CompiledMigration>)[which];
   if (!migration) throw new Error(`No migration "${which}"`);
-  const parked: Record<string, BlockPatch[]> = {};
+  const inverse: StoryInverse[] = [];
   for (const summary of await listStories()) {
     const story = await getStory(summary.id);
     const run = runMigrationOnStory(migration, story.content);
     if (!run.changed) continue;
     await writeAndVerify(story, run.content, `${which}:${story.slug}`);
-    parked[String(story.id)] = run.inverse;
+    inverse.push({ story: String(story.id), patches: run.inverse });
   }
-  writeFileSync(INVERSE_FILE, JSON.stringify(parked, null, 2));
-  record("migrate", "PASS", `parked inverses for ${Object.keys(parked).length} stories`);
+
+  const id = runId(migration.name ?? which);
+  await journal.record(
+    {
+      id,
+      space: SPACE!,
+      migration: migration.name ?? which,
+      title: migration.title,
+      appliedAt: new Date().toISOString(),
+      stories: inverse.length,
+      blocks: inverse.reduce((total, entry) => total + entry.patches.length, 0),
+    },
+    inverse,
+  );
+  record("migrate", "PASS", `recorded run ${id} covering ${inverse.length} stories`);
 } else if (PHASE === "rollback") {
-  const parked: Record<string, BlockPatch[]> = JSON.parse(readFileSync(INVERSE_FILE, "utf8"));
-  for (const [id, inverse] of Object.entries(parked)) {
-    const story = await getStory(Number(id));
+  const runs = await journal.list(SPACE!);
+  const id = flag("run") ?? runs.at(-1)?.id;
+  if (!id) throw new Error("No recorded run to roll back. Run the migrate phase first.");
+  record("rollback:selected", "PASS", `rolling back ${id}`);
+
+  for (const { story: storyId, patches } of await journal.readInverse(id)) {
+    const story = await getStory(Number(storyId));
     const content = structuredClone(story.content);
-    const applied = applyPatches(content, inverse);
+    const applied = applyPatches(content, patches);
     await putStory(story, content);
     record(
       `rollback:${story.slug}`,

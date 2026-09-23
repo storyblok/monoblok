@@ -5,7 +5,16 @@
 import { describe, expect, it } from "vitest";
 import { defineMigration } from "./define-migration";
 import { deriveInverse } from "./derive-inverse";
-import { addField, mergeFields, removeField, renameBlock, renameField, splitField } from "./ops";
+import {
+  addField,
+  mergeFields,
+  removeField,
+  renameBlock,
+  renameField,
+  splitField,
+  unwrapChildren,
+  wrapChildren,
+} from "./ops";
 import { runMigrationOnStory } from "./runner";
 import type { SchemaShape } from "./types";
 
@@ -308,5 +317,144 @@ describe("deriveInverse", () => {
     );
 
     expect(rolledBack.content).toEqual(original);
+  });
+
+  it("inverts wrapChildren to unwrapChildren and back", () => {
+    const wrap = wrapChildren<AnySchema, AnySchema, "page">({
+      block: "page",
+      field: "body",
+      in: "section",
+      into: "items",
+    });
+
+    expect(deriveInverse([wrap]).ops).toEqual([
+      { kind: "unwrapChildren", block: "page", field: "body", unwrap: "section", from: "items" },
+    ]);
+
+    const unwrap = unwrapChildren<AnySchema, AnySchema, "page">({
+      block: "page",
+      field: "body",
+      unwrap: "section",
+      from: "items",
+    });
+
+    expect(deriveInverse([unwrap]).ops).toEqual([
+      { kind: "wrapChildren", block: "page", field: "body", in: "section", into: "items" },
+    ]);
+  });
+
+  it("marks wrapChildren's inverse exact and unwrapChildren's inverse lossy", () => {
+    const wrap = wrapChildren<AnySchema, AnySchema, "page">({
+      block: "page",
+      field: "body",
+      in: "section",
+      into: "items",
+    });
+    expect(deriveInverse([wrap]).lossy).toEqual([]);
+
+    const unwrap = unwrapChildren<AnySchema, AnySchema, "page">({
+      block: "page",
+      field: "body",
+      unwrap: "section",
+      from: "items",
+    });
+    expect(deriveInverse([unwrap]).lossy).toEqual([0]);
+  });
+
+  it("replays a derived unwrapChildren inverse after wrapChildren and restores the original content", () => {
+    const forward = defineMigration<AnySchema>({
+      ops: [
+        wrapChildren<AnySchema, AnySchema, "page">({
+          block: "page",
+          field: "body",
+          in: "section",
+          into: "items",
+        }),
+      ],
+    });
+
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card", title: "one" },
+        { _uid: "b", component: "card", title: "two" },
+      ],
+    };
+
+    const migrated = runMigrationOnStory(forward, original);
+    const derived = deriveInverse(forward.ops);
+    expect(derived.derivable).toBe(true);
+    expect(derived.lossy).toEqual([]);
+
+    const rolledBack = runMigrationOnStory(
+      { ...forward, ops: derived.ops, targets: derived.targets },
+      migrated.content,
+    );
+
+    expect(rolledBack.content).toEqual(original);
+  });
+
+  it("replays a derived wrapChildren inverse after unwrapChildren, and shows where the round trip loses data", () => {
+    const forward = defineMigration<AnySchema>({
+      ops: [
+        unwrapChildren<AnySchema, AnySchema, "page">({
+          block: "page",
+          field: "body",
+          unwrap: "section",
+          from: "items",
+        }),
+      ],
+    });
+
+    // Two containers, each with their own child. Unwrapping flattens both
+    // into the parent, so the derived wrapChildren inverse has no record of
+    // where one container ended and the other began — it rebuilds a single
+    // container, not the two that were there before. This is the ordinary
+    // case a content author would hit, not a contrived one.
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "s1", component: "section", items: [{ _uid: "a", component: "card" }] },
+        { _uid: "s2", component: "section", items: [{ _uid: "b", component: "card" }] },
+      ],
+    };
+
+    const migrated = runMigrationOnStory(forward, original);
+    expect(migrated.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card" },
+        { _uid: "b", component: "card" },
+      ],
+    });
+
+    const derived = deriveInverse(forward.ops);
+    expect(derived.derivable).toBe(true);
+    expect(derived.lossy).toEqual([0]);
+
+    const rolledBack = runMigrationOnStory(
+      { ...forward, ops: derived.ops, targets: derived.targets },
+      migrated.content,
+    );
+
+    // Restored to one container instead of the original two: the boundary
+    // between `s1` and `s2` is gone with the containers themselves.
+    expect(rolledBack.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "root-section",
+          component: "section",
+          items: [
+            { _uid: "a", component: "card" },
+            { _uid: "b", component: "card" },
+          ],
+        },
+      ],
+    });
   });
 });

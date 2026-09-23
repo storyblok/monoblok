@@ -16,6 +16,8 @@ import {
   renameBlock,
   renameField as renameFieldOp,
   splitField,
+  unwrapChildren,
+  wrapChildren,
 } from "./ops";
 import type { SchemaShape } from "./types";
 import { deriveInverse } from "./derive-inverse";
@@ -1254,5 +1256,138 @@ describe("renameBlock", () => {
       migrated,
     );
     expect(rolledBack.content).toEqual(original);
+  });
+});
+
+describe("wrapChildren", () => {
+  const migration = defineMigration<TestSchema>({
+    name: "wrap-body",
+    ops: [wrapChildren({ block: "page", field: "body", in: "section", into: "items" })],
+  });
+
+  it("should move the children into a new container", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card", title: "one" },
+        { _uid: "b", component: "card", title: "two" },
+      ],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "root-section",
+          component: "section",
+          items: [
+            { _uid: "a", component: "card", title: "one" },
+            { _uid: "b", component: "card", title: "two" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("should give the wrapper a uid derived from the parent, so a rerun is stable", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    };
+    const once = runMigrationOnStory(migration, content);
+    const twice = runMigrationOnStory(migration, structuredClone(content));
+
+    expect(once.content).toEqual(twice.content);
+  });
+
+  it("should leave an empty field alone", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [],
+    });
+
+    expect(result.changed).toBe(false);
+  });
+
+  it("should leave a null field alone", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: null,
+    });
+
+    expect(result.changed).toBe(false);
+  });
+});
+
+describe("unwrapChildren", () => {
+  const migration = defineMigration<TestSchema>({
+    name: "unwrap-body",
+    ops: [unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" })],
+  });
+
+  it("should splice the container's children into the parent in place", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "x", component: "card", title: "before" },
+        {
+          _uid: "s",
+          component: "section",
+          items: [
+            { _uid: "a", component: "card", title: "one" },
+            { _uid: "b", component: "card", title: "two" },
+          ],
+        },
+        { _uid: "y", component: "card", title: "after" },
+      ],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "x", component: "card", title: "before" },
+        { _uid: "a", component: "card", title: "one" },
+        { _uid: "b", component: "card", title: "two" },
+        { _uid: "y", component: "card", title: "after" },
+      ],
+    });
+  });
+
+  it("should keep the spliced children's uids", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "s", component: "section", items: [{ _uid: "a", component: "card" }] }],
+    });
+
+    expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+  });
+
+  it("should drop a container holding nothing", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "s", component: "section", items: [] }],
+    });
+
+    expect(result.content).toEqual({ _uid: "root", component: "page", body: [] });
+  });
+
+  it("should leave the children untouched when the field is null", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: null,
+    });
+
+    expect(result.changed).toBe(false);
+    expect(result.content).toEqual({ _uid: "root", component: "page", body: null });
   });
 });

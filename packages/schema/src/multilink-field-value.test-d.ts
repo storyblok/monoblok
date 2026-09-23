@@ -15,7 +15,7 @@ describe("MultilinkFieldValue", () => {
         // Nullable: the editor stores `anchor: null` once an existing anchor is cleared.
         expectTypeOf(link.anchor).toEqualTypeOf<string | null | undefined>();
         expectTypeOf(link.rel).toEqualTypeOf<string | undefined>();
-        // Storyfront permits arbitrary string-valued custom attributes.
+        // The editor permits arbitrary string-valued custom attributes.
         expectTypeOf(link.email).toEqualTypeOf<string | null>();
       } else if (link.linktype === "email") {
         expectTypeOf(link.email).toEqualTypeOf<string | undefined>();
@@ -48,7 +48,7 @@ describe("MultilinkFieldValue", () => {
   });
 
   it("rejects a nullable target", () => {
-    // @ts-expect-error Storyfront only writes '_self' or '_blank', never null.
+    // @ts-expect-error The editor only writes '_self' or '_blank', never null.
     const _invalidTarget: MultilinkFieldValue = { ...shared, linktype: "asset", target: null };
 
     void _invalidTarget;

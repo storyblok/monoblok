@@ -303,7 +303,7 @@ const validateMultilink = (cta: unknown) =>
   );
 
 describe("validateStory — multilink values", () => {
-  it("accepts every raw Storyfront multilink variant", () => {
+  it("accepts every raw editor multilink variant", () => {
     const variants = [
       { ...multilinkBase, linktype: "story", anchor: "features", rel: "bookmark" },
       { ...multilinkBase, linktype: "url", url: "https://example.com", title: "Example" },

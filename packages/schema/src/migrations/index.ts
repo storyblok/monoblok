@@ -19,6 +19,7 @@ export {
   mergeFields,
   moveField,
   removeField,
+  renameBlock,
   renameField,
   reorderField,
   splitField,
@@ -31,6 +32,7 @@ export type {
   MergeFieldsOp,
   MigrationOp,
   MigrationOpOf,
+  RenameBlockOp,
   SplitFieldOp,
   UnderOf,
 } from "./ops";

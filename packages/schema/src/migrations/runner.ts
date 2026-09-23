@@ -156,6 +156,9 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       for (const name of op.fields) delete block[name];
       break;
     }
+    case "renameBlock":
+      block.component = op.to;
+      break;
   }
 }
 

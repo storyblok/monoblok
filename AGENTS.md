@@ -29,14 +29,14 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   successful round trip proves storage, not shape. Never treat "I pushed it and read it back" as
   evidence that a shape is real: you authored the input, so the check could not have failed. Only
   two things can ground a shape:
-  1. **Sibling-repo source** - `../storyfront` for what the editor writes and reads, `../storyrails`
-     for what the backend normalizes and enforces.
+  1. **Editor and backend source**, when available - the editor for what it writes and reads, the
+     backend for what it normalizes and enforces.
   2. **Operator-authored data** - ask the user to create it by hand in the Storyblok UI, then read
      it back via MAPI. You cannot produce this yourself, so treat it as the last resort, for when
      the source does not settle it.
 
   Whatever the API actively enforces, it can prove: push a field with a bogus `type` and the 422
-  names the permitted values, which is cheaper than reading either sibling repo. The same goes for
+  names the permitted values, which is cheaper than reading either source. The same goes for
   normalization and server-set defaults. What it cannot prove is that a shape it merely stored is
   one any real space holds.
 

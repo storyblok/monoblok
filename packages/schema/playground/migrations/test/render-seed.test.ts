@@ -22,6 +22,13 @@ async function renderSeedStories(): Promise<Record<string, string>> {
   return rendered;
 }
 
+/** Each translation badge the page rendered, scoped to its own `<li>` element. */
+function translationBadgesOf(html: string): { key: string; isGap: boolean }[] {
+  return [...html.matchAll(/<li[^>]*data-translation="([^"]+)"[^>]*>([\s\S]*?)<\/li>/g)].map(
+    (match) => ({ key: match[1], isGap: match[2].includes(">missing<") }),
+  );
+}
+
 /** Every `<field>__i18n__<locale>` key in a story's content, at any depth. */
 function translationKeysOf(value: unknown, found: Set<string> = new Set()): Set<string> {
   if (Array.isArray(value)) {
@@ -83,10 +90,17 @@ describe("the seeded space rendered as a website", () => {
   });
 
   it("marks an empty translated sibling as a gap rather than rendering nothing", async () => {
-    const { translated: renderedTranslated } = await renderSeedStories();
-    const emptyFrenchHeadline =
-      /data-translation="headline:fr"[^>]*>[\s\S]*?<span class="font-semibold text-red-600">missing<\/span>/;
+    const badges = translationBadgesOf((await renderSeedStories()).translated);
 
-    expect(renderedTranslated).toMatch(emptyFrenchHeadline);
+    // The seed carries exactly one empty sibling, on the second card's French
+    // headline. Asserting the whole set of gaps keeps this from passing on some
+    // other element's gap, which a forward scan through the document would.
+    expect(badges.filter((badge) => badge.isGap).map((badge) => badge.key)).toEqual([
+      "headline:fr",
+    ]);
+    expect(badges.filter((badge) => badge.key === "headline:fr")).toEqual([
+      { key: "headline:fr", isGap: false },
+      { key: "headline:fr", isGap: true },
+    ]);
   });
 });

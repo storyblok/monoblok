@@ -26,18 +26,28 @@ export type UndoOutcome = {
 
 export type UndoInput = {
   journal: Journal;
+  /** The space the undo runs against; a run recorded for another one is refused. */
+  space: string;
   id: string;
   fetchStory: (id: number) => Promise<StoryForMigration>;
 };
 
 export async function undoRun(input: UndoInput): Promise<UndoOutcome> {
-  // The ledger entry is read before the patches because an id the journal does
-  // not hold yields no patches rather than an error, which would otherwise look
-  // like an undo that succeeded having done nothing.
+  // Both guards hang off the ledger entry, which is why it is consulted at all:
+  // deciding from the patches alone would report a cheerful no-op for an id the
+  // journal does not hold, since an unknown id yields an empty patch list rather
+  // than an error. A run id also does not carry the space it was recorded for,
+  // and the journal finds an entry wherever it sits, so the entry is the only
+  // thing that can tell this run apart from one belonging to another space.
   const run = await input.journal.read(input.id);
   if (!run) {
     throw new Error(
       `No recorded run "${input.id}". Run \`storyblok migrations list --space <id>\` to see what is recorded.`,
+    );
+  }
+  if (run.space !== input.space) {
+    throw new Error(
+      `Run ${input.id} was recorded for space ${run.space}, not space ${input.space}. Undo it with --space ${run.space}.`,
     );
   }
 

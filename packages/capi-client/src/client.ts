@@ -168,8 +168,10 @@ export interface ContentApiClientConfig<
    *
    * - `undefined` (default): auto-detect tier from path + `per_page` query param.
    * - `number`: fixed requests per second (single queue).
-   * - `{ requestsPerSecond?: number; adaptToServerHeaders?: boolean }`: full config.
    * - `false`: disable rate limiting entirely.
+   * - `RateLimitConfig`: `requestsPerSecond`, `adaptToServerHeaders`, `adaptive`
+   *   (back off on 429 and recover on success, on by default) and `limiter`
+   *   (replace the in-memory limiter with one shared across instances).
    */
   rateLimit?: RateLimitConfig | number | false;
   /**
@@ -310,8 +312,15 @@ export const createApiClientBase = <
         // catches `HTTPError`.
         throwHttpErrors: true,
         timeout,
+        // Admission waits here, before ky starts the timeout clock: a queue
+        // longer than `timeout` must delay requests, not fail them.
+        hooks: { beforeRequest: [throttleManager.beforeRequest] },
         retry: retryOptions,
-        ...(customFetch && { fetch: customFetch }),
+        // `globalThis.fetch` is read per call so a fetch swapped in after the
+        // client was created still applies.
+        fetch: throttleManager.wrapFetch(
+          customFetch ?? ((input, init) => globalThis.fetch(input, init)),
+        ),
       },
     }),
   );
@@ -405,7 +414,6 @@ export const createApiClientBase = <
 
     if (!cacheEnabled) {
       const networkResult = await fetchFn(query);
-      throttleManager.adaptToResponse(networkResult.response);
       await updateCv(networkResult);
       return networkResult;
     }
@@ -419,7 +427,6 @@ export const createApiClientBase = <
 
     const loadNetwork = async () => {
       const result = await fetchFn(query);
-      throttleManager.adaptToResponse(result.response);
       return cacheSuccessResult(key, result);
     };
 

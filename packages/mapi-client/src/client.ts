@@ -132,8 +132,10 @@ export type ManagementApiClientConfig<ThrowOnError extends boolean = false> = To
    *
    * - `undefined` (default): single bucket at 6 requests per second.
    * - `number`: fixed requests per second.
-   * - `{ requestsPerSecond?: number }`: full config.
    * - `false`: disable rate limiting entirely.
+   * - `RateLimitConfig`: `requestsPerSecond`, `adaptive` (back off on 429 and
+   *   recover on success, on by default) and `limiter` (replace the in-memory
+   *   limiter with one shared across instances).
    */
   rateLimit?: RateLimitConfig | number | false;
 };
@@ -193,7 +195,13 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
       kyOptions: {
         throwHttpErrors: true,
         timeout,
+        // Admission waits here, before ky starts the timeout clock: a queue
+        // longer than `timeout` must delay requests, not fail them.
+        hooks: { beforeRequest: [throttleManager.beforeRequest] },
         retry,
+        // `globalThis.fetch` is read per call so a fetch swapped in after the
+        // client was created still applies.
+        fetch: throttleManager.wrapFetch((input, init) => globalThis.fetch(input, init)),
       },
     }),
   );

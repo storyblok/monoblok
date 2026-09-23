@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createManagementApiClient } from "./index";
+import type { RateLimitContext, RateLimiter } from "./utils/limiter";
 
 const server = setupServer();
 
@@ -474,5 +475,92 @@ describe("createManagementApiClient - throwOnError", () => {
     });
 
     await expect(client.spaces.list({ throwOnError: true })).rejects.toThrow();
+  });
+});
+
+describe("createManagementApiClient rate limiting", () => {
+  it("should not spend the request timeout on time queued behind the rate limit", async () => {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/123/stories", () =>
+        HttpResponse.json({ stories: [] }),
+      ),
+    );
+
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      // Three requests at one per second outlast the timeout while waiting
+      // their turn, though none of them is itself slow.
+      rateLimit: { requestsPerSecond: 1, adaptive: false },
+      timeout: 1000,
+    });
+
+    const results = await Promise.allSettled([
+      client.stories.list(),
+      client.stories.list(),
+      client.stories.list(),
+    ]);
+
+    expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled", "fulfilled"]);
+  });
+
+  it("should route real requests through a custom limiter", async () => {
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/123/stories", () =>
+        HttpResponse.json({ stories: [] }),
+      ),
+    );
+    const acquired: RateLimitContext[] = [];
+    const released: RateLimitContext[] = [];
+    const limiter: RateLimiter = {
+      acquire: async (context) => {
+        acquired.push(context);
+      },
+      release: (context) => {
+        released.push(context);
+      },
+    };
+
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      rateLimit: { limiter },
+    });
+    await client.stories.list();
+
+    expect(acquired).toHaveLength(1);
+    expect(acquired[0]).toMatchObject({ bucket: "management-api", limit: 6 });
+    expect(released).toHaveLength(1);
+  });
+
+  it("should report a throttled response to the limiter even when a retry succeeds", async () => {
+    let attempt = 0;
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/123/stories", () => {
+        attempt++;
+        return attempt === 1
+          ? new HttpResponse(null, { status: 429 })
+          : HttpResponse.json({ stories: [] });
+      }),
+    );
+    const statuses: number[] = [];
+    const limiter: RateLimiter = {
+      acquire: () => Promise.resolve(),
+      recordResponse: (_context, response) => {
+        statuses.push(response.status);
+      },
+    };
+
+    const client = createManagementApiClient({
+      personalAccessToken: "test-token",
+      spaceId: 123,
+      rateLimit: { limiter },
+      retry: { limit: 1, statusCodes: [429], methods: ["get"] },
+    });
+    await client.stories.list();
+
+    // The 429 the retry replaced is the signal a limiter has to act on; only
+    // the final 200 would ever reach a caller.
+    expect(statuses).toEqual([429, 200]);
   });
 });

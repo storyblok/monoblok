@@ -55,8 +55,6 @@ export const fetchMissingRelations = async ({
           },
         });
 
-        throttleManager.adaptToResponse(response.response);
-
         if (response.error !== undefined) {
           throw response.error;
         }

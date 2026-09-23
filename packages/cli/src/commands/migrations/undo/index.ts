@@ -16,6 +16,10 @@ import { migrationsCommand } from "../command";
 import { resolveJournal } from "../content-journal";
 import { undoRun } from "./actions";
 
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
 const undoCmd = migrationsCommand
   .command("undo")
   .description("Undo a recorded content migration run")
@@ -82,9 +86,18 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       },
     });
 
+    // The two reasons a block is not undone read differently to the person
+    // holding them: a conflict is an edit worth looking at, a missing block is a
+    // record that no longer addresses anything.
     for (const conflict of outcome.conflicts) {
       ui.warn(
-        `${chalk.bold(conflict.slug)}: ${conflict.count} ${conflict.count === 1 ? "block was" : "blocks were"} changed since the migration ran and ${conflict.count === 1 ? "was" : "were"} left as ${conflict.count === 1 ? "it is" : "they are"}.`,
+        `${chalk.bold(conflict.slug)}: ${plural(conflict.count, "block", "blocks")} changed since the migration ran; left as ${conflict.count === 1 ? "it is" : "they are"}.`,
+      );
+    }
+
+    for (const gone of outcome.missing) {
+      ui.warn(
+        `${chalk.bold(gone.slug)}: ${plural(gone.count, "block", "blocks")} recorded by the run ${gone.count === 1 ? "is" : "are"} no longer in this story; nothing to undo for ${gone.count === 1 ? "it" : "them"}.`,
       );
     }
 
@@ -110,7 +123,20 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       }
     }
 
-    ui.info(`Undid ${undone} ${undone === 1 ? "story" : "stories"} of run ${chalk.bold(id)}.`);
+    // Counted over stories rather than over reports: one story can hold both a
+    // conflicting block and a missing one, and a story that was partly undone
+    // was still written.
+    const written = new Set(outcome.writes.map((write) => write.story.slug));
+    const untouched = new Set(
+      [...outcome.conflicts, ...outcome.missing]
+        .map((report) => report.slug)
+        .filter((slug) => !written.has(slug)),
+    ).size;
+    ui.info(
+      `Undid ${plural(undone, "story", "stories")} of run ${chalk.bold(id)}${
+        untouched > 0 ? `; ${plural(untouched, "story", "stories")} left unchanged.` : "."
+      }`,
+    );
   } catch (maybeError) {
     handleError(toError(maybeError), verbose);
   }

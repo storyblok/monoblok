@@ -162,13 +162,22 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
     case "wrapChildren": {
       const children = block[op.field];
       if (!Array.isArray(children) || children.length === 0) break;
+      // Derived from the parent and the field so a rerun produces the same
+      // uid, the backend has no reason to regenerate it on the write, and two
+      // fields wrapped into the same container component do not collide.
+      const wrapperUid = `${block._uid}-${op.field}-${op.in}`;
       // Already wrapped: a rerun must not add a second layer.
-      if (children.length === 1 && isBlock(children[0]) && children[0].component === op.in) break;
+      if (
+        children.length === 1 &&
+        isBlock(children[0]) &&
+        children[0].component === op.in &&
+        children[0]._uid === wrapperUid
+      ) {
+        break;
+      }
       block[op.field] = [
         {
-          // Derived from the parent so a rerun produces the same uid, and so
-          // the backend has no reason to regenerate it on the write.
-          _uid: `${block._uid}-${op.in}`,
+          _uid: wrapperUid,
           component: op.in,
           [op.into]: children,
         },
@@ -178,12 +187,14 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
     case "unwrapChildren": {
       const children = block[op.field];
       if (!Array.isArray(children)) break;
+      let matchedAny = false;
       const flattened = children.flatMap((child) => {
         if (!isBlock(child) || child.component !== op.unwrap) return [child];
+        matchedAny = true;
         const inner = child[op.from];
         return Array.isArray(inner) ? inner : [];
       });
-      if (deepEqual(flattened, children)) break;
+      if (!matchedAny) break;
       block[op.field] = flattened;
       break;
     }

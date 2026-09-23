@@ -28,8 +28,18 @@ storyblok migrations apply 0001-rename-card-title --space YOUR_SPACE_ID
 | `--schema <entry-file>` | Schema entry file to check the migration's blocks and fields against | -            |
 | `-p, --path <path>`     | Base path for migration files and run records                        | `.storyblok` |
 
-`--dry-run` takes the same code path as a real run and stops short of the write, so its report is
-evidence about what a real run would do.
+## Dry runs
+
+`--dry-run` decides everything a real run decides and stops short of the write: the same content is
+migrated, the same refusals are reported, and the same counts come out. When several migrations run
+in one invocation, the content an earlier one would have written is carried forward in memory, so a
+later migration sees it, including when selecting the stories to run against.
+
+Two things a dry run cannot account for, because they only exist once a write happens:
+
+- What the API does with the content it receives. A real run can still fail per story, and a story
+  that fails is reported and left out of the run record.
+- Anything that changes the space between the dry run and the real run.
 
 ## File Structure
 

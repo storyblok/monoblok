@@ -24,7 +24,6 @@ describe("applyMigration", () => {
       id: "0001-rename",
       space: "12345",
       stories,
-      dryRun: false,
     });
 
     expect(outcome.writes).toHaveLength(1);
@@ -40,7 +39,6 @@ describe("applyMigration", () => {
       id: "0001-rename",
       space: "12345",
       stories,
-      dryRun: false,
     });
 
     expect(outcome.run).toMatchObject({
@@ -58,7 +56,6 @@ describe("applyMigration", () => {
       id: "0001-rename",
       space: "12345",
       stories,
-      dryRun: false,
     });
 
     expect(outcome.inverse[0].patches).toEqual([
@@ -91,7 +88,6 @@ describe("applyMigration", () => {
           },
         },
       ],
-      dryRun: false,
     });
 
     expect(outcome.writes).toHaveLength(0);
@@ -112,35 +108,11 @@ describe("applyMigration", () => {
       id: "0002-append",
       space: "12345",
       stories,
-      dryRun: false,
     });
 
     expect(outcome.writes).toHaveLength(0);
     expect(outcome.refusals[0]).toMatchObject({ slug: "home" });
     expect(outcome.refusals[0].reason).toMatch(/second pass/);
-  });
-
-  it("should produce the same plan under dryRun but no writes", async () => {
-    const planned = await applyMigration({
-      migration,
-      id: "0001-rename",
-      space: "12345",
-      stories,
-      dryRun: true,
-    });
-    const applied = await applyMigration({
-      migration,
-      id: "0001-rename",
-      space: "12345",
-      stories,
-      dryRun: false,
-    });
-
-    expect(planned.writes).toHaveLength(0);
-    expect(planned.run.stories).toBe(1);
-    expect(planned.run.blocks).toBe(applied.run.blocks);
-    expect(planned.inverse).toEqual(applied.inverse);
-    expect(planned.refusals).toEqual(applied.refusals);
   });
 
   it("should leave the story content it was handed untouched", async () => {
@@ -149,7 +121,6 @@ describe("applyMigration", () => {
       id: "0001-rename",
       space: "12345",
       stories,
-      dryRun: false,
     });
 
     expect(stories[0].content).toMatchObject({

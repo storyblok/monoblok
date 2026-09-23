@@ -1,0 +1,119 @@
+import chalk from "chalk";
+import type { Command } from "commander";
+import { colorPalette, commands } from "../../../constants";
+import {
+  CommandError,
+  handleError,
+  isRecord,
+  requireAuthentication,
+  toError,
+} from "../../../utils";
+import { getLogger } from "../../../lib/logger/logger";
+import { getUI } from "../../../lib/ui";
+import { session } from "../../../session";
+import { fetchStory, updateStory } from "../../stories/actions";
+import { migrationsCommand } from "../command";
+import { resolveJournal } from "../content-journal";
+import { undoRun } from "./actions";
+
+const undoCmd = migrationsCommand
+  .command("undo")
+  .description("Undo a recorded content migration run")
+  .option("-s, --space <space>", "space ID")
+  .option("--run <id>", "the recorded run to undo; defaults to the most recent one");
+
+undoCmd.action(async (_options: unknown, command: Command) => {
+  const ui = getUI();
+  const logger = getLogger();
+  const { space, path, run: requestedRun, verbose } = command.optsWithGlobals();
+  const { state } = session();
+
+  ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Undoing a content migration run...");
+
+  if (!requireAuthentication(state, verbose)) {
+    return;
+  }
+
+  if (!space) {
+    handleError(
+      new CommandError(`Please provide the space as argument --space YOUR_SPACE_ID.`),
+      verbose,
+    );
+    return;
+  }
+
+  logger.info("Content migration undo started", { space, run: requestedRun });
+
+  try {
+    const journal = resolveJournal({ path });
+
+    let id = requestedRun;
+    if (!id) {
+      const runs = await journal.list(space);
+      const latest = runs.at(-1);
+      if (!latest) {
+        throw new CommandError(`No migration runs recorded for space ${space}.`);
+      }
+      id = latest.id;
+      // Named before anything is touched: an undo of the wrong run is not
+      // something the next prompt can take back.
+      ui.info(
+        `Undoing the most recent run ${chalk.bold(id)} (${latest.title ?? latest.migration}).`,
+      );
+    }
+
+    /** Story names are carried across the fetch so the write does not clear them. */
+    const names = new Map<number, string | undefined>();
+
+    const outcome = await undoRun({
+      journal,
+      id,
+      fetchStory: async (storyId) => {
+        const story = await fetchStory(space, storyId);
+        if (!story) {
+          throw new CommandError(`Story ${storyId} is no longer in space ${space}.`);
+        }
+        names.set(storyId, story.name);
+        return {
+          id: storyId,
+          slug: story.full_slug ?? story.slug ?? String(storyId),
+          content: story.content,
+        };
+      },
+    });
+
+    for (const conflict of outcome.conflicts) {
+      ui.warn(
+        `${chalk.bold(conflict.slug)}: ${conflict.count} ${conflict.count === 1 ? "block was" : "blocks were"} changed since the migration ran and ${conflict.count === 1 ? "was" : "were"} left as ${conflict.count === 1 ? "it is" : "they are"}.`,
+      );
+    }
+
+    // Written one story at a time, and failures are reported rather than
+    // thrown, so a run that fails partway leaves the stories it did undo undone
+    // instead of abandoning the rest of the batch.
+    let undone = 0;
+    for (const write of outcome.writes) {
+      if (!isRecord(write.content)) {
+        continue;
+      }
+      try {
+        await updateStory(space, write.story.id, {
+          story: { content: write.content, name: names.get(write.story.id) },
+          force_update: "1",
+        });
+        undone++;
+        logger.info("Story undone", { storyId: write.story.id, run: id, space });
+      } catch (maybeError) {
+        const error = toError(maybeError);
+        ui.warn(`${chalk.bold(write.story.slug)}: ${error.message}`);
+        logger.error("Failed to undo story", { storyId: write.story.id, run: id, space, error });
+      }
+    }
+
+    ui.info(`Undid ${undone} ${undone === 1 ? "story" : "stories"} of run ${chalk.bold(id)}.`);
+  } catch (maybeError) {
+    handleError(toError(maybeError), verbose);
+  }
+
+  logger.info("Content migration undo finished", { space });
+});

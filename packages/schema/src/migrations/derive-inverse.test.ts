@@ -447,7 +447,7 @@ describe("deriveInverse", () => {
       component: "page",
       body: [
         {
-          _uid: "root-section",
+          _uid: "root-body-section",
           component: "section",
           items: [
             { _uid: "a", component: "card" },

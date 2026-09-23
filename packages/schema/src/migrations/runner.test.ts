@@ -1280,7 +1280,7 @@ describe("wrapChildren", () => {
       component: "page",
       body: [
         {
-          _uid: "root-section",
+          _uid: "root-body-section",
           component: "section",
           items: [
             { _uid: "a", component: "card", title: "one" },
@@ -1291,16 +1291,68 @@ describe("wrapChildren", () => {
     });
   });
 
-  it("should give the wrapper a uid derived from the parent, so a rerun is stable", () => {
-    const content = {
+  it("should derive the wrapper uid from the parent and the field, so two fields wrapped into the same container component do not collide", () => {
+    const twoFieldMigration = defineMigration<TestSchema>({
+      name: "wrap-body-and-footer",
+      ops: [
+        wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
+        wrapChildren({ block: "page", field: "footer", in: "section", into: "items" }),
+      ],
+    });
+
+    const result = runMigrationOnStory(twoFieldMigration, {
       _uid: "root",
       component: "page",
       body: [{ _uid: "a", component: "card" }],
-    };
-    const once = runMigrationOnStory(migration, content);
-    const twice = runMigrationOnStory(migration, structuredClone(content));
+      footer: [{ _uid: "b", component: "card" }],
+    });
 
-    expect(once.content).toEqual(twice.content);
+    expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "root-body-section",
+          component: "section",
+          items: [{ _uid: "a", component: "card" }],
+        },
+      ],
+      footer: [
+        {
+          _uid: "root-footer-section",
+          component: "section",
+          items: [{ _uid: "b", component: "card" }],
+        },
+      ],
+    });
+  });
+
+  it("should not collide when the parent already holds a block at the derived uid elsewhere", () => {
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+      // Pre-existing block that happens to sit at the uid the wrapper would
+      // otherwise have derived under the old, field-less scheme.
+      footer: [{ _uid: "root-section", component: "card" }],
+    });
+
+    expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+  });
+
+  it("should be a no-op when run again on its own output", () => {
+    const once = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card" }],
+    });
+    expect(once.changed).toBe(true);
+
+    const twice = runMigrationOnStory(migration, once.content);
+
+    expect(twice.changed).toBe(false);
+    expect(twice.content).toEqual(once.content);
   });
 
   it("should leave an empty field alone", () => {
@@ -1364,9 +1416,20 @@ describe("unwrapChildren", () => {
     const result = runMigrationOnStory(migration, {
       _uid: "root",
       component: "page",
-      body: [{ _uid: "s", component: "section", items: [{ _uid: "a", component: "card" }] }],
+      body: [
+        {
+          _uid: "s",
+          component: "section",
+          items: [
+            { _uid: "a", component: "card" },
+            { _uid: "b", component: "card" },
+          ],
+        },
+      ],
     });
 
+    const content = result.content as { body: { _uid: string }[] };
+    expect(content.body.map((child) => child._uid)).toEqual(["a", "b"]);
     expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
   });
 

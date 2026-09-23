@@ -197,6 +197,13 @@ export type MigrationOp = MigrationOpOf<SchemaShape, SchemaShape>;
  * The op kinds that move the component schema and so must apply everywhere.
  * `renameBlock` moves the component's identity itself, which is the same
  * global reach: like the others, its factory takes no `under`.
+ *
+ * `wrapChildren` and `unwrapChildren` belong here for the same reason: each
+ * introduces or dissolves a block of a named component (`in`/`unwrap`)
+ * wherever the parent's field is, which is global in the same sense as a
+ * field rename — scoping either to a subset of a component's instances would
+ * leave the rest holding a shape none of its siblings has. Neither factory
+ * takes an `under`.
  */
 export const KEY_OP_KINDS = [
   "renameField",

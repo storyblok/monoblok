@@ -591,3 +591,130 @@ describe("the object call shape", () => {
     expect(alterString.down).toBeUndefined();
   });
 });
+
+describe("a rename onto an occupied target", () => {
+  function metaStory(block: Record<string, unknown>): Record<string, unknown> {
+    return {
+      _uid: "root",
+      component: "spike_page",
+      body: [{ _uid: "m", component: "spike_meta", ...block }],
+    };
+  }
+
+  function metaBlock(run: { content: unknown }): Record<string, unknown> {
+    return block(run.content, "m");
+  }
+
+  it("should clear a translation of the target that has no counterpart on the source", () => {
+    // Otherwise the orphan sibling stays put and is served as the German
+    // translation of the value that just landed on the base key.
+    const run = runMigrationOnStory(
+      renameNestedField,
+      metaStory({ author: "Ada", written_by__i18n__de: "STALE" }),
+    );
+
+    expect(metaBlock(run)).toEqual({ _uid: "m", component: "spike_meta", written_by: "Ada" });
+  });
+
+  it("should carry the source translations onto the target", () => {
+    const run = runMigrationOnStory(
+      renameNestedField,
+      metaStory({ author: "Ada", author__i18n__de: "Ada auf Deutsch" }),
+    );
+
+    expect(metaBlock(run)).toEqual({
+      _uid: "m",
+      component: "spike_meta",
+      written_by: "Ada",
+      written_by__i18n__de: "Ada auf Deutsch",
+    });
+  });
+
+  it("should drop the displaced value's translations when a move overwrites it", () => {
+    const original = {
+      _uid: "root",
+      component: "spike_page",
+      body: [
+        {
+          _uid: "c",
+          component: "spike_card",
+          title: "Card",
+          old_slug: "new",
+          slug: "old",
+          slug__i18n__de: "alt",
+        },
+      ],
+    };
+
+    const run = runMigrationOnStory(moveValue, original);
+
+    expect(block(run.content, "c")).toEqual({
+      _uid: "c",
+      component: "spike_card",
+      title: "Card",
+      slug: "new",
+    });
+  });
+
+  it("should leave a block alone when the source family is already gone", () => {
+    // The rerun case: without this, clearing the target family would delete the
+    // very keys the first run wrote.
+    const migrated = metaStory({ written_by: "Ada", written_by__i18n__de: "Ada auf Deutsch" });
+    const run = runMigrationOnStory(renameNestedField, migrated);
+
+    expect(run.changed).toBe(false);
+    expect(metaBlock(run)).toEqual({
+      _uid: "m",
+      component: "spike_meta",
+      written_by: "Ada",
+      written_by__i18n__de: "Ada auf Deutsch",
+    });
+  });
+});
+
+describe("under smuggled onto a key op", () => {
+  it("should be reported by validateMigration when it reached the op anyway", () => {
+    // The type system rejects it, including through a spread or a hoisted spec.
+    // This is the net for a migration that never went through the type system,
+    // and for one whose author cast their way around it.
+    const smuggled = {
+      ops: [
+        {
+          kind: "renameField",
+          block: "spike_meta",
+          field: "author",
+          to: "written_by",
+          under: "spike_card",
+        },
+      ],
+      targets: ["spike_meta"],
+    } as unknown as Parameters<typeof validateMigration>[0];
+
+    const issues = validateMigration(smuggled, schemaLike);
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain("cannot be scoped with `under`");
+  });
+
+  it("should still apply globally, because a key op ignores under by construction", () => {
+    const smuggled = {
+      ops: [
+        {
+          kind: "renameField",
+          block: "spike_meta",
+          field: "author",
+          to: "written_by",
+          under: "spike_card",
+        },
+      ],
+      targets: ["spike_meta"],
+    } as unknown as Parameters<typeof runMigrationOnStory>[0];
+
+    // All four instances, not the two under a spike_card. Honouring it would be
+    // the worse outcome of the two: a subset migrated leaves every other
+    // instance holding a key no schema describes, which is precisely what the
+    // rule exists to prevent. Refusing the migration is the CLI's job, on the
+    // issue above; applying it globally is what the runner does meanwhile.
+    expect(runMigrationOnStory(smuggled, pageStoryContent()).matched).toBe(4);
+  });
+});

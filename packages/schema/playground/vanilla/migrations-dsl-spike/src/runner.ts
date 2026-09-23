@@ -5,7 +5,7 @@
  * produced plus the inverse patch a rollback would replay.
  */
 import type { CompiledMigration } from "./define-migration";
-import type { AlterFieldContext, AnyChild, MigrationOp } from "./ops";
+import { type AlterFieldContext, type AnyChild, isKeyOp, type MigrationOp } from "./ops";
 import {
   type AnyBlock,
   type BlockPatch,
@@ -71,13 +71,18 @@ function renameKey(block: AnyBlock, from: string, to: string): void {
  * translated language.
  */
 function renameFieldFamily(block: AnyBlock, from: string, to: string): void {
-  for (const key of [from, ...translationKeysFor(block, from)]) {
-    const target = `${to}${key.slice(from.length)}`;
-    // `moveField` allows an occupied target; dropping it first keeps the moved
-    // value rather than the one it displaces.
-    if (key in block && target in block) delete block[target];
-    renameKey(block, key, target);
-  }
+  const sourceKeys = [from, ...translationKeysFor(block, from)].filter((key) => key in block);
+  // Nothing to move. Leaving early is also what makes a rerun a no-op, since
+  // the second pass finds the family already sitting on the target name.
+  if (sourceKeys.length === 0 || from === to) return;
+
+  // `moveField` allows an occupied target, so the target's whole family goes
+  // first. Dropping only the keys the source replaces would leave a translation
+  // of the target with no counterpart on the source in place, where it would
+  // then be read as a translation of the value that just landed on top of it.
+  for (const key of [to, ...translationKeysFor(block, to)]) delete block[key];
+
+  for (const key of sourceKeys) renameKey(block, key, `${to}${key.slice(from.length)}`);
 }
 
 function applyOp(block: AnyBlock, op: MigrationOp): void {
@@ -162,6 +167,22 @@ export function matchesUnder(chain: readonly string[], under: string | readonly 
   return wanted.length === 0;
 }
 
+/**
+ * Whether an op applies to a block at this position.
+ *
+ * A key op always does. It moves the component schema, which is global, so
+ * honouring an `under` that reached it anyway would migrate a subset and leave
+ * every other instance holding a key no schema describes. The type system
+ * rejects the combination and `validateMigration` refuses the migration; this is
+ * the third guard, so that a key op that slipped through both still cannot
+ * half-apply.
+ */
+function inScope(op: MigrationOp, chain: readonly string[]): boolean {
+  if (isKeyOp(op)) return true;
+  const under = "under" in op ? op.under : undefined;
+  return under === undefined || matchesUnder(chain, under);
+}
+
 /** The part of a block an idempotency check may compare: nested blocks excluded. */
 function ownKeys(block: AnyBlock): Record<string, unknown> {
   return Object.fromEntries(Object.entries(block).filter(([key]) => key !== "_editable"));
@@ -183,11 +204,7 @@ export function runMigrationOnStory(
     const chain = ancestors.get(uid) ?? [];
     const ops = migration.ops
       .map((op, index) => ({ op, index }))
-      .filter(
-        ({ op }) =>
-          op.block === block.component &&
-          (!("under" in op) || op.under === undefined || matchesUnder(chain, op.under)),
-      );
+      .filter(({ op }) => op.block === block.component && inScope(op, chain));
     if (ops.length === 0) continue;
     matched++;
     for (const { op, index } of ops) {

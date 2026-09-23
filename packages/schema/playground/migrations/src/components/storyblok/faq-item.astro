@@ -1,0 +1,17 @@
+---
+import type { Block } from '../../schema/schema';
+import Richtext from './richtext.astro';
+
+interface Props {
+  block: Block<'faq_item'>;
+}
+
+const { block } = Astro.props;
+---
+
+<details class="rounded-lg border border-gray-200 bg-white p-4" data-block="faq_item" open>
+  <summary class="cursor-pointer font-medium text-gray-900">{block.question}</summary>
+  <div class="mt-2 text-gray-600">
+    <Richtext document={block.answer} />
+  </div>
+</details>

@@ -1,0 +1,28 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'media'>;
+}
+
+const { block } = Astro.props;
+---
+
+<figure class="my-6" data-block="media">
+  {block.image?.filename
+    ? (
+      <img
+        src={block.image.filename}
+        alt={block.image.alt ?? ''}
+        class="w-full rounded-xl object-cover"
+        width="1200"
+        height="675"
+      />
+    )
+    : <div class="flex h-40 items-center justify-center rounded-xl bg-gray-100 text-gray-400">No image</div>
+  }
+  <figcaption class="mt-2 text-sm text-gray-500">
+    {block.caption}
+    {block.credit && <span class="ml-2 text-xs text-gray-400">© {block.credit}</span>}
+  </figcaption>
+</figure>

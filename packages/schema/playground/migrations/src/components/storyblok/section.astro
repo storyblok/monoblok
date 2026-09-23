@@ -1,0 +1,23 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'section'>;
+}
+
+const { block } = Astro.props;
+const accentColor = block.accent_color?.color;
+---
+
+<section class="my-10 rounded-2xl border border-dashed border-gray-300 p-6" data-block="section" data-theme={block.theme}>
+  {block.heading && (
+    <h2
+      class="mb-1 text-3xl font-bold text-balance text-gray-900"
+      style={accentColor ? `color: ${accentColor}` : undefined}
+    >
+      {block.heading}
+    </h2>
+  )}
+  <p class="mb-4 text-xs tracking-wide text-gray-400 uppercase">section · {block.theme ?? 'no theme'}</p>
+  <slot />
+</section>

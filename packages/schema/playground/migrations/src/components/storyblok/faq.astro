@@ -1,0 +1,20 @@
+---
+import type { Block } from '../../schema/schema';
+import FaqItem from './faq-item.astro';
+
+interface Props {
+  block: Block<'faq'>;
+}
+
+const { block } = Astro.props;
+---
+
+<section class="my-8" data-block="faq">
+  {block.headline && <h2 class="mb-2 text-2xl font-bold text-gray-900">{block.headline}</h2>}
+  {block.categories?.length ? (
+    <p class="mb-4 text-xs tracking-wide text-gray-400 uppercase">{block.categories.join(' · ')}</p>
+  ) : null}
+  <div class="grid gap-3">
+    {block.items?.map(item => <FaqItem block={item} />)}
+  </div>
+</section>

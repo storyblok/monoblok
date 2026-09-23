@@ -16,18 +16,22 @@ export {
   coerceField,
   isKeyOp,
   KEY_OP_KINDS,
+  mergeFields,
   moveField,
   removeField,
   renameField,
   reorderField,
+  splitField,
 } from "./ops";
 export type {
   AddFieldOp,
   AlterFieldContext,
   AnyChild,
   CoercionTarget,
+  MergeFieldsOp,
   MigrationOp,
   MigrationOpOf,
+  SplitFieldOp,
   UnderOf,
 } from "./ops";
 

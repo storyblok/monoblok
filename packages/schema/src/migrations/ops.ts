@@ -124,6 +124,28 @@ export interface AddFieldOp<TAfter extends SchemaShape, TBefore extends SchemaSh
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
+export interface SplitFieldOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "splitField";
+  block: string;
+  field: string;
+  into: readonly string[];
+  split: (value: never) => readonly unknown[];
+  /** Present only when the author stated it; without it the op cannot be inverted. */
+  merge?: (values: readonly unknown[]) => unknown;
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
+export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "mergeFields";
+  block: string;
+  fields: readonly string[];
+  into: string;
+  merge: (values: readonly unknown[]) => unknown;
+  /** Present only when the author stated it; without it the op cannot be inverted. */
+  split?: (value: never) => readonly unknown[];
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
 export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShape> =
   | RenameFieldOp<TAfter, TBefore>
   | MoveFieldOp<TAfter, TBefore>
@@ -132,7 +154,9 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
   | ReorderFieldOp<TAfter, TBefore>
   | AlterFieldOp<TAfter, TBefore>
   | AlterBlockOp<TAfter, TBefore>
-  | AddFieldOp<TAfter, TBefore>;
+  | AddFieldOp<TAfter, TBefore>
+  | SplitFieldOp<TAfter, TBefore>
+  | MergeFieldsOp<TAfter, TBefore>;
 
 /** An op as the runner sees it: the schema brand is phantom and carries nothing. */
 export type MigrationOp = MigrationOpOf<SchemaShape, SchemaShape>;
@@ -144,6 +168,8 @@ export const KEY_OP_KINDS = [
   "removeField",
   "coerceField",
   "addField",
+  "splitField",
+  "mergeFields",
 ] as const;
 
 export function isKeyOp(op: MigrationOp): boolean {
@@ -349,5 +375,66 @@ export function addField<
     block: spec.block,
     field: spec.field,
     fn: fn as AddFieldOp<TAfter, TBefore>["fn"],
+  };
+}
+
+/**
+ * One field into several. `merge` is the counterpart that puts them back; it is
+ * optional, and stating it is what moves the op from "needs recorded patches"
+ * to "rolls back on any machine".
+ */
+export function splitField<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+  // Defaulted, not only constrained: a caller pinning the schema parameters to
+  // derive an inverse (`splitField<After, Before, "author">(...)`) supplies a
+  // partial explicit list, and without a default TypeScript requires all four
+  // or none — it does not infer a trailing parameter once any is written out.
+  const TField extends SourceFieldName<TAfter, TBefore, TBlock> = SourceFieldName<
+    TAfter,
+    TBefore,
+    TBlock
+  >,
+>(
+  spec: {
+    block: TBlock;
+    field: TField;
+    into: readonly TargetFieldName<TAfter, TBlock>[];
+    merge?: (values: readonly unknown[]) => unknown;
+  },
+  split: (value: SourceValue<TBefore, TBlock, TField>) => readonly unknown[],
+): SplitFieldOp<TAfter, TBefore> {
+  return {
+    kind: "splitField",
+    block: spec.block,
+    field: spec.field,
+    into: spec.into,
+    split: split as SplitFieldOp<TAfter, TBefore>["split"],
+    ...(spec.merge === undefined ? {} : { merge: spec.merge }),
+  };
+}
+
+/** Several fields into one. `split` is the counterpart, on the same terms. */
+export function mergeFields<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+>(
+  spec: {
+    block: TBlock;
+    fields: readonly SourceFieldName<TAfter, TBefore, TBlock>[];
+    into: TargetFieldName<TAfter, TBlock>;
+    split?: (value: never) => readonly unknown[];
+  },
+  merge: (values: readonly unknown[]) => unknown,
+): MergeFieldsOp<TAfter, TBefore> {
+  return {
+    kind: "mergeFields",
+    block: spec.block,
+    fields: spec.fields,
+    into: spec.into,
+    merge,
+    ...(spec.split === undefined ? {} : { split: spec.split }),
   };
 }

@@ -11,9 +11,12 @@ import {
   addField,
   alterBlock,
   alterField,
+  mergeFields,
   removeField as removeFieldOp,
   renameField as renameFieldOp,
+  splitField,
 } from "./ops";
+import type { SchemaShape } from "./types";
 import { deriveInverse } from "./derive-inverse";
 import { validateMigration } from "./validate-migration";
 import { validateStory } from "../index";
@@ -37,6 +40,9 @@ import { spikeSchema, type SpikeSchema } from "./__fixtures__/schema";
 import { articleStoryContent, pageStoryContent } from "./__fixtures__/stories";
 
 const schemaLike = { blocks: Object.values(spikeSchema.blocks) };
+
+/** A bare schema shape: these tests exercise the runner, not schema inference. */
+type TestSchema = SchemaShape;
 
 function block(content: unknown, uid: string): Record<string, unknown> {
   const found = indexBlocks(content).get(uid);
@@ -1022,5 +1028,117 @@ describe("addField", () => {
     const second = runMigrationOnStory(migration, first.content);
     expect(second.changed).toBe(false);
     expect(second.content).toEqual(first.content);
+  });
+});
+
+describe("splitField", () => {
+  const splitName = defineMigration<TestSchema>({
+    name: "split-name",
+    ops: [
+      splitField({ block: "author", field: "name", into: ["first_name", "last_name"] }, (name) => {
+        const at = String(name).indexOf(" ");
+        return at === -1
+          ? [String(name), ""]
+          : [String(name).slice(0, at), String(name).slice(at + 1)];
+      }),
+    ],
+  });
+
+  it("replaces the source field with the split parts", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+    });
+  });
+
+  it("splits a single-word value into the first part and an empty second", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada" }],
+    });
+
+    expect(result.content).toMatchObject({
+      body: [{ first_name: "Ada", last_name: "" }],
+    });
+  });
+
+  // Review Focus 3: a field nobody filled in is an ordinary state of real content.
+  it("leaves a block whose source field is absent untouched", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", bio: "…" }],
+    });
+
+    expect(result.changed).toBe(false);
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", bio: "…" }],
+    });
+  });
+
+  it("leaves a block whose source field is null untouched", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: null }],
+    });
+
+    expect(result.changed).toBe(false);
+  });
+});
+
+describe("mergeFields", () => {
+  const mergeName = defineMigration<TestSchema>({
+    name: "merge-name",
+    ops: [
+      mergeFields(
+        { block: "author", fields: ["first_name", "last_name"], into: "name" },
+        (values) => values.filter(Boolean).join(" "),
+      ),
+    ],
+  });
+
+  it("replaces the source fields with the merged value", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
+  });
+
+  it("merges what is there when one source field is missing", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada" }],
+    });
+
+    expect(result.content).toMatchObject({ body: [{ name: "Ada" }] });
+  });
+
+  it("leaves a block holding none of the source fields untouched", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", bio: "…" }],
+    });
+
+    expect(result.changed).toBe(false);
   });
 });

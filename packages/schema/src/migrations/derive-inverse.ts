@@ -58,6 +58,28 @@ function invert(op: MigrationOp): MigrationOp | string {
       // Not lossy: removing a key the migration itself introduced restores
       // exactly what was there.
       return { kind: "removeField", block: op.block, field: op.field };
+    case "splitField":
+      return op.merge === undefined
+        ? "no `merge` counterpart was stated, so the parts cannot be put back together"
+        : {
+            kind: "mergeFields",
+            block: op.block,
+            fields: op.into,
+            into: op.field,
+            merge: op.merge,
+            ...(op.split === undefined ? {} : { split: op.split }),
+          };
+    case "mergeFields":
+      return op.split === undefined
+        ? "no `split` counterpart was stated, so the merged value cannot be taken apart"
+        : {
+            kind: "splitField",
+            block: op.block,
+            field: op.into,
+            into: op.fields,
+            split: op.split,
+            ...(op.merge === undefined ? {} : { merge: op.merge }),
+          };
   }
 }
 
@@ -74,7 +96,18 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
     }
     // A move overwrites its target and a coercion narrows, so replaying the
     // mirror op puts the key back where it was without the value it displaced.
-    if (op.kind === "moveField" || op.kind === "coerceField") lossy.push(index);
+    // A split/merge round trip is lossy either direction: splitting then
+    // merging normalises whatever the merge discards (whitespace, a
+    // separator), and merging then splitting cannot recover a separator the
+    // merge already threw away.
+    if (
+      op.kind === "moveField" ||
+      op.kind === "coerceField" ||
+      op.kind === "splitField" ||
+      op.kind === "mergeFields"
+    ) {
+      lossy.push(index);
+    }
     derived.push(inverse);
   });
 

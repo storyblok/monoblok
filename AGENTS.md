@@ -68,6 +68,8 @@ These sibling repos may not be available; ignore them if absent.
 
 - **Naming:** Files `kebab-case.ts`, functions/variables `camelCase`, classes/types `PascalCase`,
   constants `UPPER_SNAKE_CASE`
+- **Product terms:** Use Storyblok terms as defined in
+  `../storyblok-docs-platform/editorial/glossary.md` in code, messages, and docs.
 - **Types:** Use `type` for object shapes, `interface` for extendable contracts. Avoid `as` type
   casts. Explicit return types on public APIs.
 - **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths).
@@ -118,6 +120,9 @@ bash .agents/skills/blitz/scripts/monotree.sh list                  # List workt
 Worktrees live in `.worktrees/<prefix>-<branch-name>` e.g., `.worktrees/fix-pulling-stories`.
 
 ## Docs
+
+When writing or editing documentation pages, `DOCS.md`, READMEs, guides, or announcement posts, read
+`../storyblok-docs-platform/editorial/style-guide.md` first and apply every rule.
 
 For more context, read relevant files in `docs/`:
 

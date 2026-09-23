@@ -146,6 +146,13 @@ export interface MergeFieldsOp<TAfter extends SchemaShape, TBefore extends Schem
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
+export interface RenameBlockOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "renameBlock";
+  block: string;
+  to: string;
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
 export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShape> =
   | RenameFieldOp<TAfter, TBefore>
   | MoveFieldOp<TAfter, TBefore>
@@ -156,12 +163,17 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
   | AlterBlockOp<TAfter, TBefore>
   | AddFieldOp<TAfter, TBefore>
   | SplitFieldOp<TAfter, TBefore>
-  | MergeFieldsOp<TAfter, TBefore>;
+  | MergeFieldsOp<TAfter, TBefore>
+  | RenameBlockOp<TAfter, TBefore>;
 
 /** An op as the runner sees it: the schema brand is phantom and carries nothing. */
 export type MigrationOp = MigrationOpOf<SchemaShape, SchemaShape>;
 
-/** The op kinds that move the component schema and so must apply everywhere. */
+/**
+ * The op kinds that move the component schema and so must apply everywhere.
+ * `renameBlock` moves the component's identity itself, which is the same
+ * global reach: like the others, its factory takes no `under`.
+ */
 export const KEY_OP_KINDS = [
   "renameField",
   "moveField",
@@ -170,6 +182,7 @@ export const KEY_OP_KINDS = [
   "addField",
   "splitField",
   "mergeFields",
+  "renameBlock",
 ] as const;
 
 export function isKeyOp(op: MigrationOp): boolean {
@@ -437,4 +450,20 @@ export function mergeFields<
     merge,
     ...(spec.split === undefined ? {} : { split: spec.split }),
   };
+}
+
+/**
+ * Renames a component across all content. The schema half — renaming the
+ * component itself — belongs to `schema push`; this moves the content that
+ * points at it.
+ */
+export function renameBlock<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+>(spec: {
+  block: TBlock;
+  to: BlockNameOf<TAfter> | (string & {});
+}): RenameBlockOp<TAfter, TBefore> {
+  return { kind: "renameBlock", block: spec.block, to: spec.to };
 }

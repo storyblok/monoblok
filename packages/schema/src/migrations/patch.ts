@@ -32,11 +32,14 @@ export interface BlockPatch {
 }
 
 /**
- * Keys no migration owns. `_editable` is injected by the delivery API for the
- * Visual Editor and never stored, so it only appears when content reaches the
- * differ from a draft render rather than from the Management API.
+ * Keys no op writes, so the differ never reports them as a change. `_uid`
+ * addresses the block itself and no op rewrites it; `_editable` is injected by
+ * the delivery API for the Visual Editor and never stored, so it only appears
+ * when content reaches the differ from a draft render rather than from the
+ * Management API. `component` is excluded here only when no op targets it —
+ * `renameBlock` does, so it is diffed like any other key below.
  */
-const TRANSPORT_KEYS = new Set(["_uid", "component", "_editable"]);
+const TRANSPORT_KEYS = new Set(["_uid", "_editable"]);
 
 /**
  * Field-level translation stores each non-default language beside the field it

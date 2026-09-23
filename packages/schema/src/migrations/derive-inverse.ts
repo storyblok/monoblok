@@ -80,6 +80,8 @@ function invert(op: MigrationOp): MigrationOp | string {
             split: op.split,
             ...(op.merge === undefined ? {} : { merge: op.merge }),
           };
+    case "renameBlock":
+      return { kind: "renameBlock", block: op.to, to: op.block };
   }
 }
 

@@ -7,7 +7,13 @@
  * produced plus the inverse patch a rollback would replay.
  */
 import type { CompiledMigration } from "./define-migration";
-import { type AlterFieldContext, type AnyChild, isKeyOp, type MigrationOp } from "./ops";
+import {
+  type AlterFieldContext,
+  type AnyChild,
+  isKeyOp,
+  type MigrationOp,
+  type ReorderContext,
+} from "./ops";
 import {
   type AnyBlock,
   type BlockPatch,
@@ -118,7 +124,13 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
     case "reorderField": {
       const list = block[op.field];
       if (Array.isArray(list) && list.every(isBlock)) {
-        block[op.field] = [...(list as AnyChild[])].sort(op.compare);
+        const siblings = [...(list as AnyChild[])];
+        const positions = new Map(siblings.map((child, at) => [child, at]));
+        const context: ReorderContext = {
+          siblings,
+          index: (child) => positions.get(child) ?? -1,
+        };
+        block[op.field] = [...siblings].sort((a, b) => op.compare(a, b, context));
       }
       break;
     }

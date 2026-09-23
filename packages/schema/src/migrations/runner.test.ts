@@ -15,6 +15,7 @@ import {
   removeField as removeFieldOp,
   renameBlock,
   renameField as renameFieldOp,
+  reorderField,
   splitField,
   unwrapChildren,
   wrapChildren,
@@ -419,6 +420,59 @@ describe("reorder", () => {
     expect(result.conflicts).toEqual([]);
     const items = block(live, "section-a").items as { _uid: string }[];
     expect(items.map((item) => item._uid)).toEqual(["card-a1", "card-a2", "card-new"]);
+  });
+});
+
+describe("reorderField context", () => {
+  it("lets a comparator read each item's position in the original array", () => {
+    const migration = defineMigration<TestSchema>({
+      name: "sort-but-pin-the-opener",
+      ops: [
+        reorderField({ block: "page", field: "body" }, (a, b, context) => {
+          // Whatever opens the page stays there; sort the rest by title.
+          if (context.index(a) === 0 || context.index(b) === 0) return 0;
+          return String(a.title ?? "").localeCompare(String(b.title ?? ""));
+        }),
+      ],
+    });
+
+    const result = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card", title: "zebra" },
+        { _uid: "b", component: "card", title: "cherry" },
+        { _uid: "c", component: "card", title: "apple" },
+      ],
+    });
+
+    expect(result.content).toMatchObject({
+      body: [{ title: "zebra" }, { title: "apple" }, { title: "cherry" }],
+    });
+  });
+
+  it("exposes the whole sibling array", () => {
+    let seen: readonly unknown[] = [];
+    const migration = defineMigration<TestSchema>({
+      name: "observe-siblings",
+      ops: [
+        reorderField({ block: "page", field: "body" }, (a, b, context) => {
+          seen = context.siblings;
+          return 0;
+        }),
+      ],
+    });
+
+    runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "card" },
+        { _uid: "b", component: "card" },
+      ],
+    });
+
+    expect(seen).toHaveLength(2);
   });
 });
 

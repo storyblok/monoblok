@@ -525,6 +525,32 @@ describe("idempotency check", () => {
   it("should not need the check for a key op, which is a no-op on a rerun by construction", () => {
     expect(runMigrationOnStory(renameNestedField, pageStoryContent()).nonIdempotent).toEqual([]);
   });
+
+  it("should report an alter that keeps rewriting a nested block's own field", () => {
+    // The op targets the parent, so the nested block is never visited with it
+    // and no other check would catch this. The comparison therefore has to see
+    // into nested blocks rather than collapsing them to uid markers.
+    const creeping = defineMigration<SpikeSchema>([
+      alterBlock({ block: "spike_section" }, (block) => {
+        for (const meta of block.meta ?? []) meta.og_title = `x:${meta.og_title ?? ""}`;
+      }),
+    ]);
+
+    const run = runMigrationOnStory(creeping, {
+      _uid: "root",
+      component: "spike_page",
+      body: [
+        {
+          _uid: "section-1",
+          component: "spike_section",
+          heading: "One",
+          meta: [{ _uid: "meta-1", component: "spike_meta", og_title: "Title" }],
+        },
+      ],
+    });
+
+    expect(run.nonIdempotent).toEqual([{ uid: "section-1", op: 0 }]);
+  });
 });
 
 describe("derived inverse — rollback tier 2", () => {

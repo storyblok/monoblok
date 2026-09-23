@@ -207,8 +207,18 @@ function instabilityCausedBy(
   };
 }
 
-/** The part of a block an idempotency check may compare: nested blocks excluded. */
-function ownKeys(block: AnyBlock): Record<string, unknown> {
+/**
+ * A block as the idempotency check compares it: everything but `_editable`,
+ * which the delivery API injects for the Visual Editor and never stores, so it
+ * is not part of what an op produced.
+ *
+ * Nested blocks stay in the comparison, unlike in a patch, where they collapse
+ * to uid markers so a child's edits are not duplicated into its parent's patch.
+ * The two concerns differ: an op that keeps rewriting a child's field is applied
+ * at the parent, so the child is never visited with it and nothing else would
+ * notice it creeping.
+ */
+function comparableKeys(block: AnyBlock): Record<string, unknown> {
   return Object.fromEntries(Object.entries(block).filter(([key]) => key !== "_editable"));
 }
 
@@ -240,7 +250,9 @@ export function runMigrationOnStory(
       if (op.kind === "alterBlock" || op.kind === "alterField") {
         const probe = structuredClone(block) as AnyBlock;
         applyOp(probe, op);
-        if (!deepEqual(ownKeys(probe), ownKeys(block))) nonIdempotent.push({ uid, op: index });
+        if (!deepEqual(comparableKeys(probe), comparableKeys(block))) {
+          nonIdempotent.push({ uid, op: index });
+        }
       }
     }
   }

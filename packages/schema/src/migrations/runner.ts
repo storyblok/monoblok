@@ -140,6 +140,22 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       block[op.field] = value;
       break;
     }
+    case "splitField": {
+      const value = block[op.field];
+      if (value === undefined || value === null) break;
+      const parts = op.split(value as never);
+      op.into.forEach((name, at) => {
+        block[name] = parts[at];
+      });
+      delete block[op.field];
+      break;
+    }
+    case "mergeFields": {
+      if (!op.fields.some((name) => name in block)) break;
+      block[op.into] = op.merge(op.fields.map((name) => block[name]));
+      for (const name of op.fields) delete block[name];
+      break;
+    }
   }
 }
 

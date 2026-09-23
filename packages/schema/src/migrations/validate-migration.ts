@@ -26,9 +26,9 @@ function blockNames(schema: SchemaLike): Map<string, Set<string>> {
   return map;
 }
 
-/** The field an op reads, or `undefined` for one that names no field. */
+/** The field an op reads, or `undefined` for one that names no single field. */
 function sourceFieldOf(op: MigrationOp): string | undefined {
-  return op.kind === "alterBlock" ? undefined : op.field;
+  return op.kind === "alterBlock" || op.kind === "mergeFields" ? undefined : op.field;
 }
 
 export function validateMigration(
@@ -73,6 +73,16 @@ export function validateMigration(
         op: index,
         message: `Block "${op.block}" has no field "${sourceField}". Known fields: ${[...fields].sort().join(", ")}.`,
       });
+    }
+    if (op.kind === "mergeFields") {
+      for (const field of op.fields) {
+        if (!fields.has(field)) {
+          issues.push({
+            op: index,
+            message: `Block "${op.block}" has no field "${field}". Known fields: ${[...fields].sort().join(", ")}.`,
+          });
+        }
+      }
     }
     if (op.kind === "renameField" && fields.has(op.to)) {
       issues.push({

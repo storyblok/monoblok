@@ -35,6 +35,14 @@ export interface DerivedInverse {
    * explicit opt-in.
    */
   lossy: number[];
+  /**
+   * Block names `ops` targets, computed the same way `defineMigration` computes
+   * `CompiledMigration.targets`. Every earlier op kind targets the same block it
+   * read, so reusing the forward migration's `targets` happened to work; a
+   * `renameBlock` inverse targets the *new* name instead, so a caller replaying
+   * `ops` needs this rather than the forward migration's own `targets`.
+   */
+  targets: string[];
 }
 
 function invert(op: MigrationOp): MigrationOp | string {
@@ -113,5 +121,12 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
     derived.push(inverse);
   });
 
-  return { derivable: blocked.length === 0, ops: derived.reverse(), blocked, lossy };
+  const reversed = derived.reverse();
+  return {
+    derivable: blocked.length === 0,
+    ops: reversed,
+    blocked,
+    lossy,
+    targets: [...new Set(reversed.map((op) => op.block))],
+  };
 }

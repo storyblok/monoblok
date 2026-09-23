@@ -268,6 +268,18 @@ describe("deriveInverse", () => {
     expect(derived.lossy).toEqual([]);
   });
 
+  // Every earlier op targets the same block it read, so a caller could reuse
+  // the forward migration's `targets` by accident. A renameBlock inverse
+  // targets the *new* name instead, so `targets` has to be recomputed from the
+  // derived ops, not carried over.
+  it("targets the renamed block's new name, not the forward migration's target", () => {
+    const derived = deriveInverse([
+      renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),
+    ]);
+
+    expect(derived.targets).toEqual(["teaser"]);
+  });
+
   it("replays a derived renameBlock inverse and restores the original component name", () => {
     const forward = defineMigration<AnySchema>({
       ops: [renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" })],
@@ -291,7 +303,7 @@ describe("deriveInverse", () => {
     expect(derived.lossy).toEqual([]);
 
     const rolledBack = runMigrationOnStory(
-      { ...forward, ops: derived.ops, targets: ["teaser"] },
+      { ...forward, ops: derived.ops, targets: derived.targets },
       migrated.content,
     );
 

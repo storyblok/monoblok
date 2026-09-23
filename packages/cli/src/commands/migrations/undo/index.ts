@@ -64,6 +64,17 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       ui.info(
         `Undoing the most recent run ${chalk.bold(id)} (${latest.title ?? latest.migration}).`,
       );
+    } else {
+      // A run id does not carry the space it belongs to, and the journal finds
+      // an entry wherever it was recorded. Without this check, a run from
+      // another space patches this one's stories by uid and the failures read
+      // as content problems rather than as the addressing mistake they are.
+      const entry = await journal.read(id);
+      if (entry && entry.space !== space) {
+        throw new CommandError(
+          `Run ${id} was recorded for space ${entry.space}, not space ${space}. Undo it with --space ${entry.space}.`,
+        );
+      }
     }
 
     /** Story names are carried across the fetch so the write does not clear them. */

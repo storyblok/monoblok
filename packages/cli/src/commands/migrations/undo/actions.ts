@@ -14,7 +14,11 @@ export type UndoOutcome = {
    * story version and shows an editor a revision for an undo that did nothing.
    */
   writes: { story: StoryForMigration; content: unknown }[];
-  /** Blocks left as they are because an editor changed them since the run. */
+  /**
+   * Blocks left as they are because an editor changed them since the run.
+   * Counted in blocks, like {@link UndoOutcome.missing}: the engine reports one
+   * conflict per op, and a rename inverse is two ops on a single block.
+   */
   conflicts: { slug: string; count: number }[];
   /** Blocks the run recorded that the story no longer holds, so nothing to undo. */
   missing: { slug: string; count: number }[];
@@ -46,8 +50,9 @@ export async function undoRun(input: UndoInput): Promise<UndoOutcome> {
     const story = await input.fetchStory(Number(entry.story));
     const content = structuredClone(story.content);
     const result = applyPatches(content, entry.patches);
-    if (result.conflicts.length > 0) {
-      conflicts.push({ slug: story.slug, count: result.conflicts.length });
+    const conflictingBlocks = new Set(result.conflicts.map((conflict) => conflict.uid));
+    if (conflictingBlocks.size > 0) {
+      conflicts.push({ slug: story.slug, count: conflictingBlocks.size });
     }
     if (result.missing.length > 0) {
       missing.push({ slug: story.slug, count: result.missing.length });

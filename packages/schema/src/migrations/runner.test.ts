@@ -920,6 +920,45 @@ describe("under smuggled onto a key op", () => {
     // issue above; applying it globally is what the runner does meanwhile.
     expect(runMigrationOnStory(smuggled, pageStoryContent()).matched).toBe(4);
   });
+
+  it("should be reported for every key op, whatever spec shape its factory takes", () => {
+    // `as never` is the smuggle: the factories type `under` as the explanation
+    // the compiler prints, so this is what a migration that never went through
+    // the type system hands them.
+    const under = "spike_section" as never;
+    const migration = defineMigration<SpikeSchema>([
+      addField({ block: "spike_card", field: "slug", under }, () => "x"),
+      splitField({ block: "spike_card", field: "title", into: ["slug"], under }, (value) => [
+        String(value),
+      ]),
+      mergeFields(
+        { block: "spike_card", fields: ["title", "description"], into: "slug", under },
+        (values) => values.join(" "),
+      ),
+      renameBlock({ block: "spike_card", to: "spike_teaser", under }),
+      wrapChildren({
+        block: "spike_section",
+        field: "items",
+        in: "spike_card",
+        into: "items",
+        under,
+      }),
+      unwrapChildren({
+        block: "spike_section",
+        field: "items",
+        unwrap: "spike_card",
+        from: "meta",
+        under,
+      }),
+    ]);
+
+    const issues = validateMigration(migration, schemaLike);
+
+    expect(issues.map((issue) => issue.op)).toEqual([0, 1, 2, 3, 4, 5]);
+    for (const issue of issues) {
+      expect(issue.message).toContain("cannot be scoped with `under`");
+    }
+  });
 });
 
 describe("key ops and translated fields", () => {
@@ -1264,6 +1303,59 @@ describe("splitField", () => {
 
     expect(result.changed).toBe(false);
   });
+
+  // The source surviving the reshape under its own name is ordinary authoring:
+  // "the full name becomes the first name, plus a new surname".
+  it("should keep the part that lands on the source field's own name", () => {
+    const splitOntoItself = defineMigration<TestSchema>({
+      name: "split-name-onto-itself",
+      ops: [
+        splitField({ block: "author", field: "name", into: ["name", "surname"] }, (value) => {
+          const at = String(value).indexOf(" ");
+          return [String(value).slice(0, at), String(value).slice(at + 1)];
+        }),
+      ],
+    });
+
+    const result = runMigrationOnStory(splitOntoItself, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada", surname: "Lovelace" }],
+    });
+  });
+
+  it("should report a source field that carries translations instead of stranding them", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          name: "Ada Lovelace",
+          name__i18n__de: "Ada von Lovelace",
+        },
+      ],
+    });
+
+    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "name" }]);
+  });
+
+  it("should report nothing for a source field that carries no translations", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
+
+    expect(result.translatedReshapes).toEqual([]);
+  });
 });
 
 describe("mergeFields", () => {
@@ -1321,6 +1413,59 @@ describe("mergeFields", () => {
     });
 
     expect(result.changed).toBe(false);
+  });
+
+  // "Merge name and surname into name" is the first thing anyone writes with
+  // this op: the target is one of the sources.
+  it("should keep the merged value when the target is one of the source fields", () => {
+    const mergeOntoSource = defineMigration<TestSchema>({
+      name: "merge-name-onto-source",
+      ops: [
+        mergeFields({ block: "author", fields: ["name", "surname"], into: "name" }, (values) =>
+          values.filter(Boolean).join(" "),
+        ),
+      ],
+    });
+
+    const result = runMigrationOnStory(mergeOntoSource, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada", surname: "Lovelace" }],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", name: "Ada Lovelace" }],
+    });
+  });
+
+  it("should report a source field that carries translations instead of stranding them", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          first_name: "Ada",
+          last_name: "Lovelace",
+          last_name__i18n__de: "von Lovelace",
+        },
+      ],
+    });
+
+    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "last_name" }]);
+  });
+
+  it("should report nothing for source fields that carry no translations", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "author", first_name: "Ada", last_name: "Lovelace" }],
+    });
+
+    expect(result.translatedReshapes).toEqual([]);
   });
 });
 

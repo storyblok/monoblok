@@ -53,6 +53,28 @@ export interface StoryMigrationResult {
    * the way it was written.
    */
   nonIdempotent: { uid: string; op: number }[];
+  /**
+   * Reshaping ops whose source field carries translations. `splitField` and
+   * `mergeFields` produce a value out of one or more others, and there is no
+   * answer the engine can pick for what a split of a German value should be:
+   * the base key and its `__i18n__` siblings hold different text, and the
+   * halves of one are not the halves of the other. Guessing would leave the
+   * translations addressed to a field name that no longer exists, which the
+   * delivery API then drops. So they are reported and a runner must refuse
+   * them, rather than migrated on a rule nobody chose.
+   */
+  translatedReshapes: { uid: string; op: number; field: string }[];
+}
+
+/**
+ * The source field of a reshaping op that carries translations in this block,
+ * or `undefined` when there is none. Only `splitField` and `mergeFields` can
+ * land here: every other op that names a field moves the whole family.
+ */
+function translatedReshapeSource(block: AnyBlock, op: MigrationOp): string | undefined {
+  const sources =
+    op.kind === "splitField" ? [op.field] : op.kind === "mergeFields" ? [...op.fields] : [];
+  return sources.find((field) => translationKeysFor(block, field).length > 0);
 }
 
 function coerce(value: unknown, to: "string" | "number" | "boolean"): unknown {
@@ -160,16 +182,22 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       const value = block[op.field];
       if (value === undefined || value === null) break;
       const parts = op.split(value as never);
+      // The source goes first: `into` may name the source itself, which is a
+      // legitimate reshape ("full name" into "name" plus "surname"), and
+      // deleting afterwards would take the part that landed on it with it.
+      delete block[op.field];
       op.into.forEach((name, at) => {
         block[name] = parts[at];
       });
-      delete block[op.field];
       break;
     }
     case "mergeFields": {
       if (!op.fields.some((name) => name in block)) break;
-      block[op.into] = op.merge(op.fields.map((name) => block[name]));
+      const merged = op.merge(op.fields.map((name) => block[name]));
+      // Same reason as `splitField`: `into` may be one of the sources, so the
+      // sources are cleared before the merged value lands on the target.
       for (const name of op.fields) delete block[name];
+      block[op.into] = merged;
       break;
     }
     case "renameBlock":
@@ -314,6 +342,7 @@ export function runMigrationOnStory(
   const unstableBefore = findUnstableUids(before);
   const ancestors = indexAncestors(after);
   const nonIdempotent: { uid: string; op: number }[] = [];
+  const translatedReshapes: StoryMigrationResult["translatedReshapes"] = [];
 
   let matched = 0;
   for (const [uid, block] of indexBlocks(after)) {
@@ -324,6 +353,10 @@ export function runMigrationOnStory(
     if (ops.length === 0) continue;
     matched++;
     for (const { op, index } of ops) {
+      const translated = translatedReshapeSource(block, op);
+      if (translated !== undefined) {
+        translatedReshapes.push({ uid, op: index, field: translated });
+      }
       applyOp(block, op);
       // Every op runs twice and must agree, which is what makes a rerun safe by
       // construction rather than by convention. The second pass runs on a copy,
@@ -365,6 +398,7 @@ export function runMigrationOnStory(
     inverse,
     unstableUids: instabilityCausedBy(unstableBefore, findUnstableUids(after)),
     nonIdempotent,
+    translatedReshapes,
   };
 }
 

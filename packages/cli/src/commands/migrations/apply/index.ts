@@ -180,6 +180,10 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
     const journal = resolveJournal({ path: basePath });
     const planned = new Map<number, StoryForMigration>();
     const names = new Map<number, string>();
+    // Counted across every migration in the invocation, because the exit code
+    // is one answer for the whole command.
+    let refused = 0;
+    let written = 0;
 
     for (const entry of selected) {
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
@@ -207,11 +211,13 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
       for (const refusal of outcome.refusals) {
         ui.warn(`${chalk.bold(refusal.slug)}: ${refusal.reason}`);
       }
+      refused += outcome.refusals.length;
 
       if (dryRun) {
         for (const write of outcome.writes) {
           planned.set(write.story.id, { ...write.story, content: write.content });
         }
+        written += outcome.writes.length;
         ui.info(
           `${entry.id}: would change ${outcome.run.stories} ${outcome.run.stories === 1 ? "story" : "stories"} (${outcome.run.blocks} blocks).`,
         );
@@ -247,6 +253,17 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
         }
       }
 
+      written += recorded.length;
+
+      // A run that wrote nothing has nothing to undo, and recording it anyway
+      // would put an empty entry in front of the one holding the real work:
+      // `undo` without `--run` takes the most recent run, so the next undo
+      // would report success and leave the migration applied.
+      if (recorded.length === 0) {
+        ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
+        continue;
+      }
+
       const id = runId(entry.id);
       await journal.record(
         {
@@ -259,6 +276,17 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
       );
       ui.info(
         `${entry.id}: changed ${recorded.length} ${recorded.length === 1 ? "story" : "stories"}, recorded as ${chalk.bold(id)}.`,
+      );
+    }
+
+    // A run the engine refused wrote nothing, which a CI job gating on the exit
+    // code has no other way to see. A partial run is left at 0 on purpose: it
+    // wrote what it could, recorded an undo for it, and the stories it refused
+    // are named above, so the job that is meant to stop is the one that
+    // achieved nothing.
+    if (refused > 0 && written === 0) {
+      throw new CommandError(
+        `Every story the migration matched was refused; nothing was ${dryRun ? "planned" : "written"}.`,
       );
     }
   } catch (maybeError) {

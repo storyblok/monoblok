@@ -37,6 +37,17 @@
 - **Monorepo Aligned**: Built from the same source specifications used throughout the Storyblok
   monoblok repository
 
+## Content migrations (prototype)
+
+`@storyblok/schema/migrations` is a subpath export holding a prototype content-migration engine: a
+migration is a typed list of ops, applied to a space's story content and recorded so it can be
+undone. It is what `storyblok migrations apply`, `list` and `undo` run.
+
+It is deliberately **not** exported from the package root, and it is not covered by the package's
+stability guarantees. It lives here because its DSL is parameterised on the schema types this
+package produces, and it is behind a subpath because where content migrations ultimately belong is
+still an open question: this arrangement is cheap to move away from without breaking a root import.
+
 ## Documentation
 
 For complete documentation, please visit the

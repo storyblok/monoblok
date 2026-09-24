@@ -24,16 +24,11 @@ import {
   blockComponents,
   type CompiledMigration,
   localJournal,
-  runMigrationOnStory,
   runId,
   type StoryInverse,
 } from "@storyblok/schema/migrations";
-import {
-  type ContentStore,
-  fileContentStore,
-  type PlaygroundStory,
-  spaceContentStore,
-} from "../src/content-store";
+import { type ContentStore, fileContentStore, spaceContentStore } from "../src/content-store";
+import { planMigration } from "../src/plan-migration";
 
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..");
 const FIXTURES_DIR = path.join(PACKAGE_ROOT, "fixtures");
@@ -60,12 +55,9 @@ const undo = flag("undo");
 
 type LoadedMigration = { id: string; migration: CompiledMigration };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function isCompiledMigration(value: unknown): value is CompiledMigration {
-  return isRecord(value) && Array.isArray(value.ops) && Array.isArray(value.targets);
+  const candidate: Partial<CompiledMigration> | null = typeof value === "object" ? value : null;
+  return Array.isArray(candidate?.ops) && Array.isArray(candidate?.targets);
 }
 
 async function loadMigrations(): Promise<LoadedMigration[]> {
@@ -87,66 +79,6 @@ async function loadMigrations(): Promise<LoadedMigration[]> {
       return { id, migration };
     }),
   );
-}
-
-type PlannedWrite = { story: PlaygroundStory; content: Record<string, unknown> };
-
-type MigrationPlan = {
-  writes: PlannedWrite[];
-  inverse: StoryInverse[];
-  refusals: { slug: string; reason: string }[];
-};
-
-/**
- * Decides what the run would write, without writing anything. Same separation
- * as the CLI's apply: there is no dry-run branch, so what a run reports and what
- * it does cannot drift.
- */
-function planMigration(migration: CompiledMigration, stories: PlaygroundStory[]): MigrationPlan {
-  const plan: MigrationPlan = { writes: [], inverse: [], refusals: [] };
-
-  for (const story of stories) {
-    const result = runMigrationOnStory(migration, story.content);
-    if (!result.changed) {
-      continue;
-    }
-
-    // Content that arrived with repeated ids sends the author to the story, not
-    // to the migration — but both are refused, because the backend renumbers
-    // them on write and that strands the record needed to undo the run.
-    if (result.unstableUids.preExisting.length > 0) {
-      plan.refusals.push({
-        slug: story.slug,
-        reason: `already contains repeated block ids: ${result.unstableUids.preExisting.join(", ")}`,
-      });
-      continue;
-    }
-    if (result.unstableUids.duplicate.length > 0 || result.unstableUids.missing > 0) {
-      plan.refusals.push({
-        slug: story.slug,
-        reason:
-          result.unstableUids.duplicate.length > 0
-            ? `the migration left repeated block ids: ${result.unstableUids.duplicate.join(", ")}`
-            : `the migration left ${result.unstableUids.missing} block(s) without an id`,
-      });
-      continue;
-    }
-    if (result.nonIdempotent.length > 0) {
-      plan.refusals.push({
-        slug: story.slug,
-        reason: `op ${result.nonIdempotent.map((entry) => entry.op).join(", ")} disagrees with itself on a second pass`,
-      });
-      continue;
-    }
-    if (!isRecord(result.content)) {
-      continue;
-    }
-
-    plan.inverse.push({ story: String(story.id), patches: result.inverse });
-    plan.writes.push({ story, content: result.content });
-  }
-
-  return plan;
 }
 
 /**
@@ -175,7 +107,7 @@ async function runMigrations(store: ContentStore, space: string): Promise<number
     const plan = planMigration(migration, stories);
 
     for (const refusal of plan.refusals) {
-      console.warn(`${id}: refused ${refusal.slug} — ${refusal.reason}`);
+      console.warn(`${id}: refused ${refusal.slug} (${refusal.blame}) — ${refusal.reason}`);
     }
 
     const written: StoryInverse[] = [];

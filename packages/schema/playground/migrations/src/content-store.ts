@@ -114,9 +114,9 @@ export function spaceContentStore(options: { space: string; token: string }): Co
       if (!isRecord(story.content)) {
         throw new Error(`Story ${story.id} carries no block content to write.`);
       }
-      // Only the keys the migration owns are sent. `force_update` skips the
-      // optimistic-lock check, which a migration would otherwise trip on every
-      // story it read before the previous write landed.
+      // Only the keys the migration owns are sent. `force_update` lets the
+      // write land on a story an editor has locked, which a migration run has
+      // no way to clear.
       await client.stories.update(story.id, {
         body: { story: { name: story.name, content: story.content } },
         query: { force_update: true },

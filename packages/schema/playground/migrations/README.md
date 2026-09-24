@@ -1,7 +1,4 @@
-# Content migrations
-
-Rewrite the content already in a space when the schema moves under it. Migrations are TypeScript,
-checked against your generated schema types, applied by the CLI, and undoable.
+# Content migrations playground
 
 This playground is a deliberately awkward space — nested containers, richtext with embedded blocks,
 field translations, datasource options, tables — plus twenty migrations that each break it a
@@ -107,7 +104,7 @@ pnpm migrate:offline    # all twenty
 pnpm test               # all twenty, plus the recorded expectations and the round trip
 ```
 
-One table, one row each: [NOTES.md](NOTES.md#the-edge-case-catalogue).
+One table, one row each: [NOTES.md](NOTES.md#the-catalogue).
 
 `--offline` edits the JSON in `fixtures/`. `git checkout fixtures/` resets it.
 
@@ -149,7 +146,7 @@ pnpm migrate --confirm-writes    # migrate the space, then reload
 - Does a migration read like something you would write and review?
 - Is refusing the whole run too strict, or not strict enough?
 - Recorded patches roll back exactly; a derived inverse is a blind fallback with
-  [known limits](NOTES.md#what-the-op-set-could-not-express).
+  [known limits](NOTES.md#the-catalogue).
 - It ships from `@storyblok/schema/migrations` today, which is
   [open to argument](NOTES.md#where-this-belongs).
 

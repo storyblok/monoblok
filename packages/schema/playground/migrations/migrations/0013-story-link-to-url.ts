@@ -3,8 +3,14 @@
  * field keeps its type and its name; only the value's internal shape changes,
  * which is the case a key op cannot express and a value op can.
  *
+ * What a story link actually holds is worth reading off the fixtures: `id` is
+ * the story's uuid and `cached_url` is its slug. So the conversion drops the
+ * only stable reference the link had and keeps the one an editor can invalidate
+ * by renaming the story, which is the trade the migration is making and the
+ * reason it is a decision rather than a cleanup.
+ *
  * A link the migration already converted comes back unchanged, so the run is
- * repeatable — the `linktype` is what says whether there is anything left to do.
+ * repeatable: the `linktype` is what says whether there is anything left to do.
  */
 import { alterField, defineMigration } from "@storyblok/schema/migrations";
 

@@ -34,7 +34,7 @@ stories. It is destructive: point it at a throwaway space.
 | Single and multi assets                 | `media.image`, `author.avatar` / `card.images`, `gallery.images`                                  |
 | Multilinks, both story and url          | `card.link`, `teaser.link`, `quote.source_link`                                                   |
 | Datasource-backed options               | `section.theme`, `faq.categories`, `pricing_table.currency`                                       |
-| A story-sourced option                  | `card.category`                                                                                   |
+| A story-sourced option (stores a uuid)  | `card.category`                                                                                   |
 | A table                                 | `pricing_table.table`                                                                             |
 | A field plugin value                    | `section.accent_color`                                                                            |
 
@@ -97,8 +97,43 @@ Either way, `.storyblok/stories/offline/` is projected and added, because its st
 else to capture from.
 
 For the four pushed stories the capture is the better source, because it carries whatever the
-backend normalized on the way in. The committed fixtures are projections: the schema push now
-succeeds, but no capture has run yet.
+backend normalized on the way in. The committed fixtures for those four are captured.
+
+### What the capture changed, and why projections are not enough
+
+The four stories were projections until a real capture ran. Comparing the two is the argument for
+the capture, because a projection is only ever what we wrote down, and three of the values we wrote
+down were wrong:
+
+| Field                                   | Projected              | Captured                                     |
+| :-------------------------------------- | :--------------------- | :------------------------------------------- |
+| `card.category`, a story-sourced option | `"story-team"`, a slug | `"01e738c0-…"`, the story's uuid             |
+| `card.link.id`, a story multilink       | `"story-team"`         | the same uuid, with the slug in `cached_url` |
+| any asset's `filename` and `id`         | `""` and `2000`        | a CDN URL and the space's own asset id       |
+
+A story-sourced option stores the story's **uuid**, not its slug. That is exactly the class of shape
+authoring can never establish: the API stores what it is sent, so writing a slug there and reading
+it back proves only that the API kept it. Every projected fixture was fiction on this point, and any
+migration reasoning about such a value was being tested against content no space would hold.
+
+A datasource-backed option is not the same thing and was not fiction: `faq.categories` still holds
+`"billing"` and `"general"`, the datasource entries' own values, which the capture confirms. That is
+what `0015` migrates, so its premise survived the capture rather than depending on the fiction.
+
+Two things the capture did **not** change are worth as much as the three it did. Every block `_uid`
+came back exactly as it was written, which is what the whole patch scheme rests on; and
+`card.price`, a `number` field, came back as the string `"19"`, which is what `0005` says about
+coercion.
+
+Key order differs throughout, which is why the tests compare parsed values rather than text.
+
+`.storyblok/stories/offline/legacy_story-legacy.json` cannot be captured, so its asset and its story
+link were rewritten by hand to the shapes the capture revealed. They are copied from captured
+content rather than invented, but they are still authored, and only a capture would make them
+evidence.
+
+Running `pnpm fixtures --from-seed` now **replaces the captured fixtures with projections**, which
+loses all of the above. Use it only when no space is available, and expect the diff.
 
 `section.accent_color` used to block even the schema push. It is a field-type plugin, and a plugin
 has to be installed in a space before the push is accepted. The field now asks for

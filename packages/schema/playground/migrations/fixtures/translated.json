@@ -1,25 +1,12 @@
 {
-  "id": 1004,
+  "id": 223408651914825,
   "slug": "translated",
   "name": "Translated",
   "content": {
     "_uid": "44444444-0000-4000-8000-000000000001",
-    "component": "page",
-    "seo_title": "Translated page",
-    "seo_title__i18n__de": "Übersetzte Seite",
-    "seo_title__i18n__fr": "Page traduite",
-    "seo_description": "Field-level translations sit beside their source field.",
     "body": [
       {
         "_uid": "44444444-0000-4000-8000-000000000002",
-        "component": "card",
-        "headline": "Fully translated card",
-        "headline__i18n__de": "Vollständig übersetzte Karte",
-        "headline__i18n__fr": "Carte entièrement traduite",
-        "slug": "translated-card",
-        "price": "12",
-        "link": null,
-        "images": [],
         "body": {
           "type": "doc",
           "content": [
@@ -27,58 +14,52 @@
               "type": "paragraph",
               "content": [
                 {
-                  "type": "text",
-                  "text": "The headline has a de and an fr sibling; the richtext has none."
+                  "text": "The headline has a de and an fr sibling; the richtext has none.",
+                  "type": "text"
                 }
               ]
             }
           ]
-        }
+        },
+        "link": null,
+        "slug": "translated-card",
+        "price": "12",
+        "images": [],
+        "headline": "Fully translated card",
+        "component": "card",
+        "headline__i18n__de": "Vollständig übersetzte Karte",
+        "headline__i18n__fr": "Carte entièrement traduite"
       },
       {
         "_uid": "44444444-0000-4000-8000-000000000003",
-        "component": "section",
-        "heading": "Partly translated section",
-        "heading__i18n__de": "Teilweise übersetzter Abschnitt",
-        "theme": "brand",
         "items": [
           {
             "_uid": "44444444-0000-4000-8000-000000000004",
-            "component": "card",
-            "headline": "Only German is filled",
-            "headline__i18n__de": "Nur Deutsch ist gefüllt",
-            "headline__i18n__fr": "",
+            "body": null,
+            "link": null,
             "slug": "partly-translated-card",
             "price": null,
-            "link": null,
             "images": [],
-            "body": null
+            "headline": "Only German is filled",
+            "component": "card",
+            "headline__i18n__de": "Nur Deutsch ist gefüllt",
+            "headline__i18n__fr": ""
           },
           {
             "_uid": "44444444-0000-4000-8000-000000000005",
-            "component": "quote",
             "text": "A translated quote.",
-            "text__i18n__de": "Ein übersetztes Zitat.",
-            "text__i18n__fr": "Une citation traduite.",
+            "authors": [],
+            "component": "quote",
             "attribution": "The seed",
             "source_link": null,
-            "authors": []
+            "text__i18n__de": "Ein übersetztes Zitat.",
+            "text__i18n__fr": "Une citation traduite."
           },
           {
             "_uid": "44444444-0000-4000-8000-000000000006",
-            "component": "faq",
-            "headline": "Translated FAQ",
-            "headline__i18n__de": "Übersetzte FAQ",
-            "categories": [
-              "general"
-            ],
             "items": [
               {
                 "_uid": "44444444-0000-4000-8000-000000000007",
-                "component": "faq_item",
-                "question": "Does the answer carry translations too?",
-                "question__i18n__de": "Enthält die Antwort auch Übersetzungen?",
-                "question__i18n__fr": "La réponse contient-elle aussi des traductions ?",
                 "answer": {
                   "type": "doc",
                   "content": [
@@ -86,13 +67,15 @@
                       "type": "paragraph",
                       "content": [
                         {
-                          "type": "text",
-                          "text": "Yes it does."
+                          "text": "Yes it does.",
+                          "type": "text"
                         }
                       ]
                     }
                   ]
                 },
+                "question": "Does the answer carry translations too?",
+                "component": "faq_item",
                 "answer__i18n__de": {
                   "type": "doc",
                   "content": [
@@ -100,31 +83,48 @@
                       "type": "paragraph",
                       "content": [
                         {
-                          "type": "text",
-                          "text": "Ja, das tut sie."
+                          "text": "Ja, das tut sie.",
+                          "type": "text"
                         }
                       ]
                     }
                   ]
-                }
+                },
+                "question__i18n__de": "Enthält die Antwort auch Übersetzungen?",
+                "question__i18n__fr": "La réponse contient-elle aussi des traductions ?"
               }
-            ]
+            ],
+            "headline": "Translated FAQ",
+            "component": "faq",
+            "categories": [
+              "general"
+            ],
+            "headline__i18n__de": "Übersetzte FAQ"
           }
-        ]
+        ],
+        "theme": "brand",
+        "heading": "Partly translated section",
+        "component": "section",
+        "heading__i18n__de": "Teilweise übersetzter Abschnitt"
       },
       {
         "_uid": "44444444-0000-4000-8000-000000000008",
-        "component": "media",
-        "caption": "A translated caption",
-        "caption__i18n__de": "Eine übersetzte Bildunterschrift",
-        "credit": "Playground",
         "image": {
-          "id": 2000,
+          "id": 223407129002961,
           "alt": "About image",
-          "filename": "",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
           "fieldtype": "asset"
-        }
+        },
+        "credit": "Playground",
+        "caption": "A translated caption",
+        "component": "media",
+        "caption__i18n__de": "Eine übersetzte Bildunterschrift"
       }
-    ]
+    ],
+    "component": "page",
+    "seo_title": "Translated page",
+    "seo_description": "Field-level translations sit beside their source field.",
+    "seo_title__i18n__de": "Übersetzte Seite",
+    "seo_title__i18n__fr": "Page traduite"
   }
 }

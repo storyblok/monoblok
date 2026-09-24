@@ -12,13 +12,13 @@
         "subtitle": "Carries the field newer cards no longer have",
         "price": "twelve",
         "image": {
-          "id": 2000,
+          "id": 223407129002961,
           "alt": "About image",
-          "filename": "",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
           "fieldtype": "asset"
         },
         "link": {
-          "id": "story-pricing",
+          "id": "f2a6ea6e-e569-4557-b1a0-801b3afa6ac1",
           "url": "",
           "linktype": "story",
           "fieldtype": "multilink",

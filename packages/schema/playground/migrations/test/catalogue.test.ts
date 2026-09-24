@@ -262,7 +262,11 @@ describe("the catalogue as a whole", () => {
         id,
         stories
           .filter((story) => runMigrationOnStory(migration, story.content).changed)
-          .map((story) => story.slug),
+          // Sorted by name rather than left in store order, which is story id
+          // order and therefore says something about the space rather than
+          // about the migration.
+          .map((story) => story.slug)
+          .sort(),
       ]),
     );
 
@@ -271,7 +275,7 @@ describe("the catalogue as a whole", () => {
     // when some other story keeps it non-empty.
     expect(touched).toEqual({
       "0001-rename-card-title": ["legacy"],
-      "0002-rename-nested-author-bio": ["home", "team", "legacy"],
+      "0002-rename-nested-author-bio": ["home", "legacy", "team"],
       "0003-split-author-name": ["legacy"],
       "0004-merge-author-name": ["home", "team"],
       "0005-coerce-card-price": ["legacy"],
@@ -285,8 +289,8 @@ describe("the catalogue as a whole", () => {
       "0013-story-link-to-url": ["home", "legacy"],
       "0014-translate-card-headline": ["legacy"],
       "0015-rename-category-values": ["pricing", "translated"],
-      "0016-wrap-page-body": ["home", "team", "pricing", "translated", "legacy"],
-      "0017-unwrap-page-sections": ["home", "team", "translated", "legacy"],
+      "0016-wrap-page-body": ["home", "legacy", "pricing", "team", "translated"],
+      "0017-unwrap-page-sections": ["home", "legacy", "team", "translated"],
       "0018-toggles": ["home"],
       "0019-no-matches": [],
       "0020-pricing-table-column": ["pricing"],

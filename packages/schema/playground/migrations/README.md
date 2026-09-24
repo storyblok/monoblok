@@ -132,8 +132,15 @@ link were rewritten by hand to the shapes the capture revealed. They are copied 
 content rather than invented, but they are still authored, and only a capture would make them
 evidence.
 
-Running `pnpm fixtures --from-seed` now **replaces the captured fixtures with projections**, which
-loses all of the above. Use it only when no space is available, and expect the diff.
+`pnpm fixtures --from-seed` would replace the captured fixtures with projections and lose all of the
+above, so it refuses to run while the committed fixtures are captured. It names the stories it would
+overwrite and what to run instead. Pass `--replace-captured` to go ahead anyway, which is the right
+thing when no space is available and a projection is the best that can be had.
+
+A capture is told from a projection by the story's `id`: the space assigns it, so a fixture whose id
+is not the one its seed file carries came back from a space. The stories under
+`.storyblok/stories/offline/` have no seed file, and nothing can push or capture them, so they never
+count either way.
 
 `section.accent_color` used to block even the schema push. It is a field-type plugin, and a plugin
 has to be installed in a space before the push is accepted. The field now asks for

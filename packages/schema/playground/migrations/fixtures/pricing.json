@@ -89,7 +89,10 @@
         "_uid": "33333333-0000-4000-8000-000000000012",
         "component": "faq",
         "headline": "Questions about billing",
-        "categories": ["billing", "general"],
+        "categories": [
+          "billing",
+          "general"
+        ],
         "items": [
           {
             "_uid": "33333333-0000-4000-8000-000000000013",

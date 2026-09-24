@@ -1,4 +1,4 @@
-import { alterField, defineMigration, renameField } from "@storyblok/schema/migrations";
+import { alterField, defineMigration, renameField, splitField } from "@storyblok/schema/migrations";
 import { describe, expect, it } from "vitest";
 import { applyMigration, type StoryForMigration } from "./actions";
 
@@ -96,6 +96,43 @@ describe("applyMigration", () => {
       { slug: "broken", reason: expect.stringContaining("already contains repeated block ids") },
     ]);
     expect(outcome.refusals[0].reason).toContain("dup");
+  });
+
+  it("should refuse a story whose reshaped field is translated and write nothing for it", async () => {
+    const splitName = defineMigration([
+      splitField({ block: "author", field: "name", into: ["first_name", "last_name"] }, (value) =>
+        String(value).split(" "),
+      ),
+    ]);
+
+    const outcome = await applyMigration({
+      migration: splitName,
+      id: "0001-split-name",
+      space: "12345",
+      stories: [
+        {
+          id: 1,
+          slug: "home",
+          content: {
+            _uid: "r1",
+            component: "page",
+            body: [
+              {
+                _uid: "a",
+                component: "author",
+                name: "Ada Lovelace",
+                name__i18n__de: "Ada von Lovelace",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals).toEqual([
+      { slug: "home", reason: expect.stringContaining("translated") },
+    ]);
   });
 
   it("should refuse a story whose migration keeps changing it on a rerun", async () => {

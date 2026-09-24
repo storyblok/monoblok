@@ -243,14 +243,22 @@ interface KeyOpSpec<
 > {
   block: TBlock;
   field: SourceFieldName<TAfter, TBefore, TBlock>;
-  /**
-   * Declared, rather than merely absent, so the rule survives a spec that is not
-   * a fresh object literal: excess-property checking fires only on a literal, so
-   * a spread or a hoisted variable used to slip through. The type is the
-   * explanation, which is what the compiler then prints.
-   */
-  under?: "`under` is not allowed on a key op: a component's schema is global, so a key op applies to every instance";
+  under?: KeyOpUnder;
 }
+
+/**
+ * Declared, rather than merely absent, so the rule survives a spec that is not
+ * a fresh object literal: excess-property checking fires only on a literal, so
+ * a spread or a hoisted variable used to slip through. The type is the
+ * explanation, which is what the compiler then prints.
+ *
+ * Named rather than written inline on {@link KeyOpSpec}, because the key ops
+ * whose spec does not fit that interface — a merge names several fields, a
+ * block rename names none — have to declare the same member to carry the same
+ * rule.
+ */
+type KeyOpUnder =
+  "`under` is not allowed on a key op: a component's schema is global, so a key op applies to every instance";
 
 /** A value op: the schema does not move, so a subset of instances is coherent. */
 interface ValueOpSpec<
@@ -417,7 +425,7 @@ export function addField<
   TBefore extends SchemaShape,
   const TBlock extends SourceBlockName<TAfter, TBefore>,
 >(
-  spec: { block: TBlock; field: TargetFieldName<TAfter, TBlock> },
+  spec: { block: TBlock; field: TargetFieldName<TAfter, TBlock>; under?: KeyOpUnder },
   fn: (
     block: TBlock extends BlockNameOf<TBefore>
       ? ContentOf<TBefore, TBlock>
@@ -429,6 +437,7 @@ export function addField<
     block: spec.block,
     field: spec.field,
     fn: fn as AddFieldOp<TAfter, TBefore>["fn"],
+    ...carriedUnder(spec),
   };
 }
 
@@ -436,6 +445,12 @@ export function addField<
  * One field into several. `merge` is the counterpart that puts them back; it is
  * optional, and stating it is what moves the op from "needs recorded patches"
  * to "rolls back on any machine".
+ *
+ * The one op pair that cannot carry a field's translations along: how a German
+ * value splits is not something the split of the default language can answer.
+ * A source field that holds `__i18n__` siblings is reported by the runner and
+ * refused, and the reshape has to be written as an `alterBlock`, where the
+ * translated keys are visible and the author decides.
  */
 export function splitField<
   TAfter extends SchemaShape,
@@ -456,6 +471,7 @@ export function splitField<
     field: TField;
     into: readonly TargetFieldName<TAfter, TBlock>[];
     merge?: (values: readonly unknown[]) => unknown;
+    under?: KeyOpUnder;
   },
   split: (value: SourceValue<TBefore, TBlock, TField>) => readonly unknown[],
 ): SplitFieldOp<TAfter, TBefore> {
@@ -466,10 +482,14 @@ export function splitField<
     into: spec.into,
     split: split as SplitFieldOp<TAfter, TBefore>["split"],
     ...(spec.merge === undefined ? {} : { merge: spec.merge }),
+    ...carriedUnder(spec),
   };
 }
 
-/** Several fields into one. `split` is the counterpart, on the same terms. */
+/**
+ * Several fields into one. `split` is the counterpart, on the same terms, and
+ * so is the refusal of a translated source field described on `splitField`.
+ */
 export function mergeFields<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
@@ -480,6 +500,7 @@ export function mergeFields<
     fields: readonly SourceFieldName<TAfter, TBefore, TBlock>[];
     into: TargetFieldName<TAfter, TBlock>;
     split?: (value: never) => readonly unknown[];
+    under?: KeyOpUnder;
   },
   merge: (values: readonly unknown[]) => unknown,
 ): MergeFieldsOp<TAfter, TBefore> {
@@ -490,6 +511,7 @@ export function mergeFields<
     into: spec.into,
     merge,
     ...(spec.split === undefined ? {} : { split: spec.split }),
+    ...carriedUnder(spec),
   };
 }
 
@@ -505,8 +527,9 @@ export function renameBlock<
 >(spec: {
   block: TBlock;
   to: BlockNameOf<TAfter> | (string & {});
+  under?: KeyOpUnder;
 }): RenameBlockOp<TAfter, TBefore> {
-  return { kind: "renameBlock", block: spec.block, to: spec.to };
+  return { kind: "renameBlock", block: spec.block, to: spec.to, ...carriedUnder(spec) };
 }
 
 /**
@@ -522,6 +545,7 @@ export function wrapChildren<
   field: SourceFieldName<TAfter, TBefore, TBlock>;
   in: BlockNameOf<TAfter> | (string & {});
   into: string;
+  under?: KeyOpUnder;
 }): WrapChildrenOp<TAfter, TBefore> {
   return {
     kind: "wrapChildren",
@@ -529,6 +553,7 @@ export function wrapChildren<
     field: spec.field,
     in: spec.in,
     into: spec.into,
+    ...carriedUnder(spec),
   };
 }
 
@@ -542,6 +567,7 @@ export function unwrapChildren<
   field: SourceFieldName<TAfter, TBefore, TBlock>;
   unwrap: BlockNameOf<TBefore> | (string & {});
   from: string;
+  under?: KeyOpUnder;
 }): UnwrapChildrenOp<TAfter, TBefore> {
   return {
     kind: "unwrapChildren",
@@ -549,5 +575,6 @@ export function unwrapChildren<
     field: spec.field,
     unwrap: spec.unwrap,
     from: spec.from,
+    ...carriedUnder(spec),
   };
 }

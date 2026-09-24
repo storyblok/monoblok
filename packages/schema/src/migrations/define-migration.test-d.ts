@@ -12,13 +12,19 @@ import { describe, expectTypeOf, it } from "vitest";
 import type { AssetFieldValue, MultilinkFieldValue } from "../index";
 import { defineMigration } from "./define-migration";
 import {
+  addField,
   alterBlock,
   alterField,
   coerceField,
+  mergeFields,
   moveField,
   removeField,
+  renameBlock,
   renameField,
   reorderField,
+  splitField,
+  unwrapChildren,
+  wrapChildren,
 } from "./ops";
 import type { BlockNameOf, ContentOf, FieldPathOf, ValueOfPath } from "./types";
 import type { ProbeFieldTypesSchema, SpikeSchema } from "./__fixtures__/schema";
@@ -196,6 +202,75 @@ describe("the under rule", () => {
         to: "boolean",
         // @ts-expect-error same for a coercion
         under: "spike_section",
+      }),
+    ]);
+  });
+
+  // The ops whose spec does not fit `KeyOpSpec` — several fields, no field at
+  // all, a container name — carry the same rule, so the message is reachable
+  // for every key op rather than for the four the interface happens to fit.
+  it("should refuse under on a key op whose spec the shared interface does not fit", () => {
+    defineMigration<SpikeSchema>([
+      addField(
+        {
+          block: "spike_card",
+          field: "slug",
+          // @ts-expect-error same for addField
+          under: "spike_section",
+        },
+        () => "x",
+      ),
+    ]);
+    defineMigration<SpikeSchema>([
+      splitField(
+        {
+          block: "spike_card",
+          field: "title",
+          into: ["slug"],
+          // @ts-expect-error same for splitField
+          under: "spike_section",
+        },
+        (value) => [value],
+      ),
+    ]);
+    defineMigration<SpikeSchema>([
+      mergeFields(
+        {
+          block: "spike_card",
+          fields: ["title", "description"],
+          into: "slug",
+          // @ts-expect-error same for mergeFields
+          under: "spike_section",
+        },
+        (values) => values.join(" "),
+      ),
+    ]);
+    defineMigration<SpikeSchema>([
+      renameBlock({
+        block: "spike_card",
+        to: "spike_teaser",
+        // @ts-expect-error same for renameBlock
+        under: "spike_section",
+      }),
+    ]);
+    defineMigration<SpikeSchema>([
+      wrapChildren({
+        block: "spike_section",
+        field: "items",
+        in: "spike_card",
+        into: "items",
+        // @ts-expect-error same for wrapChildren
+        under: "spike_page",
+      }),
+    ]);
+    defineMigration<SpikeSchema>([
+      unwrapChildren({
+        block: "spike_section",
+        field: "items",
+        unwrap: "spike_card",
+        from: "meta",
+        // @ts-expect-error same for unwrapChildren
+        under: "spike_page",
       }),
     ]);
   });

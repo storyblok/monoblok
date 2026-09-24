@@ -64,6 +64,14 @@ export async function applyMigration(input: ApplyInput): Promise<ApplyOutcome> {
       });
       continue;
     }
+    if (result.translatedReshapes.length > 0) {
+      const fields = [...new Set(result.translatedReshapes.map((entry) => entry.field))];
+      refusals.push({
+        slug: story.slug,
+        reason: `Field ${fields.join(", ")} is translated, and splitting or merging a translated field would strand its translations, which are then dropped. Reshape it with \`alterBlock\`, where the translated keys can be handled explicitly.`,
+      });
+      continue;
+    }
     if (result.nonIdempotent.length > 0) {
       refusals.push({
         slug: story.slug,

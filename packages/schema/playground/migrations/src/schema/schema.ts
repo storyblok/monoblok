@@ -5,7 +5,6 @@ import type {
   Story as InferStory,
   MapiStory as InferStoryMapi,
 } from "@storyblok/schema";
-import { storyblokColorField } from "@storyblok/schema/field-plugins";
 
 import { authorBlock } from "./blocks/author";
 import { cardBlock } from "./blocks/card";
@@ -17,6 +16,7 @@ import { pricingTableBlock } from "./blocks/pricing-table";
 import { quoteBlock } from "./blocks/quote";
 import { sectionBlock } from "./blocks/section";
 import { teaserBlock } from "./blocks/teaser";
+import { nativeColorPicker } from "./field-plugins";
 import {
   currenciesDatasource,
   faqCategoriesDatasource,
@@ -43,7 +43,7 @@ export const schema = defineSchema({
     currenciesDatasource,
   },
   fieldPlugins: {
-    storyblokColorField,
+    nativeColorPicker,
   },
 });
 

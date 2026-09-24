@@ -98,7 +98,7 @@
         "component": "section",
         "heading": "An outer section",
         "theme": "light",
-        "accent_color": { "plugin": "storyblok-colorpicker", "color": "#4f46e5" },
+        "accent_color": { "plugin": "native-color-picker", "value": "#4f46e5" },
         "items": [
           {
             "_uid": "11111111-0000-4000-8000-000000000005",

@@ -105,8 +105,8 @@
         "heading": "An outer section",
         "theme": "light",
         "accent_color": {
-          "plugin": "storyblok-colorpicker",
-          "color": "#4f46e5"
+          "plugin": "native-color-picker",
+          "value": "#4f46e5"
         },
         "items": [
           {

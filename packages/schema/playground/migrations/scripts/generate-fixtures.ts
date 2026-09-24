@@ -5,10 +5,15 @@
  * says anything about what `pnpm seed` produces, and the offline runs would then
  * be exercising content that exists nowhere else.
  *
- * Two sources, same output. `--from-seed` projects the seed story files the push
- * uploads; the default captures the space those files were pushed to, which is
+ * Two sources for the pushed stories, same output. `--from-seed` projects the
+ * seed story files; the default captures the space they were pushed to, which is
  * the stronger source because it carries whatever the backend normalized on the
  * way in.
+ *
+ * `.storyblok/stories/offline/` is added to both. Those stories cannot be pushed
+ * at all: `stories push` validates content against the local schema and refuses a
+ * field the schema does not declare, which is precisely what pre-migration
+ * content is made of. They are projected from their files or they do not exist.
  *
  * Usage:
  *   pnpm seed && pnpm fixtures   capture the seeded space
@@ -24,16 +29,17 @@ import { fileContentStore, type PlaygroundStory, spaceContentStore } from "../sr
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..");
 const FIXTURES_DIR = path.join(PACKAGE_ROOT, "fixtures");
 const SEED_DIR = path.join(PACKAGE_ROOT, ".storyblok", "stories", "seed");
+const OFFLINE_DIR = path.join(PACKAGE_ROOT, ".storyblok", "stories", "offline");
 
-async function fromSeedFiles(): Promise<PlaygroundStory[]> {
-  const files = (await readdir(SEED_DIR)).filter((file) => file.endsWith(".json")).sort();
+async function projectFrom(directory: string): Promise<PlaygroundStory[]> {
+  const files = (await readdir(directory)).filter((file) => file.endsWith(".json")).sort();
   const stories = await Promise.all(
     files.map(async (file) => {
-      const seed = JSON.parse(await readFile(path.join(SEED_DIR, file), "utf8"));
+      const seed = JSON.parse(await readFile(path.join(directory, file), "utf8"));
       return { id: seed.id, slug: seed.slug, name: seed.name, content: seed.content };
     }),
   );
-  return stories.filter((story) => !!story.slug).sort((a, b) => a.id - b.id);
+  return stories.filter((story) => !!story.slug);
 }
 
 async function fromSpace(): Promise<PlaygroundStory[]> {
@@ -47,7 +53,8 @@ async function fromSpace(): Promise<PlaygroundStory[]> {
 }
 
 const fromSeed = process.argv.includes("--from-seed");
-const stories = fromSeed ? await fromSeedFiles() : await fromSpace();
+const pushed = fromSeed ? await projectFrom(SEED_DIR) : await fromSpace();
+const stories = [...pushed, ...(await projectFrom(OFFLINE_DIR))].sort((a, b) => a.id - b.id);
 
 await mkdir(FIXTURES_DIR, { recursive: true });
 // A story that was renamed or removed from the seed would otherwise stay behind
@@ -65,5 +72,7 @@ for (const story of stories) {
 }
 
 console.info(
-  `${stories.length} fixture(s) in ${FIXTURES_DIR}, ${fromSeed ? "projected from the seed files" : "captured from the space"}.`,
+  `${stories.length} fixture(s) in ${FIXTURES_DIR}: ${pushed.length} ${
+    fromSeed ? "projected from the seed files" : "captured from the space"
+  }, the rest projected from the offline stories.`,
 );

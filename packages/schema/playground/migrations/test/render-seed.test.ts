@@ -3,7 +3,7 @@ import { TRANSLATION_SEPARATOR } from "@storyblok/schema/migrations";
 import { describe, expect, it } from "vitest";
 
 import home from "../.storyblok/stories/seed/home_story-home.json";
-import legacy from "../.storyblok/stories/seed/legacy_story-legacy.json";
+import legacy from "../.storyblok/stories/offline/legacy_story-legacy.json";
 import pricing from "../.storyblok/stories/seed/pricing_story-pricing.json";
 import team from "../.storyblok/stories/seed/team_story-team.json";
 import translated from "../.storyblok/stories/seed/translated_story-translated.json";

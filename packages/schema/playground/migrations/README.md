@@ -46,13 +46,34 @@ stories. It is destructive: point it at a throwaway space.
 | `team`       | authors at three depths, one with only `first_name`                                    |
 | `pricing`    | a table and an FAQ whose answer embeds a card                                          |
 | `translated` | `__i18n__de` / `__i18n__fr` siblings, some of them empty                               |
-| `legacy`     | content authored under an older schema: the shapes the migrations move                 |
 
-`legacy` is the story the catalogue migrates. It holds a card with a `title` and a `subtitle`
-instead of a `headline`, a card with a headline and no slug, an author with one `name` field, a
-price of `"twelve"`, a single `image` where the schema now wants a list, and richtext links still
-pointing at a path that moved. The site renders it with gaps, which is what content waiting for a
-migration looks like.
+Those four live in `.storyblok/stories/seed/` and are what `pnpm seed` pushes.
+
+### The story the push will not take
+
+`legacy` is the story the catalogue migrates, and it lives apart, in `.storyblok/stories/offline/`.
+It holds a card with a `title` and a `subtitle` instead of a `headline`, a card with a headline and
+no slug, an author with one `name` field, a price of `"twelve"`, a single `image` where the schema
+now wants a list, and richtext links still pointing at a path that moved. The site renders it with
+gaps, which is what content waiting for a migration looks like.
+
+It is separate because `storyblok stories push` refuses it, and aborts the whole push when it is in
+the pushed set:
+
+```
+Fields not declared in local schemas:
+  - author.name (in stories: legacy)
+  - card.image (in stories: legacy)
+  - card.subtitle (in stories: legacy)
+  - card.title (in stories: legacy)
+```
+
+That is the tool working as designed, and it is worth stating on its own: **you cannot seed a
+pre-migration state through `stories push`**, because the command that uploads content validates it
+against the local schema and rejects any field the schema does not declare, which is exactly what
+makes legacy content legacy. Anyone reproducing a real migration scenario against a live space meets
+this. The way around it is not to push such content at all: the fixture generator reads
+`.storyblok/stories/offline/` directly, and the catalogue runs offline against the fixtures.
 
 ## Fixtures and the offline runner
 
@@ -68,20 +89,23 @@ under `fixtures/.journal` and are not committed; live ones live under `.storyblo
 Fixtures are generated, never edited by hand:
 
 ```sh
-pnpm seed && pnpm fixtures   # capture the seeded space
+pnpm seed && pnpm fixtures   # capture the four pushed stories from the space
 pnpm fixtures --from-seed    # project .storyblok/stories/seed/ without a space
 ```
 
-The capture is the better source, because it carries whatever the backend normalized on the way in.
-The committed fixtures were projected from the seed files instead, because no capture has run yet.
+Either way, `.storyblok/stories/offline/` is projected and added, because its stories exist nowhere
+else to capture from.
 
-`section.accent_color` is the reason. It is a field-type plugin, and a plugin has to be installed
-per space before the schema push is accepted. The field now asks for `native-color-picker`, which
-the space reports as available, and the playground registers a local plugin for it in
-`src/schema/field-plugins.ts` so the value still narrows to a concrete shape. That plugin's value
-shape is written to the best understanding available and nothing here verifies it: setting the
-colour by hand in the Storyblok UI and reading it back is what would settle it, and a capture is
-what would replace these projections.
+For the four pushed stories the capture is the better source, because it carries whatever the
+backend normalized on the way in. The committed fixtures are projections: the schema push now
+succeeds, but no capture has run yet.
+
+`section.accent_color` used to block even the schema push. It is a field-type plugin, and a plugin
+has to be installed in a space before the push is accepted. The field now asks for
+`native-color-picker`, which the space accepts, and the playground registers a local plugin for it
+in `src/schema/field-plugins.ts` so the value still narrows to a concrete shape. That plugin's value
+shape is written to the best understanding available and nothing here verifies it: setting the color
+by hand in the Storyblok UI and reading it back is what would settle it.
 
 ## The edge-case catalogue
 
@@ -111,27 +135,37 @@ up as a reviewable diff.
 | `0014-translate-card-headline`  | a rewrite that treats German differently            | `legacy`               |
 | `0015-rename-category-values`   | values following a renamed datasource               | `pricing` `translated` |
 | `0016-wrap-page-body`           | a container level introduced                        | every story            |
-| `0017-unwrap-page-sections`     | a container level dissolved                         | all but `pricing`      |
-| `0018-toggles`                  | a migration that flips a value — the refusal case   | `home`                 |
+| `0017-unwrap-page-sections`     | a container level dissolved, and refused            | all but `pricing`      |
+| `0018-toggles`                  | a migration that flips a value, the refusal case    | `home`                 |
 | `0019-no-matches`               | a block the schema declares and no story contains   | nothing                |
 | `0020-pricing-table-column`     | a column added to a table's header and every row    | `pricing`              |
 
 ### What the catalogue found
 
 Twenty cases, and every one of them was expressible without falling back on `alterBlock` for
-something a structural op should have done. Two limits showed up, both pinned by a test so they
-cannot close or widen unnoticed:
+something a structural op should have done. Two limits showed up. One is fixed, the other is
+recorded, and a test pins each so it cannot close or widen unnoticed.
 
-- **Unwrapping a container that nests inside itself does not settle.** `0017` dissolves the sections
-  a page holds directly, which lifts the sections that were inside them into the same field, where a
-  second run dissolves those too. That much is inherent. What is worth knowing is that nothing
-  reports it: the engine checks that an op agrees with itself on a second pass for `alter` ops only,
-  so a structural op that keeps moving is neither flagged nor refused, and the run is written.
-- **An inverse derived from the ops alone is blind to which blocks were holding the field.** It
-  knows a rename happened, never which instances the forward run actually touched, so the mirror op
-  sweeps up every block carrying the name now — including the ones that always did. `0001`, `0007`
-  and `0010` each show it. This is why the patches a run records take precedence whenever they
-  exist, and why a derived inverse is a fallback rather than a rollback.
+**An op that does not settle is now reported whatever its kind (fixed).** `0017` dissolves the
+sections a page holds directly, which lifts the sections that were inside them into the same field,
+where a second run dissolves those too. No callback is involved: the op does not settle on this
+content, however carefully it was written. The engine used to check agreement on a second pass for
+the `alter` ops only, so this was neither flagged nor refused and the run was written, while a
+value-flipping mistake of the same severity was caught. The check now covers every op kind, so
+`0017` is reported and the runner declines to write it. That is what the row demonstrates.
+
+**A derived inverse is blind to which blocks were holding the field (recorded, not fixed).**
+`deriveInverse` knows that a rename happened, never which instances the forward run touched, so the
+mirror op sweeps up every block carrying the name now, including the ones that always did. A card
+born with a `headline` is renamed to a `title` it never had, and `addField`'s inverse strips a slug
+from cards that always had one, which the engine currently calls non-lossy. `0001`, `0007`, and
+`0010` each show it, and a test pins the set to exactly those three.
+
+The fix is to mark `renameField`, `renameBlock`, and `addField` as lossy, which is left for a
+separate change because it moves what the CLI refuses without an opt-in. Nothing about the patches a
+run records is affected: they name the blocks the run actually changed, so a rollback from them is
+exact either way. This is why recorded patches take precedence, and why a derived inverse is a
+fallback rather than a rollback.
 
 ## Commands
 

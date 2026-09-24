@@ -222,7 +222,10 @@ export function createStoriesResource<
     >(
       identifier: StoryIdentifier,
       options: {
-        query?: Omit<NonNullable<GetStoryByIdData["query"]>, "resolve_relations"> & {
+        query?: Omit<
+          NonNullable<GetStoryByIdData["query"]>,
+          "resolve_relations" | "excluding_story_fields"
+        > & {
           resolve_relations?: ResolveRelationsStr;
           excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
         };
@@ -307,7 +310,10 @@ export function createStoriesResource<
       const ResolveRelationsStr extends string | undefined = undefined,
     >(
       options: {
-        query?: Omit<NonNullable<ListStoriesData["query"]>, "resolve_relations"> & {
+        query?: Omit<
+          NonNullable<ListStoriesData["query"]>,
+          "resolve_relations" | "excluding_story_fields"
+        > & {
           resolve_relations?: ResolveRelationsStr;
           excluding_story_fields?: ExcludableStoryField | ExcludableStoryField[];
         };

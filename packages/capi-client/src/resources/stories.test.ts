@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
+import { ClientError } from "../error";
 
 const server = setupServer();
 
@@ -52,6 +53,48 @@ describe("stories.get()", () => {
 
     expect(result.error).toBeUndefined();
     expect(typeof result.data?.story).toBe("object");
+  });
+
+  it("should return a synthetic response for transport failures on resource calls", async () => {
+    // stories.get() goes through asApiResponse rather than the generic get()/request()
+    // path — this pins that it gets the same Response/Request normalization.
+    server.use(http.get("https://api.storyblok.com/v2/cdn/stories/*", () => HttpResponse.error()));
+    const client = createApiClient({
+      accessToken: "test-token",
+      retry: { limit: 0 },
+    });
+
+    const result = await client.stories.get("test-story");
+
+    expect(result.error).toBeDefined();
+    // ApiResponse types `error` as `ClientError` unconditionally — a transport failure
+    // has to be wrapped to match, not passed through as the raw `TypeError`, or code
+    // written against the documented type (e.g. `result.error?.response.status`) throws
+    // at runtime on exactly the failure case this guards.
+    expect(result.error).toBeInstanceOf(ClientError);
+    expect(result.error?.response.status).toBe(0);
+    expect(result.data).toBeUndefined();
+    expect(result.response.status).toBe(0);
+    expect(result.request).toBeInstanceOf(Request);
+  });
+
+  it("should keep the original error when baseUrl is unparseable on a transport failure", async () => {
+    // A malformed `baseUrl` makes the generated client's own `Request` construction
+    // throw before a request/response ever exists, so the fallback below has to build
+    // its own placeholder `Request` from that same broken `baseUrl` — and must not let
+    // that throw too, or it silently replaces `result.error.cause` (with the full
+    // attempted URL) with a less useful "baseUrl is invalid" error instead.
+    const client = createApiClient({
+      accessToken: "test-token",
+      baseUrl: "not a url",
+      retry: { limit: 0 },
+    });
+
+    const result = await client.stories.get("test-story");
+
+    expect(result.error).toBeDefined();
+    expect((result.error?.cause as Error | undefined)?.message).toContain("test-story");
+    expect(result.request).toBeInstanceOf(Request);
   });
 
   it("should retry on 429", async () => {
@@ -138,6 +181,19 @@ describe("stories.get()", () => {
     });
 
     await expect(client.stories.get("non-existent-story")).rejects.toThrow();
+  });
+
+  it("should preserve the original error as cause when throwOnError is true", async () => {
+    server.use(http.get("https://api.storyblok.com/v2/cdn/stories/*", () => HttpResponse.error()));
+    const client = createApiClient({
+      accessToken: "test-token",
+      throwOnError: true,
+      retry: { limit: 0 },
+    });
+
+    await expect(client.stories.get("non-existent-story")).rejects.toMatchObject({
+      cause: expect.anything(),
+    });
   });
 
   it("should allow overriding throwOnError per stories method call", async () => {
@@ -1182,6 +1238,32 @@ describe("cache and cv", () => {
     );
     const client = createApiClient({
       accessToken: "test-token",
+      retry: { limit: 0 },
+      cache: { strategy: "network-first" },
+    });
+
+    await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    fail = true;
+    const result = await client.get("v2/cdn/links", { query: { version: "published" } });
+
+    // @ts-expect-error generic get request can have any shape or form
+    expect(result.data?.marker).toBe("cached");
+  });
+
+  it("should serve the cached response when network-first hits a transport failure with throwOnError", async () => {
+    // With `throwOnError` a transport failure rejects with the original `TypeError`
+    // (unwrapped, so `instanceof`/`name` checks still work). The fallback has to
+    // recognise it as transient too, or it would surface the outage instead of the cache.
+    let fail = false;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () =>
+        fail ? HttpResponse.error() : HttpResponse.json({ links: {}, marker: "cached", cv: 1 }),
+      ),
+    );
+    const client = createApiClient({
+      accessToken: "test-token",
+      throwOnError: true,
       retry: { limit: 0 },
       cache: { strategy: "network-first" },
     });

@@ -1098,6 +1098,8 @@ describe("validateStory — an empty object in an object-shaped field", () => {
     }
     expect(result.issues.map((i) => i.path)).toEqual([
       ["content", "cover", "fieldtype"],
+      ["content", "cover", "id"],
+      ["content", "cover", "alt"],
       ["content", "cover", "filename"],
     ]);
   });

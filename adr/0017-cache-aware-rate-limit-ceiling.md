@@ -120,8 +120,9 @@ The multiple is a judgement on a measured curve, not a derived constant: the gai
 transition cost keeps rising roughly linearly with the ceiling. Eight keeps most of the benefit —
 400/s on the 50/s tier, 48/s on the 6/s one — at a bounded worst case. Measured on the shipped
 configuration against the 6/s tier, the warm plateau is 48 r/s with no 429s at all, and the
-transition issues 40 requests of which 7 are throttled, over 1.1s, with admissions back inside the
-tier two seconds after the new version appears.
+transition throttles between 7 and 22 requests across three runs, within about a second, with
+admissions back inside the tier within two seconds of the new version appearing. The spread is the
+number of requests on the wire when the first miss returns, which varies with the round trip.
 
 Seven things keep the cold and mixed cases from regressing:
 
@@ -163,12 +164,16 @@ file diverging between the two copies.
   shorter than half a minute sees little of it. A cold first pass sees none: nothing has warmed the
   keys yet. The gain belongs to workloads that keep going, or that come back.
 - This reverses ADR-0016's guarantee that adaptation can only make a client more conservative. A
-  working set going cold costs a bounded burst of 429s — 7 over about a second on the 6/s tier,
-  where a client pinned to the tier would have had none. AIMD absorbs it by halving, which is the
-  same mechanism the tier limit relies on, and admissions are back inside the tier within two
-  seconds.
-- The transition cost scales with the tier, so the 50/s tier pays proportionally more than the 6/s
-  one we measured. The eight-times bound is what keeps it proportional rather than absolute.
+  working set going cold costs a bounded burst of 429s — 7 to 22 within about a second on the 6/s
+  tier, where a client pinned to the tier had none. AIMD absorbs it by halving, which is the same
+  mechanism the tier limit relies on, and admissions are back inside the tier within two seconds.
+- The transition cost scales with the tier. On the 50/s tier, a client at its 400/s ceiling that
+  followed a new version with 106 concurrent single-story reads had 60 of them throttled, where the
+  same 106 cold reads at the tier limit were not throttled once. The eight-times bound is what keeps
+  the cost proportional rather than absolute.
+- Re-warming after a transition can cost a few more. The ceiling climbs back while the window is
+  still half misses, which puts origin traffic right at the tier: one of two runs on the 6/s tier
+  had 2 further 429s about fifteen seconds after the transition.
 - The benefit is Node-only in practice. Browser clients cannot read the cache status and are
   unaffected, for better and for worse.
 - The hit share is measured per tier, not per URL, so a tier mixing a hot listing with cold ones is
@@ -186,4 +191,5 @@ file diverging between the two copies.
   timing requests.
 - A client pinned to an old content version never goes cold at all, since that version's entries are
   not purged. The cold transition is paid once per version the client follows, not once per publish
-  it is unaware of.
+  it is unaware of. A running client follows when it reads a key not yet cached under its version,
+  which redirects to the current one, or when any response carries a newer version.

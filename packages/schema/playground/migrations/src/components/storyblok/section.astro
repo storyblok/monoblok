@@ -7,7 +7,7 @@ interface Props {
 }
 
 const { block } = Astro.props;
-const accentColor = block.accent_color?.color;
+const accentColor = block.accent_color?.value;
 ---
 
 <section class="my-10 rounded-2xl border border-dashed border-gray-300 p-6" data-block="section" data-theme={block.theme}>

@@ -24,7 +24,7 @@ export const sectionBlock = defineBlock({
       datasource: "section_themes",
       default_value: "light",
     }),
-    defineField("accent_color", { type: "custom", field_type: "storyblok-colorpicker" }),
+    defineField("accent_color", { type: "custom", field_type: "native-color-picker" }),
     defineField("items", {
       type: "bloks",
       allow: [

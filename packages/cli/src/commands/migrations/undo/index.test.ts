@@ -156,6 +156,8 @@ describe("migrations undo command", () => {
 
     expect(updates).toEqual([]);
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("No recorded run"));
+    // The same code `apply` exits with when it is handed input it cannot use.
+    expect(process.exitCode).toBe(2);
   });
 
   it("should not write back a story an editor changed since the run, and warn about it", async () => {
@@ -209,6 +211,7 @@ describe("migrations undo command", () => {
     expect(errorSpy).toHaveBeenCalledWith(
       expect.stringContaining(`recorded for space 99999, not space ${DEFAULT_SPACE}`),
     );
+    expect(process.exitCode).toBe(2);
   });
 
   it("should report when the space has no recorded runs", async () => {

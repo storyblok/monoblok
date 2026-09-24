@@ -60,6 +60,15 @@ export function planMigration(
       });
       continue;
     }
+    if (result.translatedReshapes.length > 0) {
+      const fields = [...new Set(result.translatedReshapes.map((entry) => entry.field))];
+      plan.refusals.push({
+        slug: story.slug,
+        blame: "migration",
+        reason: `splitting or merging translated field ${fields.join(", ")} would strand its translations`,
+      });
+      continue;
+    }
     if (result.nonIdempotent.length > 0) {
       plan.refusals.push({
         slug: story.slug,

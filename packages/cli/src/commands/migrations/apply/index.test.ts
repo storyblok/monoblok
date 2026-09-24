@@ -241,8 +241,43 @@ describe("migrations apply command", () => {
     await apply();
 
     expect(updates).toEqual([]);
-    // The run still completed; it just changed nothing.
-    expect(journalEntry()).toMatchObject({ stories: 0 });
+    // Nothing was written, so there is nothing to undo and no entry to shadow
+    // the run that did the work.
+    expect(journalFiles()).toEqual([]);
+    // A job gating on the exit code has no other way to see that a run the
+    // engine refused outright changed nothing.
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("should still succeed when it wrote part of what it matched", async () => {
+    preconditions.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    preconditions.hasStories([
+      storyWithCard(),
+      {
+        ...storyWithCard(),
+        id: 2,
+        slug: "about",
+        full_slug: "about",
+        content: {
+          _uid: "root-2",
+          component: "page",
+          body: [
+            { _uid: "dup", component: "card", title: "one" },
+            { _uid: "dup", component: "card", title: "two" },
+          ],
+        },
+      },
+    ]);
+    preconditions.canUpdateStories();
+
+    await apply();
+
+    // The work that landed is recorded and undoable, and the story that was
+    // refused was named in a warning; a job that stops here would be stopping
+    // on a run that did what it could.
+    expect(updates).toHaveLength(1);
+    expect(journalEntry()).toMatchObject({ stories: 1 });
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should record only the stories it managed to write", async () => {
@@ -252,9 +287,24 @@ describe("migrations apply command", () => {
 
     await apply();
 
-    expect(journalEntry()).toMatchObject({ stories: 0, blocks: 0 });
-    const patches = journalFiles().find((file) => file.endsWith(".patches.json"));
-    expect(readJournalFile(patches)).toEqual([]);
+    // Every write failed, so the run has nothing to undo and records nothing.
+    expect(journalFiles()).toEqual([]);
+  });
+
+  it("should record nothing for a re-run that changes no story, so the entry holding the work stays the most recent", async () => {
+    preconditions.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    preconditions.hasStories([storyWithCard()]);
+    preconditions.canUpdateStories();
+
+    await apply();
+    const afterFirstRun = journalFiles();
+    // The rename already landed, so the second run finds nothing to change.
+    await apply();
+
+    expect(journalFiles()).toEqual(afterFirstRun);
+    // Which is the run `migrations undo` picks without `--run`: the most
+    // recent entry is still the one that wrote the stories.
+    expect(journalEntry()).toMatchObject({ stories: 1 });
   });
 
   it("should refuse a migration naming a block the given schema does not define, before writing anything", async () => {

@@ -5,6 +5,7 @@
  */
 import { applyPatches } from "@storyblok/schema/migrations";
 import type { Journal } from "@storyblok/schema/migrations";
+import { CommandError } from "../../../utils";
 import type { StoryForMigration } from "../apply/actions";
 
 export type UndoOutcome = {
@@ -41,12 +42,12 @@ export async function undoRun(input: UndoInput): Promise<UndoOutcome> {
   // thing that can tell this run apart from one belonging to another space.
   const run = await input.journal.read(input.id);
   if (!run) {
-    throw new Error(
+    throw new CommandError(
       `No recorded run "${input.id}". Run \`storyblok migrations list --space <id>\` to see what is recorded.`,
     );
   }
   if (run.space !== input.space) {
-    throw new Error(
+    throw new CommandError(
       `Run ${input.id} was recorded for space ${run.space}, not space ${input.space}. Undo it with --space ${run.space}.`,
     );
   }

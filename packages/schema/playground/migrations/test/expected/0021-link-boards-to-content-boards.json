@@ -1,0 +1,120 @@
+{
+  "boards": {
+    "_uid": "66666666-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Boards",
+    "seo_description": "Link boards, as they were named before the content board rename.",
+    "body": [
+      {
+        "_uid": "66666666-0000-4000-8000-000000000002",
+        "component": "content_board",
+        "headline": "Developer resources",
+        "list": [
+          {
+            "_uid": "66666666-0000-4000-8000-000000000003",
+            "component": "content_board_list_item",
+            "title": "Changelog",
+            "link": {
+              "id": "",
+              "url": "https://www.storyblok.com/changelog",
+              "linktype": "url",
+              "fieldtype": "multilink",
+              "cached_url": "https://www.storyblok.com/changelog"
+            },
+            "description": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "What shipped, newest first."
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_uid": "66666666-0000-4000-8000-000000000004",
+            "component": "content_board_list_item",
+            "title": "Status",
+            "link": {
+              "id": "",
+              "url": "https://status.storyblok.com",
+              "linktype": "url",
+              "fieldtype": "multilink",
+              "cached_url": "https://status.storyblok.com"
+            },
+            "description": {
+              "type": "doc",
+              "content": []
+            }
+          }
+        ],
+        "lists": [
+          {
+            "_uid": "66666666-0000-4000-8000-000000000005",
+            "component": "content_board_list",
+            "headline": "Getting started",
+            "items": [
+              {
+                "_uid": "66666666-0000-4000-8000-000000000006",
+                "component": "content_board_list_item",
+                "title": "Quickstart",
+                "link": {
+                  "id": "",
+                  "url": "https://www.storyblok.com/docs",
+                  "linktype": "url",
+                  "fieldtype": "multilink",
+                  "cached_url": "https://www.storyblok.com/docs"
+                },
+                "description": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Fifteen minutes to a rendered story."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "_uid": "66666666-0000-4000-8000-000000000007",
+                "component": "content_board_list_item",
+                "title": "CLI",
+                "link": {
+                  "id": "",
+                  "url": "https://www.storyblok.com/docs/packages/storyblok-cli",
+                  "linktype": "url",
+                  "fieldtype": "multilink",
+                  "cached_url": "https://www.storyblok.com/docs/packages/storyblok-cli"
+                },
+                "description": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "Pull a space, push it back."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -8,6 +8,11 @@ import type {
 
 import { authorBlock } from "./blocks/author";
 import { cardBlock } from "./blocks/card";
+import {
+  contentBoardBlock,
+  contentBoardListBlock,
+  contentBoardListItemBlock,
+} from "./blocks/content-board";
 import { faqBlock, faqItemBlock } from "./blocks/faq";
 import { galleryBlock } from "./blocks/gallery";
 import { mediaBlock } from "./blocks/media";
@@ -36,6 +41,9 @@ export const schema = defineSchema({
     faqBlock,
     faqItemBlock,
     pricingTableBlock,
+    contentBoardBlock,
+    contentBoardListBlock,
+    contentBoardListItemBlock,
   },
   datasources: {
     sectionThemesDatasource,

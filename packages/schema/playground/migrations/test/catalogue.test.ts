@@ -289,11 +289,12 @@ describe("the catalogue as a whole", () => {
       "0013-story-link-to-url": ["home", "legacy"],
       "0014-translate-card-headline": ["legacy"],
       "0015-rename-category-values": ["pricing", "translated"],
-      "0016-wrap-page-body": ["home", "legacy", "pricing", "team", "translated"],
+      "0016-wrap-page-body": ["boards", "home", "legacy", "pricing", "team", "translated"],
       "0017-unwrap-page-sections": ["home", "legacy", "team", "translated"],
       "0018-toggles": ["home"],
       "0019-no-matches": [],
       "0020-pricing-table-column": ["pricing"],
+      "0021-link-boards-to-content-boards": ["boards"],
     });
   });
 

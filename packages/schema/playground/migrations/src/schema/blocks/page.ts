@@ -2,6 +2,7 @@ import { defineBlock, defineField } from "@storyblok/schema";
 
 import { authorBlock } from "./author";
 import { cardBlock } from "./card";
+import { contentBoardBlock } from "./content-board";
 import { faqBlock } from "./faq";
 import { galleryBlock } from "./gallery";
 import { mediaBlock } from "./media";
@@ -29,6 +30,7 @@ export const pageBlock = defineBlock({
         faqBlock.name,
         pricingTableBlock.name,
         authorBlock.name,
+        contentBoardBlock.name,
       ],
     }),
   ],

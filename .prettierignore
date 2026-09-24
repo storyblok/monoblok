@@ -27,3 +27,8 @@ tools/openapi-codegen/specs/
 # Blueprints ship their own formatter config to users, and the synced repos must
 # match it, not the monorepo style.
 blueprints/
+
+# Generated story fixtures for the migrations playground. Same rationale as the
+# codegen output: `pnpm fixtures` owns these files, and reformatting them means
+# every regeneration and every offline migration run leaves a reflow diff.
+packages/schema/playground/migrations/fixtures/

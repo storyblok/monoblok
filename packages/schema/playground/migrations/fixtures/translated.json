@@ -69,7 +69,9 @@
             "component": "faq",
             "headline": "Translated FAQ",
             "headline__i18n__de": "Übersetzte FAQ",
-            "categories": ["general"],
+            "categories": [
+              "general"
+            ],
             "items": [
               {
                 "_uid": "44444444-0000-4000-8000-000000000007",

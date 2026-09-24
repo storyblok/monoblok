@@ -52,7 +52,7 @@ stories. It is destructive: point it at a throwaway space.
 `fixtures/` holds one JSON file per seed story. `pnpm migrate:offline` runs the migrations in
 `migrations/` against those files; `pnpm migrate --confirm-writes` runs the same migrations against
 the space. The only difference between the two is which content store the runner is handed, so an
-offline run is evidence about a live one — a migration that behaved differently offline would make
+offline run is evidence about a live one. A migration that behaved differently offline would make
 every offline check worthless.
 
 Both runs record what they did, so `--undo <run-id>` can replay the inverse. Offline records live

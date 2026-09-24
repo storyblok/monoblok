@@ -1,7 +1,7 @@
 # Content migrations playground
 
 This playground is a deliberately awkward space — nested containers, richtext with embedded blocks,
-field translations, datasource options, tables — plus twenty migrations that each break it a
+field translations, datasource options, tables — plus twenty-one migrations that each break it a
 different way. It runs against committed JSON, so **no Storyblok account or token is needed** for
 everything up to "Against a real space".
 
@@ -99,11 +99,11 @@ pnpm migrate:offline --migration 0017-unwrap-page-sections
 
 The engine applies each migration twice and refuses to write any story the second pass moves again.
 
-## The other seventeen
+## The other eighteen
 
 ```sh
-pnpm migrate:offline    # all twenty
-pnpm test               # all twenty, plus the recorded expectations and the round trip
+pnpm migrate:offline    # all twenty-one
+pnpm test               # all twenty-one, plus the recorded expectations and the round trip
 ```
 
 One table, one row each: [NOTES.md](NOTES.md#the-catalogue).

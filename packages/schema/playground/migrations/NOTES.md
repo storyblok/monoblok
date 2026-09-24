@@ -24,6 +24,7 @@ The long form behind [README.md](README.md).
 | `pricing`    | a table and an FAQ whose answer embeds a card                                          | `.storyblok/stories/seed/`    |
 | `translated` | `__i18n__de` / `__i18n__fr` siblings, some empty                                       | `.storyblok/stories/seed/`    |
 | `legacy`     | the pre-migration shape the catalogue migrates                                         | `.storyblok/stories/offline/` |
+| `boards`     | three components the schema no longer declares, so it renders only after `0021`        | `.storyblok/stories/offline/` |
 
 ### You cannot seed pre-migration content
 
@@ -83,36 +84,38 @@ would settle the second.
 
 ## The catalogue
 
-`test/catalogue.test.ts` runs all twenty against the committed fixtures, no token, asking each: does
-it change something, does it leave the block ids alone, does a second run move anything, does the
-recorded inverse put the content back, and — where one can be derived from the ops alone — does that
-one land in the same place. `test/expected/<id>.json` is the reviewable diff.
+`test/catalogue.test.ts` runs all twenty-one against the committed fixtures, no token, asking each:
+does it change something, does it leave the block ids alone, does a second run move anything, does
+the recorded inverse put the content back, and — where one can be derived from the ops alone — does
+that one land in the same place. `test/expected/<id>.json` is the reviewable diff.
 
-| Migration                                                                      | Case                                                | Bites                  |
-| :----------------------------------------------------------------------------- | :-------------------------------------------------- | :--------------------- |
-| [`0001-rename-card-title`](migrations/0001-rename-card-title.ts)               | one field, renamed everywhere the component appears | `legacy`               |
-| [`0002-rename-nested-author-bio`](migrations/0002-rename-nested-author-bio.ts) | the same block at four depths under three parents   | `home` `team` `legacy` |
-| [`0003-split-author-name`](migrations/0003-split-author-name.ts)               | one field into two, with the `merge` counterpart    | `legacy`               |
-| [`0004-merge-author-name`](migrations/0004-merge-author-name.ts)               | two fields into one, with the `split` counterpart   | `home` `team`          |
-| [`0005-coerce-card-price`](migrations/0005-coerce-card-price.ts)               | a value that will not parse                         | `legacy`               |
-| [`0006-remove-card-subtitle`](migrations/0006-remove-card-subtitle.ts)         | a field dropped while it still holds text           | `legacy`               |
-| [`0007-add-card-slug`](migrations/0007-add-card-slug.ts)                       | a new field, backfilled from one the block has      | `legacy`               |
-| [`0008-pin-page-opener`](migrations/0008-pin-page-opener.ts)                   | a reorder that depends on position, not content     | `home` `legacy` `team` |
-| [`0009-scope-slug-under-card`](migrations/0009-scope-slug-under-card.ts)       | the same block migrated in one location only        | `legacy`               |
-| [`0010-rename-teaser-block`](migrations/0010-rename-teaser-block.ts)           | a component folded into another component           | `home` `legacy` `team` |
-| [`0011-single-asset-to-list`](migrations/0011-single-asset-to-list.ts)         | a field whose type widens, reshaped then renamed    | `home` `legacy` `team` |
-| [`0012-rewrite-richtext-links`](migrations/0012-rewrite-richtext-links.ts)     | a mark inside a richtext document                   | `legacy`               |
-| [`0013-story-link-to-url`](migrations/0013-story-link-to-url.ts)               | a multilink that stops pointing at a story          | `home` `legacy`        |
-| [`0014-translate-card-headline`](migrations/0014-translate-card-headline.ts)   | a rewrite that treats German differently            | `legacy`               |
-| [`0015-rename-category-values`](migrations/0015-rename-category-values.ts)     | values following a renamed datasource               | `pricing` `translated` |
-| [`0016-wrap-page-body`](migrations/0016-wrap-page-body.ts)                     | a container level introduced                        | every story            |
-| [`0017-unwrap-page-sections`](migrations/0017-unwrap-page-sections.ts)         | a container level dissolved, and refused            | all but `pricing`      |
-| [`0018-toggles`](migrations/0018-toggles.ts)                                   | a migration that flips a value, the refusal case    | `home`                 |
-| [`0019-no-matches`](migrations/0019-no-matches.ts)                             | a block only its `Before` snapshot declares         | nothing                |
-| [`0020-pricing-table-column`](migrations/0020-pricing-table-column.ts)         | a column added to a table's header and every row    | `pricing`              |
+| Migration                                                                                | Case                                                | Bites                  |
+| :--------------------------------------------------------------------------------------- | :-------------------------------------------------- | :--------------------- |
+| [`0001-rename-card-title`](migrations/0001-rename-card-title.ts)                         | one field, renamed everywhere the component appears | `legacy`               |
+| [`0002-rename-nested-author-bio`](migrations/0002-rename-nested-author-bio.ts)           | the same block at four depths under three parents   | `home` `team` `legacy` |
+| [`0003-split-author-name`](migrations/0003-split-author-name.ts)                         | one field into two, with the `merge` counterpart    | `legacy`               |
+| [`0004-merge-author-name`](migrations/0004-merge-author-name.ts)                         | two fields into one, with the `split` counterpart   | `home` `team`          |
+| [`0005-coerce-card-price`](migrations/0005-coerce-card-price.ts)                         | a value that will not parse                         | `legacy`               |
+| [`0006-remove-card-subtitle`](migrations/0006-remove-card-subtitle.ts)                   | a field dropped while it still holds text           | `legacy`               |
+| [`0007-add-card-slug`](migrations/0007-add-card-slug.ts)                                 | a new field, backfilled from one the block has      | `legacy`               |
+| [`0008-pin-page-opener`](migrations/0008-pin-page-opener.ts)                             | a reorder that depends on position, not content     | `home` `legacy` `team` |
+| [`0009-scope-slug-under-card`](migrations/0009-scope-slug-under-card.ts)                 | the same block migrated in one location only        | `legacy`               |
+| [`0010-rename-teaser-block`](migrations/0010-rename-teaser-block.ts)                     | a component folded into another component           | `home` `legacy` `team` |
+| [`0011-single-asset-to-list`](migrations/0011-single-asset-to-list.ts)                   | a field whose type widens, reshaped then renamed    | `home` `legacy` `team` |
+| [`0012-rewrite-richtext-links`](migrations/0012-rewrite-richtext-links.ts)               | a mark inside a richtext document                   | `legacy`               |
+| [`0013-story-link-to-url`](migrations/0013-story-link-to-url.ts)                         | a multilink that stops pointing at a story          | `home` `legacy`        |
+| [`0014-translate-card-headline`](migrations/0014-translate-card-headline.ts)             | a rewrite that treats German differently            | `legacy`               |
+| [`0015-rename-category-values`](migrations/0015-rename-category-values.ts)               | values following a renamed datasource               | `pricing` `translated` |
+| [`0016-wrap-page-body`](migrations/0016-wrap-page-body.ts)                               | a container level introduced                        | every story            |
+| [`0017-unwrap-page-sections`](migrations/0017-unwrap-page-sections.ts)                   | a container level dissolved, and refused            | all but `pricing`      |
+| [`0018-toggles`](migrations/0018-toggles.ts)                                             | a migration that flips a value, the refusal case    | `home`                 |
+| [`0019-no-matches`](migrations/0019-no-matches.ts)                                       | a block only its `Before` snapshot declares         | nothing                |
+| [`0020-pricing-table-column`](migrations/0020-pricing-table-column.ts)                   | a column added to a table's header and every row    | `pricing`              |
+| [`0021-link-boards-to-content-boards`](migrations/0021-link-boards-to-content-boards.ts) | three components renamed at once, fields and all    | `boards`               |
 
-**Could the op set express all twenty? Yes** — none of them fell back on `alterBlock` for something
-a structural op should have done. Two limits surfaced in the engine instead, each pinned by a test.
+**Could the op set express all twenty-one? Yes** — none of them fell back on `alterBlock` for
+something a structural op should have done. Three limits surfaced in the engine and its types
+instead, each pinned by a test.
 
 **Non-settling ops are reported whatever their kind (fixed).** The check used to cover the `alter`
 ops only, on the grounds that a rename is a no-op on the second pass by construction. `0017` is a
@@ -129,6 +132,12 @@ block carrying the name now:
 The fix is marking `renameField`, `renameBlock`, and `addField` lossy, left for a separate change
 because it moves what the CLI refuses without an opt-in. Recorded patches name only the blocks the
 run changed, so a rollback from them is exact either way.
+
+**A field rename on a component being renamed away is unchecked (recorded, not fixed).** `to`
+resolves against the post-migration schema under the pre-migration block name, which that schema no
+longer declares, so it widens to `string`. `0021` renames three components and four of their fields
+in one migration and gets no target-name checking on any of them; splitting it into a field
+migration and a component migration is what buys the check back.
 
 **Not covered:** remapping a story-sourced option's uuid. It only means something when the target
 uuids come from somewhere, and the real case is a copied space where every story has a new uuid — a

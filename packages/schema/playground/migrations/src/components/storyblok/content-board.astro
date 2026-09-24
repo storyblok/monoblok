@@ -1,0 +1,23 @@
+---
+import type { Block } from '../../schema/schema';
+import ContentBoardList from './content-board-list.astro';
+import ContentBoardListItem from './content-board-list-item.astro';
+import Translations from './translations.astro';
+
+interface Props {
+  block: Block<'content_board'>;
+}
+
+const { block } = Astro.props;
+---
+
+<section class="my-8" data-block="content_board">
+  {block.headline && <h2 class="mb-4 text-2xl font-bold text-gray-900">{block.headline}</h2>}
+  {block.list?.length ? (
+    <ul class="grid gap-3">
+      {block.list.map(item => <ContentBoardListItem block={item} />)}
+    </ul>
+  ) : null}
+  {block.lists?.map(list => <ContentBoardList block={list} />)}
+  <Translations block={block} />
+</section>

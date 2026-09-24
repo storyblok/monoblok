@@ -448,9 +448,9 @@ export function addField<
  *
  * The one op pair that cannot carry a field's translations along: how a German
  * value splits is not something the split of the default language can answer.
- * A source field that holds `__i18n__` siblings is reported by the runner and
- * refused, and the reshape has to be written as an `alterBlock`, where the
- * translated keys are visible and the author decides.
+ * A field this op reads or writes that holds `__i18n__` siblings is reported by
+ * the runner and refused, and the reshape has to be written as an `alterBlock`,
+ * where the translated keys are visible and the author decides.
  */
 export function splitField<
   TAfter extends SchemaShape,

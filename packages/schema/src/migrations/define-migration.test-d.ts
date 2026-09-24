@@ -209,69 +209,68 @@ describe("the under rule", () => {
   // The ops whose spec does not fit `KeyOpSpec` — several fields, no field at
   // all, a container name — carry the same rule, so the message is reachable
   // for every key op rather than for the four the interface happens to fit.
+  //
+  // Every spec here is hoisted on purpose. On a fresh object literal the error
+  // comes from excess-property checking, which fires whether or not the member
+  // is declared, so a literal proves nothing about the rule: it is the hoisted
+  // spec that only the declared member catches.
   it("should refuse under on a key op whose spec the shared interface does not fit", () => {
+    const addSpec = { block: "spike_card", field: "slug", under: "spike_section" } as const;
     defineMigration<SpikeSchema>([
-      addField(
-        {
-          block: "spike_card",
-          field: "slug",
-          // @ts-expect-error same for addField
-          under: "spike_section",
-        },
-        () => "x",
-      ),
+      // @ts-expect-error same for addField
+      addField(addSpec, () => "x"),
     ]);
+
+    const splitSpec = {
+      block: "spike_card",
+      field: "title",
+      into: ["slug"],
+      under: "spike_section",
+    } as const;
     defineMigration<SpikeSchema>([
-      splitField(
-        {
-          block: "spike_card",
-          field: "title",
-          into: ["slug"],
-          // @ts-expect-error same for splitField
-          under: "spike_section",
-        },
-        (value) => [value],
-      ),
+      // @ts-expect-error same for splitField
+      splitField(splitSpec, (value) => [value]),
     ]);
+
+    const mergeSpec = {
+      block: "spike_card",
+      fields: ["title", "description"],
+      into: "slug",
+      under: "spike_section",
+    } as const;
     defineMigration<SpikeSchema>([
-      mergeFields(
-        {
-          block: "spike_card",
-          fields: ["title", "description"],
-          into: "slug",
-          // @ts-expect-error same for mergeFields
-          under: "spike_section",
-        },
-        (values) => values.join(" "),
-      ),
+      // @ts-expect-error same for mergeFields
+      mergeFields(mergeSpec, (values) => values.join(" ")),
     ]);
+
+    const renameSpec = { block: "spike_card", to: "spike_teaser", under: "spike_section" } as const;
     defineMigration<SpikeSchema>([
-      renameBlock({
-        block: "spike_card",
-        to: "spike_teaser",
-        // @ts-expect-error same for renameBlock
-        under: "spike_section",
-      }),
+      // @ts-expect-error same for renameBlock
+      renameBlock(renameSpec),
     ]);
+
+    const wrapSpec = {
+      block: "spike_section",
+      field: "items",
+      in: "spike_card",
+      into: "items",
+      under: "spike_page",
+    } as const;
     defineMigration<SpikeSchema>([
-      wrapChildren({
-        block: "spike_section",
-        field: "items",
-        in: "spike_card",
-        into: "items",
-        // @ts-expect-error same for wrapChildren
-        under: "spike_page",
-      }),
+      // @ts-expect-error same for wrapChildren
+      wrapChildren(wrapSpec),
     ]);
+
+    const unwrapSpec = {
+      block: "spike_section",
+      field: "items",
+      unwrap: "spike_card",
+      from: "meta",
+      under: "spike_page",
+    } as const;
     defineMigration<SpikeSchema>([
-      unwrapChildren({
-        block: "spike_section",
-        field: "items",
-        unwrap: "spike_card",
-        from: "meta",
-        // @ts-expect-error same for unwrapChildren
-        under: "spike_page",
-      }),
+      // @ts-expect-error same for unwrapChildren
+      unwrapChildren(unwrapSpec),
     ]);
   });
 });

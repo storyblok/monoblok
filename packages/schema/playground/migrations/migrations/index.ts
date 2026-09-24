@@ -30,6 +30,7 @@ import toggles from "./0018-toggles";
 import noMatches from "./0019-no-matches";
 import pricingTableColumn from "./0020-pricing-table-column";
 import linkBoardsToContentBoards from "./0021-link-boards-to-content-boards";
+import ogImageUrlToAsset from "./0022-og-image-url-to-asset";
 
 export const migrations: Record<string, CompiledMigration> = {
   "0001-rename-card-title": renameCardTitle,
@@ -53,4 +54,5 @@ export const migrations: Record<string, CompiledMigration> = {
   "0019-no-matches": noMatches,
   "0020-pricing-table-column": pricingTableColumn,
   "0021-link-boards-to-content-boards": linkBoardsToContentBoards,
+  "0022-og-image-url-to-asset": ogImageUrlToAsset,
 };

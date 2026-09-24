@@ -4,9 +4,12 @@
  * there, and none should: the document's shape belongs to the editor, so the op
  * that touches it hands the whole value over and takes a new one back.
  *
- * The walk stops at a `blok` node on purpose. What it embeds is a block in its
- * own right, which the runner visits separately, so descending into it would
- * apply the same op to the same block twice.
+ * The walk follows `content` and `marks` and nothing else, which is what keeps
+ * it away from an embedded block. A `blok` node carries its blocks under
+ * `attrs`, so they are never reached from here, and they do not need to be: an
+ * embedded block is a block in its own right and the runner visits it like any
+ * other. The `legacy` fixture holds a card embedded in a card's richtext with an
+ * old link of its own, and it is migrated by that visit rather than by this walk.
  */
 import { alterField, defineMigration } from "@storyblok/schema/migrations";
 
@@ -36,7 +39,7 @@ function rewriteNode(node: unknown): unknown {
   if (Array.isArray(node)) {
     return node.map(rewriteNode);
   }
-  if (!isRecord(node) || node.type === "blok") {
+  if (!isRecord(node)) {
     return node;
   }
   const next: Record<string, unknown> = { ...node };

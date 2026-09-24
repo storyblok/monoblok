@@ -4,10 +4,16 @@
  * means writing into both, and getting it wrong produces a table the editor
  * renders ragged rather than an error anyone sees.
  *
- * Every cell the migration creates gets an id derived from the row it belongs
- * to, so a rerun produces the same table byte for byte. A random id would make
- * the op report itself non-idempotent, which is the honest outcome — the second
- * run really would have written something different.
+ * What makes the row repeatable is the guard: a table that already carries the
+ * column is returned untouched, so a second run has nothing to do and cannot
+ * disagree with the first.
+ *
+ * The cell ids are derived from the row rather than generated because a
+ * migration should produce the same content twice, not because anything checks
+ * it. Nothing would catch a random id here: the guard short-circuits the second
+ * pass before the engine's agreement check can see two different results. That
+ * check only looks at what the op does to a block it is applied to twice, and a
+ * guarded op does nothing the second time by design.
  */
 import { alterField, defineMigration } from "@storyblok/schema/migrations";
 

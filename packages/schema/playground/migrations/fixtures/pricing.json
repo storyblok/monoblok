@@ -1,35 +1,13 @@
 {
-  "id": 1003,
+  "id": 223408652004938,
   "slug": "pricing",
   "name": "Pricing",
   "content": {
     "_uid": "33333333-0000-4000-8000-000000000001",
-    "component": "page",
-    "seo_title": "Pricing",
-    "seo_description": "A table field and an FAQ with richtext answers.",
     "body": [
       {
         "_uid": "33333333-0000-4000-8000-000000000002",
-        "component": "pricing_table",
-        "headline": "Plans",
-        "currency": "eur",
-        "footnote": "All prices exclude VAT.",
         "table": {
-          "fieldtype": "table",
-          "thead": [
-            {
-              "_uid": "33333333-0000-4000-8000-000000000003",
-              "value": "Plan"
-            },
-            {
-              "_uid": "33333333-0000-4000-8000-000000000004",
-              "value": "Price"
-            },
-            {
-              "_uid": "33333333-0000-4000-8000-000000000005",
-              "value": "Seats"
-            }
-          ],
           "tbody": [
             {
               "_uid": "33333333-0000-4000-8000-000000000006",
@@ -82,22 +60,33 @@
                 }
               ]
             }
-          ]
-        }
+          ],
+          "thead": [
+            {
+              "_uid": "33333333-0000-4000-8000-000000000003",
+              "value": "Plan"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000004",
+              "value": "Price"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000005",
+              "value": "Seats"
+            }
+          ],
+          "fieldtype": "table"
+        },
+        "currency": "eur",
+        "footnote": "All prices exclude VAT.",
+        "headline": "Plans",
+        "component": "pricing_table"
       },
       {
         "_uid": "33333333-0000-4000-8000-000000000012",
-        "component": "faq",
-        "headline": "Questions about billing",
-        "categories": [
-          "billing",
-          "general"
-        ],
         "items": [
           {
             "_uid": "33333333-0000-4000-8000-000000000013",
-            "component": "faq_item",
-            "question": "Can I change plan later?",
             "answer": {
               "type": "doc",
               "content": [
@@ -105,18 +94,18 @@
                   "type": "paragraph",
                   "content": [
                     {
-                      "type": "text",
-                      "text": "Yes, at any point in the cycle."
+                      "text": "Yes, at any point in the cycle.",
+                      "type": "text"
                     }
                   ]
                 }
               ]
-            }
+            },
+            "question": "Can I change plan later?",
+            "component": "faq_item"
           },
           {
             "_uid": "33333333-0000-4000-8000-000000000014",
-            "component": "faq_item",
-            "question": "What is included?",
             "answer": {
               "type": "doc",
               "content": [
@@ -124,8 +113,8 @@
                   "type": "paragraph",
                   "content": [
                     {
-                      "type": "text",
-                      "text": "The answer embeds a card:"
+                      "text": "The answer embeds a card:",
+                      "type": "text"
                     }
                   ]
                 },
@@ -136,22 +125,33 @@
                     "body": [
                       {
                         "_uid": "33333333-0000-4000-8000-000000000015",
-                        "component": "card",
-                        "headline": "Everything in Starter, plus seats",
+                        "body": null,
+                        "link": null,
                         "slug": "included",
                         "price": "0",
-                        "link": null,
                         "images": [],
-                        "body": null
+                        "headline": "Everything in Starter, plus seats",
+                        "component": "card"
                       }
                     ]
                   }
                 }
               ]
-            }
+            },
+            "question": "What is included?",
+            "component": "faq_item"
           }
+        ],
+        "headline": "Questions about billing",
+        "component": "faq",
+        "categories": [
+          "billing",
+          "general"
         ]
       }
-    ]
+    ],
+    "component": "page",
+    "seo_title": "Pricing",
+    "seo_description": "A table field and an FAQ with richtext answers."
   }
 }

@@ -1,40 +1,9 @@
 {
   "home": {
     "_uid": "11111111-0000-4000-8000-000000000001",
-    "component": "page",
-    "seo_title": "Migrations playground",
-    "seo_description": "A space shaped to make content migrations awkward.",
     "body": [
       {
         "_uid": "11111111-0000-4000-8000-000000000002",
-        "component": "card",
-        "headline": "A loose card, directly on the page",
-        "slug": "loose-card",
-        "price": "19",
-        "category": "story-team",
-        "link": {
-          "id": "story-team",
-          "url": "",
-          "linktype": "story",
-          "fieldtype": "multilink",
-          "cached_url": "team"
-        },
-        "images": [
-          {
-            "id": 2001,
-            "alt": "Gallery image one",
-            "title": "Gallery One",
-            "filename": "",
-            "fieldtype": "asset"
-          },
-          {
-            "id": 2002,
-            "alt": "Gallery image two",
-            "title": "Gallery Two",
-            "filename": "",
-            "fieldtype": "asset"
-          }
-        ],
         "body": {
           "type": "doc",
           "content": [
@@ -42,8 +11,8 @@
               "type": "paragraph",
               "content": [
                 {
-                  "type": "text",
-                  "text": "This card's richtext holds another card inside it. A migration that only walks the bloks arrays will never see it."
+                  "text": "This card's richtext holds another card inside it. A migration that only walks the bloks arrays will never see it.",
+                  "type": "text"
                 }
               ]
             },
@@ -54,18 +23,6 @@
                 "body": [
                   {
                     "_uid": "11111111-0000-4000-8000-000000000003",
-                    "component": "card",
-                    "headline": "Card embedded in richtext",
-                    "slug": "embedded-card",
-                    "price": "5",
-                    "link": {
-                      "id": "",
-                      "url": "https://www.storyblok.com",
-                      "linktype": "url",
-                      "fieldtype": "multilink",
-                      "cached_url": "https://www.storyblok.com"
-                    },
-                    "images": [],
                     "body": {
                       "type": "doc",
                       "content": [
@@ -73,13 +30,25 @@
                           "type": "paragraph",
                           "content": [
                             {
-                              "type": "text",
-                              "text": "Nested richtext, two levels down."
+                              "text": "Nested richtext, two levels down.",
+                              "type": "text"
                             }
                           ]
                         }
                       ]
-                    }
+                    },
+                    "link": {
+                      "id": "",
+                      "url": "https://www.storyblok.com",
+                      "linktype": "url",
+                      "fieldtype": "multilink",
+                      "cached_url": "https://www.storyblok.com"
+                    },
+                    "slug": "embedded-card",
+                    "price": "5",
+                    "images": [],
+                    "headline": "Card embedded in richtext",
+                    "component": "card"
                   }
                 ]
               }
@@ -88,33 +57,47 @@
               "type": "paragraph",
               "content": [
                 {
-                  "type": "text",
-                  "text": "Text after the embedded block."
+                  "text": "Text after the embedded block.",
+                  "type": "text"
                 }
               ]
             }
           ]
-        }
+        },
+        "link": {
+          "id": "01e738c0-d36b-4178-b54d-97c4b85c45a1",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "team"
+        },
+        "slug": "loose-card",
+        "price": "19",
+        "images": [
+          {
+            "id": 223407128380368,
+            "alt": "Gallery image one",
+            "title": "Gallery One",
+            "filename": "https://a.storyblok.com/f/290020686946333/e446c01ff4/gallery-one.png",
+            "fieldtype": "asset"
+          },
+          {
+            "id": 223407129904082,
+            "alt": "Gallery image two",
+            "title": "Gallery Two",
+            "filename": "https://a.storyblok.com/f/290020686946333/91911a7941/gallery-two.png",
+            "fieldtype": "asset"
+          }
+        ],
+        "category": "01e738c0-d36b-4178-b54d-97c4b85c45a1",
+        "headline": "A loose card, directly on the page",
+        "component": "card"
       },
       {
         "_uid": "11111111-0000-4000-8000-000000000004",
-        "component": "section",
-        "heading": "An outer section",
-        "theme": "light",
-        "accent_color": {
-          "plugin": "native-color-picker",
-          "value": "#4f46e5"
-        },
         "items": [
           {
             "_uid": "11111111-0000-4000-8000-000000000005",
-            "component": "card",
-            "headline": "First card in the section",
-            "slug": "section-card-one",
-            "price": "42",
-            "category": "story-pricing",
-            "link": null,
-            "images": [],
             "body": {
               "type": "doc",
               "content": [
@@ -122,47 +105,61 @@
                   "type": "paragraph",
                   "content": [
                     {
-                      "type": "text",
-                      "text": "Plain richtext."
+                      "text": "Plain richtext.",
+                      "type": "text"
                     }
                   ]
                 }
               ]
-            }
+            },
+            "link": null,
+            "slug": "section-card-one",
+            "price": "42",
+            "images": [],
+            "category": "f2a6ea6e-e569-4557-b1a0-801b3afa6ac1",
+            "headline": "First card in the section",
+            "component": "card"
           },
           {
             "_uid": "11111111-0000-4000-8000-000000000006",
-            "component": "gallery",
-            "headline": "Gallery inside the section",
-            "columns": "2",
-            "show_captions": true,
             "images": [
               {
-                "id": 2001,
+                "id": 223407128380368,
                 "alt": "Gallery image one",
                 "title": "Gallery One",
-                "filename": "",
+                "filename": "https://a.storyblok.com/f/290020686946333/e446c01ff4/gallery-one.png",
                 "fieldtype": "asset"
               },
               {
-                "id": 2002,
+                "id": 223407129904082,
                 "alt": "Gallery image two",
                 "title": "Gallery Two",
-                "filename": "",
+                "filename": "https://a.storyblok.com/f/290020686946333/91911a7941/gallery-two.png",
                 "fieldtype": "asset"
               }
-            ]
+            ],
+            "columns": "2",
+            "headline": "Gallery inside the section",
+            "component": "gallery",
+            "show_captions": true
           },
           {
             "_uid": "11111111-0000-4000-8000-000000000007",
-            "component": "section",
-            "heading": "A section inside a section",
-            "theme": "dark",
             "items": [
               {
                 "_uid": "11111111-0000-4000-8000-000000000008",
-                "component": "quote",
                 "text": "Three container levels deep, so an unwrap has somewhere to fall.",
+                "authors": [
+                  {
+                    "bio": "Quoted from four container levels down.",
+                    "_uid": "11111111-0000-4000-8000-000000000009",
+                    "avatar": null,
+                    "component": "author",
+                    "last_name": "Lovelace",
+                    "first_name": "Ada"
+                  }
+                ],
+                "component": "quote",
                 "attribution": "The seed",
                 "source_link": {
                   "id": "",
@@ -170,133 +167,136 @@
                   "linktype": "url",
                   "fieldtype": "multilink",
                   "cached_url": "https://www.storyblok.com"
-                },
-                "authors": [
-                  {
-                    "_uid": "11111111-0000-4000-8000-000000000009",
-                    "component": "author",
-                    "first_name": "Ada",
-                    "last_name": "Lovelace",
-                    "bio": "Quoted from four container levels down.",
-                    "avatar": null
-                  }
-                ]
+                }
               },
               {
                 "_uid": "11111111-0000-4000-8000-00000000000a",
-                "component": "media",
-                "caption": "Media at the deepest level",
-                "credit": "Playground",
                 "image": {
-                  "id": 2000,
+                  "id": 223407129002961,
                   "alt": "About image",
-                  "filename": "",
+                  "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
                   "fieldtype": "asset"
-                }
+                },
+                "credit": "Playground",
+                "caption": "Media at the deepest level",
+                "component": "media"
               }
-            ]
+            ],
+            "theme": "dark",
+            "heading": "A section inside a section",
+            "component": "section"
           }
-        ]
+        ],
+        "theme": "light",
+        "heading": "An outer section",
+        "component": "section",
+        "accent_color": {
+          "value": "#4f46e5",
+          "plugin": "native-color-picker"
+        }
       },
       {
         "_uid": "11111111-0000-4000-8000-00000000000b",
-        "component": "teaser",
-        "title": "A teaser with a story link",
-        "description": "Its link points at another seed story, so a rename of that story shows up here.",
-        "images": [
-          {
-            "id": 2000,
-            "alt": "About image",
-            "filename": "",
-            "fieldtype": "asset"
-          }
-        ],
         "link": {
-          "id": "story-pricing",
+          "id": "f2a6ea6e-e569-4557-b1a0-801b3afa6ac1",
           "url": "",
           "linktype": "story",
           "fieldtype": "multilink",
           "cached_url": "pricing"
         },
-        "authors": []
+        "images": [
+          {
+            "id": 223407129002961,
+            "alt": "About image",
+            "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+            "fieldtype": "asset"
+          }
+        ],
+        "title": "A teaser with a story link",
+        "authors": [],
+        "component": "teaser",
+        "description": "Its link points at another seed story, so a rename of that story shows up here."
       }
-    ]
+    ],
+    "component": "page",
+    "seo_title": "Migrations playground",
+    "seo_description": "A space shaped to make content migrations awkward."
   },
   "team": {
     "_uid": "22222222-0000-4000-8000-000000000001",
-    "component": "page",
-    "seo_title": "The team",
-    "seo_description": "Author blocks, including one with only half a name.",
     "body": [
       {
         "_uid": "22222222-0000-4000-8000-000000000002",
-        "component": "section",
-        "heading": "Everyone",
-        "theme": "light",
         "items": [
           {
-            "_uid": "22222222-0000-4000-8000-000000000003",
-            "component": "author",
-            "first_name": "Grace",
-            "last_name": "Hopper",
             "bio": "Both halves of the name are filled.",
+            "_uid": "22222222-0000-4000-8000-000000000003",
             "avatar": {
-              "id": 2000,
+              "id": 223407129002961,
               "alt": "About image",
-              "filename": "",
+              "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
               "fieldtype": "asset"
-            }
+            },
+            "component": "author",
+            "last_name": "Hopper",
+            "first_name": "Grace"
           },
           {
-            "_uid": "22222222-0000-4000-8000-000000000004",
-            "component": "author",
-            "first_name": "Prince",
-            "last_name": "",
             "bio": "Only first_name is filled, so a merge has to decide what to do with the empty half.",
-            "avatar": null
+            "_uid": "22222222-0000-4000-8000-000000000004",
+            "avatar": null,
+            "component": "author",
+            "last_name": "",
+            "first_name": "Prince"
           },
           {
-            "_uid": "22222222-0000-4000-8000-000000000005",
-            "component": "author",
-            "first_name": "Barbara",
-            "last_name": "Liskov",
             "bio": "",
-            "avatar": null
+            "_uid": "22222222-0000-4000-8000-000000000005",
+            "avatar": null,
+            "component": "author",
+            "last_name": "Liskov",
+            "first_name": "Barbara"
           }
-        ]
+        ],
+        "theme": "light",
+        "heading": "Everyone",
+        "component": "section"
       },
       {
-        "_uid": "22222222-0000-4000-8000-000000000006",
-        "component": "author",
-        "first_name": "Alan",
-        "last_name": "Turing",
         "bio": "An author directly on the page, outside any container.",
-        "avatar": null
+        "_uid": "22222222-0000-4000-8000-000000000006",
+        "avatar": null,
+        "component": "author",
+        "last_name": "Turing",
+        "first_name": "Alan"
       },
       {
         "_uid": "22222222-0000-4000-8000-000000000007",
-        "component": "teaser",
-        "title": "Authors inside a teaser",
-        "description": "The same block appears at several depths so a rename has to reach all of them.",
-        "images": null,
         "link": {
-          "id": "story-home",
+          "id": "51c6f4a7-3aba-4dc2-b10d-a1e22d1aba84",
           "url": "",
           "linktype": "story",
           "fieldtype": "multilink",
           "cached_url": "home"
         },
+        "images": null,
+        "title": "Authors inside a teaser",
         "authors": [
           {
-            "_uid": "22222222-0000-4000-8000-000000000008",
-            "component": "author",
-            "first_name": "Katherine",
-            "last_name": "Johnson",
             "bio": "Nested two levels down.",
-            "avatar": null
+            "_uid": "22222222-0000-4000-8000-000000000008",
+            "avatar": null,
+            "component": "author",
+            "last_name": "Johnson",
+            "first_name": "Katherine"
           }
-        ]
+        ],
+        "component": "teaser",
+        "description": "The same block appears at several depths so a rename has to reach all of them."
       }
-    ]
+    ],
+    "component": "page",
+    "seo_title": "The team",
+    "seo_description": "Author blocks, including one with only half a name."
   }
 }

@@ -1305,7 +1305,12 @@ describe("splitField", () => {
   });
 
   // The source surviving the reshape under its own name is ordinary authoring:
-  // "the full name becomes the first name, plus a new surname".
+  // "the full name becomes the first name, plus a new surname". It is the
+  // ordering that is under test here, not end-to-end usability: a part sitting
+  // on the source name is split again on the next pass, so this migration is
+  // reported as non-idempotent and every consumer refuses it. The fix turned
+  // silent data loss into a refusal, which is the outcome, and the assertion
+  // below covers only what the runner leaves behind.
   it("should keep the part that lands on the source field's own name", () => {
     const splitOntoItself = defineMigration<TestSchema>({
       name: "split-name-onto-itself",
@@ -1355,6 +1360,26 @@ describe("splitField", () => {
     });
 
     expect(result.translatedReshapes).toEqual([]);
+  });
+
+  // A target that keeps its translations is the same corruption one field over:
+  // the stale sibling is then read as the translation of the part that landed
+  // on it.
+  it("should report a target field that already carries translations", () => {
+    const result = runMigrationOnStory(splitName, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          name: "Ada Lovelace",
+          first_name__i18n__de: "stale",
+        },
+      ],
+    });
+
+    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "first_name" }]);
   });
 });
 
@@ -1466,6 +1491,24 @@ describe("mergeFields", () => {
     });
 
     expect(result.translatedReshapes).toEqual([]);
+  });
+
+  it("should report a target field that already carries translations", () => {
+    const result = runMigrationOnStory(mergeName, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "a",
+          component: "author",
+          first_name: "Ada",
+          last_name: "Lovelace",
+          name__i18n__de: "stale",
+        },
+      ],
+    });
+
+    expect(result.translatedReshapes).toEqual([{ uid: "a", op: 0, field: "name" }]);
   });
 });
 

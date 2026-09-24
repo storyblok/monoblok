@@ -3,6 +3,7 @@ import {
   defineMigration,
   removeField,
   renameField,
+  splitField,
 } from "@storyblok/schema/migrations";
 import { describe, expect, it } from "vitest";
 import type { PlaygroundStory } from "./content-store";
@@ -88,6 +89,24 @@ describe("planMigration", () => {
 
     expect(plan.refusals).toEqual([
       { slug: "home", blame: "story", reason: expect.stringContaining("same") },
+    ]);
+  });
+
+  it("should refuse a story whose reshaped field is translated, and blame the migration", () => {
+    const splitHeadline = defineMigration([
+      splitField({ block: "card", field: "headline", into: ["title", "kicker"] }, (value) =>
+        String(value).split(" "),
+      ),
+    ]);
+    const translated = story("home", [
+      { _uid: "a", component: "card", headline: "Hello world", headline__i18n__de: "Hallo Welt" },
+    ]);
+
+    const plan = planMigration(splitHeadline, [translated]);
+
+    expect(plan.writes).toEqual([]);
+    expect(plan.refusals).toEqual([
+      { slug: "home", blame: "migration", reason: expect.stringContaining("headline") },
     ]);
   });
 

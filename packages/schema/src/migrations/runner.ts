@@ -54,7 +54,7 @@ export interface StoryMigrationResult {
    */
   nonIdempotent: { uid: string; op: number }[];
   /**
-   * Reshaping ops whose source field carries translations. `splitField` and
+   * Reshaping ops that touch a field carrying translations. `splitField` and
    * `mergeFields` produce a value out of one or more others, and there is no
    * answer the engine can pick for what a split of a German value should be:
    * the base key and its `__i18n__` siblings hold different text, and the
@@ -67,14 +67,23 @@ export interface StoryMigrationResult {
 }
 
 /**
- * The source field of a reshaping op that carries translations in this block,
- * or `undefined` when there is none. Only `splitField` and `mergeFields` can
- * land here: every other op that names a field moves the whole family.
+ * The field of a reshaping op that carries translations in this block, or
+ * `undefined` when there is none. Only `splitField` and `mergeFields` can land
+ * here: every other op that names a field moves the whole family.
+ *
+ * Targets count as much as sources. A target that already holds translations
+ * keeps them when the merged or split value lands on it, where they are then
+ * read as translations of a value they never translated — the same hazard
+ * `renameFieldFamily` clears the target's family to avoid.
  */
-function translatedReshapeSource(block: AnyBlock, op: MigrationOp): string | undefined {
-  const sources =
-    op.kind === "splitField" ? [op.field] : op.kind === "mergeFields" ? [...op.fields] : [];
-  return sources.find((field) => translationKeysFor(block, field).length > 0);
+function translatedReshapeField(block: AnyBlock, op: MigrationOp): string | undefined {
+  const fields =
+    op.kind === "splitField"
+      ? [op.field, ...op.into]
+      : op.kind === "mergeFields"
+        ? [...op.fields, op.into]
+        : [];
+  return fields.find((field) => translationKeysFor(block, field).length > 0);
 }
 
 function coerce(value: unknown, to: "string" | "number" | "boolean"): unknown {
@@ -182,9 +191,11 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       const value = block[op.field];
       if (value === undefined || value === null) break;
       const parts = op.split(value as never);
-      // The source goes first: `into` may name the source itself, which is a
-      // legitimate reshape ("full name" into "name" plus "surname"), and
-      // deleting afterwards would take the part that landed on it with it.
+      // The source goes first: `into` may name the source itself, and deleting
+      // afterwards would take the part that landed on it with it. The op does
+      // not become usable that way — a part sitting on the source name is split
+      // again on the next pass, so the idempotency probe reports it and a
+      // runner refuses it — but a loud refusal is not silent data loss.
       delete block[op.field];
       op.into.forEach((name, at) => {
         block[name] = parts[at];
@@ -353,7 +364,7 @@ export function runMigrationOnStory(
     if (ops.length === 0) continue;
     matched++;
     for (const { op, index } of ops) {
-      const translated = translatedReshapeSource(block, op);
+      const translated = translatedReshapeField(block, op);
       if (translated !== undefined) {
         translatedReshapes.push({ uid, op: index, field: translated });
       }

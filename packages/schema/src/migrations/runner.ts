@@ -44,9 +44,13 @@ export interface StoryMigrationResult {
    */
   unstableUids: { duplicate: string[]; missing: number; preExisting: string[] };
   /**
-   * `alter` ops that did not agree with themselves on a second pass over the
-   * same block. A rerun of the migration would keep moving, so the run is not
-   * safe to repeat and a runner must refuse it.
+   * Ops that did not agree with themselves on a second pass over the same
+   * block. A rerun of the migration would keep moving, so the run is not safe
+   * to repeat and a runner must refuse it.
+   *
+   * Any op kind can land here. A callback that toggles a value is the obvious
+   * case, but a structural op can fail to settle on the content rather than on
+   * the way it was written.
    */
   nonIdempotent: { uid: string; op: number }[];
 }
@@ -321,15 +325,20 @@ export function runMigrationOnStory(
     matched++;
     for (const { op, index } of ops) {
       applyOp(block, op);
-      // Every `alter` runs twice and must agree, which is what makes a rerun
-      // safe by construction rather than by convention. The second pass runs on
-      // a copy, so a non-idempotent op is reported rather than applied twice.
-      if (op.kind === "alterBlock" || op.kind === "alterField") {
-        const probe = structuredClone(block) as AnyBlock;
-        applyOp(probe, op);
-        if (!deepEqual(comparableKeys(probe), comparableKeys(block))) {
-          nonIdempotent.push({ uid, op: index });
-        }
+      // Every op runs twice and must agree, which is what makes a rerun safe by
+      // construction rather than by convention. The second pass runs on a copy,
+      // so an op that does not settle is reported rather than applied twice.
+      //
+      // Not only the `alter` ops, whose callback is the obvious way to get this
+      // wrong. A structural op can fail to settle on the content it is given
+      // rather than on anything the author wrote: unwrapping a container that
+      // nests inside itself lifts the next container into the field the op
+      // reads, where the following run dissolves that one too. The
+      // consequence is the same either way, so the check is too.
+      const probe = structuredClone(block) as AnyBlock;
+      applyOp(probe, op);
+      if (!deepEqual(comparableKeys(probe), comparableKeys(block))) {
+        nonIdempotent.push({ uid, op: index });
       }
     }
   }

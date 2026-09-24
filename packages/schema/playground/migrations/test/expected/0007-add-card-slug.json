@@ -60,6 +60,20 @@
         }
       },
       {
+        "_uid": "55555555-0000-4000-8000-00000000000a",
+        "component": "teaser",
+        "title": "The teaser that opens the page",
+        "description": "Two teasers sit on this page, so hoisting the opener has to pick one of them.",
+        "image": {
+          "id": 223407129002961,
+          "alt": "About image",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+          "fieldtype": "asset"
+        },
+        "link": null,
+        "authors": []
+      },
+      {
         "_uid": "55555555-0000-4000-8000-000000000003",
         "component": "card",
         "headline": "Legacy Portal overview",
@@ -133,7 +147,40 @@
                         "price": "7",
                         "link": null,
                         "images": [],
-                        "body": null
+                        "body": {
+                          "type": "doc",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Embedded richtext with its own "
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "old link",
+                                  "marks": [
+                                    {
+                                      "type": "link",
+                                      "attrs": {
+                                        "href": "/old-blog/embedded",
+                                        "uuid": null,
+                                        "anchor": null,
+                                        "target": "_self",
+                                        "linktype": "url"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "."
+                                }
+                              ]
+                            }
+                          ]
+                        }
                       }
                     ]
                   }
@@ -143,6 +190,15 @@
             "slug": "a-card-holding-another-card"
           }
         ]
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-00000000000b",
+        "component": "teaser",
+        "title": "A second teaser, further down",
+        "description": "It stays where the editor put it: only the first one is the page's opener.",
+        "image": null,
+        "link": null,
+        "authors": []
       }
     ]
   }

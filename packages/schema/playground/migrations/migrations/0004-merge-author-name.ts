@@ -3,6 +3,11 @@
  * `split`: an author whose `last_name` is empty merges to a single word, and
  * nothing in the merged value says whether that word was the first half or the
  * second. The counterpart decides, and the decision is the author's to make.
+ *
+ * `splitName` is written out here and again in its counterpart rather than
+ * shared. A migration is a frozen artefact: it has to keep doing what it did on
+ * the day it ran, and a helper two files import is a helper someone edits for
+ * the benefit of one of them.
  */
 import { defineMigration, mergeFields } from "@storyblok/schema/migrations";
 

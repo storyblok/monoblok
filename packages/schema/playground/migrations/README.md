@@ -54,7 +54,8 @@ Those four live in `.storyblok/stories/seed/` and are what `pnpm seed` pushes.
 `legacy` is the story the catalogue migrates, and it lives apart, in `.storyblok/stories/offline/`.
 It holds a card with a `title` and a `subtitle` instead of a `headline`, a card with a headline and
 no slug, an author with one `name` field, a price of `"twelve"`, a single `image` where the schema
-now wants a list, and richtext links still pointing at a path that moved. The site renders it with
+now wants a list, richtext links still pointing at a path that moved, and two teasers rather than
+one, so a reorder that hoists the page's opener has to pick between them. The site renders it with
 gaps, which is what content waiting for a migration looks like.
 
 It is separate because `storyblok stories push` refuses it, and aborts the whole push when it is in
@@ -168,10 +169,10 @@ up as a reviewable diff.
 | `0005-coerce-card-price`        | a value that will not parse                         | `legacy`               |
 | `0006-remove-card-subtitle`     | a field dropped while it still holds text           | `legacy`               |
 | `0007-add-card-slug`            | a new field, backfilled from one the block has      | `legacy`               |
-| `0008-pin-page-opener`          | a reorder that depends on position, not content     | `home` `team`          |
+| `0008-pin-page-opener`          | a reorder that depends on position, not content     | `home` `legacy` `team` |
 | `0009-scope-slug-under-card`    | the same block migrated in one location only        | `legacy`               |
-| `0010-rename-teaser-block`      | a component folded into another component           | `home` `team`          |
-| `0011-single-asset-to-list`     | a field whose type widens, reshaped then renamed    | `home` `team`          |
+| `0010-rename-teaser-block`      | a component folded into another component           | `home` `legacy` `team` |
+| `0011-single-asset-to-list`     | a field whose type widens, reshaped then renamed    | `home` `legacy` `team` |
 | `0012-rewrite-richtext-links`   | a mark inside a richtext document                   | `legacy`               |
 | `0013-story-link-to-url`        | a multilink that stops pointing at a story          | `home` `legacy`        |
 | `0014-translate-card-headline`  | a rewrite that treats German differently            | `legacy`               |
@@ -179,7 +180,7 @@ up as a reviewable diff.
 | `0016-wrap-page-body`           | a container level introduced                        | every story            |
 | `0017-unwrap-page-sections`     | a container level dissolved, and refused            | all but `pricing`      |
 | `0018-toggles`                  | a migration that flips a value, the refusal case    | `home`                 |
-| `0019-no-matches`               | a block the schema declares and no story contains   | nothing                |
+| `0019-no-matches`               | a block only its `Before` snapshot declares         | nothing                |
 | `0020-pricing-table-column`     | a column added to a table's header and every row    | `pricing`              |
 
 ### What the catalogue found

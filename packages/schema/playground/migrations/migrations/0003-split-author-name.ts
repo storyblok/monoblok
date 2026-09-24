@@ -7,6 +7,11 @@
  * Both directions stay lossy all the same. A name with two spaces in it, or a
  * last name that is itself two words, does not survive the round trip
  * unchanged — which is why the derived inverse is offered but not trusted.
+ *
+ * `splitName` is written out here and again in its counterpart rather than
+ * shared. A migration is a frozen artefact: it has to keep doing what it did on
+ * the day it ran, and a helper two files import is a helper someone edits for
+ * the benefit of one of them.
  */
 import { defineMigration, splitField } from "@storyblok/schema/migrations";
 

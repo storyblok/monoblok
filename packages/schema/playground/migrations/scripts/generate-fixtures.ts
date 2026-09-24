@@ -15,15 +15,21 @@
  * field the schema does not declare, which is precisely what pre-migration
  * content is made of. They are projected from their files or they do not exist.
  *
+ * A projection cannot replace a capture by accident: `--from-seed` refuses when
+ * the committed fixtures came from a space, because the values only a space can
+ * produce would be silently replaced by the ones we wrote down.
+ *
  * Usage:
- *   pnpm seed && pnpm fixtures   capture the seeded space
- *   pnpm fixtures --from-seed    project .storyblok/stories/seed/ instead
+ *   pnpm seed && pnpm fixtures              capture the seeded space
+ *   pnpm fixtures --from-seed               project .storyblok/stories/seed/ instead
+ *   pnpm fixtures --from-seed --replace-captured   the same, over captured fixtures
  */
 import "dotenv/config";
 
 import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { capturedSlugs } from "../src/captured-fixtures";
 import { fileContentStore, type PlaygroundStory, spaceContentStore } from "../src/content-store";
 
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, "..");
@@ -53,6 +59,28 @@ async function fromSpace(): Promise<PlaygroundStory[]> {
 }
 
 const fromSeed = process.argv.includes("--from-seed");
+const replaceCaptured = process.argv.includes("--replace-captured");
+
+if (fromSeed && !replaceCaptured) {
+  const captured = capturedSlugs(
+    await projectFrom(SEED_DIR),
+    await fileContentStore(FIXTURES_DIR)
+      .list()
+      .catch((): PlaygroundStory[] => []),
+  );
+  if (captured.length > 0) {
+    console.error(
+      `Refusing to overwrite captured fixtures: ${captured.join(", ")}.\n` +
+        "They came back from a space and carry what it normalized on the way in, which a\n" +
+        "projection cannot reproduce: a story-sourced option holds the story's uuid rather\n" +
+        "than its slug, a story link holds one too, and an asset carries a real CDN URL.\n" +
+        "Run `pnpm seed && pnpm fixtures` to capture them again, or pass --replace-captured\n" +
+        "to project over them anyway.",
+    );
+    process.exit(2);
+  }
+}
+
 const pushed = fromSeed ? await projectFrom(SEED_DIR) : await fromSpace();
 const stories = [...pushed, ...(await projectFrom(OFFLINE_DIR))].sort((a, b) => a.id - b.id);
 

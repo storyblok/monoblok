@@ -450,6 +450,29 @@ grounds that a rename is a no-op on the second pass by construction, and `0017` 
 every kind. The measured cost: an author's callback is invoked twice per block, so it must be free
 of side effects.
 
+## Known gaps
+
+Two things about a Storyblok space sit outside what the ops or the catalogue can cover, and both can
+cost you a rollback. Neither is visible from the fixtures, so nothing here fails when you hit them.
+
+**A save from the editor writes fields nobody typed in.** Opening a story and saving it backfills
+the field type's empty value into every field the form shows: `""`, `false`, `[]`, an empty
+multilink, an empty asset, an empty richtext document. A key that was absent comes back as `""`.
+Blocks not in the form are left alone. That is ordinary content, indistinguishable from content a
+migration owns, and no ignore-list can address it. The consequence for rollback is direct: a
+migration that unset a field can find it back as `""`, so the inverse `set` conflicts on
+`expect: undefined`, on exactly the stories real editors touched since the run. A rollback that is
+to survive an active space has to treat "key absent becomes the field type's empty value" as a
+non-conflict rather than as an editor's change.
+
+**The draft is not the only copy of a story.** A publish copies the draft, adding and normalizing
+nothing, which also means a migration that touches only the draft leaves the published version on
+the old shape until someone publishes, and a draft-only rollback cannot take that back: the draft
+returns to the old shape while the published version keeps the new one. A release is a separate
+content record again, invisible to the plain story endpoints, so a migration over stories does not
+see it, and deploying the release later overwrites the story's draft wholesale, migration included.
+Anything running against a space with pending releases needs a plan for them.
+
 ## Where this belongs
 
 Open, and nothing here decides it.

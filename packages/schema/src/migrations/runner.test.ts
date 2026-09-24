@@ -659,6 +659,74 @@ describe("idempotency check", () => {
 
     expect(run.nonIdempotent).toEqual([{ uid: "section-1", op: 0 }]);
   });
+
+  it("should report a structural op that does not settle on the content it was given", () => {
+    // Nothing is wrong with the op or the way it was written. Dissolving the
+    // outer section lifts the inner one into the field the op reads, so the
+    // next run dissolves that too and the content keeps moving. The check has
+    // to cover this, or a migration that never settles is written without a
+    // word.
+    const unwrap = defineMigration<TestSchema>([
+      unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" }),
+    ]);
+
+    const run = runMigrationOnStory(unwrap, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "outer",
+          component: "section",
+          items: [
+            { _uid: "card-1", component: "card", title: "one" },
+            {
+              _uid: "inner",
+              component: "section",
+              items: [{ _uid: "card-2", component: "card", title: "two" }],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(run.nonIdempotent).toEqual([{ uid: "root", op: 0 }]);
+  });
+
+  it("should report nothing for an unwrap whose containers do not nest", () => {
+    const unwrap = defineMigration<TestSchema>([
+      unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" }),
+    ]);
+
+    const run = runMigrationOnStory(unwrap, {
+      _uid: "root",
+      component: "page",
+      body: [
+        {
+          _uid: "outer",
+          component: "section",
+          items: [{ _uid: "card-1", component: "card", title: "one" }],
+        },
+      ],
+    });
+
+    expect(run.changed).toBe(true);
+    expect(run.nonIdempotent).toEqual([]);
+  });
+
+  it("should report nothing for a wrap, which recognises the wrapper it made", () => {
+    const wrap = defineMigration<TestSchema>([
+      wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
+    ]);
+
+    const run = runMigrationOnStory(wrap, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "card-1", component: "card", title: "one" }],
+    });
+
+    expect(run.changed).toBe(true);
+    expect(run.nonIdempotent).toEqual([]);
+  });
 });
 
 describe("derived inverse — rollback tier 2", () => {

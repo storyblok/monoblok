@@ -35,10 +35,10 @@ const store = fileContentStore(FIXTURES_DIR);
 const NO_MATCH_MIGRATION = "0019-no-matches";
 
 /**
- * The rows a second pass keeps moving. They are held apart below, one test
- * each, because the two are not the same kind of problem: 0018 is an authoring
- * mistake the engine catches, and 0017 is a limit of the op itself that the
- * engine does not catch.
+ * The rows a second pass keeps moving. Both are reported and refused; they are
+ * held apart below, one test each, because they are not the same kind of
+ * problem. 0018 is an authoring mistake, and 0017 is an op that does not settle
+ * on this space's content however carefully it was written.
  */
 const NOT_REPEATABLE = new Set(["0017-unwrap-page-sections", "0018-toggles"]);
 
@@ -181,21 +181,23 @@ describe("a row a second pass keeps moving", () => {
     ]);
   });
 
-  it("should not report an unwrap that keeps finding another container below the one it dissolved", async () => {
+  it("should refuse an unwrap that keeps finding another container below the one it dissolved", async () => {
     const migration = migrations["0017-unwrap-page-sections"]!;
     // `home` nests a section inside a section, so dissolving the outer one
     // lifts the inner one into the field the op reads, where a second run
-    // dissolves that too.
+    // dissolves that too. No callback is involved: the op does not settle on
+    // this content, which is the case a structural op can fail on and an
+    // `alter` op cannot be blamed for.
     const story = (await store.list()).find((candidate) => candidate.slug === "home")!;
 
     const once = runMigrationOnStory(migration, story.content);
 
     expect(runMigrationOnStory(migration, once.content).changed).toBe(true);
-    // A known gap, pinned so it cannot be closed silently: the engine runs its
-    // second-pass check on `alter` ops only, so a structural op that does not
-    // settle is neither reported nor refused, and the run is written.
-    expect(once.nonIdempotent).toEqual([]);
-    expect(planMigration(migration, [story]).refusals).toEqual([]);
+    // The page is what the op is applied to, so the page is what is reported.
+    expect(once.nonIdempotent).toEqual([{ uid: "11111111-0000-4000-8000-000000000001", op: 0 }]);
+    expect(planMigration(migration, [story]).refusals.map((refusal) => refusal.blame)).toEqual([
+      "migration",
+    ]);
   });
 });
 

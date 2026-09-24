@@ -5,6 +5,8 @@ field translations, datasource options, tables — plus twenty migrations that e
 different way. It runs against committed JSON, so **no Storyblok account or token is needed** for
 everything up to "Against a real space".
 
+Design reasoning, the seed's shape, and known gaps: [NOTES.md](NOTES.md).
+
 ## Setup
 
 ```sh
@@ -140,14 +142,3 @@ pnpm seed                        # reset the space, push schema + content
 pnpm dev                         # the site
 pnpm migrate --confirm-writes    # migrate the space, then reload
 ```
-
-## Feedback
-
-- Does a migration read like something you would write and review?
-- Is refusing the whole run too strict, or not strict enough?
-- Recorded patches roll back exactly; a derived inverse is a blind fallback with
-  [known limits](NOTES.md#the-catalogue).
-- It ships from `@storyblok/schema/migrations` today, which is
-  [open to argument](NOTES.md#where-this-belongs).
-
-Design reasoning, the seed's shape, and known gaps: [NOTES.md](NOTES.md).

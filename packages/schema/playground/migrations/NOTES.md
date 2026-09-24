@@ -25,6 +25,7 @@ The long form behind [README.md](README.md).
 | `translated` | `__i18n__de` / `__i18n__fr` siblings, some empty                                       | `.storyblok/stories/seed/`    |
 | `legacy`     | the pre-migration shape the catalogue migrates                                         | `.storyblok/stories/offline/` |
 | `boards`     | three components the schema no longer declares, so it renders only after `0021`        | `.storyblok/stories/offline/` |
+| `social`     | a social image still held as a URL in a text field, translations included              | `.storyblok/stories/offline/` |
 
 ### You cannot seed pre-migration content
 
@@ -84,7 +85,7 @@ would settle the second.
 
 ## The catalogue
 
-`test/catalogue.test.ts` runs all twenty-one against the committed fixtures, no token, asking each:
+`test/catalogue.test.ts` runs all twenty-two against the committed fixtures, no token, asking each:
 does it change something, does it leave the block ids alone, does a second run move anything, does
 the recorded inverse put the content back, and — where one can be derived from the ops alone — does
 that one land in the same place. `test/expected/<id>.json` is the reviewable diff.
@@ -112,9 +113,10 @@ that one land in the same place. `test/expected/<id>.json` is the reviewable dif
 | [`0019-no-matches`](migrations/0019-no-matches.ts)                                       | a block only its `Before` snapshot declares         | nothing                |
 | [`0020-pricing-table-column`](migrations/0020-pricing-table-column.ts)                   | a column added to a table's header and every row    | `pricing`              |
 | [`0021-link-boards-to-content-boards`](migrations/0021-link-boards-to-content-boards.ts) | three components renamed at once, fields and all    | `boards`               |
+| [`0022-og-image-url-to-asset`](migrations/0022-og-image-url-to-asset.ts)                 | a value built from data the content does not hold   | `boards` `social`      |
 
-**Could the op set express all twenty-one? Yes** — none of them fell back on `alterBlock` for
-something a structural op should have done. Three limits surfaced in the engine and its types
+**Could the op set express all twenty-two? Yes** — none of them fell back on `alterBlock` for
+something a structural op should have done. Four limits surfaced in the engine and its types
 instead, each pinned by a test.
 
 **Non-settling ops are reported whatever their kind (fixed).** The check used to cover the `alter`
@@ -138,6 +140,15 @@ resolves against the post-migration schema under the pre-migration block name, w
 longer declares, so it widens to `string`. `0021` renames three components and four of their fields
 in one migration and gets no target-name checking on any of them; splitting it into a field
 migration and a component migration is what buys the check back.
+
+**An op callback sees the value and nothing else (recorded, not fixed).** The callbacks are
+synchronous and are handed a value and its key, never the space or a client, so a migration whose
+new value depends on data the content does not hold has to resolve that data before any op runs.
+`0022` builds an asset object out of a URL, and everything else an asset object carries — its id,
+alt text, title, whether it is private — has to come from the space's asset list. In a real run that
+list is fetched at module scope, which means importing the migration performs the request,
+`storyblok migrations list` included. A per-run context the runner awaits once and passes to each
+callback is the fix; it is not in this prototype.
 
 **Not covered:** remapping a story-sourced option's uuid. It only means something when the target
 uuids come from somewhere, and the real case is a copied space where every story has a new uuid — a

@@ -1,0 +1,147 @@
+{
+  "legacy": {
+    "_uid": "55555555-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Legacy content",
+    "seo_description": "Authored under an older schema, so the migrations have something to migrate.",
+    "body": [
+      {
+        "_uid": "55555555-0000-4000-8000-000000000002",
+        "component": "card",
+        "title": "A card from before the headline rename",
+        "subtitle": "Carries the field newer cards no longer have",
+        "price": "twelve",
+        "image": {
+          "id": 2000,
+          "alt": "About image",
+          "filename": "",
+          "fieldtype": "asset"
+        },
+        "link": {
+          "id": "story-pricing",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "pricing"
+        },
+        "body": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The old plans page moved: "
+                },
+                {
+                  "type": "text",
+                  "text": "see the pricing",
+                  "marks": [
+                    {
+                      "type": "link",
+                      "attrs": {
+                        "href": "/blog/pricing",
+                        "uuid": null,
+                        "anchor": null,
+                        "target": "_self",
+                        "linktype": "url"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " for what replaced it."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-000000000003",
+        "component": "card",
+        "headline": "Legacy Portal overview",
+        "headline__i18n__de": "Legacy Portal Übersicht",
+        "headline__i18n__fr": "Aperçu du Legacy Portal",
+        "subtitle": "Half migrated: the headline landed, the slug never did",
+        "price": "",
+        "link": null,
+        "images": [],
+        "body": null
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-000000000004",
+        "component": "section",
+        "heading": "Legacy section",
+        "theme": "light",
+        "items": [
+          {
+            "_uid": "55555555-0000-4000-8000-000000000005",
+            "component": "author",
+            "name": "Ada Lovelace",
+            "bio": "One name field, from before it was split in two.",
+            "avatar": null
+          },
+          {
+            "_uid": "55555555-0000-4000-8000-000000000006",
+            "component": "card",
+            "headline": "A card holding another card",
+            "price": "3",
+            "link": null,
+            "images": [],
+            "body": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Another old link: "
+                    },
+                    {
+                      "type": "text",
+                      "text": "the announcement",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "/blog/announcement",
+                            "uuid": null,
+                            "anchor": null,
+                            "target": "_self",
+                            "linktype": "url"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "blok",
+                  "attrs": {
+                    "id": "55555555-0000-4000-8000-000000000007",
+                    "body": [
+                      {
+                        "_uid": "55555555-0000-4000-8000-000000000007",
+                        "component": "card",
+                        "headline": "Embedded under a section and a card",
+                        "slug": "legacy-embedded",
+                        "price": "7",
+                        "link": null,
+                        "images": [],
+                        "body": null
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

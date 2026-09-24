@@ -1,0 +1,294 @@
+{
+  "home": {
+    "_uid": "11111111-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Migrations playground",
+    "seo_description": "A space shaped to make content migrations awkward.",
+    "body": [
+      {
+        "_uid": "11111111-0000-4000-8000-000000000002",
+        "component": "card",
+        "headline": "A loose card, directly on the page",
+        "slug": "loose-card",
+        "price": "19",
+        "category": "story-team",
+        "link": {
+          "id": "story-team",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "team"
+        },
+        "images": [
+          {
+            "id": 2001,
+            "alt": "Gallery image one",
+            "title": "Gallery One",
+            "filename": "",
+            "fieldtype": "asset"
+          },
+          {
+            "id": 2002,
+            "alt": "Gallery image two",
+            "title": "Gallery Two",
+            "filename": "",
+            "fieldtype": "asset"
+          }
+        ],
+        "body": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "This card's richtext holds another card inside it. A migration that only walks the bloks arrays will never see it."
+                }
+              ]
+            },
+            {
+              "type": "blok",
+              "attrs": {
+                "id": "11111111-0000-4000-8000-000000000003",
+                "body": [
+                  {
+                    "_uid": "11111111-0000-4000-8000-000000000003",
+                    "component": "card",
+                    "headline": "Card embedded in richtext",
+                    "slug": "embedded-card",
+                    "price": "5",
+                    "link": {
+                      "id": "",
+                      "url": "https://www.storyblok.com",
+                      "linktype": "url",
+                      "fieldtype": "multilink",
+                      "cached_url": "https://www.storyblok.com"
+                    },
+                    "images": [],
+                    "body": {
+                      "type": "doc",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "type": "text",
+                              "text": "Nested richtext, two levels down."
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Text after the embedded block."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "_uid": "11111111-0000-4000-8000-000000000004",
+        "component": "section",
+        "heading": "An outer section",
+        "theme": "light",
+        "accent_color": {
+          "plugin": "native-color-picker",
+          "value": "#4f46e5"
+        },
+        "items": [
+          {
+            "_uid": "11111111-0000-4000-8000-000000000005",
+            "component": "card",
+            "headline": "First card in the section",
+            "slug": "section-card-one",
+            "price": "42",
+            "category": "story-pricing",
+            "link": null,
+            "images": [],
+            "body": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Plain richtext."
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "_uid": "11111111-0000-4000-8000-000000000006",
+            "component": "gallery",
+            "headline": "Gallery inside the section",
+            "columns": "2",
+            "show_captions": true,
+            "images": [
+              {
+                "id": 2001,
+                "alt": "Gallery image one",
+                "title": "Gallery One",
+                "filename": "",
+                "fieldtype": "asset"
+              },
+              {
+                "id": 2002,
+                "alt": "Gallery image two",
+                "title": "Gallery Two",
+                "filename": "",
+                "fieldtype": "asset"
+              }
+            ]
+          },
+          {
+            "_uid": "11111111-0000-4000-8000-000000000007",
+            "component": "section",
+            "heading": "A section inside a section",
+            "theme": "dark",
+            "items": [
+              {
+                "_uid": "11111111-0000-4000-8000-000000000008",
+                "component": "quote",
+                "text": "Three container levels deep, so an unwrap has somewhere to fall.",
+                "attribution": "The seed",
+                "source_link": {
+                  "id": "",
+                  "url": "https://www.storyblok.com",
+                  "linktype": "url",
+                  "fieldtype": "multilink",
+                  "cached_url": "https://www.storyblok.com"
+                },
+                "authors": [
+                  {
+                    "_uid": "11111111-0000-4000-8000-000000000009",
+                    "component": "author",
+                    "bio": "Quoted from four container levels down.",
+                    "avatar": null,
+                    "name": "Ada Lovelace"
+                  }
+                ]
+              },
+              {
+                "_uid": "11111111-0000-4000-8000-00000000000a",
+                "component": "media",
+                "caption": "Media at the deepest level",
+                "credit": "Playground",
+                "image": {
+                  "id": 2000,
+                  "alt": "About image",
+                  "filename": "",
+                  "fieldtype": "asset"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "_uid": "11111111-0000-4000-8000-00000000000b",
+        "component": "teaser",
+        "title": "A teaser with a story link",
+        "description": "Its link points at another seed story, so a rename of that story shows up here.",
+        "image": {
+          "id": 2000,
+          "alt": "About image",
+          "filename": "",
+          "fieldtype": "asset"
+        },
+        "link": {
+          "id": "story-pricing",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "pricing"
+        },
+        "authors": []
+      }
+    ]
+  },
+  "team": {
+    "_uid": "22222222-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "The team",
+    "seo_description": "Author blocks, including one with only half a name.",
+    "body": [
+      {
+        "_uid": "22222222-0000-4000-8000-000000000002",
+        "component": "section",
+        "heading": "Everyone",
+        "theme": "light",
+        "items": [
+          {
+            "_uid": "22222222-0000-4000-8000-000000000003",
+            "component": "author",
+            "bio": "Both halves of the name are filled.",
+            "avatar": {
+              "id": 2000,
+              "alt": "About image",
+              "filename": "",
+              "fieldtype": "asset"
+            },
+            "name": "Grace Hopper"
+          },
+          {
+            "_uid": "22222222-0000-4000-8000-000000000004",
+            "component": "author",
+            "bio": "Only first_name is filled, so a merge has to decide what to do with the empty half.",
+            "avatar": null,
+            "name": "Prince"
+          },
+          {
+            "_uid": "22222222-0000-4000-8000-000000000005",
+            "component": "author",
+            "bio": "",
+            "avatar": null,
+            "name": "Barbara Liskov"
+          }
+        ]
+      },
+      {
+        "_uid": "22222222-0000-4000-8000-000000000006",
+        "component": "author",
+        "bio": "An author directly on the page, outside any container.",
+        "avatar": null,
+        "name": "Alan Turing"
+      },
+      {
+        "_uid": "22222222-0000-4000-8000-000000000007",
+        "component": "teaser",
+        "title": "Authors inside a teaser",
+        "description": "The same block appears at several depths so a rename has to reach all of them.",
+        "image": null,
+        "link": {
+          "id": "story-home",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "home"
+        },
+        "authors": [
+          {
+            "_uid": "22222222-0000-4000-8000-000000000008",
+            "component": "author",
+            "bio": "Nested two levels down.",
+            "avatar": null,
+            "name": "Katherine Johnson"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -3,6 +3,9 @@ import { BLOCK_NAMES } from '../../lib/blocks';
 import type { AnyBlock } from '../../schema/schema';
 import Author from './author.astro';
 import Card from './card.astro';
+import ContentBoard from './content-board.astro';
+import ContentBoardList from './content-board-list.astro';
+import ContentBoardListItem from './content-board-list-item.astro';
 import Faq from './faq.astro';
 import FaqItem from './faq-item.astro';
 import Gallery from './gallery.astro';
@@ -39,6 +42,9 @@ const { block } = Astro.props;
 {block.component === 'faq' && <Faq block={block} />}
 {block.component === 'faq_item' && <FaqItem block={block} />}
 {block.component === 'pricing_table' && <PricingTable block={block} />}
+{block.component === 'content_board' && <ContentBoard block={block} />}
+{block.component === 'content_board_list' && <ContentBoardList block={block} />}
+{block.component === 'content_board_list_item' && <ContentBoardListItem block={block} />}
 {!BLOCK_NAMES.has(block.component) && (
   <div class="rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
     Unknown component: <code>{block.component}</code>

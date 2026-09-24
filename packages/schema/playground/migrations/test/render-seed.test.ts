@@ -1,16 +1,30 @@
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
-import { TRANSLATION_SEPARATOR } from "@storyblok/schema/migrations";
+import { runMigrationOnStory, TRANSLATION_SEPARATOR } from "@storyblok/schema/migrations";
 import { describe, expect, it } from "vitest";
 
 import home from "../.storyblok/stories/seed/home_story-home.json";
+import boards from "../.storyblok/stories/offline/boards_story-boards.json";
 import legacy from "../.storyblok/stories/offline/legacy_story-legacy.json";
 import pricing from "../.storyblok/stories/seed/pricing_story-pricing.json";
 import team from "../.storyblok/stories/seed/team_story-team.json";
 import translated from "../.storyblok/stories/seed/translated_story-translated.json";
 import { schema } from "../src/schema/schema";
 import StoryblokComponent from "../src/components/storyblok/storyblok-component.astro";
+import { migrations } from "../migrations";
 
-const SEED_STORIES = { home, team, pricing, translated, legacy };
+const BOARDS_MIGRATION = "0021-link-boards-to-content-boards";
+
+/**
+ * The board story is rendered as the migration leaves it. Its components are
+ * the ones that migration renames away, so the current schema does not declare
+ * them and the site can only render the story once it has run — which is what
+ * the last test here pins down.
+ */
+const migratedBoards = {
+  content: runMigrationOnStory(migrations[BOARDS_MIGRATION]!, boards.content).content,
+};
+
+const SEED_STORIES = { home, team, pricing, translated, legacy, boards: migratedBoards };
 
 async function renderSeedStories(): Promise<Record<string, string>> {
   const container = await AstroContainer.create();
@@ -103,5 +117,16 @@ describe("the seeded space rendered as a website", () => {
       { key: "headline:fr", isGap: false },
       { key: "headline:fr", isGap: true },
     ]);
+  });
+
+  it("renders the board story only once the migration has renamed its components", async () => {
+    const container = await AstroContainer.create();
+
+    const before = await container.renderToString(StoryblokComponent, {
+      props: { block: boards.content },
+    });
+
+    expect(before).toContain("Unknown component");
+    expect((await renderSeedStories()).boards).not.toContain("Unknown component");
   });
 });

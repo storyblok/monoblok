@@ -4,6 +4,7 @@
     "component": "page",
     "seo_title": "Boards",
     "seo_description": "Link boards, as they were named before the content board rename.",
+    "og_image": "https://images.example.com/og/boards.png",
     "body": [
       {
         "_uid": "66666666-0000-4000-8000-000000000002",

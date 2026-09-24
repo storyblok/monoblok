@@ -18,6 +18,7 @@ export const pageBlock = defineBlock({
   fields: [
     defineField("seo_title", { type: "text", max_length: 70, translatable: true }),
     defineField("seo_description", { type: "textarea", max_length: 160, translatable: true }),
+    defineField("og_image_asset", { type: "asset", filetypes: ["images"], translatable: true }),
     defineField("body", {
       type: "bloks",
       allow: [

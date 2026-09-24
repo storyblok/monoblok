@@ -9,11 +9,11 @@
  * disagree with the first.
  *
  * The cell ids are derived from the row rather than generated because a
- * migration should produce the same content twice, not because anything checks
- * it. Nothing would catch a random id here: the guard short-circuits the second
- * pass before the engine's agreement check can see two different results. That
- * check only looks at what the op does to a block it is applied to twice, and a
- * guarded op does nothing the second time by design.
+ * migration should produce the same content twice. The engine would not catch a
+ * random one: its agreement check only looks at what the op does to a block it
+ * is applied to twice, and the guard makes the second pass a no-op before two
+ * different results can exist. What catches it is the expected snapshot beside
+ * this catalogue, which is a different kind of check and the reason to keep one.
  */
 import { alterField, defineMigration } from "@storyblok/schema/migrations";
 

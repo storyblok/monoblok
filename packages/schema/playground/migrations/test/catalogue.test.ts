@@ -292,6 +292,7 @@ describe("the catalogue as a whole", () => {
       "0016-wrap-page-body": [
         "boards",
         "home",
+        "intro",
         "legacy",
         "pricing",
         "social",
@@ -304,6 +305,7 @@ describe("the catalogue as a whole", () => {
       "0020-pricing-table-column": ["pricing"],
       "0021-link-boards-to-content-boards": ["boards"],
       "0022-og-image-url-to-asset": ["boards", "social"],
+      "0023-intro-to-teaser-with-spacers": ["intro"],
     });
   });
 

@@ -1,0 +1,35 @@
+{
+  "id": 1,
+  "uuid": "live-preview",
+  "name": "Angular Live Preview QA",
+  "slug": "live-preview",
+  "full_slug": "live-preview",
+  "is_folder": false,
+  "is_startpage": false,
+  "content": {
+    "component": "page",
+    "body": [
+      {
+        "_uid": "featured-articles-qa",
+        "component": "featured-articles",
+        "title": "Featured QA articles",
+        "articles": ["qa-author"]
+      },
+      {
+        "_uid": "article-qa",
+        "component": "article",
+        "title": "QA article",
+        "author": ["qa-author"],
+        "content": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [{ "type": "text", "text": "QA broker article content" }]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

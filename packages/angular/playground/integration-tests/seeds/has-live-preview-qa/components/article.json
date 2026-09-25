@@ -1,0 +1,17 @@
+{
+  "name": "article",
+  "display_name": "Article",
+  "component_group_uuid": null,
+  "is_root": true,
+  "is_nestable": true,
+  "schema": {
+    "title": { "type": "text", "required": true, "pos": 0 },
+    "author": {
+      "type": "options",
+      "source": "internal_stories",
+      "use_uuid": true,
+      "pos": 1
+    },
+    "content": { "type": "richtext", "pos": 2 }
+  }
+}

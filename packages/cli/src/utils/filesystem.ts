@@ -5,10 +5,15 @@ import {
   appendFile,
   constants,
   mkdir,
+  open,
   readdir,
   readFile as readFileImpl,
+  rename,
+  unlink,
   writeFile,
 } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 import { handleFileSystemError } from "./error/filesystem-error";
 import type { FileReaderResult } from "../types";
 import filenamify from "filenamify";
@@ -27,6 +32,62 @@ export const getStoryblokGlobalPath = () => {
     process.env[process.platform.startsWith("win") ? "USERPROFILE" : "HOME"] || process.cwd();
 
   return join(homeDirectory, ".storyblok");
+};
+
+// Windows virus scanners and indexers hold a file open for a moment after it is written,
+// which makes the rename fail transiently.
+const RENAME_RETRY_BACKOFF_MS = [10, 40, 160, 640];
+
+const renameWithRetry = async (from: string, to: string): Promise<void> => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      const isTransientWindowsFailure =
+        process.platform === "win32" &&
+        (code === "EPERM" || code === "EBUSY" || code === "EACCES") &&
+        attempt < RENAME_RETRY_BACKOFF_MS.length;
+      if (!isTransientWindowsFailure) {
+        throw error;
+      }
+      await sleep(RENAME_RETRY_BACKOFF_MS[attempt]);
+    }
+  }
+};
+
+/**
+ * Writes a file by replacing it atomically: readers see either the previous content or
+ * the new one, never a half-written file. Use it for anything whose loss would be
+ * unrecoverable, such as credentials.
+ *
+ * The temp file is created with `mode` from the start rather than chmod-ed afterwards,
+ * so a secret never exists on disk with default permissions, not even briefly.
+ */
+export const writeFileAtomic = async (
+  filePath: string,
+  data: string,
+  { mode = 0o600 }: FileOptions = {},
+): Promise<void> => {
+  await mkdir(parse(filePath).dir, { recursive: true });
+  const tempPath = `${filePath}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+
+  const handle = await open(tempPath, "wx", mode);
+  try {
+    await handle.writeFile(data, "utf8");
+    // Flush before the rename so a crash cannot publish a truncated file.
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+
+  try {
+    await renameWithRetry(tempPath, filePath);
+  } catch (error) {
+    await unlink(tempPath).catch(() => {});
+    throw error;
+  }
 };
 
 export const saveToFile = async (

@@ -45,6 +45,7 @@ export * from "./lib/types";
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 
 export type {
+  StoryblokRichTextDoc,
   StoryblokRichTextElement,
   StoryblokRichTextImageOptions,
   StoryblokRichTextInput,

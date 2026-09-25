@@ -105,6 +105,69 @@
         }
       }
     },
+    "integration-tests": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "playground/integration-tests",
+      "sourceRoot": "playground/integration-tests/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "playground/integration-tests/src/main.ts",
+            "tsConfig": "playground/integration-tests/tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "playground/integration-tests/public"
+              }
+            ],
+            "styles": ["playground/integration-tests/src/styles.css"],
+            "server": "playground/integration-tests/src/main.server.ts",
+            "outputMode": "server",
+            "ssr": {
+              "entry": "playground/integration-tests/src/server.ts"
+            }
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "integration-tests:build:production"
+            },
+            "development": {
+              "buildTarget": "integration-tests:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
+    },
     "app-playground": {
       "projectType": "application",
       "schematics": {},

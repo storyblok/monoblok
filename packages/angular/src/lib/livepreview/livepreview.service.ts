@@ -59,7 +59,8 @@ export class LivePreviewService {
   /**
    * Subscribes to Storyblok Visual Editor live preview updates.
    *
-   * Returns a cleanup function that destroys the bridge when called.
+   * Returns a cleanup function that removes this subscription. The shared
+   * bridge is destroyed when the last subscription using it is removed.
    * For automatic cleanup tied to a component or service lifetime, prefer
    * {@link connect} which accepts a `DestroyRef` and handles teardown for you.
    *
@@ -89,7 +90,7 @@ export class LivePreviewService {
 
   /**
    * Subscribes to Storyblok Visual Editor live preview updates and
-   * automatically destroys the bridge when the provided `DestroyRef` fires.
+   * automatically removes the subscription when the provided `DestroyRef` fires.
    *
    * This is the preferred API for component use. It eliminates the need for
    * a manual cleanup field and an `ngOnDestroy` implementation, and correctly
@@ -112,8 +113,14 @@ export class LivePreviewService {
    * @param callback Called with the updated story on every `input` event.
    * @param destroyRef The `DestroyRef` of the calling component or service.
    * @param options Optional bridge configuration; merged over the base config.
+   * @returns A promise resolving to the subscription cleanup function. Never
+   * rejects: failures are logged and resolve to a no-op cleanup.
    */
-  connect(callback: LivePreviewCallback, destroyRef: DestroyRef, options?: BridgeParams): void {
+  async connect(
+    callback: LivePreviewCallback,
+    destroyRef: DestroyRef,
+    options?: BridgeParams,
+  ): Promise<() => void> {
     let cleanup: (() => void) | undefined;
     let destroyed = false;
 
@@ -126,8 +133,9 @@ export class LivePreviewService {
     // the view by the time ngOnInit runs (e.g. on navigation), causing
     // DestroyRef.onDestroy() to throw NG0911. In that case treat the context
     // as already destroyed so the bridge is torn down immediately once loaded.
+    let unregister: (() => void) | undefined;
     try {
-      destroyRef.onDestroy(() => {
+      unregister = destroyRef.onDestroy(() => {
         destroyed = true;
         cleanup?.();
       });
@@ -135,15 +143,25 @@ export class LivePreviewService {
       destroyed = true;
     }
 
-    this.listen(callback, options)
-      .then((fn) => {
-        cleanup = fn;
-        if (destroyed) {
-          fn();
-        }
-      })
-      .catch((err: unknown) => {
-        console.error("[Storyblok] connect() failed to subscribe to live preview updates:", err);
-      });
+    // Already destroyed before we even subscribed — don't touch the shared bridge.
+    if (destroyed) {
+      unregister?.();
+      return () => {};
+    }
+
+    try {
+      cleanup = await this.listen(callback, options);
+    } catch (error) {
+      console.error("[Storyblok] connect() failed to subscribe to live preview updates:", error);
+      return () => {};
+    }
+
+    if (destroyed) {
+      cleanup();
+    }
+    return () => {
+      unregister?.();
+      cleanup?.();
+    };
   }
 }

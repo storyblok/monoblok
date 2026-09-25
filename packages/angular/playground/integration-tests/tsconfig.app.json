@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../out-tsc/integration-tests-app",
+    "rootDir": "./src",
+    "types": ["node"],
+    "paths": {
+      "@storyblok/angular": ["../../dist"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}

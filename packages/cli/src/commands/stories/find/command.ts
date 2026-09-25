@@ -75,7 +75,7 @@ const findCmd = storiesCommand
   .option("--limit <n>", "stop after this many results")
   .option(
     "--references <uuids>",
-    "stories that reference any of these story UUIDs, comma-separated",
+    "stories that reference all of these story UUIDs, comma-separated",
   )
   .option(
     "--check-references [types]",
@@ -137,7 +137,6 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
           // prune for: the stage runs purely as a bulk content source.
           filters: issueTypes ? [] : whereFilters,
           attachContent: issueTypes !== undefined,
-          checkReferences: issueTypes !== undefined,
           ui,
         })
       : undefined;

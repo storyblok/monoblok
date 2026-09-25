@@ -208,17 +208,18 @@ export async function createCapiContentFetcher({
   });
 
   const query = { ...DEFAULT_CAPI_PARAMS, ...params };
+  // `--capi-params` is free-form by design, so the merged query is only known to
+  // be CDN query parameters, not which ones.
+  type StoriesQuery = NonNullable<Parameters<typeof client.stories.list>[0]>["query"];
+  const listStories = (page: Record<string, string | number>) =>
+    client.stories.list({ query: { ...query, ...page } as StoriesQuery });
 
   // During the run a rejected batch only costs its pruning, so a mistyped
   // `--capi-params` would make the flag do nothing, with no reason given. One
   // request up front turns that into a usage error that carries the CDN's reason.
   if (Object.keys(params).length > 0) {
     try {
-      await client.stories.list({
-        query: { ...query, per_page: 1 } as NonNullable<
-          Parameters<typeof client.stories.list>[0]
-        >["query"],
-      });
+      await listStories({ per_page: 1 });
     } catch (error) {
       if (!(error instanceof ClientError) || error.response.status >= 500) {
         throw error;
@@ -231,15 +232,7 @@ export async function createCapiContentFetcher({
   }
 
   return async (uuids) => {
-    const { data } = await client.stories.list({
-      // `--capi-params` is free-form by design, so the merged query is only
-      // known to be CDN query parameters, not which ones.
-      query: {
-        ...query,
-        by_uuids: uuids.join(","),
-        per_page: CAPI_BATCH_SIZE,
-      } as NonNullable<Parameters<typeof client.stories.list>[0]>["query"],
-    });
+    const { data } = await listStories({ by_uuids: uuids.join(","), per_page: CAPI_BATCH_SIZE });
 
     const contentByUuid = new Map<string, StoryContent>();
     for (const story of data.stories) {

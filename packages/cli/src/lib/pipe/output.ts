@@ -1,4 +1,5 @@
 import { Writable } from "node:stream";
+import { toError } from "../../utils/error/error";
 import { getUI, onStdoutClosed, type UI } from "../ui";
 
 /**
@@ -12,16 +13,7 @@ import { getUI, onStdoutClosed, type UI } from "../ui";
  */
 export interface MachineOutput {
   /**
-   * Serializes `value` and writes it as one line, immediately.
-   *
-   * For a producer that is not a stream. It cannot apply backpressure — the call
-   * is synchronous, so a slow reader is absorbed by stdout's buffer rather than
-   * felt by the caller. A stream producer must use {@link MachineOutput.sink}
-   * instead, which does.
-   */
-  push: (value: unknown) => void;
-  /**
-   * The same output as a `Writable`, for use as the terminal stage of a
+   * The output as a `Writable`, for use as the terminal stage of a
    * `stream.pipeline()`.
    *
    * This is the form to prefer: holding the stream callback back until stdout
@@ -145,7 +137,7 @@ export function createJsonlOutput({
       try {
         line = JSON.stringify(value);
       } catch (maybeError) {
-        callback(maybeError as Error);
+        callback(toError(maybeError));
         return;
       }
 
@@ -165,13 +157,6 @@ export function createJsonlOutput({
   });
 
   return {
-    push(value) {
-      if (controller.signal.aborted) {
-        return;
-      }
-      lineWriter.write(JSON.stringify(value));
-      countLine();
-    },
     get sink() {
       return sink;
     },
@@ -206,7 +191,7 @@ export function createCollectingSink<T>(consume: (value: T) => void): Writable {
         consume(value);
         callback();
       } catch (maybeError) {
-        callback(maybeError as Error);
+        callback(toError(maybeError));
       }
     },
   });

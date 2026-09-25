@@ -8,13 +8,9 @@ import type { CapiContentFetcher, StoryContent } from "./capi";
 import type { ClientFilter } from "./types";
 
 /**
- * Drops stories before their content is fetched.
- *
- * The single-story fetch is the expensive part of the pipeline, so any filter
- * that can be decided from the list response belongs here rather than at the
- * end. `--publish-status changed` is the case that motivated it: `published`
- * and `unpublished_changes` both ride along on the list response, so filtering
- * afterwards meant fetching every published story to keep a handful.
+ * Drops stories before their content is fetched. The per-story fetch is the
+ * expensive part of the pipeline, so any filter decidable from the list response
+ * (such as `--publish-status`) belongs here rather than at the end.
  */
 export const filterListedStoriesStream = ({
   filters,

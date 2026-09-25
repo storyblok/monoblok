@@ -129,3 +129,15 @@ export function stoppedEarlyMessage(limit: number | undefined): string {
     "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran."
   );
 }
+
+/** The content phase's line in the run summary. */
+export function contentSummary(tracker: PhaseTracker): string {
+  const content = tracker.counts("content");
+  return `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${tracker.phase("content").mark()})`;
+}
+
+/** The listing phase's line in the run summary, the same in every mode. */
+export function listingSummary(tracker: PhaseTracker): string {
+  const list = tracker.counts("list");
+  return `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${tracker.phase("list").mark()})`;
+}

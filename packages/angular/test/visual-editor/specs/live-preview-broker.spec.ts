@@ -245,9 +245,9 @@ test("keeps the remaining subscriber alive and supports re-subscription", async 
   await frame.evaluate(() => window.__storyblokBrokerQa?.clearA());
   expect((await getBrokerState(page)).active).toEqual(["B"]);
 
-  // Dropping a subscriber must not rebuild the bridge, so the union of relation
-  // options survives while only the remaining subscriber is called.
-  await editArticleTitle(page, editor, { fanOut: ["B"], resolved: ["A", "B"] });
+  // Dropping a subscriber retracts its contribution immediately: the bridge
+  // rebuilds from B's options alone, so only B's relation stays resolved.
+  await editArticleTitle(page, editor, { fanOut: ["B"], resolved: ["B"] });
   await expect.poll(() => messageListenerCount(page)).toBe(listenersBeforeSubscribing + 1);
 
   await frame.evaluate(() => window.__storyblokBrokerQa?.clear());

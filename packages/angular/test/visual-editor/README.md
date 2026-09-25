@@ -44,5 +44,5 @@ For every scenario it asserts three things that one-bridge-per-subscriber would 
 - That the preview page gained exactly one `message` listener, measured as a delta against a
   baseline taken before the first subscription.
 
-Fan-out and relation resolution are asserted separately: after unsubscribing A, the bridge is not
-rebuilt, so A's relation stays resolved while only B's callback fires.
+Fan-out and relation resolution are asserted separately: after unsubscribing A, the bridge rebuilds
+from B's options alone, so A's relation reverts to unresolved while only B's callback fires.

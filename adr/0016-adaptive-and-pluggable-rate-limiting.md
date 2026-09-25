@@ -1,6 +1,6 @@
 # ADR-0016: Adaptive and Pluggable Rate Limiting in the API Clients
 
-**Status:** Accepted  
+**Status:** Accepted, amended by ADR-0017  
 **Date:** 2026-09-21
 
 ## Context
@@ -125,6 +125,10 @@ twenty-fifth of the bucket's rate per quiet second. It is bounded on both sides,
 rate the client would have used anyway and never below a floor of one request per second, so it can
 only ever make a client more conservative than it is today. It is on by default and switched off
 with `rateLimit.adaptive: false`.
+
+ADR-0017 reverses this for the Content API client: where the CDN is observably serving the traffic,
+the ceiling rises above the tier limit rather than sitting on it, so adaptation there is no longer
+only conservative. Everything else here stands.
 
 Admission happens around each HTTP request rather than around the call that triggered it. Retries
 are issued inside a single call, so gating the call would let one admitted request put

@@ -176,9 +176,7 @@ export interface ContentApiClientConfig<
    * - `undefined` (default): auto-detect tier from path + `per_page` query param.
    * - `number`: fixed requests per second (single queue).
    * - `false`: disable rate limiting entirely.
-   * - `RateLimitConfig`: `requestsPerSecond`, `adaptToServerHeaders`, `adaptive`
-   *   (back off on 429 and recover on success, on by default) and `limiter`
-   *   (replace the in-memory limiter with one shared across instances).
+   * - `RateLimitConfig`: see that type for the individual options.
    */
   rateLimit?: RateLimitConfig | number | false;
   /**

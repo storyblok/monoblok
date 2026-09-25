@@ -7,8 +7,12 @@
  */
 import { createThrottle } from "./throttle";
 import type { RateLimitContext, RateLimiter } from "./limiter";
-import { createDefaultRateLimiter, createPassthroughRateLimiter } from "./limiter";
-import type { AdaptiveConfig } from "./limiter";
+import {
+  clampRequestsPerSecond,
+  createDefaultRateLimiter,
+  createPassthroughRateLimiter,
+} from "./limiter";
+import type { AdaptiveConfig, RateLimitStatus } from "./limiter";
 
 export { createThrottle };
 
@@ -57,19 +61,55 @@ export interface RateLimitConfig {
    * Rate limits are enforced per token, but each client instance paces itself
    * alone, so parallel builds or workers sharing a token overrun the quota
    * between them. Adaptation lets them settle at a rate the token sustains.
-   * The limit never rises above the one the client would have used anyway.
+   * On its own it only lowers the rate; `cacheAware` is what can raise it.
    *
    * Pass an object to tune it, or `false` to pin each tier to its limit.
    * @default true
    */
   adaptive?: boolean | AdaptiveConfig;
   /**
+   * Let a tier's rate rise above its limit while the CDN cache is serving the
+   * traffic.
+   *
+   * The per-second tiers apply to requests that reach the origin. A request the
+   * cache answers never gets there, so a tier whose responses are mostly cached
+   * is paced by a limit that does not apply to most of them. With this on, the
+   * client measures the share of its responses the cache served and raises the
+   * tier by `1 / (1 - hitShare)` — twice the tier at a half-cached workload,
+   * eight times it at seven-eighths, which is where the bound stops it. The
+   * requests that do reach the origin stay within the tier either way.
+   *
+   * The cost is paid when a warm workload goes cold all at once, which is what
+   * following a new content version does: the requests already in flight
+   * overshoot the tier and come back as a bounded burst of 429s that the
+   * back-off then absorbs. Set this to `false` to trade the throughput for
+   * never exceeding the tier.
+   *
+   * Traffic the cache does not serve leaves the tier at its limit, which is
+   * also what a browser sees: the cache status is not among the headers the API
+   * exposes to cross-origin script. Ignored alongside `requestsPerSecond`,
+   * which is an explicit rate, and when `adaptive` is `false`.
+   * @default true
+   */
+  cacheAware?: boolean;
+  /**
+   * Called when a response changes the rate a tier is being paced at.
+   *
+   * Nothing else reports the rate, so without this a 429 burst can only be
+   * explained by timing the requests. Failures are swallowed, and no
+   * measurement is taken while this is unset.
+   *
+   * Not called for a custom `limiter`, which does its own pacing.
+   */
+  onRateLimitChange?: (status: RateLimitStatus) => void;
+  /**
    * Replaces the in-memory limiter, which paces each instance independently.
    *
    * Supply one backed by shared storage (Redis, Upstash, …) to hold a fleet of
    * instances to a single quota proactively rather than by reacting to 429s.
-   * `requestsPerSecond` and `adaptive` do not apply to a custom limiter; the
-   * rate the client would have used is passed to it as `context.limit`.
+   * `requestsPerSecond`, `adaptive`, `cacheAware`, `adaptToServerHeaders` and
+   * `onRateLimitChange` do not apply to a custom limiter; the rate the client
+   * would have used is passed to it as `context.limit`.
    */
   limiter?: RateLimiter;
 }
@@ -185,9 +225,47 @@ export function parseRateLimitPolicyHeader(response: Response): number | undefin
     return undefined;
   }
 
-  // A rate below 1 would floor to zero, which reads as "no limit" to the
-  // window and would turn a ceiling into no pacing at all.
-  return Math.min(Math.max(1, Math.floor(strictest)), MAX_RATE_LIMIT);
+  return Math.min(clampRequestsPerSecond(Math.floor(strictest)), MAX_RATE_LIMIT);
+}
+
+/**
+ * A revalidated entry is reported with its own status ("RefreshHit"), and that
+ * revalidation reaches the origin, so only a plain hit is free.
+ */
+const CACHE_HIT_STATUS = "hit";
+/** One status per cache the response passed through, joined as a header list. */
+const CACHE_STATUS_SEPARATOR = /\s*,\s*/;
+/** A status is its own word followed by the cache that produced it: `Hit from cloudfront`. */
+const CACHE_STATUS_WORDS = /\s+/;
+
+/**
+ * Reads whether the CDN answered a response from its cache rather than from
+ * the origin.
+ *
+ * A response that passed through more than one cache carries one status per
+ * hop, which arrives as a single comma-joined value. It only spared the origin
+ * if every hop served it, so each is matched as a whole word — a substring
+ * match would make the answer depend on which hop happened to be listed first.
+ *
+ * Returns `undefined` when the response carries no cache status. Browsers are
+ * the case that matters: the header is not among the ones the API exposes to
+ * cross-origin script, so a browser client can never observe a hit and stays
+ * at the origin tier.
+ */
+export function parseCacheStatusHeader(response: Response): boolean | undefined {
+  const header = response.headers.get("x-cache");
+  if (header === null) {
+    return undefined;
+  }
+
+  const statuses = header.trim().split(CACHE_STATUS_SEPARATOR).filter(Boolean);
+  if (statuses.length === 0) {
+    return undefined;
+  }
+
+  return statuses.every(
+    (status) => status.split(CACHE_STATUS_WORDS)[0]?.toLowerCase() === CACHE_HIT_STATUS,
+  );
 }
 
 function getRequestUrl(input: RequestInfo | URL): string | undefined {
@@ -259,6 +337,8 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     maxConcurrency,
     adaptToServerHeaders = true,
     adaptive = true,
+    cacheAware = true,
+    onRateLimitChange,
     limiter,
   } = resolvedConfig;
   // `maxConcurrency` is the deprecated alias for `requestsPerSecond`.
@@ -283,7 +363,15 @@ export function createThrottleManager(config: RateLimitConfig | number | false):
     limiter ??
     createDefaultRateLimiter({
       adaptive,
+      onRateLimitChange,
       parseServerLimit: adaptToServerHeaders ? parseRateLimitPolicyHeader : undefined,
+      cacheAware:
+        cacheAware && fixedLimit === undefined
+          ? {
+              cachedRequestsPerSecond: MAX_RATE_LIMIT,
+              detectCacheHit: parseCacheStatusHeader,
+            }
+          : undefined,
     });
 
   return createManager(resolvedLimiter, toContext);

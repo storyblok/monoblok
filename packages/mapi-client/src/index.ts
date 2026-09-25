@@ -99,7 +99,9 @@ export type { RateLimitConfig } from "./utils/rate-limit";
 export { createDefaultRateLimiter } from "./utils/limiter";
 export type {
   AdaptiveConfig,
+  CacheAwareConfig,
   DefaultRateLimiterOptions,
   RateLimitContext,
   RateLimiter,
+  RateLimitStatus,
 } from "./utils/limiter";

@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  PendingTasks,
   untracked,
   ViewContainerRef,
 } from "@angular/core";
@@ -50,6 +51,7 @@ export class SbBlokDirective {
   private readonly viewContainerRef = inject(ViewContainerRef);
   private readonly resolver = inject(StoryblokComponentResolver);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly pendingTasks = inject(PendingTasks);
 
   readonly sbBlok = input.required<SbBlokData | null | undefined>();
 
@@ -60,7 +62,12 @@ export class SbBlokDirective {
   constructor() {
     effect(() => {
       const blok = this.sbBlok();
-      untracked(() => this.render(blok));
+      // The component lookup below is async (dynamic `import()` for
+      // lazy-loaded components), and a plain unawaited call isn't tracked by
+      // Angular's app-stability detection. Without `pendingTasks.run`, SSR
+      // can serialize the response before a lazily-loaded child component
+      // has resolved, silently dropping it from the rendered HTML.
+      untracked(() => void this.pendingTasks.run(() => this.render(blok)));
     });
 
     this.destroyRef.onDestroy(() => this.componentRef?.destroy());

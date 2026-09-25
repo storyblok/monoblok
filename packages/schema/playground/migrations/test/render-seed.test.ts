@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import home from "../.storyblok/stories/seed/home_story-home.json";
 import boards from "../.storyblok/stories/offline/boards_story-boards.json";
+import intro from "../.storyblok/stories/offline/intro_story-intro.json";
 import legacy from "../.storyblok/stories/offline/legacy_story-legacy.json";
 import pricing from "../.storyblok/stories/seed/pricing_story-pricing.json";
 import team from "../.storyblok/stories/seed/team_story-team.json";
@@ -13,6 +14,7 @@ import StoryblokComponent from "../src/components/storyblok/storyblok-component.
 import { migrations } from "../migrations";
 
 const BOARDS_MIGRATION = "0021-link-boards-to-content-boards";
+const INTRO_MIGRATION = "0023-intro-to-teaser-with-spacers";
 
 /**
  * The board story is rendered as the migration leaves it. Its components are
@@ -24,7 +26,23 @@ const migratedBoards = {
   content: runMigrationOnStory(migrations[BOARDS_MIGRATION]!, boards.content).content,
 };
 
-const SEED_STORIES = { home, team, pricing, translated, legacy, boards: migratedBoards };
+/**
+ * The same for the intro story: the block it holds is replaced by three, and
+ * the spacers around them exist only once the migration has run.
+ */
+const migratedIntro = {
+  content: runMigrationOnStory(migrations[INTRO_MIGRATION]!, intro.content).content,
+};
+
+const SEED_STORIES = {
+  home,
+  team,
+  pricing,
+  translated,
+  legacy,
+  boards: migratedBoards,
+  intro: migratedIntro,
+};
 
 async function renderSeedStories(): Promise<Record<string, string>> {
   const container = await AstroContainer.create();

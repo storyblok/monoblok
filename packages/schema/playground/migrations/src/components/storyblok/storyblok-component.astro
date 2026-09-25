@@ -14,6 +14,7 @@ import Page from './page.astro';
 import PricingTable from './pricing-table.astro';
 import Quote from './quote.astro';
 import Section from './section.astro';
+import Spacer from './spacer.astro';
 import Teaser from './teaser.astro';
 
 interface Props {
@@ -33,6 +34,7 @@ const { block } = Astro.props;
     {block.items?.map(child => <Astro.self block={child} />)}
   </Section>
 )}
+{block.component === 'spacer' && <Spacer block={block} />}
 {block.component === 'card' && <Card block={block} />}
 {block.component === 'author' && <Author block={block} />}
 {block.component === 'teaser' && <Teaser block={block} />}

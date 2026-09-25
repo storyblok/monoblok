@@ -20,6 +20,7 @@ import { pageBlock } from "./blocks/page";
 import { pricingTableBlock } from "./blocks/pricing-table";
 import { quoteBlock } from "./blocks/quote";
 import { sectionBlock } from "./blocks/section";
+import { spacerBlock } from "./blocks/spacer";
 import { teaserBlock } from "./blocks/teaser";
 import { nativeColorPicker } from "./field-plugins";
 import {
@@ -32,6 +33,7 @@ export const schema = defineSchema({
   blocks: {
     pageBlock,
     sectionBlock,
+    spacerBlock,
     cardBlock,
     authorBlock,
     teaserBlock,

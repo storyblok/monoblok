@@ -21,7 +21,6 @@ export {
   type StoryblokReactRichTextProps,
   type StoryblokReactRichTextRenderContext,
   createRichTextRenderer,
-  StoryblokRichText,
 } from "./richtext";
 
 export { storyblokEditable } from "@storyblok/live-preview";
@@ -37,3 +36,5 @@ export {
   useStoryblokState,
   type UseStoryblokStateOptions,
 } from "./client";
+
+export { buildStoryblokImage, splitTableRows } from "@storyblok/richtext";

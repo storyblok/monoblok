@@ -16,9 +16,12 @@ import CustomTable from "./fixtures/custom-table";
 import CustomText from "./fixtures/custom-text";
 import HeadingWithRichText from "./fixtures/heading-with-rich-text";
 import { defineStoryblokComponents } from "../define-storyblok-components";
-import { StoryblokRichText as RootStoryblokRichText } from "./index";
+import { createStoryblokRichText } from "./create-storyblok-richtext";
 
 const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
+// Standalone renderer with no embedded block support — the replacement for
+// the removed module-level `StoryblokRichText` export from "./index".
+const RootStoryblokRichText = createStoryblokRichText();
 
 interface AttributePositionRule {
   key: string;

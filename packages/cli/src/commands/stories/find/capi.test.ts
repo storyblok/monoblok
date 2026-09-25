@@ -151,6 +151,33 @@ describe("createCapiContentFetcher", () => {
     expect(requests[0].searchParams.get("language")).toBe("de");
   });
 
+  it("should fail as a usage error, with the CDN's reason, when it rejects --capi-params", async () => {
+    preconditions.hasSpaceWithPreviewToken("preview-token");
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories", () =>
+        HttpResponse.json({ error: "Unknown parameter zzz" }, { status: 422 }),
+      ),
+    );
+
+    const creating = createCapiContentFetcher({
+      spaceId: "12345",
+      region: "eu",
+      params: { zzz: "1" },
+    });
+
+    await expect(creating).rejects.toThrow(CommandError);
+    await expect(creating).rejects.toThrow(/Unknown parameter zzz/);
+  });
+
+  it("should not spend a request checking the default params", async () => {
+    preconditions.hasSpaceWithPreviewToken("preview-token");
+    const requests = preconditions.canFetchCdnStories([]);
+
+    await createCapiContentFetcher({ spaceId: "12345", region: "eu", params: {} });
+
+    expect(requests).toHaveLength(0);
+  });
+
   it("omits stories the CDN did not answer for, rather than guessing", async () => {
     preconditions.hasSpaceWithPreviewToken("preview-token");
     preconditions.canFetchCdnStories([

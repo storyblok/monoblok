@@ -22,7 +22,10 @@ const preconditions = {
    * Reproducing the real shape of the run is the whole point — a single instant
    * page hides the bug entirely.
    */
-  canFindStories(count: number, { slow = false }: { slow?: boolean } = {}) {
+  canFindStories(
+    count: number,
+    { slow = false, jitter = false }: { slow?: boolean; jitter?: boolean } = {},
+  ) {
     const stories = Array.from({ length: count }, () => makeMockStory());
     server.use(
       http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", async ({ request }) => {
@@ -42,6 +45,10 @@ const preconditions = {
           if (slow) {
             await delay(20);
           }
+          if (jitter) {
+            // Later stories answer first, so completion order is the reverse of listing order.
+            await delay((count - stories.indexOf(story)) * 3);
+          }
           return HttpResponse.json({ story });
         }),
       );
@@ -56,18 +63,21 @@ const preconditions = {
    * outside the searched scope: an unknown uuid has to come back empty, or every
    * broken reference would resolve to whatever the handler felt like returning.
    */
-  canCheckReferences() {
+  canCheckReferences({ linkingStories = 1 }: { linkingStories?: number } = {}) {
     const missingUuid = "11111111-2222-3333-4444-555555555555";
-    const linking = makeMockStory({
-      slug: "linking",
-      content: {
-        _uid: "a",
-        component: "hero",
-        link: { fieldtype: "multilink", linktype: "story", id: missingUuid, cached_url: "gone" },
-      },
-    });
+    const linkingAll = Array.from({ length: linkingStories }, (_, index) =>
+      makeMockStory({
+        slug: `linking-${index}`,
+        content: {
+          _uid: "a",
+          component: "hero",
+          link: { fieldtype: "multilink", linktype: "story", id: missingUuid, cached_url: "gone" },
+        },
+      }),
+    );
+    const [linking] = linkingAll;
     const plain = makeMockStory({ slug: "plain" });
-    const stories = [linking, plain];
+    const stories = [...linkingAll, plain];
 
     server.use(
       http.get("https://mapi.storyblok.com/v1/spaces/12345/components", () =>
@@ -176,6 +186,108 @@ describe("stories find command", () => {
     ]);
   });
 
+  it("should emit stories in listing order however their fetches complete", async () => {
+    const stories = preconditions.canFindStories(8, { jitter: true });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--sort",
+      "slug:asc",
+    ]);
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual(stories.map((story) => story.id));
+  });
+
+  it("should end a limited reference check at exit 0, counting only what was written", async () => {
+    preconditions.canCheckReferences({ linkingStories: 3 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+      "--limit",
+      "1",
+    ]);
+    const stderr = errorSpy.mock.calls.flat().join("\n");
+
+    expect(written).toHaveLength(1);
+    expect(process.exitCode).toBeFalsy();
+    expect(stderr).toContain("Results: 1 stories with reference issues");
+    expect(stderr).not.toContain("aborted");
+  });
+
+  it("should report only the issue types passed to --check-references", async () => {
+    preconditions.canCheckReferences();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+      "unpublished,stale_url",
+    ]);
+
+    // The only issue in the space is a broken link.
+    expect(written).toHaveLength(0);
+    expect(process.exitCode).toBeFalsy();
+  });
+
+  it("should reject an unknown --query operation before any request", async () => {
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--query",
+      "[category][eq]=technology",
+    ]);
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain("Unknown --query operation");
+  });
+
+  it("should refuse a --where on a field-level translation under --capi-filter, before any request", async () => {
+    let requests = 0;
+    const countRequest = (): void => {
+      requests += 1;
+    };
+    server.events.on("request:start", countRequest);
+
+    try {
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "find",
+        "--space",
+        "12345",
+        "--capi-filter",
+        "--where",
+        "$[?($.content.title__i18n__de)]",
+      ]);
+    } finally {
+      server.events.removeListener("request:start", countRequest);
+    }
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain(
+      "--capi-filter cannot evaluate --where on field-level translations",
+    );
+    expect(requests).toBe(0);
+  });
+
   // Placed before the closed-pipe test on purpose: that one leaves stdout closed
   // for the life of the process, and a run after it would stop before any stage
   // had work in flight.
@@ -209,10 +321,8 @@ describe("stories find command", () => {
     expect(process.exitCode).toBeFalsy();
   });
 
-  // Regression: aborting the pipeline tears every in-flight stage down at once,
-  // and each one reported that teardown through its own error callback. The run
-  // printed "▲ error The operation was aborted", counted a failed listing page,
-  // and exited 1 — for what is a complete, deliberate use of the command.
+  // A reader closing the pipe is a deliberate stop: the run exits 0 and reports
+  // no failed stage.
   //
   // One test rather than four, because "the reader hung up" is module state that
   // survives for the life of the process: a second run in the same file starts

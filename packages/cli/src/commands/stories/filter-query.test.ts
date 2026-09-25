@@ -28,14 +28,34 @@ describe("parseFilterQuery", () => {
     });
   });
 
-  it("should return an empty object for empty input", () => {
-    expect(parseFilterQuery("")).toEqual({});
-    expect(parseFilterQuery("   ")).toEqual({});
+  // Each of these would put no filter on the wire, so the command would return
+  // the whole scope at exit 0 as if it had answered the question asked.
+  it.each(["", "   ", "&", "&&", "{}"])("should reject input with no clauses: %j", (input) => {
+    expect(() => parseFilterQuery(input)).toThrow(CommandError);
   });
 
-  // Regression: these used to be skipped silently, so the whole `--query` could
-  // parse to `{}` — no filter on the wire, and a full-space result set returned
-  // at exit 0 as if it had answered the question asked.
+  it("should reject an operation the API does not know", () => {
+    expect(() => parseFilterQuery("[category][eq]=technology")).toThrow(
+      /Unknown --query operation: \[category\]\[eq\]/,
+    );
+    expect(() => parseFilterQuery('{"category":{"bogusop":"x"}}')).toThrow(CommandError);
+  });
+
+  it("should accept every operation the API applies", () => {
+    expect(
+      parseFilterQuery("[a][not_in]=x&[b][like]=y*&[c][gt-date]=2024-01-01&[d][all_in_array]=z"),
+    ).toEqual({
+      a: { not_in: "x" },
+      b: { like: "y*" },
+      c: { "gt-date": "2024-01-01" },
+      d: { all_in_array: "z" },
+    });
+  });
+
+  it("should reject JSON whose field is not an object of operations", () => {
+    expect(() => parseFilterQuery('{"component":"hero"}')).toThrow(/object of operations/);
+  });
+
   it("should reject a clause with no operation", () => {
     expect(() => parseFilterQuery("[highlighted]=true")).toThrow(CommandError);
   });
@@ -75,8 +95,7 @@ describe("mergeFilterQuery", () => {
     });
   });
 
-  // Regression: a plain object spread let the second value win in silence, so
-  // `--query "[component][in]=hero" --container-block product` dropped `hero`.
+  // A filter the user asked for must never be dropped by another one.
   it("should reject the same field and operation coming from both sides", () => {
     expect(() =>
       mergeFilterQuery({ component: { in: "hero" } }, { component: { in: "product" } }),

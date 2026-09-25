@@ -1,10 +1,50 @@
 import type { StoryListQuery } from "../../types";
 import { CommandError } from "../../utils/error/command-error";
+import { isRecord } from "../../utils/object";
 
 export type FilterQuery = NonNullable<StoryListQuery["filter_query"]>;
 
 const CLAUSE_SYNTAX_HINT =
   'Expected Storyblok bracket syntax ("[field][operation]=value", clauses joined with "&") or a JSON object (\'{"field":{"operation":"value"}}\').';
+
+/**
+ * The operations the Management API applies to a `filter_query` clause.
+ *
+ * The API skips an operation it does not know rather than rejecting it, so a
+ * typo such as `[category][eq]=news` would drop the whole filter and return
+ * every story in scope. Checked here so that fails as a usage error instead.
+ */
+const FILTER_QUERY_OPERATIONS = new Set([
+  "in",
+  "not_in",
+  "is",
+  "like",
+  "not_like",
+  "all",
+  "exists",
+  "in_array",
+  "all_in_array",
+  "eq_array",
+  "gt_int",
+  "lt_int",
+  "gt-int",
+  "lt-int",
+  "gt_num",
+  "lt_num",
+  "gt-num",
+  "lt-num",
+  "gt_float",
+  "lt_float",
+  "gt-float",
+  "lt-float",
+  "gt_date",
+  "lt_date",
+  "gt-date",
+  "lt-date",
+]);
+
+const OPERATIONS_HINT =
+  "Supported operations: in, not_in, is, like, not_like, all, exists, in_array, all_in_array, eq_array, gt_int, lt_int, gt_float, lt_float, gt_date, lt_date.";
 
 /**
  * Parses the CLI `--query` value into the structured `filter_query` object the
@@ -20,21 +60,41 @@ const CLAUSE_SYNTAX_HINT =
  * string straight through instead yields a malformed `filter_query=<string>`
  * param that the API silently ignores.
  *
- * Input that parses to nothing is a usage error rather than an empty filter. A
- * `filter_query` that never reaches the wire does not narrow anything, so the
- * command would answer a different, much larger question than the one asked —
- * with a plausible-looking result set and a zero exit code to hide it.
+ * Throws on input that yields no clause or names an unknown operation. Either
+ * way nothing would narrow the listing, and the command would return the whole
+ * scope at exit 0.
  */
 export function parseFilterQuery(input: string): FilterQuery {
   const trimmed = input.trim();
   if (!trimmed) {
-    return {};
+    throw new CommandError(`--query is empty.\n${CLAUSE_SYNTAX_HINT}`);
   }
 
-  if (trimmed.startsWith("{")) {
-    return parseAsJson(trimmed);
+  const result = trimmed.startsWith("{") ? parseAsJson(trimmed) : parseAsClauses(trimmed);
+
+  const fields = Object.entries(result);
+  if (fields.length === 0) {
+    throw new CommandError(`--query has no clauses: ${input}\n${CLAUSE_SYNTAX_HINT}`);
   }
 
+  const unknown = fields.flatMap(([field, operations]) =>
+    Object.keys(operations)
+      .filter((operation) => !FILTER_QUERY_OPERATIONS.has(operation))
+      .map((operation) => `[${field}][${operation}]`),
+  );
+  if (unknown.length > 0) {
+    throw new CommandError(
+      `Unknown --query operation${unknown.length > 1 ? "s" : ""}: ${unknown.join(", ")}\n${OPERATIONS_HINT}`,
+    );
+  }
+
+  // Field names are free-form: they are the space's own content fields.
+  return result as FilterQuery;
+}
+
+type ParsedFilterQuery = Record<string, Record<string, unknown>>;
+
+function parseAsClauses(trimmed: string): ParsedFilterQuery {
   const result: Record<string, Record<string, string>> = {};
   const ignored: string[] = [];
   for (const clause of trimmed.split("&")) {
@@ -57,22 +117,27 @@ export function parseFilterQuery(input: string): FilterQuery {
       `Invalid --query clause${ignored.length > 1 ? "s" : ""}: ${ignored.join(", ")}\n${CLAUSE_SYNTAX_HINT}`,
     );
   }
-
-  // Field/operator names are free-form user input; MAPI validates them at runtime.
-  return result as FilterQuery;
+  return result;
 }
 
-function parseAsJson(trimmed: string): FilterQuery {
+function parseAsJson(trimmed: string): ParsedFilterQuery {
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
   } catch (error) {
     throw new CommandError(`Invalid --query JSON: ${(error as Error).message}\n${trimmed}`);
   }
-  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (!isRecord(parsed)) {
     throw new CommandError(`Invalid --query JSON: expected an object.\n${trimmed}`);
   }
-  return parsed as FilterQuery;
+  // MAPI rejects a `filter_query` that is not a hash of hashes outright.
+  const flat = Object.keys(parsed).filter((field) => !isRecord(parsed[field]));
+  if (flat.length > 0) {
+    throw new CommandError(
+      `Invalid --query JSON: each field needs an object of operations, e.g. {"${flat[0]}":{"in":"value"}}.\n${trimmed}`,
+    );
+  }
+  return parsed as ParsedFilterQuery;
 }
 
 /**

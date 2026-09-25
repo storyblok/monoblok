@@ -1,10 +1,10 @@
-# ADR-0016: CLI JSONL Pipe Contract
+# ADR-0019: CLI JSONL Pipe Contract
 
 **Status:** Accepted **Date:** 2026-08-27
 
 ## Context
 
-`stories find` ([ADR-0015](0015-cli-stories-find-command.md)) is the first CLI command whose result
+`stories find` ([ADR-0018](0018-cli-stories-find-command.md)) is the first CLI command whose result
 is data rather than a report, and the first written to be read by another command:
 
 ```bash
@@ -35,7 +35,7 @@ content fetch from the consuming side, which is the difference between a 3,951-s
 eleven minutes and taking under a minute. A contract that had consumers re-fetch by id would leave
 that on the table and reduce the pipe to a slower `--by-ids`.
 
-An earlier position in ADR-0015 had consumers refetch via the Management API before mutating, on
+An earlier position in ADR-0018 had consumers refetch via the Management API before mutating, on
 staleness grounds. That is superseded. The staleness window is real, but it belongs to the write
 path rather than to the format, and the format carries what is needed to close it.
 

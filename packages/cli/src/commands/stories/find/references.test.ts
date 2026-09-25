@@ -87,6 +87,16 @@ describe("extractReferences", () => {
     ]);
   });
 
+  it("should extract a story link written without fieldtype", () => {
+    const story = makeStory({
+      component: "page",
+      link: { linktype: "story", id: UUID_B, cached_url: "/target" },
+    });
+    expect(extractReferences(story, emptyRelMap)).toEqual([
+      { targetUuid: UUID_B, refType: "multilink", fieldPath: "content.link", cachedUrl: "/target" },
+    ]);
+  });
+
   it("extracts richtext link marks", () => {
     const story = makeStory({
       component: "page",
@@ -231,10 +241,7 @@ describe("detectIssues", () => {
     expect(issues[0].actual_url).toBe("target");
   });
 
-  // Regression: the unpublished branch used to `continue`, so a reference that
-  // was both never reported its stale URL. In a draft-heavy space that hid every
-  // stale_url behind an unpublished target, and an audit filtering on
-  // `$._ref_issues[?(@.type == 'stale_url')]` under-reported silently.
+  // Each issue type stands on its own, so filtering on one never hides another.
   it("should report both unpublished and stale_url for a reference that is both", () => {
     const refs: RefEntry[] = [
       {

@@ -20,7 +20,8 @@ export interface FindOptions {
   sort?: string;
   limit?: string;
   references?: string;
-  checkReferences?: boolean;
+  /** `true` for the bare flag, or a comma-separated list of issue types. */
+  checkReferences?: boolean | string;
   skipContent?: boolean;
   capiFilter?: boolean;
   capiParams?: string;

@@ -1,0 +1,42 @@
+---
+import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
+
+interface Props {
+  block: Block<'pricing_table'>;
+}
+
+const { block } = Astro.props;
+const table = block.table;
+---
+
+<section class="my-8" data-block="pricing_table">
+  {block.headline && <h2 class="mb-4 text-2xl font-bold text-gray-900">{block.headline}</h2>}
+  {table?.tbody?.length || table?.thead?.length ? (
+    <table class="w-full border-collapse text-left text-sm">
+      {table.thead?.length ? (
+        <thead>
+          <tr>
+            {table.thead.map(cell => (
+              <th class="border border-gray-200 px-3 py-2 font-semibold">{cell.value}</th>
+            ))}
+          </tr>
+        </thead>
+      ) : null}
+      <tbody>
+        {table.tbody?.map(row => (
+          <tr>
+            {row.body?.map(cell => <td class="border border-gray-200 px-3 py-2">{cell.value}</td>)}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p class="text-sm text-gray-400">No table rows</p>
+  )}
+  <p class="mt-2 text-xs text-gray-400">
+    {block.currency && <span class="mr-3">currency: {block.currency}</span>}
+    {block.footnote}
+  </p>
+  <Translations block={block} />
+</section>

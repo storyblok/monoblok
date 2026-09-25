@@ -1,0 +1,170 @@
+{
+  "pricing": {
+    "_uid": "33333333-0000-4000-8000-000000000001",
+    "body": [
+      {
+        "_uid": "33333333-0000-4000-8000-000000000002",
+        "table": {
+          "tbody": [
+            {
+              "_uid": "33333333-0000-4000-8000-000000000006",
+              "body": [
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000007",
+                  "value": "Starter"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000008",
+                  "value": "9"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000009",
+                  "value": "1"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000006-support",
+                  "value": "Included"
+                }
+              ]
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-00000000000a",
+              "body": [
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000b",
+                  "value": "Team"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000c",
+                  "value": "49"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000d",
+                  "value": "10"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000a-support",
+                  "value": "Included"
+                }
+              ]
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-00000000000e",
+              "body": [
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000f",
+                  "value": "Enterprise"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000010",
+                  "value": ""
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000011",
+                  "value": "unlimited"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000e-support",
+                  "value": "Included"
+                }
+              ]
+            }
+          ],
+          "thead": [
+            {
+              "_uid": "33333333-0000-4000-8000-000000000003",
+              "value": "Plan"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000004",
+              "value": "Price"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000005",
+              "value": "Seats"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000003-support",
+              "value": "Support"
+            }
+          ],
+          "fieldtype": "table"
+        },
+        "currency": "eur",
+        "footnote": "All prices exclude VAT.",
+        "headline": "Plans",
+        "component": "pricing_table"
+      },
+      {
+        "_uid": "33333333-0000-4000-8000-000000000012",
+        "items": [
+          {
+            "_uid": "33333333-0000-4000-8000-000000000013",
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Yes, at any point in the cycle.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "question": "Can I change plan later?",
+            "component": "faq_item"
+          },
+          {
+            "_uid": "33333333-0000-4000-8000-000000000014",
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "The answer embeds a card:",
+                      "type": "text"
+                    }
+                  ]
+                },
+                {
+                  "type": "blok",
+                  "attrs": {
+                    "id": "33333333-0000-4000-8000-000000000015",
+                    "body": [
+                      {
+                        "_uid": "33333333-0000-4000-8000-000000000015",
+                        "body": null,
+                        "link": null,
+                        "slug": "included",
+                        "price": "0",
+                        "images": [],
+                        "headline": "Everything in Starter, plus seats",
+                        "component": "card"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "question": "What is included?",
+            "component": "faq_item"
+          }
+        ],
+        "headline": "Questions about billing",
+        "component": "faq",
+        "categories": [
+          "billing",
+          "general"
+        ]
+      }
+    ],
+    "component": "page",
+    "seo_title": "Pricing",
+    "seo_description": "A table field and an FAQ with richtext answers."
+  }
+}

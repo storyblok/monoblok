@@ -1,0 +1,82 @@
+{
+  "id": 223408651910728,
+  "slug": "team",
+  "name": "Team",
+  "content": {
+    "_uid": "22222222-0000-4000-8000-000000000001",
+    "body": [
+      {
+        "_uid": "22222222-0000-4000-8000-000000000002",
+        "items": [
+          {
+            "bio": "Both halves of the name are filled.",
+            "_uid": "22222222-0000-4000-8000-000000000003",
+            "avatar": {
+              "id": 223407129002961,
+              "alt": "About image",
+              "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+              "fieldtype": "asset"
+            },
+            "component": "author",
+            "last_name": "Hopper",
+            "first_name": "Grace"
+          },
+          {
+            "bio": "Only first_name is filled, so a merge has to decide what to do with the empty half.",
+            "_uid": "22222222-0000-4000-8000-000000000004",
+            "avatar": null,
+            "component": "author",
+            "last_name": "",
+            "first_name": "Prince"
+          },
+          {
+            "bio": "",
+            "_uid": "22222222-0000-4000-8000-000000000005",
+            "avatar": null,
+            "component": "author",
+            "last_name": "Liskov",
+            "first_name": "Barbara"
+          }
+        ],
+        "theme": "light",
+        "heading": "Everyone",
+        "component": "section"
+      },
+      {
+        "bio": "An author directly on the page, outside any container.",
+        "_uid": "22222222-0000-4000-8000-000000000006",
+        "avatar": null,
+        "component": "author",
+        "last_name": "Turing",
+        "first_name": "Alan"
+      },
+      {
+        "_uid": "22222222-0000-4000-8000-000000000007",
+        "link": {
+          "id": "51c6f4a7-3aba-4dc2-b10d-a1e22d1aba84",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "home"
+        },
+        "image": null,
+        "title": "Authors inside a teaser",
+        "authors": [
+          {
+            "bio": "Nested two levels down.",
+            "_uid": "22222222-0000-4000-8000-000000000008",
+            "avatar": null,
+            "component": "author",
+            "last_name": "Johnson",
+            "first_name": "Katherine"
+          }
+        ],
+        "component": "teaser",
+        "description": "The same block appears at several depths so a rename has to reach all of them."
+      }
+    ],
+    "component": "page",
+    "seo_title": "The team",
+    "seo_description": "Author blocks, including one with only half a name."
+  }
+}

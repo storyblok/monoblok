@@ -1,0 +1,12 @@
+*
+!assets/
+!assets/**/
+!assets/**/*.json
+!assets/**/*.png
+!datasources/
+!datasources/**/
+!datasources/**/*.json
+!stories/
+!stories/**/
+!stories/**/*.json
+!.gitignore

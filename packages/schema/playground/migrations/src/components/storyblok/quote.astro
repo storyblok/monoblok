@@ -1,0 +1,25 @@
+---
+import type { Block } from '../../schema/schema';
+import { linkHref } from '../../lib/links';
+import Author from './author.astro';
+import Translations from './translations.astro';
+
+interface Props {
+  block: Block<'quote'>;
+}
+
+const { block } = Astro.props;
+const href = linkHref(block.source_link);
+---
+
+<blockquote class="my-8 border-l-4 border-gray-900 pl-6" data-block="quote">
+  <p class="text-xl text-balance text-gray-800 italic">{block.text}</p>
+  {block.attribution && <footer class="mt-2 text-sm text-gray-500">— {block.attribution}</footer>}
+  {href && <a href={href} class="text-sm text-indigo-600 hover:underline">Source</a>}
+  {block.authors?.length ? (
+    <div class="mt-4 grid gap-3">
+      {block.authors.map(author => <Author block={author} />)}
+    </div>
+  ) : null}
+  <Translations block={block} />
+</blockquote>

@@ -1,0 +1,35 @@
+{
+  "intro": {
+    "_uid": "88888888-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Intro",
+    "seo_description": "A component that is replaced by three.",
+    "body": [
+      {
+        "_uid": "88888888-0000-4000-8000-000000000002-spacer-before",
+        "component": "spacer",
+        "height": "medium"
+      },
+      {
+        "_uid": "88888888-0000-4000-8000-000000000002",
+        "component": "teaser",
+        "title": "Everything in one place",
+        "description": "The intro brought its own spacing; the block that replaces it does not.",
+        "title__i18n__de": "Alles an einem Ort"
+      },
+      {
+        "_uid": "88888888-0000-4000-8000-000000000002-spacer-after",
+        "component": "spacer",
+        "height": "medium"
+      },
+      {
+        "_uid": "88888888-0000-4000-8000-000000000003",
+        "component": "quote",
+        "text": "The block after the intro, so the splice has a neighbour.",
+        "attribution": "The seed",
+        "source_link": null,
+        "authors": []
+      }
+    ]
+  }
+}

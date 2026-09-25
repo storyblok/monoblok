@@ -44,15 +44,13 @@ export class CatchAllComponent implements OnInit {
 
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
-  readonly bridgeConfig: BridgeParams = {
-    resolveRelations: ["article.author"],
-  };
+  readonly bridgeConfig: BridgeParams = {};
 
   ngOnInit(): void {
-    this.livePreview.connect(
-      (updatedStory) => this.story.set(updatedStory),
-      this.destroyRef,
-      this.bridgeConfig,
-    );
+    void this.livePreview
+      .connect((updatedStory) => this.story.set(updatedStory), this.destroyRef, this.bridgeConfig)
+      .catch((error: unknown) => {
+        console.error("[Storyblok] Live preview connection failed:", error);
+      });
   }
 }

@@ -1,0 +1,26 @@
+{
+  "name": "@storyblok/angular-integration-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dedicated Angular integration-test playground",
+  "type": "module",
+  "scripts": {
+    "start": "pnpm --filter @storyblok/angular playground:integration-tests:start",
+    "build": "pnpm --filter @storyblok/angular playground:integration-tests:build",
+    "configure:preview": "bash ../../../../.agents/skills/qa-engineer-manual/scripts/configure-space.sh --space \"$STORYBLOK_SPACE_ID\" --domain \"${STORYBLOK_PREVIEW_URL:-https://localhost:4200/}\" --confirm",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@storyblok/angular": "workspace:*",
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

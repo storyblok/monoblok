@@ -13,6 +13,7 @@ import {
   buildPublishStatusFilters,
   buildQueryParams,
   buildWhereFilters,
+  parseIssueTypes,
   parseLimit,
 } from "./actions";
 import { prepareCapiFilter } from "./pipeline";
@@ -25,31 +26,40 @@ function collectValues(value: string, previous: string[]): string[] {
 }
 
 const findCmd = storiesCommand
-  .command("find [text]")
-  .description("Find stories matching filters. Outputs JSONL to stdout (one story JSON per line).")
+  .command("find")
+  .description(
+    "Find stories matching filters and print them to stdout as JSONL, one story per line. Filters combine with AND.",
+  )
+  .argument("[text]", "full-text search over story name, slug and content (case-insensitive)")
   .option("-s, --space <space>", "space ID")
   .addOption(
     new Option("--entry-type <type>", "filter by entry type")
       .choices(["all", "story", "folder"])
       .default("all"),
   )
-  .option("--starts-with <path>", "scope to story subtree")
-  .option("--container-block <name>", "filter by container block type (server-side)")
-  .option("--includes-block <name>", "block presence at any depth (server-side, comma-separated)")
+  .option("--starts-with <path>", "scope to a story subtree, e.g. 'en/blog'")
+  .option(
+    "--container-block <name>",
+    "stories whose content type (root block) is this component, e.g. 'page'",
+  )
+  .option(
+    "--includes-block <names>",
+    "stories containing all of these blocks at any depth, comma-separated",
+  )
   .option(
     "-q, --query <query>",
-    "filter by root-level content attributes (server-side, MAPI filter_query)",
+    "filter on root-level content fields with filter_query syntax, e.g. '[category][in]=news'",
   )
   .option(
     "--where <jsonpath>",
-    "client-side JSONPath (RFC 9535) filter (repeatable)",
+    "JSONPath (RFC 9535) filter evaluated locally on each story, repeatable, e.g. \"$..[?(@.component == 'hero')]\" for a hero block at any depth",
     collectValues,
     [],
   )
-  .option("--tag <names>", "stories carrying any of these tags, comma-separated (server-side)")
+  .option("--tag <names>", "stories carrying any of these tags, comma-separated")
   .option(
     "--workflow-stage <ids>",
-    "stories at any of these workflow stage IDs, comma-separated (server-side)",
+    "stories at any of these workflow stage IDs (numeric), comma-separated",
   )
   .addOption(
     new Option("--publish-status <status>", "filter by publish status").choices([
@@ -58,24 +68,30 @@ const findCmd = storiesCommand
       "draft",
     ]),
   )
-  .option("--sort <fields>", "order results server-side, e.g. 'updated_at:desc' (comma-separated)")
+  .option(
+    "--sort <fields>",
+    "order by a story column or 'content.<field>', comma-separated, e.g. 'updated_at:desc' or 'content.title:asc'",
+  )
   .option("--limit <n>", "stop after this many results")
   .option(
     "--references <uuids>",
-    "find stories referencing these story UUIDs, comma-separated (server-side)",
+    "stories that reference any of these story UUIDs, comma-separated",
   )
-  .option("--check-references", "detect broken references and stale cached_url (client-side)")
+  .option(
+    "--check-references [types]",
+    "report stories with broken, unpublished or stale_url references, listed in a `_ref_issues` array on each story. Optionally only these types, comma-separated, e.g. 'broken'",
+  )
   .option(
     "--skip-content",
-    "skip the per-story content fetch and emit list metadata only (no content-dependent filters)",
+    "skip the per-story content fetch and emit list metadata only (--where then sees metadata only)",
   )
   .option(
     "--capi-filter",
-    "evaluate --where against bulk CAPI content and fetch only the matches (requires --where)",
+    "evaluate --where against bulk CDN content first and fetch only the matches from MAPI (requires --where)",
   )
   .option(
     "--capi-params <params>",
-    "extra CAPI query params for --capi-filter, e.g. '{version: published, language: de}'",
+    "extra CDN query params for --capi-filter, e.g. 'version=published' or 'language=de'",
   );
 
 findCmd.action(async (text: string | undefined, options: FindOptions, command) => {
@@ -108,6 +124,7 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     const publishStatusFilters = buildPublishStatusFilters(options);
     const whereFilters = buildWhereFilters(options.where);
     const limit = parseLimit(options.limit);
+    const issueTypes = parseIssueTypes(options.checkReferences);
 
     const context = { spaceId: space, params, ui, logger, reporter, verbose };
 
@@ -118,15 +135,22 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
           capiParams: options.capiParams,
           // The reference scan reads every story in scope, so there is nothing to
           // prune for: the stage runs purely as a bulk content source.
-          filters: options.checkReferences ? [] : whereFilters,
-          attachContent: options.checkReferences === true,
-          checkReferences: options.checkReferences === true,
+          filters: issueTypes ? [] : whereFilters,
+          attachContent: issueTypes !== undefined,
+          checkReferences: issueTypes !== undefined,
           ui,
         })
       : undefined;
 
-    if (options.checkReferences) {
-      await runCheckReferences({ ...context, publishStatusFilters, whereFilters, limit, capi });
+    if (issueTypes) {
+      await runCheckReferences({
+        ...context,
+        publishStatusFilters,
+        whereFilters,
+        issueTypes,
+        limit,
+        capi,
+      });
     } else {
       await runFind({
         ...context,

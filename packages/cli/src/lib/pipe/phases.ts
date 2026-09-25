@@ -57,13 +57,8 @@ export interface PhaseTracker {
 }
 
 /**
- * Renders a phase mark as an elapsed-since-start reading.
- *
- * Written as `done @12.3s` rather than a bare duration because the phases
- * overlap on purpose — content fetches begin while later pages are still
- * listing. A bare duration would read as three figures that add up to the total,
- * and listing would look "slow" whenever backpressure held the pager back
- * waiting on the stage below, which is the pipeline working, not stalling.
+ * Renders a phase mark as an elapsed-since-start reading. The phases overlap, so
+ * a bare duration would read as figures that sum to the total.
  */
 export const formatMark = (ms: number): string => `done @${(ms / 1000).toFixed(1)}s`;
 

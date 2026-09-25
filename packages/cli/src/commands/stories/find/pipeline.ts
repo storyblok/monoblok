@@ -182,16 +182,8 @@ export async function runStoryPipeline({
                 return;
               }
               capiFilter.count("failed");
-              // Whether a failed batch costs the run anything depends on what is
-              // downstream of it. With the per-story MAPI fetch still to come,
-              // its stories pass through undecided and are settled exactly as
-              // they would have been without the flag: the result set is
-              // complete, so the run is a success and must exit 0. A script
-              // doing `find > out.jsonl || exit` would otherwise throw away a
-              // correct answer. Without that fetch (`--skip-content`, or the
-              // reference scan, where CAPI *is* the content source) the stories
-              // in the batch really are decided on less, so it is a real
-              // failure. The summary reports the count either way.
+              // With the MAPI fetch still to come, the batch's stories are settled
+              // there and the result set stays complete, so it is only logged.
               if (skipContent) {
                 handleError(error, verbose, { batchSize: size });
               } else {
@@ -206,6 +198,8 @@ export async function runStoryPipeline({
       : [
           fetchStoryStream({
             spaceId,
+            // Keeps `--sort` meaningful, and `--sort … --limit n` the top n.
+            ordered: true,
             onIncrement: () => {
               content.tick();
             },

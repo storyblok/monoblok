@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { assertSupportedOptions, buildQueryParams, parseLimit } from "./actions";
+import {
+  assertSupportedOptions,
+  buildQueryParams,
+  buildWhereFilters,
+  parseIssueTypes,
+  parseLimit,
+  parseSort,
+  parseWorkflowStages,
+} from "./actions";
+import type { Story } from "../constants";
 import { CommandError } from "../../../utils/error/command-error";
 import type { FindOptions } from "./types";
 
@@ -202,6 +211,21 @@ describe("assertSupportedOptions", () => {
     });
   });
 
+  // CDN content has no `__i18n__` keys, so pruning on one would empty the result.
+  it("should reject a --where on a field-level translation under --capi-filter", () => {
+    expect(() =>
+      assertSupportedOptions(
+        options({ capiFilter: true, where: ["$[?($.content.title__i18n__de)]"] }),
+      ),
+    ).toThrow(/field-level translations/);
+  });
+
+  it("should allow a --where on a field-level translation without --capi-filter", () => {
+    expect(() =>
+      assertSupportedOptions(options({ where: ["$[?($.content.title__i18n__de)]"] })),
+    ).not.toThrow();
+  });
+
   it("rejects --capi-params without --capi-filter, where it would do nothing", () => {
     expect(() => assertSupportedOptions(options({ capiParams: "version=published" }))).toThrow(
       /--capi-params has no effect without --capi-filter/,
@@ -216,8 +240,7 @@ describe("buildQueryParams", () => {
     ).toEqual({ component: { in: "product" } });
   });
 
-  // Regression: `--container-block` was spread over the parsed `--query` into
-  // one object, so a `component` clause in the query vanished without a word.
+  // Both write `component`; neither may silently replace the other.
   it("should reject --container-block conflicting with a component clause in --query", () => {
     expect(() =>
       buildQueryParams(
@@ -256,11 +279,11 @@ describe("the server-side scope filters", () => {
 
   it("should pass --workflow-stage through as a stage list", () => {
     expect(
-      buildQueryParams(undefined, options({ workflowStage: "42,43" })).in_workflow_stages,
+      buildQueryParams(undefined, options({ workflowStage: "42, 43" })).in_workflow_stages,
     ).toBe("42,43");
   });
 
-  it("should pass --sort through untouched, since the API owns which columns sort", () => {
+  it("should pass --sort through, since the API owns which columns sort", () => {
     expect(buildQueryParams(undefined, options({ sort: "updated_at:desc" })).sort_by).toBe(
       "updated_at:desc",
     );
@@ -287,5 +310,69 @@ describe("parseLimit", () => {
   // that matched almost nothing.
   it.each(["0", "-1", "abc", "1.5", ""])("should reject %o", (raw) => {
     expect(() => parseLimit(raw)).toThrow(CommandError);
+  });
+});
+
+describe("parseSort", () => {
+  it.each([
+    "updated_at",
+    "updated_at:desc",
+    "content.price:asc:int",
+    "name:ASC:nulls_last",
+    "a:asc,b:desc",
+  ])("should accept %o", (raw) => {
+    expect(parseSort(raw)).toBe(raw);
+  });
+
+  // The API sorts ascending on a direction it does not know, so these would
+  // silently return the wrong order.
+  it.each(["updated_at:des", "updated_at:down", ":asc", "content.price:asc:string"])(
+    "should reject %o",
+    (raw) => {
+      expect(() => parseSort(raw)).toThrow(/Invalid --sort value/);
+    },
+  );
+});
+
+describe("parseWorkflowStages", () => {
+  // A stage name matches no story, which reads as a genuine empty answer.
+  it.each(["abc", "42,review", "", "4.2"])("should reject %o", (raw) => {
+    expect(() => parseWorkflowStages(raw)).toThrow(CommandError);
+  });
+});
+
+describe("parseIssueTypes", () => {
+  it("should report every type for the bare flag", () => {
+    expect(parseIssueTypes(true)).toEqual(new Set(["broken", "unpublished", "stale_url"]));
+  });
+
+  it("should narrow to the listed types", () => {
+    expect(parseIssueTypes("broken, stale_url")).toEqual(new Set(["broken", "stale_url"]));
+  });
+
+  it("should reject an unknown type", () => {
+    expect(() => parseIssueTypes("broken,missing")).toThrow(/got: missing/);
+  });
+
+  it("should be absent when the flag was not passed", () => {
+    expect(parseIssueTypes(undefined)).toBeUndefined();
+  });
+});
+
+describe("buildWhereFilters", () => {
+  // `--skip-content` asks for `content_summary`, a truncated copy of the root
+  // fields; a content filter must not match on that partial copy.
+  it("should not match on the listing's content_summary", () => {
+    const [matchesHero] = buildWhereFilters(["$..[?(@.component == 'hero')]"]);
+    const listed = { id: 1, content_summary: { component: "hero" } } as unknown as Story;
+
+    expect(matchesHero(listed)).toBe(false);
+  });
+
+  it("should still match on story metadata", () => {
+    const [matchesSlug] = buildWhereFilters(["$[?(@ == 'blog/post')]"]);
+    const listed = { id: 1, full_slug: "blog/post", content_summary: {} } as unknown as Story;
+
+    expect(matchesSlug(listed)).toBe(true);
   });
 });

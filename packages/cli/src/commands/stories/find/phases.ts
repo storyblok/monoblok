@@ -80,11 +80,14 @@ export function processStageName({
 
 /** One line naming what the run cost and what it saved, per optimization in play. */
 export function resultsHeadline({
+  results,
   tracker,
   filters,
   skipContent,
   capi,
 }: {
+  /** Lines actually written, which is what a reader of stdout received. */
+  results: number;
   tracker: PhaseTracker;
   filters: ClientFilter[];
   skipContent: boolean;
@@ -94,20 +97,35 @@ export function resultsHeadline({
   const capiFilter = tracker.counts("capiFilter");
   const content = tracker.counts("content");
   const filtered = tracker.counts("process");
+  // A failed listing page means part of the scope was never seen.
+  const label = list.failed > 0 ? "Incomplete results" : "Results";
 
   if (skipContent) {
     if (capi) {
-      return `Results: ${filtered.succeeded} stories matched (${list.succeeded} listed, decided on CDN content, no story fetched from MAPI)`;
+      return `${label}: ${results} stories matched (${list.succeeded} listed, decided on CDN content, no story fetched from MAPI)`;
     }
     return filters.length > 0
-      ? `Results: ${filtered.succeeded} stories matched (${filtered.total} listed, no content fetched)`
-      : `Results: ${filtered.succeeded} stories found (metadata only, no content fetched)`;
+      ? `${label}: ${results} stories matched (${filtered.total} listed, no content fetched)`
+      : `${label}: ${results} stories found (metadata only, no content fetched)`;
   }
   if (capi) {
-    return `Results: ${filtered.succeeded} stories matched (${content.succeeded} of ${list.succeeded} listed fetched from MAPI, ${capiFilter.pruned} pruned by the CAPI filter)`;
+    return `${label}: ${results} stories matched (${content.succeeded} of ${list.succeeded} listed fetched from MAPI, ${capiFilter.pruned} pruned by the CAPI filter)`;
   }
   if (filters.length > 0) {
-    return `Results: ${filtered.succeeded} stories matched (${content.succeeded} fetched, ${list.skipped + filtered.skipped} filtered out client-side)`;
+    return `${label}: ${results} stories matched (${content.succeeded} fetched, ${list.skipped + filtered.skipped} filtered out client-side)`;
   }
-  return `Results: ${filtered.succeeded} stories found`;
+  return `${label}: ${results} stories found`;
+}
+
+/**
+ * Reports a deliberate stop as one: the counts that follow describe a partial
+ * scan, and anything less explicit than "not an error" reads as one next to them.
+ */
+export function stoppedEarlyMessage(limit: number | undefined): string {
+  return (
+    (limit !== undefined
+      ? `Stopped early on purpose: --limit ${limit} was reached, so the rest of the scope was left unread. `
+      : "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. ") +
+    "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran."
+  );
 }

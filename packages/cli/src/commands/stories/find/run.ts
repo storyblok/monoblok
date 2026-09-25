@@ -5,7 +5,7 @@ import {
   isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
-import { findPhases, processStageName, resultsHeadline } from "./phases";
+import { findPhases, processStageName, resultsHeadline, stoppedEarlyMessage } from "./phases";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -79,36 +79,40 @@ export async function runFind({
     const content = tracker.counts("content");
     const filtered = tracker.counts("process");
     ui.br();
-    ui.info(resultsHeadline({ tracker, filters, skipContent, capi: capi !== undefined }));
+    ui.info(
+      resultsHeadline({
+        results: output.written,
+        tracker,
+        filters,
+        skipContent,
+        capi: capi !== undefined,
+      }),
+    );
 
-    // A deliberate stop, so it reports as one. The counts below describe a
-    // partial scan and would otherwise read as "this is all there was", and
-    // anything less explicit than "not an error" reads as one next to them.
     if (earlyExit) {
-      ui.ok(
-        (stoppedByLimit
-          ? `Stopped early on purpose: --limit ${limit} was reached, so the rest of the scope was left unread. `
-          : "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. ") +
-          "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran.",
-      );
+      ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined));
     }
 
-    // An empty result under a bare `--skip-content` is ambiguous: the filters
-    // genuinely matched nothing, or they were written against the content that
-    // was never fetched. Only the user can tell the two apart, so name the
-    // possibility exactly when it applies rather than rejecting the combination.
+    // Zero matches here means the filters matched nothing, or were written
+    // against content that was never fetched. Only the user can tell which.
     if (skipContent && !capi && filters.length > 0 && filtered.succeeded === 0) {
       ui.warn(
-        "--where cannot match on story content while --skip-content is set: the listing carries " +
-          "story metadata only (full_slug, updated_at, content_type, tag_list, published, …). " +
-          "If the expression reads content, drop --skip-content, and add --capi-filter to keep the run fast.",
+        "--where sees list metadata only while --skip-content is set (full_slug, updated_at, content_type, " +
+          "tag_list, published, …), never story content. If the expression reads content, drop " +
+          "--skip-content, and add --capi-filter to keep the run fast.",
       );
     }
 
-    // Under `--capi-filter` alone an undecided story still gets fetched and
-    // tested; with `--skip-content` there is no fetch left to settle it, so it
-    // is dropped on metadata alone. Silent loss is the one outcome that would
-    // make the result set wrong without saying so.
+    // The API rejects an unknown sort column on the first page, and the error
+    // alone does not name the flag.
+    if (list.failed > 0 && params.sort_by) {
+      ui.warn(
+        `If the error above is "Not sortable by this column", --sort ${params.sort_by} names a column the API cannot sort by. ` +
+          "Use a story column such as updated_at, created_at, published_at, name, slug or position, or a content field with the 'content.' prefix.",
+      );
+    }
+
+    // With no MAPI fetch left, an undecided story is tested on metadata alone.
     if (skipContent && capi && capiFilter.unresolved > 0) {
       ui.warn(
         `${capiFilter.unresolved} stor${capiFilter.unresolved === 1 ? "y" : "ies"} could not be decided from CDN content ` +

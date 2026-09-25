@@ -7,17 +7,9 @@ import { toError } from "../../utils/error/error";
 /**
  * The argument that means "read the input from stdin".
  *
- * Explicit rather than detected, for two reasons. The usual probe cannot tell
- * piped input from no input — `process.stdin.isTTY` is `null` for a pipe, for
- * `< /dev/null`, for a file redirect and for a closed descriptor alike — so under
- * CI, cron or `docker` without `-i`, a command that guessed would silently
- * operate on zero records and exit 0. And a command that consumes stdin
- * unasked breaks as the child of a loop sharing that descriptor: in
- * `cat list.txt | while read x; do cmd; done` it would eat the rest of
- * `list.txt` and the loop would run once. This is why `ssh` has `-n`.
- *
- * `-` is the established convention: `git apply -`, `kubectl apply -f -`,
- * `docker build -`, `tar -f -`.
+ * Explicit rather than detected: `process.stdin.isTTY` is `null` for a pipe, for
+ * `< /dev/null`, for a file redirect and for a closed descriptor alike, so
+ * detection cannot tell piped input from none. See ADR-0019.
  */
 export const STDIN_ARGUMENT = "-";
 

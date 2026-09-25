@@ -1,6 +1,7 @@
 import type { Readable } from "node:stream";
 import type { Story } from "../../types";
 import { CommandError } from "../../utils/error/command-error";
+import { isRecord } from "../../utils/object";
 import { createJsonlSource } from "./input";
 
 /**
@@ -89,16 +90,15 @@ export const describeStoryLine = (line: StoryLine): string => `#${line.id} (${li
 export function parseStoryLine(value: unknown, lineNumber?: number): StoryLine {
   const at = lineNumber === undefined ? "" : ` on input line ${lineNumber}`;
 
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new CommandError(
       `Expected a story object${at}, got ${Array.isArray(value) ? "an array" : typeof value}. ` +
         "The input has to be JSONL — one complete story per line, as `storyblok stories find` writes it.",
     );
   }
 
-  const line = value as Record<string, unknown>;
   const missing = REQUIRED_STORY_LINE_FIELDS.filter(
-    (field) => line[field] === undefined || line[field] === null,
+    (field) => value[field] === undefined || value[field] === null,
   );
 
   if (missing.length > 0) {
@@ -111,7 +111,7 @@ export function parseStoryLine(value: unknown, lineNumber?: number): StoryLine {
 
   // Every field the type narrows has just been checked above, and the rest of
   // the object is the story the API itself serialized.
-  return line as StoryLine;
+  return value as StoryLine;
 }
 
 /**

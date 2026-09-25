@@ -6,7 +6,7 @@ import { buildStoryScopeParams } from "../query-params";
 import { chunk } from "../../../utils/array";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { CommandError } from "../../../utils/error/command-error";
-import type { TargetMeta } from "./references";
+import type { IssueType, TargetMeta } from "./references";
 import { toTargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
 import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
@@ -67,6 +67,18 @@ export function assertSupportedOptions(options: FindOptions): void {
         "--capi-filter needs at least one --where filter: without one, every listed story is a match and none can be pruned.",
       );
     }
+    // CDN content drops every `<field>__i18n__<lang>` key, so a predicate on one
+    // is false for every story there. That empties the result whether it prunes
+    // (`find`) or runs on the CDN content the reference scan reads.
+    const translated = options.where?.find((expression) => expression.includes("__i18n__"));
+    if (translated) {
+      throw new CommandError(
+        `--capi-filter cannot evaluate --where on field-level translations: ${translated}\n` +
+          "CDN content has no `__i18n__` keys. Drop --capi-filter, or ask the CDN for the translation with " +
+          "--capi-params language=<code> and match the base field name instead.",
+      );
+    }
+
     // Parsed here as well as at build time so a malformed value fails as a usage
     // error, next to the flags it belongs with.
     const capiParams = parseCapiParams(options.capiParams);
@@ -110,13 +122,93 @@ export function parseLimit(raw: string | undefined): number | undefined {
   return value;
 }
 
+const SORT_DIRECTIONS = new Set(["asc", "desc"]);
+const SORT_CASTS = new Set(["int", "float"]);
+const SORT_NULLS = new Set(["nulls_first", "nulls_last"]);
+
+/**
+ * Checks `--sort` against the API's grammar: `field[:asc|desc[:int|float][:nulls_first|nulls_last]]`.
+ *
+ * The API sorts ascending when it does not recognise a direction, so a typo like
+ * `updated_at:des` would return the oldest stories instead of an error. Whether
+ * a column is sortable is left to the API, which knows the space's own fields.
+ */
+export function parseSort(raw: string | undefined): string | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const parts = raw.split(",").map((part) => part.trim());
+  for (const part of parts) {
+    const [field, direction, ...modifiers] = part.split(":");
+    const valid =
+      Boolean(field) &&
+      (direction === undefined || SORT_DIRECTIONS.has(direction.toLowerCase())) &&
+      modifiers.length <= 2 &&
+      modifiers.every(
+        (modifier, index) =>
+          SORT_NULLS.has(modifier.toLowerCase()) ||
+          (index === 0 && SORT_CASTS.has(modifier.toLowerCase())),
+      );
+    if (!valid) {
+      throw new CommandError(
+        `Invalid --sort value: ${part}\n` +
+          "Expected field[:asc|desc], e.g. 'updated_at:desc', or a content field with the 'content.' prefix, " +
+          "e.g. 'content.price:asc:int'. A content field can add ':int' or ':float' to sort numerically.",
+      );
+    }
+  }
+  return parts.join(",");
+}
+
+/**
+ * Reads `--workflow-stage` as numeric stage IDs.
+ *
+ * A stage name or a typo matches no story, and "0 results" would look like a
+ * genuine answer rather than a wrong ID.
+ */
+export function parseWorkflowStages(raw: string | undefined): string | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const ids = raw.split(",").map((id) => id.trim());
+  if (ids.some((id) => !/^\d+$/.test(id))) {
+    throw new CommandError(
+      `--workflow-stage expects numeric workflow stage IDs, separated by commas, and got: ${raw}`,
+    );
+  }
+  return ids.join(",");
+}
+
+const ISSUE_TYPES: readonly IssueType[] = ["broken", "unpublished", "stale_url"];
+
+/**
+ * Reads the optional value of `--check-references`: which issue types to report.
+ *
+ * `true` is the bare flag, which reports every type.
+ */
+export function parseIssueTypes(raw: string | boolean | undefined): Set<IssueType> | undefined {
+  if (raw === undefined || raw === false) {
+    return undefined;
+  }
+  if (raw === true) {
+    return new Set(ISSUE_TYPES);
+  }
+  const types = raw.split(",").map((type) => type.trim());
+  const unknown = types.filter((type) => !ISSUE_TYPES.includes(type as IssueType));
+  if (unknown.length > 0) {
+    throw new CommandError(
+      `--check-references accepts ${ISSUE_TYPES.join(", ")}, and got: ${unknown.join(", ")}`,
+    );
+  }
+  return new Set(types as IssueType[]);
+}
+
 export function buildQueryParams(
   text: string | undefined,
   options: FindOptions,
 ): StoriesQueryParams {
   const params: StoriesQueryParams = {};
 
-  // Text search
   if (text) {
     params.text_search = text;
   }
@@ -136,7 +228,6 @@ export function buildQueryParams(
     }),
   );
 
-  // Contains block (server-side contain_component)
   if (options.includesBlock) {
     params.contain_component = options.includesBlock;
   }
@@ -149,10 +240,9 @@ export function buildQueryParams(
   }
 
   if (options.workflowStage) {
-    params.in_workflow_stages = options.workflowStage;
+    params.in_workflow_stages = parseWorkflowStages(options.workflowStage);
   }
 
-  // Publish status (server-side part)
   if (options.publishStatus) {
     Object.assign(params, publishStatusToQueryParams(options.publishStatus));
   }
@@ -162,10 +252,9 @@ export function buildQueryParams(
   // An unsortable column is rejected by the API, which is the only place that
   // knows the space's own fields.
   if (options.sort) {
-    params.sort_by = options.sort;
+    params.sort_by = parseSort(options.sort);
   }
 
-  // Reference search (server-side)
   if (options.references) {
     params.reference_search = options.references;
   }
@@ -178,7 +267,6 @@ export function buildQueryParams(
     params.with_summary = true;
   }
 
-  // Entry type filter
   if (options.entryType === "story") {
     params.story_only = true;
   } else if (options.entryType === "folder") {
@@ -221,8 +309,22 @@ export function buildWhereFilters(expressions: string[] | undefined): ClientFilt
     const query = compileWhere(expression);
     // `match` stops at the first hit; a filter only needs to know whether the
     // expression selects anything, never the full node list.
-    return (story: Story) => query.match(toJsonValue(story)) !== undefined;
+    return (story: Story) => query.match(toJsonValue(withoutContentSummary(story))) !== undefined;
   });
+}
+
+/**
+ * `--skip-content` asks the listing for `content_summary`, a truncated copy of
+ * the root fields. Left in, a `$..` expression would match on that partial copy,
+ * and a content filter would return a plausible, incomplete result set. `--where`
+ * sees either the real content or none.
+ */
+function withoutContentSummary(story: Story): Story {
+  if (!("content_summary" in story)) {
+    return story;
+  }
+  const { content_summary: _summary, ...rest } = story;
+  return rest;
 }
 
 function compileWhere(expression: string) {

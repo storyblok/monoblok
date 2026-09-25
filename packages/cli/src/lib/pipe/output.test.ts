@@ -69,10 +69,7 @@ describe("createJsonlOutput", () => {
     vi.restoreAllMocks();
   });
 
-  // Regression: results used to be held back until the run ended whenever
-  // stderr was a terminal, which left `… | head -5` waiting for a whole scope,
-  // kept every matched story in memory, and made the early exit unreachable in
-  // exactly the case people try first.
+  // Lines go out as produced, so a reader can act on the first one and leave early.
   it("should write each line as it is pushed", async () => {
     const { createJsonlOutput } = await freshModule();
     const lines: string[] = [];
@@ -124,8 +121,7 @@ describe("createJsonlOutput", () => {
     expect(ui.suppressProgress).not.toHaveBeenCalled();
   });
 
-  // Regression: the run used to keep listing and fetching a whole space for a
-  // reader that had already exited, so `find | head -3` ran to completion.
+  // A reader that has exited stops the run instead of letting it walk the whole scope.
   it("should abort its signal when the downstream reader closes the pipe", async () => {
     const { createJsonlOutput, isDownstreamClosed } = await freshModule();
     const output = createJsonlOutput({ write: () => {}, ui: fakeUI() });
@@ -208,9 +204,7 @@ describe("createJsonlOutput sink", () => {
     expect(lines).toEqual(['{"id":1}', '{"id":2}']);
   });
 
-  // Regression: the writer ignored what `process.stdout.write()` returned, so a
-  // reader slower than the run — `find | stories push -` — had the whole result
-  // set buffered ahead of it instead of pacing it.
+  // A reader slower than the run paces it, rather than having results buffered ahead of it.
   it("should hold the pipeline back until stdout drains", async () => {
     const { createJsonlOutput } = await freshModule();
     const lines: string[] = [];

@@ -40,6 +40,24 @@ const collect = (received: Story[]) =>
 const isPage: ClientFilter = (story) => story.content?.component === "page";
 
 describe("capiFilterStream", () => {
+  it("should forward stories in listing order when batches settle out of order", async () => {
+    const stories = [1, 2, 3, 4].map(makeStory);
+    // The first batch is the slowest to answer.
+    const fetchContent: CapiContentFetcher = async (uuids) => {
+      await new Promise((resolve) => setTimeout(resolve, uuids.includes("uuid-1") ? 30 : 0));
+      return new Map(uuids.map((uuid) => [uuid, { component: "page" } as StoryContent]));
+    };
+    const received: Story[] = [];
+
+    await pipeline(
+      Readable.from(stories),
+      capiFilterStream({ fetchContent, filters: [isPage], batchSize: 1 }),
+      collect(received),
+    );
+
+    expect(received.map((story) => story.id)).toEqual([1, 2, 3, 4]);
+  });
+
   it("discards the CAPI content by default, leaving the story as listed", async () => {
     const { fetchContent } = fetcherFor({ 1: { component: "page" } });
     const received: Story[] = [];
@@ -232,11 +250,8 @@ describe("capiFilterStream", () => {
     expect(received.map((story) => story.id)).toEqual([2]);
   });
 
-  // Regression: the stage ended with `Promise.all(...).finally(() => callback())`,
-  // which ran the callback and then dropped the rejection. A batch that died on
-  // the way to `push` therefore took its stories with it, the stage still ended
-  // cleanly, and the run reported a short result set as a complete one while an
-  // unhandled rejection escaped the process.
+  // A batch that rejects must fail the stage: otherwise a short result set ends
+  // cleanly and reads as complete.
   it("fails the run when a detached batch dies, instead of ending short and clean", async () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown): void => {
@@ -252,7 +267,7 @@ describe("capiFilterStream", () => {
       capiFilterStream({
         fetchContent,
         filters: [isPage],
-        // Everything lands in the flush tail, where the rejection used to vanish.
+        // Everything lands in the flush tail.
         batchSize: 1000,
         // Reached for every story, because the fetcher answers with no content.
         onUnresolved: () => {

@@ -1,7 +1,8 @@
-import { createApiClient } from "@storyblok/api-client";
+import { ClientError, createApiClient } from "@storyblok/api-client";
 import type { CacheProvider } from "@storyblok/api-client";
 import type { RegionCode } from "../../../constants";
 import { CommandError } from "../../../utils/error/command-error";
+import { isRecord } from "../../../utils/object";
 import { fetchSpace } from "../../spaces/actions";
 import type { Story } from "../constants";
 
@@ -123,7 +124,7 @@ function parseAsJson(raw: string): CapiParams | undefined {
   }
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (!isRecord(parsed)) {
       throw new CommandError(`--capi-params must be an object, got: ${raw}`);
     }
     return parsed as CapiParams;
@@ -207,6 +208,27 @@ export async function createCapiContentFetcher({
   });
 
   const query = { ...DEFAULT_CAPI_PARAMS, ...params };
+
+  // During the run a rejected batch only costs its pruning, so a mistyped
+  // `--capi-params` would make the flag do nothing, with no reason given. One
+  // request up front turns that into a usage error that carries the CDN's reason.
+  if (Object.keys(params).length > 0) {
+    try {
+      await client.stories.list({
+        query: { ...query, per_page: 1 } as NonNullable<
+          Parameters<typeof client.stories.list>[0]
+        >["query"],
+      });
+    } catch (error) {
+      if (!(error instanceof ClientError) || error.response.status >= 500) {
+        throw error;
+      }
+      const reason = error.response.data?.error ?? error.response.data?.message ?? error.message;
+      throw new CommandError(
+        `The CDN rejected --capi-params ${JSON.stringify(params)} (HTTP ${error.response.status}): ${String(reason)}`,
+      );
+    }
+  }
 
   return async (uuids) => {
     const { data } = await client.stories.list({

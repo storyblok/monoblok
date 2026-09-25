@@ -4,15 +4,10 @@ import type { FilterQuery } from "./filter-query";
 import { mergeFilterQuery, parseFilterQuery } from "./filter-query";
 
 /**
- * The scope flags every story-listing command shares.
- *
- * `find`, `pull` and `migrations run` narrow the same list endpoint with the same
- * two flags, `validate` with the first of them, and each used to normalize them
- * itself — down to the same comment about the leading slash, copied between
- * files, while `migrations run` did not normalize at all and quietly matched
- * nothing for a `--starts-with=/en/blog/`. Sibling subcommands must not import
- * from each other, so the shared half lives here in the parent command
- * directory, and each command layers its own flags on top.
+ * The scope flags every story-listing command shares: `find`, `pull` and
+ * `migrations run` take both, `validate` takes `--starts-with`. Sibling
+ * subcommands must not import from each other, so the shared half lives here in
+ * the parent command directory, and each command layers its own flags on top.
  */
 export interface StoryScopeOptions {
   startsWith?: string;
@@ -40,9 +35,10 @@ export function buildStoryScopeParams({
     params.starts_with = normalizeStartsWith(startsWith) || undefined;
   }
 
-  if (query || extraFilterQuery) {
+  // `-q ''` is parsed rather than skipped, so it fails instead of filtering nothing.
+  if (query !== undefined || extraFilterQuery) {
     params.filter_query = mergeFilterQuery(
-      query ? parseFilterQuery(query) : {},
+      query !== undefined ? parseFilterQuery(query) : {},
       extraFilterQuery ?? {},
     );
   }

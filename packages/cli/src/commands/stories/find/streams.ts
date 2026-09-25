@@ -89,29 +89,20 @@ export const filterStoriesStream = ({
 
 /**
  * Replaces the per-story MAPI content fetch with one CAPI page per 25 stories,
- * for the sole purpose of deciding which stories are still worth fetching.
+ * to decide which stories are still worth fetching.
  *
- * The stage only ever *prunes*. A story CAPI does not answer for — a folder, a
- * story the CDN has not got, a batch that failed — passes through undecided, so
- * the exact answer still comes from MAPI content downstream. That is what keeps
- * the result set identical to a run without the flag.
+ * The stage only ever prunes: a story it cannot decide (a folder, a story the
+ * CDN has not got, a failed batch) passes through and is decided downstream.
  *
- * A story this stage *matches* is settled here: `onCandidate` records it, and
- * the terminal stage takes that as the verdict (`isAlreadyMatched`) rather than
- * re-running the same expressions against the MAPI story. The two documents are
- * the same draft content, so a second evaluation would cost time without
- * changing the answer. Only undecided stories are filtered downstream.
+ * A story it matches is not re-tested on MAPI content. Under the default
+ * `version=draft` both are the same document; when `--capi-params` asks for
+ * another (published content, a translation), the match is decided on that
+ * document while the emitted story is still the MAPI one.
  *
- * List metadata is merged under the CAPI content before filtering, so a
- * story-level expression (`$[?($.updated_at > …)]`) decides here too rather than
- * falling through to a fetch.
- *
- * `attachContent` turns the stage into a bulk content *source* rather than a
- * filter: the content it already holds rides along on the story instead of being
- * discarded, so a consumer that would otherwise fetch each story individually can
- * read it here. Off by default, because `find` re-fetches every match from MAPI
- * and emits that, and CAPI draft content carries editor metadata (`_editable`)
- * the Management API does not.
+ * `attachContent` turns the stage into a bulk content source: the content rides
+ * along on the story instead of being discarded, for a consumer that would
+ * otherwise fetch each story individually. Off by default, because `find`
+ * re-fetches every match from MAPI and emits that.
  */
 export const capiFilterStream = ({
   fetchContent,
@@ -144,15 +135,8 @@ export const capiFilterStream = ({
   const processing = new Set<Promise<void>>();
   let batch: Story[] = [];
   /**
-   * The first error a detached batch failed with.
-   *
-   * `transform` starts a batch without awaiting it, so a rejection has nowhere to
-   * surface at the moment it happens: that chunk's callback has already been
-   * called. Parking it here lets `flush` end the stage with it. Without that, a
-   * batch that died on the way to `push` would take its stories with it, the
-   * stage would still end cleanly, and the run would report a short result set as
-   * a complete one — the single outcome `find > out.jsonl || exit 1` has to be
-   * able to catch.
+   * The first error a detached batch failed with. `transform` has already
+   * called back by the time a batch rejects, so `flush` ends the stage with it.
    */
   let failure: Error | undefined;
 
@@ -161,14 +145,11 @@ export const capiFilterStream = ({
     failure ??= toError(error);
   };
 
-  /**
-   * Resolves one batch and decides each of its stories.
-   *
-   * `push` is passed in rather than captured so the batch handler stays a plain
-   * function: the stream's `push` is only reachable as `this` inside the stream's
-   * own methods.
-   */
-  const settleBatch = async (pending: Story[], push: (story: Story) => void): Promise<void> => {
+  /** The last batch queued for emission; each batch waits for it, so output keeps listing order. */
+  let previousEmit: Promise<void> = Promise.resolve();
+
+  /** Fetches one batch and decides each of its stories, returning those to forward. */
+  const settleBatch = async (pending: Story[]): Promise<Story[]> => {
     let contentByUuid: Map<string, StoryContent> | undefined;
 
     try {
@@ -179,11 +160,12 @@ export const capiFilterStream = ({
       onBatchError?.(toError(maybeError), pending.length);
     }
 
+    const forward: Story[] = [];
     for (const story of pending) {
       const content = story.uuid ? contentByUuid?.get(story.uuid) : undefined;
       if (!content) {
         onUnresolved?.(story);
-        push(story);
+        forward.push(story);
         continue;
       }
 
@@ -193,7 +175,7 @@ export const capiFilterStream = ({
           onCandidate?.(story);
           // Filters run against the content as served, so `_editable` is only
           // stripped from what is forwarded, never from what is tested.
-          push(attachContent ? { ...story, content: stripEditorMarkers(content) } : story);
+          forward.push(attachContent ? { ...story, content: stripEditorMarkers(content) } : story);
         } else {
           onPruned?.(story);
         }
@@ -201,11 +183,22 @@ export const capiFilterStream = ({
         // A filter that throws on CAPI content must not prune: the story reaches
         // the authoritative pass, which reports the failure itself.
         onUnresolved?.(story);
-        push(story);
+        forward.push(story);
       }
     }
 
     onBatchSettled?.(pending.length);
+    return forward;
+  };
+
+  /** Settles `pending` and pushes its stories once every earlier batch has been pushed. */
+  const queueBatch = (pending: Story[], push: (story: Story) => void): Promise<void> => {
+    previousEmit = Promise.all([settleBatch(pending), previousEmit]).then(([stories]) => {
+      for (const story of stories) {
+        push(story);
+      }
+    });
+    return previousEmit;
   };
 
   return new Transform({
@@ -227,7 +220,7 @@ export const capiFilterStream = ({
         // Awaited before the callback, so a saturated queue holds the pager back
         // rather than buffering the whole space in memory.
         await lock.acquire();
-        const task = settleBatch(pending, (resolved) => this.push(resolved))
+        const task = queueBatch(pending, (resolved) => this.push(resolved))
           .catch(recordFailure)
           .finally(() => {
             lock.release();
@@ -247,7 +240,7 @@ export const capiFilterStream = ({
       batch = [];
       const remaining =
         tail.length > 0
-          ? settleBatch(tail, (resolved) => this.push(resolved)).catch(recordFailure)
+          ? queueBatch(tail, (resolved) => this.push(resolved)).catch(recordFailure)
           : Promise.resolve();
       // `.finally` would run the callback and then re-throw into nothing, ending
       // the stage successfully while an unhandled rejection escaped the process.

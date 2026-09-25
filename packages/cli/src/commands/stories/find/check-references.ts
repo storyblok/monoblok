@@ -5,14 +5,15 @@ import {
   createJsonlOutput,
   createPhaseTracker,
   formatMark,
-  isDownstreamClosed,
+  isDeliberateStop,
+  isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
 import { fetchComponents } from "../../components/pull/actions";
 import { applyClientFilters, resolveReferenceTargets } from "./actions";
 import { buildRelationFieldMap, detectIssues, extractReferences, toTargetMeta } from "./references";
-import type { RefEntry, RefIssue, TargetMeta } from "./references";
-import { findPhases } from "./phases";
+import type { IssueType, RefEntry, RefIssue, TargetMeta } from "./references";
+import { findPhases, stoppedEarlyMessage } from "./phases";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -28,6 +29,7 @@ export async function runCheckReferences({
   params,
   publishStatusFilters,
   whereFilters,
+  issueTypes,
   limit,
   capi,
   ui,
@@ -37,6 +39,8 @@ export async function runCheckReferences({
 }: FindContext & {
   publishStatusFilters: ClientFilter[];
   whereFilters: ClientFilter[];
+  /** The issue types to report; a story with none of them is left out. */
+  issueTypes: Set<IssueType>;
   /**
    * Caps the stories reported, not the stories scanned.
    *
@@ -97,8 +101,8 @@ export async function runCheckReferences({
   const uuidToMeta = new Map<string, TargetMeta>();
   const candidates: ReferenceCandidate[] = [];
   let earlyExit = false;
+  let stoppedByLimit = false;
   let checked = 0;
-  let matched = 0;
   let externalTargets = 0;
 
   try {
@@ -171,7 +175,7 @@ export async function runCheckReferences({
     /** The buffered matches, decided one at a time as the sink asks for them. */
     function* reportIssues(): Generator<Story> {
       for (const { story, refs } of candidates) {
-        const issues = detectIssues(refs, uuidToMeta);
+        const issues = detectIssues(refs, uuidToMeta).filter((issue) => issueTypes.has(issue.type));
         if (issues.length === 0) {
           continue;
         }
@@ -179,7 +183,6 @@ export async function runCheckReferences({
         if (!applyClientFilters(enriched, whereFilters)) {
           continue;
         }
-        matched += 1;
         yield enriched;
       }
     }
@@ -191,15 +194,19 @@ export async function runCheckReferences({
     // matches nobody ever received.
     await pipeline(Readable.from(reportIssues()), output.sink, { signal: output.signal });
   } catch (error) {
-    // Same contract as `find`: a reader that has taken what it wanted and left
-    // ends the run cleanly. See `runFind`.
-    if (!isDownstreamClosed(error)) {
+    // Same contract as `find`: `--limit` and a reader that leaves both end the run at 0.
+    if (!isDeliberateStop(error)) {
       throw error;
     }
     earlyExit = true;
+    stoppedByLimit = isLimitReached(error);
   } finally {
     tracker.stop();
     output.close();
+
+    // Counted at the sink, so a story decided while an early stop tears the
+    // pipeline down is not reported as a result nobody received.
+    const matched = output.written;
 
     const list = tracker.counts("list");
     const capiFilter = tracker.counts("capiFilter");
@@ -210,10 +217,7 @@ export async function runCheckReferences({
     );
 
     if (earlyExit) {
-      ui.ok(
-        "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. " +
-          "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran.",
-      );
+      ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined));
     }
 
     // A story the CDN holds no content for is checked with nothing in hand, so

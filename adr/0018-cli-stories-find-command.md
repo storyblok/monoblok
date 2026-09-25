@@ -1,4 +1,4 @@
-# ADR-0015: CLI `stories find` Command
+# ADR-0018: CLI `stories find` Command
 
 **Status:** Accepted **Date:** 2026-08-03
 
@@ -136,5 +136,5 @@ the user, who knows what is downstream: `2>/dev/null`, or the global `--no-ui-en
   `--help`.
 - **Downstream commands read the payload, not just the ids.** Each line is a complete story as the
   Management API returned it, so a consumer takes what it needs off the line rather than fetching
-  the story again. See [ADR-0016](0016-cli-jsonl-pipe-contract.md), which supersedes an earlier
+  the story again. See [ADR-0019](0019-cli-jsonl-pipe-contract.md), which supersedes an earlier
   position here that had consumers refetch before mutating.

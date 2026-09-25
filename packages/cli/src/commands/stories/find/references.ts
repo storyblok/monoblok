@@ -85,9 +85,11 @@ function walkNode(
 
   const obj = node as Record<string, unknown>;
 
-  // Multilink field: { fieldtype: "multilink", linktype: "story", id: "<uuid>" }
+  // Multilink field: { fieldtype: "multilink", linktype: "story", id: "<uuid>" }.
+  // The editor always writes `fieldtype`, but a migration or a direct API write
+  // may not, and the API stores the value as given.
   if (
-    obj.fieldtype === "multilink" &&
+    (obj.fieldtype === "multilink" || obj.fieldtype === undefined) &&
     obj.linktype === "story" &&
     typeof obj.id === "string" &&
     UUID_RE.test(obj.id)
@@ -115,7 +117,6 @@ function walkNode(
     }
   }
 
-  // Track current component name for relation field lookup
   const currentComponent = typeof obj.component === "string" ? obj.component : componentName;
 
   // Relation fields (schema-aware). Iterate the node's own keys rather than the
@@ -149,7 +150,6 @@ function walkNode(
     }
   }
 
-  // Recurse into object values
   for (const [key, value] of Object.entries(obj)) {
     if (key === "_uid") {
       continue;

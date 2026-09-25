@@ -30,8 +30,10 @@ export interface MachineOutput {
    * set.
    */
   readonly sink: Writable;
-  /** Marks the end of the output and releases the pipe watcher. */
+  /** Releases the pipe watcher. */
   close: () => void;
+  /** Lines written so far: the run's result count, even after an early stop. */
+  readonly written: number;
   /**
    * Aborts as soon as the downstream reader closes the pipe, so a producer can
    * pass it to `stream.pipeline()` and stop mid-run instead of fetching a whole
@@ -78,18 +80,9 @@ const stdoutLineWriter = (ui: UI): LineWriter => ({
 /**
  * Creates a JSONL writer over stdout.
  *
- * Lines go out as they are produced, always. Holding them back to keep progress
- * bars tidy would trade the only thing line-oriented output is *for* — a reader
- * that can act on the first line without waiting for the last — against a
- * cosmetic outcome this process cannot even reliably detect: whether the command
- * downstream prints to the same terminal is a property of that command, not of
- * anything visible from here. Streaming is also what lets `signal` fire early
- * enough to save work, and what keeps memory flat on a result set of any size.
- *
- * What *is* detectable is stdout being a terminal, which means the data itself
- * is landing on the same screen as the progress bars. That collision is certain
- * rather than guessed, so the bars are dropped for the run; the summary and
- * warnings on stderr stay. `2>/dev/null` or `--no-ui-enabled` silences the rest.
+ * Lines go out as they are produced. When stdout is a terminal the data lands on
+ * the same screen as the progress bars, so the bars are dropped for the run; the
+ * summary and warnings on stderr stay.
  */
 export function createJsonlOutput({
   write,
@@ -102,12 +95,8 @@ export function createJsonlOutput({
   /** Full form, including the backpressure signal. Takes precedence. */
   writer?: LineWriter;
   /**
-   * Stop the run once this many lines have gone out.
-   *
-   * Counted here rather than in a pipeline stage because this is the only place
-   * that knows a line has actually been written: a stage that counted what it
-   * pushed would abort while the last result was still queued in front of the
-   * sink, and truncate the output it was asked to produce.
+   * Stop the run once this many lines have gone out. Counted here, the only
+   * place that knows a line was written, so a queued result is never cut off.
    */
   limit?: number;
   ui?: UI;
@@ -134,16 +123,10 @@ export function createJsonlOutput({
   });
 
   let written = 0;
-  /**
-   * Called once a line is out, which is what makes the stop safe: the run ends
-   * holding exactly the number of results it was asked for, never one short.
-   */
+  /** Called once a line is out, so a limited run ends with exactly `limit` lines. */
   const countLine = (): void => {
-    if (limit === undefined) {
-      return;
-    }
     written += 1;
-    if (written >= limit) {
+    if (limit !== undefined && written >= limit) {
       controller.abort(new LimitReachedError(limit));
     }
   };
@@ -200,6 +183,9 @@ export function createJsonlOutput({
     },
     get closed() {
       return controller.signal.aborted;
+    },
+    get written() {
+      return written;
     },
   };
 }

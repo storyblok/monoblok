@@ -11,7 +11,7 @@ The `stories find` command searches a space for stories matching a set of filter
 stdout as JSONL, one story per line, ready to pipe into `jq`, save to a file, or pass to another
 command. It only reads, and never writes.
 
-_Introduced in_ <Badge text="4.23.0" variant="success" />
+_Introduced in_ <Badge text="4.24.0" variant="success" />
 
 ```bash
 storyblok stories find "pricing" --space 12345 --publish-status published
@@ -44,25 +44,25 @@ The `Runs` column states where a filter is resolved. `API` filters narrow the se
 is transferred. `client` filters are applied locally, and most of them require the story's content,
 which costs one request per story. See [Optimizations](#optimizations).
 
-| Flag                        | Runs         | Description                                                                                                                                           |
-| --------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --space <space>`       | -            | **Required.** The space to search. Can also come from the environment or the config file.                                                             |
-| `--entry-type <type>`       | API          | Narrow to stories or folders only. Possible values: `all` (default), `story`, `folder`.                                                               |
-| `--starts-with <path>`      | API          | Limit the search to one subtree, for example `en/blog`. No leading slash.                                                                             |
-| `--container-block <name>`  | API          | Stories whose content type (root block) is this component. See [`--container-block` and `--includes-block`](#--container-block-and---includes-block). |
-| `--includes-block <names>`  | API          | Stories containing these blocks at any depth. Comma-separated, and **all** must be present.                                                           |
-| `-q, --query <query>`       | API          | Filter on root-level content fields. See [`--query`](#--query).                                                                                       |
-| `--tag <names>`             | API          | Stories carrying **any** of these tags. Comma-separated. See [`--tag`](#--tag).                                                                       |
-| `--workflow-stage <ids>`    | API          | Stories at **any** of these workflow stage IDs. Comma-separated. See [`--workflow-stage`](#--workflow-stage).                                         |
-| `--publish-status <status>` | API + client | Publish state, decided from the story listing. Possible values: `published`, `changed`, `draft`. See [`--publish-status`](#--publish-status).         |
-| `--where <jsonpath>`        | client       | Anything `--query` cannot express. Repeatable, and expressions combine with AND. See [`--where`](#--where).                                           |
-| `--references <uuids>`      | API          | Stories whose content references **all** of these story UUIDs. Comma-separated. See [`--references`](#--references).                                  |
-| `--check-references`        | client       | Report broken references, unpublished targets, and outdated link URLs. See [`--check-references`](#--check-references).                               |
-| `--sort <fields>`           | API          | Order results server-side, for example `updated_at:desc`. See [`--sort`](#--sort).                                                                    |
-| `--limit <n>`               | -            | A positive integer. Stop once this many results are printed, leaving the rest of the scope unread. See [`--limit`](#--limit).                         |
-| `--skip-content`            | -            | Do not fetch story content, and emit list metadata only. See [`--skip-content`](#--skip-content).                                                     |
-| `--capi-filter`             | -            | Evaluate `--where` against bulk Content Delivery API content, and fetch only the matches. See [`--capi-filter`](#--capi-filter).                      |
-| `--capi-params <params>`    | -            | Extra Content Delivery API query parameters for `--capi-filter`. See [`--capi-params`](#--capi-params).                                               |
+| Flag                         | Runs         | Description                                                                                                                                           |
+| ---------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-s, --space <space>`        | -            | **Required.** The space to search. Can also come from the environment or the config file.                                                             |
+| `--entry-type <type>`        | API          | Narrow to stories or folders only. Possible values: `all` (default), `story`, `folder`.                                                               |
+| `--starts-with <path>`       | API          | Limit the search to one subtree, for example `en/blog`. No leading slash.                                                                             |
+| `--container-block <name>`   | API          | Stories whose content type (root block) is this component. See [`--container-block` and `--includes-block`](#--container-block-and---includes-block). |
+| `--includes-block <names>`   | API          | Stories containing these blocks at any depth. Comma-separated, and **all** must be present.                                                           |
+| `-q, --query <query>`        | API          | Filter on root-level content fields. See [`--query`](#--query).                                                                                       |
+| `--tag <names>`              | API          | Stories carrying **any** of these tags. Comma-separated. See [`--tag`](#--tag).                                                                       |
+| `--workflow-stage <ids>`     | API          | Stories at **any** of these workflow stage IDs. Comma-separated. See [`--workflow-stage`](#--workflow-stage).                                         |
+| `--publish-status <status>`  | API + client | Publish state, decided from the story listing. Possible values: `published`, `changed`, `draft`. See [`--publish-status`](#--publish-status).         |
+| `--where <jsonpath>`         | client       | Anything `--query` cannot express. Repeatable, and expressions combine with AND. See [`--where`](#--where).                                           |
+| `--references <uuids>`       | API          | Stories whose content references **all** of these story UUIDs. Comma-separated. See [`--references`](#--references).                                  |
+| `--check-references [types]` | client       | Report broken references, unpublished targets, and outdated link URLs, optionally only some types. See [`--check-references`](#--check-references).   |
+| `--sort <fields>`            | API          | Order results server-side, for example `updated_at:desc`. See [`--sort`](#--sort).                                                                    |
+| `--limit <n>`                | -            | A positive integer. Stop once this many results are printed, leaving the rest of the scope unread. See [`--limit`](#--limit).                         |
+| `--skip-content`             | -            | Do not fetch story content, and emit list metadata only. See [`--skip-content`](#--skip-content).                                                     |
+| `--capi-filter`              | -            | Evaluate `--where` against bulk Content Delivery API content, and fetch only the matches. See [`--capi-filter`](#--capi-filter).                      |
+| `--capi-params <params>`     | -            | Extra Content Delivery API query parameters for `--capi-filter`. See [`--capi-params`](#--capi-params).                                               |
 
 The global flags apply as usual. Three of them matter here: `--space`, `--verbose`, and
 `--api-rate-limit`, which paces Management API requests at six requests per second by default.
@@ -139,12 +139,13 @@ storyblok stories find --space 12345 --query="[featured][is]=true&[price][gt_int
 storyblok stories find --space 12345 --query='{"component":{"in":"product"}}'
 ```
 
-Field and operator names are passed to the API as written, so the API decides whether a query is
-valid. `--container-block product` is shorthand for `--query="[component][in]=product"`, and the two
-combine into a single query field by field, so clauses on other fields survive. Setting the same
-field and operator from both flags is a usage error rather than a silent last-one-wins. Input that
-parses to nothing is rejected as well, because a `--query` with no readable clause would send no
-filter at all and return the whole space.
+Field names are passed to the API as written. Operators are checked first, because the API skips an
+operator it does not know, which would drop the filter and return the whole scope: `[eq]` or any
+other unknown operator is a usage error. `--container-block product` is shorthand for
+`--query="[component][in]=product"`, and the two combine into a single query field by field, so
+clauses on other fields survive. Setting the same field and operator from both flags is a usage
+error rather than a silent last-one-wins. Input that parses to nothing is rejected as well, because
+a `--query` with no readable clause would send no filter at all and return the whole space.
 
 ### `--where`
 
@@ -235,8 +236,9 @@ storyblok stories find --space 12345 --tag campaign --skip-content \
 
 ### `--workflow-stage`
 
-Matches stories at a given [workflow](/docs/manuals/workflows) stage, by stage ID. Comma-separated,
-matching any of them, and only the story's active stage counts.
+Matches stories at a given [workflow](/docs/manuals/workflows) stage, by numeric stage ID.
+Comma-separated, matching any of them, and only the story's active stage counts. A value that is not
+a number is a usage error, since it would match nothing and read as an empty answer.
 
 ```bash
 storyblok stories find --space 12345 --workflow-stage 42      # one stage
@@ -280,7 +282,10 @@ The format is `field[:direction[:cast[:nulls]]]`, comma-separated for several fi
 
 Story fields are addressed by name (`updated_at`, `slug`, `name`), and content fields with a
 `content.` prefix (`content.price`). A column the space cannot sort by is rejected by the API, which
-is the only place that knows the space's own schema.
+is the only place that knows the space's own schema. A direction other than `asc` or `desc` is
+rejected before the run starts, because the API would silently sort ascending.
+
+Results are printed in sorted order even though stories are fetched concurrently.
 
 ### `--limit`
 
@@ -349,7 +354,9 @@ Leading and trailing slashes are ignored when comparing paths, so `/about/team` 
 count as the same. A reference can be both `unpublished` and `stale_url`, and is reported as both,
 so that selecting one issue type never hides another.
 
-Only stories with at least one problem are output, each with a `_ref_issues` array added:
+Only stories with at least one problem are output, each with a `_ref_issues` array added. Pass issue
+types to the flag to report only those, comma-separated: `--check-references broken`. In a
+draft-heavy space, where most targets are unpublished, that is usually the first thing to reach for.
 
 ```json
 {
@@ -387,16 +394,13 @@ storyblok stories find --space 12345 --check-references
 storyblok stories find --space 12345 --check-references --capi-filter
 
 # Only dead links
-storyblok stories find --space 12345 --check-references \
-  --where "$._ref_issues[?(@.type == 'broken')]"
+storyblok stories find --space 12345 --check-references broken
 
 # Only outdated URLs, for example after a restructure
-storyblok stories find --space 12345 --check-references \
-  --where "$._ref_issues[?(@.type == 'stale_url')]"
+storyblok stories find --space 12345 --check-references stale_url
 
 # Published stories pointing at unpublished targets
-storyblok stories find --space 12345 --check-references --publish-status published \
-  --where "$._ref_issues[?(@.type == 'unpublished')]"
+storyblok stories find --space 12345 --check-references unpublished --publish-status published
 ```
 
 <Aside type="note">
@@ -453,6 +457,14 @@ Results stream as they match, so a reader can act on the first line without wait
 and memory stays flat on a result set of any size. Lines are written at the pace of whatever reads
 them, and a reader that stops early stops the run, so the command abandons the rest of the scope
 rather than fetching output nobody will read.
+
+### Exit codes
+
+| Code | Meaning                                                                                                                                                                       |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | The run completed. This includes a run stopped by `--limit` or by a reader closing the pipe, and a `--capi-filter` batch that failed but was settled from the Management API. |
+| `1`  | Part of the run failed, such as a listing page or a content fetch. The summary on stderr says which, and the results may be incomplete.                                       |
+| `2`  | A usage error, such as an invalid flag value. Nothing was fetched.                                                                                                            |
 
 ### Annotations
 
@@ -524,12 +536,12 @@ storyblok stories find --space 12345 --check-references --capi-filter \
   > reference-issues.jsonl
 
 # Only the outdated URLs, for example after a slug or folder restructure
-storyblok stories find --space 12345 --check-references --capi-filter \
-  --where "$._ref_issues[?(@.type == 'stale_url')]" | jq -r '.full_slug'
+storyblok stories find --space 12345 --check-references stale_url --capi-filter \
+  | jq -r '.full_slug'
 
 # Published pages pointing at something that is not live
-storyblok stories find --space 12345 --check-references --publish-status published \
-  --where "$._ref_issues[?(@.type == 'unpublished')]" | jq -r '.full_slug'
+storyblok stories find --space 12345 --check-references unpublished --publish-status published \
+  | jq -r '.full_slug'
 ```
 
 Add `--capi-filter` to audit a whole space. The check has to read every story's content, and the
@@ -771,7 +783,9 @@ storyblok stories find --space 12345 --includes-block hero --skip-content | wc -
 
 `--where` still works, as long as the expression stays on metadata. The listing carries every story
 property except `content`, so a filter on `full_slug`, `updated_at`, `content_type`, `tag_list`,
-`published`, or `stages` needs nothing that was skipped.
+`published`, or `stages` needs nothing that was skipped. `content_summary` is on the line but not
+searched: it is a truncated copy of the root fields, and matching on it would return a plausible but
+partial result.
 
 ```bash
 # Every landing page whose slug mentions a partner, in one page walk
@@ -857,10 +871,14 @@ Content Delivery API content is not Management API content, and three difference
   it.
 - **Folders have no content at all**, so they can never be pruned.
 
+A `--where` expression that names a `__i18n__` key is refused under `--capi-filter`, including with
+`--check-references`, since it could match no story there.
+
 The Content Delivery API also serves content the raw Management API payload does not, and `--where`
 filters on that as usual: `--capi-params "version=published"` decides against the published snapshot
 rather than the draft, and `--capi-params "language=de"` decides against a language-resolved
-document in [folder-level](/docs/concepts/internationalization) setups.
+document. The match is decided on that document, while the line printed is still the Management API
+story, which holds the draft and keeps translations under their `__i18n__` keys.
 </Aside>
 
 #### `--capi-filter` with `--skip-content`
@@ -901,6 +919,9 @@ The command enforces two rules:
   out of scope first.
 - **`by_uuids`, `by_uuids_ordered`, `per_page`, and `page` are rejected**, since the command manages
   batching itself.
+
+Before the run starts, one request checks the parameters against the Content Delivery API, so a
+parameter it rejects fails with its reason rather than quietly disabling the pruning.
 
 ```bash
 # What is actually live, including pages with pending edits
@@ -1007,8 +1028,8 @@ bulk stage undecided and costs an individual Management API request in any case.
 ### Sort with `--sort` rather than in the output
 
 `jq -s 'sort_by(...)'` has to buffer the whole result set before it can emit the first line, which
-discards the streaming. `--sort` is applied by the API, so it decides which stories are on the first
-page, which is what makes `--limit` return the top results rather than an arbitrary set.
+discards the streaming. `--sort` is applied by the API and the output keeps its order, which is what
+makes `--limit` return the top results rather than an arbitrary set.
 
 ```bash title="Don't: the whole result set is buffered before the first line appears"
 storyblok stories find --space 12345 --starts-with en/blog \

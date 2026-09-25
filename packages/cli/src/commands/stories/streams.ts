@@ -118,16 +118,25 @@ export const fetchStoriesStream = ({
 
 export const fetchStoryStream = ({
   spaceId,
+  ordered = false,
   onIncrement,
   onStorySuccess,
   onStoryError,
 }: {
   spaceId: string;
+  /**
+   * Emit stories in the order they were listed rather than as their fetches
+   * complete. A slow fetch then holds back the ones behind it, and its slot
+   * stays taken until it is emitted, so memory stays bounded.
+   */
+  ordered?: boolean;
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
   const processing = new Set<Promise<void>>();
+  /** The last story queued for an ordered emit; each one waits for it. */
+  let previousEmit: Promise<void> = Promise.resolve();
 
   return new Transform({
     objectMode: true,
@@ -135,22 +144,39 @@ export const fetchStoryStream = ({
       // Wait for a slot
       await getPipelineSlot().acquire();
 
-      const task = fetchStory(spaceId, listStory.id.toString())
-        .then((story) => {
+      const fetched = fetchStory(spaceId, listStory.id.toString()).then(
+        (story) => {
           if (typeof story === "undefined") {
             throw new TypeError("Invalid story!");
           }
           onStorySuccess?.(story);
-          this.push(story);
-        })
-        .catch((maybeError) => {
+          return story;
+        },
+        (maybeError: unknown) => {
           onStoryError?.(toError(maybeError), listStory);
-        })
-        .finally(() => {
-          onIncrement?.();
-          getPipelineSlot().release();
-          processing.delete(task);
-        });
+          return undefined;
+        },
+      );
+      // Never rejects: in ordered mode every later emit is chained onto this one.
+      const emit = (story: Story | undefined): void => {
+        if (!story) {
+          return;
+        }
+        try {
+          this.push(story);
+        } catch (maybeError) {
+          onStoryError?.(toError(maybeError), listStory);
+        }
+      };
+      const settled = ordered
+        ? (previousEmit = Promise.all([fetched, previousEmit]).then(([story]) => emit(story)))
+        : fetched.then(emit);
+
+      const task = settled.finally(() => {
+        onIncrement?.();
+        getPipelineSlot().release();
+        processing.delete(task);
+      });
       processing.add(task);
 
       // Call callback immediately to allow the stream to process the next chunk

@@ -187,14 +187,14 @@ describe("LivePreviewService", () => {
 
     it("calls onStoryblokEditorEvent after connect()", async () => {
       const { ref } = makeDestroyRef();
-      service.connect(() => {}, ref);
+      await service.connect(() => {}, ref);
       await flush();
       expect(onStoryblokEditorEventMock).toHaveBeenCalledOnce();
     });
 
     it("calls the bridge cleanup when DestroyRef fires after bridge loads", async () => {
       const { ref, destroy } = makeDestroyRef();
-      service.connect(() => {}, ref);
+      await service.connect(() => {}, ref);
       await flush(); // bridge loads, then() runs
       destroy(); // component destroyed
       expect(cleanupMock).toHaveBeenCalledOnce();
@@ -209,7 +209,7 @@ describe("LivePreviewService", () => {
       );
 
       const { ref, destroy } = makeDestroyRef();
-      service.connect(() => {}, ref);
+      const connection = service.connect(() => {}, ref);
 
       // Component destroyed before bridge finishes loading
       destroy();
@@ -217,6 +217,7 @@ describe("LivePreviewService", () => {
 
       // Bridge finishes loading after destruction
       resolveBridge(cleanupMock);
+      await connection;
       await flush();
 
       expect(cleanupMock).toHaveBeenCalledOnce(); // torn down immediately
@@ -224,37 +225,54 @@ describe("LivePreviewService", () => {
 
     it("forwards options to listen()", async () => {
       const { ref } = makeDestroyRef();
-      service.connect(() => {}, ref, { resolveRelations: ["a.b"] });
-      await flush();
+      await service.connect(() => {}, ref, { resolveRelations: ["a.b"] });
       expect(onStoryblokEditorEventMock).toHaveBeenCalledWith(
         expect.any(Function),
         expect.objectContaining({ resolveRelations: ["a.b"] }),
       );
     });
 
-    it("logs to console.error and does not throw when listen() rejects", async () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    it("resolves to a no-op cleanup and logs when listen() rejects", async () => {
       const bridgeError = new Error("bridge failed");
       onStoryblokEditorEventMock.mockRejectedValue(bridgeError);
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       const { ref } = makeDestroyRef();
-      expect(() => service.connect(() => {}, ref)).not.toThrow();
-      await flush();
+      const cleanup = await service.connect(() => {}, ref);
 
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("[Storyblok]"), bridgeError);
-      errorSpy.mockRestore();
+      expect(cleanup).toEqual(expect.any(Function));
+      expect(() => cleanup()).not.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[Storyblok] connect() failed to subscribe to live preview updates:",
+        bridgeError,
+      );
     });
 
-    it("treats context as destroyed and tears down bridge immediately when DestroyRef.onDestroy() throws (NG0911)", async () => {
+    it("treats context as already destroyed and never touches the shared bridge when DestroyRef.onDestroy() throws (NG0911)", async () => {
       const throwingRef = {
         onDestroy: () => {
           throw new Error("NG0911: destroyRef is not in a valid state");
         },
       } as unknown as import("@angular/core").DestroyRef;
 
-      service.connect(() => {}, throwingRef);
-      await flush();
+      const cleanup = await service.connect(() => {}, throwingRef);
 
+      // The context was already gone before we even subscribed — skip
+      // touching the shared bridge entirely instead of subscribing only to
+      // immediately tear down again.
+      expect(onStoryblokEditorEventMock).not.toHaveBeenCalled();
+      expect(cleanupMock).not.toHaveBeenCalled();
+      expect(() => cleanup()).not.toThrow();
+    });
+
+    it("detaches the onDestroy hook when the returned cleanup is called manually", async () => {
+      const unregister = vi.fn();
+      const ref = { onDestroy: vi.fn().mockReturnValue(unregister) } as unknown as DestroyRef;
+
+      const cleanup = await service.connect(() => {}, ref);
+      cleanup();
+
+      expect(unregister).toHaveBeenCalledOnce();
       expect(cleanupMock).toHaveBeenCalledOnce();
     });
   });

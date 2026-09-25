@@ -9,6 +9,7 @@ import { mediaBlock } from "./media";
 import { pricingTableBlock } from "./pricing-table";
 import { quoteBlock } from "./quote";
 import { sectionBlock } from "./section";
+import { spacerBlock } from "./spacer";
 import { teaserBlock } from "./teaser";
 
 export const pageBlock = defineBlock({
@@ -23,6 +24,7 @@ export const pageBlock = defineBlock({
       type: "bloks",
       allow: [
         sectionBlock.name,
+        spacerBlock.name,
         cardBlock.name,
         teaserBlock.name,
         galleryBlock.name,

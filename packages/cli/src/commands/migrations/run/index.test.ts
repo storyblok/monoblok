@@ -375,7 +375,7 @@ describe("migrations run command", () => {
     ]);
 
     // MAPI matches `starts_with` literally and a `full_slug` never starts with a
-    // slash, so the slash the flag's own example used to show matched nothing.
+    // slash, so a leading slash would match nothing.
     expect(fetchStories).toHaveBeenCalledWith(
       "12345",
       expect.objectContaining({ starts_with: "en/blog/" }),

@@ -111,9 +111,6 @@ runCmd.action(
         spaceId: space,
         params: {
           componentName,
-          // `--starts-with` and `--query` are normalized the same way in every
-          // story-listing command, so they go through the shared builder rather
-          // than being passed to the API as typed.
           ...buildStoryScopeParams({ startsWith, query }),
         },
         onTotal: (total) => {

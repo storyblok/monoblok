@@ -47,8 +47,6 @@ export interface PhaseTracker {
   phase: (key: string) => Phase;
   /** Convenience for `phase(key).counts`. */
   counts: (key: string) => PhaseCounts;
-  /** Re-derives every phase's total from the phase above it. */
-  syncTotals: () => void;
   stop: () => void;
   /** Milliseconds since the run started. */
   elapsedMs: () => number;
@@ -189,7 +187,6 @@ export function createPhaseTracker({
   return {
     phase,
     counts: (key) => get(key).counts,
-    syncTotals,
     stop: () => ui.stopAllProgressBars(),
     elapsedMs: () => Date.now() - startedAt,
     timings: () =>

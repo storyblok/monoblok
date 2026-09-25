@@ -56,15 +56,17 @@ currently active. `preventClicks` is the one exception: any active subscriber re
 regardless of subscribe order. Outside the Visual Editor, the call is a no-op and resolves to a
 cleanup function that does nothing.
 
-A later call only rebuilds the shared bridge when the merged options actually change — an
-already-covered relation, or an empty `{}`, does not. Calls made synchronously in the same tick (or
-that arrive while the bridge module is still loading) share a single build; a call that lands after
-that window triggers a full teardown and rebuild of the shared bridge instead, briefly leaving the
-page with no attached bridge. Prefer batching known subscriptions upfront (e.g. with `Promise.all`)
-when possible.
+A subscribe or unsubscribe only rebuilds the shared bridge when the merged options actually change —
+an already-covered relation, or an empty `{}`, does not. Calls made synchronously in the same tick
+(or that arrive while the bridge module is still loading) share a single build; a call that lands
+after that window triggers a full teardown and rebuild of the shared bridge instead, briefly leaving
+the page with no attached bridge. Prefer batching known subscriptions upfront (e.g. with
+`Promise.all`) when possible.
 
-Cleaning up a subscription stops its own options from being merged in, but that only takes effect on
-the live bridge at the next rebuild — cleanup alone doesn't trigger one.
+Cleaning up a subscription immediately stops its own options from being merged in, and — if other
+subscriptions remain and the retraction changes the merge — rebuilds the live bridge to reflect it,
+so a departed subscriber's `preventClicks`/relation/scalar contribution stops applying right away
+rather than lingering until some unrelated future subscribe/unsubscribe.
 
 ### Low-level Preview Bridge access
 

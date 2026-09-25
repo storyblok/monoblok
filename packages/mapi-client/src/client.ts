@@ -1,8 +1,9 @@
-import type { Client, ResolvedRequestOptions, RetryOptions } from "./generated/mapi/client";
+import type { Client, ResolvedRequestOptions } from "./generated/mapi/client";
 import type { Middleware } from "./generated/mapi/client/utils.gen";
 import { createClient, createConfig } from "./generated/mapi/client";
 import { getManagementBaseUrl } from "@storyblok/region-helper";
 import type { Region } from "@storyblok/region-helper";
+import type { RetryOptions } from "ky";
 import type { Block } from "./generated/types/block";
 import { ClientError } from "./error";
 import type { RateLimitConfig } from "./utils/rate-limit";
@@ -132,8 +133,10 @@ export type ManagementApiClientConfig<ThrowOnError extends boolean = false> = To
    *
    * - `undefined` (default): single bucket at 6 requests per second.
    * - `number`: fixed requests per second.
-   * - `{ requestsPerSecond?: number }`: full config.
    * - `false`: disable rate limiting entirely.
+   * - `RateLimitConfig`: `requestsPerSecond`, `adaptive` (back off on 429 and
+   *   recover on success, on by default) and `limiter` (replace the in-memory
+   *   limiter with one shared across instances).
    */
   rateLimit?: RateLimitConfig | number | false;
 };
@@ -193,25 +196,83 @@ const createManagementApiClientBase = <DefaultThrowOnError extends boolean = fal
       kyOptions: {
         throwHttpErrors: true,
         timeout,
+        // Admission waits here, before ky starts the timeout clock: a queue
+        // longer than `timeout` must delay requests, not fail them.
+        hooks: { beforeRequest: [throttleManager.beforeRequest] },
         retry,
+        // `globalThis.fetch` is read per call so a fetch swapped in after the
+        // client was created still applies.
+        fetch: throttleManager.wrapFetch((input, init) => globalThis.fetch(input, init)),
       },
     }),
   );
 
   client.interceptors.error.use(
-    (error: unknown, response: Response) =>
-      new ClientError(response?.statusText || "API request failed", {
-        status: response?.status ?? 0,
-        statusText: response?.statusText ?? "",
+    (
+      error: unknown,
+      response: Response | undefined,
+      _request: Request | undefined,
+      options: ResolvedRequestOptions,
+    ) => {
+      if (!response) {
+        // A transport failure only ever reaches the interceptor through the generated
+        // client's outer catch, which — unlike the HTTP-error path below — passes the
+        // options as given to this call, not merged with the client-level default. A
+        // call that relies on that default rather than overriding `throwOnError` itself
+        // would otherwise read as `undefined` here regardless of the effective value.
+        if (options.throwOnError ?? throwOnError) {
+          // No HTTP answer at all — a timeout, an abort, a DNS failure. This rejects as-is
+          // rather than being wrapped, so its name, message, and `instanceof` checks (e.g.
+          // `AbortError`) survive.
+          return error;
+        }
+
+        // Without `throwOnError` this resolves as `result.error`, which `ApiResponse`
+        // types as `ClientError`. Wrap it here to keep that contract accurate — unlike the
+        // rejection path, callers can't narrow a resolved value by `instanceof` before
+        // touching it, so it has to already be the declared shape. The original error
+        // stays reachable via `cause`.
+        return new ClientError("API request failed", {
+          status: 0,
+          statusText: "",
+          data: undefined,
+          cause: error,
+        });
+      }
+
+      return new ClientError(response.statusText || "API request failed", {
+        status: response.status,
+        statusText: response.statusText,
         data: error,
-      }),
+      });
+    },
   );
+
+  /**
+   * Builds a placeholder `Request` for a call that never got far enough to produce one
+   * — a malformed `baseUrl` fails here too, in which case a request pointing nowhere in
+   * particular still beats losing `result.error`, which carries the original, more
+   * useful message (including the full attempted request URL).
+   */
+  const createFallbackRequest = (): Request => {
+    try {
+      return new Request(baseUrl || getManagementBaseUrl(region));
+    } catch {
+      return new Request("about:blank");
+    }
+  };
 
   function wrapRequest<TData, CurrentThrowOnError extends boolean = DefaultThrowOnError>(
     fn: () => Promise<unknown>,
     _throwOnError?: CurrentThrowOnError,
   ): Promise<ApiResponse<TData, CurrentThrowOnError>> {
-    return throttleManager.execute(() => fn() as Promise<ApiResponse<TData, CurrentThrowOnError>>);
+    return throttleManager.execute(async () => {
+      const result = (await fn()) as ApiResponse<TData, CurrentThrowOnError>;
+      const response = result.response ?? Response.error();
+      const request = result.request ?? createFallbackRequest();
+
+      return { ...result, response, request };
+    });
   }
 
   const deps: MapiResourceDeps<DefaultThrowOnError> = { client, spaceId, wrapRequest };

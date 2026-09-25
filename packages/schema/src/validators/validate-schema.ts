@@ -1,15 +1,18 @@
 import type { SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
+import { FIELD_TYPES } from "../field-types";
 import { DERIVED_RESTRICTION_KEYS, EDITOR_RESTRICT_TYPES } from "../restrictions";
 import { isRecord, toValues } from "./shapes";
+
+const FIELD_TYPE_LIST = FIELD_TYPES.map((value) => `"${value}"`).join(", ");
 
 /**
  * Validates a schema definition without throwing. Checks structural identity
  * (missing or duplicate block names, field names, and datasource names and slugs) and cross-references
  * (every `allow` entry resolves to a defined block; every field `datasource`
- * resolves to a defined datasource; every `custom` field's `field_type`
- * resolves to a registered field plugin; no field mixes `allow`/`deny` with the
- * wire restriction keys they derive).
+ * resolves to a defined datasource; every field declares a known `type`;
+ * every `custom` field's `field_type` resolves to a registered field plugin; no
+ * field mixes `allow`/`deny` with the wire restriction keys they derive).
  *
  * @example
  * const result = validateSchema({ blocks: { hero }, datasources: { colors } });
@@ -161,6 +164,8 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
         continue;
       }
       const fieldName = field.name;
+      const fieldLabel =
+        typeof fieldName === "string" ? `Field "${fieldName}"` : `Field at index ${index}`;
       if (typeof fieldName === "string") {
         if (fieldNames.has(fieldName)) {
           issues.push({
@@ -271,6 +276,39 @@ export function validateSchema(schema: SchemaLike): ValidationResult {
           path: ["blocks", blockKey, fieldName ?? index, "restrict_type"],
           entity: blockEntity,
           message: `Field "${fieldName}" sets "restrict_type" to "${restrictType}", which the editor does not recognize; the field's restriction lists are ignored. Expected one of ${EDITOR_RESTRICT_TYPES.map((value) => `"${value}"`).join(", ")}.`,
+        });
+      }
+
+      // Unlike `restrict_type`, the Management API does validate `type`: it
+      // rejects an unknown one, a non-string one, and a missing or blank one
+      // alike, so all of them are errors rather than warnings. `defineField`
+      // rejects them at compile time; this covers schemas authored in plain
+      // JavaScript or assembled at runtime, which reach the validator untyped.
+      //
+      // FIELD_TYPES ships with this package, so a type the API gains after a
+      // release reads as unknown until the specs are regenerated, as it would
+      // to the same version's `defineField`.
+      const fieldTypeValue = field.type;
+      if (
+        fieldTypeValue === undefined ||
+        fieldTypeValue === null ||
+        (typeof fieldTypeValue === "string" && fieldTypeValue.trim() === "")
+      ) {
+        issues.push({
+          severity: "error",
+          code: "missing_field_type",
+          path: ["blocks", blockKey, fieldName ?? index, "type"],
+          entity: blockEntity,
+          message: `${fieldLabel} in ${blockLabel} is missing a "type". Expected one of ${FIELD_TYPE_LIST}.`,
+        });
+      } else if (!FIELD_TYPES.includes(fieldTypeValue)) {
+        issues.push({
+          severity: "error",
+          code: "unknown_field_type",
+          path: ["blocks", blockKey, fieldName ?? index, "type"],
+          entity: blockEntity,
+          // `JSON.stringify` so `123` and `"123"` read as different mistakes.
+          message: `${fieldLabel} in ${blockLabel} has unknown type ${JSON.stringify(fieldTypeValue)}. Expected one of ${FIELD_TYPE_LIST}.`,
         });
       }
 

@@ -47,3 +47,13 @@ CI runs on both macOS and Windows. These are the non-obvious gotchas:
     return { ...actual, pathToFileURL: (p: string) => ({ href: p }) };
   });
   ```
+
+## Astro end-to-end tests
+
+`playground:test:foreground` starts the playground with two env vars:
+
+- **`ASTRO_DEV_BACKGROUND`** stops `astro dev` from daemonizing in agentic environments, which makes
+  `start-server-and-test` abort with "server closed unexpectedly". A daemon that slips through keeps
+  port 4321 and the next run tests against it; clear it with
+  `pnpm --filter @storyblok/playground-astro-test exec astro dev stop`.
+- **`STORYBLOK_E2E`** turns off the dev toolbar; see `playground/test/astro.config.mjs`.

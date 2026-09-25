@@ -1,0 +1,148 @@
+import { describe, expect, it } from "vitest";
+
+import type { DiffResult, EntityDiff } from "../types";
+import { formatSchemaDiff, isSpaceRef } from "./actions";
+
+function makeResult(diffs: EntityDiff[]): DiffResult {
+  return {
+    diffs,
+    unmanagedFolders: [],
+    creates: diffs.filter((d) => d.action === "create").length,
+    updates: diffs.filter((d) => d.action === "update").length,
+    unchanged: diffs.filter((d) => d.action === "unchanged").length,
+    stale: diffs.filter((d) => d.action === "stale").length,
+  };
+}
+
+describe("isSpaceRef", () => {
+  it("should treat a numeric string as a space ID", () => {
+    expect(isSpaceRef("12345")).toBe(true);
+    expect(isSpaceRef("  678 ")).toBe(true);
+  });
+
+  it("should treat a non-numeric string as a file path", () => {
+    expect(isSpaceRef("./schema.ts")).toBe(false);
+    expect(isSpaceRef("src/schema/index.ts")).toBe(false);
+    expect(isSpaceRef("12/schema.ts")).toBe(false);
+  });
+});
+
+describe("formatSchemaDiff", () => {
+  it("should use direction-aware wording (added/changed/removed)", () => {
+    const result = makeResult([
+      {
+        type: "component",
+        name: "hero",
+        action: "create",
+        changes: [],
+        before: null,
+        after: { name: "hero" },
+      },
+      {
+        type: "component",
+        name: "teaser",
+        action: "update",
+        changes: [
+          {
+            field: "headline",
+            change: "modified",
+            before: { type: "text" },
+            after: { type: "textarea" },
+          },
+        ],
+        before: {},
+        after: {},
+      },
+      {
+        type: "datasource",
+        name: "colors",
+        action: "stale",
+        changes: [],
+        before: { name: "colors" },
+        after: null,
+      },
+    ]);
+
+    const output = formatSchemaDiff(result, "111", "222");
+
+    expect(output).toContain("from 111 → to 222");
+    expect(output).toContain("hero (added)");
+    expect(output).toContain("teaser (changed)");
+    expect(output).toContain("colors (removed)");
+    expect(output).toContain("headline");
+    expect(output).toContain("1 added, 1 changed, 1 removed");
+  });
+
+  it("should elide an overlong value instead of emitting an unreadable line", () => {
+    const long = "x".repeat(5000);
+    const result = makeResult([
+      {
+        type: "datasource",
+        name: "colors",
+        action: "update",
+        changes: [{ field: "entries", change: "modified", before: long, after: `${long}y` }],
+        before: {},
+        after: {},
+      },
+    ]);
+
+    const longest = Math.max(
+      ...formatSchemaDiff(result, "111", "222")
+        .split("\n")
+        .map((l) => l.length),
+    );
+
+    expect(longest).toBeLessThan(300);
+  });
+
+  it("should count an unchanged entity in the summary", () => {
+    const result = makeResult([
+      {
+        type: "component",
+        name: "hero",
+        action: "unchanged",
+        changes: [],
+        before: null,
+        after: null,
+      },
+    ]);
+
+    const output = formatSchemaDiff(result, "a.ts", "b.ts");
+
+    expect(output).toContain("1 unchanged");
+  });
+
+  it("should report no differences when both schemas are empty", () => {
+    const output = formatSchemaDiff(makeResult([]), "a.ts", "b.ts");
+
+    expect(output).toContain("Summary: no differences");
+  });
+
+  it("should omit unchanged entities from the listing while keeping the summary count", () => {
+    const result = makeResult([
+      {
+        type: "component",
+        name: "hero",
+        action: "create",
+        changes: [],
+        before: null,
+        after: { name: "hero" },
+      },
+      {
+        type: "component",
+        name: "footer",
+        action: "unchanged",
+        changes: [],
+        before: {},
+        after: {},
+      },
+    ]);
+
+    const output = formatSchemaDiff(result, "111", "222");
+
+    expect(output).toContain("hero (added)");
+    expect(output).not.toContain("footer");
+    expect(output).not.toContain("(unchanged)");
+    expect(output).toContain("1 unchanged");
+  });
+});

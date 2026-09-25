@@ -1,10 +1,10 @@
 import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
 
-import type { LocalFolder, SchemaData } from "../types";
-import { CommandError, isRecord } from "../../../utils";
-import { collectSchemaExports, loadSchemaModule } from "../../../utils/schema/classify-exports";
-import { expandFolderPath } from "../folders";
-import { mapBlockToWire, mapDatasourceToWire } from "../map-to-wire";
+import type { LocalFolder, SchemaData } from "./types";
+import { CommandError, isRecord } from "../../utils";
+import { collectSchemaExports, loadSchemaModule } from "../../utils/schema/classify-exports";
+import { expandFolderPath } from "./folders";
+import { mapBlockToWire, mapDatasourceToWire } from "./map-to-wire";
 
 /**
  * Builds the deduped, parent-first {@link LocalFolder} list from harvested
@@ -123,6 +123,50 @@ function assertUniqueIdentities(
   }
 }
 
+/**
+ * Fails the load when a block declares a field the wire form cannot carry.
+ *
+ * A field is keyed on the wire by its `name` and identified by its `type`, so
+ * one missing either is unpushable: the mapping drops a nameless field outright,
+ * and a typeless one reaches the Management API as an empty object, which the
+ * API discards on the way in. Either way the field is gone from the pushed
+ * component and nothing reports it. `defineField` rejects both at compile time;
+ * this catches a schema authored in plain JavaScript or assembled at runtime.
+ * `schema validate` reports the same fields as `invalid_field` /
+ * `missing_field_name` / `missing_field_type`.
+ */
+function assertPushableFields(components: Record<string, unknown>[]): void {
+  const problems: string[] = [];
+  for (const component of components) {
+    const blockLabel =
+      typeof component.name === "string" ? `block "${component.name}"` : "an unnamed block";
+    const fields = Array.isArray(component.fields) ? component.fields : [];
+    fields.forEach((field, index) => {
+      if (!isRecord(field)) {
+        problems.push(`the entry at index ${index} in ${blockLabel} is not an object`);
+        return;
+      }
+      const hasName = typeof field.name === "string" && field.name !== "";
+      const fieldLabel = hasName
+        ? `field "${String(field.name)}" in ${blockLabel}`
+        : `the field at index ${index} in ${blockLabel}`;
+      if (!hasName) {
+        problems.push(`${fieldLabel} has no "name"`);
+      }
+      if (typeof field.type !== "string" || field.type.trim() === "") {
+        problems.push(`${fieldLabel} has no "type"`);
+      }
+    });
+  }
+
+  if (problems.length > 0) {
+    throw new CommandError(
+      `Schema fields that cannot be pushed: ${problems.join(", ")}. ` +
+        `Run \`storyblok schema validate\` for the full report.`,
+    );
+  }
+}
+
 const toArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 /**
@@ -135,6 +179,7 @@ export function classifyExports(moduleExports: Record<string, unknown>): SchemaD
   const { components, datasources, folders } = collectSchemaExports(moduleExports);
 
   assertUniqueIdentities(components, datasources);
+  assertPushableFields(components);
 
   // Harvest derived (unregistered) folder display paths from each component's
   // `folder` field and from both of its restriction lists. Reads the raw DSL

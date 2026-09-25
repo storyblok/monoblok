@@ -19,7 +19,7 @@ import { hashCache, readLock } from "./lock.ts";
 import { SPEC_PATHS, TEMPLATES_DIR } from "./paths.ts";
 import { SPEC_PARSERS } from "./patches.ts";
 import { templateFor, TEMPLATES, type WrapperFile } from "./templates.ts";
-import { type KeepEntry, transformGeneratedFile } from "./transform.ts";
+import { deduplicateGeneratedUnions, type KeepEntry, transformGeneratedFile } from "./transform.ts";
 
 export interface GenerateConfig {
   /** Where to write the consumer's `src/generated/` tree (absolute). */
@@ -190,6 +190,8 @@ async function emitFullSdk(spec: "capi" | "mapi", outDir: string, verbose: boole
     plugins: ["@hey-api/typescript", "@hey-api/client-ky", { name: "@hey-api/sdk" }],
     logs: { level: "silent" },
   });
+  const typesPath = resolve(sdkDir, "types.gen.ts");
+  writeFileSync(typesPath, deduplicateGeneratedUnions(readFileSync(typesPath, "utf8")), "utf8");
   if (verbose) {
     console.warn(`[${spec}] emitted full SDK to ${sdkDir}`);
   }
@@ -246,8 +248,16 @@ function resolveInclude(include: readonly KnownType[]): ResolvedInclude {
     leafAliases.delete(leaf);
   }
 
-  const publicPerSpec: Record<SpecSource, KeepEntry[]> = { capi: [], mapi: [], overlay: [] };
-  const leafPerSpec: Record<SpecSource, KeepEntry[]> = { capi: [], mapi: [], overlay: [] };
+  const publicPerSpec: Record<SpecSource, KeepEntry[]> = {
+    capi: [],
+    mapi: [],
+    overlay: [],
+  };
+  const leafPerSpec: Record<SpecSource, KeepEntry[]> = {
+    capi: [],
+    mapi: [],
+    overlay: [],
+  };
   const push = (target: Record<SpecSource, KeepEntry[]>, emitAs: string): void => {
     const alias = ALIAS_BY_EMIT_NAME.get(emitAs);
     if (!alias) {
@@ -255,7 +265,11 @@ function resolveInclude(include: readonly KnownType[]): ResolvedInclude {
         `No alias defined for "${emitAs}". Add it to tools/openapi-codegen/src/aliases.ts.`,
       );
     }
-    target[alias.spec].push({ source: alias.source, emitAs: alias.emitAs, unwrap: alias.unwrap });
+    target[alias.spec].push({
+      source: alias.source,
+      emitAs: alias.emitAs,
+      unwrap: alias.unwrap,
+    });
   };
   for (const emitAs of publicAliases) {
     push(publicPerSpec, emitAs);

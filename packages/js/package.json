@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/js",
-  "version": "6.3.2",
+  "version": "6.3.3",
   "private": false,
   "description": "SDK to integrate Storyblok into your project using JavaScript.",
   "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/js#readme",
@@ -53,7 +53,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/preview-bridge": "^2.1.6",
+    "@storyblok/preview-bridge": "^2.3.1",
     "@storyblok/richtext": "workspace:^",
     "storyblok-js-client": "workspace:^"
   },

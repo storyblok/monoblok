@@ -288,7 +288,7 @@ export type DraftStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     slug: string;
     full_slug: string;
@@ -313,8 +313,17 @@ export type DraftStory = {
         path: string;
         name: string | null;
         lang: string;
-        published: string | null;
+        published: boolean | null;
     }> | null;
+    /**
+     * Story's assigned taxonomy terms. Present only when `with_taxonomy_terms=1` is requested and the taxonomy feature is enabled for the space
+     */
+    taxonomy_terms?: Array<{
+        id: string;
+        display_name: string;
+        name: string;
+        taxonomy_id: string;
+    }>;
 };
 
 export type PublicSpace = {
@@ -362,7 +371,7 @@ export type PublishedStory = {
     content: {
         _uid?: string;
         component?: string;
-        [key: string]: unknown | string | undefined;
+        [key: string]: unknown;
     };
     slug: string;
     full_slug: string;
@@ -388,8 +397,17 @@ export type PublishedStory = {
         path: string;
         name: string | null;
         lang: string;
-        published: string | null;
+        published: boolean | null;
     }> | null;
+    /**
+     * Story's assigned taxonomy terms. Present only when `with_taxonomy_terms=1` is requested and the taxonomy feature is enabled for the space
+     */
+    taxonomy_terms?: Array<{
+        id: string;
+        display_name: string;
+        name: string;
+        taxonomy_id: string;
+    }>;
 };
 
 export type Tag = {
@@ -408,6 +426,96 @@ export type Tag = {
      * Only visible when passing the `all_tags` parameter. The number of stories currently associated with the tag, corresponding to the <strong>Assigned items</strong> column in the <a href='https://www.storyblok.com/docs/manuals/stories#tags'>Tags tab</a>.
      */
     tag_on_stories?: number;
+};
+
+/**
+ * A row in the single taxonomy_terms table. A root taxonomy term (parent_id null) is what the client calls a "taxonomy"; every other row is a nested term within one.
+ */
+export type TaxonomyTerm = {
+    /**
+     * Snowflake ID of the term
+     */
+    id: string;
+    /**
+     * Human-readable label
+     */
+    display_name: string;
+    /**
+     * URL-safe technical name
+     */
+    name: string;
+    /**
+     * Optional free-text description
+     */
+    description: string | null;
+    /**
+     * ID of parent space if this is a child space.
+     */
+    parent_id: string | null;
+    /**
+     * User who created the term. Always present for root terms (taxonomies); may be null for nested terms.
+     */
+    last_author: {
+        /**
+         * User's numeric ID
+         */
+        id: number;
+        /**
+         * Username, or the user's email if no username is set
+         */
+        userid: string;
+        /**
+         * Display name derived from firstname/lastname, falling back to userid
+         */
+        friendly_name: string;
+        /**
+         * URL of the user's avatar image, null if not set
+         */
+        avatar?: string | null;
+    } | null;
+    /**
+     * ID of the user who created the term. Always present for root terms (taxonomies); may be null for nested terms.
+     */
+    last_author_id: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+    /**
+     * Nested child terms, recursively. Present on show/create/update/restore responses; omitted from the index listing.
+     */
+    children?: Array<TaxonomyTerm>;
+    /**
+     * Count of all descendant terms, any depth. Present only on the index listing.
+     */
+    terms_count?: number;
+    /**
+     * Timestamp of the most recent change anywhere in this taxonomy: the root itself or any nested term being added, edited, or archived. Present only on the index listing.
+     */
+    last_activity_at?: string;
+    /**
+     * Content currently assigned to this exact term (not its descendants), scoped to the requesting space. Only Story exists as a content type today; `type` is polymorphic so Asset can be added later without breaking this field. Present on the show response for the requested term and every nested term under `children`; always empty on a root term, since content can only ever be assigned to a nested term. Not present on the index listing -- use `GET /v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/associated_content` for the content assigned anywhere within a given term's subtree (e.g. to warn before deleting it).
+     */
+    associated_content?: Array<{
+        /**
+         * Snowflake ID of the content item
+         */
+        id: string;
+        /**
+         * Content type discriminator
+         */
+        type: 'Story';
+        name: string;
+        /**
+         * Present for Story entries
+         */
+        full_slug?: string;
+        updated_at: string;
+    }>;
 };
 
 export type Asset = {
@@ -460,14 +568,10 @@ export type Asset = {
      * Title of the asset.
      */
     title: string | null;
-    [key: string]: unknown | string | null | number | null | number | null | string | null | string | null | string | null | string | null | string | null | string | string | null | boolean | string | null | string | null | undefined;
+    [key: string]: unknown;
 };
 
-export type Story = ({
-    version?: 'draft';
-} & DraftStory) | ({
-    version?: 'published';
-} & PublishedStory);
+export type Story = DraftStory | PublishedStory;
 
 export type GetAssetData = {
     body?: never;
@@ -901,6 +1005,10 @@ export type GetStoryByIdData = {
          */
         excluding_fields?: string;
         /**
+         * Exclude top-level story response fields (comma-separated list), e.g. alternates, translated_slugs
+         */
+        excluding_story_fields?: string;
+        /**
          * Used to obtain translated versions of one or more stories. Accepts any language code that is configured in the Storyblok space.
          */
         language?: string;
@@ -916,6 +1024,10 @@ export type GetStoryByIdData = {
          * Force second-level relation resolution when first level exceeds limit.
          */
         resolve_level?: 2;
+        /**
+         * Include each story's assigned taxonomy terms. Every term also carries its immediate `parent` and its root `taxonomy` as nested objects, each with id, name and display_name. An archived term is left out of the story's own assignments, but an archived ancestor is still returned, and unmarked, so a breadcrumb never loses a level.
+         */
+        with_taxonomy_terms?: '1';
         /**
          * has a value with string that contains null character
          */
@@ -1194,6 +1306,10 @@ export type ListStoriesData = {
          */
         excluding_fields?: string;
         /**
+         * Exclude top-level story response fields (comma-separated list), e.g. alternates, translated_slugs
+         */
+        excluding_story_fields?: string;
+        /**
          * Resolve asset metadata (higher-tier plans only).
          */
         resolve_assets?: 1;
@@ -1205,6 +1321,26 @@ export type ListStoriesData = {
          * When set, returns only experiment variant stories
          */
         only_variants?: 'true';
+        /**
+         * Include each story's assigned taxonomy terms. Every term also carries its immediate `parent` and its root `taxonomy` as nested objects, each with id, name and display_name. An archived term is left out of the story's own assignments, but an archived ancestor is still returned, and unmarked, so a breadcrumb never loses a level.
+         */
+        with_taxonomy_terms?: '1';
+        /**
+         * Filter by taxonomy term id(s). IDs in a comma-separated group are ORed together;
+         * passing the parameter as an array ANDs across groups
+         */
+        by_taxonomy_term_ids?: string | Array<string>;
+        /**
+         * Filter by taxonomy term name(s). Names in a comma-separated group are ORed together;
+         * a 'root/leaf' path matches a term by its leaf name scoped to that root; passing the parameter
+         * as an array ANDs across groups
+         */
+        by_taxonomy_term_names?: string | Array<string>;
+        /**
+         * When set, expands by_taxonomy_term_ids/by_taxonomy_term_names to also match
+         * stories tagged only with a descendant of the requested term(s).
+         */
+        with_taxonomy_subterms?: '1';
         /**
          * Non existing sort parameter
          */
@@ -1330,3 +1466,135 @@ export type ListTagsResponses = {
 };
 
 export type ListTagsResponse = ListTagsResponses[keyof ListTagsResponses];
+
+export type ListTaxonomiesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/v2/cdn/taxonomies';
+};
+
+export type ListTaxonomiesErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error: string;
+    };
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type ListTaxonomiesError = ListTaxonomiesErrors[keyof ListTaxonomiesErrors];
+
+export type ListTaxonomiesResponses = {
+    /**
+     * Taxonomies returned
+     */
+    200: {
+        taxonomies: Array<TaxonomyTerm>;
+        cv: number | null;
+    };
+};
+
+export type ListTaxonomiesResponse = ListTaxonomiesResponses[keyof ListTaxonomiesResponses];
+
+export type GetTaxonomyData = {
+    body?: never;
+    path: {
+        /**
+         * Snowflake ID or name of the taxonomy (root term)
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v2/cdn/taxonomies/{id}';
+};
+
+export type GetTaxonomyErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type GetTaxonomyError = GetTaxonomyErrors[keyof GetTaxonomyErrors];
+
+export type GetTaxonomyResponses = {
+    /**
+     * Taxonomy retrieved
+     */
+    200: {
+        taxonomy: TaxonomyTerm;
+        cv: number | null;
+    };
+};
+
+export type GetTaxonomyResponse = GetTaxonomyResponses[keyof GetTaxonomyResponses];
+
+export type GetTaxonomyTermData = {
+    body?: never;
+    path: {
+        /**
+         * Snowflake ID of the term (root or nested)
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v2/cdn/taxonomy_terms/{id}';
+};
+
+export type GetTaxonomyTermErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+    /**
+     * Forbidden
+     */
+    403: {
+        error: string;
+    };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
+     * Rate limit reached
+     */
+    429: RateLimitError;
+};
+
+export type GetTaxonomyTermError = GetTaxonomyTermErrors[keyof GetTaxonomyTermErrors];
+
+export type GetTaxonomyTermResponses = {
+    /**
+     * Term retrieved
+     */
+    200: {
+        taxonomy_term: TaxonomyTerm;
+        cv: number | null;
+    };
+};
+
+export type GetTaxonomyTermResponse = GetTaxonomyTermResponses[keyof GetTaxonomyTermResponses];

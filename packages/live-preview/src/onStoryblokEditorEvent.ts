@@ -97,8 +97,8 @@ function normalizeRelations(value: unknown): string[] {
  * `customParent` is dropped with a warning instead of reaching the bridge
  * constructor, which throws on it.
  *
- * A departed subscriber's contribution drops out of this merge immediately,
- * but only takes effect on the live bridge at the next rebuild.
+ * A departed subscriber's contribution drops out of this merge immediately;
+ * {@link retractSubscriber} folds that into a rebuild of the live bridge too.
  */
 function computeMergedOptions(entry: BridgeEntry): BridgeParams {
   const merged: BridgeParams = {};
@@ -186,6 +186,33 @@ function destroyIfOrphaned(entry: BridgeEntry): void {
   entry.bridge?.destroy();
   entry.bridge = undefined;
   entry.appliedOptions = undefined;
+}
+
+/**
+ * Retracts one departed subscriber. If it was the last one, the bridge is
+ * torn down. Otherwise the retraction is folded into a reconcile step so a
+ * departed subscriber's scalar/relation contribution stops applying to the
+ * live bridge right away, instead of lingering until some later, unrelated
+ * subscribe/unsubscribe happens to trigger a rebuild.
+ *
+ * Fire-and-forget: cleanup functions stay synchronous, matching the existing
+ * contract. Coalesced by the same reconcile machinery `ensureBridge` uses for
+ * subscribes, so a same-tick unmount and one that doesn't net-change the
+ * merged options still collapse into at most one rebuild (or zero).
+ */
+function retractSubscriber(entry: BridgeEntry): void {
+  if (entry.subscribers.size === 0) {
+    destroyIfOrphaned(entry);
+    return;
+  }
+
+  void ensureBridge(entry).catch((error: unknown) => {
+    // A subsequent cleanup in the same synchronous batch may have already
+    // torn the whole entry down (subscribers.size === 0) by the time this
+    // settles — that's an expected race, not a failure worth surfacing.
+    if (entry.subscribers.size === 0) return;
+    console.error("[Storyblok] Live preview bridge rebuild after cleanup failed:", error);
+  });
 }
 
 function attachBridgeEvents(entry: BridgeEntry, bridge: StoryblokBridge): void {
@@ -314,12 +341,14 @@ function getBroker(): BridgeEntry {
  * page.
  *
  * A departed subscriber's contribution stops being merged in immediately,
- * but only takes effect on the live bridge at the next rebuild — cleanup
- * alone does not trigger one. A change that does trigger a rebuild —
- * subscribe, or a later subscriber changing its options — briefly leaves
- * the page with no attached bridge. Subscriptions made in the same
- * synchronous tick, or that arrive while the bridge module is still
- * loading, share a single build instead.
+ * and cleanup itself triggers a rebuild if that changes the merged options,
+ * so its `preventClicks`/relation/scalar contribution stops applying to the
+ * live bridge right away rather than lingering until some unrelated future
+ * subscribe/unsubscribe. Any change that triggers a rebuild — subscribe,
+ * unsubscribe, or a later subscriber changing its options — briefly leaves
+ * the page with no attached bridge. Subscriptions (and unsubscriptions) made
+ * in the same synchronous tick, or that arrive while the bridge module is
+ * still loading, share a single build instead.
  *
  * Behavior:
  * - **input** → Calls the provided callback with the updated story data.
@@ -376,6 +405,6 @@ export async function onStoryblokEditorEvent<TStory extends Story = Story>(
   return () => {
     if (!entry.subscribers.delete(token)) return;
     entry.subscriberOptions.delete(token);
-    destroyIfOrphaned(entry);
+    retractSubscriber(entry);
   };
 }

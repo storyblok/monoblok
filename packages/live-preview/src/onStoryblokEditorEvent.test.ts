@@ -259,7 +259,7 @@ describe("onStoryblokEditorEvent", () => {
     cleanup2();
   });
 
-  it("keeps preventClicks: true on the live bridge until the next rebuild, then drops it", async () => {
+  it("drops preventClicks: true from the live bridge as soon as its subscriber cleans up", async () => {
     inEditor();
 
     const cleanup1 = await subscribe(vi.fn(), { preventClicks: true });
@@ -267,14 +267,8 @@ describe("onStoryblokEditorEvent", () => {
     cleanup1();
     await flushMicrotasks();
 
-    // Cleanup alone doesn't rebuild — A's contribution stays live until
-    // something else triggers a rebuild.
-    expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
-      preventClicks: true,
-      initOnlyOnce: false,
-    });
-
-    await subscribe(vi.fn());
+    // Cleanup alone retracts A's contribution — no unrelated later subscribe
+    // is needed to drop preventClicks from the live bridge.
     expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
       preventClicks: false,
       initOnlyOnce: false,
@@ -594,7 +588,7 @@ describe("onStoryblokEditorEvent", () => {
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it("drops a departed subscriber's options instead of ratcheting them forever", async () => {
+  it("drops a departed subscriber's options immediately, not just on a later, unrelated rebuild", async () => {
     inEditor();
 
     const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -602,12 +596,17 @@ describe("onStoryblokEditorEvent", () => {
     const cleanupB = await subscribe(vi.fn(), { resolveRelations: ["b.rel"] });
     cleanupA();
     await flushMicrotasks();
+
+    // A's relation and its `preventClicks` are retracted from the live
+    // bridge as soon as A cleans up — no later subscriber is needed.
+    expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
+      resolveRelations: ["b.rel"],
+      initOnlyOnce: false,
+    });
     warning.mockClear();
 
     await subscribe(vi.fn(), { resolveRelations: ["c.rel"] });
 
-    // Only B's and C's contributions remain — A's relation and its
-    // `preventClicks` are dropped from the live bridge, not merged in forever.
     expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
       resolveRelations: ["b.rel", "c.rel"],
       initOnlyOnce: false,

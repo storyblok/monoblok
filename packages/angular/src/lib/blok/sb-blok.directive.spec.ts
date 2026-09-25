@@ -1,4 +1,4 @@
-import { Component, input, signal, Type } from "@angular/core";
+import { Component, input, PendingTasks, signal, Type } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { SbBlokDirective } from "./sb-blok.directive";
 import { StoryblokComponentResolver } from "./sb-blok.feature";
@@ -170,6 +170,27 @@ describe("SbBlokDirective", () => {
     await waitForRender();
 
     expect(fixture.nativeElement.querySelector("h1").textContent).toBe("SSR");
+  });
+
+  it("routes async component resolution through PendingTasks so SSR waits for it", async () => {
+    // Component resolution is a dynamic `import()`, invisible to Angular's
+    // stability/SSR-serialization tracking unless it goes through
+    // `PendingTasks.run`. Without that, SSR can serialize the response
+    // before a lazily-loaded child component has resolved, silently
+    // dropping it from the rendered HTML.
+    const pendingTasks = TestBed.inject(PendingTasks);
+    const runSpy = vi.spyOn(pendingTasks, "run");
+
+    fixture.componentInstance.blok.set({
+      _uid: "1",
+      component: "teaser",
+      headline: "Hello world!",
+    });
+
+    await waitForRender();
+
+    expect(runSpy).toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector("h1").textContent).toBe("Hello world!");
   });
 
   it("cleans up dynamic component on destroy", async () => {

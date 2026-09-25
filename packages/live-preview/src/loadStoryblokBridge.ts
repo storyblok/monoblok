@@ -13,6 +13,34 @@ declare global {
   }
 }
 
+type BridgeModule = { default: new (options?: BridgeParams) => StoryblokBridge };
+
+let bridgeModulePromise: Promise<BridgeModule> | undefined;
+
+function importBridgeModule(): Promise<BridgeModule> {
+  if (!bridgeModulePromise) {
+    bridgeModulePromise = import("@storyblok/preview-bridge").catch((error: unknown) => {
+      // Don't cache a failed import — allow a retry on the next call.
+      bridgeModulePromise = undefined;
+      throw error;
+    });
+  }
+  return bridgeModulePromise;
+}
+
+/**
+ * Starts loading the Preview Bridge module without constructing an instance.
+ * Callers that need the freshest config right before constructing a bridge
+ * can await this first, then call {@link loadStoryblokBridge}, whose own
+ * import then resolves immediately since the module is already cached.
+ *
+ * A no-op outside the browser.
+ */
+export function preloadStoryblokBridge(): Promise<void> {
+  if (!isBrowser()) return Promise.resolve();
+  return importBridgeModule().then(() => undefined);
+}
+
 /**
  * Loads the Storyblok Preview Bridge and returns a new instance.
  *
@@ -34,7 +62,7 @@ export async function loadStoryblokBridge(config?: BridgeParams): Promise<Storyb
     throw new Error("Cannot load Storyblok bridge: window is undefined (server-side environment)");
   }
 
-  const { default: StoryblokBridgeClass } = await import("@storyblok/preview-bridge");
+  const { default: StoryblokBridgeClass } = await importBridgeModule();
 
   // Expose legacy globals with a deprecation warning at the point of access.
   // These shims exist only for backward compatibility and will be removed in a

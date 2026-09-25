@@ -1,6 +1,8 @@
 import { vol } from "memfs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getMigrationFunction, readMigrationFiles } from "./actions";
+import { applyMigrationToAllBlocks, getMigrationFunction, readMigrationFiles } from "./actions";
+import { buildMigrationFilename } from "../migration-filename";
+import type { BlokContent } from "../../stories/constants";
 import { FileSystemError } from "../../../utils/error";
 import * as filesystem from "../../../utils/filesystem";
 
@@ -151,5 +153,114 @@ describe("getMigrationFunction", () => {
     // No need to mock anything - the import will fail naturally
     const result = await getMigrationFunction("non-existent.js", "12351", "/path/to/");
     expect(result).toBeNull();
+  });
+});
+
+describe("applyMigrationToAllBlocks", () => {
+  const markMigrated = (block: BlokContent) => ({ ...block, migrated: true });
+
+  it("should migrate only blocks of the component the file was generated for", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "hero:v2" },
+        { _uid: "b", component: "hero_v2" },
+      ],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(
+      content,
+      markMigrated,
+      buildMigrationFilename("hero:v2"),
+    );
+
+    expect(processed).toBe(true);
+    expect(content.body).toEqual([
+      { _uid: "a", component: "hero:v2", migrated: true },
+      { _uid: "b", component: "hero_v2" },
+    ]);
+  });
+
+  it("should not migrate a component that only shares a leading dot segment", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "my.other" }],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(
+      content,
+      markMigrated,
+      buildMigrationFilename("my.component"),
+    );
+
+    expect(processed).toBe(false);
+    expect(content.body).toEqual([{ _uid: "a", component: "my.other" }]);
+  });
+
+  it("should not migrate the component a dotted component name starts with", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "my" },
+        { _uid: "b", component: "my.component" },
+      ],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(
+      content,
+      markMigrated,
+      buildMigrationFilename("my.component"),
+    );
+
+    expect(processed).toBe(true);
+    expect(content.body).toEqual([
+      { _uid: "a", component: "my" },
+      { _uid: "b", component: "my.component", migrated: true },
+    ]);
+  });
+
+  it("should read a dot in a file name as a suffix rather than a dotted component", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "my" },
+        { _uid: "b", component: "my.component" },
+      ],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(content, markMigrated, "my.component.js");
+
+    expect(processed).toBe(true);
+    expect(content.body).toEqual([
+      { _uid: "a", component: "my", migrated: true },
+      { _uid: "b", component: "my.component" },
+    ]);
+  });
+
+  it("should migrate nested blocks of a component whose name needed sanitizing", () => {
+    const content = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "wrapper", inner: { _uid: "b", component: "hero/v2" } }],
+    } as unknown as BlokContent;
+
+    const processed = applyMigrationToAllBlocks(
+      content,
+      markMigrated,
+      buildMigrationFilename("hero/v2", "v2"),
+    );
+
+    expect(processed).toBe(true);
+    expect(content.body).toEqual([
+      {
+        _uid: "a",
+        component: "wrapper",
+        inner: { _uid: "b", component: "hero/v2", migrated: true },
+      },
+    ]);
   });
 });

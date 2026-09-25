@@ -70,8 +70,6 @@ storiesCommand
   .option("--format <format>", "Output format: pretty|json", "pretty")
   .action(async (options: StoriesValidateOptions, command) => {
     const { schema: schemaEntry } = options;
-    // Normalized by the builder every story-listing command shares, so the same
-    // `--starts-with` scopes `validate`, `find` and `pull` identically.
     const scopeParams = buildStoryScopeParams({ startsWith: options.startsWith });
     const startsWith = scopeParams.starts_with;
     const ui = getUI();

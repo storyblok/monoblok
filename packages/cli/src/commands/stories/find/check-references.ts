@@ -13,7 +13,7 @@ import { fetchComponents } from "../../components/pull/actions";
 import { applyClientFilters, resolveReferenceTargets } from "./actions";
 import { buildRelationFieldMap, detectIssues, extractReferences, toTargetMeta } from "./references";
 import type { IssueType, RefEntry, RefIssue, TargetMeta } from "./references";
-import { findPhases, stoppedEarlyMessage } from "./phases";
+import { findPhases, contentSummary, listingSummary, stoppedEarlyMessage } from "./phases";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -232,10 +232,10 @@ export async function runCheckReferences({
     }
 
     ui.list([
-      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${tracker.phase("list").mark()})`,
+      listingSummary(tracker),
       capi
         ? `Reading content via CAPI: ${capiFilter.candidates}/${capiFilter.total} resolved, ${capiFilter.unresolved} without content, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`
-        : `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${tracker.phase("content").mark()})`,
+        : contentSummary(tracker),
       `Checking references: ${checked} checked, ${candidates.length} with references, ${matched} with issues. (${tracker.phase("process").mark()})`,
       `Resolving + detecting: ${externalTargets} external targets. (${formatMark(tracker.elapsedMs())})`,
     ]);

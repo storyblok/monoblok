@@ -1,5 +1,6 @@
 import type { StoryListQuery } from "../../types";
 import { CommandError } from "../../utils/error/command-error";
+import { toError } from "../../utils/error/error";
 import { isRecord } from "../../utils/object";
 
 export type FilterQuery = NonNullable<StoryListQuery["filter_query"]>;
@@ -43,8 +44,8 @@ const FILTER_QUERY_OPERATIONS = new Set([
   "lt-date",
 ]);
 
-const OPERATIONS_HINT =
-  "Supported operations: in, not_in, is, like, not_like, all, exists, in_array, all_in_array, eq_array, gt_int, lt_int, gt_float, lt_float, gt_date, lt_date.";
+// The hyphenated spellings are aliases the API also accepts; the hint names one form each.
+const OPERATIONS_HINT = `Supported operations: ${[...FILTER_QUERY_OPERATIONS].filter((operation) => !operation.includes("-")).join(", ")}.`;
 
 /**
  * Parses the CLI `--query` value into the structured `filter_query` object the
@@ -125,7 +126,7 @@ function parseAsJson(trimmed: string): ParsedFilterQuery {
   try {
     parsed = JSON.parse(trimmed);
   } catch (error) {
-    throw new CommandError(`Invalid --query JSON: ${(error as Error).message}\n${trimmed}`);
+    throw new CommandError(`Invalid --query JSON: ${toError(error).message}\n${trimmed}`);
   }
   if (!isRecord(parsed)) {
     throw new CommandError(`Invalid --query JSON: expected an object.\n${trimmed}`);

@@ -32,19 +32,17 @@ export async function prepareCapiFilter({
   capiParams,
   filters,
   attachContent = false,
-  checkReferences = false,
   ui,
 }: {
   spaceId: string;
   region: RegionCode | undefined;
   capiParams: string | undefined;
   filters: ClientFilter[];
+  /** Read content in bulk for the stage below instead of only pruning for it. */
   attachContent?: boolean;
-  /** Only changes how the stage is described, since it prunes nothing there. */
-  checkReferences?: boolean;
   ui: UI;
 }): Promise<CapiFilter> {
-  const role = checkReferences ? "CAPI content source" : "CAPI filter";
+  const role = attachContent ? "CAPI content source" : "CAPI filter";
   const spinner = ui.createSpinner(`Preparing the ${role}...`);
   try {
     const fetchContent = await createCapiContentFetcher({

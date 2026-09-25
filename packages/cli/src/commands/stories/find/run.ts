@@ -5,7 +5,14 @@ import {
   isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
-import { findPhases, processStageName, resultsHeadline, stoppedEarlyMessage } from "./phases";
+import {
+  contentSummary,
+  findPhases,
+  listingSummary,
+  processStageName,
+  resultsHeadline,
+  stoppedEarlyMessage,
+} from "./phases";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -31,16 +38,17 @@ export async function runFind({
   capi?: CapiFilter;
 }): Promise<void> {
   const output = createJsonlOutput({ limit });
+  // What the last stage still decides depends on the stages before it: with no
+  // content fetch and no filter it only writes, and under the CAPI filter it
+  // tests just the stories the CDN could not settle.
+  const processName = processStageName({ skipContent, capi: capi !== undefined, filters });
   const tracker = createPhaseTracker({
     ui,
     phases: findPhases({
       capi: capi !== undefined,
       skipContent,
       capiLabel: "Filtering via CAPI",
-      // What the last stage still decides depends on the stages before it: with
-      // no content fetch and no filter it only writes, and under the CAPI filter
-      // it tests just the stories the CDN could not settle.
-      processLabel: processStageName({ skipContent, capi: capi !== undefined, filters }),
+      processLabel: processName,
     }),
   });
   let earlyExit = false;
@@ -121,20 +129,15 @@ export async function runFind({
       );
     }
 
-    const lines = [
-      `Listing stories: ${list.succeeded}/${list.total} listed, ${list.skipped} skipped before fetch, ${list.failed} page(s) failed. (${tracker.phase("list").mark()})`,
-    ];
+    const lines = [listingSummary(tracker)];
     if (capi) {
       lines.push(
         `Filtering via CAPI: ${capiFilter.candidates}/${capiFilter.total} candidates, ${capiFilter.pruned} pruned before fetch, ${capiFilter.unresolved} undecided, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`,
       );
     }
     if (!skipContent) {
-      lines.push(
-        `Fetching content: ${content.succeeded}/${content.total} succeeded, ${content.failed} failed. (${tracker.phase("content").mark()})`,
-      );
+      lines.push(contentSummary(tracker));
     }
-    const processName = processStageName({ skipContent, capi: capi !== undefined, filters });
     lines.push(
       `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${tracker.phase("process").mark()})`,
     );

@@ -6,6 +6,7 @@ import { buildStoryScopeParams } from "../query-params";
 import { chunk } from "../../../utils/array";
 import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
 import { CommandError } from "../../../utils/error/command-error";
+import { toError } from "../../../utils/error/error";
 import type { IssueType, TargetMeta } from "./references";
 import { toTargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
@@ -181,6 +182,9 @@ export function parseWorkflowStages(raw: string | undefined): string | undefined
 
 const ISSUE_TYPES: readonly IssueType[] = ["broken", "unpublished", "stale_url"];
 
+const isIssueType = (value: string): value is IssueType =>
+  ISSUE_TYPES.some((type) => type === value);
+
 /**
  * Reads the optional value of `--check-references`: which issue types to report.
  *
@@ -194,13 +198,13 @@ export function parseIssueTypes(raw: string | boolean | undefined): Set<IssueTyp
     return new Set(ISSUE_TYPES);
   }
   const types = raw.split(",").map((type) => type.trim());
-  const unknown = types.filter((type) => !ISSUE_TYPES.includes(type as IssueType));
+  const unknown = types.filter((type) => !isIssueType(type));
   if (unknown.length > 0) {
     throw new CommandError(
       `--check-references accepts ${ISSUE_TYPES.join(", ")}, and got: ${unknown.join(", ")}`,
     );
   }
-  return new Set(types as IssueType[]);
+  return new Set(types.filter(isIssueType));
 }
 
 export function buildQueryParams(
@@ -332,7 +336,7 @@ function compileWhere(expression: string) {
     return compile(expression);
   } catch (error) {
     throw new CommandError(
-      `Invalid --where JSONPath expression: ${expression}\n${(error as Error).message}`,
+      `Invalid --where JSONPath expression: ${expression}\n${toError(error).message}`,
     );
   }
 }
@@ -363,11 +367,9 @@ const UUID_BATCH_SIZE = 100;
 export async function resolveReferenceTargets({
   spaceId,
   uuids,
-  onBatchSettled,
 }: {
   spaceId: string;
   uuids: Iterable<string>;
-  onBatchSettled?: (size: number) => void;
 }): Promise<Map<string, TargetMeta>> {
   const resolved = new Map<string, TargetMeta>();
   const batches = chunk(uuids, UUID_BATCH_SIZE);
@@ -389,7 +391,6 @@ export async function resolveReferenceTargets({
         }
       } finally {
         lock.release();
-        onBatchSettled?.(batch.length);
       }
     }),
   );

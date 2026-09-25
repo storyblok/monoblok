@@ -1,5 +1,6 @@
 import type { Component } from "../../../types";
 import type { Story } from "../constants";
+import { isRecord } from "../../../utils/object";
 import { baseFieldName, isStoryRelationField } from "../content-fields";
 
 export type RefType = "multilink" | "richtext" | "relation";
@@ -79,11 +80,10 @@ function walkNode(
     return;
   }
 
-  if (node === null || typeof node !== "object") {
+  if (!isRecord(node)) {
     return;
   }
-
-  const obj = node as Record<string, unknown>;
+  const obj = node;
 
   // Multilink field: { fieldtype: "multilink", linktype: "story", id: "<uuid>" }.
   // The editor always writes `fieldtype`, but a migration or a direct API write
@@ -104,8 +104,8 @@ function walkNode(
   }
 
   // Richtext link mark: { type: "link", attrs: { linktype: "story", uuid: "<uuid>" } }
-  if (obj.type === "link" && obj.attrs && typeof obj.attrs === "object") {
-    const attrs = obj.attrs as Record<string, unknown>;
+  if (obj.type === "link" && isRecord(obj.attrs)) {
+    const attrs = obj.attrs;
     if (attrs.linktype === "story" && typeof attrs.uuid === "string" && UUID_RE.test(attrs.uuid)) {
       refs.push({
         targetUuid: attrs.uuid,

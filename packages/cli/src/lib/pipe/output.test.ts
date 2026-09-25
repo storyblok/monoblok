@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import type { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UI } from "../ui";
@@ -56,9 +57,16 @@ function withStdoutTTY(value: boolean, run: () => void) {
 /** Only the two members `createJsonlOutput` reaches for. */
 const fakeUI = () =>
   ({
-    writeMachineOutput: vi.fn(),
+    // The real one reports whether stdout has room, and a sink waits on `false`.
+    writeMachineOutput: vi.fn(() => true),
     suppressProgress: vi.fn(),
   }) as unknown as UI & { writeMachineOutput: ReturnType<typeof vi.fn> };
+
+/** Writes one value through the sink and waits for it to be taken. */
+const writeLine = (output: { sink: Writable }, value: unknown): Promise<void> =>
+  new Promise((resolve) => {
+    output.sink.write(value, () => resolve());
+  });
 
 describe("createJsonlOutput", () => {
   beforeEach(() => {
@@ -70,15 +78,15 @@ describe("createJsonlOutput", () => {
   });
 
   // Lines go out as produced, so a reader can act on the first one and leave early.
-  it("should write each line as it is pushed", async () => {
+  it("should write each line as it is written to the sink", async () => {
     const { createJsonlOutput } = await freshModule();
     const lines: string[] = [];
     const output = createJsonlOutput({ write: (line) => lines.push(line), ui: fakeUI() });
 
-    output.push({ id: 1 });
+    await writeLine(output, { id: 1 });
     expect(lines).toEqual(['{"id":1}']);
 
-    output.push({ id: 2 });
+    await writeLine(output, { id: 2 });
     expect(lines).toEqual(['{"id":1}', '{"id":2}']);
   });
 
@@ -87,7 +95,7 @@ describe("createJsonlOutput", () => {
     const lines: string[] = [];
     const output = createJsonlOutput({ write: (line) => lines.push(line), ui: fakeUI() });
 
-    output.push({ id: 1, nested: { a: [1, 2] } });
+    await writeLine(output, { id: 1, nested: { a: [1, 2] } });
 
     expect(lines).toEqual(['{"id":1,"nested":{"a":[1,2]}}']);
     expect(lines[0]).not.toContain("\n");
@@ -96,7 +104,7 @@ describe("createJsonlOutput", () => {
   it("should route to the UI when no writer is given", async () => {
     const { createJsonlOutput } = await freshModule();
     const ui = fakeUI();
-    createJsonlOutput({ ui }).push({ id: 1 });
+    await writeLine(createJsonlOutput({ ui }), { id: 1 });
 
     expect(ui.writeMachineOutput).toHaveBeenCalledWith('{"id":1}');
   });
@@ -141,9 +149,9 @@ describe("createJsonlOutput", () => {
     const lines: string[] = [];
     const output = createJsonlOutput({ write: (line) => lines.push(line), ui: fakeUI() });
 
-    output.push({ id: 1 });
+    await writeLine(output, { id: 1 });
     process.stdout.emit("error", epipe());
-    output.push({ id: 2 });
+    await writeLine(output, { id: 2 });
 
     expect(lines).toEqual(['{"id":1}']);
   });

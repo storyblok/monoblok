@@ -1,0 +1,407 @@
+import { compile } from "json-p3";
+import type { JSONValue } from "json-p3";
+import type { StoriesQueryParams, Story } from "../constants";
+import { fetchStories } from "../actions";
+import { buildStoryScopeParams } from "../query-params";
+import { chunk } from "../../../utils/array";
+import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock";
+import { CommandError } from "../../../utils/error/command-error";
+import { toError } from "../../../utils/error/error";
+import type { IssueType, TargetMeta } from "./references";
+import { toTargetMeta } from "./references";
+import type { ClientFilter, FindOptions } from "./types";
+import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
+import { parseCapiParams } from "./capi";
+
+/**
+ * One UUID in the canonical form, per RFC 4122 and RFC 9562.
+ *
+ * The version nibble is restricted to the versions Storyblok issues (1, 3, 4, 5,
+ * 7, 8) and the variant nibble to `8`-`b`, which is what the API itself matches.
+ * A looser pattern here would accept a value the server then rejects, which is
+ * the failure this check exists to prevent.
+ */
+const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[134578][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
+
+/** One UUID, or several separated by commas. Mirrors the API's own list form. */
+const REFERENCE_UUIDS = new RegExp(`^\\s*(?:${UUID_PATTERN}\\s*,?\\s*)+$`, "i");
+
+/**
+ * Rejects options the command accepts on the surface but cannot honour yet.
+ *
+ * Silently ignoring an explicitly passed flag is worse than failing: the user
+ * gets a full, plausible result set that answers a different question.
+ */
+export function assertSupportedOptions(options: FindOptions): void {
+  // The API reads `reference_search` as a UUID list and, when it parses as none,
+  // silently falls back to a substring scan of raw story content. A typo'd UUID
+  // therefore returns a slow, plausible, and completely different result set
+  // rather than an error, so it has to be caught here.
+  if (options.references !== undefined && !REFERENCE_UUIDS.test(options.references)) {
+    throw new CommandError(
+      `--references expects a story UUID, or several separated by commas, and got: ${options.references}\n` +
+        "A UUID looks like 0c4f0f4a-9b5e-4c3a-8e7d-2f1a6b8c9d0e. `stories find <text>` is what searches content for a term.",
+    );
+  }
+
+  // `--skip-content` is about what the run *emits* and what it fetches per
+  // story, not a ban on reading content anywhere: `--capi-filter` still reads it
+  // in bulk to decide matches, and the output stays list metadata. Only a check
+  // that has no other source for content is refused.
+  if (options.skipContent && options.checkReferences) {
+    throw new CommandError(
+      "--skip-content cannot be combined with --check-references: references live in the story content it skips fetching.",
+    );
+  }
+
+  if (options.capiParams && !options.capiFilter) {
+    throw new CommandError("--capi-params has no effect without --capi-filter.");
+  }
+
+  if (options.capiFilter) {
+    // With `--check-references` there is nothing to prune, because the scan reads
+    // every story in scope. The flag still pays off there as a *content source*:
+    // the CDN serves the same draft content in bulk that the per-story MAPI fetch
+    // returns one at a time, so `--where` is not required for it to do anything.
+    if (!options.where?.length && !options.checkReferences) {
+      throw new CommandError(
+        "--capi-filter needs at least one --where filter: without one, every listed story is a match and none can be pruned.",
+      );
+    }
+    // CDN content drops every `<field>__i18n__<lang>` key, so a predicate on one
+    // is false for every story there. That empties the result whether it prunes
+    // (`find`) or runs on the CDN content the reference scan reads.
+    const translated = options.where?.find((expression) => expression.includes("__i18n__"));
+    if (translated) {
+      throw new CommandError(
+        `--capi-filter cannot evaluate --where on field-level translations: ${translated}\n` +
+          "CDN content has no `__i18n__` keys. Drop --capi-filter, or ask the CDN for the translation with " +
+          "--capi-params language=<code> and match the base field name instead.",
+      );
+    }
+
+    // Parsed here as well as at build time so a malformed value fails as a usage
+    // error, next to the flags it belongs with.
+    const capiParams = parseCapiParams(options.capiParams);
+
+    // Asking the CDN for published content answers "what is live", but a story
+    // with no published version is undecidable there: it passes through and is
+    // settled against MAPI's *draft* content, so a run that reads as "what is
+    // live" reports stories that have never been published. What removes them
+    // from the scope is a publish status that narrows to `is_published` on the
+    // server, which both `published` (live, no pending edits) and `changed`
+    // (live, with pending edits) do — a changed story is live, so its published
+    // content is exactly what the CDN can decide it on.
+    const narrowsToPublished =
+      options.publishStatus !== undefined &&
+      publishStatusToQueryParams(options.publishStatus).is_published === true;
+
+    if (capiParams.version !== undefined && capiParams.version !== "draft" && !narrowsToPublished) {
+      throw new CommandError(
+        `--capi-params version=${String(capiParams.version)} needs --publish-status published or --publish-status changed: stories with no published content cannot be decided from CDN content, and would otherwise be matched against their draft instead.`,
+      );
+    }
+  }
+}
+
+/**
+ * Reads `--limit` as a positive whole number of results.
+ *
+ * Commander hands every option over as a string, and the failure this guards
+ * against is quiet: `--limit 0` or `--limit abc` would become `NaN` or `0`, and
+ * a run that stopped at the first line would look like a search that matched
+ * almost nothing.
+ */
+export function parseLimit(raw: string | undefined): number | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1) {
+    throw new CommandError(`--limit expects a whole number of 1 or more, and got: ${raw}`);
+  }
+  return value;
+}
+
+const SORT_DIRECTIONS = new Set(["asc", "desc"]);
+const SORT_CASTS = new Set(["int", "float"]);
+const SORT_NULLS = new Set(["nulls_first", "nulls_last"]);
+
+/**
+ * Checks `--sort` against the API's grammar: `field[:asc|desc[:int|float][:nulls_first|nulls_last]]`.
+ *
+ * The API sorts ascending when it does not recognise a direction, so a typo like
+ * `updated_at:des` would return the oldest stories instead of an error. Whether
+ * a column is sortable is left to the API, which knows the space's own fields.
+ */
+export function parseSort(raw: string | undefined): string | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const parts = raw.split(",").map((part) => part.trim());
+  for (const part of parts) {
+    const [field, direction, ...modifiers] = part.split(":");
+    const valid =
+      Boolean(field) &&
+      (direction === undefined || SORT_DIRECTIONS.has(direction.toLowerCase())) &&
+      modifiers.length <= 2 &&
+      modifiers.every(
+        (modifier, index) =>
+          SORT_NULLS.has(modifier.toLowerCase()) ||
+          (index === 0 && SORT_CASTS.has(modifier.toLowerCase())),
+      );
+    if (!valid) {
+      throw new CommandError(
+        `Invalid --sort value: ${part}\n` +
+          "Expected field[:asc|desc], e.g. 'updated_at:desc', or a content field with the 'content.' prefix, " +
+          "e.g. 'content.price:asc:int'. A content field can add ':int' or ':float' to sort numerically.",
+      );
+    }
+  }
+  return parts.join(",");
+}
+
+/**
+ * Reads `--workflow-stage` as numeric stage IDs.
+ *
+ * A stage name or a typo matches no story, and "0 results" would look like a
+ * genuine answer rather than a wrong ID.
+ */
+export function parseWorkflowStages(raw: string | undefined): string | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const ids = raw.split(",").map((id) => id.trim());
+  if (ids.some((id) => !/^\d+$/.test(id))) {
+    throw new CommandError(
+      `--workflow-stage expects numeric workflow stage IDs, separated by commas, and got: ${raw}`,
+    );
+  }
+  return ids.join(",");
+}
+
+const ISSUE_TYPES: readonly IssueType[] = ["broken", "unpublished", "stale_url"];
+
+const isIssueType = (value: string): value is IssueType =>
+  ISSUE_TYPES.some((type) => type === value);
+
+/**
+ * Reads the optional value of `--check-references`: which issue types to report.
+ *
+ * `true` is the bare flag, which reports every type.
+ */
+export function parseIssueTypes(raw: string | boolean | undefined): Set<IssueType> | undefined {
+  if (raw === undefined || raw === false) {
+    return undefined;
+  }
+  if (raw === true) {
+    return new Set(ISSUE_TYPES);
+  }
+  const types = raw.split(",").map((type) => type.trim());
+  const unknown = types.filter((type) => !isIssueType(type));
+  if (unknown.length > 0) {
+    throw new CommandError(
+      `--check-references accepts ${ISSUE_TYPES.join(", ")}, and got: ${unknown.join(", ")}`,
+    );
+  }
+  return new Set(types.filter(isIssueType));
+}
+
+export function buildQueryParams(
+  text: string | undefined,
+  options: FindOptions,
+): StoriesQueryParams {
+  const params: StoriesQueryParams = {};
+
+  if (text) {
+    params.text_search = text;
+  }
+
+  // Path scope and filter query, shared with every other story-listing command.
+  // `--container-block product` is shorthand for a `component` clause, so it is
+  // handed over as an extra clause rather than spread over the parsed `--query`:
+  // both write `component`, and a spread would drop one of them without a word.
+  Object.assign(
+    params,
+    buildStoryScopeParams({
+      startsWith: options.startsWith,
+      query: options.query,
+      extraFilterQuery: options.containerBlock
+        ? { component: { in: options.containerBlock } }
+        : undefined,
+    }),
+  );
+
+  if (options.includesBlock) {
+    params.contain_component = options.includesBlock;
+  }
+
+  // Tags and workflow stages are both "any of these" on the server: a story
+  // matches when it carries one of the listed values, unlike `--includes-block`,
+  // where the listed blocks must all be present.
+  if (options.tag) {
+    params.with_tag = options.tag;
+  }
+
+  if (options.workflowStage) {
+    params.in_workflow_stages = parseWorkflowStages(options.workflowStage);
+  }
+
+  if (options.publishStatus) {
+    Object.assign(params, publishStatusToQueryParams(options.publishStatus));
+  }
+
+  // Ordering is the server's job: it decides which stories are on the first
+  // page, so it has to be applied before the walk rather than to the results.
+  // An unsortable column is rejected by the API, which is the only place that
+  // knows the space's own fields.
+  if (options.sort) {
+    params.sort_by = parseSort(options.sort);
+  }
+
+  if (options.references) {
+    params.reference_search = options.references;
+  }
+
+  // Without a content fetch, the listing is the whole answer, so ask for the
+  // one part of it that is opt-in. MAPI returns `content_summary: {}` unless
+  // `with_summary` is set, and a per-field digest is often enough to tell two
+  // stories apart when the content itself is not being fetched.
+  if (options.skipContent) {
+    params.with_summary = true;
+  }
+
+  if (options.entryType === "story") {
+    params.story_only = true;
+  } else if (options.entryType === "folder") {
+    params.folder_only = true;
+  }
+
+  return params;
+}
+
+/**
+ * Client-side half of `--publish-status`.
+ *
+ * The server can only narrow to `is_published`; telling `published` from
+ * `changed` needs `unpublished_changes`, which the list response already
+ * carries. That is what lets these run as `preContentFilters`, before the
+ * content fetch and before the CAPI filter, so a non-matching story costs
+ * nothing beyond the page it was listed on.
+ * `draft` is fully server-side, so it contributes no filter.
+ */
+export function buildPublishStatusFilters(options: FindOptions): ClientFilter[] {
+  const status = options.publishStatus;
+  if (!status || status === "draft") {
+    return [];
+  }
+  return [(story) => matchesPublishStatus(story, status)];
+}
+
+/**
+ * Compiles `--where` JSONPath (RFC 9535) expressions into filters.
+ *
+ * Compiling up front does double duty: a malformed expression fails as a usage
+ * error before a single story is fetched, and the parsed query is reused for
+ * every story instead of being re-parsed per document.
+ */
+export function buildWhereFilters(expressions: string[] | undefined): ClientFilter[] {
+  if (!expressions?.length) {
+    return [];
+  }
+  return expressions.map((expression) => {
+    const query = compileWhere(expression);
+    // `match` stops at the first hit; a filter only needs to know whether the
+    // expression selects anything, never the full node list.
+    return (story: Story) => query.match(toJsonValue(withoutContentSummary(story))) !== undefined;
+  });
+}
+
+/**
+ * `--skip-content` asks the listing for `content_summary`, a truncated copy of
+ * the root fields. Left in, a `$..` expression would match on that partial copy,
+ * and a content filter would return a plausible, incomplete result set. `--where`
+ * sees either the real content or none.
+ */
+function withoutContentSummary(story: Story): Story {
+  if (!("content_summary" in story)) {
+    return story;
+  }
+  const { content_summary: _summary, ...rest } = story;
+  return rest;
+}
+
+function compileWhere(expression: string) {
+  try {
+    return compile(expression);
+  } catch (error) {
+    throw new CommandError(
+      `Invalid --where JSONPath expression: ${expression}\n${toError(error).message}`,
+    );
+  }
+}
+
+/**
+ * A story is plain JSON off the wire, but its generated type is an interface,
+ * and TypeScript gives interfaces no implicit index signature, so it will not
+ * structurally match `JSONValue`. The assertion records what the runtime shape
+ * already is rather than reinterpreting it.
+ */
+const toJsonValue = (story: Story): JSONValue => story as JSONValue;
+
+export function applyClientFilters(story: Story, filters: ClientFilter[]): boolean {
+  return filters.every((filter) => filter(story));
+}
+
+/** MAPI accepts `by_uuids` as a comma-separated list; one page per batch. */
+const UUID_BATCH_SIZE = 100;
+
+/**
+ * Resolves metadata for reference targets that fall outside the fetched result
+ * set — anything a scoped search (`--starts-with`, `--entry-type`, …) never saw.
+ *
+ * Batches run concurrently; in-flight requests are bounded by the same
+ * backpressure lock the story pipeline uses, and the MAPI client applies the
+ * globally configured rate limit on top.
+ */
+export async function resolveReferenceTargets({
+  spaceId,
+  uuids,
+}: {
+  spaceId: string;
+  uuids: Iterable<string>;
+}): Promise<Map<string, TargetMeta>> {
+  const resolved = new Map<string, TargetMeta>();
+  const batches = chunk(uuids, UUID_BATCH_SIZE);
+  if (batches.length === 0) {
+    return resolved;
+  }
+
+  const lock = createPipelineBackpressureLock();
+  const settled = await Promise.allSettled(
+    batches.map(async (batch) => {
+      await lock.acquire();
+      try {
+        const result = await fetchStories(spaceId, {
+          by_uuids: batch.join(","),
+          per_page: batch.length,
+        });
+        for (const story of result?.stories ?? []) {
+          resolved.set(story.uuid, toTargetMeta(story));
+        }
+      } finally {
+        lock.release();
+      }
+    }),
+  );
+
+  // An unresolved batch would make every reference in it look broken, so a
+  // partial answer is worse than none. `allSettled` first, so a sibling
+  // rejection never surfaces as an unhandled rejection.
+  const failed = settled.find((result) => result.status === "rejected");
+  if (failed?.status === "rejected") {
+    throw failed.reason;
+  }
+
+  return resolved;
+}

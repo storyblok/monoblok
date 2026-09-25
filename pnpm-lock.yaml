@@ -506,6 +506,9 @@ importers:
       '@inquirer/prompts':
         specifier: ^7.5.1
         version: 7.10.1(@types/node@24.11.0)
+      '@storyblok/api-client':
+        specifier: workspace:^
+        version: link:../capi-client
       '@storyblok/js':
         specifier: workspace:^
         version: link:../js
@@ -548,6 +551,9 @@ importers:
       jiti:
         specifier: 'catalog:'
         version: 2.7.0
+      json-p3:
+        specifier: 2.2.2
+        version: 2.2.2
       json-schema-to-typescript:
         specifier: ^16.0.0
         version: 16.0.0
@@ -569,9 +575,6 @@ importers:
       read-package-up:
         specifier: ^11.0.0
         version: 11.0.0
-      storyblok-js-client:
-        specifier: workspace:^
-        version: link:../js-client
     devDependencies:
       '@release-it/conventional-changelog':
         specifier: 10.0.0
@@ -6689,6 +6692,9 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@storyblok/api-client@file:packages/capi-client':
+    resolution: {directory: packages/capi-client, type: directory}
+
   '@storyblok/astro@file:packages/astro':
     resolution: {directory: packages/astro, type: directory}
     peerDependencies:
@@ -11282,6 +11288,9 @@ packages:
 
   json-buffer@3.0.1:
     resolution: {integrity: sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==}
+
+  json-p3@2.2.2:
+    resolution: {integrity: sha512-TmTgkx+C1ne8Wdm9dFQ4/jCeYYbSoeYJAkRpvTz6O+zWN1Dc3cKW8Mt52sa8mSRXy/+JykA5I6rmM+k8h+JRRg==}
 
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
@@ -21334,6 +21343,11 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@storyblok/api-client@file:packages/capi-client':
+    dependencies:
+      '@storyblok/region-helper': file:packages/region-helper
+      ky: 1.14.3
+
   '@storyblok/astro@file:packages/astro(astro@7.3.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))':
     dependencies:
       '@storyblok/js': file:packages/js
@@ -27062,6 +27076,8 @@ snapshots:
 
   json-buffer@3.0.1: {}
 
+  json-p3@2.2.2: {}
+
   json-parse-even-better-errors@2.3.1: {}
 
   json-parse-even-better-errors@5.0.0: {}
@@ -31294,6 +31310,7 @@ snapshots:
   storyblok@file:packages/cli(@types/node@24.11.0)(magicast@0.5.5):
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@24.11.0)
+      '@storyblok/api-client': file:packages/capi-client
       '@storyblok/js': file:packages/js
       '@storyblok/management-api-client': file:packages/mapi-client
       '@storyblok/region-helper': file:packages/region-helper
@@ -31308,6 +31325,7 @@ snapshots:
       dotenv: 17.3.1
       filenamify: 6.0.0
       jiti: 2.7.0
+      json-p3: 2.2.2
       json-schema-to-typescript: 16.0.0
       minimatch: 10.2.4
       octokit: 5.0.5
@@ -31315,7 +31333,6 @@ snapshots:
       open: 10.2.0
       pathe: 2.0.3
       read-package-up: 11.0.0
-      storyblok-js-client: file:packages/js-client
     transitivePeerDependencies:
       - '@types/node'
       - bufferutil
@@ -31325,6 +31342,7 @@ snapshots:
   storyblok@file:packages/cli(@types/node@25.6.0)(magicast@0.5.5):
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@25.6.0)
+      '@storyblok/api-client': file:packages/capi-client
       '@storyblok/js': file:packages/js
       '@storyblok/management-api-client': file:packages/mapi-client
       '@storyblok/region-helper': file:packages/region-helper
@@ -31339,6 +31357,7 @@ snapshots:
       dotenv: 17.3.1
       filenamify: 6.0.0
       jiti: 2.7.0
+      json-p3: 2.2.2
       json-schema-to-typescript: 16.0.0
       minimatch: 10.2.4
       octokit: 5.0.5
@@ -31346,7 +31365,6 @@ snapshots:
       open: 10.2.0
       pathe: 2.0.3
       read-package-up: 11.0.0
-      storyblok-js-client: file:packages/js-client
     transitivePeerDependencies:
       - '@types/node'
       - bufferutil

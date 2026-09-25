@@ -25,12 +25,38 @@ const getPipelineSlot = (): Sema => {
   return _pipelineSlot;
 };
 
+/**
+ * Reads a positive-integer pagination header.
+ *
+ * MAPI always sends `Total` and `Per-Page`, but if missing it would
+ * make `Number(null)`/`Number("")` collapse the page count to `0`/`NaN` and
+ * silently truncate the result set to the first page. Falling back to the
+ * caller's default keeps a missing header from looking like "no more data".
+ */
+const readPositiveIntHeader = (headers: Headers, name: string): number | undefined => {
+  const value = Number(headers.get(name));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+};
+
+/**
+ * Stories asked for per listing request.
+ *
+ * The Management API caps a page at 1,000, and a listing carries no `content`,
+ * so a full page is metadata rather than documents. Asking for the cap turns a
+ * 4,000-story space into 4 requests instead of 40, in every command that shares
+ * this stream. Should the server ever answer with a smaller page, the `Per-Page`
+ * header below is what the walk actually paginates on, so the run stays correct
+ * rather than stopping short.
+ */
+const LIST_PAGE_SIZE = 1000;
+
 export const fetchStoriesStream = ({
   spaceId,
   params = {},
   setTotalStories,
   setTotalPages,
   onIncrement,
+  onStoryListed,
   onPageSuccess,
   onPageError,
 }: {
@@ -38,12 +64,15 @@ export const fetchStoriesStream = ({
   params?: StoriesQueryParams;
   setTotalStories?: (total: number) => void;
   setTotalPages?: (totalPages: number) => void;
+  /** Called once per fetched page, on success and on failure alike. */
   onIncrement?: () => void;
+  /** Called for every story the list endpoint yields, before it enters the pipeline. */
+  onStoryListed?: (story: Story) => void;
   onPageSuccess?: (page: number, total: number) => void;
   onPageError?: (error: Error, page: number, total: number) => void;
 }) => {
   const listGenerator = async function* storyListIterator() {
-    let perPage = 100;
+    let perPage = LIST_PAGE_SIZE;
     let page = 1;
     let totalPages = 1;
     // Set a default for total pages in case the first request fails.
@@ -62,14 +91,15 @@ export const fetchStoriesStream = ({
         }
 
         const { headers } = result;
-        const total = Number(headers.get("Total"));
-        perPage = Number(headers.get("Per-Page"));
+        const total = readPositiveIntHeader(headers, "Total") ?? 0;
+        perPage = readPositiveIntHeader(headers, "Per-Page") ?? perPage;
         totalPages = Math.ceil(total / perPage);
         setTotalStories?.(total);
         setTotalPages?.(totalPages);
         onPageSuccess?.(page, totalPages);
 
         for (const story of result.stories) {
+          onStoryListed?.(story);
           yield story;
         }
 
@@ -88,16 +118,25 @@ export const fetchStoriesStream = ({
 
 export const fetchStoryStream = ({
   spaceId,
+  ordered = false,
   onIncrement,
   onStorySuccess,
   onStoryError,
 }: {
   spaceId: string;
+  /**
+   * Emit stories in the order they were listed rather than as their fetches
+   * complete. A slow fetch then holds back the ones behind it, and its slot
+   * stays taken until it is emitted, so memory stays bounded.
+   */
+  ordered?: boolean;
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
   const processing = new Set<Promise<void>>();
+  /** The last story queued for an ordered emit; each one waits for it. */
+  let previousEmit: Promise<void> = Promise.resolve();
 
   return new Transform({
     objectMode: true,
@@ -105,22 +144,39 @@ export const fetchStoryStream = ({
       // Wait for a slot
       await getPipelineSlot().acquire();
 
-      const task = fetchStory(spaceId, listStory.id.toString())
-        .then((story) => {
+      const fetched = fetchStory(spaceId, listStory.id.toString()).then(
+        (story) => {
           if (typeof story === "undefined") {
             throw new TypeError("Invalid story!");
           }
           onStorySuccess?.(story);
-          this.push(story);
-        })
-        .catch((maybeError) => {
+          return story;
+        },
+        (maybeError: unknown) => {
           onStoryError?.(toError(maybeError), listStory);
-        })
-        .finally(() => {
-          onIncrement?.();
-          getPipelineSlot().release();
-          processing.delete(task);
-        });
+          return undefined;
+        },
+      );
+      // Never rejects: in ordered mode every later emit is chained onto this one.
+      const emit = (story: Story | undefined): void => {
+        if (!story) {
+          return;
+        }
+        try {
+          this.push(story);
+        } catch (maybeError) {
+          onStoryError?.(toError(maybeError), listStory);
+        }
+      };
+      const settled = ordered
+        ? (previousEmit = Promise.all([fetched, previousEmit]).then(([story]) => emit(story)))
+        : fetched.then(emit);
+
+      const task = settled.finally(() => {
+        onIncrement?.();
+        getPipelineSlot().release();
+        processing.delete(task);
+      });
       processing.add(task);
 
       // Call callback immediately to allow the stream to process the next chunk

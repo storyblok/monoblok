@@ -59,7 +59,7 @@ test.describe("the Visual Editor live-updates the playground", () => {
     // proves the replacement kept it resolved rather than falling back to a
     // bare uuid.
     await expect(posts).toHaveCount(2);
-    await expect(posts.first()).toContainText("First article");
+    await expect(posts.first()).toContainText("First Article");
   });
 
   test("a page not wired through the bridge never updates", async ({ page, request }) => {

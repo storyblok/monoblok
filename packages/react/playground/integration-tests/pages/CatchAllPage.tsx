@@ -15,6 +15,7 @@ function CatchAllPage() {
     <div>
       <StoryblokPreview
         story={story}
+        bridgeOptions={{ resolveRelations: ["featured-articles.posts"] }}
         renderContent={(live) => (
           <div data-test="live">
             {live.content ? <StoryblokComponent block={live.content} /> : null}

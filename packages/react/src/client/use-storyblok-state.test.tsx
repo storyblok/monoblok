@@ -22,13 +22,16 @@ function makeStory(overrides: Record<string, unknown> = {}): Story {
 
 describe("useStoryblokState", () => {
   let editorCallback: EditorCallback | undefined;
+  let editorCallbacks: EditorCallback[] = [];
   const mockUnsubscribe = vi.fn();
 
   beforeEach(() => {
     editorCallback = undefined;
+    editorCallbacks = [];
     vi.clearAllMocks();
     vi.mocked(onStoryblokEditorEvent).mockImplementation(async (cb) => {
       editorCallback = cb as EditorCallback;
+      editorCallbacks.push(cb as EditorCallback);
       return mockUnsubscribe;
     });
   });
@@ -71,11 +74,11 @@ describe("useStoryblokState", () => {
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
     act(() => {
-      editorCallback!({ id: 1, slug: "updated" });
+      editorCallback!({ id: "1", slug: "updated" });
     });
 
     expect(result.current).toMatchObject({
-      id: 1,
+      id: "1",
       slug: "updated",
       content: { component: "page", _uid: "page-1" },
     });
@@ -88,10 +91,10 @@ describe("useStoryblokState", () => {
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
     act(() => editorCallback!(makeStory({ slug: "v2" })));
-    expect((result.current as any).slug).toBe("v2");
+    expect(result.current.slug).toBe("v2");
 
     act(() => editorCallback!(makeStory({ slug: "v3" })));
-    expect((result.current as any).slug).toBe("v3");
+    expect(result.current.slug).toBe("v3");
   });
 
   it("calls the unsubscribe function when the component unmounts", async () => {
@@ -115,7 +118,7 @@ describe("useStoryblokState", () => {
 
     act(() => editorCallback!(makeStory({ slug: "after" })));
 
-    expect((result.current as any).slug).toBe("before");
+    expect(result.current.slug).toBe("before");
   });
 
   it("resets to the new story when story.id changes (cross-route navigation)", async () => {
@@ -126,14 +129,14 @@ describe("useStoryblokState", () => {
       initialProps: { story: storyA },
     });
 
-    expect((result.current as any).slug).toBe("page-a");
+    expect(result.current.slug).toBe("page-a");
 
     // Simulate cross-route navigation: same component instance, new story
     await act(async () => {
       rerender({ story: storyB });
     });
 
-    expect((result.current as any).slug).toBe("page-b");
+    expect(result.current.slug).toBe("page-b");
   });
 
   it("resets when the same story.id is refreshed with a new reference", async () => {
@@ -148,14 +151,59 @@ describe("useStoryblokState", () => {
 
     // Editor update to change displayed content first
     act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
-    expect((result.current as any).slug).toBe("editor-updated");
+    expect(result.current.slug).toBe("editor-updated");
 
     // A new prop reference represents refreshed route data and replaces editor state.
     await act(async () => {
       rerender({ s: storyNewRef });
     });
 
-    expect((result.current as any).slug).toBe("home-ref2");
+    expect(result.current.slug).toBe("home-ref2");
+  });
+
+  it("does not reset a live edit when a parent re-renders with a content-identical story object", async () => {
+    const story = makeStory({ id: 1, slug: "home", content: { component: "page", _uid: "p1" } });
+    const storyDuplicate = makeStory({
+      id: 1,
+      slug: "home",
+      content: { component: "page", _uid: "p1" },
+    });
+
+    const { result, rerender } = renderHook(({ s }) => useStoryblokState(s), {
+      initialProps: { s: story },
+    });
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    act(() => editorCallback!(makeStory({ id: 1, slug: "editor-updated" })));
+    expect(result.current.slug).toBe("editor-updated");
+
+    // A parent re-render passing a fresh-but-identical object (e.g. `{...story}`)
+    // must not wipe the live edit.
+    await act(async () => {
+      rerender({ s: storyDuplicate });
+    });
+
+    expect(result.current.slug).toBe("editor-updated");
+  });
+
+  it("ignores editor events for a different story id", async () => {
+    const pageStory = makeStory({ id: 1, slug: "page" });
+    const navStory = makeStory({ id: 2, slug: "nav" });
+
+    const pageHook = renderHook(() => useStoryblokState(pageStory));
+    const navHook = renderHook(() => useStoryblokState(navStory));
+
+    await vi.waitFor(() => expect(editorCallbacks).toHaveLength(2));
+
+    act(() => {
+      for (const cb of editorCallbacks) {
+        cb(makeStory({ id: 1, slug: "page-edited" }));
+      }
+    });
+
+    expect(pageHook.result.current.slug).toBe("page-edited");
+    expect(navHook.result.current.slug).toBe("nav");
   });
 
   describe("with debounceMs option", () => {
@@ -175,14 +223,14 @@ describe("useStoryblokState", () => {
       await vi.waitFor(() => expect(editorCallback).toBeDefined());
 
       act(() => editorCallback!(updated));
-      expect((result.current as any).slug).toBe("initial");
+      expect(result.current.slug).toBe("initial");
 
       await act(async () => {
         vi.advanceTimersByTime(100);
         await vi.runAllTimersAsync();
       });
 
-      expect((result.current as any).slug).toBe("updated");
+      expect(result.current.slug).toBe("updated");
     });
 
     it("only applies the last of multiple rapid events", async () => {
@@ -199,7 +247,7 @@ describe("useStoryblokState", () => {
         await vi.runAllTimersAsync();
       });
 
-      expect((result.current as any).slug).toBe("v3");
+      expect(result.current.slug).toBe("v3");
     });
   });
 });

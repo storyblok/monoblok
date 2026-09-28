@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { LivePreviewStory } from "@storyblok/live-preview";
 import type { Story } from "../types";
 import {
@@ -10,6 +10,23 @@ import {
 
 /** Options for {@link useStoryblokState}. */
 export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions {}
+
+interface StoryblokStateSnapshot<TStory extends Story> {
+  /** The prop value this snapshot was derived from — used to detect a real prop change. */
+  story: TStory;
+  /** The value returned to the caller: the prop, or a live-edited version of it. */
+  current: LivePreviewStory<TStory>;
+}
+
+/**
+ * Whether two stories represent the same data: same reference, or same id and
+ * deep-equal content. Value equality (rather than reference equality) means a
+ * parent re-render that creates a fresh-but-identical story object does not
+ * count as a prop change.
+ */
+function isSameStory(a: Story, b: Story): boolean {
+  return a === b || (a.id === b.id && JSON.stringify(a) === JSON.stringify(b));
+}
 
 /**
  * Subscribes to Storyblok Visual Editor events and returns the latest story.
@@ -23,27 +40,39 @@ export interface UseStoryblokStateOptions extends UseStoryblokEditorEventOptions
  * "use client";
  * function Page({ story }: { story: Story }) {
  *   const live = useStoryblokState(story);
- *   return <StoryblokComponent block={live.content} />;
+ *   return live.content ? <StoryblokComponent block={live.content} /> : null;
  * }
  * ```
  */
-export function useStoryblokState(
-  story: Story,
+export function useStoryblokState<TStory extends Story = Story>(
+  story: TStory,
   options: UseStoryblokStateOptions = {},
-): LivePreviewStory<Story> {
-  const [current, setCurrent] = useState<LivePreviewStory<Story>>(story);
+): LivePreviewStory<TStory> {
+  const [snapshot, setSnapshot] = useState<StoryblokStateSnapshot<TStory>>(() => ({
+    story,
+    current: story,
+  }));
 
-  // Sync a new prop snapshot without overwriting editor updates on every render.
-  // useState only uses the initial value on mount, so cross-route navigation
-  // or SWR refetches would otherwise render stale content forever on a reused
-  // component instance.
-  useEffect(() => {
-    setCurrent(story);
-  }, [story]);
+  // Derive state during render instead of syncing in an effect. An effect
+  // commits one render late — a prop change from story A to story B would
+  // paint A once before catching up — and it fires on every new-but-equal
+  // object a parent re-render creates, wiping any live edit in progress.
+  // Comparing by value means a genuinely new object with the same content
+  // doesn't reset an in-progress edit, while a real prop change (a different
+  // id, or the same id refreshed with new data) still does.
+  if (!isSameStory(story, snapshot.story)) {
+    setSnapshot({ story, current: story });
+  }
 
-  useStoryblokEditorEvent<Story>(
-    (updatedStory) => setCurrent((prev) => ({ ...prev, ...updatedStory })),
-    options,
-  );
-  return current;
+  useStoryblokEditorEvent<TStory>((updatedStory) => {
+    // Editor `input` events aren't scoped to one story: without this guard, a
+    // page preview and a nav preview mounted on the same layout would both
+    // take whichever story is being edited.
+    if (updatedStory.id !== story.id) {
+      return;
+    }
+    setSnapshot((prev) => ({ ...prev, current: { ...prev.current, ...updatedStory } }));
+  }, options);
+
+  return snapshot.current;
 }

@@ -42,7 +42,7 @@ describe("StoryblokPreview (client mode)", () => {
   it("calls renderContent with the initial story", () => {
     const story = makeStory({ slug: "initial" });
     const renderContent = vi.fn((s: LivePreviewStory<Story>) => (
-      <div data-testid="content">{(s as any).slug}</div>
+      <div data-testid="content">{s.slug as string}</div>
     ));
 
     const { getByTestId } = render(
@@ -60,7 +60,7 @@ describe("StoryblokPreview (client mode)", () => {
     const { getByTestId } = render(
       <StoryblokPreview
         story={initial}
-        renderContent={(s) => <div data-testid="content">{(s as any).slug}</div>}
+        renderContent={(s) => <div data-testid="content">{s.slug as string}</div>}
       />,
     );
 
@@ -80,7 +80,7 @@ describe("StoryblokPreview (client mode)", () => {
         story={initial}
         renderContent={(s) => {
           renderCount();
-          return <div data-testid="slug">{(s as any).slug}</div>;
+          return <div data-testid="slug">{s.slug as string}</div>;
         }}
       />,
     );
@@ -97,7 +97,7 @@ describe("StoryblokPreview (client mode)", () => {
   it("unsubscribes from editor events when unmounted", async () => {
     const story = makeStory();
     const { unmount } = render(
-      <StoryblokPreview story={story} renderContent={(s) => <div>{(s as any).slug}</div>} />,
+      <StoryblokPreview story={story} renderContent={(s) => <div>{s.slug as string}</div>} />,
     );
 
     await vi.waitFor(() => expect(editorCallback).toBeDefined());
@@ -115,7 +115,7 @@ describe("StoryblokPreview (client mode)", () => {
       <StoryblokPreview
         story={initial}
         renderContent={(s) => {
-          renderedSlug = (s as any).slug;
+          renderedSlug = s.slug as string;
           return <div>{renderedSlug}</div>;
         }}
       />,
@@ -146,7 +146,7 @@ describe("StoryblokPreview (client mode)", () => {
         <StoryblokPreview
           story={initial}
           debounceMs={100}
-          renderContent={(s) => <div data-testid="slug">{(s as any).slug}</div>}
+          renderContent={(s) => <div data-testid="slug">{s.slug as string}</div>}
         />,
       );
 

@@ -4,17 +4,23 @@ import type { Story } from "../types";
 import { StoryblokPreviewServerRuntime } from "../client/storyblok-preview-server-runtime";
 
 /** Props for the {@link StoryblokPreview} component. */
-export interface StoryblokPreviewProps {
+export interface StoryblokPreviewProps<TStory extends Story = Story> {
   /**
    * Initial story fetched by the application.
    */
-  story: Story;
+  story: TStory;
   /**
    * Server Action responsible for rendering the story. Called once, awaited,
    * for the initial render, and again on every subsequent Visual Editor
    * update.
+   *
+   * This is a public Server Action: it is reachable in production and
+   * renders whatever story the caller sends. Treat `story` as untrusted
+   * input, or gate access behind draft mode, if a registered component uses
+   * block fields for privileged fetches (a preview token, or a URL taken
+   * from the block).
    */
-  renderContent: (story: LivePreviewStory<Story>) => Promise<ReactNode>;
+  renderContent: (story: LivePreviewStory<TStory>) => Promise<ReactNode>;
   /**
    * Milliseconds to wait after the last editor event before triggering a
    * re-render. Prevents a Server Action call on every individual keystroke.
@@ -41,7 +47,7 @@ export interface StoryblokPreviewProps {
  * Same props shape as `StoryblokPreview` from `@storyblok/react`
  * (`story` + `renderContent`) — the only difference is that `renderContent`
  * here is `async` and reruns on the server. Requires React 19 (`React.use`)
- * and Server Actions; use `@storyblok/react` on React 17/18 or with
+ * and Server Actions; use `@storyblok/react` on React 18 or with
  * `output: 'export'`.
  *
  * @example
@@ -53,16 +59,17 @@ export interface StoryblokPreviewProps {
  * }
  * ```
  */
-export async function StoryblokPreview({
+export async function StoryblokPreview<TStory extends Story = Story>({
   story,
   renderContent,
   debounceMs,
   bridgeOptions,
-}: StoryblokPreviewProps): Promise<ReactNode> {
+}: StoryblokPreviewProps<TStory>): Promise<ReactNode> {
   const content = await renderContent(story);
 
   return (
     <StoryblokPreviewServerRuntime
+      storyId={story.id}
       renderContent={renderContent}
       debounceMs={debounceMs}
       bridgeOptions={bridgeOptions}

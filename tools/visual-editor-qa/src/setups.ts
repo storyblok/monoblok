@@ -32,17 +32,18 @@ export const registerPreflightSetup = (config: QaConfig): void => {
     "the playground serves the seeded space, not a stale or misconfigured one",
     async ({ page }) => {
       const url = `${config.previewBaseUrl}${config.previewPath}`;
+      const devScript = config.devScript ?? "qa:dev";
       let response;
       try {
         response = await page.goto(url, { waitUntil: "domcontentloaded" });
       } catch {
         throw new Error(
-          `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} qa:dev`,
+          `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} ${devScript}`,
         );
       }
       expect(
         response?.status(),
-        `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} qa:dev`,
+        `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} ${devScript}`,
       ).toBe(200);
 
       // A status check alone looks green while the content is wrong, so assert

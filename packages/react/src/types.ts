@@ -22,15 +22,18 @@ export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
 /**
  * Helper type for typed block component props.
  *
+ * Naming note: kept as `StoryblokComponentProps`/`StoryblokComponent` rather
+ * than `StoryblokBlock(s)` for 8.0 — renaming close to release risked
+ * destabilizing the API surface further without a clear consensus on the
+ * replacement name. Revisit before a future major if a rename is desired.
+ *
  * @example
  * ```tsx
  * type PageProps = StoryblokComponentProps<{ body: BlockContent[] }>;
  * export default function Page({ block, editable }: PageProps) { ... }
  * ```
  */
-export interface StoryblokComponentProps<
-  T extends Record<string, unknown> = Record<string, unknown>,
-> {
+export interface StoryblokComponentProps<T extends object = object> {
   block: BlockContent & T;
   /**
    * Editable attributes injected by `StoryblokComponent`. Spread onto the root

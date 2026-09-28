@@ -90,14 +90,17 @@ function StatefulContent({ label }: { label: string }) {
 
 describe("StoryblokPreview (server mode)", () => {
   let editorCallback: EditorCallback | undefined;
+  let editorCallbacks: EditorCallback[] = [];
   const mockUnsubscribe = vi.fn();
 
   beforeEach(() => {
     editorCallback = undefined;
+    editorCallbacks = [];
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.mocked(onStoryblokEditorEvent).mockImplementation(async (cb) => {
       editorCallback = cb as EditorCallback;
+      editorCallbacks.push(cb as EditorCallback);
       return mockUnsubscribe;
     });
   });
@@ -387,6 +390,72 @@ describe("StoryblokPreview (server mode)", () => {
     expect(getByTestId("recovered")).toBeInTheDocument();
 
     consoleSpy.mockRestore();
+  });
+
+  it("falls back to the last successfully resolved render, not the page-load render, on error", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const story = makeStory();
+    const firstStory = makeStory({ slug: "first" });
+    const secondStory = makeStory({ slug: "second" });
+
+    const renderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="initial">initial</div>)
+      .mockResolvedValueOnce(<div data-testid="first-live">first live</div>)
+      .mockRejectedValueOnce(new Error("server error"));
+
+    const element = await StoryblokPreview({ story, renderContent, debounceMs: 0 });
+    const { getByTestId, queryByTestId } = render(element);
+
+    await vi.waitFor(() => expect(editorCallback).toBeDefined());
+
+    // First update succeeds — this becomes the new "last good" render.
+    await fireEditorEvent(editorCallback!, firstStory);
+    expect(getByTestId("first-live")).toBeInTheDocument();
+
+    // Second update fails — must fall back to the last good render (first-live),
+    // not all the way back to the page-load render (initial).
+    await fireEditorEvent(editorCallback!, secondStory);
+    expect(getByTestId("first-live")).toBeInTheDocument();
+    expect(queryByTestId("initial")).toBeNull();
+
+    consoleSpy.mockRestore();
+  });
+
+  it("ignores editor events for a different story id", async () => {
+    const pageStory = makeStory({ id: 1, slug: "page" });
+    const navStory = makeStory({ id: 2, slug: "nav" });
+    const pageRenderContent = vi
+      .fn()
+      .mockResolvedValueOnce(<div data-testid="page">page-initial</div>)
+      .mockResolvedValueOnce(<div data-testid="page">page-edited</div>);
+    const navRenderContent = vi.fn().mockResolvedValue(<div data-testid="nav">nav-initial</div>);
+
+    const pageElement = await StoryblokPreview({
+      story: pageStory,
+      renderContent: pageRenderContent,
+    });
+    const navElement = await StoryblokPreview({ story: navStory, renderContent: navRenderContent });
+
+    render(
+      <>
+        {pageElement}
+        {navElement}
+      </>,
+    );
+
+    await vi.waitFor(() => expect(editorCallbacks).toHaveLength(2));
+
+    await act(async () => {
+      for (const cb of editorCallbacks) {
+        cb(makeStory({ id: 1, slug: "page-edited" }));
+      }
+      await vi.runAllTimersAsync();
+    });
+
+    // Only the matching (page) instance re-invokes its Server Action.
+    expect(pageRenderContent).toHaveBeenCalledTimes(2);
+    expect(navRenderContent).toHaveBeenCalledTimes(1);
   });
 
   // ─── Concurrent action gating ────────────────────────────────────────────

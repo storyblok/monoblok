@@ -28,6 +28,10 @@ export interface UseStoryblokEditorEventOptions {
  * subscription is established once on mount and never torn down/re-created
  * unless the component unmounts.
  *
+ * Each call establishes its own bridge subscription. Sharing one bridge per
+ * options key across instances is tracked in
+ * https://github.com/storyblok/monoblok/pull/794.
+ *
  * @example
  * ```tsx
  * "use client";
@@ -81,7 +85,9 @@ export function useStoryblokEditorEvent<TStory extends Story = Story>(
       }
     };
 
-    setup();
+    setup().catch((error: unknown) => {
+      console.error("[Storyblok] useStoryblokEditorEvent: live preview unavailable.", error);
+    });
 
     return () => {
       mounted = false;

@@ -1,5 +1,4 @@
 import type { StoryblokComponentProps } from "@storyblok/react";
-import { storyblokEditable } from "@storyblok/react";
 
 type FeatureProps = StoryblokComponentProps<{
   name: string;
@@ -11,11 +10,11 @@ type FeatureProps = StoryblokComponentProps<{
   };
 }>;
 
-const Feature = ({ block }: FeatureProps) => (
+const Feature = ({ block, editable }: FeatureProps) => (
   <div
     data-test="feature"
     style={{ backgroundColor: block.color?.color, padding: "8px" }}
-    {...storyblokEditable(block)}
+    {...editable}
   >
     <h2>{block.name}</h2>
     <p>{block.description}</p>

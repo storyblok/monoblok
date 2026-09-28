@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { StoryblokComponentProps, storyblokEditable } from "@storyblok/react";
+import { StoryblokComponentProps } from "@storyblok/react";
 
 type WeatherWidgetProps = StoryblokComponentProps<{ title: string; location: string }>;
 
@@ -28,13 +28,10 @@ const getCachedWeather = unstable_cache(fetchWeatherData, ["weather"], {
 
 const getWeather = cache(getCachedWeather);
 
-export async function WeatherWidget({ block }: WeatherWidgetProps) {
+export async function WeatherWidget({ block, editable }: WeatherWidgetProps) {
   const weatherData = await getWeather(block.location ?? "");
   return (
-    <div
-      className="rounded-lg border border-zinc-700 bg-zinc-900 p-6 mb-6"
-      {...storyblokEditable(block)}
-    >
+    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-6 mb-6" {...editable}>
       <h3 className="text-lg font-semibold text-zinc-100">{block.title}</h3>
       <p className="text-sm text-zinc-500 mt-1">Location: {block.location}</p>
 

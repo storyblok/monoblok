@@ -121,8 +121,14 @@ function renderLinkGroup(
   });
   const Custom = resolveComponent(linkMark.type, options.components);
   if (Custom) {
+    // Exclude this mark's own type from the context passed down, mirroring
+    // renderNode's guard, so a custom component using StoryblokRichText
+    // internally can't recurse into itself without limit.
+    const contextForCustom = options.components?.[linkMark.type]
+      ? { ...options, components: { ...options.components, [linkMark.type]: undefined } }
+      : options;
     return (
-      <Custom key={key} {...linkMark} context={options}>
+      <Custom key={key} {...linkMark} context={contextForCustom}>
         {inner}
       </Custom>
     );
@@ -331,8 +337,14 @@ function wrapMark(
 ): ReactNode {
   const Custom = resolveComponent(mark.type, options.components);
   if (Custom) {
+    // Exclude this mark's own type from the context passed down, mirroring
+    // renderNode's guard, so a custom component using StoryblokRichText
+    // internally can't recurse into itself without limit.
+    const contextForCustom = options.components?.[mark.type]
+      ? { ...options, components: { ...options.components, [mark.type]: undefined } }
+      : options;
     return (
-      <Custom {...mark} context={options}>
+      <Custom {...mark} context={contextForCustom}>
         {children}
       </Custom>
     );

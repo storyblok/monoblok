@@ -6,16 +6,18 @@ import type { Story } from "../types";
 import { useStoryblokState, type UseStoryblokStateOptions } from "./use-storyblok-state";
 
 /** Props for the {@link StoryblokPreview} component. */
-export interface StoryblokPreviewProps extends UseStoryblokStateOptions {
+export interface StoryblokPreviewProps<
+  TStory extends Story = Story,
+> extends UseStoryblokStateOptions {
   /**
    * Initial story fetched by the application.
    */
-  story: Story;
+  story: TStory;
   /**
    * Render function that receives the latest story on every Visual Editor
    * update and returns the UI for it.
    */
-  renderContent: (story: LivePreviewStory<Story>) => ReactNode;
+  renderContent: (story: LivePreviewStory<TStory>) => ReactNode;
 }
 
 /**
@@ -34,14 +36,17 @@ export interface StoryblokPreviewProps extends UseStoryblokStateOptions {
  *
  * @example
  * ```tsx
- * <StoryblokPreview story={story} renderContent={(live) => <StoryblokComponent block={live.content} />} />
+ * <StoryblokPreview
+ *   story={story}
+ *   renderContent={(live) => (live.content ? <StoryblokComponent block={live.content} /> : null)}
+ * />
  * ```
  */
-export function StoryblokPreview({
+export function StoryblokPreview<TStory extends Story = Story>({
   story,
   renderContent,
   ...options
-}: StoryblokPreviewProps): ReactNode {
-  const current = useStoryblokState(story, options);
+}: StoryblokPreviewProps<TStory>): ReactNode {
+  const current = useStoryblokState<TStory>(story, options);
   return <>{renderContent(current)}</>;
 }

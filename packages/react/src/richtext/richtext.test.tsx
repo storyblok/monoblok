@@ -1,4 +1,5 @@
 import type { StoryblokReactRichTextComponentMap } from "./index";
+import type { StoryblokRichTextInput } from "@storyblok/richtext";
 import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import {
@@ -15,6 +16,7 @@ import CustomCodeBlock from "./fixtures/code-component";
 import CustomTable from "./fixtures/custom-table";
 import CustomText from "./fixtures/custom-text";
 import HeadingWithRichText from "./fixtures/heading-with-rich-text";
+import CustomBoldWithRichText from "./fixtures/custom-bold-with-rich-text";
 import { defineStoryblokComponents } from "../define-storyblok-components";
 import { createStoryblokRichText } from "./create-storyblok-richtext";
 
@@ -228,6 +230,31 @@ describe("react StoryblokRichText component", () => {
         <StoryblokRichText document={infinite_loop.input} components={options} />,
       );
       expect(alignImageSrcAttribute(container.innerHTML)).toBe(infinite_loop.expected);
+    });
+
+    it("prevents infinite recursion for a custom mark component (matching node-level guard)", () => {
+      const document: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "outer", marks: [{ type: "bold" }] }],
+          },
+        ],
+      };
+      const options: StoryblokReactRichTextComponentMap = {
+        bold: CustomBoldWithRichText,
+      };
+
+      const { container } = render(<StoryblokRichText document={document} components={options} />);
+
+      // Terminates at depth 1: the outer bold uses the custom component, the
+      // nested bold (rendered through the stripped context) falls back to the
+      // default <strong> tag instead of recursing into CustomBoldWithRichText again.
+      const outer = container.querySelector('[data-type="recursive-bold"]');
+      expect(outer).not.toBeNull();
+      expect(outer?.querySelector('[data-type="recursive-bold"]')).toBeNull();
+      expect(outer?.querySelector("strong")).not.toBeNull();
     });
   });
 

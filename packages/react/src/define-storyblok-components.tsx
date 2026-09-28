@@ -51,9 +51,12 @@ export interface StoryblokComponentsResult {
   /**
    * Renders a single block by looking up `block.component` in the map.
    *
-   * `TExtraProps` lets callers thread additional props through the tree without
-   * widening the type to `Record<string, unknown>`, which would disable excess
-   * property checking and break autocomplete across the board.
+   * `TExtraProps` is inferred from whatever JSX attributes are passed, so it
+   * forwards arbitrary extra props to every rendered block component without
+   * widening `block` itself to `Record<string, unknown>`. It does not close
+   * the typo hole: TypeScript infers `TExtraProps` from the call site, so a
+   * misspelled prop (`titlee="typo"`) still compiles clean and is forwarded
+   * as-is.
    *
    * @example
    * ```tsx
@@ -71,18 +74,32 @@ export interface StoryblokComponentsResult {
 
 /**
  * Check if a component is a lazy component (created with React.lazy).
- * Lazy components have $$typeof Symbol(react.lazy).
+ * Lazy components have `$$typeof === Symbol.for("react.lazy")`.
  *
- * SAFETY: relies on React's internal $$typeof symbol string representation.
- * There is no public API alternative; this pattern is widely used in the
- * ecosystem and has been stable across React 16–19.
+ * Unwraps `React.memo` first: `memo(lazy(...))` has its own `$$typeof`
+ * (`Symbol.for("react.memo")`) with the lazy component nested under `.type`,
+ * so checking the outer value alone would miss it.
+ *
+ * SAFETY: relies on React's internal `$$typeof` symbols. There is no public
+ * API alternative; this pattern is widely used in the ecosystem and has been
+ * stable across React 16–19.
  */
 function isLazyComponent(component: unknown): boolean {
-  if (typeof component !== "object" || component === null) {
+  const target = unwrapMemo(component);
+  if (typeof target !== "object" || target === null) {
     return false;
   }
-  const typedComponent = component as { $$typeof?: symbol };
+  const typedComponent = target as { $$typeof?: symbol };
   return typedComponent.$$typeof === Symbol.for("react.lazy");
+}
+
+/** Unwraps `React.memo(Component)` to the `Component` it wraps; returns other values unchanged. */
+function unwrapMemo(component: unknown): unknown {
+  if (typeof component !== "object" || component === null) {
+    return component;
+  }
+  const typedComponent = component as { $$typeof?: symbol; type?: unknown };
+  return typedComponent.$$typeof === Symbol.for("react.memo") ? typedComponent.type : component;
 }
 
 /**
@@ -132,11 +149,30 @@ export function defineStoryblokComponents(
 ): StoryblokComponentsResult {
   const defaultSuspenseFallback = config.suspenseFallback ?? null;
 
+  if (!config.components) {
+    throw new Error('[Storyblok] defineStoryblokComponents: "components" is required.');
+  }
+
   // ── Build the registry once at factory time ────────────────────────────────
   // normalizeEntry, isLazyComponent (Symbol.for allocation), and fallback
   // resolution all run here — never inside the render function.
   const registry = new Map<string, ResolvedEntry>();
   for (const [type, entry] of Object.entries(config.components)) {
+    if (entry == null) {
+      throw new Error(
+        `[Storyblok] defineStoryblokComponents: components["${type}"] is undefined. Check for ` +
+          "a typo, or a circular import that hasn't finished initializing yet.",
+      );
+    }
+    if (
+      typeof entry === "object" &&
+      !("component" in entry) &&
+      ("fallback" in entry || "suspense" in entry)
+    ) {
+      throw new Error(
+        `[Storyblok] defineStoryblokComponents: components["${type}"] is missing "component".`,
+      );
+    }
     const { component: Component, fallback, suspense } = normalizeEntry(entry);
     registry.set(type, {
       Component,

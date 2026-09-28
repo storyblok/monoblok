@@ -15,6 +15,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Story } from "../types";
 import { useStoryblokEditorEvent } from "./use-storyblok-editor-event";
 
 /**
@@ -48,6 +49,12 @@ export interface StoryblokPreviewServerRuntimeProps {
    * `LiveContentBoundary`'s fallback.
    */
   children: ReactNode;
+  /**
+   * Id of the story this runtime is rendering. Editor `input` events for a
+   * different story id (e.g. a nav preview mounted alongside a page preview)
+   * are ignored.
+   */
+  storyId: Story["id"];
   /**
    * Milliseconds to wait after the last editor event before triggering a
    * re-render. Prevents a Server Action call on every individual keystroke.
@@ -162,11 +169,13 @@ class LiveContentBoundary extends Component<LiveContentBoundaryProps, LiveConten
  * eliminates the duplicate-DOM window that confuses the bridge.
  *
  * If `renderContent` rejects, the error boundary catches it, logs it, and keeps
- * the initial `children` visible. The boundary resets on the next editor event.
+ * the last successfully resolved render visible (the initial `children` until
+ * the first live update settles). The boundary resets on the next editor event.
  */
 export function StoryblokPreviewServerRuntime({
   renderContent,
   children,
+  storyId,
   debounceMs = 200,
   bridgeOptions,
 }: StoryblokPreviewServerRuntimeProps): ReactNode {
@@ -177,11 +186,19 @@ export function StoryblokPreviewServerRuntime({
   if (typeof reactUse !== "function") {
     throw new Error(
       "[Storyblok] StoryblokPreview (server mode, from @storyblok/react/rsc) requires React 19 " +
-        "(React.use is not available). Use StoryblokPreview from @storyblok/react for React 17/18.",
+        "(React.use is not available). Use StoryblokPreview from @storyblok/react for React 18.",
     );
   }
 
   const [livePromise, setLivePromise] = useState<Promise<ReactNode> | null>(null);
+  // The most recent successfully resolved render. Falls back to `children`
+  // (the initial render) until the first live update settles. Starts at
+  // `null` rather than `children` — initializing useState with `children`
+  // would reintroduce the forced-await problem described above; setting it
+  // later, from a client-only event handler, has no such effect because it
+  // never runs during the initial server render.
+  const [lastGoodContent, setLastGoodContent] = useState<ReactNode | null>(null);
+  const fallback = <>{lastGoodContent ?? children}</>;
 
   // One server action at a time. A story arriving while an action is in-flight
   // is held in `queued` (replacing any earlier queued story) and dispatched once
@@ -213,19 +230,28 @@ export function StoryblokPreviewServerRuntime({
     inFlight.current = true;
     // Call renderContent eagerly (outside the transition) so the Server Action
     // starts streaming its RSC response immediately.
-    const promise = renderContent(story).finally(() => {
-      inFlight.current = false;
+    const promise = renderContent(story)
+      .then((node) => {
+        // A failed action later must fall back to this render, not the one
+        // from page load.
+        if (mounted.current) {
+          setLastGoodContent(node);
+        }
+        return node;
+      })
+      .finally(() => {
+        inFlight.current = false;
 
-      if (!mounted.current) {
-        return;
-      }
+        if (!mounted.current) {
+          return;
+        }
 
-      const next = queued.current;
-      queued.current = null;
-      if (next) {
-        run(next);
-      }
-    });
+        const next = queued.current;
+        queued.current = null;
+        if (next) {
+          run(next);
+        }
+      });
     // Suppress the unhandled-rejection warning that fires in the window between
     // setLivePromise and React's use() subscribing to the promise. React.use()
     // handles the rejection by throwing to the error boundary; this no-op catch
@@ -241,6 +267,12 @@ export function StoryblokPreviewServerRuntime({
 
   useStoryblokEditorEvent(
     (updatedStory) => {
+      // Editor `input` events aren't scoped to one story: without this guard,
+      // a page preview and a nav preview mounted on the same layout would both
+      // re-render on the server with whichever story is being edited.
+      if (updatedStory.id !== storyId) {
+        return;
+      }
       if (inFlight.current) {
         // Replace any previously queued story with the latest — intermediate
         // stories are intentionally discarded.
@@ -253,8 +285,8 @@ export function StoryblokPreviewServerRuntime({
   );
 
   return (
-    <LiveContentBoundary promise={livePromise} fallback={<>{children}</>}>
-      <Suspense fallback={<>{children}</>}>
+    <LiveContentBoundary promise={livePromise} fallback={fallback}>
+      <Suspense fallback={fallback}>
         <LiveContent promise={livePromise}>{children}</LiveContent>
       </Suspense>
     </LiveContentBoundary>

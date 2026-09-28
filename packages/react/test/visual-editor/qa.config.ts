@@ -9,10 +9,12 @@ import { defineQaConfig } from "@storyblok/visual-editor-qa";
 const TARGETS = {
   client: {
     packageName: "@storyblok/react",
+    devScript: "qa:dev",
     previewBaseUrl: "https://localhost:5273",
   },
   rsc: {
-    packageName: "@storyblok/react (RSC)",
+    packageName: "@storyblok/react",
+    devScript: "qa:dev:rsc",
     previewBaseUrl: "https://localhost:5274",
   },
 } as const;

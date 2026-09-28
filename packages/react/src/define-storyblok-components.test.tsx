@@ -140,6 +140,30 @@ describe("defineStoryblokComponents", () => {
       await waitFor(() => expect(getByTestId("teaser")).toBeInTheDocument());
     });
 
+    it("auto-wraps memo(lazy(...)) components in Suspense too", async () => {
+      const LazyTeaser = memo(
+        lazy(
+          () =>
+            new Promise<{ default: typeof Teaser }>((resolve) =>
+              setTimeout(() => resolve({ default: Teaser }), 10),
+            ),
+        ),
+      );
+      const { StoryblokComponent } = defineStoryblokComponents({
+        components: {
+          teaser: {
+            component: LazyTeaser,
+            fallback: <div data-testid="skeleton">loading</div>,
+            // suspense omitted — auto-detected via isLazyComponent() unwrapping memo()
+          },
+        },
+      });
+
+      const { getByTestId } = render(<StoryblokComponent block={teaserBlock} />);
+      expect(getByTestId("skeleton")).toBeInTheDocument();
+      await waitFor(() => expect(getByTestId("teaser")).toBeInTheDocument());
+    });
+
     it("uses the registry-level suspenseFallback when the entry omits its own fallback", async () => {
       const LazyPage = lazy(
         () =>
@@ -195,6 +219,64 @@ describe("defineStoryblokComponents", () => {
       const { getByTestId } = render(<StoryblokRichText document={doc as any} />);
       expect(getByTestId("page")).toBeInTheDocument();
     });
+
+    it("forwards a plain-object `data` prop to embedded blocks as extra props", () => {
+      function PageWithLocale({ block, locale }: { block: BlockContent; locale?: string }) {
+        return (
+          <div data-testid="page" data-locale={locale}>
+            {block._uid}
+          </div>
+        );
+      }
+      const { StoryblokRichText } = defineStoryblokComponents({
+        components: { page: PageWithLocale },
+      });
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: {
+              id: "blok-1",
+              body: [{ component: "page", _uid: "uid-page" }],
+            },
+          },
+        ],
+      };
+      const { getByTestId } = render(
+        <StoryblokRichText document={doc as any} data={{ locale: "de" }} />,
+      );
+      expect(getByTestId("page")).toHaveAttribute("data-locale", "de");
+    });
+
+    it("does not forward `data` when it isn't a plain object", () => {
+      function PageWithLocale({ block, locale }: { block: BlockContent; locale?: string }) {
+        return (
+          <div data-testid="page" data-locale={locale ?? "none"}>
+            {block._uid}
+          </div>
+        );
+      }
+      const { StoryblokRichText } = defineStoryblokComponents({
+        components: { page: PageWithLocale },
+      });
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: {
+              id: "blok-1",
+              body: [{ component: "page", _uid: "uid-page" }],
+            },
+          },
+        ],
+      };
+      const { getByTestId } = render(
+        <StoryblokRichText document={doc as any} data="not-an-object" />,
+      );
+      expect(getByTestId("page")).toHaveAttribute("data-locale", "none");
+    });
   });
 
   // ─── Isolation ────────────────────────────────────────────────────────────
@@ -248,6 +330,30 @@ describe("defineStoryblokComponents", () => {
       expect(getByTestId("page")).toBeInTheDocument();
       expect(consoleSpy).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
+    });
+  });
+
+  // ─── Registry validation ───────────────────────────────────────────────────
+
+  describe("registry validation", () => {
+    it("throws a clear error when components is missing", () => {
+      expect(() => defineStoryblokComponents({} as any)).toThrow(
+        '[Storyblok] defineStoryblokComponents: "components" is required.',
+      );
+    });
+
+    it("throws a clear error naming the block key when an entry is undefined", () => {
+      expect(() => defineStoryblokComponents({ components: { teaser: undefined as any } })).toThrow(
+        '[Storyblok] defineStoryblokComponents: components["teaser"] is undefined.',
+      );
+    });
+
+    it("throws a clear error naming the block key when a config entry is missing 'component'", () => {
+      expect(() =>
+        defineStoryblokComponents({ components: { teaser: { suspense: true } as any } }),
+      ).toThrow(
+        '[Storyblok] defineStoryblokComponents: components["teaser"] is missing "component".',
+      );
     });
   });
 
@@ -685,6 +791,17 @@ describe("StoryblokComponentProps — type", () => {
   it("editable is typed as StoryblokEditableProps", () => {
     type Props = StoryblokComponentProps;
     expectTypeOf<Props["editable"]>().toEqualTypeOf<StoryblokEditableProps | undefined>();
+  });
+
+  it("accepts a field type declared with `interface` (not just `type`)", () => {
+    interface Hero {
+      title: string;
+    }
+    // Would fail with TS2344 under the old `T extends Record<string, unknown>`
+    // constraint: an `interface` has no index signature.
+    type Props = StoryblokComponentProps<Hero>;
+    const _p: Props = { block: { ...pageBlock, title: "hello" } };
+    void _p;
   });
 });
 

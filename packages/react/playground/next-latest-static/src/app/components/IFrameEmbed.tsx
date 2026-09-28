@@ -1,5 +1,4 @@
 import type { StoryblokComponentProps } from "@storyblok/react";
-import { storyblokEditable } from "@storyblok/react";
 
 type IFrameEmbedProps = StoryblokComponentProps<{
   url?: {
@@ -8,8 +7,8 @@ type IFrameEmbedProps = StoryblokComponentProps<{
   };
 }>;
 
-const IFrameEmbed = ({ block }: IFrameEmbedProps) => (
-  <div {...storyblokEditable(block)} data-test="iframe-embed">
+const IFrameEmbed = ({ block, editable }: IFrameEmbedProps) => (
+  <div {...editable} data-test="iframe-embed">
     <iframe src={block.url?.url} title={block.url?.title} />
   </div>
 );

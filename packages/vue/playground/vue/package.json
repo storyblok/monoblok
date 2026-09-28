@@ -21,7 +21,7 @@
     "tailwindcss": "^4.1.10",
     "typescript": "catalog:",
     "vite": "^6.4.3",
-    "vue-tsc": "^3.3.10"
+    "vue-tsc": "catalog:"
   },
   "nx": {
     "projectType": "application"

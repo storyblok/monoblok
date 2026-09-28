@@ -69,7 +69,40 @@ export type StoryblokRichTextTextNode = Extract<RichTextNode, { type: "text" }>;
 /** @deprecated Use {@link StoryblokRichTextTextNode} instead. Will be removed in the next major version. */
 export type SbRichTextTextNode = StoryblokRichTextTextNode;
 
-export type StoryblokRichTextInput = RichTextDoc | RichTextNode | RichTextNode[] | null | undefined;
+/**
+ * A block embedded in a richtext `blok` node. The renderer hands blocks to a custom
+ * renderer without reading their fields, so a field can hold any value, e.g. a story
+ * inlined by the Content Delivery API client.
+ */
+export type StoryblokRichTextBlokContent = {
+  _uid?: string;
+  component: string;
+  _editable?: string;
+  [key: string]: unknown;
+};
+
+type WithAnyBlokContent<TNode> = TNode extends { type: "blok" }
+  ? {
+      [K in keyof TNode]: K extends "attrs"
+        ? {
+            [A in keyof TNode[K]]: A extends "body"
+              ? StoryblokRichTextBlokContent[] | null
+              : TNode[K][A];
+          }
+        : TNode[K];
+    }
+  : { [K in keyof TNode]: K extends "content" ? WithAnyBlokContentArray<TNode[K]> : TNode[K] };
+
+type WithAnyBlokContentArray<T> = T extends readonly (infer TNode)[]
+  ? WithAnyBlokContent<TNode>[]
+  : T;
+
+export type StoryblokRichTextInput =
+  | WithAnyBlokContent<RichTextDoc>
+  | WithAnyBlokContent<RichTextNode>
+  | WithAnyBlokContent<RichTextNode>[]
+  | null
+  | undefined;
 
 /**
  * @deprecated Use {@link StoryblokRichTextInput} instead. Will be removed in the next major version.

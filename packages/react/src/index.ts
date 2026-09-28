@@ -36,5 +36,3 @@ export {
   useStoryblokState,
   type UseStoryblokStateOptions,
 } from "./client";
-
-export { buildStoryblokImage, splitTableRows } from "@storyblok/richtext";

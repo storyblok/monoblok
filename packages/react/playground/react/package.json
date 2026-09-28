@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@storyblok/api-client": "workspace:^",
-    "@storyblok/react": "workspace:*",
-    "@storyblok/richtext": "workspace:*",
+    "@storyblok/react": "workspace:^",
+    "@storyblok/richtext": "workspace:^",
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
     "react-router": "^7.18.2",

@@ -12,7 +12,6 @@ function CatchAllPage() {
 
   return (
     <StoryblokPreview
-      key={story.uuid}
       story={story}
       renderContent={(live) => (
         <div>{live.content ? <StoryblokComponent block={live.content} /> : null}</div>

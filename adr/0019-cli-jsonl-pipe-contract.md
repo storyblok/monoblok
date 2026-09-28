@@ -1,11 +1,13 @@
 # ADR-0019: CLI JSONL Pipe Contract
 
-**Status:** Accepted **Date:** 2026-08-27
+**Status:** Accepted; consumer side (decision 4, `input.ts`) not yet implemented. **Date:**
+2026-08-27
 
 ## Context
 
 `stories find` ([ADR-0018](0018-cli-stories-find-command.md)) is the first CLI command whose result
-is data rather than a report, and the first written to be read by another command:
+is data rather than a report, and the first written to be read by another command. The target
+pipeline, once a consumer accepts `-`:
 
 ```bash
 storyblok stories find -s 123 --includes-block hero --capi-filter --where "…" \
@@ -59,9 +61,9 @@ The shape of a line depends on the producer's flags: `--skip-content` omits `con
 - **Every line carries `id`, `uuid`, and `full_slug`**, whatever produced it. A consumer can be
   written against the format rather than against one flag combination.
 - **A key a producer adds that is not part of the story is prefixed `_`.** Unknown sidecar keys are
-  ignored, and `stripSidecarKeys` removes them before a story goes back to the API. Top-level keys
-  only: `_uid` and `_editable` live inside `content`, where they are part of the document the API
-  itself round-trips.
+  ignored, and a consumer removes them before a story goes back to the API. Top-level keys only:
+  `_uid` and `_editable` live inside `content`, where they are part of the document the API itself
+  round-trips.
 
 `content` is therefore optional by contract. A consumer that needs it fetches it for the lines that
 lack it rather than failing the run.
@@ -100,12 +102,12 @@ claim true, not just the latency one.
 
 The pipe is a module, not a feature of `find`:
 
-| File          | Owns                                                                               |
-| ------------- | ---------------------------------------------------------------------------------- |
-| `output.ts`   | JSONL out, the backpressured sink, and the closed-pipe signal                      |
-| `input.ts`    | `-`, the `fstat` probe, and the JSONL reader with its malformed-line policy        |
-| `contract.ts` | the line contract above: required fields, sidecar keys, validation at the boundary |
-| `phases.ts`   | progress bars, counters, timing marks, and derived totals for a staged run         |
+| File          | Owns                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `output.ts`   | JSONL out, the backpressured sink, and the closed-pipe signal                          |
+| `input.ts`    | _planned:_ `-`, the `fstat` probe, and the JSONL reader with its malformed-line policy |
+| `contract.ts` | the line contract above: required fields and sidecar keys                              |
+| `phases.ts`   | progress bars, counters, timing marks, and derived totals for a staged run             |
 
 `phases.ts` is there because a streaming command's instrumentation is the other thing every consumer
 would otherwise reimplement. `find` alone had 300 lines of it, `assets` has a smaller copy, and the
@@ -133,8 +135,9 @@ consumer that would rather report and continue has to say so.
 
 ## Consequences
 
-- **Producers and consumers agree on a validated boundary.** `parseStoryLine` fails at the point of
-  reading, naming the input line, rather than deep inside a write.
+- **Producers and consumers agree on a validated boundary.** The consumer side validates each line
+  against the contract as it reads it, naming the input line, rather than failing deep inside a
+  write.
 - **A consumer must treat `content` as optional** and fetch what it lacks. `--skip-content` on the
   producing side becomes a genuine optimization rather than a trap.
 - **`find --check-references` does not stream.** An issue is only decidable once the whole scope has

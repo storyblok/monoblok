@@ -3,6 +3,7 @@ import { getMapiClient } from "../../api";
 import { createPipelineBackpressureLock } from "../../utils/backpressure-lock";
 import { handleAPIError } from "../../utils/error/api-error";
 import { getResponseStatus, toError } from "../../utils/error/error";
+import { redactClientError } from "../../utils/error/redact";
 import { FetchError } from "../../utils/fetch";
 import { fetchAllPages } from "../../utils/pagination";
 import type { RegionCode } from "../../constants";
@@ -189,7 +190,7 @@ export const getSignedAssetUrl = async (
 
     return signedUrl;
   } catch (maybeError) {
-    handleAPIError("pull_asset", toError(maybeError));
+    handleAPIError("pull_asset", redactClientError(maybeError));
   }
 };
 

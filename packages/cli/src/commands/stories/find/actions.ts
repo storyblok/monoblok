@@ -26,6 +26,14 @@ const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[134578][0-9a-f]{3}-[89ab][0-9a-f]
 /** One UUID, or several separated by commas. Mirrors the API's own list form. */
 const REFERENCE_UUIDS = new RegExp(`^\\s*(?:${UUID_PATTERN}\\s*,?\\s*)+$`, "i");
 
+/** Splits a comma-separated flag value. The API reads list params verbatim, so `"hero, cta"` would match nothing. */
+export function splitList(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 /**
  * Rejects options the command accepts on the surface but cannot honour yet.
  *
@@ -84,6 +92,12 @@ export function assertSupportedOptions(options: FindOptions): void {
     // error, next to the flags it belongs with.
     const capiParams = parseCapiParams(options.capiParams);
 
+    if (options.checkReferences && capiParams.language !== undefined) {
+      throw new CommandError(
+        "--check-references cannot be combined with --capi-params language: the CDN rewrites link URLs with the language prefix, so links that are up to date would be reported as stale.",
+      );
+    }
+
     // Asking the CDN for published content answers "what is live", but a story
     // with no published version is undecidable there: it passes through and is
     // settled against MAPI's *draft* content, so a run that reads as "what is
@@ -138,7 +152,7 @@ export function parseSort(raw: string | undefined): string | undefined {
   if (raw === undefined) {
     return undefined;
   }
-  const parts = raw.split(",").map((part) => part.trim());
+  const parts = splitList(raw);
   for (const part of parts) {
     const [field, direction, ...modifiers] = part.split(":");
     const valid =
@@ -171,8 +185,8 @@ export function parseWorkflowStages(raw: string | undefined): string | undefined
   if (raw === undefined) {
     return undefined;
   }
-  const ids = raw.split(",").map((id) => id.trim());
-  if (ids.some((id) => !/^\d+$/.test(id))) {
+  const ids = splitList(raw);
+  if (ids.length === 0 || ids.some((id) => !/^\d+$/.test(id))) {
     throw new CommandError(
       `--workflow-stage expects numeric workflow stage IDs, separated by commas, and got: ${raw}`,
     );
@@ -197,7 +211,7 @@ export function parseIssueTypes(raw: string | boolean | undefined): Set<IssueTyp
   if (raw === true) {
     return new Set(ISSUE_TYPES);
   }
-  const types = raw.split(",").map((type) => type.trim());
+  const types = splitList(raw);
   const unknown = types.filter((type) => !isIssueType(type));
   if (unknown.length > 0) {
     throw new CommandError(
@@ -211,7 +225,8 @@ export function buildQueryParams(
   text: string | undefined,
   options: FindOptions,
 ): StoriesQueryParams {
-  const params: StoriesQueryParams = {};
+  // Without it the listing returns `stages: null`. Undeclared in the API spec, hence the widened type.
+  const params: StoriesQueryParams & { with_stages?: boolean } = { with_stages: true };
 
   if (text) {
     params.text_search = text;
@@ -227,20 +242,20 @@ export function buildQueryParams(
       startsWith: options.startsWith,
       query: options.query,
       extraFilterQuery: options.containerBlock
-        ? { component: { in: options.containerBlock } }
+        ? { component: { in: splitList(options.containerBlock).join(",") } }
         : undefined,
     }),
   );
 
   if (options.includesBlock) {
-    params.contain_component = options.includesBlock;
+    params.contain_component = splitList(options.includesBlock).join(",");
   }
 
   // Tags and workflow stages are both "any of these" on the server: a story
   // matches when it carries one of the listed values, unlike `--includes-block`,
   // where the listed blocks must all be present.
   if (options.tag) {
-    params.with_tag = options.tag;
+    params.with_tag = splitList(options.tag).join(",");
   }
 
   if (options.workflowStage) {
@@ -260,7 +275,7 @@ export function buildQueryParams(
   }
 
   if (options.references) {
-    params.reference_search = options.references;
+    params.reference_search = splitList(options.references).join(",");
   }
 
   // Without a content fetch, the listing is the whole answer, so ask for the
@@ -288,11 +303,10 @@ export function buildQueryParams(
  * carries. That is what lets these run as `preContentFilters`, before the
  * content fetch and before the CAPI filter, so a non-matching story costs
  * nothing beyond the page it was listed on.
- * `draft` is fully server-side, so it contributes no filter.
  */
 export function buildPublishStatusFilters(options: FindOptions): ClientFilter[] {
   const status = options.publishStatus;
-  if (!status || status === "draft") {
+  if (!status) {
     return [];
   }
   return [(story) => matchesPublishStatus(story, status)];

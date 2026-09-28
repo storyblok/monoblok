@@ -123,6 +123,19 @@ export interface AlterBlockOp<TAfter extends SchemaShape, TBefore extends Schema
   readonly [schemaBrand]?: [TAfter, TBefore];
 }
 
+/**
+ * One block replaced by the blocks the callback returns. The only op whose
+ * result is not a change to the block it names but a change to the list that
+ * holds it.
+ */
+export interface ExpandBlockOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
+  kind: "expandBlock";
+  block: string;
+  fn: (block: never) => readonly unknown[];
+  under?: string | readonly string[];
+  readonly [schemaBrand]?: [TAfter, TBefore];
+}
+
 export interface AddFieldOp<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   kind: "addField";
   block: string;
@@ -191,6 +204,7 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
   | ReorderFieldOp<TAfter, TBefore>
   | AlterFieldOp<TAfter, TBefore>
   | AlterBlockOp<TAfter, TBefore>
+  | ExpandBlockOp<TAfter, TBefore>
   | AddFieldOp<TAfter, TBefore>
   | SplitFieldOp<TAfter, TBefore>
   | MergeFieldsOp<TAfter, TBefore>
@@ -411,6 +425,46 @@ export function alterBlock<
     kind: "alterBlock",
     block: spec.block,
     fn: fn as AlterBlockOp<TAfter, TBefore>["fn"],
+    ...(spec.under === undefined ? {} : { under: spec.under }),
+  };
+}
+
+/**
+ * Replaces one block with the blocks the callback returns: the case a mapper
+ * writes as "return an array instead of an object", and the only op that
+ * changes a block's siblings rather than the block.
+ *
+ * Because of that it is the one op whose target needs a parent. A block that
+ * sits in a field on its own rather than in a `bloks` list has no siblings to
+ * splice between, and a story's root block has no list at all; in both the op
+ * finds nothing to do.
+ *
+ * The blocks it returns are content the migration authored, so no op in the
+ * same migration is applied to them — including this one, which is what a
+ * callback returning a block of the component it matched would need. The
+ * runner reports that as non-idempotent and the run is refused, because a
+ * rerun would expand it again.
+ *
+ * Every block it returns needs a `_uid`, and one derived from the block being
+ * replaced is what makes the rerun produce the same blocks rather than a
+ * second set beside the first.
+ */
+export function expandBlock<
+  TAfter extends SchemaShape,
+  TBefore extends SchemaShape,
+  const TBlock extends SourceBlockName<TAfter, TBefore>,
+>(
+  spec: { block: TBlock; under?: UnderOf<TBefore> },
+  fn: (
+    block: TBlock extends BlockNameOf<TBefore>
+      ? ContentOf<TBefore, TBlock>
+      : Record<string, unknown>,
+  ) => readonly unknown[],
+): ExpandBlockOp<TAfter, TBefore> {
+  return {
+    kind: "expandBlock",
+    block: spec.block,
+    fn: fn as ExpandBlockOp<TAfter, TBefore>["fn"],
     ...(spec.under === undefined ? {} : { under: spec.under }),
   };
 }

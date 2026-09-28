@@ -14,6 +14,7 @@ import { defineMigration } from "./define-migration";
 import {
   addField,
   alterBlock,
+  expandBlock,
   alterField,
   coerceField,
   mergeFields,
@@ -93,6 +94,10 @@ describe("schema inference through the contextual return type", () => {
       // @ts-expect-error no such block
       alterBlock({ block: "spike_nonexistent" }, () => {}),
     ]);
+    defineMigration<AfterRenameArticleAuthor, SpikeSchema>([
+      // @ts-expect-error no such block
+      expandBlock({ block: "spike_nonexistent" }, (block) => [block]),
+    ]);
   });
 
   it("should accept a real field", () => {
@@ -159,6 +164,16 @@ describe("the under rule", () => {
       alterField({ block: "spike_meta", field: "og_title", under: "spike_card" }, (value) => value),
       alterBlock({ block: "spike_meta", under: "spike_card" }, () => {}),
       reorderField({ block: "spike_section", field: "items", under: "spike_page" }, () => 0),
+    ]);
+  });
+
+  it("should accept an ancestor name on expandBlock, which replaces instances rather than moving a schema", () => {
+    defineMigration<SpikeSchema>([
+      expandBlock({ block: "spike_meta", under: "spike_card" }, (block) => [block]),
+    ]);
+    defineMigration<SpikeSchema>([
+      // @ts-expect-error no such block
+      expandBlock({ block: "spike_meta", under: "spike_nope" }, (block) => [block]),
     ]);
   });
 

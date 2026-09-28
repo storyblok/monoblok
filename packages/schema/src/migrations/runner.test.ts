@@ -11,6 +11,7 @@ import {
   addField,
   alterBlock,
   alterField,
+  expandBlock,
   mergeFields,
   removeField as removeFieldOp,
   renameBlock,
@@ -1795,5 +1796,186 @@ describe("unwrapChildren", () => {
 
     expect(result.changed).toBe(false);
     expect(result.content).toEqual({ _uid: "root", component: "page", body: null });
+  });
+});
+
+describe("expandBlock", () => {
+  /** Derived from the block being replaced, so a rerun mints the same spacers. */
+  function spacer(uid: string, side: string): Record<string, unknown> {
+    return { _uid: `${uid}-${side}`, component: "spacer" };
+  }
+
+  const migration = defineMigration<TestSchema>({
+    name: "expand-intro",
+    ops: [
+      expandBlock({ block: "intro" }, (intro: Record<string, unknown>) => [
+        spacer(String(intro._uid), "before"),
+        { ...intro, component: "teaser" },
+        spacer(String(intro._uid), "after"),
+      ]),
+    ],
+  });
+
+  function story(): Record<string, unknown> {
+    return {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "intro", headline: "one" },
+        { _uid: "b", component: "card", title: "two" },
+      ],
+    };
+  }
+
+  it("should replace one block with the blocks the callback returns", () => {
+    const result = runMigrationOnStory(migration, story());
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a-before", component: "spacer" },
+        { _uid: "a", component: "teaser", headline: "one" },
+        { _uid: "a-after", component: "spacer" },
+        { _uid: "b", component: "card", title: "two" },
+      ],
+    });
+    expect(result.matched).toBe(1);
+    expect(result.unstableUids).toEqual({ duplicate: [], missing: 0, preExisting: [] });
+  });
+
+  it("should record the insertion on the parent so the inverse removes exactly what it added", () => {
+    const original = story();
+    const result = runMigrationOnStory(migration, original);
+
+    expect(result.patches.find((patch) => patch.uid === "root")?.ops.map((op) => op.kind)).toEqual([
+      "listInsert",
+      "listInsert",
+    ]);
+
+    const restored = structuredClone(result.content);
+    const applied = applyPatches(restored, result.inverse);
+
+    expect(applied.conflicts).toEqual([]);
+    expect(restored).toEqual(original);
+  });
+
+  it("should apply a second time without adding a second pair", () => {
+    const once = runMigrationOnStory(migration, story());
+    const twice = runMigrationOnStory(migration, once.content);
+
+    expect(twice.changed).toBe(false);
+    expect(once.nonIdempotent).toEqual([]);
+  });
+
+  it("should report a callback that returns a block of the component it matched", () => {
+    const growing = defineMigration<TestSchema>({
+      name: "expand-forever",
+      ops: [
+        expandBlock({ block: "intro" }, (intro: Record<string, unknown>) => [
+          spacer(String(intro._uid), "before"),
+          intro,
+        ]),
+      ],
+    });
+
+    const result = runMigrationOnStory(growing, story());
+
+    expect(result.nonIdempotent).toEqual([{ uid: "a", op: 0 }]);
+  });
+
+  it("should honour under, so the same component expands in one location only", () => {
+    const scoped = defineMigration<TestSchema>({
+      name: "expand-under-section",
+      ops: [
+        expandBlock({ block: "intro", under: "section" }, (intro: Record<string, unknown>) => [
+          { ...intro, component: "teaser" },
+          spacer(String(intro._uid), "after"),
+        ]),
+      ],
+    });
+
+    const result = runMigrationOnStory(scoped, {
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "intro" },
+        {
+          _uid: "s",
+          component: "section",
+          items: [{ _uid: "b", component: "intro" }],
+        },
+      ],
+    });
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "intro" },
+        {
+          _uid: "s",
+          component: "section",
+          items: [
+            { _uid: "b", component: "teaser" },
+            { _uid: "b-after", component: "spacer" },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("should read the block as the earlier ops left it, whatever order they were written in", () => {
+    const ordered = defineMigration<TestSchema>({
+      name: "expand-after-rename",
+      ops: [
+        expandBlock({ block: "intro" }, (intro: Record<string, unknown>) => [
+          { ...intro, component: "teaser" },
+        ]),
+        renameFieldOp({ block: "intro", field: "headline", to: "title" }),
+      ],
+    });
+
+    const result = runMigrationOnStory(ordered, story());
+
+    expect(result.content).toEqual({
+      _uid: "root",
+      component: "page",
+      body: [
+        { _uid: "a", component: "teaser", title: "one" },
+        { _uid: "b", component: "card", title: "two" },
+      ],
+    });
+  });
+
+  it("should find nothing to do for a story's root block, which sits in no list", () => {
+    const result = runMigrationOnStory(
+      defineMigration<TestSchema>({
+        name: "expand-root",
+        ops: [
+          expandBlock({ block: "page" }, (page: Record<string, unknown>) => [
+            page,
+            { _uid: "x", component: "spacer" },
+          ]),
+        ],
+      }),
+      story(),
+    );
+
+    expect(result.changed).toBe(false);
+    expect(result.matched).toBe(0);
+  });
+
+  it("should leave a rollback to the recorded patches, since the blocks it wrote are known only to the callback", () => {
+    const derived = deriveInverse(migration.ops);
+
+    expect(derived.derivable).toBe(false);
+    expect(derived.blocked).toEqual([
+      {
+        index: 0,
+        kind: "expandBlock",
+        reason: "the blocks it wrote are known only to the closure that wrote them",
+      },
+    ]);
   });
 });

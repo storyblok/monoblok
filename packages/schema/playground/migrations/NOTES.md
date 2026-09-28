@@ -91,36 +91,36 @@ each: does it change something, does it leave the block ids alone, does a second
 does the recorded inverse put the content back, and — where one can be derived from the ops alone —
 does that one land in the same place. `test/expected/<id>.json` is the reviewable diff.
 
-| Migration                                                                                | Case                                                 | Bites                  |
-| :--------------------------------------------------------------------------------------- | :--------------------------------------------------- | :--------------------- |
-| [`0001-rename-card-title`](migrations/0001-rename-card-title.ts)                         | one field, renamed everywhere the component appears  | `legacy`               |
-| [`0002-rename-nested-author-bio`](migrations/0002-rename-nested-author-bio.ts)           | the same block at four depths under three parents    | `home` `team` `legacy` |
-| [`0003-split-author-name`](migrations/0003-split-author-name.ts)                         | one field into two, with the `merge` counterpart     | `legacy`               |
-| [`0004-merge-author-name`](migrations/0004-merge-author-name.ts)                         | two fields into one, with the `split` counterpart    | `home` `team`          |
-| [`0005-coerce-card-price`](migrations/0005-coerce-card-price.ts)                         | a value that will not parse                          | `legacy`               |
-| [`0006-remove-card-subtitle`](migrations/0006-remove-card-subtitle.ts)                   | a field dropped while it still holds text            | `legacy`               |
-| [`0007-add-card-slug`](migrations/0007-add-card-slug.ts)                                 | a new field, backfilled from one the block has       | `legacy`               |
-| [`0008-pin-page-opener`](migrations/0008-pin-page-opener.ts)                             | a reorder that depends on position, not content      | `home` `legacy` `team` |
-| [`0009-scope-slug-under-card`](migrations/0009-scope-slug-under-card.ts)                 | the same block migrated in one location only         | `legacy`               |
-| [`0010-rename-teaser-block`](migrations/0010-rename-teaser-block.ts)                     | a component folded into another component            | `home` `legacy` `team` |
-| [`0011-single-asset-to-list`](migrations/0011-single-asset-to-list.ts)                   | a field whose type widens, reshaped then renamed     | `home` `legacy` `team` |
-| [`0012-rewrite-richtext-links`](migrations/0012-rewrite-richtext-links.ts)               | a mark inside a richtext document                    | `legacy`               |
-| [`0013-story-link-to-url`](migrations/0013-story-link-to-url.ts)                         | a multilink that stops pointing at a story           | `home` `legacy`        |
-| [`0014-translate-card-headline`](migrations/0014-translate-card-headline.ts)             | a rewrite that treats German differently             | `legacy`               |
-| [`0015-rename-category-values`](migrations/0015-rename-category-values.ts)               | values following a renamed datasource                | `pricing` `translated` |
-| [`0016-wrap-page-body`](migrations/0016-wrap-page-body.ts)                               | a container level introduced                         | every story            |
-| [`0017-unwrap-page-sections`](migrations/0017-unwrap-page-sections.ts)                   | a container level dissolved, and refused             | all but `pricing`      |
-| [`0018-toggles`](migrations/0018-toggles.ts)                                             | a migration that flips a value, the refusal case     | `home`                 |
-| [`0019-no-matches`](migrations/0019-no-matches.ts)                                       | a block only its `Before` snapshot declares          | nothing                |
-| [`0020-pricing-table-column`](migrations/0020-pricing-table-column.ts)                   | a column added to a table's header and every row     | `pricing`              |
-| [`0021-link-boards-to-content-boards`](migrations/0021-link-boards-to-content-boards.ts) | three components renamed at once, fields and all     | `boards`               |
-| [`0022-og-image-url-to-asset`](migrations/0022-og-image-url-to-asset.ts)                 | a value built from data the content does not hold    | `boards` `social`      |
-| [`0023-intro-to-teaser-with-spacers`](migrations/0023-intro-to-teaser-with-spacers.ts)   | one block replaced by three, addressed at its parent | `intro`                |
+| Migration                                                                                | Case                                                | Bites                  |
+| :--------------------------------------------------------------------------------------- | :-------------------------------------------------- | :--------------------- |
+| [`0001-rename-card-title`](migrations/0001-rename-card-title.ts)                         | one field, renamed everywhere the component appears | `legacy`               |
+| [`0002-rename-nested-author-bio`](migrations/0002-rename-nested-author-bio.ts)           | the same block at four depths under three parents   | `home` `team` `legacy` |
+| [`0003-split-author-name`](migrations/0003-split-author-name.ts)                         | one field into two, with the `merge` counterpart    | `legacy`               |
+| [`0004-merge-author-name`](migrations/0004-merge-author-name.ts)                         | two fields into one, with the `split` counterpart   | `home` `team`          |
+| [`0005-coerce-card-price`](migrations/0005-coerce-card-price.ts)                         | a value that will not parse                         | `legacy`               |
+| [`0006-remove-card-subtitle`](migrations/0006-remove-card-subtitle.ts)                   | a field dropped while it still holds text           | `legacy`               |
+| [`0007-add-card-slug`](migrations/0007-add-card-slug.ts)                                 | a new field, backfilled from one the block has      | `legacy`               |
+| [`0008-pin-page-opener`](migrations/0008-pin-page-opener.ts)                             | a reorder that depends on position, not content     | `home` `legacy` `team` |
+| [`0009-scope-slug-under-card`](migrations/0009-scope-slug-under-card.ts)                 | the same block migrated in one location only        | `legacy`               |
+| [`0010-rename-teaser-block`](migrations/0010-rename-teaser-block.ts)                     | a component folded into another component           | `home` `legacy` `team` |
+| [`0011-single-asset-to-list`](migrations/0011-single-asset-to-list.ts)                   | a field whose type widens, reshaped then renamed    | `home` `legacy` `team` |
+| [`0012-rewrite-richtext-links`](migrations/0012-rewrite-richtext-links.ts)               | a mark inside a richtext document                   | `legacy`               |
+| [`0013-story-link-to-url`](migrations/0013-story-link-to-url.ts)                         | a multilink that stops pointing at a story          | `home` `legacy`        |
+| [`0014-translate-card-headline`](migrations/0014-translate-card-headline.ts)             | a rewrite that treats German differently            | `legacy`               |
+| [`0015-rename-category-values`](migrations/0015-rename-category-values.ts)               | values following a renamed datasource               | `pricing` `translated` |
+| [`0016-wrap-page-body`](migrations/0016-wrap-page-body.ts)                               | a container level introduced                        | every story            |
+| [`0017-unwrap-page-sections`](migrations/0017-unwrap-page-sections.ts)                   | a container level dissolved, and refused            | all but `pricing`      |
+| [`0018-toggles`](migrations/0018-toggles.ts)                                             | a migration that flips a value, the refusal case    | `home`                 |
+| [`0019-no-matches`](migrations/0019-no-matches.ts)                                       | a block only its `Before` snapshot declares         | nothing                |
+| [`0020-pricing-table-column`](migrations/0020-pricing-table-column.ts)                   | a column added to a table's header and every row    | `pricing`              |
+| [`0021-link-boards-to-content-boards`](migrations/0021-link-boards-to-content-boards.ts) | three components renamed at once, fields and all    | `boards`               |
+| [`0022-og-image-url-to-asset`](migrations/0022-og-image-url-to-asset.ts)                 | a value built from data the content does not hold   | `boards` `social`      |
+| [`0023-intro-to-teaser-with-spacers`](migrations/0023-intro-to-teaser-with-spacers.ts)   | one block replaced by three of another kind         | `intro`                |
 
-**Could the op set express all twenty-three? All but one by component** — none fell back on
-`alterBlock` for something a structural op should have done, and `0023` had to name a parent because
-no op can write siblings. Five limits surfaced in the engine and its types instead, each pinned by a
-test.
+**Could the op set express all twenty-three? Yes, once it grew an op** — none fell back on
+`alterBlock` for something a structural op should have done, and the one case with no op at all,
+`0023`, is what `expandBlock` was added for. Five limits surfaced in the engine and its types
+instead, each pinned by a test.
 
 **Non-settling ops are reported whatever their kind (fixed).** The check used to cover the `alter`
 ops only, on the grounds that a rename is a no-op on the second pass by construction. `0017` is a
@@ -153,18 +153,25 @@ list is fetched at module scope, which means importing the migration performs th
 `storyblok migrations list` included. A per-run context the runner awaits once and passes to each
 callback is the fix; it is not in this prototype.
 
-**No op replaces one block with several (recorded, not fixed).** Every op is handed the block it
-names, never the array that block sits in, so a component that has to become a component plus the
-spacing around it cannot be addressed by component at all. `0023` names the parent's `bloks` field
-instead and rewrites the array, which costs it both things an op normally gives: the component is
-invisible to the types and to the runner, so every field that can hold it has to be listed by hand,
-and the `__i18n__` family of every field being renamed has to be carried by hand too.
+**One block could not become several (fixed, `expandBlock`).** Every other op is handed the block it
+names and changes it in place; replacing a component with that component plus the spacing around it
+changes the list the block sits in, which is not in reach from there. Written as an `alterField` on
+the parent's `bloks` field it works and undoes correctly, but it costs both things an op normally
+gives: the component is invisible to the types and to the runner, so every field that can hold it
+has to be listed by hand.
 
-The engine below the ops is already there. A patch records the insertion as `listInsert` keyed by
+`expandBlock({ block: "intro" }, blok => [...])` addresses it by component like the rest. It gets
+its own pass over the tree after every other op, because the runner applies the others over a flat
+uid index where no parent is in scope. Two rules fall out of that and are pinned by tests: the
+blocks a callback returns are content the migration authored, so no op runs on them — a callback
+returning a block of the component it matched is reported as non-idempotent and the run refused —
+and a story's root block sits in no list, so an op naming it matches nothing.
+
+Nothing below the ops had to change. A patch already records the insertion as `listInsert` keyed by
 uid, so the undo removes exactly the blocks the run added even after an editor reordered the page,
-and uids derived from the block being replaced make the rerun mint the same three blocks. What is
-missing is the op: `expandBlock({ block: "intro" }, blok => [...])` needs a runner pass that visits
-block lists rather than the flat uid index the other ops are applied over.
+and uids derived from the block being replaced make the rerun mint the same blocks. What the op
+cannot do is carry a field's `__i18n__` siblings: a callback handed a whole block writes the keys
+itself, and a translated `headline` left on a block whose field is now `title` is silent data loss.
 
 **Not covered:** remapping a story-sourced option's uuid. It only means something when the target
 uuids come from somewhere, and the real case is a copied space where every story has a new uuid — a

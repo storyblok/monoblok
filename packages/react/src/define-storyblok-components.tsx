@@ -47,27 +47,30 @@ export interface StoryblokComponentsOptions {
 }
 
 /** Components returned by {@link defineStoryblokComponents}, pre-wired to the same component map. */
-export interface StoryblokComponentsResult {
+export interface StoryblokComponentsResult<TExtraProps extends object = {}> {
   /**
    * Renders a single block by looking up `block.component` in the map.
    *
-   * `TExtraProps` is inferred from whatever JSX attributes are passed, so it
-   * forwards arbitrary extra props to every rendered block component without
-   * widening `block` itself to `Record<string, unknown>`. It does not close
-   * the typo hole: TypeScript infers `TExtraProps` from the call site, so a
-   * misspelled prop (`titlee="typo"`) still compiles clean and is forwarded
-   * as-is.
+   * `TExtraProps` comes from the type argument passed to
+   * {@link defineStoryblokComponents}, not from this call site, so it forwards
+   * extra props to every rendered block component with real excess-property
+   * checking: a misspelled prop (`titlee="typo"`) is a compile error instead
+   * of silently forwarding. Without a type argument, `TExtraProps` defaults to
+   * `{}` and `StoryblokComponent` only accepts `block`.
    *
    * @example
    * ```tsx
+   * const { StoryblokComponent } = defineStoryblokComponents<{ locale: string }>({
+   *   components: { page: Page, teaser: Teaser },
+   * });
+   *
    * <StoryblokComponent block={story.content} />
-   * // Extra props are forwarded to every rendered block component:
+   * // Extra props declared in TExtraProps are forwarded to every rendered block:
    * <StoryblokComponent block={story.content} locale="en" />
+   * // <StoryblokComponent block={story.content} localle="en" /> would be a compile error.
    * ```
    */
-  StoryblokComponent: <TExtraProps extends object = {}>(
-    props: { block: StoryblokBlockData } & TExtraProps,
-  ) => ReactNode;
+  StoryblokComponent: (props: { block: StoryblokBlockData } & TExtraProps) => ReactNode;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
 }
@@ -127,9 +130,16 @@ type ResolvedEntry = {
  * Maps Storyblok block types to React components and returns pre-wired
  * `StoryblokComponent` and `StoryblokRichText`.
  *
+ * Pass `TExtraProps` as an explicit type argument to type the extra props
+ * `StoryblokComponent` forwards to every rendered block component, with real
+ * excess-property checking on every call site. Without it, `StoryblokComponent`
+ * only accepts `block`.
+ *
  * @example
  * ```tsx
- * export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
+ * export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents<{
+ *   locale: string;
+ * }>({
  *   components: {
  *     page: Page,
  *     teaser: Teaser,
@@ -144,9 +154,9 @@ type ResolvedEntry = {
  * });
  * ```
  */
-export function defineStoryblokComponents(
+export function defineStoryblokComponents<TExtraProps extends object = {}>(
   config: StoryblokComponentsOptions,
-): StoryblokComponentsResult {
+): StoryblokComponentsResult<TExtraProps> {
   const defaultSuspenseFallback = config.suspenseFallback ?? null;
 
   if (!config.components) {
@@ -227,9 +237,10 @@ export function defineStoryblokComponents(
 
   return {
     // Cast: the internal implementation uses `Record<string, unknown>` for JSX
-    // spreads onto fixed-type components, which is a safe superset of any
-    // `TExtraProps extends object` a caller may infer or supply.
-    StoryblokComponent: StoryblokComponent as StoryblokComponentsResult["StoryblokComponent"],
+    // spreads onto fixed-type components, which is a safe superset of whatever
+    // `TExtraProps` the caller supplied as a type argument to this function.
+    StoryblokComponent:
+      StoryblokComponent as StoryblokComponentsResult<TExtraProps>["StoryblokComponent"],
     StoryblokRichText,
   };
 }

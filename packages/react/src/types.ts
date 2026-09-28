@@ -27,27 +27,31 @@ export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
  * destabilizing the API surface further without a clear consensus on the
  * replacement name. Revisit before a future major if a rename is desired.
  *
+ * `TExtraProps` mirrors the type argument passed to
+ * {@link defineStoryblokComponents}, and is always optional here (`Partial`):
+ * the registry can't guarantee every call site provides it, so a required
+ * field would fail to register.
+ *
  * @example
  * ```tsx
+ * // Basic: type the block's own fields.
  * type PageProps = StoryblokComponentProps<{ body: BlockContent[] }>;
- * export default function Page({ block, editable }: PageProps) { ... }
+ * function Page({ block, editable }: PageProps) { ... }
+ *
+ * // Using a schema defined with `@storyblok/schema`.
+ * type TeaserProps = StoryblokComponentProps<Block<"teaser">>;
+ * function Teaser({ block, editable }: TeaserProps) { ... }
+ *
+ * // Advanced: type extra props too, matching defineStoryblokComponents<{ locale: string }>(...):
+ * type TeaserWithLocaleProps = StoryblokComponentProps<Block<"teaser">, { locale: string }>;
+ * function TeaserWithLocale({ block, editable, locale }: TeaserWithLocaleProps) { ... }
  * ```
  */
-export interface StoryblokComponentProps<T extends object = object> {
+export type StoryblokComponentProps<T extends object = object, TExtraProps extends object = {}> = {
   block: BlockContent & T;
-  /**
-   * Editable attributes injected by `StoryblokComponent`. Spread onto the root
-   * element of the block to enable click-to-edit in the Visual Editor.
-   *
-   * @example
-   * ```tsx
-   * const Feature = ({ block, editable }: FeatureProps) => (
-   *   <div {...editable}>{block.name}</div>
-   * );
-   * ```
-   */
+  /** Editable attributes injected by `StoryblokComponent`. Spread onto the root element. */
   editable?: StoryblokEditableProps;
-}
+} & Partial<TExtraProps>;
 
 export type { BlockContent, BlockContentInput, Story };
 

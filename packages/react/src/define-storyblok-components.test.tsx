@@ -58,7 +58,7 @@ describe("defineStoryblokComponents", () => {
       function WithExtra({ block: _block, extra }: { block: BlockContent; extra?: string }) {
         return <div data-testid="extra">{extra}</div>;
       }
-      const { StoryblokComponent } = defineStoryblokComponents({
+      const { StoryblokComponent } = defineStoryblokComponents<{ extra?: string }>({
         components: { widget: WithExtra },
       });
       const block = makeBlockData({ component: "widget" });
@@ -803,6 +803,46 @@ describe("StoryblokComponentProps — type", () => {
     const _p: Props = { block: { ...pageBlock, title: "hello" } };
     void _p;
   });
+
+  // ─── TExtraProps (second type parameter) ──────────────────────────────────
+
+  it("without TExtraProps, has no extra keys beyond block and editable", () => {
+    type Props = StoryblokComponentProps<{ title: string }>;
+    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable">();
+  });
+
+  it("with TExtraProps, adds its keys typed as optional (Partial<TExtraProps>)", () => {
+    type Props = StoryblokComponentProps<{ title: string }, { locale: string }>;
+    expectTypeOf<keyof Props>().toEqualTypeOf<"block" | "editable" | "locale">();
+    expectTypeOf<Props["locale"]>().toEqualTypeOf<string | undefined>();
+  });
+
+  it("omitting a TExtraProps field compiles (it's optional, not required)", () => {
+    type Props = StoryblokComponentProps<{ title: string }, { locale: string }>;
+    // Should compile even though `locale` is part of TExtraProps: forcing it to
+    // be required here would make this component unassignable to the
+    // registry in defineStoryblokComponents (see that function's docs).
+    const _p: Props = { block: { ...pageBlock, title: "hello" } };
+    void _p;
+  });
+
+  it("a component typed with TExtraProps registers against and receives props from the matching defineStoryblokComponents<TExtraProps>", () => {
+    type TeaserProps = StoryblokComponentProps<{ title: string }, { locale: string }>;
+    function TypedTeaser({ block, locale }: TeaserProps) {
+      return (
+        <span data-testid="typed-teaser" data-locale={locale}>
+          {block.title}
+        </span>
+      );
+    }
+
+    const { StoryblokComponent } = defineStoryblokComponents<{ locale: string }>({
+      components: { teaser: TypedTeaser },
+    });
+
+    const { getByTestId } = render(<StoryblokComponent block={teaserBlock} locale="de" />);
+    expect(getByTestId("typed-teaser")).toHaveAttribute("data-locale", "de");
+  });
 });
 
 // ─── Type safety ─────────────────────────────────────────────────────────────
@@ -829,8 +869,8 @@ describe("StoryblokComponent — type safety", () => {
     void (<StoryblokComponent block="not-a-block" />);
   });
 
-  it("accepts typed extra props via TExtraProps inference", () => {
-    // TypeScript infers TExtraProps = { locale: string } — no error
+  it("without a TExtraProps type argument, rejects any extra prop (the typo hole is closed)", () => {
+    // @ts-expect-error — TExtraProps defaults to {}, so `locale` is excess and unknown, typo or not
     void (<StoryblokComponent block={pageBlock} locale="en" />);
   });
 
@@ -845,13 +885,42 @@ describe("StoryblokComponent — type safety", () => {
   // so `keyof Props` is the literal union of known keys only.
 
   it("with TExtraProps = {}, the only known key is 'block'", () => {
-    type StrictProps = Parameters<typeof StoryblokComponent<{}>>[0];
+    type StrictProps = Parameters<typeof StoryblokComponent>[0];
     expectTypeOf<keyof StrictProps>().toEqualTypeOf<"block">();
   });
 
   it("returns ReactNode", () => {
     // @ts-expect-error — ReactNode is not assignable to number
     const _bad: number = StoryblokComponent({ block: pageBlock });
-    expectTypeOf<ReturnType<typeof StoryblokComponent<{}>>>().toEqualTypeOf<ReactNode>();
+    expectTypeOf<ReturnType<typeof StoryblokComponent>>().toEqualTypeOf<ReactNode>();
+  });
+});
+
+// ─── Type safety — TExtraProps as an explicit type argument ─────────────────
+//
+// TExtraProps is now a type argument to `defineStoryblokComponents`, fixed for
+// every call to the returned `StoryblokComponent`, rather than inferred per
+// JSX call site. This gives real excess-property checking: a typo is a
+// compile error against the declared TExtraProps, not a silently-accepted
+// new inferred type.
+
+describe("StoryblokComponent — type safety with TExtraProps", () => {
+  const { StoryblokComponent } = defineStoryblokComponents<{ locale: string }>({
+    components: {},
+  });
+
+  it("accepts a prop declared in TExtraProps", () => {
+    void (<StoryblokComponent block={pageBlock} locale="en" />);
+  });
+
+  it("rejects a prop not declared in TExtraProps (the typo hole)", () => {
+    // @ts-expect-error — "localle" is not a key of TExtraProps, unlike the old
+    // per-call inference, which would have accepted this as a new inferred type
+    void (<StoryblokComponent block={pageBlock} localle="en" />);
+  });
+
+  it("still requires the declared prop's type", () => {
+    // @ts-expect-error — locale must be a string
+    void (<StoryblokComponent block={pageBlock} locale={123} />);
   });
 });

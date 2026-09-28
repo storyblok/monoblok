@@ -6,10 +6,14 @@ import type {
   ListStoriesResponses,
 } from "../generated/capi/types.gen";
 import type {
+  ApplyRestrictions,
   AssetFieldValue,
   BlockContent as BlokContent,
+  FieldValue,
+  HasRestriction,
   MultilinkFieldValue,
   PluginFieldValue,
+  RestrictRichText,
   RichTextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
@@ -19,7 +23,12 @@ import {
   resolveRelationMap,
 } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
-import type { Block as Component, RootBlock as RootComponents } from "../generated/types/block";
+import type {
+  BlockFields,
+  Block as Component,
+  RootBlock as RootComponents,
+} from "../generated/types/block";
+import type { Prettify } from "../generated/types/_utils";
 import type { Story } from "../generated/types/story";
 
 /**
@@ -84,60 +93,216 @@ export type StoryWithInlinedRelations = Omit<Story, "content"> & {
   content: InlinedStoryContent;
 };
 
-/** Splits `"comp.field,comp2.field2"` into a union of `{ component, field }`. */
-type ParseRelations<T extends string> = T extends `${infer Comp}.${infer Field},${infer Rest}`
-  ? { component: Comp; field: Field } | ParseRelations<Rest>
-  : T extends `${infer Comp}.${infer Field}`
-    ? { component: Comp; field: Field }
-    : never;
+/** The characters `String.prototype.trim` strips, which the runtime applies to each path. */
+type Whitespace =
+  | " "
+  | "\t"
+  | "\n"
+  | "\v"
+  | "\f"
+  | "\r"
+  | "\u00A0"
+  | "\u1680"
+  | "\u2000"
+  | "\u2001"
+  | "\u2002"
+  | "\u2003"
+  | "\u2004"
+  | "\u2005"
+  | "\u2006"
+  | "\u2007"
+  | "\u2008"
+  | "\u2009"
+  | "\u200A"
+  | "\u2028"
+  | "\u2029"
+  | "\u202F"
+  | "\u205F"
+  | "\u3000"
+  | "\uFEFF";
 
-/** Extracts resolved field names for a given component name. */
-type ResolvedFieldsFor<R extends string, ComponentName extends string> = Extract<
-  ParseRelations<R>,
-  { component: ComponentName }
->["field"];
+type Trim<T extends string> = T extends `${Whitespace}${infer Rest}`
+  ? Trim<Rest>
+  : T extends `${infer Rest}${Whitespace}`
+    ? Trim<Rest>
+    : T;
 
-/** A resolved relation: a full story typed to the component union. */
-type ResolvedRelation<TComponents extends Component, TFieldPlugins = Record<never, never>> = {
-  [K in TComponents as K["name"]]: Story<K, TFieldPlugins, TComponents>;
-}[TComponents["name"]];
+/** The runtime decodes a URL-encoded `resolve_relations` before splitting it. */
+type RelationPathSeparator = "," | "%2C" | "%2c";
 
 /**
- * Given a story type and a set of resolved field names, replaces
- * those fields with `ResolvedRelation<TComponents>` (a full story object).
+ * Splits `"comp.field, comp2.field2"` into the union `"comp.field" | "comp2.field2"`.
+ * A non-literal `string` stays `string`, which matches every path.
  */
-type WithResolvedRelations<
-  TStory,
-  TComponents extends Component,
-  Fields extends string,
+type ParseRelationPaths<
+  T extends string,
+  TPaths extends string = never,
+> = T extends `${infer Path}${RelationPathSeparator}${infer Rest}`
+  ? ParseRelationPaths<Rest, TPaths | Trim<Path>>
+  : TPaths | Trim<T>;
+
+/**
+ * A related story. Only root blocks can be a story's content, and its content has the
+ * same relation paths inlined.
+ *
+ * Uses a mapped type instead of a distributive conditional with a separate
+ * full-blocks parameter, so the full `TBlocks` union survives when DTS bundlers (like
+ * tsdown) inline the alias. A distributive conditional + default-parameter pattern
+ * would collapse both parameters to the distributed single member. Each root block is
+ * iterated as `K` while `TBlocks` stays the full union for nested blok fields, and the
+ * final indexed access produces the discriminated union of all story types.
+ */
+type InlinedStory<TBlocks extends Component, TPaths extends string, TFieldPlugins> = {
+  [K in RootComponents<TBlocks> as K["name"]]: Omit<Story<K, TFieldPlugins, TBlocks>, "content"> & {
+    content: InlinedBlockContent<K, TBlocks, TPaths, TFieldPlugins>;
+  };
+}[RootComponents<TBlocks>["name"]];
+
+/** A UUID the API returns no story for (e.g. unpublished or deleted) stays a string. */
+type RelationValue<TValue, TStory> = TValue extends string
+  ? TValue | TStory
+  : TValue extends readonly (infer TItem)[]
+    ? RelationValue<TItem, TStory>[]
+    : TValue;
+
+/**
+ * A block embedded in a richtext field without `allow`. Its component is unknown, so
+ * any of its fields can hold an inlined story.
+ */
+interface InlinedLooseBlockContent<TStory> {
+  _uid: string;
+  component: string;
+  _editable?: string;
+  [key: string]:
+    | null
+    | string
+    | number
+    | boolean
+    | TStory
+    | Array<string | TStory | AssetFieldValue | InlinedLooseBlockContent<TStory>>
+    | AssetFieldValue
+    | MultilinkFieldValue
+    | TableFieldValue
+    | RestrictRichText<RichTextFieldValue, InlinedLooseBlockContent<TStory>>
+    | PluginFieldValue
+    | undefined;
+}
+
+/**
+ * The relation paths that can reach a block embedded in a richtext field without
+ * `allow`: every path except those naming a block that is never nestable.
+ */
+type LooseBlockPaths<TPaths extends string, TBlocks extends Component> = Exclude<
+  TPaths,
+  `${Extract<TBlocks, { is_nestable: false }>["name"]}.${string}`
+>;
+
+type InlinedFieldValue<
+  TField extends BlockFields[number],
+  TBlockName extends string,
+  TBlocks extends Component,
+  TPaths extends string,
+  TFieldPlugins,
+> = TField extends { type: "bloks" }
+  ? Prettify<
+      InlinedBlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TPaths, TFieldPlugins>[]
+    >
+  : TField extends { type: "richtext" }
+    ? HasRestriction<TField> extends true
+      ? Prettify<
+          RestrictRichText<
+            RichTextFieldValue,
+            InlinedBlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TPaths, TFieldPlugins>
+          >
+        >
+      : [LooseBlockPaths<TPaths, TBlocks>] extends [never]
+        ? FieldValue<TField, TBlocks, TFieldPlugins>
+        : Prettify<
+            RestrictRichText<
+              RichTextFieldValue,
+              InlinedLooseBlockContent<InlinedStory<TBlocks, TPaths, TFieldPlugins>>
+            >
+          >
+    : `${TBlockName}.${TField["name"]}` extends TPaths
+      ? RelationValue<
+          FieldValue<TField, TBlocks, TFieldPlugins>,
+          InlinedStory<TBlocks, TPaths, TFieldPlugins>
+        >
+      : FieldValue<TField, TBlocks, TFieldPlugins>;
+
+/**
+ * Block content with relations inlined, built from the block's field definitions
+ * rather than by walking its content type, so fields that hold no relation keep their
+ * types and large schemas stay within the compiler's instantiation limits.
+ */
+type InlinedBlockContent<
+  TBlock extends Component,
+  TBlocks extends Component,
+  TPaths extends string,
+  TFieldPlugins,
+> = TBlock extends any
+  ? Prettify<
+      { _uid: string; component: TBlock["name"]; _editable?: string } & Prettify<
+        {
+          [F in TBlock["fields"][number] as F extends { required: true }
+            ? F["name"]
+            : never]: InlinedFieldValue<F, TBlock["name"], TBlocks, TPaths, TFieldPlugins>;
+        } & {
+          [F in TBlock["fields"][number] as F extends { required: true }
+            ? never
+            : F["name"]]?: InlinedFieldValue<
+            F,
+            TBlock["name"],
+            TBlocks,
+            TPaths,
+            TFieldPlugins
+          > | null;
+        }
+      >
+    >
+  : never;
+
+/**
+ * Types a block's content as returned by a client created with `inlineRelations: true`:
+ * each relation field listed in `TResolveRelations` (the `resolve_relations` query
+ * format, e.g. `"featured-articles.posts,article.author"`) becomes the related story,
+ * or an array of them, at any nesting depth and inside related stories. A relation the
+ * API returns no story for (e.g. unpublished or deleted) stays a UUID string, so each
+ * value is `string | story`.
+ *
+ * `TBlock` is the block definition and `TBlocks` the union of all blocks in the space;
+ * related stories are typed from its root blocks. Pass the same `TResolveRelations` as
+ * the fetch: the content of a related story depends on every path, so a block fetched
+ * with more paths does not match props declared with fewer. A non-literal
+ * `TResolveRelations` (`string`) can match any field, so every string or string-array
+ * field at any depth becomes `string | story`. Table cells are the exception: the
+ * runtime can match them (`_table_col.value`), but they keep their string type.
+ * `TFieldPlugins` types `custom` fields, as in {@link Story}.
+ *
+ * Related stories that reference each other resolve to the same object, so the
+ * result can be circular and `JSON.stringify` throws on it.
+ *
+ * @example
+ * // `featuredArticles` is a `defineBlock` result, `Blocks` the union of all blocks.
+ * type Props = {
+ *   block: WithInlinedRelations<typeof featuredArticles, "featured-articles.posts", Blocks>;
+ * };
+ */
+export type WithInlinedRelations<
+  TBlock extends Component,
+  TResolveRelations extends string,
+  TBlocks extends Component,
   TFieldPlugins = Record<never, never>,
-> = TStory extends { content: infer C }
-  ? Omit<TStory, "content"> & {
-      content: {
-        [K in keyof C]: K extends Fields ? ResolvedRelation<TComponents, TFieldPlugins> : C[K];
-      };
-    }
-  : TStory;
+> = InlinedBlockContent<TBlock, TBlocks, ParseRelationPaths<TResolveRelations>, TFieldPlugins>;
 
 /**
  * Resolves to a narrowed component-derived story type when `TComponents` is a specific
  * Component union, or falls back to the generated Story / StoryWithInlinedRelations
  * when `TComponents` is the default Component base type (no type argument provided).
  *
- * When `ResolveRelations` is a string literal (e.g. `"article.author"`),
- * matched fields are widened from their schema type to `ResolvedRelation<TComponents>`
- * — a full story object typed to the component union.
- *
- * Uses a mapped-type approach instead of a distributive conditional with a
- * separate full-components parameter. This ensures the full `TComponents` union is
- * preserved even when DTS bundlers (like tsdown) inline the type alias —
- * a distributive conditional + default-parameter pattern would collapse
- * both parameters to the distributed single member after inlining.
- *
- * The mapped type `{ [K in TComponents as K["name"]]: Story<K, TFieldPlugins, TComponents> }`
- * iterates each union member as `K` while keeping `TComponents` as the full union
- * for nested blok field resolution. The final indexed access
- * `[TComponents["name"]]` produces the discriminated union of all story types.
+ * With `inlineRelations: true` and `resolve_relations` (e.g. `"article.author"`), matched
+ * fields can hold the related story at any depth (see {@link WithInlinedRelations}).
+ * Without `inlineRelations`, relations stay UUIDs.
  */
 type StoryResult<
   TComponents extends Component,
@@ -148,15 +313,10 @@ type StoryResult<
   ? InlineRelations extends true
     ? StoryWithInlinedRelations
     : Story // fallback
-  : ResolveRelationsRaw extends string
-    ? {
-        [K in RootComponents<TComponents> as K["name"]]: WithResolvedRelations<
-          Story<K, TFieldPlugins, TComponents>,
-          TComponents,
-          ResolvedFieldsFor<ResolveRelationsRaw, K["name"]>,
-          TFieldPlugins
-        >;
-      }[RootComponents<TComponents>["name"]]
+  : InlineRelations extends true
+    ? ResolveRelationsRaw extends string
+      ? InlinedStory<TComponents, ParseRelationPaths<ResolveRelationsRaw>, TFieldPlugins>
+      : Story<TComponents, TFieldPlugins>
     : Story<TComponents, TFieldPlugins>;
 
 type GetResponse<

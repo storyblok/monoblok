@@ -74,7 +74,7 @@ function resolveNode<TStory extends Story | StoryWithInlinedRelations>(
 
   if (isComponentNode(value)) {
     for (const [fieldName, fieldValue] of Object.entries(value)) {
-      if (fieldName === "component" || fieldName === "_uid") {
+      if (fieldName === "component" || fieldName === "_uid" || fieldName === "_editable") {
         continue;
       }
 

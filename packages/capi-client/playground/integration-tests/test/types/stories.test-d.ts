@@ -1,5 +1,6 @@
 import { describe, expectTypeOf, it } from "vitest";
 import {
+  type BlockContent,
   defineBlock,
   defineField,
   defineSchema,
@@ -8,7 +9,8 @@ import {
 } from "@storyblok/schema";
 import { storyblokColorField } from "@storyblok/schema/field-plugins";
 
-import { createApiClient, type Story } from "@storyblok/api-client";
+import type { StoryblokRichTextInput } from "@storyblok/richtext";
+import { createApiClient, type Story, type WithInlinedRelations } from "@storyblok/api-client";
 
 // Nestable block — not a root story type
 const _teaserComponent = defineBlock({
@@ -263,58 +265,72 @@ describe("resolve_relations type narrowing", () => {
     components: typeof _authorComponent | typeof _articleComponent;
   }
 
-  it("should type resolved relation fields as story objects in get()", async () => {
-    const client = createApiClient({
+  const createClient = () =>
+    createApiClient({
       accessToken: "test-token",
       inlineRelations: true,
     }).withTypes<RelationStoryblokTypes>();
-    const result = await client.stories.get("my-article", {
+
+  it("should type resolved relation fields as story objects in get()", async () => {
+    const result = await createClient().stories.get("my-article", {
       query: { resolve_relations: "article.author" },
     });
     if (result.data) {
       const story = result.data.story;
       if (story.content.component === "article") {
-        // author is resolved → should be a story object, not string
-        const author = story.content.author;
-        expectTypeOf(author).toHaveProperty("content");
-        // category is NOT resolved → should remain string
+        expectTypeOf(story.content.author)
+          .exclude<string>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "article">();
         expectTypeOf(story.content.category).toBeString();
       }
     }
   });
 
+  it("should keep an unresolved relation a UUID string", async () => {
+    const result = await createClient().stories.get("my-article", {
+      query: { resolve_relations: "article.author" },
+    });
+    if (result.data && result.data.story.content.component === "article") {
+      expectTypeOf(result.data.story.content.author).extract<string>().toEqualTypeOf<string>();
+    }
+  });
+
   it("should type multiple resolved fields in get()", async () => {
-    const client = createApiClient({
-      accessToken: "test-token",
-      inlineRelations: true,
-    }).withTypes<RelationStoryblokTypes>();
-    const result = await client.stories.get("my-article", {
+    const result = await createClient().stories.get("my-article", {
       query: { resolve_relations: "article.author,article.category" },
     });
     if (result.data) {
       const story = result.data.story;
       if (story.content.component === "article") {
-        // Both author and category are resolved
-        expectTypeOf(story.content.author).toHaveProperty("content");
-        expectTypeOf(story.content.category).toHaveProperty("content");
-        // title is NOT resolved → should remain string
+        expectTypeOf(story.content.author)
+          .exclude<string>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "article">();
+        expectTypeOf(story.content.category)
+          .exclude<string>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "article">();
         expectTypeOf(story.content.title).toBeString();
       }
     }
   });
 
   it("should type resolved relation fields as story objects in list()", async () => {
-    const client = createApiClient({
-      accessToken: "test-token",
-      inlineRelations: true,
-    }).withTypes<RelationStoryblokTypes>();
-    const result = await client.stories.list({
+    const result = await createClient().stories.list({
       query: { resolve_relations: "article.author" },
     });
     if (result.data) {
       for (const story of result.data.stories) {
         if (story.content.component === "article") {
-          expectTypeOf(story.content.author).toHaveProperty("content");
+          expectTypeOf(story.content.author)
+            .exclude<string>()
+            .toHaveProperty("content")
+            .toHaveProperty("component")
+            .toEqualTypeOf<"author" | "article">();
           expectTypeOf(story.content.category).toBeString();
         }
       }
@@ -322,15 +338,10 @@ describe("resolve_relations type narrowing", () => {
   });
 
   it("should keep original schema types when no resolve_relations is provided", async () => {
-    const client = createApiClient({
-      accessToken: "test-token",
-      inlineRelations: true,
-    }).withTypes<RelationStoryblokTypes>();
-    const result = await client.stories.get("my-article");
+    const result = await createClient().stories.get("my-article");
     if (result.data) {
       const story = result.data.story;
       if (story.content.component === "article") {
-        // No resolve_relations → all fields keep their schema types
         expectTypeOf(story.content.author).toBeString();
         expectTypeOf(story.content.category).toBeString();
       }
@@ -338,21 +349,347 @@ describe("resolve_relations type narrowing", () => {
   });
 
   it("should allow narrowing resolved relation content by component", async () => {
-    const client = createApiClient({
-      accessToken: "test-token",
-      inlineRelations: true,
-    }).withTypes<RelationStoryblokTypes>();
-    const result = await client.stories.get("my-article", {
+    const result = await createClient().stories.get("my-article", {
       query: { resolve_relations: "article.author" },
     });
     if (result.data) {
       const story = result.data.story;
       if (story.content.component === "article") {
         const author = story.content.author;
-        // The resolved story is typed to the full schema union — narrow by component
-        if (author.content.component === "author") {
+        // A related story can be any root block, so narrow by component
+        if (typeof author !== "string" && author.content.component === "author") {
           expectTypeOf(author.content.bio).toBeString();
         }
+      }
+    }
+  });
+});
+
+describe("resolve_relations typing with inlineRelations", () => {
+  const _authorComponent = defineBlock({
+    name: "author",
+    is_root: true,
+    is_nestable: false,
+    fields: [
+      defineField("bio", { type: "text", required: true }),
+      defineField("mentor", { type: "option" }),
+    ],
+  });
+  const _featuredArticlesComponent = defineBlock({
+    name: "featured-articles",
+    is_root: false,
+    is_nestable: true,
+    fields: [
+      defineField("posts", { type: "options", required: true }),
+      defineField("highlight", { type: "option" }),
+      defineField("tags", { type: "options", required: true }),
+    ],
+  });
+  const _sectionComponent = defineBlock({
+    name: "section",
+    is_root: false,
+    is_nestable: true,
+    fields: [defineField("items", { type: "bloks", allow: ["featured-articles"], required: true })],
+  });
+  const _landingComponent = defineBlock({
+    name: "landing",
+    is_root: true,
+    is_nestable: false,
+    fields: [
+      defineField("title", { type: "text", required: true }),
+      defineField("authors", { type: "options", required: true }),
+      defineField("body", { type: "bloks", allow: ["featured-articles"], required: true }),
+      defineField("sections", { type: "bloks", allow: ["section"], required: true }),
+      defineField("text", { type: "richtext", allow: ["featured-articles"] }),
+      defineField("notes", { type: "richtext" }),
+    ],
+  });
+
+  type Components =
+    | typeof _authorComponent
+    | typeof _featuredArticlesComponent
+    | typeof _sectionComponent
+    | typeof _landingComponent;
+
+  interface NestedRelationTypes {
+    components: Components;
+  }
+
+  const RELATIONS = "featured-articles.posts,featured-articles.highlight,landing.authors";
+
+  const createClient = () =>
+    createApiClient({
+      accessToken: "test-token",
+      inlineRelations: true,
+    }).withTypes<NestedRelationTypes>();
+
+  it("should type a relation field of a block nested in a root block as the related story", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const block = result.data.story.content.body[0];
+      if (block) {
+        expectTypeOf(block.posts).toBeArray();
+        expectTypeOf(block.posts)
+          .items.exclude<string>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "landing">();
+        expectTypeOf(block.tags).toEqualTypeOf<string[]>();
+      }
+    }
+  });
+
+  it("should type a relation field of a doubly nested block as the related story", async () => {
+    const result = await createClient().stories.list({
+      query: { resolve_relations: RELATIONS },
+    });
+    const story = result.data?.stories[0];
+    if (story && story.content.component === "landing") {
+      const block = story.content.sections[0]?.items[0];
+      if (block) {
+        expectTypeOf(block.posts)
+          .items.exclude<string>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "landing">();
+      }
+    }
+  });
+
+  it("should type a relation field of a block embedded in richtext as the related story", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const node = result.data.story.content.text?.content[0];
+      if (node && node.type === "blok") {
+        const block = node.attrs.body?.[0];
+        if (block) {
+          expectTypeOf(block.posts)
+            .items.exclude<string>()
+            .toHaveProperty("content")
+            .toHaveProperty("component")
+            .toEqualTypeOf<"author" | "landing">();
+        }
+      }
+    }
+  });
+
+  it("should type relations inside a related story's content", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: "landing.authors,author.mentor" },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const author = result.data.story.content.authors[0];
+      if (author && typeof author !== "string" && author.content.component === "author") {
+        expectTypeOf(author.content.mentor).exclude<string>().toBeNullable();
+        expectTypeOf(author.content.mentor)
+          .exclude<string | null | undefined>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "landing">();
+      }
+    }
+  });
+
+  it("should inline relations below a listed bloks field", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: "landing.body,featured-articles.posts" },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const block = result.data.story.content.body[0];
+      if (block) {
+        expectTypeOf(block.posts)
+          .items.exclude<string>()
+          .toHaveProperty("content")
+          .toHaveProperty("component")
+          .toEqualTypeOf<"author" | "landing">();
+      }
+    }
+  });
+
+  it("should keep a multi-option relation an array and a single-option relation optional", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const content = result.data.story.content;
+      expectTypeOf(content.authors).toBeArray();
+      expectTypeOf(content.authors)
+        .items.exclude<string>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+      const highlight = content.body[0]?.highlight;
+      expectTypeOf(highlight).toBeNullable();
+      expectTypeOf(highlight)
+        .exclude<string | null | undefined>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+    }
+  });
+
+  it("should type a related story's content as a root block only", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const author = result.data.story.content.authors[0];
+      if (author && typeof author !== "string") {
+        expectTypeOf(author.content.component).toEqualTypeOf<"author" | "landing">();
+      }
+    }
+  });
+
+  it("should trim whitespace around relation paths", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: "landing.title, \n\t\u00A0landing.authors" },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      expectTypeOf(result.data.story.content.authors)
+        .items.exclude<string>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+    }
+  });
+
+  it("should type every string field except component, _uid and _editable as a possible story for a non-literal resolve_relations", async () => {
+    const query: { resolve_relations: string } = { resolve_relations: RELATIONS };
+    const result = await createClient().stories.get("landing", { query });
+    const content = result.data?.story.content;
+    if (content && content.component === "landing") {
+      expectTypeOf(content._uid).toEqualTypeOf<string>();
+      expectTypeOf(content._editable).toEqualTypeOf<string | undefined>();
+      expectTypeOf(content.title).extract<string>().toEqualTypeOf<string>();
+      expectTypeOf(content.title)
+        .exclude<string>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+      expectTypeOf(content.body)
+        .items.toHaveProperty("component")
+        .toEqualTypeOf<"featured-articles">();
+      expectTypeOf(content.body)
+        .items.toHaveProperty("tags")
+        .items.exclude<string>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+    }
+  });
+
+  it("should type a relation field of a block embedded in richtext without allow as a possible story", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const node = result.data.story.content.notes?.content[0];
+      if (node && node.type === "blok") {
+        const block = node.attrs.body?.[0];
+        if (block) {
+          expectTypeOf(block._editable).toEqualTypeOf<string | undefined>();
+          expectTypeOf(block["posts"])
+            .extract<{ full_slug: string }>()
+            .toHaveProperty("content")
+            .toHaveProperty("component")
+            .toEqualTypeOf<"author" | "landing">();
+        }
+      }
+    }
+  });
+
+  it("should keep richtext types when no relation path can reach an embedded block", async () => {
+    type PlainLanding = BlockContent<typeof _landingComponent, Components>;
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: "landing.authors" },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      expectTypeOf(result.data.story.content.notes).toEqualTypeOf<PlainLanding["notes"]>();
+      expectTypeOf(result.data.story.content.text).toEqualTypeOf<PlainLanding["text"]>();
+    }
+  });
+
+  it("should accept inlined richtext as richtext renderer input", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      expectTypeOf(result.data.story.content.notes).toExtend<StoryblokRichTextInput>();
+      expectTypeOf(result.data.story.content.text).toExtend<StoryblokRichTextInput>();
+    }
+  });
+
+  it("should split a URL-encoded resolve_relations like the runtime", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: "landing.title%2Clanding.authors" },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      expectTypeOf(result.data.story.content.authors)
+        .items.exclude<string>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+    }
+  });
+
+  it("should type a resolve_relations with 60 paths", async () => {
+    const result = await createClient().stories.get("landing", {
+      query: {
+        resolve_relations:
+          "landing.authors,b1.f,b2.f,b3.f,b4.f,b5.f,b6.f,b7.f,b8.f,b9.f,b10.f,b11.f,b12.f,b13.f,b14.f,b15.f,b16.f,b17.f,b18.f,b19.f,b20.f,b21.f,b22.f,b23.f,b24.f,b25.f,b26.f,b27.f,b28.f,b29.f,b30.f,b31.f,b32.f,b33.f,b34.f,b35.f,b36.f,b37.f,b38.f,b39.f,b40.f,b41.f,b42.f,b43.f,b44.f,b45.f,b46.f,b47.f,b48.f,b49.f,b50.f,b51.f,b52.f,b53.f,b54.f,b55.f,b56.f,b57.f,b58.f,b59.f",
+      },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      expectTypeOf(result.data.story.content.authors)
+        .items.exclude<string>()
+        .toHaveProperty("content")
+        .toHaveProperty("component")
+        .toEqualTypeOf<"author" | "landing">();
+    }
+  });
+
+  it("should keep relations as UUIDs without inlineRelations", async () => {
+    const client = createApiClient({ accessToken: "test-token" }).withTypes<NestedRelationTypes>();
+    const result = await client.stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const content = result.data.story.content;
+      expectTypeOf(content.authors).toEqualTypeOf<string[]>();
+      expectTypeOf(content.body).items.toHaveProperty("posts").toEqualTypeOf<string[]>();
+    }
+  });
+
+  it("should type component props with WithInlinedRelations", () => {
+    type Props = WithInlinedRelations<
+      typeof _featuredArticlesComponent,
+      "featured-articles.posts",
+      Components
+    >;
+    type RelatedStory = Exclude<Props["posts"][number], string>;
+
+    expectTypeOf<Props["component"]>().toEqualTypeOf<"featured-articles">();
+    expectTypeOf<RelatedStory["content"]["component"]>().toEqualTypeOf<"author" | "landing">();
+    expectTypeOf<Props["tags"]>().toEqualTypeOf<string[]>();
+  });
+
+  it("should accept a fetched block as props declared with the same relation paths", async () => {
+    type Props = WithInlinedRelations<
+      typeof _featuredArticlesComponent,
+      typeof RELATIONS,
+      Components
+    >;
+    const result = await createClient().stories.get("landing", {
+      query: { resolve_relations: RELATIONS },
+    });
+    if (result.data && result.data.story.content.component === "landing") {
+      const block = result.data.story.content.body[0];
+      if (block) {
+        expectTypeOf(block).toExtend<Props>();
       }
     }
   });

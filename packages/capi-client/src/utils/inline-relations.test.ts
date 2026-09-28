@@ -115,6 +115,21 @@ describe("inlineStoryContent", () => {
   });
 });
 
+describe("inlineStoryContent editor markup", () => {
+  it("should keep _editable a string when a relation path names it", () => {
+    const related = makeStory("story-b", { _uid: "b", component: "page" });
+    const story = makeStory("story-a", {
+      _uid: "a",
+      component: "page",
+      _editable: "story-b",
+    });
+
+    const inlined = inlineStoryContent(story, ["page._editable"], buildRelationMap([related]));
+
+    expect(inlined.content._editable).toBe("story-b");
+  });
+});
+
 describe("inlineStoriesContent", () => {
   it("should replace UUID arrays in target fields", () => {
     const tag1 = makeStory("tag-1", { _uid: "tag-1", component: "tag" });

@@ -490,6 +490,9 @@ importers:
       '@storyblok/management-api-client':
         specifier: workspace:*
         version: link:../../../mapi-client
+      '@storyblok/richtext':
+        specifier: workspace:*
+        version: link:../../../richtext
       '@storyblok/schema':
         specifier: workspace:*
         version: link:../../../schema

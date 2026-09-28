@@ -10,6 +10,7 @@ import type { CompiledMigration } from "./define-migration";
 import {
   type AlterFieldContext,
   type AnyChild,
+  type ExpandBlockOp,
   isKeyOp,
   type MigrationOp,
   type ReorderContext,
@@ -342,6 +343,71 @@ function comparableKeys(block: AnyBlock): Record<string, unknown> {
   return Object.fromEntries(Object.entries(block).filter(([key]) => key !== "_editable"));
 }
 
+type ScopedOp = { op: MigrationOp; index: number };
+
+/**
+ * `expandBlock` is the one op that changes a block's siblings rather than the
+ * block, so it cannot be applied where the others are — the runner hands an op
+ * a block, and the list holding it is not in reach from there. It gets its own
+ * pass over the tree, after every other op has run, so a callback reads the
+ * block as the migration left it.
+ *
+ * The blocks a callback returns are content the migration authored: no op is
+ * applied to them, this one included. A callback that returns a block of the
+ * component it matched would therefore expand again on the next run, which is
+ * reported here rather than discovered by whoever reruns the migration.
+ */
+function expandBlocks(
+  value: unknown,
+  ops: readonly ScopedOp[],
+  chain: readonly string[],
+  report: { matched: number; nonIdempotent: { uid: string; op: number }[] },
+): unknown {
+  if (Array.isArray(value)) {
+    const items = value.map((item) => expandBlocks(item, ops, chain, report));
+    if (!items.some(isBlock)) return items;
+
+    let expanded = false;
+    const out: unknown[] = [];
+    for (const item of items) {
+      if (!isBlock(item)) {
+        out.push(item);
+        continue;
+      }
+      const match = ops.find(({ op }) => op.block === item.component && inScope(op, chain));
+      if (!match) {
+        out.push(item);
+        continue;
+      }
+      report.matched++;
+      const produced = [...(match.op as ExpandBlockOp<never, never>).fn(item as never)];
+      if (
+        produced.some(
+          (block) =>
+            isBlock(block) &&
+            ops.some(({ op }) => op.block === block.component && inScope(op, chain)),
+        )
+      ) {
+        report.nonIdempotent.push({ uid: item._uid, op: match.index });
+      }
+      out.push(...produced);
+      expanded = true;
+    }
+    return expanded ? out : items;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const holder = value as Record<string, unknown>;
+    const nextChain = isBlock(value) ? [...chain, value.component] : chain;
+    for (const key of Object.keys(holder)) {
+      holder[key] = expandBlocks(holder[key], ops, nextChain, report);
+    }
+    return holder;
+  }
+
+  return value;
+}
+
 export function runMigrationOnStory(
   migration: CompiledMigration,
   content: unknown,
@@ -360,7 +426,9 @@ export function runMigrationOnStory(
     const chain = ancestors.get(uid) ?? [];
     const ops = migration.ops
       .map((op, index) => ({ op, index }))
-      .filter(({ op }) => op.block === block.component && inScope(op, chain));
+      .filter(
+        ({ op }) => op.kind !== "expandBlock" && op.block === block.component && inScope(op, chain),
+      );
     if (ops.length === 0) continue;
     matched++;
     for (const { op, index } of ops) {
@@ -387,7 +455,17 @@ export function runMigrationOnStory(
     }
   }
 
-  // Re-index: an `alterBlock` may have added or removed nested blocks.
+  const expansions = migration.ops
+    .map((op, index) => ({ op, index }))
+    .filter(({ op }) => op.kind === "expandBlock");
+  if (expansions.length > 0) {
+    const report = { matched, nonIdempotent };
+    expandBlocks(after, expansions, [], report);
+    matched = report.matched;
+  }
+
+  // Re-index: an `alterBlock` may have added or removed nested blocks, and an
+  // `expandBlock` replaces one with several.
   const afterIndexFinal = indexBlocks(after);
   const patches: BlockPatch[] = [];
   const inverse: BlockPatch[] = [];

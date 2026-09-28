@@ -28,7 +28,10 @@ function blockNames(schema: SchemaLike): Map<string, Set<string>> {
 
 /** The field an op reads, or `undefined` for one that names no single field. */
 function sourceFieldOf(op: MigrationOp): string | undefined {
-  return op.kind === "alterBlock" || op.kind === "mergeFields" || op.kind === "renameBlock"
+  return op.kind === "alterBlock" ||
+    op.kind === "expandBlock" ||
+    op.kind === "mergeFields" ||
+    op.kind === "renameBlock"
     ? undefined
     : op.field;
 }

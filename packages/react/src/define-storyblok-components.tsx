@@ -99,6 +99,13 @@ function normalizeEntry(entry: StoryblokComponentEntry): {
   return { component: entry as BlockComponentType };
 }
 
+/** Pre-computed, render-ready descriptor for a single registered block type. */
+type ResolvedEntry = {
+  Component: BlockComponentType;
+  needsSuspense: boolean;
+  fallbackNode: ReactNode;
+};
+
 /**
  * Maps Storyblok block types to React components and returns pre-wired
  * `StoryblokComponent` and `StoryblokRichText`.
@@ -120,13 +127,6 @@ function normalizeEntry(entry: StoryblokComponentEntry): {
  * });
  * ```
  */
-/** Pre-computed, render-ready descriptor for a single registered block type. */
-type ResolvedEntry = {
-  Component: BlockComponentType;
-  needsSuspense: boolean;
-  fallbackNode: ReactNode;
-};
-
 export function defineStoryblokComponents(
   config: StoryblokComponentsOptions,
 ): StoryblokComponentsResult {

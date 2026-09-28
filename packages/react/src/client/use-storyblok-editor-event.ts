@@ -27,6 +27,16 @@ export interface UseStoryblokEditorEventOptions {
  * Both `callback` and `options.debounceMs` are tracked via refs so the
  * subscription is established once on mount and never torn down/re-created
  * unless the component unmounts.
+ *
+ * @example
+ * ```tsx
+ * "use client";
+ * function Page({ story }: { story: Story }) {
+ *   const [current, setCurrent] = useState(story);
+ *   useStoryblokEditorEvent((updated) => setCurrent(updated));
+ *   return <StoryblokComponent block={current.content} />;
+ * }
+ * ```
  */
 export function useStoryblokEditorEvent<TStory extends Story = Story>(
   callback: (story: LivePreviewStory<TStory>) => void,

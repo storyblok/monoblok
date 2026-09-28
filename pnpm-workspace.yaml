@@ -21,6 +21,7 @@ catalog:
   typescript: 6.0.3
   vite-plugin-dts: ^5.0.3
   vitest: ^4.1.10
+  vue-tsc: ^3.3.10
   zod: ^4.6.5
 
 # Named catalogs pin the framework version matrix the playgrounds exist to
@@ -55,6 +56,18 @@ catalogs:
 # fail) when a package asks for a version the catalog does not carry — the
 # version-matrix playgrounds legitimately need their own pins.
 catalogMode: prefer
+
+# The bundled rolldown-plugin-dts resolves `vue-tsc` from its own location, not
+# from the package being built. Without a declared peer, that falls through to
+# whatever pnpm hoists, so a second `vue-tsc` anywhere in the workspace can end
+# up generating `@storyblok/vue`'s declarations.
+packageExtensions:
+  "@voidzero-dev/vite-plus-core":
+    peerDependencies:
+      vue-tsc: "*"
+    peerDependenciesMeta:
+      vue-tsc:
+        optional: true
 
 injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:

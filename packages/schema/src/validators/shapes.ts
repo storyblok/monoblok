@@ -47,10 +47,10 @@ export interface SchemaFieldLike {
   /** `option`/`options`: the self-sourced selectable options. */
   options?: readonly { name?: string; value?: string }[];
   /**
-   * `option`/`options`: where the selectable options come from. Undefined (or
-   * empty) means self — the `options` array above. Any other value
-   * (`internal`, `external`, `internal_stories`, `internal_languages`) resolves
-   * in the space, so the accepted values are not knowable from the schema.
+   * `option`/`options`: where the selectable options come from. `internal`,
+   * `external`, `internal_stories`, and `internal_languages` resolve in the
+   * space, so the accepted values are not knowable from the schema. Any other
+   * value (undefined, `''`, `'self'`) means the `options` array above.
    */
   source?: string;
   // Value constraints enforced by `validateStory` (all optional).

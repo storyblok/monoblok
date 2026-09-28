@@ -550,13 +550,21 @@ function checkComponentAllowed(
   }
 }
 
+/** `source` values whose options live in the space instead of the schema. */
+const REMOTE_OPTION_SOURCES: ReadonlySet<string> = new Set([
+  "internal",
+  "internal_stories",
+  "internal_languages",
+  "external",
+]);
+
 /**
  * Reports a value that is not among a field's declared options — the drift left
  * behind when an option is renamed or removed from the schema while stories
  * still carry the old value.
  *
- * Only self-sourced fields can be checked. Every other `source` resolves its
- * options inside the space (`internal` from a datasource, `internal_stories`
+ * Only self-sourced fields (no `source`, `''`, or `'self'`) can be checked. A
+ * remote `source` resolves its options inside the space (`internal` from a datasource, `internal_stories`
  * from the story tree, `internal_languages` from the space languages, `external`
  * from a remote JSON URL), and a datasource definition deliberately carries no
  * entries — entries are content, not schema — so the accepted values are not
@@ -570,7 +578,7 @@ function checkDeclaredOption(
   entity: string,
   issues: ValidationIssue[],
 ): void {
-  if (value === "" || (field.source !== undefined && field.source !== "")) {
+  if (value === "" || (field.source !== undefined && REMOTE_OPTION_SOURCES.has(field.source))) {
     return;
   }
   const declared = (field.options ?? [])

@@ -99,10 +99,9 @@ describe("FieldValueInput resolution per field type", () => {
 });
 
 /**
- * `option` and `options` are the only field types whose content type depends on
- * the field's own configuration rather than its `type` alone, so they get their
- * own matrix: which configurations narrow to the literal values, and which stay
- * `string` because the values are not knowable from the schema.
+ * `option`/`options` narrow to the literal values in their own config. This
+ * matrix covers which configurations narrow and which stay `string` because the
+ * values are not knowable from the schema.
  */
 const ALIGNMENTS = [
   { name: "Left", value: "left" },
@@ -127,6 +126,23 @@ const _o = {
   }),
   datasource: defineField("a", { type: "option", source: "internal", datasource: "themes" }),
   stories: defineField("a", { type: "option", source: "internal_stories" }),
+  emptySource: defineField("a", { type: "option", source: "", options: [...ALIGNMENTS] }),
+  selfSource: defineField("a", { type: "option", source: "self", options: [...ALIGNMENTS] }),
+  multiSelfSource: defineField("a", {
+    type: "options",
+    source: "self",
+    options: [...ALIGNMENTS],
+  }),
+  remoteSourceWithOptions: defineField("a", {
+    type: "option",
+    source: "external",
+    options: [...ALIGNMENTS],
+  }),
+  nonLiteralSource: defineField("a", {
+    type: "option",
+    source: "self" as string,
+    options: [...ALIGNMENTS],
+  }),
   nonLiteralValues: defineField("a", {
     type: "option",
     options: [] as { name: string; value: string }[],
@@ -153,14 +169,23 @@ describe("option value narrowing", () => {
   });
 
   it("keeps the empty string even when the editor hides the empty entry", () => {
-    // `exclude_empty_option` filters the editor's dropdown; it does not stop the
-    // editor from storing `''` when a value falls out of the option list.
     expectTypeOf<FieldValue<typeof _o.excludesEmpty>>().toEqualTypeOf<"" | "left" | "center">();
   });
 
   it("stays `string` when the values live in the space rather than the schema", () => {
     expectTypeOf<FieldValue<typeof _o.datasource>>().toEqualTypeOf<string>();
     expectTypeOf<FieldValue<typeof _o.stories>>().toEqualTypeOf<string>();
+    expectTypeOf<FieldValue<typeof _o.remoteSourceWithOptions>>().toEqualTypeOf<string>();
+  });
+
+  it("narrows an empty or `self` source like an omitted one", () => {
+    expectTypeOf<FieldValue<typeof _o.emptySource>>().toEqualTypeOf<"" | "left" | "center">();
+    expectTypeOf<FieldValue<typeof _o.selfSource>>().toEqualTypeOf<"" | "left" | "center">();
+    expectTypeOf<FieldValue<typeof _o.multiSelfSource>>().toEqualTypeOf<("left" | "center")[]>();
+  });
+
+  it("stays `string` when the source is not a literal type", () => {
+    expectTypeOf<FieldValue<typeof _o.nonLiteralSource>>().toEqualTypeOf<string>();
   });
 
   it("stays `string` when the option values are not literal types", () => {
@@ -179,9 +204,8 @@ describe("option narrowing through a block's content type", () => {
 
   type Hero = BlockContent<typeof heroBlock, typeof heroBlock>;
 
-  it("reaches the content object consumers actually read", () => {
-    // Optional fields are additionally nullable, which is what makes the plain
-    // `Record<Union, T>` lookup fail to compile until the caller handles it.
+  it("narrows the block's content type", () => {
+    // Optional fields are also nullable.
     expectTypeOf<Hero["alignment"]>().toEqualTypeOf<"" | "left" | "center" | null | undefined>();
     expectTypeOf<Hero["tags"]>().toEqualTypeOf<("left" | "center")[]>();
   });

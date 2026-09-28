@@ -298,7 +298,6 @@ describe("transformGeneratedFile", () => {
     const { output } = run(source, [{ source: "OptionField", emitAs: "OptionField" }]);
 
     expect(squish(output)).toContain("options?: ReadonlyArray<{ name?: string; value?: string; }>");
-    // Only the configured property is widened.
     expect(squish(output)).toContain("filter_content_type?: Array<string>");
   });
 

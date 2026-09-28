@@ -10,7 +10,7 @@
  * These assertions are checked by `pnpm typecheck` (`tsc --noEmit`) and are
  * intentionally never executed at runtime.
  */
-import type { StoryblokRichTextDoc, StoryblokRichTextNode } from "./index";
+import type { StoryblokRichTextDoc, StoryblokRichTextInput, StoryblokRichTextNode } from "./index";
 
 // A `doc` with a `content` array is valid.
 export const docWithContent: StoryblokRichTextDoc = {
@@ -41,4 +41,19 @@ export const docWithContentlessChildren: StoryblokRichTextDoc = {
 // A bare nested node without `content` is assignable to `StoryblokRichTextNode`.
 export const contentlessNode: StoryblokRichTextNode = {
   type: "paragraph",
+};
+
+// Embedded blocks may hold any field value, e.g. a story inlined by the Content
+// Delivery API client in place of a relation UUID.
+export const docWithInlinedRelation: StoryblokRichTextInput = {
+  type: "doc",
+  content: [
+    {
+      type: "blok",
+      attrs: {
+        id: "1",
+        body: [{ _uid: "1", component: "teaser", author: { uuid: "a", content: {} } }],
+      },
+    },
+  ],
 };

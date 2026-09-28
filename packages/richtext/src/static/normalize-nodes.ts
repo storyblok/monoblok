@@ -29,16 +29,18 @@ export function normalizeNodes(
   if (!input) {
     return [];
   }
-  if (Array.isArray(input)) {
+  // Blok bodies may hold any field values (see `StoryblokRichTextBlokContent`). Renderers
+  // pass them through unread, so the nodes are treated as the generated node type.
+  const document = input as RichTextDoc | RichTextNode | RichTextNode[];
+  if (Array.isArray(document)) {
     if (!includeKeys) {
-      return input;
+      return document;
     }
     const keyGen = createKeyGenerator();
-    return addKeys(input, keyGen);
+    return addKeys(document, keyGen);
   }
 
-  const nodes: RichTextNode[] =
-    input.type === "doc" ? (input as RichTextDoc).content || [] : [input as RichTextNode];
+  const nodes: RichTextNode[] = document.type === "doc" ? document.content || [] : [document];
 
   if (!includeKeys) {
     return nodes;

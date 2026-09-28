@@ -212,6 +212,14 @@ describe("assertSupportedOptions", () => {
   });
 
   // CDN content has no `__i18n__` keys, so pruning on one would empty the result.
+  it("should reject a --capi-params language under --check-references", () => {
+    expect(() =>
+      assertSupportedOptions(
+        options({ capiFilter: true, checkReferences: true, capiParams: "lang=fr" }),
+      ),
+    ).toThrow(/--capi-params language/);
+  });
+
   it("should reject a --where on a field-level translation under --capi-filter", () => {
     expect(() =>
       assertSupportedOptions(
@@ -275,6 +283,24 @@ describe("the server-side scope filters", () => {
     expect(buildQueryParams(undefined, options({ tag: "campaign,legacy" })).with_tag).toBe(
       "campaign,legacy",
     );
+  });
+
+  it("should drop the blanks around each item of a list flag", () => {
+    const params = buildQueryParams(
+      undefined,
+      options({
+        tag: "campaign, legacy",
+        includesBlock: "hero, cta",
+        containerBlock: "page, post",
+      }),
+    );
+    expect(params.with_tag).toBe("campaign,legacy");
+    expect(params.contain_component).toBe("hero,cta");
+    expect(params.filter_query).toEqual({ component: { in: "page,post" } });
+  });
+
+  it("should ask the listing for per-language workflow stages", () => {
+    expect(buildQueryParams(undefined, options())).toMatchObject({ with_stages: true });
   });
 
   it("should pass --workflow-stage through as a stage list", () => {

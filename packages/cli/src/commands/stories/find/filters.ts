@@ -4,8 +4,8 @@ import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from ".
 export type PublishStatus = "published" | "changed" | "draft";
 
 /**
- * `draft` is decided entirely server-side; the other two share `is_published`
- * and are told apart by `unpublished_changes`.
+ * `published` and `changed` share `is_published` and are told apart by
+ * `unpublished_changes`. `draft` excludes folders, which are never published.
  */
 export function matchesPublishStatus(story: Story, status: PublishStatus): boolean {
   switch (status) {
@@ -14,7 +14,7 @@ export function matchesPublishStatus(story: Story, status: PublishStatus): boole
     case "changed":
       return isStoryWithUnpublishedChanges(story) === true;
     case "draft":
-      return true;
+      return story.is_folder !== true;
   }
 }
 

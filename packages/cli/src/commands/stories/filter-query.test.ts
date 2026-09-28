@@ -56,6 +56,11 @@ describe("parseFilterQuery", () => {
     expect(() => parseFilterQuery('{"component":"hero"}')).toThrow(/object of operations/);
   });
 
+  // The API ignores a field with no operation, so the listing would be the whole scope.
+  it("should reject JSON whose field has no operation", () => {
+    expect(() => parseFilterQuery('{"category":{}}')).toThrow(/object of operations/);
+  });
+
   it("should reject a clause with no operation", () => {
     expect(() => parseFilterQuery("[highlighted]=true")).toThrow(CommandError);
   });

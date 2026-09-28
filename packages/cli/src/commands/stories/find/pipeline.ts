@@ -198,6 +198,9 @@ export async function runStoryPipeline({
             spaceId,
             // Keeps `--sort` meaningful, and `--sort … --limit n` the top n.
             ordered: true,
+            // Same fields as the listing-only paths (`--skip-content`, CAPI content).
+            withListMetadata: true,
+            signal,
             onIncrement: () => {
               content.tick();
             },

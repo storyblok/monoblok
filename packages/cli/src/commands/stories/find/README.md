@@ -198,11 +198,11 @@ listing alone, and works under [`--skip-content`](#--skip-content) as it is.
 
 ### `--publish-status`
 
-| Value       | Matches                                    |
-| ----------- | ------------------------------------------ |
-| `published` | Published, with no unpublished edits since |
-| `changed`   | Published, but with unpublished edits      |
-| `draft`     | Never published                            |
+| Value       | Matches                                                         |
+| ----------- | --------------------------------------------------------------- |
+| `published` | Published, with no unpublished edits since                      |
+| `changed`   | Published, but with unpublished edits                           |
+| `draft`     | Never published. Folders are excluded: they cannot be published |
 
 ```bash
 storyblok stories find --space 12345 --publish-status published

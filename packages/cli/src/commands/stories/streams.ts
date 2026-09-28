@@ -119,6 +119,8 @@ export const fetchStoriesStream = ({
 export const fetchStoryStream = ({
   spaceId,
   ordered = false,
+  withListMetadata = false,
+  signal,
   onIncrement,
   onStorySuccess,
   onStoryError,
@@ -130,6 +132,10 @@ export const fetchStoryStream = ({
    * stays taken until it is emitted, so memory stays bounded.
    */
   ordered?: boolean;
+  /** Layer the fetched story over its listing entry, which carries fields it lacks (`content_type`). */
+  withListMetadata?: boolean;
+  /** Cancels queued and in-flight fetches, including their rate-limit retries. */
+  signal?: AbortSignal;
   onIncrement?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
@@ -144,19 +150,24 @@ export const fetchStoryStream = ({
       // Wait for a slot
       await getPipelineSlot().acquire();
 
-      const fetched = fetchStory(spaceId, listStory.id.toString()).then(
-        (story) => {
+      // `.catch` (not a second `.then` argument) so a throw in the success branch is reported too.
+      const fetched = (
+        signal?.aborted
+          ? Promise.reject(signal.reason)
+          : fetchStory(spaceId, listStory.id.toString(), { signal })
+      )
+        .then((story) => {
           if (typeof story === "undefined") {
             throw new TypeError("Invalid story!");
           }
-          onStorySuccess?.(story);
-          return story;
-        },
-        (maybeError: unknown) => {
+          const result = withListMetadata ? { ...listStory, ...story } : story;
+          onStorySuccess?.(result);
+          return result;
+        })
+        .catch((maybeError: unknown) => {
           onStoryError?.(toError(maybeError), listStory);
           return undefined;
-        },
-      );
+        });
       // Never rejects: in ordered mode every later emit is chained onto this one.
       const emit = (story: Story | undefined): void => {
         if (!story) {

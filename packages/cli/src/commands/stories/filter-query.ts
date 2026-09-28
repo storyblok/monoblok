@@ -131,8 +131,12 @@ function parseAsJson(trimmed: string): ParsedFilterQuery {
   if (!isRecord(parsed)) {
     throw new CommandError(`Invalid --query JSON: expected an object.\n${trimmed}`);
   }
-  // MAPI rejects a `filter_query` that is not a hash of hashes outright.
-  const flat = Object.keys(parsed).filter((field) => !isRecord(parsed[field]));
+  // MAPI rejects a `filter_query` that is not a hash of hashes outright, and
+  // ignores a field with no operation, which would narrow nothing.
+  const flat = Object.keys(parsed).filter((field) => {
+    const operations = parsed[field];
+    return !isRecord(operations) || Object.keys(operations).length === 0;
+  });
   if (flat.length > 0) {
     throw new CommandError(
       `Invalid --query JSON: each field needs an object of operations, e.g. {"${flat[0]}":{"in":"value"}}.\n${trimmed}`,

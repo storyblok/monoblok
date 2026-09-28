@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { Readable, Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { join } from "pathe";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 import {
   createStoriesForLevel,
+  fetchStoryStream,
   groupStoriesByDepth,
   readLocalStoriesStream,
   scanLocalStoryIndex,
@@ -924,5 +927,88 @@ describe("push pipeline: scan -> group -> create level-by-level", () => {
 
     // Manifest should have been written for all 5 stories
     expect(noopManifest).toHaveBeenCalledTimes(5);
+  });
+});
+
+describe("fetchStoryStream", () => {
+  const listed = (id: number) => ({ id, uuid: `uuid-${id}`, slug: `story-${id}` }) as Story;
+
+  const run = async (stream: ReturnType<typeof fetchStoryStream>, ids: number[]) => {
+    const emitted: number[] = [];
+    await pipeline(
+      Readable.from(ids.map(listed)),
+      stream,
+      new Writable({
+        objectMode: true,
+        write(story: Story, _encoding, callback) {
+          emitted.push(story.id);
+          callback();
+        },
+      }),
+    );
+    return emitted;
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([{ ordered: true }, { ordered: false }])(
+    "should report a story the API returns empty for and emit the rest (ordered: $ordered)",
+    async ({ ordered }) => {
+      vi.spyOn(actions, "fetchStory").mockImplementation(async (_spaceId, storyId) =>
+        storyId === "2" ? undefined : listed(Number(storyId)),
+      );
+      const failed: number[] = [];
+
+      const emitted = await run(
+        fetchStoryStream({
+          spaceId: "1",
+          ordered,
+          onStoryError: (_error, story) => failed.push(story.id),
+        }),
+        [1, 2, 3, 4, 5],
+      );
+
+      expect([...emitted].sort()).toEqual([1, 3, 4, 5]);
+      expect(failed).toEqual([2]);
+    },
+  );
+
+  it("should not fetch once the signal has fired", async () => {
+    const fetchStory = vi.spyOn(actions, "fetchStory").mockResolvedValue(listed(1));
+    const controller = new AbortController();
+    controller.abort();
+
+    const emitted = await run(
+      fetchStoryStream({ spaceId: "1", signal: controller.signal, onStoryError: () => {} }),
+      [1, 2, 3],
+    );
+
+    expect(fetchStory).not.toHaveBeenCalled();
+    expect(emitted).toEqual([]);
+  });
+
+  it("should layer the fetched story over its listing entry when asked to", async () => {
+    vi.spyOn(actions, "fetchStory").mockResolvedValue({
+      id: 1,
+      uuid: "uuid-1",
+      content: { _uid: "a", component: "page" },
+    } as Story);
+    const stories: Story[] = [];
+
+    await pipeline(
+      Readable.from([{ ...listed(1), content_type: "page" } as Story]),
+      fetchStoryStream({ spaceId: "1", withListMetadata: true }),
+      new Writable({
+        objectMode: true,
+        write(story: Story, _encoding, callback) {
+          stories.push(story);
+          callback();
+        },
+      }),
+    );
+
+    expect(stories[0]).toMatchObject({ content_type: "page", content: { component: "page" } });
   });
 });

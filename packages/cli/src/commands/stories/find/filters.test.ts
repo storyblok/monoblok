@@ -59,6 +59,12 @@ describe("matchesPublishStatus", () => {
       expect(matchesPublishStatus(listed(false, false), "draft")).toBe(true);
       expect(matchesPublishStatus(listed(true, true), "draft")).toBe(true);
     });
+
+    // A folder is never published, so the server's `is_published: false` keeps it.
+    it("should reject a folder, which cannot be published", () => {
+      const folder = { ...listed(false, false), is_folder: true } as Story;
+      expect(matchesPublishStatus(folder, "draft")).toBe(false);
+    });
   });
 
   // The helpers behind this return `undefined` rather than `false` when a field

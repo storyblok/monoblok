@@ -2,6 +2,7 @@ import { ClientError, createApiClient } from "@storyblok/api-client";
 import type { CacheProvider } from "@storyblok/api-client";
 import type { RegionCode } from "../../../constants";
 import { CommandError } from "../../../utils/error/command-error";
+import { redactClientError } from "../../../utils/error/redact";
 import { isRecord } from "../../../utils/object";
 import { fetchSpace } from "../../spaces/actions";
 import type { Story } from "../constants";
@@ -212,7 +213,11 @@ export async function createCapiContentFetcher({
   // be CDN query parameters, not which ones.
   type StoriesQuery = NonNullable<Parameters<typeof client.stories.list>[0]>["query"];
   const listStories = (page: Record<string, string | number>) =>
-    client.stories.list({ query: { ...query, ...page } as StoriesQuery });
+    client.stories
+      .list({ query: { ...query, ...page } as StoriesQuery })
+      .catch((error: unknown) => {
+        throw redactClientError(error);
+      });
 
   // During the run a rejected batch only costs its pruning, so a mistyped
   // `--capi-params` would make the flag do nothing, with no reason given. One

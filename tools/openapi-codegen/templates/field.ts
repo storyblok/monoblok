@@ -327,7 +327,7 @@ type ApplyDeny<TField, TBlocks> = TField extends {
  * that guard: one written as a plain object, or one read off the wire. On those,
  * the stricter of the two readings is the safer default.
  */
-type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
+export type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
 
 /**
  * Resolves a `custom` field to its registered plugin value. When the field's
@@ -342,7 +342,7 @@ type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F
   : PluginFieldValue;
 
 /** Whether a field declares a block restriction at all. */
-type HasRestriction<TField> = TField extends { allow: readonly unknown[] }
+export type HasRestriction<TField> = TField extends { allow: readonly unknown[] }
   ? true
   : TField extends { deny: readonly unknown[] }
     ? true
@@ -374,7 +374,7 @@ type RestrictRichTextNode<TNode, TBody> = TNode extends { type: "blok"; attrs: i
  * every component that is not in the block registry — a much wider change than
  * reflecting a restriction the field actually declares.
  */
-type RestrictRichText<TDoc, TBody> = TDoc extends { content: readonly (infer TNode)[] }
+export type RestrictRichText<TDoc, TBody> = TDoc extends { content: readonly (infer TNode)[] }
   ? Omit<TDoc, "content"> & { content: RestrictRichTextNode<TNode, TBody>[] }
   : TDoc;
 

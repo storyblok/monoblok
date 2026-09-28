@@ -57,10 +57,10 @@ $defs:
             type: string
             description: Link title attribute
       # Custom link attributes are string-valued by construction in the editor,
-      # but null has to pass: the anchor modal emits `null` when an existing
-      # anchor is cleared (storyfront MultiLinkAnchor.vue, `anchor.value || null`),
-      # so any link whose anchor was removed is stored with `anchor: null`. This
-      # branch carries no `properties`, so it applies to every key.
+      # but null has to pass: the editor's anchor modal emits `null` when an
+      # existing anchor is cleared, so any link whose anchor was removed is stored
+      # with `anchor: null`. This branch carries no `properties`, so it applies to
+      # every key.
       - type: object
         additionalProperties:
           type: [string, 'null']

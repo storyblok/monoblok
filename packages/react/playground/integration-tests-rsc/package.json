@@ -1,0 +1,33 @@
+{
+  "name": "@storyblok/playground-react-integration-tests-rsc",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Dedicated RSC integration-test playground for Visual Editor QA",
+  "scripts": {
+    "dev": "next dev --experimental-https --port 5274",
+    "build": "next build",
+    "start": "next start --port 5274",
+    "configure:preview": "bash ../../../../.agents/skills/qa-engineer-manual/scripts/configure-space.sh --space \"$STORYBLOK_SPACE_ID\" --domain \"${STORYBLOK_PREVIEW_URL:-https://localhost:5274/}\" --confirm",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@storyblok/api-client": "workspace:^",
+    "@storyblok/react": "workspace:^",
+    "@storyblok/schema": "workspace:^",
+    "next": "catalog:next16",
+    "react": "catalog:react19",
+    "react-dom": "catalog:react19"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:^",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:react19",
+    "@types/react-dom": "catalog:react19",
+    "typescript": "catalog:"
+  },
+  "nx": {
+    "projectType": "application"
+  }
+}

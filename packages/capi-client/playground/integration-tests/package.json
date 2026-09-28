@@ -12,6 +12,7 @@
   "devDependencies": {
     "@storyblok/api-client": "workspace:*",
     "@storyblok/management-api-client": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
     "@storyblok/schema": "workspace:*",
     "@types/node": "catalog:",
     "dotenv": "catalog:",

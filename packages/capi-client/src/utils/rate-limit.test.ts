@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createThrottleManager, determineTier, parseRateLimitPolicyHeader } from "./rate-limit";
-import type { RateLimitContext, RateLimiter } from "./limiter";
+import {
+  createThrottleManager,
+  determineTier,
+  parseCacheStatusHeader,
+  parseRateLimitPolicyHeader,
+} from "./rate-limit";
+import type { RateLimitContext, RateLimiter, RateLimitStatus } from "./limiter";
 
 const BASE = "https://api.storyblok.com";
 
@@ -637,5 +642,189 @@ describe("createThrottleManager - limiter failures and retries", () => {
     const send = manager.wrapFetch(async () => new Response(null, { status: 200 }));
 
     await expect(send(urlFor("/v2/cdn/stories"))).rejects.toThrow("no slot");
+  });
+});
+
+describe("createThrottleManager({ cacheAware })", () => {
+  afterEach(() => vi.useRealTimers());
+
+  const LISTING = "/v2/cdn/stories";
+  /** Large listings sit in the 6/s tier, which is the one worth outgrowing. */
+  const LARGE = { per_page: 100 };
+  /** Eight times the 6/s tier, the most a discovered ceiling may reach. */
+  const RAISED = 48;
+
+  /**
+   * Answers every request with the given cache status, one per second, which is
+   * how a client working through a warm — or cold — workload sees the API.
+   */
+  async function workFor(
+    manager: ReturnType<typeof createThrottleManager>,
+    seconds: number,
+    headers?: Record<string, string>,
+  ) {
+    const send = manager.wrapFetch(async () => new Response(null, { status: 200, headers }));
+    for (let i = 0; i < seconds; i++) {
+      await send(urlFor(LISTING, LARGE));
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+  }
+
+  it("should stay at the tier limit while the CDN serves the requests from the origin", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    await workFor(manager, 80, { "x-cache": "Miss from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+  });
+
+  it("should stay at the tier limit when the cache status is not readable", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    // A browser client cannot read the cache status: the API does not expose it
+    // to cross-origin script.
+    await workFor(manager, 80);
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+  });
+
+  it("should treat a revalidated cache entry as reaching the origin", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    await workFor(manager, 80, { "x-cache": "RefreshHit from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+  });
+
+  it("should outgrow the tier limit once the CDN serves the requests from cache", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(RAISED);
+  });
+
+  it("should drop back to the tier limit on a short run of origin-served responses", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(RAISED);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // Far short of the window: a new content version rotates every URL onto a
+    // key nothing has warmed, and the drop must not wait for the average.
+    await workFor(manager, 10, { "x-cache": "Miss from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+  });
+
+  it("should fall back to the tier limit when the workload turns cold", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({});
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(RAISED);
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await workFor(manager, 60, { "x-cache": "Miss from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+  });
+
+  it("should leave the tier at its limit when turned off", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ cacheAware: false });
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+  });
+
+  it("should never exceed an explicitly configured rate", async () => {
+    vi.useFakeTimers();
+    const manager = createThrottleManager({ requestsPerSecond: 8 });
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+
+    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(8);
+  });
+
+  it("should raise only the tier whose requests the cache serves", async () => {
+    vi.useFakeTimers();
+    const reported: RateLimitStatus[] = [];
+    const manager = createThrottleManager({ onRateLimitChange: (status) => reported.push(status) });
+    const send = manager.wrapFetch(
+      async () =>
+        new Response(null, { status: 200, headers: { "x-cache": "Hit from cloudfront" } }),
+    );
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+    await vi.advanceTimersByTimeAsync(10_000);
+    // One cached response on the single-story tier. A measurement shared
+    // between tiers would hand it the listing tier's headroom on the strength
+    // of this one response.
+    await send(urlFor("/v2/cdn/stories/home"));
+
+    const latestFor = (bucket: string) => {
+      const matching = reported.filter((status) => status.bucket === bucket);
+      return matching[matching.length - 1];
+    };
+    expect(latestFor("VERY_LARGE")?.ceiling).toBe(RAISED);
+    expect(latestFor("SINGLE_OR_SMALL")).toMatchObject({ ceiling: 50, configuredLimit: 50 });
+  });
+
+  it("should report the rate and the measurement behind it", async () => {
+    vi.useFakeTimers();
+    const reported: RateLimitStatus[] = [];
+    const manager = createThrottleManager({ onRateLimitChange: (status) => reported.push(status) });
+
+    await workFor(manager, 120, { "x-cache": "Hit from cloudfront" });
+
+    expect(reported[reported.length - 1]).toMatchObject({
+      bucket: "VERY_LARGE",
+      requestsPerSecond: RAISED,
+      ceiling: RAISED,
+      configuredLimit: 6,
+      cacheHitShare: 1,
+    });
+  });
+});
+
+describe("parseCacheStatusHeader()", () => {
+  const cacheStatus = (value: string) =>
+    parseCacheStatusHeader(new Response(null, { headers: { "x-cache": value } }));
+
+  it("should read a response the cache served as free of the origin", () => {
+    expect(cacheStatus("Hit from cloudfront")).toBe(true);
+  });
+
+  it.each(["Miss from cloudfront", "RefreshHit from cloudfront", "Error from cloudfront"])(
+    "should read %s as reaching the origin",
+    (value) => {
+      expect(cacheStatus(value)).toBe(false);
+    },
+  );
+
+  it("should report no signal when the response carries no cache status", () => {
+    expect(parseCacheStatusHeader(new Response(null))).toBeUndefined();
+  });
+
+  it.each([
+    ["Hit from cloudfront, Miss from cloudfront"],
+    ["Miss from cloudfront, Hit from cloudfront"],
+  ])("should count %s as reaching the origin whichever hop is listed first", (value) => {
+    // A response that passed through more than one cache arrives as one joined
+    // value. It only spared the origin if every hop served it, and the answer
+    // must not depend on the order.
+    expect(cacheStatus(value)).toBe(false);
+  });
+
+  it("should count a response every hop served as free of the origin", () => {
+    expect(cacheStatus("Hit from cloudfront, Hit from cloudfront")).toBe(true);
   });
 });

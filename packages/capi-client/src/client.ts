@@ -47,7 +47,7 @@ export type ApiResponse<
 export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "url">;
 
 /** Past this, a slow discovering read costs more than the redirects it saves. */
-const MAX_CV_DISCOVERY_WAIT_MS = 500;
+const MAX_CV_DISCOVERY_WAIT_MS = 2000;
 
 const waitForCvDiscovery = async (discovery: Promise<void>): Promise<void> => {
   let timer: ReturnType<typeof setTimeout> | undefined;

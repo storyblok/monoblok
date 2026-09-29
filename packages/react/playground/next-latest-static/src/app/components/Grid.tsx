@@ -1,6 +1,6 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type GridProps = StoryblokComponentProps;
+type GridProps = StoryblokBlockComponentProps;
 
 const Grid = ({ editable }: GridProps) => (
   <h2 data-test="grid" {...editable}>

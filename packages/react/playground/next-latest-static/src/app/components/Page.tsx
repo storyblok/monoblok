@@ -1,12 +1,12 @@
-import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
-import { StoryblokComponent } from "@/lib/storyblok";
+import type { BlockContent, StoryblokBlockComponentProps } from "@storyblok/react";
+import { StoryblokBlock } from "@/lib/storyblok";
 
-type PageProps = StoryblokComponentProps<{ body: BlockContent[] }>;
+type PageProps = StoryblokBlockComponentProps<{ body: BlockContent[] }>;
 
 const Page = ({ block, editable }: PageProps) => (
   <main {...editable}>
     {block.body.map((nestedBlock) => (
-      <StoryblokComponent block={nestedBlock} key={nestedBlock._uid} />
+      <StoryblokBlock block={nestedBlock} key={nestedBlock._uid} />
     ))}
   </main>
 );

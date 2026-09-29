@@ -1,6 +1,6 @@
 import type { GetStaticProps } from "next";
 import { StoryblokPreview, type Story } from "@storyblok/react";
-import { apiClient, StoryblokComponent } from "../lib/storyblok";
+import { apiClient, StoryblokBlock } from "../lib/storyblok";
 
 interface Props {
   story: Story;
@@ -10,7 +10,7 @@ export default function Home({ story }: Props) {
   return (
     <StoryblokPreview
       story={story}
-      renderContent={(live) => <StoryblokComponent block={live.content} />}
+      renderContent={(live) => <StoryblokBlock block={live.content} />}
     />
   );
 }

@@ -38,7 +38,7 @@ export interface StoryblokPreviewProps<
  * ```tsx
  * <StoryblokPreview
  *   story={story}
- *   renderContent={(live) => (live.content ? <StoryblokComponent block={live.content} /> : null)}
+ *   renderContent={(live) => (live.content ? <StoryblokBlock block={live.content} /> : null)}
  * />
  * ```
  */

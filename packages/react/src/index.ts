@@ -3,16 +3,16 @@ export type {
   BlockContentInput,
   Story,
   StoryblokBlockData,
-  StoryblokComponentProps,
+  StoryblokBlockComponentProps,
   StoryblokEditableProps,
 } from "./types";
 
 export {
-  defineStoryblokComponents,
-  type StoryblokComponentEntry,
-  type StoryblokComponentsOptions,
-  type StoryblokComponentsResult,
-} from "./define-storyblok-components";
+  defineStoryblokBlocks,
+  type StoryblokBlockEntry,
+  type StoryblokBlocksOptions,
+  type StoryblokBlocksResult,
+} from "./define-storyblok-blocks";
 
 export {
   type StoryblokReactRichTextComponent,

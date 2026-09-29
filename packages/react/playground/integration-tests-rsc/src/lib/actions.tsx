@@ -2,7 +2,7 @@
 
 import type { LivePreviewStory } from "@storyblok/react";
 import type { ReactNode } from "react";
-import { StoryblokComponent } from "@/lib/storyblok";
+import { StoryblokBlock } from "@/lib/storyblok";
 
 /**
  * Server Action passed to `StoryblokPreview` (`@storyblok/react/rsc`). Called
@@ -17,7 +17,7 @@ import { StoryblokComponent } from "@/lib/storyblok";
 export async function renderContent(story: LivePreviewStory): Promise<ReactNode> {
   return story.content ? (
     <div data-test="live">
-      <StoryblokComponent block={story.content} />
+      <StoryblokBlock block={story.content} />
     </div>
   ) : null;
 }

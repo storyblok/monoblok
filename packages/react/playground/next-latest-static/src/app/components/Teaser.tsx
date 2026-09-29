@@ -1,6 +1,6 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type TeaserProps = StoryblokComponentProps<{ headline?: string }>;
+type TeaserProps = StoryblokBlockComponentProps<{ headline?: string }>;
 
 const Teaser = ({ block, editable }: TeaserProps) => (
   <h2 data-test="teaser" {...editable}>

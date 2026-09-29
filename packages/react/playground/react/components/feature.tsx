@@ -1,6 +1,6 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type FeatureProps = StoryblokComponentProps<{
+type FeatureProps = StoryblokBlockComponentProps<{
   name: string;
   description: string;
 }>;

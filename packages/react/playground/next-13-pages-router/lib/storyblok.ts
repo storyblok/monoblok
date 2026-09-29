@@ -1,5 +1,5 @@
 import { createApiClient } from "@storyblok/api-client";
-import { defineStoryblokComponents } from "@storyblok/react";
+import { defineStoryblokBlocks } from "@storyblok/react";
 import FallbackComponent from "../components/fallback-component";
 import Feature from "../components/feature";
 import Grid from "../components/grid";
@@ -10,7 +10,7 @@ export const apiClient = createApiClient({
   accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
-export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
   components: { teaser: Teaser, grid: Grid, feature: Feature, page: Page },
   fallback: FallbackComponent,
 });

@@ -1,7 +1,7 @@
 import { type FC, useState } from "react";
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type EmojiRandomizerProps = StoryblokComponentProps<{ label?: string }>;
+type EmojiRandomizerProps = StoryblokBlockComponentProps<{ label?: string }>;
 
 /**
  * A component that displays a label and a random emoji that changes on click

@@ -23,7 +23,7 @@ export type SuspenseFallback = ReactNode;
  * A component entry in the Storyblok component map.
  * Can be either a plain component or a config object with Suspense options.
  */
-export type StoryblokComponentEntry =
+export type StoryblokBlockEntry =
   | AnyBlockComponent
   | {
       component: AnyBlockComponent;
@@ -35,9 +35,9 @@ export type StoryblokComponentEntry =
       suspense?: boolean;
     };
 
-/** Options passed to {@link defineStoryblokComponents}. */
-export interface StoryblokComponentsOptions {
-  components: Record<string, StoryblokComponentEntry>;
+/** Options passed to {@link defineStoryblokBlocks}. */
+export interface StoryblokBlocksOptions {
+  components: Record<string, StoryblokBlockEntry>;
   /** Fallback component when a block type is not found */
   fallback?: AnyBlockComponent;
   /**
@@ -46,31 +46,47 @@ export interface StoryblokComponentsOptions {
   suspenseFallback?: SuspenseFallback;
 }
 
-/** Components returned by {@link defineStoryblokComponents}, pre-wired to the same component map. */
-export interface StoryblokComponentsResult<TExtraProps extends object = {}> {
+/** Components returned by {@link defineStoryblokBlocks}, pre-wired to the same component map. */
+export interface StoryblokBlocksResult<TExtraProps extends object = {}> {
   /**
    * Renders a single block by looking up `block.component` in the map.
    *
    * `TExtraProps` comes from the type argument passed to
-   * {@link defineStoryblokComponents}, not from this call site, so it forwards
+   * {@link defineStoryblokBlocks}, not from this call site, so it forwards
    * extra props to every rendered block component with real excess-property
    * checking: a misspelled prop (`titlee="typo"`) is a compile error instead
    * of silently forwarding. Without a type argument, `TExtraProps` defaults to
-   * `{}` and `StoryblokComponent` only accepts `block`.
+   * `{}` and `StoryblokBlock` only accepts `block`.
    *
    * @example
    * ```tsx
-   * const { StoryblokComponent } = defineStoryblokComponents<{ locale: string }>({
+   * const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>({
    *   components: { page: Page, teaser: Teaser },
    * });
    *
-   * <StoryblokComponent block={story.content} />
+   * <StoryblokBlock block={story.content} />
    * // Extra props declared in TExtraProps are forwarded to every rendered block:
-   * <StoryblokComponent block={story.content} locale="en" />
-   * // <StoryblokComponent block={story.content} localle="en" /> would be a compile error.
+   * <StoryblokBlock block={story.content} locale="en" />
+   * // <StoryblokBlock block={story.content} localle="en" /> would be a compile error.
    * ```
    */
-  StoryblokComponent: (props: { block: StoryblokBlockData } & TExtraProps) => ReactNode;
+  StoryblokBlock: (props: { block: StoryblokBlockData } & TExtraProps) => ReactNode;
+  /**
+   * Renders an array of blocks, delegating each entry to `StoryblokBlock`.
+   *
+   * Convenience over mapping manually: `key` is derived from `block._uid`
+   * and every entry receives the same `TExtraProps`.
+   *
+   * @example
+   * ```tsx
+   * const { StoryblokBlocks } = defineStoryblokBlocks({
+   *   components: { page: Page, teaser: Teaser },
+   * });
+   *
+   * <StoryblokBlocks blocks={block.columns} />
+   * ```
+   */
+  StoryblokBlocks: (props: { blocks: StoryblokBlockData[] } & TExtraProps) => ReactNode;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
 }
@@ -108,7 +124,7 @@ function unwrapMemo(component: unknown): unknown {
 /**
  * Normalize a component entry to extract component and config.
  */
-function normalizeEntry(entry: StoryblokComponentEntry): {
+function normalizeEntry(entry: StoryblokBlockEntry): {
   component: BlockComponentType;
   fallback?: SuspenseFallback;
   suspense?: boolean;
@@ -128,16 +144,16 @@ type ResolvedEntry = {
 
 /**
  * Maps Storyblok block types to React components and returns pre-wired
- * `StoryblokComponent` and `StoryblokRichText`.
+ * `StoryblokBlock`, `StoryblokBlocks`, and `StoryblokRichText`.
  *
  * Pass `TExtraProps` as an explicit type argument to type the extra props
- * `StoryblokComponent` forwards to every rendered block component, with real
- * excess-property checking on every call site. Without it, `StoryblokComponent`
- * only accepts `block`.
+ * `StoryblokBlock`/`StoryblokBlocks` forward to every rendered block
+ * component, with real excess-property checking on every call site. Without
+ * it, they only accept `block`/`blocks`.
  *
  * @example
  * ```tsx
- * export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents<{
+ * export const { StoryblokBlock, StoryblokBlocks, StoryblokRichText } = defineStoryblokBlocks<{
  *   locale: string;
  * }>({
  *   components: {
@@ -154,13 +170,13 @@ type ResolvedEntry = {
  * });
  * ```
  */
-export function defineStoryblokComponents<TExtraProps extends object = {}>(
-  config: StoryblokComponentsOptions,
-): StoryblokComponentsResult<TExtraProps> {
+export function defineStoryblokBlocks<TExtraProps extends object = {}>(
+  config: StoryblokBlocksOptions,
+): StoryblokBlocksResult<TExtraProps> {
   const defaultSuspenseFallback = config.suspenseFallback ?? null;
 
   if (!config.components) {
-    throw new Error('[Storyblok] defineStoryblokComponents: "components" is required.');
+    throw new Error('[Storyblok] defineStoryblokBlocks: "components" is required.');
   }
 
   // ── Build the registry once at factory time ────────────────────────────────
@@ -170,7 +186,7 @@ export function defineStoryblokComponents<TExtraProps extends object = {}>(
   for (const [type, entry] of Object.entries(config.components)) {
     if (entry == null) {
       throw new Error(
-        `[Storyblok] defineStoryblokComponents: components["${type}"] is undefined. Check for ` +
+        `[Storyblok] defineStoryblokBlocks: components["${type}"] is undefined. Check for ` +
           "a typo, or a circular import that hasn't finished initializing yet.",
       );
     }
@@ -180,7 +196,7 @@ export function defineStoryblokComponents<TExtraProps extends object = {}>(
       ("fallback" in entry || "suspense" in entry)
     ) {
       throw new Error(
-        `[Storyblok] defineStoryblokComponents: components["${type}"] is missing "component".`,
+        `[Storyblok] defineStoryblokBlocks: components["${type}"] is missing "component".`,
       );
     }
     const { component: Component, fallback, suspense } = normalizeEntry(entry);
@@ -191,13 +207,13 @@ export function defineStoryblokComponents<TExtraProps extends object = {}>(
     });
   }
 
-  function StoryblokComponent({
+  function StoryblokBlock({
     block,
     ...rest
   }: { block: StoryblokBlockData } & Record<string, unknown>): ReactNode {
     // ── Null guard ──────────────────────────────────────────────────────────
     if (!block) {
-      console.error("[Storyblok] StoryblokComponent: 'block' prop is required.");
+      console.error("[Storyblok] StoryblokBlock: 'block' prop is required.");
       return null;
     }
 
@@ -227,20 +243,34 @@ export function defineStoryblokComponents<TExtraProps extends object = {}>(
     return <Component block={block} editable={editable} {...rest} />;
   }
 
-  StoryblokComponent.displayName = "StoryblokComponent";
+  StoryblokBlock.displayName = "StoryblokBlock";
+
+  function StoryblokBlocks({
+    blocks,
+    ...rest
+  }: { blocks: StoryblokBlockData[] } & Record<string, unknown>): ReactNode {
+    if (!blocks) {
+      console.error("[Storyblok] StoryblokBlocks: 'blocks' prop is required.");
+      return null;
+    }
+
+    return blocks.map((block) => <StoryblokBlock key={block._uid} block={block} {...rest} />);
+  }
+
+  StoryblokBlocks.displayName = "StoryblokBlocks";
 
   // Pre-compute once so every access returns the same function reference.
   // A getter would call createStoryblokRichText() on each access, producing a
   // new component type per render and causing React to unmount + remount the
   // entire richtext subtree on every render.
-  const StoryblokRichText = createStoryblokRichText(StoryblokComponent);
+  const StoryblokRichText = createStoryblokRichText(StoryblokBlock);
 
   return {
     // Cast: the internal implementation uses `Record<string, unknown>` for JSX
     // spreads onto fixed-type components, which is a safe superset of whatever
     // `TExtraProps` the caller supplied as a type argument to this function.
-    StoryblokComponent:
-      StoryblokComponent as StoryblokComponentsResult<TExtraProps>["StoryblokComponent"],
+    StoryblokBlock: StoryblokBlock as StoryblokBlocksResult<TExtraProps>["StoryblokBlock"],
+    StoryblokBlocks: StoryblokBlocks as StoryblokBlocksResult<TExtraProps>["StoryblokBlocks"],
     StoryblokRichText,
   };
 }

@@ -38,7 +38,7 @@ export interface UseStoryblokEditorEventOptions {
  * function Page({ story }: { story: Story }) {
  *   const [current, setCurrent] = useState(story);
  *   useStoryblokEditorEvent((updated) => setCurrent(updated));
- *   return <StoryblokComponent block={current.content} />;
+ *   return <StoryblokBlock block={current.content} />;
  * }
  * ```
  */

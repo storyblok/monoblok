@@ -1,7 +1,7 @@
-import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
-import { StoryblokComponent } from "@/lib/storyblok";
+import type { BlockContent, StoryblokBlockComponentProps } from "@storyblok/react";
+import { StoryblokBlock } from "@/lib/storyblok";
 
-type GridProps = StoryblokComponentProps<{ columns: BlockContent[] }>;
+type GridProps = StoryblokBlockComponentProps<{ columns: BlockContent[] }>;
 
 const Grid = ({ block, editable }: GridProps) => {
   if (!block.columns) return null;
@@ -10,7 +10,7 @@ const Grid = ({ block, editable }: GridProps) => {
     <ul data-test="grid" {...editable}>
       {block.columns.map((column) => (
         <li key={column._uid}>
-          <StoryblokComponent block={column} />
+          <StoryblokBlock block={column} />
         </li>
       ))}
     </ul>

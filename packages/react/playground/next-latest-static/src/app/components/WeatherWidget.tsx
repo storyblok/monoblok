@@ -1,6 +1,6 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type WeatherWidgetProps = StoryblokComponentProps<{ title?: string; location?: string }>;
+type WeatherWidgetProps = StoryblokBlockComponentProps<{ title?: string; location?: string }>;
 
 // Static export prerenders every page at build time, so — unlike the
 // next-latest playground's WeatherWidget — this stays synchronous with no

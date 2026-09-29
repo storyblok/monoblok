@@ -1,6 +1,6 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type FallbackComponentProps = StoryblokComponentProps<{}>;
+type FallbackComponentProps = StoryblokBlockComponentProps<{}>;
 
 const FallbackComponent = ({ block }: FallbackComponentProps) => (
   <p>

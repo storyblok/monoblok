@@ -1,13 +1,13 @@
-import type { BlockContent, StoryblokComponentProps } from "@storyblok/react";
-import { StoryblokComponent } from "../lib/storyblok";
+import type { BlockContent, StoryblokBlockComponentProps } from "@storyblok/react";
+import { StoryblokBlock } from "../lib/storyblok";
 
-type GridProps = StoryblokComponentProps<{ columns: BlockContent[] }>;
+type GridProps = StoryblokBlockComponentProps<{ columns: BlockContent[] }>;
 
 const Grid = ({ block, editable }: GridProps) => (
   <ul {...editable} data-test="grid">
     {block.columns.map((nestedBlock) => (
       <li key={nestedBlock._uid}>
-        <StoryblokComponent block={nestedBlock} />
+        <StoryblokBlock block={nestedBlock} />
       </li>
     ))}
   </ul>

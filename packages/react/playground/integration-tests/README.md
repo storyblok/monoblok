@@ -1,9 +1,9 @@
 # React Integration-Test Playground
 
 This playground is the deterministic React app used by the Visual Editor QA harness. It replicates
-`playground/react`'s setup (same `defineStoryblokComponents`/`createApiClient` pattern, same SWR
-fetch hook) but is kept separate so QA-only routes and fixtures do not affect the manual demo, and
-it depends on `@storyblok/react` as a normal workspace package (its built `dist`), not an alias to
+`playground/react`'s setup (same `defineStoryblokBlocks`/`createApiClient` pattern, same SWR fetch
+hook) but is kept separate so QA-only routes and fixtures do not affect the manual demo, and it
+depends on `@storyblok/react` as a normal workspace package (its built `dist`), not an alias to
 `src`, so QA exercises what a real consumer imports.
 
 Components are typed against `schema/blocks.ts`, defined with `@storyblok/schema`. The API client is

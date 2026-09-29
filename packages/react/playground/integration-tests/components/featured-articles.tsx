@@ -1,7 +1,7 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 import { Block, Story } from "../schema/blocks";
 
-type FeaturedArticlesProps = StoryblokComponentProps<
+type FeaturedArticlesProps = StoryblokBlockComponentProps<
   Omit<Block<"featured-articles">, "posts"> & { posts?: Story[] | null }
 >;
 

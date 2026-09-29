@@ -179,7 +179,7 @@ function renderNode(
     if (node.type === "blok") {
       console.warn(
         '[Storyblok] A richtext document contains a "blok" node but no "blok" component is ' +
-          "registered. Use defineStoryblokComponents() to render embedded blocks, or pass a " +
+          "registered. Use defineStoryblokBlocks() to render embedded blocks, or pass a " +
           '"blok" key in the components prop.',
       );
     }

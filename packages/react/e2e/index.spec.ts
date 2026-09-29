@@ -29,7 +29,7 @@ test.describe("@storyblok/react", () => {
       await expect(page.locator('[data-test="teaser"]')).toBeVisible();
     });
 
-    // Proves recursive `StoryblokComponent` resolution (grid → feature)
+    // Proves recursive `StoryblokBlock` resolution (grid → feature)
     // survives a real bundler and browser, not just jsdom.
     test("renders a nested grid of feature blocks", async ({ page }) => {
       await page.goto("/");

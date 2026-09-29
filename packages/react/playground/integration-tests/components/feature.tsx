@@ -1,7 +1,7 @@
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 import { Block } from "../schema/blocks";
 
-type FeatureProps = StoryblokComponentProps<Block<"feature">>;
+type FeatureProps = StoryblokBlockComponentProps<Block<"feature">>;
 
 const Feature = ({ block, editable }: FeatureProps) => (
   <div {...editable} data-test="feature">

@@ -1,7 +1,7 @@
 import { useParams } from "react-router";
 import { StoryblokPreview } from "@storyblok/react";
 import { useStoryblokStory } from "../hooks/use-story";
-import { StoryblokComponent } from "../storyblok";
+import { StoryblokBlock } from "../storyblok";
 
 function CatchAllPage() {
   const params = useParams();
@@ -18,7 +18,7 @@ function CatchAllPage() {
         bridgeOptions={{ resolveRelations: ["featured-articles.posts"] }}
         renderContent={(live) => (
           <div data-test="live">
-            {live.content ? <StoryblokComponent block={live.content} /> : null}
+            {live.content ? <StoryblokBlock block={live.content} /> : null}
           </div>
         )}
       />

@@ -1,5 +1,5 @@
 import { createApiClient } from "@storyblok/api-client";
-import { defineStoryblokComponents } from "@storyblok/react";
+import { defineStoryblokBlocks } from "@storyblok/react";
 import Page from "./components/page";
 import Teaser from "./components/teaser";
 import Grid from "./components/grid";
@@ -11,7 +11,7 @@ export const apiClient = createApiClient({
   accessToken: import.meta.env.VITE_STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
-export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
   components: {
     page: Page,
     teaser: Teaser,

@@ -1,8 +1,8 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
-import { StoryblokComponentProps } from "@storyblok/react";
+import { StoryblokBlockComponentProps } from "@storyblok/react";
 
-type WeatherWidgetProps = StoryblokComponentProps<{ title: string; location: string }>;
+type WeatherWidgetProps = StoryblokBlockComponentProps<{ title: string; location: string }>;
 
 interface WeatherData {
   temperature: number;

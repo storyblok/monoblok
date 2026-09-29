@@ -1,7 +1,7 @@
 "use client";
 
 import { type FC, useEffect, useState } from "react";
-import type { StoryblokComponentProps } from "@storyblok/react";
+import type { StoryblokBlockComponentProps } from "@storyblok/react";
 
 const useIsClient = () => {
   const [isClient, setIsClient] = useState(false);
@@ -13,7 +13,7 @@ const useIsClient = () => {
   return isClient;
 };
 
-type EmojiRandomizerProps = StoryblokComponentProps<{ label?: string }>;
+type EmojiRandomizerProps = StoryblokBlockComponentProps<{ label?: string }>;
 
 /**
  * A component that displays a label and a random emoji that changes on click

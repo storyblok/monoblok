@@ -1,5 +1,5 @@
 import { createApiClient } from "@storyblok/api-client";
-import { defineStoryblokComponents } from "@storyblok/react";
+import { defineStoryblokBlocks } from "@storyblok/react";
 import type { Schema } from "@/schema/blocks";
 import Page from "@/components/page";
 import Teaser from "@/components/teaser";
@@ -18,7 +18,7 @@ export const apiClient = createApiClient({
   inlineRelations: true,
 }).withTypes<Schema>();
 
-export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
   components: {
     page: Page,
     teaser: Teaser,

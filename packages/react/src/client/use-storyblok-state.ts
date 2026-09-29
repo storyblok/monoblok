@@ -40,7 +40,7 @@ function isSameStory(a: Story, b: Story): boolean {
  * "use client";
  * function Page({ story }: { story: Story }) {
  *   const live = useStoryblokState(story);
- *   return live.content ? <StoryblokComponent block={live.content} /> : null;
+ *   return live.content ? <StoryblokBlock block={live.content} /> : null;
  * }
  * ```
  */

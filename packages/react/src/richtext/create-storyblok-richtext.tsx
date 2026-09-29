@@ -17,13 +17,13 @@ function isStoryblokBlock(block: unknown): block is StoryblokBlockData {
  * Returns a `StoryblokRichText` React component.
  *
  * When called without arguments it returns a standalone richtext renderer with
- * no embedded block support. Pass a `StoryblokComponent` to inject a default
- * `blok` renderer that delegates to it — this is what `defineStoryblokComponents`
+ * no embedded block support. Pass a `StoryblokBlock` to inject a default
+ * `blok` renderer that delegates to it — this is what `defineStoryblokBlocks`
  * uses internally.
  *
- * **Extra props for embedded blocks:** unlike `StoryblokComponent`, this
+ * **Extra props for embedded blocks:** unlike `StoryblokBlock`, this
  * component cannot automatically forward extra props (e.g. `locale`) from an
- * enclosing `<StoryblokComponent block={page} locale="de" />` call down into
+ * enclosing `<StoryblokBlock block={page} locale="de" />` call down into
  * blocks embedded in `page`'s richtext fields — the two calls belong to
  * unrelated component trees, and threading it implicitly via React Context
  * would break Server Component usage (this module has no `"use client"`
@@ -42,22 +42,22 @@ function isStoryblokBlock(block: unknown): block is StoryblokBlockData {
  * the cache.
  */
 export function createStoryblokRichText(
-  StoryblokComponent?: ComponentType<{ block: StoryblokBlockData }>,
+  StoryblokBlock?: ComponentType<{ block: StoryblokBlockData }>,
 ) {
   // Captured once per factory call — stable for the lifetime of the returned component.
-  const DefaultBlock = StoryblokComponent
+  const DefaultBlock = StoryblokBlock
     ? function DefaultBlock({ attrs, context }: StoryblokReactRichTextProps<"blok">) {
         if (!Array.isArray(attrs?.body)) {
           return null;
         }
         // Opt-in prop forwarding: a plain-object `data` passed to StoryblokRichText
         // is spread onto every embedded block, mirroring the extra props
-        // StoryblokComponent forwards to a block it renders directly.
+        // StoryblokBlock forwards to a block it renders directly.
         const extraProps =
           typeof context?.data === "object" && context.data !== null ? context.data : undefined;
         return attrs.body.map((block) =>
           isStoryblokBlock(block) ? (
-            <StoryblokComponent block={block} key={block["_uid"]} {...extraProps} />
+            <StoryblokBlock block={block} key={block["_uid"]} {...extraProps} />
           ) : null,
         );
       }

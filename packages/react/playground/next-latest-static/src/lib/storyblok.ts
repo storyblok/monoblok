@@ -1,5 +1,5 @@
 import { createApiClient } from "@storyblok/api-client";
-import { defineStoryblokComponents } from "@storyblok/react";
+import { defineStoryblokBlocks } from "@storyblok/react";
 import EmojiRandomizer from "@/app/components/EmojiRandomizer";
 import Grid from "@/app/components/Grid";
 import Page from "@/app/components/Page";
@@ -10,7 +10,7 @@ export const apiClient = createApiClient({
   accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
-export const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
   components: {
     teaser: Teaser,
     page: Page,

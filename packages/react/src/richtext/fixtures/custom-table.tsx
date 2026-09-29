@@ -1,8 +1,8 @@
 import type { StoryblokReactRichTextProps } from "../renderer";
 import { splitTableRows } from "@storyblok/richtext";
-import { defineStoryblokComponents } from "../../define-storyblok-components";
+import { defineStoryblokBlocks } from "../../define-storyblok-blocks";
 
-const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
+const { StoryblokRichText } = defineStoryblokBlocks({ components: {} });
 
 export default function CustomTable({ content, context }: StoryblokReactRichTextProps<"table">) {
   const { headerRows, bodyRows } = splitTableRows(content);

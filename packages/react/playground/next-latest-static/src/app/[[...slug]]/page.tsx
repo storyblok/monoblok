@@ -1,4 +1,4 @@
-import { apiClient, StoryblokComponent } from "@/lib/storyblok";
+import { apiClient, StoryblokBlock } from "@/lib/storyblok";
 import Link from "next/link";
 
 export function generateStaticParams() {
@@ -23,7 +23,7 @@ export default async function CatchAllPage({ params }: { params: Promise<{ slug?
       <Link href={storySlug === "react/richtext" ? "/" : "/react/richtext"}>
         {storySlug === "react/richtext" ? "Go to Home" : "Go to Rich Text Example"}
       </Link>
-      <StoryblokComponent block={story.content} />
+      <StoryblokBlock block={story.content} />
     </main>
   );
 }

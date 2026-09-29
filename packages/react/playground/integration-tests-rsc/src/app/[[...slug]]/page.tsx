@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { StoryblokPreview } from "@storyblok/react/rsc";
 import { apiClient } from "@/lib/storyblok";
 import { renderContent } from "@/lib/actions";
+import SlowWidget from "@/components/slow-widget";
 
 type Params = Promise<{ slug?: string[] }>;
 
@@ -37,6 +39,16 @@ export default async function CatchAllPage({ params }: { params: Params }) {
           </p>
         ) : null,
       )}
+      {/*
+        Not a Storyblok component — a plain async Server Component standing
+        in for a genuinely slow data source. Proves the page streams this
+        fallback immediately instead of blocking on it, and that the
+        live-editing bridge above keeps working on the rest of the tree while
+        this is still pending.
+      */}
+      <Suspense fallback={<div data-test="slow-widget-fallback">Loading widget…</div>}>
+        <SlowWidget />
+      </Suspense>
     </div>
   );
 }

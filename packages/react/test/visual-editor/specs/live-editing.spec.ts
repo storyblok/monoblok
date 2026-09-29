@@ -62,6 +62,39 @@ test.describe("the Visual Editor live-updates the playground", () => {
     await expect(posts.first()).toContainText("First Article");
   });
 
+  // Only the RSC playground renders a component that suspends during SSR
+  // (`../../playground/integration-tests-rsc/src/components/slow-widget.tsx`);
+  // the client (CSR) playground has nothing to stream, so this proves
+  // something new only against that target.
+  test("a slow Suspense boundary streams in without blocking the bridge", async ({
+    page,
+    request,
+  }) => {
+    test.skip(process.env.QA_TARGET !== "rsc", "Suspense streaming only applies to the RSC target");
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));
+    const slowWidgetFallback = editor.preview.locator('[data-test="slow-widget-fallback"]');
+    const slowWidget = editor.preview.locator('[data-test="slow-widget"]');
+
+    // The initial paint streams the fallback in immediately: it must not wait
+    // on the slow component, which resolves 2s after the page starts.
+    await expect(slowWidgetFallback).toBeVisible({ timeout: 10_000 });
+
+    // While the fallback is still showing, editing an unrelated block must
+    // still live-update — a broken bridge would be indistinguishable from a
+    // page still blocked on the slow component.
+    await editor.selectBlock("teaser-home-1", "headline");
+    const edited = "QA teaser suspense check";
+    await editor.textField("headline").fill(edited);
+    await expect(editor.block("teaser-home-1")).toContainText(edited, { timeout: 30_000 });
+
+    // The slow component eventually resolves and replaces its own fallback,
+    // leaving the rest of the tree — including the edit above — untouched.
+    await expect(slowWidget).toBeVisible({ timeout: 10_000 });
+    await expect(slowWidgetFallback).toHaveCount(0);
+    await expect(editor.block("teaser-home-1")).toContainText(edited);
+  });
+
   test("a page not wired through the bridge never updates", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "home"));

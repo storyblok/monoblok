@@ -19,6 +19,18 @@ The catch-all route renders the same story two ways, same as `../integration-tes
   directly. It never goes through `StoryblokPreview`, so it never subscribes to editor events and
   never changes. This proves the bridge is opt-in per call, not a page-wide default.
 
+## Suspense streaming
+
+The catch-all route also renders `SlowWidget` (`src/components/slow-widget.tsx`) inside a plain
+`<Suspense>` boundary, next to `StoryblokPreview`. It is a plain async Server Component with an
+artificial delay — not a Storyblok component — standing in for a genuinely slow data source. It
+proves the page streams the `data-test="slow-widget-fallback"` placeholder immediately instead of
+blocking on it, and that the live-editing bridge keeps working on the rest of the tree
+(`data-test="slow-widget"` once resolved) while it is still pending. Covered by the "a slow Suspense
+boundary streams in without blocking the bridge" case in
+`test/visual-editor/specs/live-editing.spec.ts`, which only runs against this target
+(`QA_TARGET=rsc`).
+
 ## Run the app
 
 From the repository root, with `.env.qa-engineer-manual` exported:

@@ -1,11 +1,22 @@
 export const CACHEABLE_METHODS = new Set(["GET"]);
-export const NON_CACHEABLE_PATHS = new Set(["/v2/cdn/spaces/me"]);
+
+export const SPACES_ME_PATH = "/v2/cdn/spaces/me";
+
+export const NON_CACHEABLE_PATHS = new Set([SPACES_ME_PATH]);
 
 /** Returns `true` when the query targets draft content (`version: 'draft'`). Draft requests bypass the cache. */
 export const isDraftRequest = (query: Record<string, unknown>) => query.version === "draft";
 
-/** Ensures a path always starts with a leading slash for consistent comparisons and cache keys. */
-const normalizePath = (path: string) => (path.startsWith("/") ? path : `/${path}`);
+/**
+ * Normalizes to exactly one leading slash and no trailing one, for comparisons and cache
+ * keys. The API serves `/cdn/spaces/me/` like `/cdn/spaces/me`.
+ */
+export const normalizePath = (path: string) => {
+  const withLeadingSlash = path.replace(/^\/*/, "/");
+  return withLeadingSlash.length > 1 ? withLeadingSlash.replace(/\/+$/, "") : withLeadingSlash;
+};
+
+export const isSpacesMeRequest = (path: string) => normalizePath(path) === SPACES_ME_PATH;
 
 /**
  * Recursively normalizes query values by sorting object keys.
@@ -29,11 +40,21 @@ const normalizeQuery = (value: unknown): unknown => {
   return value;
 };
 
-export const createCacheKey = (method: string, path: string, query: Record<string, unknown>) => {
+/**
+ * `tokenId` scopes the key to the space: the token travels outside `query`, so without it
+ * clients for different spaces sharing a provider would read each other's content.
+ */
+export const createCacheKey = (
+  method: string,
+  path: string,
+  query: Record<string, unknown>,
+  tokenId: string,
+) => {
   return JSON.stringify({
     method,
     path: normalizePath(path),
     query: normalizeQuery(query),
+    tokenId,
   });
 };
 

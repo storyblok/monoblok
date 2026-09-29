@@ -57,7 +57,13 @@ export type {
   WithInlinedRelations,
 } from "./resources/stories";
 // Cache types
-export type { CacheProvider, CacheStrategy, CacheStrategyHandler } from "./utils/cache";
+export type {
+  CacheEntry,
+  CacheEntryInput,
+  CacheProvider,
+  CacheStrategy,
+  CacheStrategyHandler,
+} from "./utils/cache";
 
 // Rate limiting
 export { createDefaultRateLimiter } from "./utils/limiter";

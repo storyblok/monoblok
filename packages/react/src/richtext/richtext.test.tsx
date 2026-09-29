@@ -261,7 +261,7 @@ describe("react StoryblokRichText component", () => {
   // ─── Root StoryblokRichText — blok nodes (finding #5) ─────────────────────
 
   describe("root StoryblokRichText — blok node handling", () => {
-    const blokDoc = {
+    const blokDoc: StoryblokRichTextInput = {
       type: "doc",
       content: [
         {
@@ -276,7 +276,7 @@ describe("react StoryblokRichText component", () => {
 
     it("warns when a blok node appears with no blok component registered", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const { container } = render(<RootStoryblokRichText document={blokDoc as any} />);
+      const { container } = render(<RootStoryblokRichText document={blokDoc} />);
       expect(container.textContent).toBe("");
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"blok"'));
       warnSpy.mockRestore();
@@ -286,7 +286,7 @@ describe("react StoryblokRichText component", () => {
       const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       render(
         <RootStoryblokRichText
-          document={blokDoc as any}
+          document={blokDoc}
           components={{
             blok: ({ attrs }: any) => (
               <div data-testid="inline-blok">{attrs?.body?.[0]?.component}</div>
@@ -303,7 +303,7 @@ describe("react StoryblokRichText component", () => {
 
   describe("root StoryblokRichText — data prop forwarding", () => {
     it("forwards the data prop to custom node components via context", () => {
-      const doc = {
+      const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [{ type: "paragraph", content: [{ type: "text", text: "hello" }] }],
       };
@@ -316,7 +316,7 @@ describe("react StoryblokRichText component", () => {
 
       render(
         <RootStoryblokRichText
-          document={doc as any}
+          document={doc}
           data={{ locale: "de-AT" }}
           components={{ paragraph: Paragraph }}
         />,
@@ -324,6 +324,109 @@ describe("react StoryblokRichText component", () => {
 
       expect(receivedData).toHaveLength(1);
       expect(receivedData[0]).toEqual({ locale: "de-AT" });
+    });
+
+    it("forwards the full data object to context.data by reference, not just the keys a component reads", () => {
+      const dataObj = { locale: "de-AT", flags: { beta: true }, tags: ["a", "b"] };
+      let received: unknown;
+      const Paragraph = ({ children, context }: any) => {
+        received = context?.data;
+        return <p>{children}</p>;
+      };
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "hi" }] }],
+      };
+
+      render(
+        <RootStoryblokRichText
+          document={doc}
+          data={dataObj}
+          components={{ paragraph: Paragraph }}
+        />,
+      );
+
+      expect(received).toBe(dataObj);
+    });
+  });
+
+  // ─── Custom node components — receiving both node props and context.data ──
+
+  describe("custom node components — node props alongside context.data", () => {
+    it("threads data through a recursive custom component (heading) into a nested custom component (text)", () => {
+      const options: StoryblokReactRichTextComponentMap = {
+        heading: HeadingWithRichText,
+        text: CustomText,
+      };
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          {
+            type: "heading",
+            attrs: { level: 2, textAlign: null },
+            content: [{ type: "text", text: "world" }],
+          },
+        ],
+      };
+
+      const { container } = render(
+        <StoryblokRichText document={doc} components={options} data={{ prefix: "[hi]" }} />,
+      );
+
+      // HeadingWithRichText re-renders its content via a nested StoryblokRichText,
+      // spreading `{...context}` — so `data` reaches CustomText two levels down.
+      expect(container.textContent).toContain("[hi] WORLD");
+    });
+
+    it("gives a custom component both its own node props (attrs/text) and context.data at the same time", () => {
+      let receivedText: string | undefined;
+      let receivedPrefix: string | undefined;
+      function ProbeText({ text, context }: any) {
+        receivedText = text;
+        receivedPrefix = (context?.data as { prefix?: string } | undefined)?.prefix;
+        return <>{text}</>;
+      }
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "payload" }] }],
+      };
+
+      render(
+        <RootStoryblokRichText
+          document={doc}
+          components={{ text: ProbeText }}
+          data={{ prefix: "[tag]" }}
+        />,
+      );
+
+      expect(receivedText).toBe("payload");
+      expect(receivedPrefix).toBe("[tag]");
+    });
+
+    it("does NOT spread `data` keys as top-level props on a custom node component — only `blok`'s default embed does that", () => {
+      let receivedProps: Record<string, unknown> | undefined;
+      function ProbeText(props: any) {
+        receivedProps = props;
+        return <>{props.text}</>;
+      }
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "hi" }] }],
+      };
+
+      render(
+        <RootStoryblokRichText
+          document={doc}
+          components={{ text: ProbeText }}
+          data={{ locale: "de" }}
+        />,
+      );
+
+      // `locale` is nested under context.data, never spread directly onto props.
+      expect(receivedProps?.locale).toBeUndefined();
+      expect((receivedProps?.context as { data?: unknown } | undefined)?.data).toEqual({
+        locale: "de",
+      });
     });
   });
 });

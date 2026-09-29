@@ -12,6 +12,7 @@ import { describe, it, expect, vi, expectTypeOf } from "vitest";
 import type { ReactNode } from "react";
 import { render, waitFor, act } from "@testing-library/react";
 import type { BlockContent, StoryblokComponentProps, StoryblokEditableProps } from "./types";
+import type { StoryblokRichTextInput } from "@storyblok/richtext";
 import { defineStoryblokComponents } from "./define-storyblok-components";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -194,17 +195,17 @@ describe("defineStoryblokComponents", () => {
 
     it("renders a simple rich-text document", () => {
       const { StoryblokRichText } = defineStoryblokComponents({ components: {} });
-      const doc = {
+      const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
       };
-      const { container } = render(<StoryblokRichText document={doc as any} />);
+      const { container } = render(<StoryblokRichText document={doc} />);
       expect(container.textContent).toContain("Hello");
     });
 
     it("renders embedded blocks via the same component map's StoryblokComponent", () => {
       const { StoryblokRichText } = defineStoryblokComponents({ components: { page: Page } });
-      const doc = {
+      const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
           {
@@ -216,7 +217,7 @@ describe("defineStoryblokComponents", () => {
           },
         ],
       };
-      const { getByTestId } = render(<StoryblokRichText document={doc as any} />);
+      const { getByTestId } = render(<StoryblokRichText document={doc} />);
       expect(getByTestId("page")).toBeInTheDocument();
     });
 
@@ -231,7 +232,7 @@ describe("defineStoryblokComponents", () => {
       const { StoryblokRichText } = defineStoryblokComponents({
         components: { page: PageWithLocale },
       });
-      const doc = {
+      const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
           {
@@ -243,9 +244,7 @@ describe("defineStoryblokComponents", () => {
           },
         ],
       };
-      const { getByTestId } = render(
-        <StoryblokRichText document={doc as any} data={{ locale: "de" }} />,
-      );
+      const { getByTestId } = render(<StoryblokRichText document={doc} data={{ locale: "de" }} />);
       expect(getByTestId("page")).toHaveAttribute("data-locale", "de");
     });
 
@@ -260,7 +259,7 @@ describe("defineStoryblokComponents", () => {
       const { StoryblokRichText } = defineStoryblokComponents({
         components: { page: PageWithLocale },
       });
-      const doc = {
+      const doc: StoryblokRichTextInput = {
         type: "doc",
         content: [
           {
@@ -272,10 +271,281 @@ describe("defineStoryblokComponents", () => {
           },
         ],
       };
-      const { getByTestId } = render(
-        <StoryblokRichText document={doc as any} data="not-an-object" />,
-      );
+      const { getByTestId } = render(<StoryblokRichText document={doc} data="not-an-object" />);
       expect(getByTestId("page")).toHaveAttribute("data-locale", "none");
+    });
+
+    it("forwards the same `data` prop to every embedded blok in a document with multiple bloks", () => {
+      function Widget({ block, locale }: { block: BlockContent; locale?: string }) {
+        return (
+          <div data-testid={`widget-${block._uid}`} data-locale={locale}>
+            {block.component}
+          </div>
+        );
+      }
+      const { StoryblokRichText } = defineStoryblokComponents({
+        components: { widget: Widget },
+      });
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          { type: "blok", attrs: { id: "b1", body: [{ component: "widget", _uid: "uid-1" }] } },
+          { type: "paragraph", content: [{ type: "text", text: "sep" }] },
+          { type: "blok", attrs: { id: "b2", body: [{ component: "widget", _uid: "uid-2" }] } },
+        ],
+      };
+      const { getByTestId } = render(<StoryblokRichText document={doc} data={{ locale: "es" }} />);
+      expect(getByTestId("widget-uid-1")).toHaveAttribute("data-locale", "es");
+      expect(getByTestId("widget-uid-2")).toHaveAttribute("data-locale", "es");
+    });
+
+    it("re-renders embedded bloks with fresh values when the `data` prop changes", () => {
+      function Widget({ block: _block, locale }: { block: BlockContent; locale?: string }) {
+        return <div data-testid="widget">{locale}</div>;
+      }
+      const { StoryblokRichText } = defineStoryblokComponents({
+        components: { widget: Widget },
+      });
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          { type: "blok", attrs: { id: "b1", body: [{ component: "widget", _uid: "uid-1" }] } },
+        ],
+      };
+      const { getByTestId, rerender } = render(
+        <StoryblokRichText document={doc} data={{ locale: "en" }} />,
+      );
+      expect(getByTestId("widget")).toHaveTextContent("en");
+      rerender(<StoryblokRichText document={doc} data={{ locale: "fr" }} />);
+      expect(getByTestId("widget")).toHaveTextContent("fr");
+    });
+
+    it("lets a `blok` entry passed in the `components` prop override the built-in embedded-block renderer", () => {
+      const { StoryblokRichText } = defineStoryblokComponents({ components: { page: Page } });
+      const doc: StoryblokRichTextInput = {
+        type: "doc",
+        content: [
+          {
+            type: "blok",
+            attrs: { id: "blok-1", body: [{ component: "page", _uid: "uid-page" }] },
+          },
+        ],
+      };
+      const { getByTestId, queryByTestId } = render(
+        <StoryblokRichText
+          document={doc}
+          components={{
+            blok: ({ attrs }: any) => (
+              <div data-testid="custom-blok">{attrs?.body?.[0]?.component}</div>
+            ),
+          }}
+        />,
+      );
+      // The caller's `blok` renderer wins — the built-in one (which would have
+      // rendered "page" via StoryblokComponent) is not used.
+      expect(getByTestId("custom-blok")).toHaveTextContent("page");
+      expect(queryByTestId("page")).toBeNull();
+    });
+  });
+
+  // ─── Custom data propagation across nested components ────────────────────
+  //
+  // TExtraProps forwarding only applies at the JSX call site: StoryblokComponent
+  // spreads its extra props onto the component resolved for THAT block. A
+  // parent block component must explicitly re-pass the prop to any nested
+  // `<StoryblokComponent block={child} .../>` call for it to reach a
+  // grandchild — it does not travel automatically through the tree.
+
+  describe("custom data propagation across nested components", () => {
+    type LocaleProps = { locale?: string };
+
+    function Leaf({ block, locale }: { block: BlockContent; locale?: string }) {
+      return (
+        <span data-testid="leaf" data-locale={locale ?? "none"}>
+          {block._uid}
+        </span>
+      );
+    }
+
+    it("reaches a deeply nested block when every level explicitly forwards it", () => {
+      function Branch({
+        block,
+        locale,
+      }: {
+        block: BlockContent & { children?: BlockContent[] };
+        locale?: string;
+      }) {
+        return (
+          <div data-testid="branch">
+            {block.children?.map((child) => (
+              <StoryblokComponent key={child._uid} block={child} locale={locale} />
+            ))}
+          </div>
+        );
+      }
+      const { StoryblokComponent } = defineStoryblokComponents<LocaleProps>({
+        components: { branch: Branch, leaf: Leaf },
+      });
+      const root = makeBlockData({
+        component: "branch",
+        _uid: "uid-branch",
+        children: [makeBlockData({ component: "leaf", _uid: "uid-leaf" })],
+      });
+
+      const { getByTestId } = render(<StoryblokComponent block={root} locale="fr" />);
+      expect(getByTestId("leaf")).toHaveAttribute("data-locale", "fr");
+    });
+
+    it("does not automatically reach a nested block when an intermediate component forwards nothing", () => {
+      function Branch({ block }: { block: BlockContent & { children?: BlockContent[] } }) {
+        return (
+          <div data-testid="branch">
+            {block.children?.map((child) => (
+              <StoryblokComponent key={child._uid} block={child} />
+            ))}
+          </div>
+        );
+      }
+      const { StoryblokComponent } = defineStoryblokComponents<LocaleProps>({
+        components: { branch: Branch, leaf: Leaf },
+      });
+      const root = makeBlockData({
+        component: "branch",
+        _uid: "uid-branch",
+        children: [makeBlockData({ component: "leaf", _uid: "uid-leaf" })],
+      });
+
+      const { getByTestId } = render(<StoryblokComponent block={root} locale="fr" />);
+      expect(getByTestId("leaf")).toHaveAttribute("data-locale", "none");
+    });
+
+    it("forwards an object extra prop intact — nested values and functions survive by reference", () => {
+      const onSelect = vi.fn();
+      type ConfigProps = { config: { theme: string; onSelect: () => void } };
+      function Widget({
+        block: _block,
+        config,
+      }: {
+        block: BlockContent;
+        config?: ConfigProps["config"];
+      }) {
+        return (
+          <button
+            data-testid="widget"
+            data-theme={config?.theme}
+            onClick={() => config?.onSelect()}
+          >
+            click
+          </button>
+        );
+      }
+      const { StoryblokComponent } = defineStoryblokComponents<ConfigProps>({
+        components: { widget: Widget },
+      });
+      const block = makeBlockData({ component: "widget" });
+      const { getByTestId } = render(
+        <StoryblokComponent block={block} config={{ theme: "dark", onSelect }} />,
+      );
+      const button = getByTestId("widget");
+      expect(button).toHaveAttribute("data-theme", "dark");
+      button.click();
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it("updates the extra prop a block receives when it changes across re-renders", () => {
+      function Widget({ block: _block, locale }: { block: BlockContent; locale?: string }) {
+        return <div data-testid="widget">{locale}</div>;
+      }
+      const { StoryblokComponent } = defineStoryblokComponents<LocaleProps>({
+        components: { widget: Widget },
+      });
+      const block = makeBlockData({ component: "widget" });
+      const { getByTestId, rerender } = render(<StoryblokComponent block={block} locale="en" />);
+      expect(getByTestId("widget")).toHaveTextContent("en");
+      rerender(<StoryblokComponent block={block} locale="de" />);
+      expect(getByTestId("widget")).toHaveTextContent("de");
+    });
+  });
+
+  // ─── StoryblokComponent extra props vs. a nested StoryblokRichText's `data` ─
+  //
+  // A block component can receive extra props from `StoryblokComponent` (e.g.
+  // `locale` via TExtraProps) and separately render a `StoryblokRichText` for
+  // one of its own richtext fields. Those two data paths are NOT connected:
+  // extra props land on the block component's own props, not in the richtext
+  // context, unless the component explicitly re-passes them as `data`.
+
+  describe("StoryblokComponent extra props vs. a nested StoryblokRichText's data", () => {
+    const richTextDoc: StoryblokRichTextInput = {
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "hi" }] }],
+    };
+
+    it("does not automatically expose a StoryblokComponent extra prop in a nested StoryblokRichText's context.data", () => {
+      let receivedData: unknown = "not-set";
+      function Probe({ children, context }: any) {
+        receivedData = context?.data;
+        return <p>{children}</p>;
+      }
+      function PageWithRichText({
+        block,
+      }: {
+        block: BlockContent & { richText?: StoryblokRichTextInput };
+        locale?: string;
+      }) {
+        return (
+          <div data-testid="page">
+            {Boolean(block.richText) && (
+              <StoryblokRichText document={block.richText} components={{ paragraph: Probe }} />
+            )}
+          </div>
+        );
+      }
+      const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents<{
+        locale?: string;
+      }>({
+        components: { page: PageWithRichText },
+      });
+      const block = makeBlockData({ component: "page", richText: richTextDoc });
+
+      render(<StoryblokComponent block={block} locale="de" />);
+      expect(receivedData).toBeUndefined();
+    });
+
+    it("exposes a StoryblokComponent extra prop in a nested StoryblokRichText once the block component re-passes it as `data`", () => {
+      let receivedLocale: unknown;
+      function Probe({ children, context }: any) {
+        receivedLocale = (context?.data as { locale?: string } | undefined)?.locale;
+        return <p>{children}</p>;
+      }
+      function PageWithRichText({
+        block,
+        locale,
+      }: {
+        block: BlockContent & { richText?: StoryblokRichTextInput };
+        locale?: string;
+      }) {
+        return (
+          <div data-testid="page">
+            {Boolean(block.richText) && (
+              <StoryblokRichText
+                document={block.richText}
+                components={{ paragraph: Probe }}
+                data={{ locale }}
+              />
+            )}
+          </div>
+        );
+      }
+      const { StoryblokComponent, StoryblokRichText } = defineStoryblokComponents<{
+        locale?: string;
+      }>({
+        components: { page: PageWithRichText },
+      });
+      const block = makeBlockData({ component: "page", richText: richTextDoc });
+
+      render(<StoryblokComponent block={block} locale="de" />);
+      expect(receivedLocale).toBe("de");
     });
   });
 

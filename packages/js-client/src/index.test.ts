@@ -236,6 +236,1209 @@ describe("storyblokClient", () => {
     });
   });
 
+  describe("cache invalidation via cdn/spaces/me", () => {
+    // `/cdn/spaces/me` reports `space.version` and no `cv`.
+    const spaceResponse = (version: number) => ({
+      data: { space: { id: 1, name: "Test", version } },
+      headers: {},
+      status: 200,
+    });
+
+    const storiesResponse = (cv: number) => ({
+      data: { stories: [{ id: 1, title: "Update" }], cv },
+      headers: {},
+      status: 200,
+    });
+
+    let autoClearClient: any;
+    let flushCache: any;
+
+    beforeEach(() => {
+      autoClearClient = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "auto" },
+      });
+      flushCache = vi.spyOn(autoClearClient, "flushCache");
+    });
+
+    it("should flush the cache when the space reports a new version", async () => {
+      const token = "space-version-changed";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled(); // nothing served yet, nothing to flush
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should flush on the first poll when the cv does not match the space version", async () => {
+      const token = "space-version-first-poll";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should keep caching after a caller set a cv the API never reported", async () => {
+      const client: any = new StoryblokClient({
+        accessToken: "caller-supplied-cv",
+        cache: { type: "memory", clear: "auto" },
+      });
+      client.setCacheVersion(9_999_999_999);
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+      await client.get("cdn/stories", { version: "published" });
+      await client.get("cdn/stories", { version: "published" });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not adopt a lower cv from an edge node that answers after a flush", async () => {
+      const token = "stale-cv-after-flush";
+      const client: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "auto" },
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories", { version: "published", token });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await client.get("cdn/spaces/me", { version: "draft", token });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await client.get("cdn/spaces/me", { version: "draft", token }); // publish, cache flushed
+
+      // An edge node still holding the pre-publish snapshot answers the refetch.
+      const staleExecute = vi.fn().mockResolvedValue(storiesResponse(900));
+      client.throttleManager.execute = staleExecute;
+      await client.get("cdn/stories", { version: "published", token });
+      await client.get("cdn/stories", { version: "published", token });
+
+      expect(staleExecute).toHaveBeenCalledTimes(2);
+      expect(staleExecute.mock.calls[1][3]).not.toHaveProperty("cv");
+    });
+
+    it("should not flush the cache when the space version is unchanged", async () => {
+      const token = "space-version-unchanged";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not track space.version as the cv sent with requests", async () => {
+      const token = "space-version-not-a-cv";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(autoClearClient.cacheVersions()[token]).toBe(0);
+    });
+
+    it("should drop the cv for the token that reported the space version", async () => {
+      // A request token other than the client's own, which `flushCache` does not clear.
+      const token = "space-version-request-token";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(flushCache).toHaveBeenCalledTimes(1);
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(3000));
+      autoClearClient.throttleManager.execute = execute;
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      // Not merely falsy: `cv=0` would be serialized onto the request.
+      expect(execute.mock.calls[0][3]).not.toHaveProperty("cv");
+    });
+
+    it("should still flush on a space version change when cv is manual", async () => {
+      const token = "space-version-cv-manual";
+      const manualCvClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "auto", cv: "manual" },
+      });
+      const manualCvFlushCache = vi.spyOn(manualCvClient, "flushCache");
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      manualCvClient.throttleManager.execute = execute;
+      await manualCvClient.get("cdn/stories", { version: "draft", token });
+      await manualCvClient.get("cdn/stories", { version: "draft", token });
+
+      expect(manualCvClient.cacheVersions()[token]).toBe(1000);
+      expect(execute.mock.calls[1][3].cv).toBeUndefined();
+
+      manualCvClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+
+      // First sighting ahead of the cv.
+      expect(manualCvFlushCache).toHaveBeenCalledTimes(1);
+
+      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(manualCvFlushCache).toHaveBeenCalledTimes(1); // unchanged version
+
+      manualCvClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(3000));
+      await manualCvClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(manualCvFlushCache).toHaveBeenCalledTimes(2);
+    });
+
+    it("should not flush on the first poll when the cv already matches the space version", async () => {
+      // Without a Minimum Cache TTL both signals report the same raw version.
+      const token = "space-version-first-poll-equal";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should ignore a space.version that is not a number", async () => {
+      const token = "space-version-not-a-number";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue({
+        data: { space: { id: 1, name: "Test", version: "2000" } },
+        headers: {},
+        status: 200,
+      });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not flush on a published poll when clear is onpreview", async () => {
+      const token = "space-version-onpreview";
+      const onPreviewClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "onpreview" },
+      });
+      const onPreviewFlushCache = vi.spyOn(onPreviewClient, "flushCache");
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await onPreviewClient.get("cdn/stories", { version: "published", token });
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
+
+      expect(onPreviewFlushCache).not.toHaveBeenCalled();
+    });
+
+    it("should flush on a draft poll when clear is onpreview", async () => {
+      const token = "space-version-onpreview-draft";
+      const onPreviewClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "onpreview" },
+      });
+      const onPreviewFlushCache = vi.spyOn(onPreviewClient, "flushCache");
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await onPreviewClient.get("cdn/stories", { version: "published", token });
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(onPreviewFlushCache).not.toHaveBeenCalled(); // equal pair, nothing published
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not let a published poll consume the signal a draft poll needs", async () => {
+      const token = "space-version-onpreview-interleaved";
+      const onPreviewClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "onpreview" },
+      });
+      const onPreviewFlushCache = vi.spyOn(onPreviewClient, "flushCache");
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await onPreviewClient.get("cdn/stories", { version: "published", token });
+
+      onPreviewClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await onPreviewClient.get("cdn/spaces/me", { version: "published", token });
+      expect(onPreviewFlushCache).not.toHaveBeenCalled();
+
+      // Still a first sighting, and ahead of the tracked cv.
+      await onPreviewClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(onPreviewFlushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not flush when polled before any content request", async () => {
+      const token = "space-version-poll-first";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not flush on a space version change when clear is manual", async () => {
+      const token = "space-version-clear-manual";
+      const manualClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { type: "memory", clear: "manual" },
+      });
+      const manualFlushCache = vi.spyOn(manualClient, "flushCache");
+
+      manualClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await manualClient.get("cdn/stories", { version: "draft", token });
+
+      manualClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1500));
+      await manualClient.get("cdn/spaces/me", { version: "draft", token });
+
+      manualClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await manualClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(manualFlushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not attach a cv to the poll request from a reused params object", async () => {
+      const token = "space-version-reused-params";
+      const execute = vi.fn(async (_rl: any, _m: any, url: string) =>
+        url === "/cdn/spaces/me" ? spaceResponse(1000) : storiesResponse(1000),
+      );
+      autoClearClient.throttleManager.execute = execute;
+
+      const params = { version: "draft", token };
+      await autoClearClient.get("cdn/stories", params); // tracks cv 1000
+      await autoClearClient.get("cdn/stories", params); // stamps params.cv = 1000
+      await autoClearClient.get("cdn/spaces/me", params);
+
+      const poll = execute.mock.calls.find((call) => call[2] === "/cdn/spaces/me");
+      expect((poll?.[3] as any).cv).toBeUndefined();
+    });
+
+    it("should not treat the cleared cv sentinel as a tracked cv on the first poll", async () => {
+      const token = "space-version-cleared-sentinel";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories", { version: "draft", token });
+      client.clearCacheVersion();
+
+      const clearedFlushCache = vi.spyOn(client, "flushCache");
+      // Equals the cv tracked before the clear: nothing was published.
+      client.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      await client.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(clearedFlushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not let a response in flight across a flush re-pin the cv it dropped", async () => {
+      const token = "space-version-inflight-race";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories/warm", { version: "published", token });
+      expect(client.cacheVersion()).toBe(1000);
+
+      // Held in flight with cv 1000 on a not-yet-cached key.
+      let releaseRaced: (value: unknown) => void = () => {};
+      const inFlight = new Promise((resolve) => {
+        releaseRaced = resolve;
+      });
+      client.throttleManager.execute = vi.fn(async (_rl: any, _m: any, url: string) =>
+        url === "/cdn/spaces/me" ? spaceResponse(2000) : inFlight,
+      );
+      const racedRequest = client.get("cdn/stories/raced", { version: "published", token });
+
+      await client.get("cdn/spaces/me", { version: "draft", token });
+      expect(client.cacheVersion()).toBe(0);
+
+      // Resolves with the pre-publish body and cv.
+      releaseRaced(storiesResponse(1000));
+      await racedRequest;
+      expect(client.cacheVersion()).toBe(0); // not re-pinned to 1000
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue({
+        data: { stories: [{ id: 1, title: "Published" }], cv: 2000 },
+        headers: {},
+        status: 200,
+      });
+      const after = await client.get("cdn/stories/raced", { version: "published", token });
+
+      expect(after.data.stories[0].title).toBe("Published");
+    });
+
+    it("should not attach a cv to the poll request", async () => {
+      const token = "space-version-no-cv-on-poll";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "draft", token });
+
+      const execute = vi.fn().mockResolvedValue(spaceResponse(1000));
+      autoClearClient.throttleManager.execute = execute;
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(execute.mock.calls[0][3].cv).toBeUndefined();
+    });
+
+    it("should keep the cv of a response that also reports a space version", async () => {
+      // No endpoint reports both today. The client's own token, so `flushCache` clears this cv.
+      const token = "space-version-and-cv-in-one-response";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+      const bothSignals = (value: number) => ({
+        data: { space: { id: 1, name: "Test", version: value }, cv: value },
+        headers: {},
+        status: 200,
+      });
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(bothSignals(2000));
+      await client.get("cdn/spaces/me", { version: "draft" });
+      expect(client.cacheVersions()[token]).toBe(2000);
+
+      client.throttleManager.execute = vi.fn().mockResolvedValue(bothSignals(3000));
+      await client.get("cdn/spaces/me", { version: "draft" });
+
+      expect(client.cacheVersions()[token]).toBe(3000);
+    });
+
+    it("should treat every spelling of the poll slug the same", async () => {
+      // The API serves a trailing slash the same as none.
+      const poll = async (slug: string, token: string) => {
+        const client: any = new StoryblokClient({
+          accessToken: "test-token",
+          cache: { type: "memory", clear: "auto" },
+        });
+        const clientFlushCache = vi.spyOn(client, "flushCache");
+        const polls: { url: string; cv: unknown }[] = [];
+
+        client.throttleManager.execute = vi.fn(
+          async (_rateLimit: any, _method: any, url: string, params: any) => {
+            if (url.includes("spaces/me")) {
+              polls.push({ url, cv: params.cv });
+              return spaceResponse(2000);
+            }
+            return storiesResponse(1000);
+          },
+        );
+
+        await client.get("cdn/stories", { version: "published", token });
+        await client.get(slug, { version: "published", token });
+        await client.get(slug, { version: "published", token });
+
+        return { polls, flushes: clientFlushCache.mock.calls.length };
+      };
+
+      const bare = await poll("cdn/spaces/me", "slug-spelling-bare");
+      const prefixed = await poll("/cdn/spaces/me", "slug-spelling-prefixed");
+      const trailing = await poll("cdn/spaces/me/", "slug-spelling-trailing");
+
+      expect(prefixed).toEqual(bare);
+      expect(trailing).toEqual(bare);
+      expect(bare.polls).toEqual([
+        { url: "/cdn/spaces/me", cv: undefined },
+        { url: "/cdn/spaces/me", cv: undefined },
+      ]);
+      expect(bare.flushes).toBe(1);
+    });
+
+    it("should not flush repeatedly when a Minimum Cache TTL floors the cv", async () => {
+      // A Minimum Cache TTL floors the cv, so it permanently trails `space.version`.
+      const token = "space-version-min-cache";
+      const flooredCv = 1786950000;
+      const rawSpaceVersion = 1786950860;
+
+      for (let i = 0; i < 3; i++) {
+        autoClearClient.throttleManager.execute = vi
+          .fn()
+          .mockResolvedValue(spaceResponse(rawSpaceVersion));
+        await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+
+        autoClearClient.throttleManager.execute = vi
+          .fn()
+          .mockResolvedValue(storiesResponse(flooredCv));
+        await autoClearClient.get("cdn/stories", { version: "draft", token });
+      }
+
+      expect(flushCache).not.toHaveBeenCalled();
+      expect(autoClearClient.cacheVersions()[token]).toBe(flooredCv);
+    });
+
+    it("should send no cv and cache the response after a flush", async () => {
+      const token = "space-version-post-flush-cv";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(flushCache).toHaveBeenCalledTimes(1);
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+      autoClearClient.throttleManager.execute = execute;
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      expect(execute.mock.calls[0][3]).not.toHaveProperty("cv");
+
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should keep the response that triggered the flush in the cache", async () => {
+      const token = "cv-flush-keeps-triggering-response";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+      autoClearClient.throttleManager.execute = execute;
+      const response = await autoClearClient.get("cdn/stories/other", {
+        version: "published",
+        token,
+      });
+      expect(flushCache).toHaveBeenCalledTimes(1);
+
+      const cached = Object.values(await autoClearClient.cacheProvider().getAll());
+      expect(cached).toEqual([response]);
+    });
+
+    it("should not flush when the space version moves backwards", async () => {
+      // Each edge location caches `/cdn/spaces/me` for 2 s, so a poll can report a lower version.
+      const token = "space-version-regression";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      for (const version of [2000, 1000, 2000]) {
+        autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(version));
+        await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      }
+
+      expect(flushCache).not.toHaveBeenCalled();
+    });
+
+    it("should not adopt a cv that moved backwards", async () => {
+      // An edge node still holding an older snapshot reports a lower cv.
+      const token = "cv-regression";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories/other", { version: "published", token });
+
+      expect(flushCache).not.toHaveBeenCalled();
+      expect(autoClearClient.cacheVersions()[token]).toBe(2000);
+    });
+
+    it("should flush a shared provider once per process, not once per instance", async () => {
+      // Serverless shape: a client per request over one external provider, with a Minimum Cache
+      // TTL so the floored cv never equals the space version.
+      const token = "space-version-shared-provider";
+      const flooredCv = 1786950000;
+      const rawSpaceVersion = 1786950860;
+      const store: Record<string, any> = {};
+      const flush = vi.fn(async () => {
+        for (const key of Object.keys(store)) {
+          delete store[key];
+        }
+      });
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush,
+      };
+      const newClient = (): any =>
+        new StoryblokClient({
+          accessToken: "test-token",
+          cache: { clear: "auto", type: "custom", custom: provider },
+        });
+
+      let storyRequests = 0;
+      const execute = vi.fn(async (_rateLimit: any, _method: any, url: string) => {
+        if (url.includes("spaces/me")) {
+          return spaceResponse(rawSpaceVersion);
+        }
+        storyRequests++;
+        return storiesResponse(flooredCv);
+      });
+
+      const warm = newClient();
+      warm.throttleManager.execute = execute;
+      await warm.get("cdn/stories", { version: "published", token });
+
+      for (let i = 0; i < 4; i++) {
+        const client = newClient();
+        client.throttleManager.execute = execute;
+        await client.get("cdn/spaces/me", { version: "draft", token });
+        await client.get("cdn/stories", { version: "published", token });
+      }
+
+      expect(flush).toHaveBeenCalledTimes(1);
+      // The warm read and one refetch after the flush.
+      expect(storyRequests).toBe(2);
+    });
+
+    it("should share the flush epoch between instances writing to the same provider", async () => {
+      const token = "flush-epoch-per-provider";
+      const store: Record<string, any> = {};
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush: async () => {
+          for (const key of Object.keys(store)) {
+            delete store[key];
+          }
+        },
+      };
+      const shared = (): any =>
+        new StoryblokClient({
+          accessToken: "test-token",
+          cache: { clear: "auto", type: "custom", custom: provider },
+        });
+
+      const reader = shared();
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      reader.throttleManager.execute = vi.fn(async () => {
+        await held;
+        return storiesResponse(1000);
+      });
+      const inFlight = reader.get("cdn/stories", { version: "published", token });
+      // Let the request reach the network first; one issued after the flush may be cached.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      await shared().flushCache();
+      release();
+      await inFlight;
+
+      expect(Object.keys(store)).toHaveLength(0);
+
+      const other: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { clear: "auto", type: "memory" },
+      });
+      const second = shared();
+      second.throttleManager.execute = vi.fn(async () => {
+        await other.flushCache();
+        return storiesResponse(1000);
+      });
+      await second.get("cdn/stories", { version: "published", token });
+
+      expect(Object.keys(store)).toHaveLength(1);
+    });
+
+    it("should not let a response land in the middle of a flush", async () => {
+      const token = "flush-window";
+      const store: Record<string, any> = {};
+      let releaseFlush!: () => void;
+      const flushHeld = new Promise<void>((resolve) => {
+        releaseFlush = resolve;
+      });
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush: async () => {
+          for (const key of Object.keys(store)) {
+            delete store[key];
+          }
+          // An external provider's flush resolves a round trip later.
+          await flushHeld;
+        },
+      };
+      const shared = (): any =>
+        new StoryblokClient({
+          accessToken: "test-token",
+          cache: { clear: "auto", type: "custom", custom: provider },
+        });
+
+      const reader = shared();
+      let releaseResponse!: () => void;
+      const responseHeld = new Promise<void>((resolve) => {
+        releaseResponse = resolve;
+      });
+      reader.throttleManager.execute = vi.fn(async () => {
+        await responseHeld;
+        return storiesResponse(1000);
+      });
+      const inFlight = reader.get("cdn/stories", { version: "published", token });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const flushing = shared().flushCache();
+      // The response comes back while the provider is still being emptied.
+      releaseResponse();
+      await inFlight;
+      releaseFlush();
+      await flushing;
+
+      expect(Object.keys(store)).toHaveLength(0);
+    });
+
+    it("should not re-pin a cv that a flush dropped during the cache lookup", async () => {
+      // Simulates an external provider whose cache lookup resolves after a flush.
+      const token = "flush-during-lookup";
+      const store: Record<string, any> = {};
+      let holdNextGet: Promise<void> | undefined;
+      const provider = {
+        get: async (key: string) => {
+          await holdNextGet;
+          return store[key];
+        },
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush: async () => {
+          for (const key of Object.keys(store)) {
+            delete store[key];
+          }
+        },
+      };
+      const reader: any = new StoryblokClient({
+        accessToken: token,
+        cache: { clear: "auto", type: "custom", custom: provider },
+      });
+      reader.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await reader.get("cdn/stories/home", { version: "published" });
+
+      let releaseGet!: () => void;
+      holdNextGet = new Promise<void>((resolve) => {
+        releaseGet = resolve;
+      });
+      const inFlight = reader.get("cdn/stories/other", { version: "published" });
+      holdNextGet = undefined;
+      await reader.flushCache();
+      releaseGet();
+      await inFlight;
+
+      expect(reader.cacheVersions()[token]).toBe(0);
+      expect(Object.keys(store)).toHaveLength(0);
+    });
+
+    it("should not send the pre-publish cv while a poll-triggered flush is running", async () => {
+      // Simulates an external provider whose flush resolves a round trip later.
+      const token = "flush-in-progress";
+      const store: Record<string, any> = {};
+      let releaseFlush!: () => void;
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush: async () => {
+          for (const key of Object.keys(store)) {
+            delete store[key];
+          }
+          await new Promise<void>((resolve) => {
+            releaseFlush = resolve;
+          });
+        },
+      };
+      const reader: any = new StoryblokClient({
+        accessToken: token,
+        cache: { clear: "auto", type: "custom", custom: provider },
+      });
+      const sentCvs: unknown[] = [];
+      let spaceVersion = 1000;
+      reader.throttleManager.execute = vi.fn(
+        async (_limit: unknown, _method: string, url: string, params: any) => {
+          if (url === "/cdn/spaces/me") {
+            return spaceResponse(spaceVersion);
+          }
+          sentCvs.push(params.cv);
+          return storiesResponse(1000);
+        },
+      );
+      await reader.get("cdn/stories/home", { version: "published" });
+      await reader.get("cdn/spaces/me");
+
+      spaceVersion = 2000; // content was published
+      const poll = reader.get("cdn/spaces/me");
+      await vi.waitFor(() => expect(releaseFlush).toBeTypeOf("function"));
+      await reader.get("cdn/stories/other", { version: "published" });
+      releaseFlush();
+      await poll;
+
+      expect(sentCvs).toEqual([undefined, undefined]);
+    });
+
+    it("should not send the pre-flush cv while flushCache is running", async () => {
+      // The webhook path, with an external provider whose flush resolves a round trip later.
+      const token = "explicit-flush-in-progress";
+      const store: Record<string, any> = {};
+      let releaseFlush: (() => void) | undefined;
+      const provider = {
+        get: async (key: string) => store[key],
+        getAll: async () => store,
+        set: async (key: string, content: any) => {
+          store[key] = content;
+        },
+        flush: async () => {
+          for (const key of Object.keys(store)) {
+            delete store[key];
+          }
+          await new Promise<void>((resolve) => {
+            releaseFlush = resolve;
+          });
+        },
+      };
+      const reader: any = new StoryblokClient({
+        accessToken: token,
+        cache: { clear: "manual", type: "custom", custom: provider },
+      });
+      const sentCvs: unknown[] = [];
+      reader.throttleManager.execute = vi.fn(
+        async (_limit: unknown, _method: string, _url: string, params: any) => {
+          sentCvs.push(params.cv);
+          return storiesResponse(1000);
+        },
+      );
+      await reader.get("cdn/stories/home", { version: "published" });
+
+      const flushing = reader.flushCache();
+      await vi.waitFor(() => expect(releaseFlush).toBeTypeOf("function"));
+      await reader.get("cdn/stories/other", { version: "published" });
+      releaseFlush?.();
+      await flushing;
+
+      expect(sentCvs).toEqual([undefined, undefined]);
+    });
+
+    describe("with overlapping flushes", () => {
+      // An external provider's flush resolves a round trip later, so a response can
+      // still be waiting for its own flush when a newer version arrives.
+      const slowFirstFlushClient = (token: string) => {
+        const store: Record<string, any> = {};
+        let releaseFirstFlush: (() => void) | undefined;
+        let flushes = 0;
+        const provider = {
+          get: async (key: string) => store[key],
+          getAll: async () => store,
+          set: async (key: string, content: any) => {
+            store[key] = content;
+          },
+          flush: async () => {
+            for (const key of Object.keys(store)) {
+              delete store[key];
+            }
+            flushes++;
+            if (flushes === 1) {
+              await new Promise<void>((resolve) => {
+                releaseFirstFlush = resolve;
+              });
+            }
+          },
+        };
+        const client: any = new StoryblokClient({
+          accessToken: token,
+          cache: { clear: "auto", type: "custom", custom: provider },
+        });
+        return {
+          client,
+          waitForFirstFlush: () =>
+            vi.waitFor(() => expect(releaseFirstFlush).toBeTypeOf("function")),
+          releaseFirstFlush: () => releaseFirstFlush?.(),
+        };
+      };
+
+      it("should keep the newer cv a draft response taught during an older one's flush", async () => {
+        const token = "overlapping-flush-drafts";
+        const { client, waitForFirstFlush, releaseFirstFlush } = slowFirstFlushClient(token);
+        client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+        await client.get("cdn/stories/home", { version: "published" });
+
+        client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+        const older = client.get("cdn/stories/home", { version: "draft" });
+        await waitForFirstFlush();
+        client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(3000));
+        await client.get("cdn/stories/home", { version: "draft" });
+        releaseFirstFlush();
+        await older;
+
+        expect(client.cacheVersions()[token]).toBe(3000);
+      });
+
+      it("should not adopt a cv after a poll flushed during the response's own flush", async () => {
+        const token = "overlapping-flush-poll";
+        const { client, waitForFirstFlush, releaseFirstFlush } = slowFirstFlushClient(token);
+        let spaceVersion = 1000;
+        let storiesCv = 1000;
+        client.throttleManager.execute = vi.fn(
+          async (_limit: unknown, _method: string, url: string) =>
+            url === "/cdn/spaces/me" ? spaceResponse(spaceVersion) : storiesResponse(storiesCv),
+        );
+        await client.get("cdn/stories/home", { version: "published" });
+        await client.get("cdn/spaces/me");
+
+        storiesCv = 2000;
+        const older = client.get("cdn/stories/home", { version: "draft" });
+        await waitForFirstFlush();
+        spaceVersion = 3000; // published again
+        await client.get("cdn/spaces/me");
+        releaseFirstFlush();
+        await older;
+
+        expect(client.cacheVersions()[token]).toBe(0);
+      });
+    });
+
+    it("should track the current cv a cache-busting cv was redirected to", async () => {
+      // The API redirects a cv it does not hold, such as `Date.now()`, to the current one.
+      const token = "cache-busting-cv";
+      const client: any = new StoryblokClient({
+        accessToken: token,
+        cache: { type: "memory", clear: "auto" },
+      });
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories/home", { version: "published" });
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1010));
+      client.throttleManager.execute = execute;
+      await client.get("cdn/stories/home", { version: "published", cv: 1759140000000 });
+      await client.get("cdn/stories/other", { version: "published" });
+
+      expect(client.cacheVersions()[token]).toBe(1010);
+      expect(execute.mock.calls[1][3].cv).toBe(1010);
+    });
+
+    it("should flush at most once per keyspace after the cv was cleared", async () => {
+      const token = "space-version-cleared-cv-bound";
+      autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await autoClearClient.get("cdn/stories", { version: "published", token });
+
+      autoClearClient.clearCacheVersion(token);
+
+      for (let i = 0; i < 4; i++) {
+        autoClearClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+        await autoClearClient.get("cdn/spaces/me", { version: "draft", token });
+      }
+
+      expect(flushCache).toHaveBeenCalledTimes(1);
+    });
+
+    it("should still flush a custom provider when another instance already flushed", async () => {
+      const token = "space-version-custom-after-flush";
+      const store: Record<string, any> = {};
+      const customFlush = vi.fn(async () => {
+        for (const key of Object.keys(store)) {
+          delete store[key];
+        }
+      });
+      const customClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: {
+          clear: "auto",
+          cv: "manual",
+          type: "custom",
+          custom: {
+            get: async (key: string) => store[key],
+            getAll: async () => store,
+            set: async (key: string, content: any) => {
+              store[key] = content;
+            },
+            flush: customFlush,
+          },
+        },
+      });
+      const memoryClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { clear: "auto", cv: "manual", type: "memory" },
+      });
+
+      for (const instance of [customClient, memoryClient]) {
+        instance.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+        await instance.get("cdn/stories", { version: "published", token });
+      }
+
+      // The memory instance polls first and flushes.
+      memoryClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await memoryClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(memoryClient.cacheVersions()[token]).toBe(0);
+
+      customClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await customClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(customFlush).toHaveBeenCalledTimes(1);
+      expect(Object.keys(store)).toHaveLength(0);
+    });
+
+    it("should not let another instance consume the signal for a custom provider", async () => {
+      const token = "space-version-custom-provider";
+      const store: Record<string, any> = {};
+      const customFlush = vi.fn(async () => {
+        for (const key of Object.keys(store)) {
+          delete store[key];
+        }
+      });
+      const customClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: {
+          clear: "auto",
+          type: "custom",
+          custom: {
+            get: async (key: string) => store[key],
+            getAll: async () => store,
+            set: async (key: string, content: any) => {
+              store[key] = content;
+            },
+            flush: customFlush,
+          },
+        },
+      });
+      const memoryClient: any = new StoryblokClient({
+        accessToken: "test-token",
+        cache: { clear: "auto", type: "memory" },
+      });
+
+      customClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await customClient.get("cdn/stories", { version: "published", token });
+
+      // The memory instance polls first.
+      memoryClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await memoryClient.get("cdn/spaces/me", { version: "draft", token });
+      expect(customFlush).not.toHaveBeenCalled();
+
+      customClient.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1500));
+      await customClient.get("cdn/stories/other", { version: "published", token });
+
+      customClient.throttleManager.execute = vi.fn().mockResolvedValue(spaceResponse(2000));
+      await customClient.get("cdn/spaces/me", { version: "draft", token });
+
+      expect(customFlush).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("cache key of a published response", () => {
+    // The cv is part of the cache key, so an entry has to be stored under the key the next
+    // identical read builds.
+    const storiesResponse = (cv: number) => ({
+      data: { stories: [{ id: 1, title: "Update" }], cv },
+      headers: {},
+      status: 200,
+    });
+
+    const publishedClient = (cache: any) =>
+      new StoryblokClient({ accessToken: "test-token", cache }) as any;
+
+    it("should serve the second identical published request from the cache", async () => {
+      const token = "settled-key-plain";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", token });
+      await client.get("cdn/stories", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should serve a published request carrying resolve_relations from the cache", async () => {
+      // `parseParams` sets the cv before `resolve_level`.
+      const token = "settled-key-resolve-relations";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      const params = { version: "published", resolve_relations: "blog.author", token };
+      await client.get("cdn/stories", { ...params });
+      await client.get("cdn/stories", { ...params });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should serve a published request carrying a falsy cv from the cache", async () => {
+      // `parseParams` replaces a falsy cv with the tracked one.
+      const token = "settled-key-zero-cv";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", cv: 0, token });
+      await client.get("cdn/stories", { version: "published", cv: 0, token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should serve a published request from the cache when cv is manual", async () => {
+      // `'manual'` tracks the cv from responses but never sends it.
+      const token = "settled-key-manual";
+      const client = publishedClient({ type: "memory", clear: "auto", cv: "manual" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", token });
+      await client.get("cdn/stories", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+      expect(client.cacheVersions()[token]).toBe(1000);
+    });
+
+    it("should serve a published request pinned to a cv from the cache", async () => {
+      const token = "settled-key-pinned";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", { version: "published", cv: 444, token });
+      await client.get("cdn/stories", { version: "published", cv: 444, token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should cache a pinned cv the space has already moved past", async () => {
+      // The edge serves an older snapshot for as long as it holds it.
+      const token = "settled-key-pinned-older";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories", { version: "published", token });
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(900));
+      client.throttleManager.execute = execute;
+      await client.get("cdn/stories", { version: "published", cv: 900, token });
+      await client.get("cdn/stories", { version: "published", cv: 900, token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+      await client.get("cdn/stories/other", { version: "published", token });
+      expect(execute.mock.calls[execute.mock.calls.length - 1][3].cv).toBe(1000);
+    });
+
+    it("should still store the response under the settled cv after its own flush", async () => {
+      const token = "settled-key-after-flush";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories/first", { version: "published", token });
+
+      const execute = vi.fn().mockResolvedValue(storiesResponse(2000));
+      client.throttleManager.execute = execute;
+      await client.get("cdn/stories/second", { version: "published", token });
+      await client.get("cdn/stories/second", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not file a response under a cv another request adopted while it was in flight", async () => {
+      // `cdn/links` reports no cv of its own.
+      const token = "settled-key-concurrent-publish";
+      const client = publishedClient({ type: "memory" });
+      client.throttleManager.execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      await client.get("cdn/stories/home", { version: "published", token });
+
+      let releaseLinks!: () => void;
+      const linksHeld = new Promise<void>((resolve) => {
+        releaseLinks = resolve;
+      });
+      const execute = vi.fn(async (_limit: unknown, _method: string, url: string) => {
+        if (url === "/cdn/links") {
+          await linksHeld;
+          return { data: { links: {} }, headers: {}, status: 200 };
+        }
+        return storiesResponse(1010);
+      });
+      client.throttleManager.execute = execute;
+
+      const links = client.get("cdn/links", { version: "published", token });
+      await client.get("cdn/stories/other", { version: "published", token });
+      releaseLinks();
+      await links;
+      await client.get("cdn/links", { version: "published", token });
+
+      const linksRequests = execute.mock.calls.filter(([, , url]) => url === "/cdn/links");
+      expect(linksRequests).toHaveLength(2);
+    });
+
+    it("should not serve a request with a __proto__ param from the entry of one without it", async () => {
+      // Params parsed from user input can carry an own `__proto__` key.
+      const token = "settled-key-proto";
+      const client = publishedClient({ type: "memory", clear: "auto" });
+      const execute = vi.fn().mockResolvedValue(storiesResponse(1000));
+      client.throttleManager.execute = execute;
+
+      await client.get("cdn/stories", {
+        ...JSON.parse('{"__proto__":{"starts_with":"other"}}'),
+        version: "published",
+        token,
+      });
+      await client.get("cdn/stories", { version: "published", token });
+
+      expect(execute).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("get() parameter handling", () => {
+    it("should not modify the params object it was given", async () => {
+      const client: any = new StoryblokClient({ accessToken: "params-token" });
+      client.throttleManager.execute = vi.fn().mockResolvedValue({
+        data: { stories: [], cv: 1000 },
+        headers: {},
+        status: 200,
+      });
+      const params = { starts_with: "blog" };
+
+      await client.get("cdn/stories", params);
+
+      expect(params).toEqual({ starts_with: "blog" });
+    });
+
+    it("should not modify the params object getAll was given", async () => {
+      const client: any = new StoryblokClient({ accessToken: "params-token-getall" });
+      client.throttleManager.execute = vi.fn().mockResolvedValue({
+        data: { stories: [], cv: 1000, total: 0 },
+        headers: {},
+        status: 200,
+      });
+      const params = { starts_with: "blog" };
+
+      await client.getAll("cdn/stories", params);
+
+      expect(params).toEqual({ starts_with: "blog" });
+    });
+  });
+
   describe("retry behaviour on 429", () => {
     beforeEach(() => {
       vi.useFakeTimers();
@@ -276,6 +1479,87 @@ describe("storyblokClient", () => {
 
       await expect(promise).resolves.toMatchObject({ data: { story: { id: 1 } } });
       expect(mockGet).toHaveBeenCalledTimes(2);
+    });
+
+    it("should not re-send a cv a flush dropped while the retry was waiting", async () => {
+      client = new StoryblokClient({
+        accessToken: "retry-cv-token",
+        retriesDelay: 500,
+        maxRetries: 3,
+        cache: { type: "memory", clear: "auto" },
+      });
+
+      // Recorded as copies: the retry reuses the params object, so the mock's own
+      // references would all show its final state.
+      const sentParams: Array<Record<string, unknown>> = [];
+      const mockGet = vi
+        .fn()
+        .mockImplementationOnce((_url: string, params: Record<string, unknown>) => {
+          sentParams.push({ ...params });
+          return Promise.reject({ status: 429, statusText: "Too Many Requests", response: {} });
+        })
+        .mockImplementationOnce((_url: string, params: Record<string, unknown>) => {
+          sentParams.push({ ...params });
+          return Promise.resolve({ data: { stories: [], cv: 1000 }, headers: {}, status: 200 });
+        });
+
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+        baseURL: "https://api.storyblok.com/v2",
+      };
+      client.setCacheVersion(1000);
+
+      const promise = client.cacheResponse("/cdn/stories", {
+        token: "retry-cv-token",
+        version: "published",
+        cv: 1000,
+      });
+      await client.flushCache(); // a publish was noticed while the retry was waiting
+      await vi.advanceTimersByTimeAsync(500);
+      await promise;
+
+      expect(sentParams[0].cv).toBe(1000);
+      expect(sentParams[1]).not.toHaveProperty("cv");
+    });
+
+    it("should not attach the tracked cv to a retried poll", async () => {
+      client = new StoryblokClient({
+        accessToken: "retry-poll-token",
+        retriesDelay: 500,
+        maxRetries: 3,
+        cache: { type: "memory", clear: "auto" },
+      });
+      const sentParams: Array<Record<string, unknown>> = [];
+      const mockGet = vi
+        .fn()
+        .mockImplementationOnce((_url: string, params: Record<string, unknown>) => {
+          sentParams.push({ ...params });
+          return Promise.reject({ status: 429, statusText: "Too Many Requests", response: {} });
+        })
+        .mockImplementationOnce((_url: string, params: Record<string, unknown>) => {
+          sentParams.push({ ...params });
+          return Promise.resolve({
+            data: { space: { id: 1, name: "Test", version: 1000 } },
+            headers: {},
+            status: 200,
+          });
+        });
+      client.client = {
+        get: mockGet,
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+        baseURL: "https://api.storyblok.com/v2",
+      };
+      client.setCacheVersion(1000);
+
+      const promise = client.get("cdn/spaces/me");
+      await vi.advanceTimersByTimeAsync(500);
+      await promise;
+
+      expect(sentParams).toHaveLength(2);
+      expect(sentParams[1]).not.toHaveProperty("cv");
     });
 
     it("should keep the per-request fetchOptions on a retried request", async () => {
@@ -382,6 +1666,7 @@ describe("storyblokClient", () => {
         expect.objectContaining({ version: "published" }),
         undefined,
         undefined,
+        false,
       );
 
       // Reset mock
@@ -394,6 +1679,7 @@ describe("storyblokClient", () => {
         expect.not.objectContaining({ version: expect.anything() }),
         undefined,
         undefined,
+        false,
       );
     });
 
@@ -705,7 +1991,6 @@ describe("storyblokClient", () => {
 
         // Verify the API was called with correct parameters
         expect(mockGet).toHaveBeenCalledWith("/cdn/links", {
-          cv: 0,
           token: "test-token",
           version: "draft",
           include_dates: 1,

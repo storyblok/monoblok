@@ -159,3 +159,29 @@ export const escapeHTML = (string: string): string => {
     ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
     : string;
 };
+
+/** Arrays keep their order, which is part of the value. */
+const sortKeysDeep = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(sortKeysDeep);
+  }
+
+  if (value !== null && typeof value === "object") {
+    // Not assignment: assigning `__proto__` sets the prototype and drops the key.
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([key, entry]) => [key, sortKeysDeep(entry)]),
+    );
+  }
+
+  return value;
+};
+
+/**
+ * Keys are sorted because {@link stringify} serializes in insertion order, and params
+ * assembled in a different order (such as a rebuilt object with the cv appended last) would
+ * otherwise miss the cache. Request query strings stay unsorted.
+ */
+export const createCacheKey = (url: string, params: ISbStoriesParams): string =>
+  stringify({ url, params: sortKeysDeep(params) });

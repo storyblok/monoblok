@@ -253,6 +253,18 @@ export interface ICacheProvider {
 
 export interface ISbCache {
   type?: "none" | "memory" | "custom";
+  /**
+   * Controls when the cache is cleared.
+   *
+   * - `'auto'`: clear whenever a response reports that content changed.
+   * - `'manual'` (default): never clear automatically; call `flushCache()` yourself.
+   * - `'onpreview'`: clear on draft requests only.
+   *
+   * Polling `/cdn/spaces/me` for publishes needs `'auto'`, or `'onpreview'` with a draft poll.
+   *
+   * A clear empties the whole cache but drops only the tracked `cv` of the token that
+   * reported the change, so serving several tokens reliably needs one client per token.
+   */
   clear?: "auto" | "manual" | "onpreview";
   custom?: ICacheProvider;
   /**

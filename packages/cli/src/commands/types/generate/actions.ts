@@ -13,7 +13,8 @@ import type { GenerateTypesOptions } from "./constants";
 import { isStoryblokPropertyType } from "../../../utils/storyblok-property-types";
 import { getLogger } from "../../../lib/logger/logger";
 import { join, resolve } from "pathe";
-import { loadUserModule } from "./load-user-module";
+import { importUserModuleDefault } from "../../../utils/user-module";
+import { isRecord } from "../../../utils/object";
 import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import { readFileSync } from "node:fs";
 import type { ComponentPropertySchema } from "../../../types/schemas";
@@ -242,11 +243,13 @@ export const getComponentType = (componentName: string, options: GenerateTypesOp
   return isFirstCharacterNumber ? `_${componentType}` : componentType;
 };
 
+type CustomFieldsParser = (key: string, value: Record<string, unknown>) => Record<string, unknown>;
+
 const getComponentPropertiesTypeAnnotations = async (
   component: Component,
   options: GenerateTypesOptions,
   spaceData: SpaceComponentsData,
-  customFieldsParser?: (key: string, value: Record<string, unknown>) => Record<string, unknown>,
+  customFieldsParser?: CustomFieldsParser,
 ): Promise<JSONSchema["properties"]> => {
   // Handle null/undefined schema
   if (!component.schema || typeof component.schema !== "object") {
@@ -273,10 +276,7 @@ const getComponentPropertiesTypeAnnotations = async (
       };
 
       if (propertyType === "custom" && customFieldsParser) {
-        const customField =
-          typeof customFieldsParser === "function"
-            ? customFieldsParser(key, schema as unknown as Record<string, unknown>)
-            : {};
+        const customField = customFieldsParser(key, schema as unknown as Record<string, unknown>);
         return {
           ...acc,
           ...customField,
@@ -401,26 +401,28 @@ const getComponentPropertiesTypeAnnotations = async (
   );
 };
 
-const loadCustomFieldsParser = async (
-  path: string,
-): Promise<
-  ((key: string, value: Record<string, unknown>) => Record<string, unknown>) | undefined
-> => {
-  try {
-    return await loadUserModule<
-      (key: string, value: Record<string, unknown>) => Record<string, unknown>
-    >(path);
-  } catch (error) {
-    handleError(error as Error);
-    return undefined;
-  }
-};
+function isCustomFieldsParser(value: unknown): value is CustomFieldsParser {
+  return typeof value === "function";
+}
 
-async function loadCompilerOptions(path: string) {
-  if (path) {
-    return await loadUserModule(path);
+async function loadCustomFieldsParser(path: string): Promise<CustomFieldsParser> {
+  const parser = await importUserModuleDefault(path, "Custom fields parser file");
+  if (!isCustomFieldsParser(parser)) {
+    throw new CommandError(
+      `The custom fields parser file at "${path}" must default-export a function.`,
+    );
   }
-  return {};
+  return parser;
+}
+
+async function loadCompilerOptions(path: string): Promise<Record<string, unknown>> {
+  const compilerOptions = await importUserModuleDefault(path, "Compiler options file");
+  if (!isRecord(compilerOptions)) {
+    throw new CommandError(
+      `The compiler options file at "${path}" must default-export an options object.`,
+    );
+  }
+  return compilerOptions;
 }
 
 export const generateTypes = async (
@@ -433,9 +435,7 @@ export const generateTypes = async (
     const typeDefs = [...DEFAULT_TYPEDEFS_HEADER];
     const storyblokPropertyTypes = new Set<string>();
     const contentTypeBloks = new Set<string>();
-    let customFieldsParser:
-      | ((key: string, value: Record<string, unknown>) => Record<string, unknown>)
-      | undefined;
+    let customFieldsParser: CustomFieldsParser | undefined;
     let compilerOptions: Record<string, unknown> | undefined;
     // Custom fields parser
     if (options.customFieldsParser) {

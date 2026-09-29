@@ -378,6 +378,37 @@ export type RestrictRichText<TDoc, TBody> = TDoc extends { content: readonly (in
   ? Omit<TDoc, "content"> & { content: RestrictRichTextNode<TNode, TBody>[] }
   : TDoc;
 
+/** `source` values whose options live in the space instead of the schema. */
+type RemoteOptionSource = "internal" | "internal_stories" | "internal_languages" | "external";
+
+/**
+ * Resolves an `option`/`options` field to the union of its `options` values.
+ * A remote `source` (datasource, stories, languages, external URL) keeps the
+ * values in the space, so they stay `string` at compile time. Any other
+ * `source` (`''`, `'self'`, or none) reads the field's own `options`. A
+ * `source` typed as plain `string` could be either, so it stays `string` too.
+ *
+ * A single-select `option` field additionally delivers `''` for an unset value
+ * and whenever the editor clears a selection; `exclude_empty_option` only hides
+ * the empty entry in the editor's dropdown. A multi-select `options` field
+ * delivers an empty array instead, so it never carries `''`.
+ */
+type ResolveOptionValue<TField> = TField extends { source: infer TSource }
+  ? [Extract<TSource, RemoteOptionSource>] extends [never]
+    ? string extends TSource
+      ? string
+      : ResolveOwnOptionValue<TField>
+    : string
+  : ResolveOwnOptionValue<TField>;
+
+type ResolveOwnOptionValue<TField> = TField extends {
+  options: ReadonlyArray<{ value: infer TValue extends string }>;
+}
+  ? string extends TValue
+    ? string
+    : TValue
+  : string;
+
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
   TField extends Field = Field,
@@ -405,7 +436,11 @@ export type FieldValue<
           : RichTextFieldValue
       : TField extends { type: "custom" }
         ? ResolveCustom<TField, TFieldPlugins>
-        : FieldTypeValueMap[TField["type"]]
+        : TField extends { type: "option" }
+          ? ResolveOptionValue<TField> | ""
+          : TField extends { type: "options" }
+            ? ResolveOptionValue<TField>[]
+            : FieldTypeValueMap[TField["type"]]
 >;
 
 /** Resolves a field definition to its input value type (write). */
@@ -435,5 +470,9 @@ export type FieldValueInput<
           : RichTextFieldValue
       : TField extends { type: "custom" }
         ? ResolveCustom<TField, TFieldPlugins>
-        : FieldTypeValueMap[TField["type"]]
+        : TField extends { type: "option" }
+          ? ResolveOptionValue<TField> | ""
+          : TField extends { type: "options" }
+            ? ResolveOptionValue<TField>[]
+            : FieldTypeValueMap[TField["type"]]
 >;

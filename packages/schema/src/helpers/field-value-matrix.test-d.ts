@@ -3,6 +3,7 @@ import { describe, expectTypeOf, it } from "vitest";
 import type { BlockContentBase } from "../generated/overlay/_internal.gen";
 import type {
   AssetFieldValue,
+  BlockContent,
   FieldValue,
   FieldValueInput,
   MultilinkFieldValue,
@@ -10,6 +11,7 @@ import type {
   RichTextFieldValue,
   TableFieldValue,
 } from "../generated/types/field";
+import { defineBlock } from "./define-block";
 import { defineField } from "./define-field";
 
 /**
@@ -93,6 +95,119 @@ describe("FieldValueInput resolution per field type", () => {
     expectTypeOf<FieldValueInput<typeof _f.options>>().toEqualTypeOf<string[]>();
     expectTypeOf<FieldValueInput<typeof _f.section>>().toEqualTypeOf<never>();
     expectTypeOf<FieldValueInput<typeof _f.tab>>().toEqualTypeOf<never>();
+  });
+});
+
+/**
+ * `option`/`options` narrow to the literal values in their own config. This
+ * matrix covers which configurations narrow and which stay `string` because the
+ * values are not knowable from the schema.
+ */
+const ALIGNMENTS = [
+  { name: "Left", value: "left" },
+  { name: "Center", value: "center" },
+] as const;
+
+const _o = {
+  inline: defineField("a", {
+    type: "option",
+    options: [
+      { name: "Left", value: "left" },
+      { name: "Center", value: "center" },
+    ],
+  }),
+  spread: defineField("a", { type: "option", options: [...ALIGNMENTS] }),
+  byReference: defineField("a", { type: "option", options: ALIGNMENTS }),
+  multi: defineField("a", { type: "options", options: [...ALIGNMENTS] }),
+  excludesEmpty: defineField("a", {
+    type: "option",
+    options: [...ALIGNMENTS],
+    exclude_empty_option: true,
+  }),
+  datasource: defineField("a", { type: "option", source: "internal", datasource: "themes" }),
+  stories: defineField("a", { type: "option", source: "internal_stories" }),
+  emptySource: defineField("a", { type: "option", source: "", options: [...ALIGNMENTS] }),
+  selfSource: defineField("a", { type: "option", source: "self", options: [...ALIGNMENTS] }),
+  multiSelfSource: defineField("a", {
+    type: "options",
+    source: "self",
+    options: [...ALIGNMENTS],
+  }),
+  remoteSourceWithOptions: defineField("a", {
+    type: "option",
+    source: "external",
+    options: [...ALIGNMENTS],
+  }),
+  nonLiteralSource: defineField("a", {
+    type: "option",
+    source: "self" as string,
+    options: [...ALIGNMENTS],
+  }),
+  nonLiteralValues: defineField("a", {
+    type: "option",
+    options: [] as { name: string; value: string }[],
+  }),
+};
+
+describe("option value narrowing", () => {
+  it("narrows a self-sourced `option` to its configured values plus the empty string", () => {
+    // An unset option field and a cleared selection both deliver `''`, so it is
+    // part of every single-select union.
+    expectTypeOf<FieldValue<typeof _o.inline>>().toEqualTypeOf<"" | "left" | "center">();
+    expectTypeOf<FieldValueInput<typeof _o.inline>>().toEqualTypeOf<"" | "left" | "center">();
+  });
+
+  it("narrows the same whether the options are inline, spread, or shared by reference", () => {
+    expectTypeOf<FieldValue<typeof _o.spread>>().toEqualTypeOf<"" | "left" | "center">();
+    expectTypeOf<FieldValue<typeof _o.byReference>>().toEqualTypeOf<"" | "left" | "center">();
+  });
+
+  it("narrows a multi-select `options` to an array of its values, without the empty string", () => {
+    // An unset multi-select delivers `[]`, never `['']`.
+    expectTypeOf<FieldValue<typeof _o.multi>>().toEqualTypeOf<("left" | "center")[]>();
+    expectTypeOf<FieldValueInput<typeof _o.multi>>().toEqualTypeOf<("left" | "center")[]>();
+  });
+
+  it("keeps the empty string even when the editor hides the empty entry", () => {
+    expectTypeOf<FieldValue<typeof _o.excludesEmpty>>().toEqualTypeOf<"" | "left" | "center">();
+  });
+
+  it("stays `string` when the values live in the space rather than the schema", () => {
+    expectTypeOf<FieldValue<typeof _o.datasource>>().toEqualTypeOf<string>();
+    expectTypeOf<FieldValue<typeof _o.stories>>().toEqualTypeOf<string>();
+    expectTypeOf<FieldValue<typeof _o.remoteSourceWithOptions>>().toEqualTypeOf<string>();
+  });
+
+  it("narrows an empty or `self` source like an omitted one", () => {
+    expectTypeOf<FieldValue<typeof _o.emptySource>>().toEqualTypeOf<"" | "left" | "center">();
+    expectTypeOf<FieldValue<typeof _o.selfSource>>().toEqualTypeOf<"" | "left" | "center">();
+    expectTypeOf<FieldValue<typeof _o.multiSelfSource>>().toEqualTypeOf<("left" | "center")[]>();
+  });
+
+  it("stays `string` when the source is not a literal type", () => {
+    expectTypeOf<FieldValue<typeof _o.nonLiteralSource>>().toEqualTypeOf<string>();
+  });
+
+  it("stays `string` when the option values are not literal types", () => {
+    expectTypeOf<FieldValue<typeof _o.nonLiteralValues>>().toEqualTypeOf<string>();
+  });
+});
+
+describe("option narrowing through a block's content type", () => {
+  const heroBlock = defineBlock({
+    name: "hero",
+    fields: [
+      defineField("alignment", { type: "option", options: [...ALIGNMENTS] }),
+      defineField("tags", { type: "options", options: [...ALIGNMENTS], required: true }),
+    ],
+  });
+
+  type Hero = BlockContent<typeof heroBlock, typeof heroBlock>;
+
+  it("narrows the block's content type", () => {
+    // Optional fields are also nullable.
+    expectTypeOf<Hero["alignment"]>().toEqualTypeOf<"" | "left" | "center" | null | undefined>();
+    expectTypeOf<Hero["tags"]>().toEqualTypeOf<("left" | "center")[]>();
   });
 });
 

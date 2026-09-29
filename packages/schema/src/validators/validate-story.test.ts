@@ -794,6 +794,42 @@ describe("validateStory — declared options", () => {
     expect(result.ok).toBe(true);
   });
 
+  it("checks a field whose source is `self` against its own options", () => {
+    const aligned = defineBlock({
+      name: "aligned",
+      is_root: true,
+      fields: [
+        defineField("align", {
+          type: "option",
+          source: "self",
+          options: [{ name: "Left", value: "left" }],
+        }),
+      ],
+    });
+    const result = validateStory(
+      { content: { component: "aligned", align: "right" } },
+      { blocks: { aligned } },
+    );
+    expect(result.issues.map((issue) => issue.code)).toEqual(["unknown_option"]);
+  });
+
+  it("skips a remote-sourced field even when it declares options", () => {
+    const linked = defineBlock({
+      name: "linked",
+      is_root: true,
+      fields: [
+        defineField("page", {
+          type: "option",
+          source: "external",
+          options: [{ name: "Home", value: "home" }],
+        }),
+      ],
+    });
+    expect(
+      validateStory({ content: { component: "linked", page: "about" } }, { blocks: { linked } }).ok,
+    ).toBe(true);
+  });
+
   it("skips a field that declares no options", () => {
     const free = defineBlock({
       name: "free",

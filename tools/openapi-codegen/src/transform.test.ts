@@ -285,4 +285,27 @@ describe("transformGeneratedFile", () => {
       "
     `);
   });
+
+  it("should emit a configured property's array type as readonly", () => {
+    const source = [
+      "export type OptionField = {",
+      "  type: 'option';",
+      "  options?: Array<{ name?: string; value?: string }>;",
+      "  filter_content_type?: Array<string>;",
+      "};",
+    ].join("\n");
+
+    const { output } = run(source, [{ source: "OptionField", emitAs: "OptionField" }]);
+
+    expect(squish(output)).toContain("options?: ReadonlyArray<{ name?: string; value?: string; }>");
+    expect(squish(output)).toContain("filter_content_type?: Array<string>");
+  });
+
+  it("should leave arrays alone on declarations with no readonly config", () => {
+    const source = "export type TextField = { type: 'text'; options?: Array<string> };";
+
+    const { output } = run(source, [{ source: "TextField", emitAs: "TextField" }]);
+
+    expect(squish(output)).toContain("options?: Array<string>");
+  });
 });

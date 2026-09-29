@@ -293,7 +293,7 @@ export type OptionField = BaseField & ValueField & {
     /**
      * Array of selectable options
      */
-    options?: Array<{
+    options?: ReadonlyArray<{
         _uid?: string;
         name?: string;
         value?: string;
@@ -366,7 +366,7 @@ export type OptionsField = BaseField & ValueField & {
     /**
      * Array of selectable options
      */
-    options?: Array<{
+    options?: ReadonlyArray<{
         _uid?: string;
         name?: string;
         value?: string;
@@ -776,7 +776,7 @@ export type CustomField = BaseField & ValueField & {
     /**
      * Plugin-specific options
      */
-    options?: Array<{
+    options?: ReadonlyArray<{
         name?: string;
         value?: string;
     }>;

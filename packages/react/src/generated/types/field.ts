@@ -330,7 +330,7 @@ type ApplyDeny<TField, TBlocks> = TField extends {
  * that guard: one written as a plain object, or one read off the wire. On those,
  * the stricter of the two readings is the safer default.
  */
-type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
+export type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
 
 /**
  * Resolves a `custom` field to its registered plugin value. When the field's
@@ -345,7 +345,7 @@ type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F
   : PluginFieldValue;
 
 /** Whether a field declares a block restriction at all. */
-type HasRestriction<TField> = TField extends { allow: readonly unknown[] }
+export type HasRestriction<TField> = TField extends { allow: readonly unknown[] }
   ? true
   : TField extends { deny: readonly unknown[] }
     ? true
@@ -377,9 +377,40 @@ type RestrictRichTextNode<TNode, TBody> = TNode extends { type: "blok"; attrs: i
  * every component that is not in the block registry — a much wider change than
  * reflecting a restriction the field actually declares.
  */
-type RestrictRichText<TDoc, TBody> = TDoc extends { content: readonly (infer TNode)[] }
+export type RestrictRichText<TDoc, TBody> = TDoc extends { content: readonly (infer TNode)[] }
   ? Omit<TDoc, "content"> & { content: RestrictRichTextNode<TNode, TBody>[] }
   : TDoc;
+
+/** `source` values whose options live in the space instead of the schema. */
+type RemoteOptionSource = "internal" | "internal_stories" | "internal_languages" | "external";
+
+/**
+ * Resolves an `option`/`options` field to the union of its `options` values.
+ * A remote `source` (datasource, stories, languages, external URL) keeps the
+ * values in the space, so they stay `string` at compile time. Any other
+ * `source` (`''`, `'self'`, or none) reads the field's own `options`. A
+ * `source` typed as plain `string` could be either, so it stays `string` too.
+ *
+ * A single-select `option` field additionally delivers `''` for an unset value
+ * and whenever the editor clears a selection; `exclude_empty_option` only hides
+ * the empty entry in the editor's dropdown. A multi-select `options` field
+ * delivers an empty array instead, so it never carries `''`.
+ */
+type ResolveOptionValue<TField> = TField extends { source: infer TSource }
+  ? [Extract<TSource, RemoteOptionSource>] extends [never]
+    ? string extends TSource
+      ? string
+      : ResolveOwnOptionValue<TField>
+    : string
+  : ResolveOwnOptionValue<TField>;
+
+type ResolveOwnOptionValue<TField> = TField extends {
+  options: ReadonlyArray<{ value: infer TValue extends string }>;
+}
+  ? string extends TValue
+    ? string
+    : TValue
+  : string;
 
 /** Resolves a field definition to its runtime content value type (read). */
 export type FieldValue<
@@ -408,7 +439,11 @@ export type FieldValue<
           : RichTextFieldValue
       : TField extends { type: "custom" }
         ? ResolveCustom<TField, TFieldPlugins>
-        : FieldTypeValueMap[TField["type"]]
+        : TField extends { type: "option" }
+          ? ResolveOptionValue<TField> | ""
+          : TField extends { type: "options" }
+            ? ResolveOptionValue<TField>[]
+            : FieldTypeValueMap[TField["type"]]
 >;
 
 /** Resolves a field definition to its input value type (write). */
@@ -438,5 +473,9 @@ export type FieldValueInput<
           : RichTextFieldValue
       : TField extends { type: "custom" }
         ? ResolveCustom<TField, TFieldPlugins>
-        : FieldTypeValueMap[TField["type"]]
+        : TField extends { type: "option" }
+          ? ResolveOptionValue<TField> | ""
+          : TField extends { type: "options" }
+            ? ResolveOptionValue<TField>[]
+            : FieldTypeValueMap[TField["type"]]
 >;

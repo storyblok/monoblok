@@ -17,8 +17,8 @@ import { defineStoryblokBlocks } from "./define-storyblok-blocks";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-function makeBlockData(overrides: { component: string } & Partial<BlockContent>): BlockContent {
-  return { _uid: "test-uid", ...overrides };
+function makeBlockData(overrides: { component: string } & Record<string, unknown>): BlockContent {
+  return { _uid: "test-uid", ...overrides } as BlockContent;
 }
 
 const pageBlock = makeBlockData({ component: "page", _uid: "uid-page" });

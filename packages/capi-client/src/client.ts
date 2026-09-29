@@ -17,6 +17,7 @@ import {
   haveVersionsChanged,
   mergeVersions,
   readVersions,
+  type VersionWatermarks,
   versionsKey,
   writeVersions,
 } from "./utils/versions";
@@ -44,6 +45,18 @@ export type ApiResponse<
   : { data?: Data; error?: ClientError; response: Response; request: Request };
 
 export type HttpRequestOptions = Omit<RequestOptions, "method" | "security" | "url">;
+
+/** Past this, a slow discovering read costs more than the redirects it saves. */
+const MAX_CV_DISCOVERY_WAIT_MS = 2000;
+
+const waitForCvDiscovery = async (discovery: Promise<void>): Promise<void> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, MAX_CV_DISCOVERY_WAIT_MS);
+  });
+  await Promise.race([discovery, timeout]);
+  clearTimeout(timer);
+};
 
 /**
  * Describes the failure a response represents, or `undefined` if it succeeded. The cache
@@ -563,6 +576,41 @@ export const createApiClientBase = <
       }),
     );
 
+  let cvDiscovery: Promise<void> | undefined;
+
+  /**
+   * The origin redirects a published read without a `cv` to the current one, and the limiter
+   * admits the redirect and the followed request as one. So while no `cv` is known, a single
+   * read goes out to learn it and concurrent ones wait for it, then go out pinned.
+   */
+  const awaitCvDiscovery = async (
+    versions: VersionWatermarks | undefined,
+  ): Promise<{ versions: VersionWatermarks | undefined; endDiscovery?: () => void }> => {
+    if (cvMode !== "auto" || versions?.knownCv !== undefined) {
+      return { versions };
+    }
+    if (cvDiscovery) {
+      await waitForCvDiscovery(cvDiscovery);
+      // Still unknown after a failed, slow or cv-less discovery: go out unpinned rather than
+      // queue again.
+      const latest = await readVersions(cacheProvider, watermarksKey).catch(() => versions);
+      return { versions: latest };
+    }
+
+    let release = () => {};
+    const discovery = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    cvDiscovery = discovery;
+    const endDiscovery = () => {
+      if (cvDiscovery === discovery) {
+        cvDiscovery = undefined;
+      }
+      release();
+    };
+    return { versions, endDiscovery };
+  };
+
   const requestWithCache = async <TData = unknown, ThrowOnError extends boolean = false>(
     method: "GET",
     path: string,
@@ -623,13 +671,22 @@ export const createApiClientBase = <
       cachedEntry.cv !== versions?.knownCv;
     const cachedResult = isStaleByCv ? undefined : cachedEntry?.value;
 
-    // Without a known `cv`, the origin redirects the bare request to the current one.
-    const query =
-      cvMode === "auto" && versions?.knownCv !== undefined
-        ? applyCvToQuery(cacheableQuery, versions.knownCv)
-        : cacheableQuery;
-
     const loadNetwork = async () => {
+      const discovery = isCvPinnedByCaller ? { versions } : await awaitCvDiscovery(versions);
+      try {
+        return await loadNetworkUnder(discovery.versions);
+      } finally {
+        discovery.endDiscovery?.();
+      }
+    };
+
+    const loadNetworkUnder = async (versions: VersionWatermarks | undefined) => {
+      // Without a known `cv`, the origin redirects the bare request to the current one.
+      const query =
+        cvMode === "auto" && versions?.knownCv !== undefined
+          ? applyCvToQuery(cacheableQuery, versions.knownCv)
+          : cacheableQuery;
+
       const result = await fetchFn(query);
 
       // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the

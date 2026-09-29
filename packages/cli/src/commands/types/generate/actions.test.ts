@@ -56,65 +56,49 @@ vi.mock("pathe", async (importOriginal) => {
   };
 });
 
-// Mock pathToFileURL so dynamic imports resolve consistently on all platforms.
-// On Windows, pathToFileURL adds a drive-letter prefix (file:///D:/…) which
-// prevents vi.mock('/mocked/path') from intercepting the import.
-vi.mock("node:url", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:url")>();
-  return {
-    ...actual,
-    pathToFileURL: (p: string) => ({ href: p }),
-  };
-});
-
-// Create a mock for the custom fields parser
-const mockCustomFieldsParser = vi.fn().mockImplementation((key, field) => {
-  if (field.field_type === "native-color-picker") {
-    return {
-      [key]: {
-        properties: {
-          color: { type: "string" },
-        },
-        required: ["color"],
-        type: "object",
-      },
-    };
-  }
-  return {};
-});
-
-// Mock the dynamic import
-vi.mock("/mocked/path", () => ({
-  default: mockCustomFieldsParser,
-}));
-
-// Mock the import function
-vi.mock("node:module", () => ({
-  import: vi.fn().mockResolvedValue({
-    default: mockCustomFieldsParser,
-  }),
-}));
-
-// Set up the virtual file system with our custom fields parser
-vol.fromJSON({
-  "/path/to/custom/parser.ts": `
-export default (key: string, field: any) => {
-  switch (field.field_type) {
-    case 'native-color-picker':
+// vi.hoisted makes these available inside the hoisted vi.mock factory below.
+const {
+  CUSTOM_FIELDS_PARSER_PATH,
+  COMPILER_OPTIONS_PATH,
+  NAMED_EXPORTS_ONLY_PATH,
+  mockCustomFieldsParser,
+  userModuleDefaults,
+} = vi.hoisted(() => {
+  const CUSTOM_FIELDS_PARSER_PATH = "/path/to/custom/parser.ts";
+  const COMPILER_OPTIONS_PATH = "/path/to/compiler/options.ts";
+  const NAMED_EXPORTS_ONLY_PATH = "/path/to/named-exports-only.ts";
+  const customFieldsParser = vi.fn().mockImplementation((key, field) => {
+    if (field.field_type === "native-color-picker") {
       return {
         [key]: {
           properties: {
-            color: { type: 'string' },
+            color: { type: "string" },
           },
-          required: ['color'],
-          type: 'object',
+          required: ["color"],
+          type: "object",
         },
       };
-    default:
-      return {};
-  }
-};
-`,
+    }
+    return {};
+  });
+  return {
+    CUSTOM_FIELDS_PARSER_PATH,
+    COMPILER_OPTIONS_PATH,
+    NAMED_EXPORTS_ONLY_PATH,
+    mockCustomFieldsParser: customFieldsParser,
+    userModuleDefaults: new Map<string, unknown>([
+      [CUSTOM_FIELDS_PARSER_PATH, customFieldsParser],
+      [COMPILER_OPTIONS_PATH, { additionalProperties: false }],
+      [NAMED_EXPORTS_ONLY_PATH, undefined],
+    ]),
+  };
+});
+
+vi.mock("../../../utils/user-module", () => ({
+  importUserModuleDefault: vi.fn(async (path: string) => userModuleDefaults.get(path)),
+}));
+
+vol.fromJSON({
   // Add a mock storyblok.ts file for testing generateStoryblokTypes
   "/mocked/path": `
 // Storyblok types
@@ -234,46 +218,32 @@ describe("generate types actions", () => {
     expect(result).not.toContain("[k: string]: unknown");
   });
 
-  it("should handle customFieldsParser option", async () => {
-    // Create mock options with customFieldsParser
-    const mockOptions: GenerateTypesOptions = {
+  it("should apply the compiler options file's default export", async () => {
+    const result = await generateTypes(mockSpaceData, {
       strict: false,
-      customFieldsParser: "/path/to/custom/parser.ts",
-    };
+      compilerOptions: COMPILER_OPTIONS_PATH,
+    });
 
-    // Call the function with the customFieldsParser option
-    const result = await generateTypes(mockSpaceData, mockOptions);
-
-    // Verify that the result is generated successfully
-    expect(result).toBeDefined();
-    if (result) {
-      expect(typeof result).toBe("string");
-      expect(result.length).toBeGreaterThan(0);
-    }
-
-    // Verify that resolve was called with the customFieldsParser path
-    expect(resolve).toHaveBeenCalledWith("/path/to/custom/parser.ts");
+    expect(result).toContain("export interface TestComponent");
+    expect(result).not.toContain("[k: string]: unknown");
   });
 
-  it("should handle compilerOptions option", async () => {
-    // Create mock options with compilerOptions
-    const mockOptions: GenerateTypesOptions = {
+  it("should generate no types when the compiler options file has no default export", async () => {
+    const result = await generateTypes(mockSpaceData, {
       strict: false,
-      compilerOptions: "/path/to/compiler/options",
-    };
+      compilerOptions: NAMED_EXPORTS_ONLY_PATH,
+    });
 
-    // Call the function with the compilerOptions option
-    const result = await generateTypes(mockSpaceData, mockOptions);
+    expect(result).toBeUndefined();
+  });
 
-    // Verify that the result is generated successfully
-    expect(result).toBeDefined();
-    if (result) {
-      expect(typeof result).toBe("string");
-      expect(result.length).toBeGreaterThan(0);
-    }
+  it("should generate no types when the custom fields parser file has no default export", async () => {
+    const result = await generateTypes(mockSpaceData, {
+      strict: false,
+      customFieldsParser: NAMED_EXPORTS_ONLY_PATH,
+    });
 
-    // Verify that resolve was called with the compilerOptions path
-    expect(resolve).toHaveBeenCalledWith("/path/to/compiler/options");
+    expect(result).toBeUndefined();
   });
 
   it("should apply typePrefix to component type names", async () => {
@@ -1205,7 +1175,7 @@ describe("component property type annotations", () => {
     // Create mock options with customFieldsParser
     const mockOptions: GenerateTypesOptions = {
       strict: false,
-      customFieldsParser: "/path/to/custom/parser.ts",
+      customFieldsParser: CUSTOM_FIELDS_PARSER_PATH,
     };
 
     // Reset the mock to ensure it's called with the right parameters

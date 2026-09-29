@@ -1,5 +1,6 @@
 import { defineBlock, defineField, defineSchema } from "@storyblok/schema";
 import type { BlockContent, Schema as InferSchema, Story as InferStory } from "@storyblok/schema";
+import type { WithInlinedRelations } from "@storyblok/api-client";
 
 /**
  * Typed source of truth for the QA fixture's content shapes. Mirrors
@@ -73,3 +74,24 @@ export type Block<TName extends Blocks["name"]> = BlockContent<
   Blocks,
   FieldPlugins
 >;
+
+/**
+ * Type a component's props by block name when it's fetched with
+ * `resolve_relations` and `inlineRelations: true`: `BlockWithRelations<"hero",
+ * "hero.link">`. `TPaths` must match the `resolve_relations` query the
+ * fetch actually used — a relation field not listed there stays a UUID
+ * string.
+ */
+export type BlockWithRelations<
+  TName extends Blocks["name"],
+  TPaths extends string,
+> = WithInlinedRelations<Extract<Blocks, { name: TName }>, TPaths, Blocks, FieldPlugins>;
+
+/**
+ * Narrows a relation field's value to the resolved story, dropping the UUID
+ * string an unresolved relation (unpublished/deleted story) stays as.
+ * `posts.filter(isResolvedRelation)`.
+ */
+export function isResolvedRelation<T>(value: T): value is Exclude<T, string> {
+  return typeof value !== "string";
+}

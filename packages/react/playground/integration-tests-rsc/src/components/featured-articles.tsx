@@ -1,15 +1,15 @@
 import type { StoryblokBlockComponentProps } from "@storyblok/react";
-import type { Block, Story } from "@/schema/blocks";
+import { isResolvedRelation, type BlockWithRelations } from "@/schema/blocks";
 
 type FeaturedArticlesProps = StoryblokBlockComponentProps<
-  Omit<Block<"featured-articles">, "posts"> & { posts?: Story[] | null }
+  BlockWithRelations<"featured-articles", "featured-articles.posts">
 >;
 
 const FeaturedArticles = ({ block, editable }: FeaturedArticlesProps) => (
   <div {...editable} data-test="featured-articles">
     <h2>{block.heading}</h2>
     <div className="posts">
-      {(block.posts ?? []).map((post) => (
+      {(block.posts ?? []).filter(isResolvedRelation).map((post) => (
         <div className="post" data-test="featured-article-post" key={post.full_slug}>
           <p className="post-title">{post.name}</p>
           <a className="post-link" href={`/${post.full_slug}`}>

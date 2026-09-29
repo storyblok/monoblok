@@ -1,8 +1,13 @@
 import useSWR from "swr";
 import { apiClient } from "../storyblok";
-import { Story } from "../schema/blocks";
 
-async function fetchStory(slug: string): Promise<Story> {
+// The client infers a richer type than the plain `Story` here: `resolve_relations`
+// is a literal, so `inlineRelations: true` (set on `apiClient`) types every
+// `featured-articles.posts` field as the related story, at any nesting depth —
+// see `WithInlinedRelations` in `@storyblok/api-client`. Let TS infer the
+// fetcher's return instead of annotating it with `Story`, which predates that
+// resolution and only knows `posts` as a plain UUID string.
+async function fetchStory(slug: string) {
   const result = await apiClient.stories.get(slug, {
     query: { version: "draft", resolve_relations: "featured-articles.posts" },
   });
@@ -11,5 +16,5 @@ async function fetchStory(slug: string): Promise<Story> {
 }
 
 export function useStoryblokStory(slug: string) {
-  return useSWR<Story>(slug, fetchStory);
+  return useSWR(slug, fetchStory);
 }

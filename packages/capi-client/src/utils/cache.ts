@@ -44,14 +44,32 @@ export interface CacheEntry<TValue = unknown> {
   value: TValue;
   storedAt: number;
   ttlMs: number;
+  /**
+   * The `cv` the response reported or, for endpoints that report none (`/cdn/tags`,
+   * `/cdn/links`), the `cv` it was requested under. The entry is served only while this
+   * matches the known `cv`. Absent means TTL-only invalidation.
+   */
+  cv?: number;
 }
 
 export interface CacheEntryInput<TValue = unknown> {
   value: TValue;
   storedAt?: number;
   ttlMs: number;
+  /** See {@link CacheEntry.cv}. */
+  cv?: number;
 }
 
+/**
+ * Stores cache entries for the client.
+ *
+ * Providers must round-trip entries unchanged, including `cv`: losing it silently degrades
+ * invalidation to TTL alone. The key `sb:versions:v1:<tokenId>` is reserved for the client's
+ * version watermarks.
+ *
+ * Providers must expire entries after `ttlMs`; the client doesn't check it and leaves
+ * invalidated entries in place.
+ */
 export interface CacheProvider {
   get: <TValue = unknown>(key: string) => Promise<CacheEntry<TValue> | undefined>;
   set: <TValue = unknown>(key: string, entry: CacheEntryInput<TValue>) => Promise<void>;
@@ -80,6 +98,11 @@ export const createMemoryCacheProvider = (
         cache.delete(key);
         return undefined;
       }
+
+      // Refresh recency so the watermark record, read on every request, isn't evicted
+      // ahead of the entries it governs.
+      cache.delete(key);
+      cache.set(key, entry);
 
       return entry;
     },

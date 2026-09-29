@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyCvToQuery, extractCv } from "./cv";
+import { applyCvToQuery, extractCv, extractSpaceVersion } from "./cv";
 
 describe("extractCv", () => {
   it("should extract numeric cv from valid response", () => {
@@ -39,5 +39,26 @@ describe("applyCvToQuery", () => {
       version: "published",
       cv: 999,
     });
+  });
+});
+
+describe("extractSpaceVersion", () => {
+  it("should extract the version from a spaces/me response", () => {
+    expect(extractSpaceVersion({ space: { id: 1, version: 1_786_950_860 } })).toBe(1_786_950_860);
+  });
+
+  it("should return undefined when the space has no version", () => {
+    expect(extractSpaceVersion({ space: { id: 1 } })).toBeUndefined();
+  });
+
+  it("should return undefined for a non-numeric version", () => {
+    expect(extractSpaceVersion({ space: { version: "1786950860" } })).toBeUndefined();
+  });
+
+  it("should return undefined for responses without a space", () => {
+    expect(extractSpaceVersion({ cv: 12_345 })).toBeUndefined();
+    expect(extractSpaceVersion({ space: null })).toBeUndefined();
+    expect(extractSpaceVersion(null)).toBeUndefined();
+    expect(extractSpaceVersion(42)).toBeUndefined();
   });
 });

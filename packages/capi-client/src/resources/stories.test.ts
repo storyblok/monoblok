@@ -1504,3 +1504,145 @@ describe("cache.cv: manual", () => {
     expect(secondUrl.searchParams.has("cv")).toBe(false);
   });
 });
+
+describe("cv pinning while the cv is unknown", () => {
+  it("should send only one unpinned request while the cv is unknown", async () => {
+    const cvs: (string | null)[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
+        cvs.push(new URL(request.url).searchParams.get("cv"));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return HttpResponse.json({
+          story: makeStory("s1", { component: "page", _uid: "u1" }),
+          cv: 42,
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await Promise.all(["a", "b", "c", "d"].map((slug) => client.stories.get(slug)));
+
+    expect(cvs).toEqual([null, "42", "42", "42"]);
+  });
+
+  it("should release waiting requests when the first response carries no cv", async () => {
+    const cvs: (string | null)[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
+        cvs.push(new URL(request.url).searchParams.get("cv"));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return HttpResponse.json({ error: "Not Found" }, { status: 404 });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    const results = await Promise.all(["a", "b", "c"].map((slug) => client.stories.get(slug)));
+
+    expect(results.map((result) => result.response?.status)).toEqual([404, 404, 404]);
+    expect(cvs).toEqual([null, null, null]);
+  });
+
+  it("should not hold back draft requests", async () => {
+    let inFlight = 0;
+    let peakInFlight = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", async () => {
+        inFlight++;
+        peakInFlight = Math.max(peakInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        inFlight--;
+        return HttpResponse.json({
+          story: makeStory("s1", { component: "page", _uid: "u1" }),
+          cv: 42,
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    await Promise.all(
+      ["a", "b", "c"].map((slug) => client.stories.get(slug, { query: { version: "draft" } })),
+    );
+
+    expect(peakInFlight).toBe(3);
+  });
+
+  it("should not hold back requests when cv is managed manually", async () => {
+    const cvs: (string | null)[] = [];
+    let inFlight = 0;
+    let peakInFlight = 0;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
+        cvs.push(new URL(request.url).searchParams.get("cv"));
+        inFlight++;
+        peakInFlight = Math.max(peakInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        inFlight--;
+        return HttpResponse.json({
+          story: makeStory("s1", { component: "page", _uid: "u1" }),
+          cv: 42,
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token", cache: { cv: "manual" } });
+
+    await Promise.all(["a", "b", "c"].map((slug) => client.stories.get(slug)));
+
+    expect(peakInFlight).toBe(3);
+    expect(cvs).toEqual([null, null, null]);
+  });
+
+  it("should pin the wave after a publish to the new cv", async () => {
+    let cv = 1000;
+    const cvs: (string | null)[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () =>
+        HttpResponse.json({ space: { id: 1, name: "Test", version: cv } }),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
+        cvs.push(new URL(request.url).searchParams.get("cv"));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return HttpResponse.json({
+          story: makeStory("s1", { component: "page", _uid: "u1" }),
+          cv,
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+    await client.stories.get("warm");
+
+    cv = 2000; // content was published
+    await client.spaces.get();
+    await Promise.all(["a", "b", "c", "d"].map((slug) => client.stories.get(slug)));
+
+    expect(cvs).toEqual([null, null, "2000", "2000", "2000"]);
+  });
+
+  it("should stop waiting for a discovering request that is slow to respond", async () => {
+    let openGate = () => {};
+    const gate = new Promise<void>((resolve) => {
+      openGate = resolve;
+    });
+    const cvs: (string | null)[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/stories/*", async ({ request }) => {
+        cvs.push(new URL(request.url).searchParams.get("cv"));
+        if (request.url.includes("/slow")) {
+          await gate;
+        }
+        return HttpResponse.json({
+          story: makeStory("s1", { component: "page", _uid: "u1" }),
+          cv: 42,
+        });
+      }),
+    );
+    const client = createApiClient({ accessToken: "test-token" });
+
+    const slow = client.stories.get("slow");
+    const fast = await client.stories.get("fast");
+    openGate();
+    await slow;
+
+    expect(fast.response?.status).toBe(200);
+    expect(cvs).toEqual([null, null]);
+  });
+});

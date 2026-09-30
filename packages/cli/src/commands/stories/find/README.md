@@ -657,9 +657,9 @@ storyblok stories find --space 12345 --skip-content \
 # Check what a filter matches before acting on it
 storyblok stories find --space 12345 --query="[archived][is]=true" --skip-content | wc -l
 
-# Hand the ids to another command
+# Hand the ids to a script of your own
 storyblok stories find --space 12345 --query="[archived][is]=true" --skip-content \
-  | jq -r '.id' | xargs -I{} storyblok stories delete --space 12345 {}
+  | jq -r '.id' | ./archive-stories.sh
 
 # Keep a search's matches for later processing
 storyblok stories find --space 12345 --container-block product > products.jsonl
@@ -1004,7 +1004,7 @@ Write the selection down first, review it, and then act on the file.
 
 ```bash title="Don't: nothing to review, and nothing to re-apply or audit afterwards"
 storyblok stories find --space 12345 --starts-with en/campaigns/2023 --skip-content \
-  | jq -r '.id' | xargs -I{} storyblok stories delete --space 12345 {}
+  | jq -r '.id' | ./delete-stories.sh
 ```
 
 ```bash title="Do: write the selection down, review it, then act on the file"
@@ -1013,7 +1013,7 @@ storyblok stories find --space 12345 --starts-with en/campaigns/2023 --skip-cont
 wc -l selection.jsonl
 jq -r '.full_slug' selection.jsonl | less
 # only then
-jq -r '.id' selection.jsonl | xargs -I{} storyblok stories delete --space 12345 {}
+jq -r '.id' selection.jsonl | ./delete-stories.sh
 ```
 
 This keeps the set re-appliable, auditable, and diffable, and it closes the window in which a story

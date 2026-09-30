@@ -35,6 +35,23 @@ export function splitList(raw: string): string[] {
 }
 
 /**
+ * Reads a comma-separated flag that was passed explicitly.
+ *
+ * An empty value (`--tag ""`, `--tag ","`) would otherwise drop the filter
+ * without a word and widen the run to the whole space, which is the opposite of
+ * what passing the flag asked for.
+ */
+export function parseList(flag: string, raw: string): string {
+  const items = splitList(raw);
+  if (items.length === 0) {
+    throw new CommandError(
+      `${flag} expects a value, or several separated by commas, and got none.`,
+    );
+  }
+  return items.join(",");
+}
+
+/**
  * Rejects options the command accepts on the surface but cannot honour yet.
  *
  * Silently ignoring an explicitly passed flag is worse than failing: the user
@@ -152,7 +169,7 @@ export function parseSort(raw: string | undefined): string | undefined {
   if (raw === undefined) {
     return undefined;
   }
-  const parts = splitList(raw);
+  const parts = parseList("--sort", raw).split(",");
   for (const part of parts) {
     const [field, direction, ...modifiers] = part.split(":");
     const valid =
@@ -236,29 +253,34 @@ export function buildQueryParams(
   // `--container-block product` is shorthand for a `component` clause, so it is
   // handed over as an extra clause rather than spread over the parsed `--query`:
   // both write `component`, and a spread would drop one of them without a word.
-  Object.assign(
-    params,
-    buildStoryScopeParams({
-      startsWith: options.startsWith,
-      query: options.query,
-      extraFilterQuery: options.containerBlock
-        ? { component: { in: splitList(options.containerBlock).join(",") } }
+  const scope = buildStoryScopeParams({
+    startsWith: options.startsWith,
+    query: options.query,
+    extraFilterQuery:
+      options.containerBlock !== undefined
+        ? { component: { in: parseList("--container-block", options.containerBlock) } }
         : undefined,
-    }),
-  );
+  });
+  // `--starts-with ""` or `/` normalizes to no prefix at all, i.e. the whole space.
+  if (options.startsWith !== undefined && scope.starts_with === undefined) {
+    throw new CommandError(
+      `--starts-with expects a slug prefix, e.g. 'en/blog', and got: ${JSON.stringify(options.startsWith)}`,
+    );
+  }
+  Object.assign(params, scope);
 
-  if (options.includesBlock) {
-    params.contain_component = splitList(options.includesBlock).join(",");
+  if (options.includesBlock !== undefined) {
+    params.contain_component = parseList("--includes-block", options.includesBlock);
   }
 
   // Tags and workflow stages are both "any of these" on the server: a story
   // matches when it carries one of the listed values, unlike `--includes-block`,
   // where the listed blocks must all be present.
-  if (options.tag) {
-    params.with_tag = splitList(options.tag).join(",");
+  if (options.tag !== undefined) {
+    params.with_tag = parseList("--tag", options.tag);
   }
 
-  if (options.workflowStage) {
+  if (options.workflowStage !== undefined) {
     params.in_workflow_stages = parseWorkflowStages(options.workflowStage);
   }
 
@@ -270,11 +292,11 @@ export function buildQueryParams(
   // page, so it has to be applied before the walk rather than to the results.
   // An unsortable column is rejected by the API, which is the only place that
   // knows the space's own fields.
-  if (options.sort) {
+  if (options.sort !== undefined) {
     params.sort_by = parseSort(options.sort);
   }
 
-  if (options.references) {
+  if (options.references !== undefined) {
     params.reference_search = splitList(options.references).join(",");
   }
 

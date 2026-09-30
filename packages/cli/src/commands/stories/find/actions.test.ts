@@ -315,6 +315,22 @@ describe("the server-side scope filters", () => {
     );
   });
 
+  // An empty value would drop the filter and widen the run to the whole space.
+  it.each([
+    ["--tag", { tag: "" }],
+    ["--tag", { tag: " , " }],
+    ["--includes-block", { includesBlock: "" }],
+    ["--container-block", { containerBlock: "," }],
+    ["--workflow-stage", { workflowStage: "" }],
+    ["--sort", { sort: "" }],
+    ["--starts-with", { startsWith: "" }],
+    ["--starts-with", { startsWith: "/" }],
+  ])("should reject an empty %s", (flag, value) => {
+    expect(() => buildQueryParams(undefined, options(value))).toThrow(
+      expect.objectContaining({ message: expect.stringContaining(flag) }),
+    );
+  });
+
   it("should leave all three out when the flags are absent", () => {
     const params = buildQueryParams(undefined, options());
     expect(params.with_tag).toBeUndefined();

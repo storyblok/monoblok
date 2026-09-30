@@ -1,0 +1,11 @@
+{
+  "id": 3,
+  "uuid": "3",
+  "name": "Articles",
+  "slug": "articles",
+  "full_slug": "articles",
+  "is_folder": true,
+  "is_startpage": false,
+  "parent_id": 0,
+  "content": {}
+}

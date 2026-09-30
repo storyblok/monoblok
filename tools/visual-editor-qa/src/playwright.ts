@@ -52,7 +52,7 @@ export const createPlaywrightConfig = (
       },
     ],
     webServer: {
-      command: `pnpm --filter ${config.packageName} qa:dev`,
+      command: `pnpm --filter ${config.packageName} ${config.devScript ?? "qa:dev"}`,
       // The seeded story, not the origin: a dev server that boots but serves the
       // wrong space still answers on `/`.
       url: `${config.previewBaseUrl}${config.previewPath}`,

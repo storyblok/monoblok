@@ -1,0 +1,38 @@
+{
+  "name": "@storyblok/playground-react-integration-tests",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Dedicated React integration-test playground for Visual Editor QA",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "configure:preview": "bash ../../../../.agents/skills/qa-engineer-manual/scripts/configure-space.sh --space \"$STORYBLOK_SPACE_ID\" --domain \"${STORYBLOK_PREVIEW_URL:-https://localhost:5273/}\" --confirm",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@storyblok/api-client": "workspace:^",
+    "@storyblok/react": "workspace:^",
+    "@storyblok/schema": "workspace:^",
+    "react": "catalog:react19",
+    "react-dom": "catalog:react19",
+    "react-router": "^7.18.2",
+    "swr": "^2.5.1"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:^",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:react19",
+    "@types/react-dom": "catalog:react19",
+    "@vitejs/plugin-basic-ssl": "^2.0.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "^6.4.3"
+  },
+  "nx": {
+    "projectType": "application"
+  }
+}

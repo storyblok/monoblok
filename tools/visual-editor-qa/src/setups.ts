@@ -30,23 +30,36 @@ export const registerAuthSetup = (config: QaConfig): void => {
 export const registerPreflightSetup = (config: QaConfig): void => {
   setup(
     "the playground serves the seeded space, not a stale or misconfigured one",
-    async ({ request }) => {
-      const response = await request.get(`${config.previewBaseUrl}${config.previewPath}`);
+    async ({ page }) => {
+      const url = `${config.previewBaseUrl}${config.previewPath}`;
+      const devScript = config.devScript ?? "qa:dev";
+      let response;
+      try {
+        response = await page.goto(url, { waitUntil: "domcontentloaded" });
+      } catch {
+        throw new Error(
+          `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} ${devScript}`,
+        );
+      }
       expect(
-        response.status(),
-        `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} qa:dev`,
+        response?.status(),
+        `${config.previewBaseUrl} did not respond. Start it with: pnpm --filter ${config.packageName} ${devScript}`,
       ).toBe(200);
 
       // A status check alone looks green while the content is wrong, so assert
       // the seeded marker: that is what tells the three causes below apart.
-      expect(
-        await response.text(),
-        `${config.previewBaseUrl}${config.previewPath} did not contain the seeded marker ` +
-          `"${config.seededMarker}". Likely causes: a dev server left over from an earlier run is ` +
-          `serving stale code, ${config.accessTokenEnvVar} is not exported so the playground fell ` +
-          "back to the demo token committed in its config, the space is not seeded, or an earlier " +
-          `run's save and publish specs wrote over the seeded content. Re-seed: ${config.seedCommand}`,
-      ).toContain(config.seededMarker);
+      // Read it off the rendered page, not the raw response body: an SSR
+      // framework already has it in the initial HTML, but a CSR one (e.g.
+      // React) only renders it after the browser executes the app and fetches
+      // the story, so a raw HTTP body would never contain it either way.
+      await expect(
+        page.locator("body"),
+        `${url} did not render the seeded marker "${config.seededMarker}". Likely causes: a dev ` +
+          "server left over from an earlier run is serving stale code, " +
+          `${config.accessTokenEnvVar} is not exported so the playground fell back to the demo ` +
+          "token committed in its config, the space is not seeded, or an earlier run's save and " +
+          `publish specs wrote over the seeded content. Re-seed: ${config.seedCommand}`,
+      ).toContainText(config.seededMarker, { timeout: 15_000 });
     },
   );
 

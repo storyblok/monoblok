@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:https": "next dev --experimental-https",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
-    "@storyblok/react": "workspace:*",
+    "@storyblok/api-client": "workspace:^",
+    "@storyblok/react": "workspace:^",
     "@tailwindcss/typography": "^0.5.16",
     "next": "catalog:next16",
     "react": "catalog:react19",

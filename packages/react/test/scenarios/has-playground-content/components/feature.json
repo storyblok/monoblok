@@ -1,0 +1,11 @@
+{
+  "name": "feature",
+  "display_name": "Feature",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "name": { "type": "text", "pos": 0 },
+    "description": { "type": "text", "pos": 1 }
+  }
+}

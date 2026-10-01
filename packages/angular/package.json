@@ -36,7 +36,7 @@
   "scripts": {
     "ng": "ng",
     "playground:ssr:start": "ng serve ssr-playground --ssl",
-    "playground:integration-tests:build": "ng build integration-tests",
+    "playground:integration-tests:build": "node playground/integration-tests/scripts/write-runtime-config.mjs && ng build integration-tests",
     "playground:integration-tests:start": "node playground/integration-tests/scripts/write-runtime-config.mjs && ng serve integration-tests --ssl --port 4200",
     "qa:dev": "pnpm nx build @storyblok/angular && pnpm --filter @storyblok/angular-integration-tests configure:preview && node playground/integration-tests/scripts/clear-dep-cache.mjs && pnpm run playground:integration-tests:start",
     "qa:editor": "playwright test --config test/visual-editor/playwright.config.ts",

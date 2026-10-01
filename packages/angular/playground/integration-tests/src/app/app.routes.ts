@@ -4,13 +4,18 @@ import { StoryblokService } from "@storyblok/angular";
 
 const resolveStory = async (slug: string) => {
   const client = inject(StoryblokService).getClient();
-  const { data } = await client.stories.get(slug, {
-    query: {
-      version: "draft",
-      resolve_relations: "featured-articles.articles,article.author",
-    },
-  });
-  return data?.story;
+  try {
+    const { data } = await client.stories.get(slug, {
+      query: {
+        version: "draft",
+        resolve_relations: "featured-articles.articles,article.author",
+      },
+    });
+    return data?.story;
+  } catch (error) {
+    console.error(`[Storyblok] Failed to resolve story "${slug}":`, error);
+    return undefined;
+  }
 };
 
 const livePreviewRoute = {

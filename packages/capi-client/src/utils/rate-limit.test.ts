@@ -61,6 +61,25 @@ async function admittedNow(
   return started;
 }
 
+/** Origin-bound requests start evenly spaced, so their rate is measured over a second. */
+async function admittedWithinASecond(
+  manager: ReturnType<typeof createThrottleManager>,
+  count: number,
+  path: string,
+  query: Record<string, unknown> = {},
+) {
+  let started = 0;
+  const send = manager.wrapFetch(() => {
+    started++;
+    return Promise.reject(new Error("probe"));
+  });
+  for (let i = 0; i < count; i++) {
+    void send(urlFor(path, query)).catch(() => {});
+  }
+  await vi.advanceTimersByTimeAsync(999);
+  return started;
+}
+
 /**
  * Feeds a response carrying a rate-limit policy header through the manager's
  * `fetch` wrapper — the path by which the limiter sees responses.
@@ -676,7 +695,7 @@ describe("createThrottleManager({ cacheAware })", () => {
 
     await workFor(manager, 80, { "x-cache": "Miss from cloudfront" });
 
-    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+    expect(await admittedWithinASecond(manager, 100, LISTING, LARGE)).toBe(6);
   });
 
   it("should stay at the tier limit when the cache status is not readable", async () => {
@@ -696,7 +715,7 @@ describe("createThrottleManager({ cacheAware })", () => {
 
     await workFor(manager, 80, { "x-cache": "RefreshHit from cloudfront" });
 
-    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+    expect(await admittedWithinASecond(manager, 100, LISTING, LARGE)).toBe(6);
   });
 
   it("should outgrow the tier limit once the CDN serves the requests from cache", async () => {
@@ -720,7 +739,7 @@ describe("createThrottleManager({ cacheAware })", () => {
     // key nothing has warmed, and the drop must not wait for the average.
     await workFor(manager, 10, { "x-cache": "Miss from cloudfront" });
 
-    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+    expect(await admittedWithinASecond(manager, 100, LISTING, LARGE)).toBe(6);
   });
 
   it("should fall back to the tier limit when the workload turns cold", async () => {
@@ -733,7 +752,7 @@ describe("createThrottleManager({ cacheAware })", () => {
 
     await workFor(manager, 60, { "x-cache": "Miss from cloudfront" });
 
-    expect(await admittedNow(manager, 100, LISTING, LARGE)).toBe(6);
+    expect(await admittedWithinASecond(manager, 100, LISTING, LARGE)).toBe(6);
   });
 
   it("should leave the tier at its limit when turned off", async () => {

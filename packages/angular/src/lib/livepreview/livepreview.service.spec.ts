@@ -21,7 +21,15 @@ vi.mock("@storyblok/live-preview", () => ({
 /** Minimal DestroyRef stub for testing. */
 function makeDestroyRef(): { ref: DestroyRef; destroy: () => void } {
   const callbacks: (() => void)[] = [];
-  const ref = { onDestroy: (cb: () => void) => callbacks.push(cb) } as unknown as DestroyRef;
+  const ref = {
+    onDestroy: (cb: () => void) => {
+      callbacks.push(cb);
+      return () => {
+        const index = callbacks.indexOf(cb);
+        if (index !== -1) callbacks.splice(index, 1);
+      };
+    },
+  } as unknown as DestroyRef;
   return { ref, destroy: () => callbacks.forEach((cb) => cb()) };
 }
 

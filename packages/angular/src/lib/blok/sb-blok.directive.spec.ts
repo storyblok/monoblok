@@ -1,4 +1,4 @@
-import { Component, input, PendingTasks, signal, Type } from "@angular/core";
+import { ApplicationRef, Component, input, PendingTasks, signal, Type } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { SbBlokDirective } from "./sb-blok.directive";
 import { StoryblokComponentResolver } from "./sb-blok.feature";
@@ -191,6 +191,44 @@ describe("SbBlokDirective", () => {
 
     expect(runSpy).toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector("h1").textContent).toBe("Hello world!");
+  });
+
+  it("blocks application stability until the lazily-resolved component has rendered", async () => {
+    // Pins down the guarantee behind the PendingTasks test above: a lazy
+    // loader that resolves late must keep the app unstable until its
+    // component is in the DOM. `pendingTasks.run` being called is not
+    // enough on its own — the callback passed to it must also await the
+    // render, or the pending task completes before the component exists.
+    let resolveComponent!: (component: Type<unknown>) => void;
+    const deferred = new Promise<Type<unknown>>((resolve) => {
+      resolveComponent = resolve;
+    });
+    vi.spyOn(resolver, "resolve").mockReturnValueOnce(deferred);
+
+    fixture.componentInstance.blok.set({
+      _uid: "1",
+      component: "teaser",
+      headline: "Deferred",
+    });
+    fixture.detectChanges();
+
+    const appRef = TestBed.inject(ApplicationRef);
+    let becameStable = false;
+    void appRef.whenStable().then(() => {
+      becameStable = true;
+    });
+
+    // Give the event loop several real turns without resolving the lazy
+    // import. The app must still be unstable at this point.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(becameStable).toBe(false);
+    expect(fixture.nativeElement.querySelector("h1")).toBeNull();
+
+    resolveComponent(TeaserComponent);
+    await appRef.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("h1").textContent).toBe("Deferred");
   });
 
   it("cleans up dynamic component on destroy", async () => {

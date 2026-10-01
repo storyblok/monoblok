@@ -58,8 +58,13 @@ export const generateProject = async (
       }
     }
 
-    // Clone the template repository using degit
-    const degitProcess = spawn("npx", ["degit", templateRepo, projectPath], {
+    // Clone the template repository using degit. Run it from `targetPath` and
+    // pass only the project name: with `shell: true` the arguments are joined
+    // without quoting, so an absolute path containing a space would be split
+    // and degit would receive the wrong destination.
+    await fs.mkdir(targetPath, { recursive: true });
+    const degitProcess = spawn("npx", ["degit", templateRepo, projectName], {
+      cwd: targetPath,
       stdio: "inherit",
       shell: true,
     });

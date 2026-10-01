@@ -47,10 +47,10 @@ export class CatchAllComponent implements OnInit {
   readonly bridgeConfig: BridgeParams = {};
 
   ngOnInit(): void {
-    void this.livePreview
-      .connect((updatedStory) => this.story.set(updatedStory), this.destroyRef, this.bridgeConfig)
-      .catch((error: unknown) => {
-        console.error("[Storyblok] Live preview connection failed:", error);
-      });
+    void this.livePreview.connect(
+      (updatedStory) => this.story.set(updatedStory),
+      this.destroyRef,
+      this.bridgeConfig,
+    );
   }
 }

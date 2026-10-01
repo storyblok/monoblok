@@ -115,14 +115,14 @@ export class LivePreviewComponent {
     }
 
     afterNextRender(() => {
-      void this.livePreview
-        .connect((updatedStory) => this.story.set(updatedStory as Story), this.destroyRef, {
+      void this.livePreview.connect(
+        (updatedStory) => this.story.set(updatedStory as Story),
+        this.destroyRef,
+        {
           resolveRelations: ["article.author"],
           preventClicks: false,
-        })
-        .catch((error: unknown) =>
-          console.error("[Storyblok] Live preview connection failed:", error),
-        );
+        },
+      );
     });
   }
 

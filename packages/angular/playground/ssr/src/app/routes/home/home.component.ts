@@ -46,16 +46,19 @@ export class HomeComponent implements OnInit {
 
   private readonly bridgeConfig: BridgeParams = { preventClicks: true };
 
+  /** Set once a live preview `input` event arrives, so a fetch still in
+   * flight doesn't overwrite a newer edited story with the older draft. */
+  private liveUpdateReceived = false;
+
   ngOnInit(): void {
-    void this.livePreview
-      .connect(
-        (updatedStory) => this.story.set((updatedStory as Story) || null),
-        this.destroyRef,
-        this.bridgeConfig,
-      )
-      .catch((error: unknown) => {
-        console.error("[Storyblok] Live preview connection failed:", error);
-      });
+    void this.livePreview.connect(
+      (updatedStory) => {
+        this.liveUpdateReceived = true;
+        this.story.set((updatedStory as Story) || null);
+      },
+      this.destroyRef,
+      this.bridgeConfig,
+    );
 
     void this.loadStory();
   }
@@ -68,6 +71,7 @@ export class HomeComponent implements OnInit {
           resolve_relations: "",
         },
       });
+      if (this.liveUpdateReceived) return;
       this.story.set((data?.story as Story) || null);
     } finally {
       this.loading.set(false);

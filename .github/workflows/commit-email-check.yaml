@@ -1,0 +1,68 @@
+name: Commit Email Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  main:
+    name: Validate commit emails
+    # Only branches pushed to this repository are checked. Pull requests from
+    # forks (external contributors) are skipped.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # Full commit history is needed to list every commit in the PR; file
+      # contents are not, so blobs are skipped to keep the clone small.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Check commit author emails
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Bots that author commits on pull requests in this repository.
+          allowed_bots=(
+            "49699333+dependabot[bot]@users.noreply.github.com"
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          )
+
+          offending=()
+          # %aE resolves the author email through .mailmap, if one exists.
+          while read -r sha email; do
+            email_lc=$(printf '%s' "$email" | tr '[:upper:]' '[:lower:]')
+            [[ "$email_lc" == *@storyblok.com ]] && continue
+            for bot in "${allowed_bots[@]}"; do
+              [[ "$email_lc" == "$bot" ]] && continue 2
+            done
+            offending+=("$sha $email")
+          done < <(git log --format='%H %aE' "$BASE_SHA..$HEAD_SHA")
+
+          if [[ ${#offending[@]} -eq 0 ]]; then
+            echo "All commits use a @storyblok.com or allowed bot author email."
+            exit 0
+          fi
+
+          echo "::error::Commits on branches in this repository must use a @storyblok.com author email."
+          echo
+          echo "Offending commits:"
+          printf '  %s\n' "${offending[@]}"
+          echo
+          echo "To fix, set your email for this repository and rewrite the commits in this PR:"
+          echo
+          echo "  git config user.email \"you@storyblok.com\""
+          echo "  git rebase -i $BASE_SHA --exec 'git commit --amend --no-edit --reset-author'"
+          echo "  git push --force-with-lease"
+          echo
+          echo "Only the commits in this PR need fixing, not the existing history."
+          exit 1

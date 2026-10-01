@@ -9,7 +9,10 @@ export { provideStoryblok } from "./lib/storyblok.feature";
 export { withStoryblokComponents, type StoryblokComponentsMap } from "./lib/components.feature";
 
 // Live Preview feature (optional, tree-shakeable)
-export { LivePreviewService } from "./lib/livepreview/livepreview.service";
+export {
+  LivePreviewService,
+  type LivePreviewCallback,
+} from "./lib/livepreview/livepreview.service";
 export { withLivePreview } from "./lib/livepreview/livepreview.feature";
 export { type BridgeParams } from "@storyblok/live-preview";
 

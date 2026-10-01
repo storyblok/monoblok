@@ -153,6 +153,7 @@ export class LivePreviewService {
       cleanup = await this.listen(callback, options);
     } catch (error) {
       console.error("[Storyblok] connect() failed to subscribe to live preview updates:", error);
+      unregister?.();
       return () => {};
     }
 

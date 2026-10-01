@@ -49,6 +49,20 @@ Pacing every bucket regardless of cache status was rejected: it costs warm build
 instead of 4.5 s), because a cached burst is never throttled. Deciding per bucket from five or more
 samples was rejected too: the 429s come from the very first window, before a bucket has five.
 
-A faster climb above the tier limit (doubling per quiet second) was tried and rejected. It reached
-400/s in 3 s instead of 22 s, but each step opens many connections at once, and their setup stalled
-warm builds to 6.9-11.8 s.
+## Ceiling and climb
+
+The cache-aware bound rises from 8× to 20× a bucket's limit: 1,000/s on the 50/s tier, 120/s on the
+6/s tier. At 20× a client held 1,000/s on warm 25-item listings with no 429s. A publish that turned
+138 warm keys cold mid-run drew 41-44 × 429 at 20× against 42 at 8×, and no call failed at either.
+
+The recovery step stays what it was at 8×: a twenty-fifth of at most eight times the limit, +16/s on
+the 50/s tier. The 20× ceiling is reached after about 60 s instead of 24 s. Steeper climbs were
+measured and rejected because each step opens more connections in the same second, and their setup
+stalls short workloads. On warm 278-call builds, three runs each:
+
+| climb on the 50/s tier        | warm build |
+| ----------------------------- | ---------: |
+| +16/s (kept)                  |  4.5-4.9 s |
+| +40/s (a twenty-fifth of 20×) |  5.4-8.2 s |
+| +83/s (a twelfth of 20×)      | 7.4-10.3 s |
+| doubling per quiet second     | 6.9-11.8 s |

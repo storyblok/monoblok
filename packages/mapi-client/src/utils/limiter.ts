@@ -74,7 +74,8 @@ export interface AdaptiveConfig {
   /**
    * Requests per second added back per `recoveryIntervalMs` of sustained
    * success. Defaults to a twenty-fifth of the bucket's ceiling, at least 1, so
-   * that recovery takes about as long on a 50/s tier as on a 6/s one.
+   * that recovery takes about as long on a 50/s tier as on a 6/s one. A ceiling
+   * above eight times the bucket's limit counts as eight times it.
    */
   increaseStep?: number;
   /**
@@ -107,8 +108,8 @@ export interface CacheAwareConfig {
   /**
    * Highest rate the cache is assumed able to serve; the ceiling never passes it.
    *
-   * It is an outer bound, not the operating one: eight times a bucket's own
-   * limit binds first on every bucket under an eighth of this.
+   * It is an outer bound, not the operating one: twenty times a bucket's own
+   * limit binds first on every bucket under a twentieth of this.
    */
   cachedRequestsPerSecond: number;
   /**
@@ -168,6 +169,14 @@ const ADAPTIVE_DEFAULTS: Required<Omit<AdaptiveConfig, "increaseStep">> = {
 
 /** A bucket recovers its whole rate in approximately this many intervals. */
 const RECOVERY_INTERVALS = 25;
+
+/**
+ * Highest ceiling, as a multiple of the configured limit, the recovery step
+ * scales with. A steeper climb opens more connections per second, and their
+ * setup stalls short workloads such as a build by seconds; above this multiple
+ * the ceiling is only reached more slowly, not more steeply.
+ */
+const CLIMB_STEP_MULTIPLE = 8;
 
 /**
  * Responses a bucket's cache-hit share is measured over. The ceiling only
@@ -233,7 +242,7 @@ const CACHE_WINDOW_MAX_IDLE_MS = 60_000;
  * once, and costs little: the measured gain flattens well before the ceiling
  * runs out of room.
  */
-const MAX_CEILING_MULTIPLE = 8;
+const MAX_CEILING_MULTIPLE = 20;
 
 /**
  * Recent responses, across all buckets, that decide whether the traffic is
@@ -338,8 +347,14 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     ),
   };
 
-  const stepFor = (ceiling: number) =>
-    adaptiveConfig.increaseStep ?? Math.max(1, Math.round(ceiling / RECOVERY_INTERVALS));
+  const stepFor = (bucket: Bucket, ceiling: number) =>
+    adaptiveConfig.increaseStep ??
+    Math.max(
+      1,
+      Math.round(
+        Math.min(ceiling, bucket.configuredLimit * CLIMB_STEP_MULTIPLE) / RECOVERY_INTERVALS,
+      ),
+    );
   const adaptationEnabled = adaptive !== false;
   // `adaptive: false` means "pin every bucket to its base limit", so a
   // discovered ceiling has no business overriding it.
@@ -556,7 +571,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     }
 
     bucket.lastIncreaseAt = now;
-    bucket.throttle.setLimit(Math.min(ceiling, current + stepFor(ceiling)));
+    bucket.throttle.setLimit(Math.min(ceiling, current + stepFor(bucket, ceiling)));
   };
 
   const applyServerLimit = (bucket: Bucket, response: Response) => {

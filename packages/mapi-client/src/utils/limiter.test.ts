@@ -416,6 +416,17 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     }
   }
 
+  it("should climb towards a raised ceiling no steeper than towards eight times its limit", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    // Once the window is full, each quiet second adds 80 / 25 ≈ 3, not 200 / 25 = 8.
+    await reportOverTime(limiter, ctx, cached, 60);
+
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(10 + 11 * 3);
+  });
+
   it("should start origin-bound requests evenly spaced instead of all at once", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ cacheAware });
@@ -496,19 +507,19 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
 
     await reportOverTime(limiter, ctx, cached, 120);
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(200);
   });
 
-  it("should not climb more than eight times its limit however cached it looks", async () => {
+  it("should not climb more than twenty times its limit however cached it looks", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ cacheAware });
     const ctx = context({ limit: 4 });
 
-    await reportOverTime(limiter, ctx, cached, 120);
+    await reportOverTime(limiter, ctx, cached, 200);
 
     // Well short of the 1000/s the cache itself would serve. What has to be
     // bounded is the requests already in flight when a working set goes cold.
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(32);
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
   });
 
   it("should stop the climb at the rate the cache serves", async () => {
@@ -542,7 +553,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     const ctx = context({ limit: 10 });
 
     await reportOverTime(limiter, ctx, cached, 120);
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(200);
     await settle();
 
     // A fifth of the window, reported back to back. Waiting for the average to
@@ -579,7 +590,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     const ctx = context({ limit: 10 });
 
     await reportOverTime(limiter, ctx, cached, 120);
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(200);
     await settle();
 
     for (let i = 0; i < 50; i++) {
@@ -679,7 +690,7 @@ describe("createDefaultRateLimiter({ cacheAware }) — bounds and decay", () => 
     const ctx = context({ limit: 6 });
 
     await reportOverTime(limiter, ctx, cached, 120);
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(48);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(120);
 
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
 
@@ -699,7 +710,7 @@ describe("createDefaultRateLimiter({ cacheAware }) — bounds and decay", () => 
     await reportOverTime(limiter, ctx, cached, 120);
     await vi.advanceTimersByTimeAsync(5000);
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(48);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(120);
   });
 
   it("should drop a fully cached bucket on a run of misses far shorter than the window", async () => {
@@ -790,7 +801,7 @@ describe("createDefaultRateLimiter({ onRateLimitChange })", () => {
       await vi.advanceTimersByTimeAsync(1000);
     }
 
-    expect(latest(reported)).toMatchObject({ ceiling: 48, cacheHitShare: 1, configuredLimit: 6 });
+    expect(latest(reported)).toMatchObject({ ceiling: 120, cacheHitShare: 1, configuredLimit: 6 });
   });
 
   it("should not open the ceiling up before the measurement covers a full window", async () => {
@@ -812,7 +823,7 @@ describe("createDefaultRateLimiter({ onRateLimitChange })", () => {
 
     await limiter.recordResponse?.(ctx, cached());
 
-    expect(latest(reported)?.ceiling).toBe(48);
+    expect(latest(reported)?.ceiling).toBe(120);
   });
 
   it("should keep serving requests when the observer throws", async () => {

@@ -44,7 +44,10 @@ export class HomeComponent implements OnInit {
   readonly loading = signal(true);
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
-  private readonly bridgeConfig: BridgeParams = { preventClicks: true };
+  private readonly bridgeConfig: BridgeParams = {
+    resolveRelations: ["featured-articles.articles", "article.author"],
+    preventClicks: true,
+  };
 
   /** Set once a live preview `input` event arrives, so a fetch still in
    * flight doesn't overwrite a newer edited story with the older draft. */
@@ -68,7 +71,7 @@ export class HomeComponent implements OnInit {
       const { data } = await this.client.stories.get("angular/home", {
         query: {
           version: "draft",
-          resolve_relations: "",
+          resolve_relations: "featured-articles.articles,article.author",
         },
       });
       if (this.liveUpdateReceived) return;

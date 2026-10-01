@@ -74,7 +74,8 @@ export interface AdaptiveConfig {
   /**
    * Requests per second added back per `recoveryIntervalMs` of sustained
    * success. Defaults to a twenty-fifth of the bucket's ceiling, at least 1, so
-   * that recovery takes about as long on a 50/s tier as on a 6/s one.
+   * that recovery takes about as long on a 50/s tier as on a 6/s one. A ceiling
+   * above eight times the bucket's limit counts as eight times it.
    */
   increaseStep?: number;
   /**
@@ -107,8 +108,8 @@ export interface CacheAwareConfig {
   /**
    * Highest rate the cache is assumed able to serve; the ceiling never passes it.
    *
-   * It is an outer bound, not the operating one: eight times a bucket's own
-   * limit binds first on every bucket under an eighth of this.
+   * It is an outer bound, not the operating one: twenty times a bucket's own
+   * limit binds first on every bucket under a twentieth of this.
    */
   cachedRequestsPerSecond: number;
   /**
@@ -168,6 +169,14 @@ const ADAPTIVE_DEFAULTS: Required<Omit<AdaptiveConfig, "increaseStep">> = {
 
 /** A bucket recovers its whole rate in approximately this many intervals. */
 const RECOVERY_INTERVALS = 25;
+
+/**
+ * Highest ceiling, as a multiple of the configured limit, the recovery step
+ * scales with. A steeper climb opens more connections per second, and their
+ * setup stalls short workloads such as a build by seconds; above this multiple
+ * the ceiling is only reached more slowly, not more steeply.
+ */
+const CLIMB_STEP_MULTIPLE = 8;
 
 /**
  * Responses a bucket's cache-hit share is measured over. The ceiling only
@@ -233,7 +242,14 @@ const CACHE_WINDOW_MAX_IDLE_MS = 60_000;
  * once, and costs little: the measured gain flattens well before the ceiling
  * runs out of room.
  */
-const MAX_CEILING_MULTIPLE = 8;
+const MAX_CEILING_MULTIPLE = 20;
+
+/**
+ * Recent responses, across all buckets, that decide whether the traffic is
+ * reaching the origin. A publish rotates the content version and turns every key
+ * cold at once, so the first response of a fresh client already tells.
+ */
+const ORIGIN_SIGNAL_WINDOW = 20;
 
 /** 503 is excluded: it reports an upstream problem that backing off would not address. */
 const THROTTLED_STATUS = 429;
@@ -280,6 +296,8 @@ interface Bucket {
   consecutiveMisses: number;
   /** When the window last took a sample, for ageing it out while the bucket is idle. */
   lastCacheObservationAt: number;
+  /** Earliest start of the next request while the traffic is origin-bound. */
+  nextSpacedStartAt: number;
   /** Pacing last reported to `onRateLimitChange`, so unchanged pacing is not reported twice. */
   reportedStatus?: Omit<RateLimitStatus, "bucket">;
 }
@@ -329,13 +347,46 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     ),
   };
 
-  const stepFor = (ceiling: number) =>
-    adaptiveConfig.increaseStep ?? Math.max(1, Math.round(ceiling / RECOVERY_INTERVALS));
+  const stepFor = (bucket: Bucket, ceiling: number) =>
+    adaptiveConfig.increaseStep ??
+    Math.max(
+      1,
+      Math.round(
+        Math.min(ceiling, bucket.configuredLimit * CLIMB_STEP_MULTIPLE) / RECOVERY_INTERVALS,
+      ),
+    );
   const adaptationEnabled = adaptive !== false;
   // `adaptive: false` means "pin every bucket to its base limit", so a
   // discovered ceiling has no business overriding it.
   const cacheAware = adaptationEnabled ? options.cacheAware : undefined;
   const buckets = new Map<string, Bucket>();
+  /** Whether each of the last `ORIGIN_SIGNAL_WINDOW` responses reached the origin. */
+  const originSignals: boolean[] = [];
+
+  const recordOriginSignal = (reachedOrigin: boolean) => {
+    originSignals.push(reachedOrigin);
+    if (originSignals.length > ORIGIN_SIGNAL_WINDOW) {
+      originSignals.shift();
+    }
+  };
+
+  /**
+   * Only origin-bound traffic gets throttled for bursting: a full window
+   * released at once arrives packed into less than a second, and the origin
+   * answers part of it with 429. Cached traffic keeps the instant window.
+   */
+  const isOriginBound = (): boolean =>
+    originSignals.length > 0 && originSignals.filter(Boolean).length * 2 >= originSignals.length;
+
+  /** Resolves at the bucket's next evenly spaced start, `1000 / rate` ms after the previous one. */
+  const awaitSpacedStart = (bucket: Bucket): Promise<void> => {
+    const now = Date.now();
+    const start = Math.max(now, bucket.nextSpacedStartAt);
+    bucket.nextSpacedStartAt = start + 1000 / bucket.throttle.getLimit();
+    return start > now
+      ? new Promise((resolve) => setTimeout(resolve, start - now))
+      : Promise.resolve();
+  };
 
   /** Share of the bucket's observed responses the cache served, if it has any. */
   const hitShareOf = (bucket: Bucket): number | undefined =>
@@ -417,6 +468,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     if (hit === undefined) {
       return;
     }
+    recordOriginSignal(!hit);
 
     bucket.lastCacheObservationAt = now;
 
@@ -452,6 +504,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
       cacheHitCount: 0,
       consecutiveMisses: 0,
       lastCacheObservationAt: Number.NEGATIVE_INFINITY,
+      nextSpacedStartAt: Number.NEGATIVE_INFINITY,
     };
     buckets.set(context.bucket, bucket);
     return bucket;
@@ -518,7 +571,7 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
     }
 
     bucket.lastIncreaseAt = now;
-    bucket.throttle.setLimit(Math.min(ceiling, current + stepFor(ceiling)));
+    bucket.throttle.setLimit(Math.min(ceiling, current + stepFor(bucket, ceiling)));
   };
 
   const applyServerLimit = (bucket: Bucket, response: Response) => {
@@ -544,13 +597,16 @@ export function createDefaultRateLimiter(options: DefaultRateLimiterOptions = {}
   };
 
   return {
-    acquire: (context) => {
+    acquire: async (context) => {
       const bucket = getBucket(context);
       if (cacheAware) {
         // A bucket admits before it can be told anything, so staleness has to
         // be checked on the way in rather than on the next response.
         forgetIdleCacheWindow(bucket, Date.now());
         clampToCeiling(bucket);
+        if (isOriginBound()) {
+          await awaitSpacedStart(bucket);
+        }
       }
       return bucket.throttle.acquire();
     },

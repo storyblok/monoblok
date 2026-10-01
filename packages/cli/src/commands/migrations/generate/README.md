@@ -20,11 +20,11 @@ This will generate a migration file for the specified component:
 
 ## Options
 
-| Option                    | Description                                                           | Default                 |
-| ------------------------- | --------------------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for          | -                       |
-| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`) | -                       |
-| `-p, --path <path>`       | Custom path to store the migration file                               | `.storyblok/migrations` |
+| Option                    | Description                                                                                                               | Default                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                              | -                       |
+| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators | -                       |
+| `-p, --path <path>`       | Custom path to store the migration file                                                                                   | `.storyblok/migrations` |
 
 ## Examples
 

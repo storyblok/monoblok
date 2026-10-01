@@ -153,6 +153,50 @@ describe("migrations generate command", () => {
     expect(logFile).toContain("No component found with name");
   });
 
+  it.each(["../../../tmp/evil", "nested/suffix", "a:b", ".."])(
+    "should reject the suffix %s, which is not a file name",
+    async (suffix) => {
+      preconditions.componentExists();
+
+      await migrationsCommand.parseAsync([
+        "node",
+        "test",
+        "generate",
+        "component-name",
+        "--space",
+        "12345",
+        "--suffix",
+        suffix,
+      ]);
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`Invalid suffix "${suffix}"`),
+      );
+      expect(Object.keys(vol.toJSON())).not.toContainEqual(
+        expect.stringContaining("component-name"),
+      );
+    },
+  );
+
+  it("should generate a migration with a suffix that is a file name", async () => {
+    preconditions.componentExists();
+
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "generate",
+      "component-name",
+      "--space",
+      "12345",
+      "--suffix",
+      "field-name-change",
+    ]);
+
+    expect(Object.keys(vol.toJSON())).toContainEqual(
+      expect.stringContaining("migrations/12345/component-name.field-name-change.js"),
+    );
+  });
+
   it("should require component name", async () => {
     await migrationsCommand.parseAsync(["node", "test", "generate", "--space", "12345"]);
 

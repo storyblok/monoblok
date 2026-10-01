@@ -11,6 +11,7 @@ import { migrationsCommand } from "../command";
 import { generateMigration } from "./actions";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
+import { sanitizeFilename } from "../../../utils/filesystem";
 
 const generateCmd = migrationsCommand
   .command("generate [componentName]")
@@ -51,6 +52,16 @@ generateCmd.action(
       handleError(
         new CommandError(
           `Please provide the component name as argument ${chalk.hex(colorPalette.MIGRATIONS)("storyblok migrations generate YOUR_COMPONENT_NAME.")}`,
+        ),
+        verbose,
+      );
+      return;
+    }
+
+    if (suffix && sanitizeFilename(suffix) !== suffix) {
+      handleError(
+        new CommandError(
+          `Invalid suffix "${suffix}". The suffix becomes part of the file name, so it cannot contain path separators or characters that are not allowed in file names.`,
         ),
         verbose,
       );

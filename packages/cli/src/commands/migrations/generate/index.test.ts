@@ -13,9 +13,8 @@ vi.mock("../../../commands/components", () => ({
   fetchComponent: vi.fn(),
 }));
 
-vi.mock("./actions", () => ({
-  generateMigration: vi.fn(),
-}));
+// Spy, not stub: the printed path has to be the path the action really wrote.
+vi.mock("./actions", { spy: true });
 
 vi.spyOn(console, "error");
 
@@ -41,6 +40,9 @@ const mockComponent: Component = {
 const preconditions = {
   componentExists() {
     vi.mocked(fetchComponent).mockResolvedValue(mockComponent);
+  },
+  componentWithUnsafeNameExists() {
+    vi.mocked(fetchComponent).mockResolvedValue({ ...mockComponent, name: "hero:v2" });
   },
   componentMissing() {
     vi.mocked(fetchComponent).mockResolvedValue(undefined);
@@ -79,6 +81,21 @@ describe("migrations generate command", () => {
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining(
         "You can find the migration file in .storyblok/migrations/12345/component-name.js",
+      ),
+    );
+  });
+
+  it("should report the sanitized path it wrote for a name that is not filename-safe", async () => {
+    preconditions.componentWithUnsafeNameExists();
+
+    await migrationsCommand.parseAsync(["node", "test", "generate", "hero:v2", "--space", "12345"]);
+
+    expect(Object.keys(vol.toJSON())).toEqual(
+      expect.arrayContaining([expect.stringContaining("migrations/12345/hero_v2-c07e5b.js")]),
+    );
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "You can find the migration file in .storyblok/migrations/12345/hero_v2-c07e5b.js",
       ),
     );
   });
@@ -134,6 +151,50 @@ describe("migrations generate command", () => {
     );
     const logFile = getLogFileContents(LOG_PREFIX);
     expect(logFile).toContain("No component found with name");
+  });
+
+  it.each(["../../../tmp/evil", "nested/suffix", "a:b", ".."])(
+    "should reject the suffix %s, which is not a file name",
+    async (suffix) => {
+      preconditions.componentExists();
+
+      await migrationsCommand.parseAsync([
+        "node",
+        "test",
+        "generate",
+        "component-name",
+        "--space",
+        "12345",
+        "--suffix",
+        suffix,
+      ]);
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`Invalid suffix "${suffix}"`),
+      );
+      expect(Object.keys(vol.toJSON())).not.toContainEqual(
+        expect.stringContaining("component-name"),
+      );
+    },
+  );
+
+  it("should generate a migration with a suffix that is a file name", async () => {
+    preconditions.componentExists();
+
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "generate",
+      "component-name",
+      "--space",
+      "12345",
+      "--suffix",
+      "field-name-change",
+    ]);
+
+    expect(Object.keys(vol.toJSON())).toContainEqual(
+      expect.stringContaining("migrations/12345/component-name.field-name-change.js"),
+    );
   });
 
   it("should require component name", async () => {

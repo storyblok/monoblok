@@ -265,3 +265,52 @@ test("keeps the remaining subscriber alive and supports re-subscription", async 
   await expect.poll(() => messageListenerCount(page)).toBe(listenersBeforeSubscribing + 1);
   await editArticleTitle(page, editor, { fanOut: ["B"], resolved: ["B"] });
 });
+
+test.describe("connect() (non-QA) path", () => {
+  test.beforeEach(async ({ context }) => {
+    // The top-level beforeEach always turns QA mode on for this origin, which
+    // routes every test above through listen()-based broker subscribers and
+    // never through connect(), the main API change this playground exists to
+    // cover. Override the flag here so this group hits
+    // LivePreviewComponent's actual constructor branch: afterNextRender() ->
+    // connect(). Registered after the outer beforeEach, so it runs last and
+    // wins.
+    await context.addInitScript(() => {
+      if (location.origin === "https://localhost:4200") {
+        localStorage.setItem("storyblok-live-preview-qa", "false");
+      }
+    });
+  });
+
+  test("delivers live preview updates through connect()", async ({ page, request }) => {
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "live-preview"));
+    await expect(editor.preview.locator("body")).not.toContainText("No content found");
+
+    const frame = await getPreviewFrame(page);
+    // Confirms the constructor took the connect() branch: the broker QA API
+    // is only installed in QA mode.
+    expect(await frame.evaluate(() => Boolean(window.__storyblokBrokerQa))).toBe(false);
+
+    const article = editor.preview.locator("app-article").last();
+    const uid = await article.getAttribute("data-blok-uid");
+    if (!uid) throw new Error("Could not find the editable article block");
+    const blockUid = uid.slice(uid.indexOf("-") + 1);
+
+    await editor.selectBlock(blockUid, "title");
+    const title = editor.textField("title");
+    await expect.poll(() => title.getAttribute("id"), { timeout: 15_000 }).toContain(blockUid);
+
+    const value = `QA connect edit ${Date.now()}`;
+    await title.fill(value);
+    // The edit landing in the preview proves connect() delivered the input
+    // event to this component.
+    await expect(article).toContainText(value, { timeout: 30_000 });
+
+    // connect() is wired with resolveRelations: ["article.author"], so the
+    // author relation must resolve even without any broker subscriber.
+    await expect(editor.preview.locator("app-article > article > p")).toHaveText(
+      `Author: ${RELATION_TARGET}`,
+    );
+  });
+});

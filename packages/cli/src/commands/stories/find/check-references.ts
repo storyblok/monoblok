@@ -2,8 +2,8 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import {
   createCollectingSink,
-  createJsonlOutput,
   createPhaseTracker,
+  createResultOutput,
   formatMark,
   isDeliberateStop,
   isLimitReached,
@@ -11,6 +11,7 @@ import {
 } from "../../../lib/pipe";
 import { fetchComponents } from "../../components/pull/actions";
 import { applyClientFilters, resolveReferenceTargets } from "./actions";
+import { REF_ISSUE_COLUMNS } from "./columns";
 import { buildRelationFieldMap, detectIssues, extractReferences, toTargetMeta } from "./references";
 import type { IssueType, RefEntry, RefIssue, TargetMeta } from "./references";
 import { findPhases, contentSummary, listingSummary, stoppedEarlyMessage } from "./phases";
@@ -86,7 +87,7 @@ export async function runCheckReferences({
     `Loaded ${components.length} components (${relationFieldMap.size} with relation fields)`,
   );
 
-  const output = createJsonlOutput({ limit });
+  const output = createResultOutput({ columns: REF_ISSUE_COLUMNS, limit });
   const tracker = createPhaseTracker({
     ui,
     phases: findPhases({
@@ -203,6 +204,7 @@ export async function runCheckReferences({
   } finally {
     tracker.stop();
     output.close();
+    await output.flush();
 
     // Counted at the sink, so a story decided while an early stop tears the
     // pipeline down is not reported as a result nobody received.

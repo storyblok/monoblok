@@ -1,10 +1,11 @@
 import { Writable } from "node:stream";
 import { toError } from "../../utils/error/error";
-import { getUI, onStdoutClosed, type UI } from "../ui";
+import { getStdoutTarget, getUI, onStdoutClosed, page, renderTable, type UI } from "../ui";
+import type { TableColumn } from "../ui";
 
 /**
- * One JSON document per line on stdout, for commands whose result is data
- * rather than a report.
+ * Where a command's results go: one JSON document per line on stdout when
+ * piped or redirected, or a table once the run ends when stdout is a terminal.
  *
  * Every piece of it is about the pipe, not about what is being piped: when the
  * data goes out, how fast the reader can take it, and when the reader on the
@@ -24,6 +25,12 @@ export interface MachineOutput {
   readonly sink: Writable;
   /** Releases the pipe watcher. */
   close: () => void;
+  /**
+   * Writes whatever was held back until the run ended. A no-op for JSONL,
+   * which writes as it goes; the table, which has to know every row's width
+   * before printing the first, is printed here.
+   */
+  flush: () => Promise<void>;
   /** Lines written so far: the run's result count, even after an early stop. */
   readonly written: number;
   /**
@@ -70,11 +77,96 @@ const stdoutLineWriter = (ui: UI): LineWriter => ({
 });
 
 /**
+ * Takes one value off the sink. Returns a promise only when the destination
+ * needs time before it can take the next one.
+ */
+type Emit<T> = (value: T, signal: AbortSignal) => void | Promise<void>;
+
+/**
+ * The part every output shares: the sink, the `--limit` count, and the abort
+ * that ends the run when either the limit is met or the reader leaves.
+ */
+function createOutput<T>({
+  limit,
+  emit,
+  flush = async () => {},
+}: {
+  limit?: number;
+  emit: Emit<T>;
+  flush?: () => Promise<void>;
+}): MachineOutput {
+  const controller = new AbortController();
+  const stopWatching = onStdoutClosed(() => {
+    controller.abort(new DownstreamClosedError());
+  });
+
+  let written = 0;
+  /** Called once a line is out, so a limited run ends with exactly `limit` lines. */
+  const countLine = (): void => {
+    written += 1;
+    if (limit !== undefined && written >= limit) {
+      controller.abort(new LimitReachedError(limit));
+    }
+  };
+
+  const sink = new Writable({
+    objectMode: true,
+    write(value: T, _encoding, callback) {
+      if (controller.signal.aborted) {
+        // Not a failure of this stage: the pipeline above is being torn down for
+        // the same reason, and it owns how the run ends.
+        callback();
+        return;
+      }
+
+      let pending: void | Promise<void>;
+      try {
+        pending = emit(value, controller.signal);
+      } catch (maybeError) {
+        callback(toError(maybeError));
+        return;
+      }
+
+      // The line is out either way; a pending promise only says the destination
+      // is full, so the count belongs here rather than behind the branch below.
+      countLine();
+      if (!pending) {
+        callback();
+        return;
+      }
+      // The reader is slower than this run is. Not calling back yet is what
+      // makes the whole pipeline wait for it.
+      pending.then(() => callback(), callback);
+    },
+  });
+
+  return {
+    get sink() {
+      return sink;
+    },
+    close() {
+      stopWatching();
+    },
+    flush,
+    get signal() {
+      return controller.signal;
+    },
+    get closed() {
+      return controller.signal.aborted;
+    },
+    get written() {
+      return written;
+    },
+  };
+}
+
+/**
  * Creates a JSONL writer over stdout.
  *
  * Lines go out as they are produced. When stdout is a terminal the data lands on
  * the same screen as the progress bars, so the bars are dropped for the run; the
- * summary and warnings on stderr stay.
+ * summary and warnings on stderr stay. A command that prints to a terminal
+ * should prefer {@link createResultOutput}, which renders a table there instead.
  */
 export function createJsonlOutput({
   write,
@@ -109,70 +201,74 @@ export function createJsonlOutput({
     ui.suppressProgress();
   }
 
-  const controller = new AbortController();
-  const stopWatching = onStdoutClosed(() => {
-    controller.abort(new DownstreamClosedError());
-  });
-
-  let written = 0;
-  /** Called once a line is out, so a limited run ends with exactly `limit` lines. */
-  const countLine = (): void => {
-    written += 1;
-    if (limit !== undefined && written >= limit) {
-      controller.abort(new LimitReachedError(limit));
-    }
-  };
-
-  const sink = new Writable({
-    objectMode: true,
-    write(value: unknown, _encoding, callback) {
-      if (controller.signal.aborted) {
-        // Not a failure of this stage: the pipeline above is being torn down for
-        // the same reason, and it owns how the run ends.
-        callback();
+  return createOutput<unknown>({
+    limit,
+    emit: (value, signal) => {
+      // Serialized before anything is written, so a value that cannot be
+      // serialized fails the stage without being counted.
+      const line = JSON.stringify(value);
+      // `false` only says the destination's buffer is full: the line is written.
+      if (lineWriter.write(line)) {
         return;
       }
-
-      let line: string;
-      try {
-        line = JSON.stringify(value);
-      } catch (maybeError) {
-        callback(toError(maybeError));
-        return;
-      }
-
-      // The line is written either way; the return value only says whether the
-      // destination's buffer has room left, so the count belongs here rather
-      // than behind the branch below.
-      const accepted = lineWriter.write(line);
-      countLine();
-      if (accepted) {
-        callback();
-        return;
-      }
-      // stdout's buffer is full, so the reader is slower than this run is. Not
-      // calling back yet is what makes the whole pipeline wait for it.
-      lineWriter.waitForDrain(controller.signal).then(() => callback(), callback);
+      return lineWriter.waitForDrain(signal);
     },
   });
+}
 
-  return {
-    get sink() {
-      return sink;
+/**
+ * Creates an output that renders a table on stdout once the run ends.
+ *
+ * Only each row's cells are held, not the record they came from, so a large
+ * result set costs a few strings per match rather than every story's content.
+ * The progress bars stay up while the run works, since nothing else is drawing
+ * to the terminal until the table is printed.
+ */
+export function createTableOutput<T>({
+  columns,
+  limit,
+  write = page,
+}: {
+  columns: TableColumn<T>[];
+  limit?: number;
+  /** Where the rendered table goes. Defaults to stdout, paged when it overflows the screen. */
+  write?: (text: string) => Promise<void>;
+}): MachineOutput {
+  const rows: string[][] = [];
+  return createOutput<T>({
+    limit,
+    emit: (value) => {
+      rows.push(columns.map((column) => column.value(value)));
     },
-    close() {
-      stopWatching();
+    flush: async () => {
+      if (rows.length === 0) {
+        return;
+      }
+      // A blank line sets the table off from the progress bars above it, the
+      // same gap the summary below leaves after it.
+      await write(`\n${renderTable({ columns, rows, width: process.stdout.columns })}`);
     },
-    get signal() {
-      return controller.signal;
-    },
-    get closed() {
-      return controller.signal.aborted;
-    },
-    get written() {
-      return written;
-    },
-  };
+  });
+}
+
+/**
+ * Picks the output for where stdout actually goes: a table for a person at a
+ * terminal, JSONL for anything that reads it as data.
+ *
+ * The same split `gh` makes: the format a reader gets depends on whether the
+ * reader is a person, and nobody has to pass a flag to say so. `… | cat` gets
+ * JSONL on a terminal.
+ */
+export function createResultOutput<T>({
+  columns,
+  limit,
+}: {
+  columns: TableColumn<T>[];
+  limit?: number;
+}): MachineOutput {
+  return getStdoutTarget() === "terminal"
+    ? createTableOutput({ columns, limit })
+    : createJsonlOutput({ limit });
 }
 
 /**

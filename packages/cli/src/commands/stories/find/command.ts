@@ -28,7 +28,7 @@ function collectValues(value: string, previous: string[]): string[] {
 const findCmd = storiesCommand
   .command("find")
   .description(
-    "Find stories matching filters and print them to stdout as JSONL, one story per line. Filters combine with AND.",
+    "Find stories matching filters and print them to stdout as JSONL, one story per line, or as a table in a terminal. Filters combine with AND.",
   )
   .argument("[text]", "full-text search over story name, slug and content (case-insensitive)")
   .option("-s, --space <space>", "space ID")

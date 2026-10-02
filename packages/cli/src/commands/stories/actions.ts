@@ -221,7 +221,7 @@ export const prefetchTargetStoriesByKeys = async (
 
   // `by_slugs` matches `full_slug` exactly, and a folder (`articles`) and its
   // start page (`articles/`) differ only by the trailing slash, so query with
-  // raw values. Results are still keyed by the normalized slug.
+  // unmodified slugs. Results are still keyed by the normalized slug.
   const slugSet = new Set<string>();
   for (const slug of keys.slugs) {
     if (slug) {

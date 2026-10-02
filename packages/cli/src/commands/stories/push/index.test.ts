@@ -1027,7 +1027,7 @@ describe("stories push command", () => {
       );
     });
 
-    it("should match an existing folder start page in a duplicated space", async () => {
+    it("should update an existing folder start page instead of creating it", async () => {
       const sourceSpace = "99999";
       const targetSpace = DEFAULT_SPACE;
       const makeFolderWithStartpage = () => {

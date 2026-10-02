@@ -6,7 +6,7 @@ import type { Story } from "../../types";
  * A line is a **complete story as the Management API returned it**, not a
  * reference to one. A consumer takes the fields it needs off the line and
  * re-fetches only what the line does not carry. Only the producing side exists
- * so far; see ADR-0019 for the consuming one.
+ * so far; see ADR-0021 for the consuming one.
  *
  * Two consequences a consumer has to hold up:
  *

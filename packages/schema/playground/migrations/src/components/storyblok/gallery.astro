@@ -1,0 +1,33 @@
+---
+import type { Block } from '../../schema/schema';
+import Translations from './translations.astro';
+
+interface Props {
+  block: Block<'gallery'>;
+}
+
+const { block } = Astro.props;
+const columns = Number(block.columns ?? 3);
+---
+
+<section class="my-8" data-block="gallery">
+  {block.headline && <h2 class="mb-4 text-2xl font-bold text-gray-900">{block.headline}</h2>}
+  <div class="grid gap-4" style={`grid-template-columns: repeat(${columns}, minmax(0, 1fr))`}>
+    {block.images?.map(image => (
+      <figure>
+        <img
+          src={image.filename ?? ''}
+          alt={image.alt ?? ''}
+          class="w-full rounded-lg object-cover"
+          width="400"
+          height="300"
+        />
+        {block.show_captions && image.title && (
+          <figcaption class="mt-1 text-xs text-gray-500">{image.title}</figcaption>
+        )}
+      </figure>
+    ))}
+  </div>
+  {!block.images?.length && <p class="text-sm text-gray-400">No images</p>}
+  <Translations block={block} />
+</section>

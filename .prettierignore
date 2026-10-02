@@ -23,3 +23,13 @@ tools/openapi-codegen/specs/
 **/.next/
 **/.astro/
 **/.cache/
+
+# Generated story fixtures for the migrations playground. Same rationale as the
+# codegen output: `pnpm fixtures` owns these files, and reformatting them means
+# every regeneration and every offline migration run leaves a reflow diff.
+packages/schema/playground/migrations/fixtures/
+
+# Migrated content recorded by the catalogue harness. The harness writes these
+# with `UPDATE_EXPECTED=1`, so reformatting them means every regeneration leaves
+# a reflow diff on top of the content diff a reviewer is there to read.
+packages/schema/playground/migrations/test/expected/

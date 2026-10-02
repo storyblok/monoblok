@@ -1,0 +1,36 @@
+{
+  "name": "Intro",
+  "parent_id": 0,
+  "id": 1008,
+  "uuid": "story-intro",
+  "is_folder": false,
+  "published": true,
+  "slug": "intro",
+  "path": null,
+  "full_slug": "intro",
+  "is_startpage": false,
+  "position": 7,
+  "content": {
+    "_uid": "88888888-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Intro",
+    "seo_description": "A component that is replaced by three.",
+    "body": [
+      {
+        "_uid": "88888888-0000-4000-8000-000000000002",
+        "component": "intro",
+        "headline": "Everything in one place",
+        "body": "The intro brought its own spacing; the block that replaces it does not.",
+        "headline__i18n__de": "Alles an einem Ort"
+      },
+      {
+        "_uid": "88888888-0000-4000-8000-000000000003",
+        "component": "quote",
+        "text": "The block after the intro, so the splice has a neighbour.",
+        "attribution": "The seed",
+        "source_link": null,
+        "authors": []
+      }
+    ]
+  }
+}

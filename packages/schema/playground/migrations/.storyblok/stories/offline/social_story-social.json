@@ -1,0 +1,36 @@
+{
+  "name": "Social",
+  "parent_id": 0,
+  "id": 1007,
+  "uuid": "story-social",
+  "is_folder": false,
+  "published": true,
+  "slug": "social",
+  "path": null,
+  "full_slug": "social",
+  "is_startpage": false,
+  "position": 6,
+  "content": {
+    "_uid": "77777777-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Social",
+    "seo_description": "The social image is still a URL in a text field.",
+    "og_image": "https://a.storyblok.com/f/290020686946333/1200x630/3f1b9c0d21/social-card.png",
+    "og_image__i18n__de": "//a.storyblok.com/f/290020686946333/1200x630/7ad4e51b88/social-card-de.png",
+    "og_image__i18n__fr": "",
+    "body": [
+      {
+        "_uid": "77777777-0000-4000-8000-000000000002",
+        "component": "media",
+        "image": {
+          "id": 223407129002961,
+          "alt": "About image",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+          "fieldtype": "asset"
+        },
+        "caption": "The page above it carries the social image.",
+        "credit": "Playground"
+      }
+    ]
+  }
+}

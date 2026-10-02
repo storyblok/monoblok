@@ -1,0 +1,12 @@
+---
+import type { Block } from '../../schema/schema';
+
+interface Props {
+  block: Block<'spacer'>;
+}
+
+const { block } = Astro.props;
+const height = { small: 'h-4', medium: 'h-10', large: 'h-20' }[block.height ?? 'medium'];
+---
+
+<div class={height} data-block="spacer" aria-hidden="true"></div>

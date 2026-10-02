@@ -1,0 +1,53 @@
+{
+  "name": "@storyblok/playground-schema-migrations",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test": "vp test run",
+    "schema": "storyblok schema",
+    "schema:init": "storyblok schema init --out-dir src/schema",
+    "schema:push": "storyblok schema push src/schema/schema.ts --delete",
+    "schema:rollback": "storyblok schema rollback",
+    "seed": "pnpm seed:cleanup && pnpm seed:datasources && pnpm seed:assets && pnpm schema:push --delete --no-migrations && pnpm seed:components && pnpm seed:stories",
+    "seed:datasources": "storyblok datasources push --from seed",
+    "seed:assets": "storyblok assets push --from seed",
+    "seed:components": "mv ./.storyblok/components/[0-9]* ./.storyblok/components/seed",
+    "seed:stories": "storyblok stories push --from seed --publish",
+    "seed:cleanup": "tsx scripts/cleanup-space.ts && rm -rf ./.storyblok/components",
+    "migrate": "tsx scripts/migrate.ts",
+    "migrate:offline": "tsx scripts/migrate.ts --offline",
+    "fixtures": "tsx scripts/generate-fixtures.ts",
+    "test:types": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.5",
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/richtext": "workspace:*",
+    "@storyblok/schema": "workspace:*",
+    "astro": "^7.3.2",
+    "marked": "17.0.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@storyblok/lint-config": "workspace:*",
+    "@storyblok/management-api-client": "workspace:*",
+    "@tailwindcss/typography": "0.5.19",
+    "@tailwindcss/vite": "^4.2.4",
+    "@types/node": "catalog:",
+    "dotenv": "catalog:",
+    "oxlint": "catalog:",
+    "storyblok": "workspace:*",
+    "tailwindcss": "^4.2.4",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "^8.1.1",
+    "vitest": "catalog:"
+  }
+}

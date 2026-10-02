@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { delay, http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -10,6 +11,9 @@ import { makeMockStory } from "../__tests__/helpers";
 const errorSpy = vi.spyOn(console, "error");
 
 const server = setupServer();
+
+/** Undoes what a precondition changed outside of the mocks, after each test. */
+const cleanups: (() => void)[] = [];
 
 const preconditions = {
   /**
@@ -116,6 +120,22 @@ const preconditions = {
    * `EPIPE`, which is the only signal the command ever gets, so that is what is
    * reproduced here rather than a mocked-out abort.
    */
+  /**
+   * stdout is a terminal. `isTTY` is a plain data property, absent entirely when
+   * stdout is not one, so it is set and restored rather than spied on. `rows`
+   * stays unset, so the table is printed rather than paged.
+   */
+  stdoutIsATerminal() {
+    const original = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    cleanups.push(() => {
+      if (original) {
+        Object.defineProperty(process.stdout, "isTTY", original);
+      } else {
+        delete (process.stdout as { isTTY?: boolean }).isTTY;
+      }
+    });
+  },
   readerClosesThePipeAfter(afterLines: number) {
     const written: string[] = [];
     vi.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
@@ -135,6 +155,9 @@ describe("stories find command", () => {
     process.exitCode = undefined;
   });
   afterEach(() => {
+    for (const cleanup of cleanups.splice(0)) {
+      cleanup();
+    }
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
@@ -286,6 +309,44 @@ describe("stories find command", () => {
       "--capi-filter cannot evaluate --where on field-level translations",
     );
     expect(requests).toBe(0);
+  });
+
+  // A person at a terminal is scanning for which stories matched, not reading
+  // story JSON, so the results become a table printed once the run is done.
+  it("should print a table of the results when stdout is a terminal", async () => {
+    const stories = preconditions.canFindStories(3);
+    preconditions.stdoutIsATerminal();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(written).toHaveLength(1);
+    const lines = stripVTControlCharacters(written[0]).trimEnd().split("\n");
+    expect(lines[0]).toMatch(/^ID\s+NAME\s+FULL SLUG$/);
+    expect(lines.slice(1)).toEqual(
+      stories.map((story) =>
+        expect.stringMatching(new RegExp(`^${story.id}\\s.*\\s${story.full_slug}$`)),
+      ),
+    );
+  });
+
+  it("should add an issues column to a reference check on a terminal", async () => {
+    preconditions.canCheckReferences();
+    preconditions.stdoutIsATerminal();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+    ]);
+
+    const lines = stripVTControlCharacters(written.join("")).trimEnd().split("\n");
+    expect(lines[0]).toMatch(/ISSUES$/);
+    expect(lines[1]).toMatch(/1 broken$/);
   });
 
   // Placed before the closed-pipe test on purpose: that one leaves stdout closed

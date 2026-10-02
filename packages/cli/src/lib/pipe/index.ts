@@ -11,6 +11,8 @@ export type { StoryLine } from "./contract";
 export {
   createCollectingSink,
   createJsonlOutput,
+  createResultOutput,
+  createTableOutput,
   DownstreamClosedError,
   isDeliberateStop,
   isDownstreamClosed,

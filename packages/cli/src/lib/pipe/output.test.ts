@@ -287,3 +287,67 @@ describe("createCollectingSink", () => {
     ).rejects.toThrow("no");
   });
 });
+
+describe("createTableOutput", () => {
+  const columns = [
+    { header: "id", value: (story: { id: number; slug: string }) => String(story.id) },
+    { header: "slug", value: (story: { id: number; slug: string }) => story.slug },
+  ];
+
+  // The table needs every row's width before the first line, so nothing goes
+  // out while the run is still working.
+  it("should print nothing until flushed, then the whole table", async () => {
+    const { createTableOutput } = await freshModule();
+    const printed: string[] = [];
+    const output = createTableOutput({
+      columns,
+      write: async (text) => {
+        printed.push(text);
+      },
+    });
+
+    await pipeline(
+      Readable.from([
+        { id: 1, slug: "home" },
+        { id: 2, slug: "about" },
+      ]),
+      output.sink,
+    );
+    expect(printed).toEqual([]);
+    expect(output.written).toBe(2);
+
+    await output.flush();
+    expect(printed).toHaveLength(1);
+    expect(printed[0]).toContain("1   home");
+    expect(printed[0]).toContain("2   about");
+  });
+
+  it("should stop the run at the limit", async () => {
+    const { createTableOutput, isLimitReached } = await freshModule();
+    const output = createTableOutput({ columns, limit: 1, write: async () => {} });
+
+    await expect(
+      pipeline(
+        Readable.from([
+          { id: 1, slug: "home" },
+          { id: 2, slug: "about" },
+        ]),
+        output.sink,
+        { signal: output.signal },
+      ),
+    ).rejects.toSatisfy(isLimitReached);
+
+    expect(output.written).toBe(1);
+  });
+
+  it("should print nothing for an empty result", async () => {
+    const { createTableOutput } = await freshModule();
+    const write = vi.fn(async () => {});
+    const output = createTableOutput({ columns, write });
+
+    await pipeline(Readable.from([]), output.sink);
+    await output.flush();
+
+    expect(write).not.toHaveBeenCalled();
+  });
+});

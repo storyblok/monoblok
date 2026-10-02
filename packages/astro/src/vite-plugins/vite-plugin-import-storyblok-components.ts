@@ -1,7 +1,7 @@
 import { normalizeAstroExtension } from "../utils/normalizeAstroExtension";
 import { normalizePath } from "../utils/normalizePath";
 import { toCamelCase } from "../utils/toCamelCase";
-import type { Plugin } from "vite";
+import type { AstroVitePlugin } from "./astro-vite-plugin";
 
 const VIRTUAL_MODULE_ID = "virtual:import-storyblok-components";
 const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
@@ -15,7 +15,7 @@ export function vitePluginImportStoryblokComponents(
   componentsDir: string,
   enableFallbackComponent: boolean,
   customFallbackComponent?: string,
-): Plugin {
+): AstroVitePlugin {
   return {
     name: "vite-plugin-import-storyblok-components",
 

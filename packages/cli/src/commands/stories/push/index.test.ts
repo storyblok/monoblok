@@ -164,10 +164,10 @@ const preconditions = {
         const byIds = url.searchParams.get("by_ids");
         let matched: MockStory[] = stories;
         if (bySlugs !== null) {
-          const slugSet = new Set(bySlugs.split(",").map((s) => s.replace(/\/$/, "")));
-          matched = stories.filter((s) =>
-            slugSet.has(String(s.full_slug ?? s.slug).replace(/\/$/, "")),
-          );
+          // MAPI matches `full_slug` exactly: `articles` returns only the
+          // folder, `articles/` only its start page.
+          const slugSet = new Set(bySlugs.split(","));
+          matched = stories.filter((s) => slugSet.has(String(s.full_slug ?? s.slug)));
         } else if (byIds !== null) {
           const idSet = new Set(byIds.split(",").map((n) => Number(n)));
           matched = stories.filter((s) => idSet.has(Number(s.id)));
@@ -1025,6 +1025,58 @@ describe("stories push command", () => {
           },
         }),
       );
+    });
+
+    it("should match an existing folder start page in a duplicated space", async () => {
+      const sourceSpace = "99999";
+      const targetSpace = DEFAULT_SPACE;
+      const makeFolderWithStartpage = () => {
+        const folder = makeMockStory({ slug: "articles", full_slug: "articles", is_folder: true });
+        const startpage = makeMockStory({
+          slug: "articles",
+          full_slug: "articles/",
+          parent_id: folder.id,
+          is_startpage: true,
+        });
+        return [folder, startpage] as const;
+      };
+      const [localFolder, localStartpage] = makeFolderWithStartpage();
+      const [targetFolder, targetStartpage] = makeFolderWithStartpage();
+
+      preconditions.canLoadStories([localFolder, localStartpage], sourceSpace);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })], sourceSpace);
+      preconditions.canListStories([targetFolder, targetStartpage], targetSpace);
+      preconditions.canUpdateStories([targetFolder, targetStartpage], targetSpace);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        targetSpace,
+        "--from",
+        sourceSpace,
+      ]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        targetSpace,
+        targetStartpage.id,
+        expect.objectContaining({
+          story: expect.objectContaining({ parent_id: targetFolder.id }),
+        }),
+      );
+      const manifestEntries = await parseManifest(sourceSpace);
+      expect(manifestEntries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ old_id: localFolder.id, new_id: targetFolder.id }),
+          expect.objectContaining({ old_id: localStartpage.id, new_id: targetStartpage.id }),
+        ]),
+      );
+      expect(getReport(targetSpace)?.summary).toMatchObject({
+        creationResults: { total: 2, succeeded: 0, skipped: 2, failed: 0 },
+        updateResults: { total: 2, succeeded: 2, failed: 0 },
+      });
     });
   });
 

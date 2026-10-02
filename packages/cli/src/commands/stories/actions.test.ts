@@ -300,7 +300,7 @@ describe("stories/actions", () => {
       expect(result.byId.get(7)).toEqual({ id: 7, uuid: "uuid-7", is_folder: false });
     });
 
-    it("stores folder + startpage that share a full_slug as separate entries", async () => {
+    it("fetches a folder and its start page and indexes both under the folder slug", async () => {
       const folder = buildRemoteStory({
         id: 10,
         uuid: "uuid-folder",
@@ -310,20 +310,27 @@ describe("stories/actions", () => {
       const startpage = buildRemoteStory({
         id: 11,
         uuid: "uuid-startpage",
-        full_slug: "about",
+        full_slug: "about/",
         is_folder: false,
       });
 
       server.use(
-        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", () =>
-          HttpResponse.json(
-            { stories: [folder, startpage] },
-            { headers: { Total: "2", "Per-Page": "100" } },
-          ),
-        ),
+        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
+          // MAPI matches `full_slug` exactly, so the start page (`about/`) is
+          // only returned when queried with its trailing slash.
+          const slugs = new URL(request.url).searchParams.get("by_slugs")?.split(",") ?? [];
+          const stories = [folder, startpage].filter((s) => slugs.includes(s.full_slug));
+          return HttpResponse.json(
+            { stories },
+            { headers: { Total: String(stories.length), "Per-Page": "100" } },
+          );
+        }),
       );
 
-      const result = await prefetchTargetStoriesByKeys(space, { slugs: ["about"], ids: [] });
+      const result = await prefetchTargetStoriesByKeys(space, {
+        slugs: ["about", "about/"],
+        ids: [],
+      });
 
       const entries = result.bySlug.get("about");
       expect(entries).toHaveLength(2);

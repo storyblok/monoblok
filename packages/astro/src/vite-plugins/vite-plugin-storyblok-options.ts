@@ -1,7 +1,7 @@
-import type { Plugin } from "vite";
+import type { AstroVitePlugin } from "./astro-vite-plugin";
 import type { IntegrationOptions } from "../lib/storyblok-integration";
 
-export function vitePluginStoryblokOptions(options: IntegrationOptions): Plugin {
+export function vitePluginStoryblokOptions(options: IntegrationOptions): AstroVitePlugin {
   const virtualModuleId = `virtual:storyblok-options`;
   const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 

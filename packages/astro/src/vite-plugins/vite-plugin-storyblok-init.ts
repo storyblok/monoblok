@@ -1,11 +1,11 @@
 import type { ISbConfig } from "@storyblok/js";
-import type { Plugin } from "vite";
+import type { AstroVitePlugin } from "./astro-vite-plugin";
 
 export function vitePluginStoryblokInit(
   accessToken: string,
   useCustomApi: boolean,
   apiOptions?: ISbConfig,
-): Plugin {
+): AstroVitePlugin {
   const virtualModuleId = "virtual:storyblok-init";
   const resolvedVirtualModuleId = `\0${virtualModuleId}`;
 

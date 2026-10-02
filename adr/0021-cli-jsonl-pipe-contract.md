@@ -118,6 +118,19 @@ A malformed input line **fails the run** by default. Skipping it silently would 
 producer look like a clean short read, which answers a different question than the one asked. A
 consumer that would rather report and continue has to say so.
 
+### 7. A terminal gets a table, not JSONL
+
+JSONL is for a reader that parses it. When stdout is a terminal, the reader is a person scanning for
+which stories matched, and a screen of story JSON buries the answer and fights the progress bars for
+the same lines. So the output follows where stdout goes, as in `gh`: piped or redirected, it is the
+JSONL contract above; on a terminal, the progress stays up, each match is reduced to the cells of
+one row (`id`, `name`, `full_slug`), and a table is printed once the run ends. Only the cells are
+held, so memory stays small whatever the result set. A table taller than the screen goes through
+`less -FRX`, which gives scrolling and search without the CLI owning any interactive UI.
+
+`output.ts` owns the choice (`createResultOutput`): both outputs share one sink, so `--limit` and an
+early stop behave the same in either.
+
 ## Alternatives Considered
 
 - **Consumers refetch by `id`/`uuid`, treating a line as a selection.** Rejected: it is the safe
@@ -130,6 +143,13 @@ consumer that would rather report and continue has to say so.
 - **A single JSON array instead of JSONL.** Rejected: a reader could not act on the first record
   without waiting for the last, memory would scale with the result set, and the early exit
   (`| head -5`) would be unreachable.
+- **An interactive list on a terminal** (arrow keys, selection). Rejected: it is a TUI to build and
+  maintain for what a pager already does, and selecting a story has no action to hand it to yet.
+- **A configurable pager** (`PAGER`, `STORYBLOK_PAGER`, or a config option). Not added: no other CLI
+  behavior is configured through the environment, and nothing yet asks for a pager other than
+  `less`. If one does, it belongs in the global `ui` config next to `ui.enabled`.
+- **A flag to choose the format** (`--format table|jsonl`). Not added: piping through `cat` already
+  gets JSONL on a terminal, and the default follows the reader without one.
 - **Keeping the pipe code in `lib/ui`.** Rejected: none of it is about terminal presentation, and
   the input half has no place there at all.
 

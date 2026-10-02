@@ -9,7 +9,8 @@ import { Aside, Badge, LinkCard } from "@astrojs/starlight/components";
 
 The `stories find` command searches a space for stories matching a set of filters and prints them to
 stdout as JSONL, one story per line, ready to pipe into `jq`, save to a file, or pass to another
-command. It only reads, and never writes.
+command. Run in a terminal, it prints a table of the matches instead. It only reads, and never
+writes.
 
 _Introduced in_ <Badge text="4.24.0" variant="success" />
 
@@ -421,6 +422,28 @@ Whatever flags produced a line, two things hold. Every line carries `id`, `uuid`
 where `id` addresses the story for a write, `uuid` addresses it across spaces, and `full_slug`
 identifies it in a report. And `content` is on the line unless `--skip-content` was passed, in which
 case the line is list metadata only.
+
+### Output in a terminal
+
+When stdout is a terminal rather than a pipe or a file, the command shows its progress while it
+works and prints a table once it finishes: each story's ID, name and full slug, with an issues
+column added under `--check-references`. A folder's full slug ends in `/`.
+
+```bash
+storyblok stories find --space 12345 --container-block product
+```
+
+```text
+ID         NAME              FULL SLUG
+123456789  Running shoes     en/products/running-shoes
+123456790  Trail shoes       en/products/trail-shoes
+```
+
+A table taller than the terminal opens in `less`, so you can scroll and search it. Where `less` is
+not installed, the table is printed as is.
+
+To get JSONL in a terminal, pipe the output through another command, such as `| jq .` to read
+complete story objects or `| cat` to print them as they are.
 
 ### Pipe results into other commands
 

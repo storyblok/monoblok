@@ -1,6 +1,6 @@
 import {
-  createJsonlOutput,
   createPhaseTracker,
+  createResultOutput,
   isDeliberateStop,
   isLimitReached,
   toPhaseSummary,
@@ -13,6 +13,7 @@ import {
   resultsHeadline,
   stoppedEarlyMessage,
 } from "./phases";
+import { STORY_COLUMNS } from "./columns";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -37,7 +38,7 @@ export async function runFind({
   limit?: number;
   capi?: CapiFilter;
 }): Promise<void> {
-  const output = createJsonlOutput({ limit });
+  const output = createResultOutput({ columns: STORY_COLUMNS, limit });
   // What the last stage still decides depends on the stages before it: with no
   // content fetch and no filter it only writes, and under the CAPI filter it
   // tests just the stories the CDN could not settle.
@@ -81,6 +82,9 @@ export async function runFind({
   } finally {
     tracker.stop();
     output.close();
+    // On a terminal the results are a table printed once the bars are down,
+    // ahead of the summary so the summary is the last thing on screen.
+    await output.flush();
 
     const list = tracker.counts("list");
     const capiFilter = tracker.counts("capiFilter");

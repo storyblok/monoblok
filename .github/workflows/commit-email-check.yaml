@@ -28,6 +28,7 @@ jobs:
 
       - name: Check commit author emails
         env:
+          GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
@@ -37,23 +38,49 @@ jobs:
             "41898282+github-actions[bot]@users.noreply.github.com"
           )
 
+          # Prints why a commit's author must use a @storyblok.com email, or nothing
+          # if they don't. Authors with push access to this repository are org members.
+          # Commits by external contributors (e.g. pushed by a maintainer on their
+          # behalf) are allowed. An email that isn't linked to any GitHub account
+          # can't be attributed, so it fails too.
+          check_author() {
+            local login permission
+            if ! login=$(gh api "repos/$GITHUB_REPOSITORY/commits/$1" --jq '.author.login // empty'); then
+              echo "could not look up the commit author"
+              return
+            fi
+            if [[ -z "$login" ]]; then
+              echo "email not linked to a GitHub account"
+              return
+            fi
+            if ! permission=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$login/permission" --jq '.permission'); then
+              echo "could not look up @$login's access"
+              return
+            fi
+            case "$permission" in
+              admin|maintain|write) echo "@$login has $permission access" ;;
+              *) echo "external contributor @$login, skipped" >&2 ;;
+            esac
+          }
+
           offending=()
           # %aE resolves the author email through .mailmap, if one exists.
-          while read -r sha email; do
-            email_lc=$(printf '%s' "$email" | tr '[:upper:]' '[:lower:]')
-            [[ "$email_lc" == *@storyblok.com ]] && continue
+          while read -r sha author; do
+            author_lc=$(printf '%s' "$author" | tr '[:upper:]' '[:lower:]')
+            [[ "$author_lc" == *@storyblok.com ]] && continue
             for bot in "${allowed_bots[@]}"; do
-              [[ "$email_lc" == "$bot" ]] && continue 2
+              [[ "$author_lc" == "$bot" ]] && continue 2
             done
-            offending+=("$sha $email")
+            reason=$(check_author "$sha")
+            [[ -n "$reason" ]] && offending+=("$sha $author ($reason)")
           done < <(git log --format='%H %aE' "$BASE_SHA..$HEAD_SHA")
 
           if [[ ${#offending[@]} -eq 0 ]]; then
-            echo "All commits use a @storyblok.com or allowed bot author email."
+            echo "All commits use a @storyblok.com email or are from allowed bots or external contributors."
             exit 0
           fi
 
-          echo "::error::Commits on branches in this repository must use a @storyblok.com author email."
+          echo "::error::Commits by org members must use a @storyblok.com author email."
           echo
           echo "Offending commits:"
           printf '  %s\n' "${offending[@]}"
@@ -65,4 +92,5 @@ jobs:
           echo "  git push --force-with-lease"
           echo
           echo "Only the commits in this PR need fixing, not the existing history."
+          echo "If the PR includes commits by an external contributor, only amend your own commits."
           exit 1

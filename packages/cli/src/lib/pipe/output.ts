@@ -244,7 +244,9 @@ export function createTableOutput<T>({
       if (rows.length === 0) {
         return;
       }
-      await write(renderTable({ columns, rows, width: process.stdout.columns }));
+      // A blank line sets the table off from the progress bars above it, the
+      // same gap the summary below leaves after it.
+      await write(`\n${renderTable({ columns, rows, width: process.stdout.columns })}`);
     },
   });
 }

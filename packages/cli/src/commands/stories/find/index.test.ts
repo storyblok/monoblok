@@ -322,8 +322,10 @@ describe("stories find command", () => {
 
     expect(written).toHaveLength(1);
     const lines = stripVTControlCharacters(written[0]).trimEnd().split("\n");
-    expect(lines[0]).toMatch(/^ID\s+NAME\s+FULL SLUG$/);
-    expect(lines.slice(1)).toEqual(
+    // A blank line sets the table off from the progress bars above it.
+    expect(lines[0]).toBe("");
+    expect(lines[1]).toMatch(/^ID\s+NAME\s+FULL SLUG$/);
+    expect(lines.slice(2)).toEqual(
       stories.map((story) =>
         expect.stringMatching(new RegExp(`^${story.id}\\s.*\\s${story.full_slug}$`)),
       ),
@@ -344,7 +346,7 @@ describe("stories find command", () => {
       "--check-references",
     ]);
 
-    const lines = stripVTControlCharacters(written.join("")).trimEnd().split("\n");
+    const lines = stripVTControlCharacters(written.join("")).trim().split("\n");
     expect(lines[0]).toMatch(/ISSUES$/);
     expect(lines[1]).toMatch(/1 broken$/);
   });

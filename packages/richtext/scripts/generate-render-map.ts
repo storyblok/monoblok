@@ -1,8 +1,12 @@
 import { type AnyExtension, getSchema } from "@tiptap/core";
 import type { Schema } from "prosemirror-model";
 import { MarkType, NodeType } from "prosemirror-model";
-import { parseDOMSpec } from "./parse-dom-spec";
-import { getStoryblokTiptapExtensions } from "../../extensions";
+import fs from "node:fs";
+import path from "pathe";
+import { fileURLToPath } from "node:url";
+import { parseDOMSpec } from "./lib/parse-dom-spec";
+import { formatGeneratedFile } from "./lib/format-generated-file";
+import { getStoryblokTiptapExtensions } from "../src/extensions";
 
 /**
  * Known dynamic resolvers (hand-written, minimal set)
@@ -77,7 +81,7 @@ export function generateRenderMap() {
   const schema = getSchema(extensions as AnyExtension[]);
   let output = "";
   output += "// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n";
-  output += `import { resolveHeadingTag } from './dynamic-resolvers';\n`;
+  output += `import { resolveHeadingTag } from '../core/dynamic-resolvers';\n`;
   output += `/**
   * Render config for Tiptap nodes
   */
@@ -91,4 +95,15 @@ export function generateRenderMap() {
   output += generateRenderEntries(schema, "mark");
   output += `} as const;\n\n`;
   return output;
+}
+
+// Only write + format when run directly (`tsx scripts/generate-render-map.ts`),
+// never as a side effect of importing `generateRenderMap` for tests.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const OUT_PATH = path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../src/generated/render-map.generated.ts",
+  );
+  fs.writeFileSync(OUT_PATH, generateRenderMap(), "utf-8");
+  formatGeneratedFile(OUT_PATH);
 }

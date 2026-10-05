@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateElementTypesFromSource } from "./richtext-element-types";
+import { generateElementTypesFromSource } from "./generate-element-types";
 
 const asInterfaces = `
 export interface RichTextFieldValueParagraphNode {

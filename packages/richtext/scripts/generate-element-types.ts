@@ -1,5 +1,8 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import ts from "typescript";
+import path from "pathe";
+import { fileURLToPath } from "node:url";
+import { formatGeneratedFile } from "./lib/format-generated-file";
 
 const CONTENT_PROP = "content";
 const MARKS_PROP = "marks";
@@ -167,7 +170,7 @@ export function generateElementTypesFromSource(
   const lines: string[] = [
     "// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.",
     "",
-    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(", ")} } from '../generated/overlay/types.gen';`,
+    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(", ")} } from './overlay/types.gen';`,
     "",
   ];
 
@@ -200,4 +203,15 @@ export function generateElementTypesFromSource(
   lines.push("}", "");
 
   return lines.join("\n");
+}
+
+// Only write + format when run directly (`tsx scripts/generate-element-types.ts`),
+// never as a side effect of importing `generateElementTypesFromSource` for tests.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const TYPES_GEN_PATH = path.join(__dirname, "../src/generated/overlay/types.gen.ts");
+  const OUT_PATH = path.join(__dirname, "../src/generated/richtext-element-types.generated.ts");
+
+  writeFileSync(OUT_PATH, generateElementTypes(TYPES_GEN_PATH), "utf-8");
+  formatGeneratedFile(OUT_PATH);
 }

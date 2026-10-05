@@ -14,4 +14,4 @@ export function markdownToStoryblokRichtext(md: string, options: MarkdownParserO
   }).render(md);
   return htmlToStoryblokRichtext(html, { parsers: options.parsers });
 }
-export { mapToAttribute } from "./extensions/utils";
+export { mapToAttribute } from "./extensions/attribute-parsers";

@@ -9,8 +9,8 @@ import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
 import Underline from "@tiptap/extension-underline";
 
-import { mapToAttribute, supportedAttributesByTagName } from "./utils";
-import type { ExtensionAttrs, ExtensionOptions } from "./richtext-attrs";
+import { mapToAttribute, supportedAttributesByTagName } from "./attribute-parsers";
+import type { ExtensionAttrs, ExtensionOptions } from "./extension-types";
 
 export { Bold, Code, Italic, Strike, Subscript, Superscript, Underline };
 

@@ -1,5 +1,5 @@
-import { stringToStyle } from "../static";
-import { kebabToCamel } from "../static/style";
+import { stringToStyle } from "../core";
+import { kebabToCamel } from "../core/style";
 
 /**
  * List of supported HTML attributes by tag name, used by the Reporter mark.

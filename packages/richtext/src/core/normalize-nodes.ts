@@ -1,10 +1,21 @@
-import { createKeyGenerator } from "../utils";
 import type { RichTextDoc, RichTextNode } from "../generated/overlay/types.gen";
 import type {
   StoryblokRichTextInput,
   StoryblokRichTextMarkWithKey,
   StoryblokRichTextNodeWithKey,
 } from "./types";
+
+function createKeyGenerator() {
+  const counters = new Map<string, number>();
+
+  return (prefix: string) => {
+    const count = (counters.get(prefix) || 0) + 1;
+
+    counters.set(prefix, count);
+
+    return `${prefix}-${count}`;
+  };
+}
 
 /**
  * Normalizes a Storyblok Richtext input into an array of nodes.

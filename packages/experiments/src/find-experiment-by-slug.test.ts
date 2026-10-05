@@ -1,7 +1,7 @@
 import type { Experiment } from "./types";
 import { describe, expect, it } from "vitest";
 import { findExperimentBySlug } from "./find-experiment-by-slug";
-import { homepageExperiment, pricingExperiment } from "./fixtures";
+import { homepageExperiment, nestedHomepageExperiment, pricingExperiment } from "./fixtures";
 
 const experiments = [homepageExperiment, pricingExperiment];
 
@@ -18,25 +18,34 @@ describe("findExperimentBySlug", () => {
     expect(findExperimentBySlug({ experiments, slug: "home-b" })).toBeUndefined();
   });
 
-  it("matches folder-nested full slugs", () => {
-    const nested: Experiment = {
-      ...homepageExperiment,
-      variants: [
-        {
-          ...homepageExperiment.variants[0],
-          story_mappings: [
-            {
-              original_story_id: 1,
-              original_slug: "pages/home",
-              variant_story_id: 1,
-              variant_slug: "pages/home",
-            },
-          ],
-        },
-      ],
-    };
+  it("matches a folder-nested story by its full slug", () => {
+    expect(
+      findExperimentBySlug({
+        experiments: [nestedHomepageExperiment],
+        slug: "campaigns/summer/home",
+      })?.id,
+    ).toBe(123);
+  });
 
-    expect(findExperimentBySlug({ experiments: [nested], slug: "pages/home" })?.id).toBe(123);
+  it("does not match a folder-nested story by its own slug alone", () => {
+    expect(
+      findExperimentBySlug({ experiments: [nestedHomepageExperiment], slug: "home" }),
+    ).toBeUndefined();
+  });
+
+  it("falls back to original_slug when the story is missing from stories", () => {
+    const withoutStories: Experiment = { ...homepageExperiment, stories: [] };
+
+    expect(findExperimentBySlug({ experiments: [withoutStories], slug: "home" })?.id).toBe(123);
+  });
+
+  it("falls back to original_slug when the payload has no stories", () => {
+    // Payloads from before the API returned `stories`, e.g. a cached response.
+    const { stories: _stories, ...withoutStories } = homepageExperiment;
+
+    expect(
+      findExperimentBySlug({ experiments: [withoutStories as Experiment], slug: "home" })?.id,
+    ).toBe(123);
   });
 
   it("returns the first match when several experiments share a slug", () => {

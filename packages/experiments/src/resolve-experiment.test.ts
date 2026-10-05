@@ -1,6 +1,6 @@
 import type { Experiment } from "./types";
 import { describe, expect, it } from "vitest";
-import { assignmentFor, homepageExperiment } from "./fixtures";
+import { assignmentFor, homepageExperiment, nestedHomepageExperiment } from "./fixtures";
 import { resolveExperiment } from "./resolve-experiment";
 
 const controlAssignment = assignmentFor(homepageExperiment, 0);
@@ -74,44 +74,33 @@ describe("resolveExperiment", () => {
     expect(result.exposure).toBeUndefined();
   });
 
-  it("resolves folder-nested full slugs when the payload carries them", () => {
-    // Guards the SDK's half of the nested-story case: once the backend serializes
-    // `original_slug` as a full slug (see PR notes), matching and mapping must work
-    // for a folder path just as they do for a root slug.
-    const nested: Experiment = {
-      ...homepageExperiment,
-      variants: [
-        {
-          ...homepageExperiment.variants[0],
-          story_mappings: [
-            {
-              original_story_id: 1,
-              original_slug: "pages/home",
-              variant_story_id: 1,
-              variant_slug: "pages/home",
-            },
-          ],
-        },
-        {
-          ...homepageExperiment.variants[1],
-          story_mappings: [
-            {
-              original_story_id: 1,
-              original_slug: "pages/home",
-              variant_story_id: 2,
-              variant_slug: "pages/home-b",
-            },
-          ],
-        },
-      ],
-    };
+  it("resolves a folder-nested story by its full slug to the variant's full slug", () => {
     const result = resolveExperiment({
-      experiments: [nested],
-      slug: "pages/home",
-      assignment: assignmentFor(nested, 1),
+      experiments: [nestedHomepageExperiment],
+      slug: "campaigns/summer/home",
+      assignment: assignmentFor(nestedHomepageExperiment, 1),
     });
-    expect(result.slug).toBe("pages/home-b");
+    expect(result.slug).toBe("campaigns/summer/home-b");
     expect(result.exposure?.variant.public_id).toBe("var_b");
+  });
+
+  it("renders a folder-nested story's full slug for the control variant", () => {
+    const result = resolveExperiment({
+      experiments: [nestedHomepageExperiment],
+      slug: "campaigns/summer/home",
+      assignment: assignmentFor(nestedHomepageExperiment, 0),
+    });
+    expect(result.slug).toBe("campaigns/summer/home");
+    expect(result.exposure?.variant.public_id).toBe("var_control");
+  });
+
+  it("passes through a folder-nested story's own slug without exposure", () => {
+    const result = resolveExperiment({
+      experiments: [nestedHomepageExperiment],
+      slug: "home",
+      assignment: assignmentFor(nestedHomepageExperiment, 1),
+    });
+    expect(result).toEqual({ slug: "home" });
   });
 
   it("resolves the assigned experiment when two running experiments share the same slug", () => {

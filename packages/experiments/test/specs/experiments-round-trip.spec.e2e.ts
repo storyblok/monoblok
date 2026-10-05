@@ -16,12 +16,9 @@
  * management endpoints directly through the generic HTTP escape hatches (`mapi.post`,
  * `mapi.put`, `mapi.get`, `mapi.delete`).
  *
- * Scope: only a ROOT-LEVEL story is exercised, where `slug === full_slug`. Folder-nested
- * stories are not covered here because the CDN payload serializes `original_slug` as the
- * bare `story.slug` (last segment) while `variant_slug` is the `full_slug` — so nested
- * matching in `resolveExperiment` is broken upstream until the backend serializes
- * `original_slug` as a full slug too (see PR description). The SDK's own handling of
- * nested full slugs is covered by a unit test in `resolve-experiment.test.ts`.
+ * The original story lives in a folder, so its own slug differs from its full slug. The
+ * payload's `original_slug` carries only the former; resolving by full slug relies on the
+ * experiment's `stories`.
  *
  * Run manually (never in CI):
  *   pnpm --filter @storyblok/experiments test:e2e
@@ -52,7 +49,9 @@ const COMPONENT_NAME = "e2e_experiments_page";
 const EXPERIMENT_NAME = "e2e_experiments_hero";
 const EXPERIMENT_PREFIX = "e2e_experiments_";
 const STORY_SLUG_PREFIX = "e2e-experiments-";
-const ORIGINAL_SLUG = `${STORY_SLUG_PREFIX}home`;
+const FOLDER_SLUG = `${STORY_SLUG_PREFIX}campaigns`;
+const ORIGINAL_STORY_SLUG = `${STORY_SLUG_PREFIX}home`;
+const ORIGINAL_SLUG = `${FOLDER_SLUG}/${ORIGINAL_STORY_SLUG}`;
 const VISITOR_ID = "visitor-e2e";
 
 const mapi = createManagementApiClient({
@@ -122,9 +121,13 @@ async function cleanup(): Promise<void> {
     await mapi.delete(`${experimentsPath}/${experiment.id}`, { throwOnError: false });
   }
 
-  // Stories: catches the original and the auto-duplicated variant copy.
+  // Stories: catches the original and the auto-duplicated variant copy, then their
+  // folder once it is empty.
   const storiesRes = await mapi.stories.list({ query: { per_page: 100 }, throwOnError: false });
-  for (const story of storiesRes.data?.stories ?? []) {
+  const stories = [...(storiesRes.data?.stories ?? [])].sort(
+    (a, b) => Number(a.is_folder ?? false) - Number(b.is_folder ?? false),
+  );
+  for (const story of stories) {
     if (story.slug?.startsWith(STORY_SLUG_PREFIX) && story.id) {
       await mapi.stories.delete(story.id, { throwOnError: false });
     }
@@ -173,12 +176,16 @@ describe("@storyblok/experiments CDN round-trip", () => {
       },
     });
 
-    // 3. The original (control) story, published so the CAPI can serve it.
+    // 3. The original (control) story inside a folder, published so the CAPI can serve it.
+    const folderRes = await mapi.stories.create({
+      body: { story: { name: "E2E Experiments Campaigns", slug: FOLDER_SLUG, is_folder: true } },
+    });
     const storyRes = await mapi.stories.create({
       body: {
         story: {
           name: "E2E Experiments Home",
-          slug: ORIGINAL_SLUG,
+          slug: ORIGINAL_STORY_SLUG,
+          parent_id: folderRes.data!.story!.id!,
           content: { component: COMPONENT_NAME, title: "Home" },
         },
       },
@@ -245,9 +252,13 @@ describe("@storyblok/experiments CDN round-trip", () => {
 
       const variant = experiment.variants.find((candidate) => !candidate.is_control)!;
       const mapping = variant.story_mappings.find(
-        (candidate) => candidate.original_slug === ORIGINAL_SLUG,
+        (candidate) => candidate.original_slug === ORIGINAL_STORY_SLUG,
       )!;
       expect(mapping.variant_slug).toBe(variantSlug);
+      expect(experiment.stories).toContainEqual({
+        id: mapping.original_story_id,
+        full_slug: ORIGINAL_SLUG,
+      });
     });
   });
 
@@ -302,6 +313,15 @@ describe("@storyblok/experiments CDN round-trip", () => {
 
       expect(resolved.slug).toBe(variantSlug);
       expect(resolved.exposure?.variant.public_id).toBe(variant.public_id);
+    });
+
+    it("does not match the original story by its own slug alone", () => {
+      const variant = experiment.variants.find((candidate) => !candidate.is_control)!;
+      const assignment = assignmentFor(variant);
+
+      const resolved = resolveExperiment({ experiments, slug: ORIGINAL_STORY_SLUG, assignment });
+
+      expect(resolved).toEqual({ slug: ORIGINAL_STORY_SLUG });
     });
 
     it("passes the slug through unchanged when no experiment matches", () => {

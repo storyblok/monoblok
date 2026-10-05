@@ -1,5 +1,5 @@
 import type { Assignment, Experiment, ExperimentVariant, Exposure } from "./types";
-import { mapsSlug } from "./find-experiment-by-slug";
+import { mapsSlug, originalFullSlug } from "./find-experiment-by-slug";
 
 export interface ResolveExperimentOptions {
   experiments: Experiment[];
@@ -13,7 +13,7 @@ export interface ResolveExperimentOptions {
  * from the API and `EventExperiment` is the identity carried on an event.
  */
 export interface ResolvedExperiment {
-  /** The slug to render: `original_slug` for control, `variant_slug` otherwise. */
+  /** The full slug to render: the requested slug for control, `variant_slug` otherwise. */
   slug: string;
   /** The assigned variant, when an experiment applied. */
   variant?: ExperimentVariant;
@@ -69,6 +69,8 @@ export function resolveExperiment({
     return { slug, variant, exposure };
   }
 
-  const mapping = variant.story_mappings.find((candidate) => candidate.original_slug === slug);
+  const mapping = variant.story_mappings.find(
+    (candidate) => originalFullSlug(experiment, candidate) === slug,
+  );
   return { slug: mapping?.variant_slug ?? slug, variant, exposure };
 }

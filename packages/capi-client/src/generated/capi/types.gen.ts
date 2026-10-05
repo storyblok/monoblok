@@ -99,6 +99,10 @@ export type ErrorResponse = {
      * Error message.
      */
     error: string;
+    /**
+     * Stable, machine-readable reason the request was denied. Present on role and plan/quota denials so clients can branch without matching on `error`.
+     */
+    error_code?: string;
 };
 
 export type Link = {
@@ -174,6 +178,68 @@ export type RateLimitError = {
      */
     error: string;
 };
+
+/**
+ * Error shape used by the management Strata endpoints and the CDN v2 Strata search endpoint. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ */
+export type StrataErrorResponse = {
+    error: {
+        /**
+         * Human-readable description of the error.
+         */
+        message: string;
+        /**
+         * A fixed error code for this failure.
+         */
+        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
+        /**
+         * Extra structured data about the error.
+         */
+        details: {
+            [key: string]: unknown;
+        } | null;
+        /**
+         * When the error happened, in ISO 8601 format.
+         */
+        timestamp: string;
+    };
+};
+
+/**
+ * One search result: a single piece of matching story content.
+ */
+export type StrataSearchHit = {
+    /**
+     * The matching snippet of story content.
+     */
+    excerpt: string;
+    /**
+     * How closely this result matches the search term. Higher means a closer match.
+     */
+    score: number;
+    /**
+     * The story this result comes from.
+     */
+    story: {
+        /**
+         * Numeric ID of the story.
+         */
+        id: number;
+        /**
+         * The story's full slug.
+         */
+        slug: string;
+        /**
+         * The story's name.
+         */
+        name: string;
+    };
+};
+
+/**
+ * Ranked results, best match first. Each entry is one matching piece of content. A story can appear more than once if it has multiple matches.
+ */
+export type StrataSearchResults = Array<StrataSearchHit>;
 
 export type Dimension = {
     /**
@@ -571,6 +637,22 @@ export type Asset = {
     [key: string]: unknown;
 };
 
+export type CdnExperimentWithStories = CdnExperiment & {
+    /**
+     * Stories assigned to this experiment. Same stories as story_ids, with their full slug. The full_slug is the default-language slug; translated slugs are not applied.
+     */
+    stories: Array<{
+        /**
+         * Numeric ID of the story
+         */
+        id: number;
+        /**
+         * Full slug of the story in the default language
+         */
+        full_slug: string;
+    }>;
+};
+
 export type Story = DraftStory | PublishedStory;
 
 export type GetAssetData = {
@@ -750,6 +832,10 @@ export type GetDatasourceByIdErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
      * Rate limit reached
      */
     429: RateLimitError;
@@ -799,7 +885,7 @@ export type ListCdnExperimentsV2Responses = {
      * Running experiments returned
      */
     200: {
-        experiments: Array<CdnExperiment>;
+        experiments: Array<CdnExperimentWithStories>;
         cv?: number | null;
     };
 };

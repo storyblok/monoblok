@@ -1119,6 +1119,23 @@ export type BulkResetPasswordRequest = {
     };
 };
 
+export type BulkUpsertStorySchedulingsRequest = {
+    story_scheduling: {
+        /**
+         * The ID of the story to schedule. Must belong to the space.
+         */
+        story_id: number;
+        /**
+         * The languages to schedule. Each entry is a language code enabled on the space.
+         */
+        languages: Array<string>;
+        /**
+         * ISO 8601 date and time at which every language in `languages` is published. Must be in the future.
+         */
+        publish_at: string;
+    };
+};
+
 export type ComponentBulkUpdateRequest = {
     /**
      * Array of component IDs to update
@@ -3264,6 +3281,10 @@ export type ErrorResponse = {
      * Error message.
      */
     error: string;
+    /**
+     * Stable, machine-readable reason the request was denied. Present on role and plan/quota denials so clients can branch without matching on `error`.
+     */
+    error_code?: string;
 };
 
 /**
@@ -4218,11 +4239,11 @@ export type SharedInternalTagRequest = {
 };
 
 /**
- * An SSO connection for an organization (SAML or Azure AD).
+ * An SSO connection for an organization (SAML, Azure AD or OIDC).
  */
 export type SsoConnection = {
     id: number;
-    provider: 'saml' | 'azure_ad';
+    provider: 'saml' | 'azure_ad' | 'oidc';
     /**
      * Server-generated, immutable identifier. Never client-supplied.
      */
@@ -4253,6 +4274,27 @@ export type SsoConnection = {
      */
     aad_tenant?: string | null;
     /**
+     * OIDC connections only. Issuer URL, must be https. The authorization, token and JWKS endpoints are discovered from it, so no other URL is configured.
+     */
+    oidc_issuer?: string;
+    /**
+     * OIDC connections only. Client ID of the application registered for Storyblok with the provider.
+     */
+    oidc_client_id?: string;
+    /**
+     * OIDC connections only. Scopes requested at the authorization endpoint; must include openid. Empty means the default openid profile email is used.
+     */
+    oidc_scope?: Array<string>;
+    oidc_claim_mappings?: SsoConnectionOidcClaimMappings;
+    /**
+     * OIDC connections only, read-only. The redirect URI to register with the identity provider. This is the exact value the login path sends, so it does not have to be rebuilt from the region.
+     */
+    readonly oidc_redirect_uri?: string;
+    /**
+     * OIDC connections only, read-only. Whether a client secret is stored. The secret itself is never returned.
+     */
+    readonly client_secret_set?: boolean;
+    /**
      * Read-only, org-sourced. Whether email matching is case-insensitive.
      */
     readonly case_insensitive_email_match?: boolean;
@@ -4263,7 +4305,7 @@ export type SsoConnection = {
     sign_saml_request?: boolean;
     readonly enforce_sso?: boolean;
     /**
-     * Org-sourced. When enabled, existing email/password users logging in via SSO with a matching email are converted to SSO users. Org-wide setting shared across connections. Writable on update only.
+     * Org-sourced. When enabled, existing email/password users logging in via SSO with a matching email are converted to SSO users. Org-wide setting shared across connections. Writable on create and update; omit to leave the current value unchanged.
      */
     merge_users?: boolean;
     /**
@@ -4291,28 +4333,85 @@ export type SsoConnectionAttributeMappings = {
 export type SsoConnectionDomain = {
     name: string;
     /**
-     * DNS verification status. Until the verification engine ships, every domain reports pending.
+     * DNS verification status. Legacy domains not yet tracked as verification rows are grandfathered and report verified.
      */
     status: 'verified' | 'pending' | 'failed';
 };
 
 /**
- * Writable fields for creating an SSO connection. provider is required and can only be set on create; domains is required on create with at least one entry. Read-only fields (sso_identifier, active, etc.) are ignored if supplied.
+ * Writable fields for creating an SSO connection. provider is required and can only be set on create; domains is required on create with at least one entry. Fields that do not apply to the chosen provider are ignored. Read-only fields (sso_identifier, active, etc.) are ignored if supplied.
  */
 export type SsoConnectionInput = {
     sso_connection: {
-        provider: 'saml' | 'azure_ad';
+        provider: 'saml' | 'azure_ad' | 'oidc';
         name?: string;
         /**
          * Login domains.
          */
         domains: Array<string>;
+        /**
+         * SAML only. IdP metadata XML.
+         */
         idp_meta?: string;
+        /**
+         * Azure AD only. Tenant ID.
+         */
         aad_tenant?: string;
+        /**
+         * OIDC only. Issuer URL, must be https. The provider's endpoints are discovered from it.
+         */
+        oidc_issuer?: string;
+        /**
+         * OIDC only. Client ID of the application registered for Storyblok with the provider.
+         */
+        oidc_client_id?: string;
+        /**
+         * OIDC only. Scopes requested at the authorization endpoint; must include openid. Omit or send an empty list to use the default openid profile email.
+         */
+        oidc_scope?: Array<string>;
+        oidc_claim_mappings?: SsoConnectionOidcClaimMappings;
         attribute_mappings?: SsoConnectionAttributeMappings;
+        /**
+         * SAML only.
+         */
         sign_saml_request?: boolean;
         enforce_sso?: boolean;
+        /**
+         * Org-wide setting: convert existing email/password users to SSO users when they log in via SSO with a matching email.
+         */
+        merge_users?: boolean;
     };
+};
+
+/**
+ * OIDC connections only. Maps a Storyblok user field to the id_token claims that carry it. Every field takes an ordered list and the first claim present wins, because an identity provider fronting several upstreams carries the same attribute in a different claim per upstream. A field that is not listed falls back to its standard OIDC claim. The object is the full mapping set and replaces what is stored: a field left out, or sent as an empty list, is unmapped. Omit the object to keep the stored mappings. Only the fields below are mapped; any other field name is rejected with a validation error rather than ignored.
+ */
+export type SsoConnectionOidcClaimMappings = {
+    /**
+     * Identity. Standard claim: sub. If mapped and none of the listed claims is present the login is refused rather than falling back, because a shared fallback value would merge distinct people onto one account.
+     */
+    uid?: Array<string>;
+    /**
+     * Email. Standard claim: email. Also the key used to link an existing SCIM-provisioned user. Refuses the login when mapped and absent, for the same reason as uid.
+     */
+    alt_email?: Array<string>;
+    /**
+     * Standard claim: given_name.
+     */
+    firstname?: Array<string>;
+    /**
+     * Standard claim: family_name.
+     */
+    lastname?: Array<string>;
+    /**
+     * Full name. Standard claim: name. Split into first and last name when both of those are absent.
+     */
+    name?: Array<string>;
+    /**
+     * Leave unmapped and group claims are ignored entirely. When mapped, the claim's values are matched against space roles' external ids, the same way SAML and Azure groups are. An absent claim grants nothing rather than refusing the login.
+     */
+    groups?: Array<string>;
+    [key: string]: unknown;
 };
 
 export type SsoConnectionResponse = {
@@ -4320,7 +4419,7 @@ export type SsoConnectionResponse = {
 };
 
 /**
- * Writable fields for updating an SSO connection. provider is immutable and ignored if supplied. Read-only fields (sso_identifier, etc.) are ignored if supplied.
+ * Writable fields for updating an SSO connection. provider is immutable and ignored if supplied, as are fields that do not apply to the connection's provider. Read-only fields (sso_identifier, etc.) are ignored if supplied.
  */
 export type SsoConnectionUpdateInput = {
     sso_connection: {
@@ -4329,13 +4428,35 @@ export type SsoConnectionUpdateInput = {
          * Full login-domain list; replaces the stored set. Omit to leave domains unchanged.
          */
         domains?: Array<string>;
+        /**
+         * SAML only. IdP metadata XML.
+         */
         idp_meta?: string;
+        /**
+         * Azure AD only. Tenant ID.
+         */
         aad_tenant?: string;
+        /**
+         * OIDC only. Issuer URL, must be https.
+         */
+        oidc_issuer?: string;
+        /**
+         * OIDC only. Client ID of the application registered for Storyblok with the provider.
+         */
+        oidc_client_id?: string;
+        /**
+         * OIDC only. Replaces the stored scopes; must include openid. Send an empty list to fall back to the default openid profile email.
+         */
+        oidc_scope?: Array<string>;
+        oidc_claim_mappings?: SsoConnectionOidcClaimMappings;
         attribute_mappings?: SsoConnectionAttributeMappings;
+        /**
+         * SAML only.
+         */
         sign_saml_request?: boolean;
         enforce_sso?: boolean;
         /**
-         * Org-wide setting: convert existing email/password users to SSO users when they log in via SSO with a matching email. Ignored on create.
+         * Org-wide setting: convert existing email/password users to SSO users when they log in via SSO with a matching email.
          */
         merge_users?: boolean;
     };
@@ -4714,7 +4835,29 @@ export type StatisticsNewVersionResponse = {
 };
 
 /**
- * Error shape used by the management Strata endpoints. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ * Returned when the bulk upsert is rejected. Nothing was written: the request is atomic. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ */
+export type StorySchedulingBulkUpsertErrorResponse = {
+    error: {
+        /**
+         * Human-readable description of the error.
+         */
+        message: string;
+        /**
+         * `languages_not_schedulable`: one or more languages cannot be scheduled; `details` maps each failed language to a reason. `invalid_parameters`: the request itself is not valid (for example, `publish_at` is in the past or `languages` is empty); `details` maps each field to a list of messages. `translated_stories_disabled`: the space does not have translated stories enabled, so multiple languages cannot be scheduled at once. `feature_not_available` (403): the endpoint is not enabled for this space. `not_found` (404): the story is not in the space. `forbidden` (403): the user cannot publish the story. `story_locked`: the story is in a workflow stage that locks editing. `taxonomy_required`: a required taxonomy is not filled. `feature_limit_reached`: the plan limit for scheduled stories is reached. `conflict` (409): a parallel request changed the same schedules; send the request again. For all codes except `languages_not_schedulable` and `invalid_parameters`, `details` is `null`.
+         */
+        code: 'languages_not_schedulable' | 'invalid_parameters' | 'translated_stories_disabled' | 'feature_not_available' | 'not_found' | 'forbidden' | 'story_locked' | 'taxonomy_required' | 'feature_limit_reached' | 'conflict';
+        /**
+         * For `languages_not_schedulable`: an object keyed by language code. Every failed language is listed, so the client can fix all of them in one pass. For `invalid_parameters`: an object keyed by field name, each value a list of messages. For other codes: `null`.
+         */
+        details: {
+            [key: string]: 'not_publishable' | 'language_not_enabled' | 'language_not_accessible' | Array<string>;
+        } | null;
+    };
+};
+
+/**
+ * Error shape used by the management Strata endpoints and the CDN v2 Strata search endpoint. Check `code` to detect the error type. Do not match on `message`: its wording can change.
  */
 export type StrataErrorResponse = {
     error: {
@@ -4725,7 +4868,7 @@ export type StrataErrorResponse = {
         /**
          * A fixed error code for this failure.
          */
-        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
+        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
         /**
          * Extra structured data about the error.
          */
@@ -8864,16 +9007,31 @@ export type Collaborator = {
         avatar?: string | null;
         firstname?: string | null;
         lastname?: string | null;
+        /**
+         * Secondary email address of the user. Only returned when the requester can manage collaborators in this space
+         */
         alt_email?: string | null;
+        /**
+         * Contact email of the user: alt_email when set, otherwise the login email. Only returned when the requester can manage collaborators in this space
+         */
         real_email?: string | null;
         disabled?: boolean;
+        /**
+         * Login email of the user, or the username when the user logs in with one
+         */
         userid?: string;
+        /**
+         * Display name from firstname and lastname, falling back to userid
+         */
         friendly_name?: string;
     } | null;
     /**
      * Invitation information if user hasn't joined yet
      */
     invitation?: {
+        /**
+         * Email address the invitation was sent to. Only returned when the requester can manage collaborators in this space
+         */
         email?: string;
         expires_at?: string | null;
         is_expired?: boolean;
@@ -10403,7 +10561,7 @@ export type OauthGrant = {
      */
     created_at: string;
     /**
-     * When the access token expires
+     * When the access token expires. May be in the past for a live grant whose refresh token is still valid
      */
     expires_at: string;
     /**
@@ -10411,7 +10569,7 @@ export type OauthGrant = {
      */
     last_used_at: string | null;
     /**
-     * When the grant was revoked; always null in the active list
+     * When the grant was revoked; always null in the live list
      */
     revoked_at: string | null;
     /**
@@ -13144,6 +13302,14 @@ export type WebhookLog = {
      */
     status: 'pending' | 'success' | 'failed' | null;
     /**
+     * Delivery progress: queued (waiting for a worker), running (the request is being sent), success or failed
+     */
+    delivery_state: 'queued' | 'running' | 'success' | 'failed';
+    /**
+     * Timestamp when the delivery job started
+     */
+    started_at?: string | null;
+    /**
      * The webhook event kind
      */
     kind: string | null;
@@ -13378,7 +13544,11 @@ export type ErrorsMap = {
 export type ErrorsObject = {
     error?: string | Array<string> | ErrorsMap;
     errors?: ErrorsMap;
-    [key: string]: Array<string> | string | ErrorsMap | undefined;
+    /**
+     * Stable, machine-readable reason the request was denied. Present on role and plan/quota denials so clients can branch without matching on `error`. Absent on generic validation failures.
+     */
+    error_code?: 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region';
+    [key: string]: Array<string> | string | ErrorsMap | 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region' | undefined;
 };
 
 export type InvoiceShowResponseWritable = {
@@ -13404,11 +13574,11 @@ export type PartnerInvoicesIndexResponseWritable = {
 };
 
 /**
- * An SSO connection for an organization (SAML or Azure AD).
+ * An SSO connection for an organization (SAML, Azure AD or OIDC).
  */
 export type SsoConnectionWritable = {
     id: number;
-    provider: 'saml' | 'azure_ad';
+    provider: 'saml' | 'azure_ad' | 'oidc';
     name: string;
     /**
      * Login domains with their DNS verification status. Not enforced unique across orgs (the same domain may belong to more than one org).
@@ -13430,13 +13600,26 @@ export type SsoConnectionWritable = {
      * Azure AD tenant ID (Azure AD connections only).
      */
     aad_tenant?: string | null;
+    /**
+     * OIDC connections only. Issuer URL, must be https. The authorization, token and JWKS endpoints are discovered from it, so no other URL is configured.
+     */
+    oidc_issuer?: string;
+    /**
+     * OIDC connections only. Client ID of the application registered for Storyblok with the provider.
+     */
+    oidc_client_id?: string;
+    /**
+     * OIDC connections only. Scopes requested at the authorization endpoint; must include openid. Empty means the default openid profile email is used.
+     */
+    oidc_scope?: Array<string>;
+    oidc_claim_mappings?: SsoConnectionOidcClaimMappings;
     attribute_mappings?: SsoConnectionAttributeMappings;
     /**
      * SAML only. Whether the AuthnRequest is signed. Surfaced from the connection config.
      */
     sign_saml_request?: boolean;
     /**
-     * Org-sourced. When enabled, existing email/password users logging in via SSO with a matching email are converted to SSO users. Org-wide setting shared across connections. Writable on update only.
+     * Org-sourced. When enabled, existing email/password users logging in via SSO with a matching email are converted to SSO users. Org-wide setting shared across connections. Writable on create and update; omit to leave the current value unchanged.
      */
     merge_users?: boolean;
     /**
@@ -13449,8 +13632,105 @@ export type SsoConnectionWritable = {
     updated_at?: string;
 };
 
+/**
+ * Writable fields for creating an SSO connection. provider is required and can only be set on create; domains is required on create with at least one entry. Fields that do not apply to the chosen provider are ignored. Read-only fields (sso_identifier, active, etc.) are ignored if supplied.
+ */
+export type SsoConnectionInputWritable = {
+    sso_connection: {
+        provider: 'saml' | 'azure_ad' | 'oidc';
+        name?: string;
+        /**
+         * Login domains.
+         */
+        domains: Array<string>;
+        /**
+         * SAML only. IdP metadata XML.
+         */
+        idp_meta?: string;
+        /**
+         * Azure AD only. Tenant ID.
+         */
+        aad_tenant?: string;
+        /**
+         * OIDC only. Issuer URL, must be https. The provider's endpoints are discovered from it.
+         */
+        oidc_issuer?: string;
+        /**
+         * OIDC only. Client ID of the application registered for Storyblok with the provider.
+         */
+        oidc_client_id?: string;
+        /**
+         * OIDC only. Client secret. Stored encrypted and never returned.
+         */
+        client_secret?: string;
+        /**
+         * OIDC only. Scopes requested at the authorization endpoint; must include openid. Omit or send an empty list to use the default openid profile email.
+         */
+        oidc_scope?: Array<string>;
+        oidc_claim_mappings?: SsoConnectionOidcClaimMappings;
+        attribute_mappings?: SsoConnectionAttributeMappings;
+        /**
+         * SAML only.
+         */
+        sign_saml_request?: boolean;
+        enforce_sso?: boolean;
+        /**
+         * Org-wide setting: convert existing email/password users to SSO users when they log in via SSO with a matching email.
+         */
+        merge_users?: boolean;
+    };
+};
+
 export type SsoConnectionResponseWritable = {
     sso_connection: SsoConnectionWritable;
+};
+
+/**
+ * Writable fields for updating an SSO connection. provider is immutable and ignored if supplied, as are fields that do not apply to the connection's provider. Read-only fields (sso_identifier, etc.) are ignored if supplied.
+ */
+export type SsoConnectionUpdateInputWritable = {
+    sso_connection: {
+        name?: string;
+        /**
+         * Full login-domain list; replaces the stored set. Omit to leave domains unchanged.
+         */
+        domains?: Array<string>;
+        /**
+         * SAML only. IdP metadata XML.
+         */
+        idp_meta?: string;
+        /**
+         * Azure AD only. Tenant ID.
+         */
+        aad_tenant?: string;
+        /**
+         * OIDC only. Issuer URL, must be https.
+         */
+        oidc_issuer?: string;
+        /**
+         * OIDC only. Client ID of the application registered for Storyblok with the provider.
+         */
+        oidc_client_id?: string;
+        /**
+         * OIDC only. Replaces the stored client secret. Omit it, or send it blank, to keep the stored one - which is what a form submitting a masked field does. There is no way to read it back.
+         */
+        client_secret?: string;
+        /**
+         * OIDC only. Replaces the stored scopes; must include openid. Send an empty list to fall back to the default openid profile email.
+         */
+        oidc_scope?: Array<string>;
+        oidc_claim_mappings?: SsoConnectionOidcClaimMappings;
+        attribute_mappings?: SsoConnectionAttributeMappings;
+        /**
+         * SAML only.
+         */
+        sign_saml_request?: boolean;
+        enforce_sso?: boolean;
+        /**
+         * Org-wide setting: convert existing email/password users to SSO users when they log in via SSO with a matching email.
+         */
+        merge_users?: boolean;
+    };
 };
 
 export type SsoConnectionsIndexResponseWritable = {
@@ -14909,7 +15189,7 @@ export type CreateSsoConnectionData = {
     /**
      * Connection attributes
      */
-    body: SsoConnectionInput;
+    body: SsoConnectionInputWritable;
     path?: never;
     query?: never;
     url: '/v1/sso_connections';
@@ -14983,7 +15263,7 @@ export type UpdateSsoConnectionData = {
     /**
      * Connection attributes to update
      */
-    body: SsoConnectionUpdateInput;
+    body: SsoConnectionUpdateInputWritable;
     path: {
         /**
          * SSO connection ID
@@ -15251,7 +15531,6 @@ export type ListAiConfigurationsResponses = {
         ai_configurations: Array<AiConfiguration>;
         meta?: {
             default_ai_configuration_id?: number | null;
-            using_custom_ai_configuration?: boolean;
             org_default_ai_configuration_id?: number | null;
         };
     };
@@ -18216,6 +18495,10 @@ export type ListAssetsData = {
          */
         in_folder?: number;
         /**
+         * If true, together with in_folder and a search or filter, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1).
+         */
+        in_subfolders?: boolean;
+        /**
          * Sort stories in ascending or descending order by a specific property. Possible properties are all default story properties and any custom fields defined in the schema of the story type.
          * Default story properties can be used like this:
          * - `sort_by=created_at:desc`
@@ -19075,54 +19358,6 @@ export type BulkUpdateAssetsResponses = {
 
 export type BulkUpdateAssetsResponse = BulkUpdateAssetsResponses[keyof BulkUpdateAssetsResponses];
 
-export type CopyAssetFromUrlData = {
-    body: {
-        /**
-         * The external URL of the asset to copy
-         */
-        url: string;
-    };
-    path: {
-        /**
-         * Numeric ID of a space
-         */
-        space_id: number;
-    };
-    query?: never;
-    url: '/v1/spaces/{space_id}/assets/copy_from_url';
-};
-
-export type CopyAssetFromUrlErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type CopyAssetFromUrlError = CopyAssetFromUrlErrors[keyof CopyAssetFromUrlErrors];
-
-export type CopyAssetFromUrlResponses = {
-    /**
-     * Asset copied.
-     */
-    200: {
-        /**
-         * CDN-friendly URL of the copied asset
-         */
-        pretty_url: string;
-        /**
-         * Full public S3 URL of the copied asset
-         */
-        public_url: string;
-    };
-};
-
-export type CopyAssetFromUrlResponse = CopyAssetFromUrlResponses[keyof CopyAssetFromUrlResponses];
-
 export type RestoreAssetData = {
     body?: never;
     path: {
@@ -19161,54 +19396,6 @@ export type RestoreAssetResponses = {
 };
 
 export type RestoreAssetResponse = RestoreAssetResponses[keyof RestoreAssetResponses];
-
-export type GetProtectedImageData = {
-    body?: never;
-    path: {
-        /**
-         * Numeric ID of a space
-         */
-        space_id: number;
-    };
-    query: {
-        /**
-         * URL path to the protected image resource.
-         */
-        path: string;
-    };
-    url: '/v1/spaces/{space_id}/assets/get_protected_image';
-};
-
-export type GetProtectedImageErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-    /**
-     * Forbidden
-     */
-    403: ErrorsObject;
-    /**
-     * Rate limit reached
-     */
-    429: RateLimitError;
-};
-
-export type GetProtectedImageError = GetProtectedImageErrors[keyof GetProtectedImageErrors];
-
-export type GetProtectedImageResponses = {
-    /**
-     * Protected image retrieved.
-     */
-    200: {
-        /**
-         * Base64-encoded image data with data URI prefix
-         */
-        image: string;
-    };
-};
-
-export type GetProtectedImageResponse = GetProtectedImageResponses[keyof GetProtectedImageResponses];
 
 export type ConvertAssetToSharedAssetData = {
     body?: never;
@@ -21578,10 +21765,22 @@ export type UpdateConceptsWebhookData = {
 
 export type UpdateConceptsWebhookErrors = {
     /**
+     * Invalid token or no custom complexity.
+     */
+    404: {
+        error: string;
+    };
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
         error: string | Array<string>;
+    };
+    /**
+     * The region that owns the space failed or could not be reached
+     */
+    502: {
+        error: string;
     };
 };
 
@@ -22429,6 +22628,10 @@ export type DeleteDatasourceErrors = {
         error?: string;
     };
     /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -22475,6 +22678,10 @@ export type GetDatasourceErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -22531,6 +22738,10 @@ export type PartialUpdateDatasourceErrors = {
         error?: string;
     };
     /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
@@ -22586,6 +22797,10 @@ export type ReplaceDatasourceErrors = {
     403: {
         error?: string;
     };
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: Array<string>;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -25263,6 +25478,12 @@ export type PartialUpdateIdeaErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        assignee_id?: Array<string>;
+    };
+    /**
      * Rate limit reached
      */
     429: RateLimitError;
@@ -25302,6 +25523,12 @@ export type ReplaceIdeaErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: {
+        assignee_id?: Array<string>;
+    };
     /**
      * Rate limit reached
      */
@@ -25372,10 +25599,22 @@ export type UpdateIdeasWebhookData = {
 
 export type UpdateIdeasWebhookErrors = {
     /**
+     * Invalid token or no custom complexity.
+     */
+    404: {
+        error: string;
+    };
+    /**
      * Unable to remove space - user is not a space admin.
      */
     422: {
         error: string | Array<string>;
+    };
+    /**
+     * The region that owns the space failed or could not be reached
+     */
+    502: {
+        error: string;
     };
 };
 
@@ -25420,6 +25659,12 @@ export type CreateImageServiceInvalidationsErrors = {
      * Rate limit reached
      */
     429: RateLimitError;
+    /**
+     * Internal Server Error
+     */
+    500: {
+        error: string;
+    };
 };
 
 export type CreateImageServiceInvalidationsError = CreateImageServiceInvalidationsErrors[keyof CreateImageServiceInvalidationsErrors];
@@ -27748,6 +27993,10 @@ export type ListOrgFieldTypesErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
     /**
      * Rate limit reached
@@ -27788,6 +28037,10 @@ export type CreateOrgFieldTypeErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
     /**
      * Unable to remove space - user is not a space admin.
@@ -27837,6 +28090,10 @@ export type DeleteOrgFieldTypeErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
     /**
      * Invalid token or no custom complexity.
@@ -27884,6 +28141,10 @@ export type GetOrgFieldTypeErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
     /**
      * Invalid token or no custom complexity.
@@ -27942,6 +28203,10 @@ export type UpdateOrgFieldTypeErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
     /**
      * Invalid token or no custom complexity.
@@ -30672,6 +30937,10 @@ export type ListScimGroupsErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
 };
 
@@ -30706,6 +30975,10 @@ export type ListScimTokensErrors = {
          * Error message
          */
         error: string;
+        /**
+         * Machine-readable denial reason
+         */
+        error_code?: 'org_role_forbidden';
     };
 };
 
@@ -31441,6 +31714,10 @@ export type ListOrgSharedAssetsData = {
          */
         in_folder?: number;
         /**
+         * If true, together with in_folder and a search or filter, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1) and for a library root folder, which already includes its subfolders.
+         */
+        in_subfolders?: boolean;
+        /**
          * Sort stories in ascending or descending order by a specific property. Possible properties are all default story properties and any custom fields defined in the schema of the story type.
          * Default story properties can be used like this:
          * - `sort_by=created_at:desc`
@@ -32139,6 +32416,10 @@ export type ListSpaceSharedAssetsData = {
          * Provide the numeric id of a folder to filter the assets by a specific folder.
          */
         in_folder?: number;
+        /**
+         * If true, together with in_folder and a search or filter, also returns the assets of all subfolders of in_folder. Ignored for the trash (in_folder=-1) and for a library root folder, which already includes its subfolders.
+         */
+        in_subfolders?: boolean;
         /**
          * Sort stories in ascending or descending order by a specific property. Possible properties are all default story properties and any custom fields defined in the schema of the story type.
          * Default story properties can be used like this:
@@ -32950,6 +33231,7 @@ export type CreateSharedImageServiceInvalidationsErrors = {
      */
     403: {
         error: string;
+        error_code?: string;
     };
     /**
      * Unable to remove space - user is not a space admin.
@@ -35926,9 +36208,13 @@ export type RestoreStoryWithVersionErrors = {
      */
     401: UnauthorizedError;
     /**
+     * Forbidden
+     */
+    403: ErrorsObject;
+    /**
      * Invalid token or no custom complexity.
      */
-    404: Array<string>;
+    404: Array<string> | ErrorsObject;
     /**
      * Unable to remove space - user is not a space admin.
      */
@@ -37059,6 +37345,10 @@ export type ListStorySchedulingsData = {
          * Filter scheduled story schedulings by story ID.
          */
         scheduled_for_story?: number;
+        /**
+         * Filter story schedulings by language codes, comma separated. Use `[default]` for the default language
+         */
+        by_language?: string;
         /**
          * Number of items per page.
          */
@@ -40253,7 +40543,7 @@ export type ListWebhookLogsData = {
         /**
          * Filter by webhook event kind.
          */
-        by_kind?: string;
+        by_kind?: string | Array<string>;
         /**
          * Filter by executed_at greater than or equal to this date.
          */
@@ -40265,7 +40555,7 @@ export type ListWebhookLogsData = {
         /**
          * Filter by webhook endpoint ID.
          */
-        by_webhook_id?: number;
+        by_webhook_id?: number | Array<number>;
         /**
          * The paginated page number.
          */

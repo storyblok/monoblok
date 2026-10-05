@@ -30,7 +30,7 @@ export const ALIASES = [
   { source: "DatasourceEntry", spec: "capi", emitAs: "DatasourceEntry" },
   { source: "Link", spec: "capi", emitAs: "Link" },
   { source: "Tag", spec: "capi", emitAs: "Tag" },
-  { source: "CdnExperiment", spec: "capi", emitAs: "Experiment" },
+  { source: "CdnExperimentWithStories", spec: "capi", emitAs: "Experiment" },
   { source: "CdnExperimentVariant", spec: "capi", emitAs: "ExperimentVariant" },
 
   // MAPI entities

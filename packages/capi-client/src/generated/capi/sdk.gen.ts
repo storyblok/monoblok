@@ -81,7 +81,7 @@ export const getDatasourceById = <ThrowOnError extends boolean = false>(options:
 /**
  * List running experiments
  *
- * Retrieve all running experiments with their variants and associated story IDs. Only experiments with status 'running' are returned. No pagination — the result set is expected to be small per space.
+ * Retrieve all running experiments with their variants and associated stories (IDs and full slugs). Only experiments with status 'running' are returned. No pagination — the result set is expected to be small per space.
  */
 export const listCdnExperimentsV2 = <ThrowOnError extends boolean = false>(options?: Options<ListCdnExperimentsV2Data, ThrowOnError>): RequestResult<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError> => (options?.client ?? client).get<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError>({
     security: [{

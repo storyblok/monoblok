@@ -84,7 +84,7 @@ describe("resolveExperiment", () => {
     expect(result.exposure?.variant.public_id).toBe("var_b");
   });
 
-  it("renders a folder-nested story's full slug for the control variant", () => {
+  it("resolves a folder-nested story to its own full slug for the control variant", () => {
     const result = resolveExperiment({
       experiments: [nestedHomepageExperiment],
       slug: "campaigns/summer/home",

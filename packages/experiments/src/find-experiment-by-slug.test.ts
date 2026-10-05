@@ -14,7 +14,7 @@ describe("findExperimentBySlug", () => {
     expect(findExperimentBySlug({ experiments, slug: "about" })).toBeUndefined();
   });
 
-  it("matches on original_slug, not on a variant slug", () => {
+  it("matches the original story, not a variant slug", () => {
     expect(findExperimentBySlug({ experiments, slug: "home-b" })).toBeUndefined();
   });
 
@@ -33,19 +33,10 @@ describe("findExperimentBySlug", () => {
     ).toBeUndefined();
   });
 
-  it("falls back to original_slug when the story is missing from stories", () => {
+  it("does not match a story missing from the experiment's stories", () => {
     const withoutStories: Experiment = { ...homepageExperiment, stories: [] };
 
-    expect(findExperimentBySlug({ experiments: [withoutStories], slug: "home" })?.id).toBe(123);
-  });
-
-  it("falls back to original_slug when the payload has no stories", () => {
-    // Payloads from before the API returned `stories`, e.g. a cached response.
-    const { stories: _stories, ...withoutStories } = homepageExperiment;
-
-    expect(
-      findExperimentBySlug({ experiments: [withoutStories as Experiment], slug: "home" })?.id,
-    ).toBe(123);
+    expect(findExperimentBySlug({ experiments: [withoutStories], slug: "home" })).toBeUndefined();
   });
 
   it("returns the first match when several experiments share a slug", () => {

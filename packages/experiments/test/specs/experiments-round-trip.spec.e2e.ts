@@ -121,8 +121,8 @@ async function cleanup(): Promise<void> {
     await mapi.delete(`${experimentsPath}/${experiment.id}`, { throwOnError: false });
   }
 
-  // Stories: catches the original and the auto-duplicated variant copy, then their
-  // folder once it is empty.
+  // Stories: the original, its auto-duplicated variant copy, and their folder.
+  // Folders sort last because only an empty folder can be deleted.
   const storiesRes = await mapi.stories.list({ query: { per_page: 100 }, throwOnError: false });
   const stories = [...(storiesRes.data?.stories ?? [])].sort(
     (a, b) => Number(a.is_folder ?? false) - Number(b.is_folder ?? false),

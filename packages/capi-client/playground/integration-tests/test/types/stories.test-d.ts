@@ -801,3 +801,35 @@ describe("createApiClient with .withTypes() — field plugins", () => {
     }
   });
 });
+
+describe("stories pagination", () => {
+  it("should yield Story from stories.iterate()", async () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    for await (const story of client.stories.iterate()) {
+      expectTypeOf(story).toEqualTypeOf<Story>();
+    }
+  });
+
+  it("should yield narrowed stories from stories.iterate() with .withTypes()", async () => {
+    const client = createApiClient({ accessToken: "test-token" }).withTypes<StoryblokTypes>();
+    for await (const story of client.stories.iterate()) {
+      expectTypeOf(story.content.component).toEqualTypeOf<"page" | "hero">();
+    }
+  });
+
+  it("should yield envelopes with optional data from stories.pages()", async () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    for await (const page of client.stories.pages()) {
+      expectTypeOf(page.page).toEqualTypeOf<number>();
+      expectTypeOf(page.total).toEqualTypeOf<number | undefined>();
+      expectTypeOf(page.data?.stories).toEqualTypeOf<Story[] | undefined>();
+    }
+  });
+
+  it("should yield envelopes with defined data from stories.pages() with throwOnError", async () => {
+    const client = createApiClient({ accessToken: "test-token", throwOnError: true });
+    for await (const page of client.stories.pages()) {
+      expectTypeOf(page.data.stories).toEqualTypeOf<Story[]>();
+    }
+  });
+});

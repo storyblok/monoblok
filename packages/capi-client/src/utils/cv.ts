@@ -36,7 +36,10 @@ export const extractSpaceVersion = (maybeData: unknown) => {
   return typeof space.version === "number" ? space.version : undefined;
 };
 
-export const applyCvToQuery = (query: Record<string, unknown>, cv: number) => {
+export const applyCvToQuery = <TQuery extends Record<string, unknown>>(
+  query: TQuery,
+  cv: number,
+): TQuery => {
   if (isDraftRequest(query)) {
     return query;
   }

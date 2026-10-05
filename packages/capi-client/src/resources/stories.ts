@@ -23,6 +23,8 @@ import {
   resolveRelationMap,
 } from "../utils/inline-relations";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import type { PageResult } from "../utils/paginate";
+import { paginateItems, paginatePages } from "../utils/paginate";
 import type {
   BlockFields,
   Block as Component,
@@ -373,9 +375,10 @@ export function createStoriesResource<
   InlineRelations extends boolean = false,
   DefaultThrowOnError extends boolean = false,
 >(deps: StoriesResourceDeps<DefaultThrowOnError>) {
-  const { client, requestWithCache, asApiResponse, inlineRelations, throttleManager } = deps;
+  const { client, requestWithCache, asApiResponse, inlineRelations, throttleManager, cvMode } =
+    deps;
 
-  return {
+  const resource = {
     get: async <
       ThrowOnError extends boolean = DefaultThrowOnError,
       const ResolveRelationsStr extends string | undefined = undefined,
@@ -547,5 +550,72 @@ export function createStoriesResource<
         inlineRelations ? { cacheKeyPrefix: "inline" } : undefined,
       );
     },
+  };
+
+  type ListOptions<
+    ThrowOnError extends boolean,
+    ResolveRelationsStr extends string | undefined,
+  > = NonNullable<Parameters<typeof resource.list<ThrowOnError, ResolveRelationsStr>>[0]>;
+
+  const toPaginateConfig = <
+    ThrowOnError extends boolean,
+    const ResolveRelationsStr extends string | undefined,
+  >(
+    options: ListOptions<ThrowOnError, ResolveRelationsStr>,
+  ) => ({
+    query: { ...options.query },
+    signal: options.signal,
+    pinCv: cvMode !== "manual",
+    fetchPage: (query: ListOptions<false, ResolveRelationsStr>["query"], signal: AbortSignal) =>
+      resource.list<false, ResolveRelationsStr>({ ...options, query, signal, throwOnError: false }),
+    getItems: (
+      data: ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+    ) => data.stories,
+  });
+
+  return {
+    ...resource,
+
+    /**
+     * Walks every page of stories, yielding one `list()` response per page. A failed page
+     * is the last value yielded, so check `error` on each one. With `throwOnError`, it
+     * throws a `PaginationError` instead.
+     *
+     * Published pages are pinned to the `cv` of the first page, so the walk reads one
+     * consistent snapshot. Draft pages are not, so concurrent edits can shift offsets.
+     */
+    pages: <
+      ThrowOnError extends boolean = DefaultThrowOnError,
+      const ResolveRelationsStr extends string | undefined = undefined,
+    >(
+      options: ListOptions<ThrowOnError, ResolveRelationsStr> = {},
+    ): AsyncGenerator<
+      PageResult<
+        ListResponse<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+        ThrowOnError
+      >,
+      void,
+      undefined
+    > =>
+      paginatePages(
+        toPaginateConfig(options),
+        options.throwOnError,
+        client.getConfig().throwOnError ?? false,
+      ),
+
+    /**
+     * Walks every story across all pages, fetching the next page while the current one is
+     * consumed. A failed page throws a `PaginationError`.
+     *
+     * Published pages are pinned to the `cv` of the first page, so the walk reads one
+     * consistent snapshot. Draft pages are not, so concurrent edits can shift offsets.
+     */
+    iterate: <const ResolveRelationsStr extends string | undefined = undefined>(
+      options: Omit<ListOptions<boolean, ResolveRelationsStr>, "throwOnError"> = {},
+    ): AsyncGenerator<
+      StoryResult<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
+      void,
+      undefined
+    > => paginateItems(toPaginateConfig(options)),
   };
 }

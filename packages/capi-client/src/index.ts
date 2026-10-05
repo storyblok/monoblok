@@ -31,7 +31,7 @@ export type {
 } from "./client";
 
 // Error
-export { ClientError } from "./error";
+export { ClientError, PaginationError } from "./error";
 export type { ApiErrorBody } from "./error";
 
 // Generated client utilities
@@ -56,6 +56,8 @@ export type {
   StoryWithInlinedRelations,
   WithInlinedRelations,
 } from "./resources/stories";
+// Pagination types
+export type { PageResult } from "./utils/paginate";
 // Cache types
 export type {
   CacheEntry,

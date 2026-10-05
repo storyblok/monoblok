@@ -45,3 +45,22 @@ export class ClientError extends Error {
     };
   }
 }
+
+/**
+ * Thrown by `iterate()`, and by `pages()` with `throwOnError: true`, when a page fails.
+ * Carries what a new walk needs to resume where this one stopped:
+ * `iterate({ query: { ...query, page: error.page, cv: error.cv } })`.
+ */
+export class PaginationError extends ClientError {
+  /** The page that failed. */
+  readonly page: number;
+  /** The snapshot the walk was pinned to, if any. Resuming with it keeps offsets consistent. */
+  readonly cv?: number;
+
+  constructor(error: ClientError, options: { page: number; cv?: number }) {
+    super(error.message, { ...error.response, cause: error.cause });
+    this.name = "PaginationError";
+    this.page = options.page;
+    this.cv = options.cv;
+  }
+}

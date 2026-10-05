@@ -44,3 +44,19 @@ export class ClientError extends Error {
     };
   }
 }
+
+/**
+ * Thrown by `iterate()`, and by `pages()` with `throwOnError: true`, when a page fails.
+ * Carries the page a new walk resumes from:
+ * `iterate({ query: { ...query, page: error.page } })`.
+ */
+export class PaginationError extends ClientError {
+  /** The page that failed. */
+  readonly page: number;
+
+  constructor(error: ClientError, options: { page: number }) {
+    super(error.message, { ...error.response, cause: error.cause });
+    this.name = "PaginationError";
+    this.page = options.page;
+  }
+}

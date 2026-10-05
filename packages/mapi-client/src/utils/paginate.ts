@@ -1,5 +1,5 @@
 import type { ApiResponse } from "../client";
-import { PaginationError } from "../error";
+import { ClientError, PaginationError } from "../error";
 
 /** The page size the API uses when the request sends no `per_page`. */
 const DEFAULT_PER_PAGE = 25;
@@ -14,7 +14,7 @@ export type PageResult<TData, ThrowOnError extends boolean = false> = ApiRespons
 > & {
   /** The page this response holds. */
   page: number;
-  /** Items per page, as reported by the API. */
+  /** Items per page from the `Per-Page` header, else the requested `per_page`, else 25. */
   perPage: number;
   /** Total number of items across all pages, or `undefined` if the API didn't report it. */
   total: number | undefined;
@@ -36,6 +36,12 @@ const readPositiveInteger = (value: unknown): number | undefined => {
   return Number.isInteger(number) && number > 0 ? number : undefined;
 };
 
+type PendingPage<TData> = {
+  result: Promise<PageResult<TData>>;
+  /** Aborts the request unless it already settled. */
+  cancel: () => void;
+};
+
 const readCountHeader = (response: Response | undefined, name: string): number | undefined => {
   const value = response?.headers?.get?.(name);
   if (value === null || value === undefined || value === "") {
@@ -55,47 +61,92 @@ const hasNextPage = (
   return total === undefined ? itemCount >= perPage : page * perPage < total;
 };
 
+/** Mirrors the error `list()` resolves with for an aborted request. */
+const abortError = (reason: unknown): ClientError =>
+  new ClientError("API request failed", {
+    status: 0,
+    statusText: "",
+    data: undefined,
+    cause: reason,
+  });
+
 async function* walkPages<TQuery extends Record<string, unknown>, TData, TItem>(
   config: PaginateConfig<TQuery, TData, TItem>,
   { prefetch, throwOnFailure }: { prefetch: boolean; throwOnFailure: boolean },
 ): AsyncGenerator<PageResult<TData>, void, undefined> {
   const { query, signal, fetchPage, getItems } = config;
-  const controller = new AbortController();
-  const abort = () => controller.abort(signal?.reason);
-  if (signal?.aborted) {
-    abort();
-  } else {
-    signal?.addEventListener("abort", abort, { once: true });
-  }
+  // Sent explicitly: some endpoints ignore `page` unless `per_page` is set too.
+  const perPage = query.per_page ?? DEFAULT_PER_PAGE;
+  const requestedPerPage = readPositiveInteger(perPage) ?? DEFAULT_PER_PAGE;
 
-  const fetchAt = (page: number): Promise<PageResult<TData>> => {
-    const pending = fetchPage({ ...query, page }, controller.signal).then((result) => ({
-      ...result,
-      page,
-      perPage:
-        readCountHeader(result.response, "per-page") ??
-        readPositiveInteger(query.per_page) ??
-        DEFAULT_PER_PAGE,
-      total: readCountHeader(result.response, "total"),
-    }));
+  const fetchAt = (page: number): PendingPage<TData> => {
+    const controller = new AbortController();
+    const abort = () => controller.abort(signal?.reason);
+    if (signal?.aborted) {
+      abort();
+    } else {
+      signal?.addEventListener("abort", abort, { once: true });
+    }
+    let isSettled = false;
+    const settle = () => {
+      isSettled = true;
+      signal?.removeEventListener("abort", abort);
+    };
+
+    const result = fetchPage({ ...query, per_page: perPage, page }, controller.signal).then(
+      (response) => ({
+        ...response,
+        page,
+        perPage:
+          readPositiveInteger(response.response?.headers?.get?.("per-page")) ?? requestedPerPage,
+        total: readCountHeader(response.response, "total"),
+      }),
+    );
+    result.then(settle, settle);
     // A prefetched page is awaited only once the walk reaches it, so its failure
     // surfaces in stream order rather than as an unhandled rejection.
-    pending.catch(() => undefined);
-    return pending;
+    result.catch(() => undefined);
+
+    return {
+      result,
+      cancel: () => {
+        if (!isSettled) {
+          controller.abort();
+        }
+        settle();
+      },
+    };
   };
 
-  try {
-    const firstPage = readPositiveInteger(query.page) ?? 1;
-    let next = fetchAt(firstPage);
+  const firstPage = readPositiveInteger(query.page) ?? 1;
+  let next = fetchAt(firstPage);
 
+  try {
     for (let page = firstPage; ; page++) {
-      const current = await next;
+      const current = await next.result;
+
+      if (signal?.aborted) {
+        if (throwOnFailure) {
+          throw signal.reason;
+        }
+        yield { ...current, data: undefined, error: abortError(signal.reason) };
+        return;
+      }
 
       if (current.error !== undefined || current.data === undefined) {
-        if (throwOnFailure && current.error !== undefined) {
-          throw new PaginationError(current.error, { page });
+        const failure = new PaginationError(
+          current.error ??
+            new ClientError("API response has no data", {
+              status: current.response?.status ?? 0,
+              statusText: current.response?.statusText ?? "",
+              data: undefined,
+            }),
+          { page },
+        );
+        if (throwOnFailure) {
+          throw failure;
         }
-        yield current;
+        yield { ...current, data: undefined, error: failure };
         return;
       }
 
@@ -114,8 +165,7 @@ async function* walkPages<TQuery extends Record<string, unknown>, TData, TItem>(
       }
     }
   } finally {
-    signal?.removeEventListener("abort", abort);
-    controller.abort();
+    next.cancel();
   }
 }
 
@@ -135,8 +185,8 @@ export async function* paginatePages<
 ): AsyncGenerator<PageResult<TData, ThrowOnError>, void, undefined> {
   const throwOnFailure = throwOnError ?? defaultThrowOnError;
   for await (const result of walkPages(config, { prefetch: false, throwOnFailure })) {
-    // With `throwOnError`, a failed page throws before it is yielded, so every yielded
-    // page has `data` as `PageResult<TData, true>` promises.
+    // With `throwOnError`, a failed page throws instead of being yielded, and every other
+    // page has `data`, as `PageResult<TData, true>` declares.
     yield result as PageResult<TData, ThrowOnError>;
   }
 }
@@ -149,8 +199,14 @@ export async function* paginateItems<TQuery extends Record<string, unknown>, TDa
   config: PaginateConfig<TQuery, TData, TItem>,
 ): AsyncGenerator<TItem, void, undefined> {
   for await (const result of walkPages(config, { prefetch: true, throwOnFailure: true })) {
-    if (result.data !== undefined) {
-      yield* config.getItems(result.data);
+    if (result.data === undefined) {
+      continue;
+    }
+    for (const item of config.getItems(result.data)) {
+      if (config.signal?.aborted) {
+        throw config.signal.reason;
+      }
+      yield item;
     }
   }
 }

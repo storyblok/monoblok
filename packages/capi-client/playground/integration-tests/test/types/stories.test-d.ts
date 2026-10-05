@@ -817,6 +817,20 @@ describe("stories pagination", () => {
     }
   });
 
+  it("should reject resolve_links and, without inlineRelations, resolve_relations in stories.iterate()", () => {
+    const client = createApiClient({ accessToken: "test-token" });
+    // @ts-expect-error: resolved links live in each page's `links`, which only pages() exposes
+    client.stories.iterate({ query: { resolve_links: "url" } });
+    // @ts-expect-error: resolved relations live in each page's `rels`, which only pages() exposes
+    client.stories.iterate({ query: { resolve_relations: "page.author" } });
+    client.stories.pages({ query: { resolve_links: "url", resolve_relations: "page.author" } });
+  });
+
+  it("should accept resolve_relations in stories.iterate() with inlineRelations", () => {
+    const client = createApiClient({ accessToken: "test-token", inlineRelations: true });
+    client.stories.iterate({ query: { resolve_relations: "page.author" } });
+  });
+
   it("should yield envelopes with optional data from stories.pages()", async () => {
     const client = createApiClient({ accessToken: "test-token" });
     for await (const page of client.stories.pages()) {

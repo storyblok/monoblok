@@ -196,7 +196,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
     ...resource,
 
     /**
-     * Walks every page of datasources, yielding one `list()` response per page. A failed page
+     * Walks every page of data sources, yielding one `list()` response per page. A failed page
      * is the last value yielded, so check `error` on each one. With `throwOnError`, it
      * throws a `PaginationError` instead.
      */
@@ -210,7 +210,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
       ),
 
     /**
-     * Walks every datasource across all pages, fetching the next page while the current one
+     * Walks every data source across all pages, fetching the next page while the current one
      * is consumed. A failed page throws a `PaginationError`.
      */
     iterate: (

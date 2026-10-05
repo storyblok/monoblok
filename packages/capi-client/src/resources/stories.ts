@@ -557,6 +557,16 @@ export function createStoriesResource<
     ResolveRelationsStr extends string | undefined,
   > = NonNullable<Parameters<typeof resource.list<ThrowOnError, ResolveRelationsStr>>[0]>;
 
+  type IterateOptions<ResolveRelationsStr extends string | undefined> = Omit<
+    ListOptions<boolean, ResolveRelationsStr>,
+    "throwOnError" | "query"
+  > & {
+    query?: Omit<
+      NonNullable<ListOptions<boolean, ResolveRelationsStr>["query"]>,
+      "resolve_links" | (InlineRelations extends true ? never : "resolve_relations")
+    >;
+  };
+
   const toPaginateConfig = <
     ThrowOnError extends boolean,
     const ResolveRelationsStr extends string | undefined,
@@ -582,7 +592,9 @@ export function createStoriesResource<
      * throws a `PaginationError` instead.
      *
      * Published pages are pinned to the `cv` of the first page, so the walk reads one
-     * consistent snapshot. Draft pages are not, so concurrent edits can shift offsets.
+     * consistent snapshot. If a publish moves the edge past that snapshot mid-walk, the walk
+     * fails with a `PaginationError` that restarts it from the first page. Draft pages, and
+     * pages under `cache.cv: 'manual'`, are not pinned, so concurrent edits can shift offsets.
      */
     pages: <
       ThrowOnError extends boolean = DefaultThrowOnError,
@@ -608,10 +620,16 @@ export function createStoriesResource<
      * consumed. A failed page throws a `PaginationError`.
      *
      * Published pages are pinned to the `cv` of the first page, so the walk reads one
-     * consistent snapshot. Draft pages are not, so concurrent edits can shift offsets.
+     * consistent snapshot. If a publish moves the edge past that snapshot mid-walk, the walk
+     * fails with a `PaginationError` that restarts it from the first page. Draft pages, and
+     * pages under `cache.cv: 'manual'`, are not pinned, so concurrent edits can shift offsets.
+     *
+     * Relations and links resolved via `resolve_relations` and `resolve_links` arrive in each
+     * page's `rels` and `links`, which only `pages()` exposes. So `iterate()` takes
+     * `resolve_relations` only with `inlineRelations`, and never `resolve_links`.
      */
     iterate: <const ResolveRelationsStr extends string | undefined = undefined>(
-      options: Omit<ListOptions<boolean, ResolveRelationsStr>, "throwOnError"> = {},
+      options: IterateOptions<ResolveRelationsStr> = {},
     ): AsyncGenerator<
       StoryResult<TComponents, InlineRelations, ResolveRelationsStr, TFieldPlugins>,
       void,

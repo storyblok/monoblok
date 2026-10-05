@@ -60,9 +60,13 @@ export function createLinksResource<DefaultThrowOnError extends boolean = false>
     list,
 
     /**
-     * Walks every page of links, yielding one `list()` response per page. A failed page is
-     * the last value yielded, so check `error` on each one. With `throwOnError`, it
+     * Walks every page of links, yielding one `list()` response per page. A failed page
+     * is the last value yielded, so check `error` on each one. With `throwOnError`, it
      * throws a `PaginationError` instead.
+     *
+     * Published pages are pinned to the `cv` of the first page, unless `cache.cv` is
+     * `'manual'`. If a publish moves the edge past that snapshot mid-walk, the walk fails
+     * with a `PaginationError` that restarts it from the first page.
      */
     pages: <ThrowOnError extends boolean = DefaultThrowOnError>(
       options: ListOptions<ThrowOnError> = {},
@@ -74,8 +78,12 @@ export function createLinksResource<DefaultThrowOnError extends boolean = false>
       ),
 
     /**
-     * Walks every link across all pages, fetching the next page while the current one is
-     * consumed. A failed page throws a `PaginationError`.
+     * Walks every link across all pages, fetching the next page while the current one
+     * is consumed. A failed page throws a `PaginationError`.
+     *
+     * Published pages are pinned to the `cv` of the first page, unless `cache.cv` is
+     * `'manual'`. If a publish moves the edge past that snapshot mid-walk, the walk fails
+     * with a `PaginationError` that restarts it from the first page.
      */
     iterate: (
       options: Omit<ListOptions<boolean>, "throwOnError"> = {},

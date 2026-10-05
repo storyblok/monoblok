@@ -1,6 +1,6 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { setupServer } from "msw/node";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { ClientError, createApiClient, PaginationError } from "../index";
 
 const STORIES_URL = "https://api.storyblok.com/v2/cdn/stories";
@@ -167,11 +167,156 @@ describe("stories.iterate()", () => {
     expect(error).toBeInstanceOf(PaginationError);
     expect(error).toBeInstanceOf(ClientError);
     expect(error).toMatchObject({ page: 2, cv: 100, response: { status: 401 } });
+    expect((error as PaginationError).message).toMatch(/^Page 2 failed: /);
 
     mockStories({ storyCount: 6, cv: 100 });
     const { page, cv } = error as PaginationError;
     const resumed = await collect(client.stories.iterate({ query: { per_page: 2, page, cv } }));
     expect(resumed.map((story) => story.id)).toEqual([3, 4, 5, 6]);
+  });
+
+  it("should send the default page size when the query sets none", async () => {
+    const requests = mockStories({ storyCount: 3 });
+    const client = createClient();
+
+    await collect(client.stories.iterate());
+
+    expect(requests[0]?.get("per_page")).toBe("25");
+  });
+
+  it("should fail with a restart from the first page when a later page leaves the pinned cv", async () => {
+    // The edge redirects a `cv` it no longer holds to the current one.
+    server.use(
+      http.get(STORIES_URL, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page"));
+        return HttpResponse.json(
+          { stories: [makeStory(page)], cv: page === 1 ? 100 : 200 },
+          { headers: { total: "3", "per-page": "1" } },
+        );
+      }),
+    );
+    const client = createClient();
+    const received: number[] = [];
+
+    const error = await (async () => {
+      for await (const story of client.stories.iterate({ query: { per_page: 1 } })) {
+        received.push(story.id);
+      }
+    })().catch((error: unknown) => error);
+
+    expect(received).toEqual([1]);
+    expect(error).toBeInstanceOf(PaginationError);
+    expect(error).toMatchObject({ page: 1, cv: undefined });
+    expect((error as PaginationError).message).toMatch(/^Page 2 failed: /);
+  });
+
+  it("should throw the original error when the caller's signal aborts", async () => {
+    mockStories({ storyCount: 6 });
+    const client = createClient();
+    const controller = new AbortController();
+
+    const error = await (async () => {
+      for await (const _story of client.stories.iterate({
+        query: { per_page: 2 },
+        signal: controller.signal,
+      })) {
+        controller.abort();
+      }
+    })().catch((error: unknown) => error);
+
+    expect(error).not.toBeInstanceOf(ClientError);
+    expect(error).toMatchObject({ name: "AbortError" });
+  });
+
+  it("should stop when the caller's signal aborts while pages come from the cache", async () => {
+    mockStories({ storyCount: 6 });
+    const client = createClient();
+    await collect(client.stories.iterate({ query: { per_page: 2 } }));
+    const controller = new AbortController();
+    const received: number[] = [];
+
+    const error = await (async () => {
+      for await (const story of client.stories.iterate({
+        query: { per_page: 2 },
+        signal: controller.signal,
+      })) {
+        received.push(story.id);
+        controller.abort();
+      }
+    })().catch((error: unknown) => error);
+
+    expect(received).toEqual([1]);
+    expect(error).toMatchObject({ name: "AbortError" });
+  });
+
+  it("should throw a PaginationError with the failed page when a request gets no response", async () => {
+    server.use(
+      http.get(STORIES_URL, ({ request }) => {
+        const page = new URL(request.url).searchParams.get("page");
+        if (page === "2") {
+          return HttpResponse.error();
+        }
+        return HttpResponse.json(
+          { stories: [makeStory(1), makeStory(2)], cv: 100 },
+          { headers: { total: "4", "per-page": "2" } },
+        );
+      }),
+    );
+    const client = createClient();
+
+    const error = await collect(client.stories.iterate({ query: { per_page: 2 } })).catch(
+      (error: unknown) => error,
+    );
+
+    expect(error).toBeInstanceOf(PaginationError);
+    expect(error).toMatchObject({ page: 2, cv: 100, response: { status: 0 } });
+    expect((error as PaginationError).cause).toBeDefined();
+  });
+
+  it("should restart from page 1 when a resumed walk's cv is no longer served", async () => {
+    // The edge redirects a `cv` it no longer holds to the current one.
+    server.use(
+      http.get(STORIES_URL, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page"));
+        return HttpResponse.json(
+          { stories: [makeStory(page)], cv: 200 },
+          { headers: { total: "4", "per-page": "1" } },
+        );
+      }),
+    );
+    const client = createClient();
+
+    const error = await collect(
+      client.stories.iterate({ query: { per_page: 1, page: 3, cv: 100 } }),
+    ).catch((error: unknown) => error);
+
+    expect(error).toBeInstanceOf(PaginationError);
+    expect(error).toMatchObject({ page: 1, cv: undefined });
+  });
+
+  it("should let a stale-while-revalidate cache refresh the pages it walked", async () => {
+    const requests = mockStories({ storyCount: 4 });
+    server.use(
+      http.get(STORIES_URL, async () => {
+        if (requests.length >= 2) {
+          // Outlasts the walk, so revalidation is still in flight when it ends.
+          await delay(50);
+        }
+        return undefined;
+      }),
+    );
+    const onRevalidationError = vi.fn();
+    const client = createClient({
+      accessToken: "token",
+      cache: { strategy: "swr", onRevalidationError },
+    });
+
+    await collect(client.stories.iterate({ query: { per_page: 2 } }));
+    await collect(client.stories.iterate({ query: { per_page: 2 } }));
+
+    await vi.waitFor(() => expect(requests).toHaveLength(4));
+    await delay(100);
+    expect(onRevalidationError).not.toHaveBeenCalled();
   });
 
   it("should fetch the next page while the current one is consumed", async () => {
@@ -307,10 +452,72 @@ describe("links.iterate()", () => {
     expect(links.map((link) => link.uuid)).toEqual(["link-1", "link-2"]);
     expect(requests.every((params) => params.get("paginated") === "1")).toBe(true);
   });
+
+  it("should complete a restarted walk after content was published mid-walk", async () => {
+    let currentCv = 100;
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        const url = new URL(request.url);
+        // The edge redirects a `cv` it no longer holds to the current one.
+        if (url.searchParams.get("cv") !== String(currentCv)) {
+          url.searchParams.set("cv", String(currentCv));
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        const page = url.searchParams.get("page");
+        const uuid = `link-${page}`;
+        return HttpResponse.json(
+          { links: { [uuid]: { id: Number(page), uuid } } },
+          { headers: { total: "2", "per-page": "1" } },
+        );
+      }),
+      http.get(`${STORIES_URL}/:slug`, () =>
+        HttpResponse.json({ story: makeStory(99), cv: currentCv }),
+      ),
+    );
+    const client = createClient();
+    await client.stories.get("home");
+
+    const walk = client.links.pages({ query: { per_page: 1 } });
+    await walk.next();
+    currentCv = 200;
+    const [failed] = await collect(walk);
+    expect(failed?.error).toBeInstanceOf(PaginationError);
+
+    const links = await collect(client.links.iterate({ query: { per_page: 1 } }));
+    expect(links.map((link) => link.uuid)).toEqual(["link-1", "link-2"]);
+  });
+
+  it("should pin later pages to the cv the first page was requested with", async () => {
+    const requests: URLSearchParams[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        requests.push(params);
+        const uuid = `link-${params.get("page")}`;
+        return HttpResponse.json(
+          { links: { [uuid]: { id: Number(params.get("page")), uuid } } },
+          { headers: { total: "2", "per-page": "1" } },
+        );
+      }),
+      http.get(`${STORIES_URL}/:slug`, ({ params }) =>
+        HttpResponse.json({ story: makeStory(99), cv: params.slug === "before" ? 100 : 200 }),
+      ),
+    );
+    const client = createClient();
+    await client.stories.get("before");
+
+    const walk = client.links.pages({ query: { per_page: 1 } });
+    await walk.next();
+    // A publish observed mid-walk moves the client's tracked cv.
+    await client.stories.get("after");
+    await collect(walk);
+
+    expect(requests.map((params) => params.get("cv"))).toEqual(["100", "100"]);
+  });
 });
 
 describe("datasources.iterate()", () => {
-  it("should yield each datasource across pages", async () => {
+  it("should yield each data source across pages", async () => {
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/datasources", ({ request }) => {
         const page = Number(new URL(request.url).searchParams.get("page"));
@@ -329,7 +536,7 @@ describe("datasources.iterate()", () => {
 });
 
 describe("datasourceEntries.iterate()", () => {
-  it("should yield each datasource entry across pages", async () => {
+  it("should yield each data source entry across pages", async () => {
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/datasource_entries", ({ request }) => {
         const page = Number(new URL(request.url).searchParams.get("page"));

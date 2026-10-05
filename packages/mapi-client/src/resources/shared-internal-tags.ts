@@ -138,9 +138,9 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
     ...resource,
 
     /**
-     * Walks every page of shared internal tags, yielding one `list()` response per page. A failed page
-     * is the last value yielded, so check `error` on each one. With `throwOnError`, it
-     * throws a `PaginationError` instead.
+     * Walks every page of shared internal tags, yielding one `list()` response per page. A failed
+     * page is the last value yielded, so check `error` on each one. With `throwOnError`, it throws
+     * a `PaginationError` instead.
      */
     pages: <ThrowOnError extends boolean = false>(
       options: ListOptions<ThrowOnError>,
@@ -156,8 +156,8 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
       ),
 
     /**
-     * Walks every shared internal tag across all pages, fetching the next page while the current one
-     * is consumed. A failed page throws a `PaginationError`.
+     * Walks every shared internal tag across all pages, fetching the next page while the current
+     * one is consumed. A failed page throws a `PaginationError`.
      */
     iterate: (
       options: Omit<ListOptions<boolean>, "throwOnError">,

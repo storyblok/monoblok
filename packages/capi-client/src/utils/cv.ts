@@ -20,6 +20,25 @@ export const extractCv = (maybeData: unknown) => {
 };
 
 /**
+ * Reads the `cv` a response was served from out of its URL, which a redirect to the current
+ * snapshot updates. Covers endpoints that report no `cv` in the body, such as `/cdn/links`.
+ */
+export const extractCvFromUrl = (url: unknown) => {
+  if (typeof url !== "string" || url === "") {
+    return undefined;
+  }
+  try {
+    return extractCv({ cv: Number(new URL(url).searchParams.get("cv")) });
+  } catch {
+    return undefined;
+  }
+};
+
+/** The `cv` of the snapshot a response was served from, from its body or else its URL. */
+export const extractServedCv = (result: { data?: unknown; response?: Response }) =>
+  extractCv(result.data) ?? extractCvFromUrl(result.response?.url);
+
+/**
  * Reads `space.version` from a `/cdn/spaces/me` response. A change signal only, never sent
  * as a `cv`: a Minimum Cache TTL floors the `cv` into buckets but not `space.version`.
  */
@@ -36,10 +55,7 @@ export const extractSpaceVersion = (maybeData: unknown) => {
   return typeof space.version === "number" ? space.version : undefined;
 };
 
-export const applyCvToQuery = <TQuery extends Record<string, unknown>>(
-  query: TQuery,
-  cv: number,
-): TQuery => {
+export const applyCvToQuery = (query: Record<string, unknown>, cv: number) => {
   if (isDraftRequest(query)) {
     return query;
   }

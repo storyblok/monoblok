@@ -98,9 +98,13 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
     list,
 
     /**
-     * Walks every page of datasources, yielding one `list()` response per page. A failed page
+     * Walks every page of data sources, yielding one `list()` response per page. A failed page
      * is the last value yielded, so check `error` on each one. With `throwOnError`, it
      * throws a `PaginationError` instead.
+     *
+     * Published pages are pinned to the `cv` of the first page, unless `cache.cv` is
+     * `'manual'`. If a publish moves the edge past that snapshot mid-walk, the walk fails
+     * with a `PaginationError` that restarts it from the first page.
      */
     pages: <ThrowOnError extends boolean = DefaultThrowOnError>(
       options: ListOptions<ThrowOnError> = {},
@@ -112,8 +116,12 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
       ),
 
     /**
-     * Walks every datasource across all pages, fetching the next page while the current one
+     * Walks every data source across all pages, fetching the next page while the current one
      * is consumed. A failed page throws a `PaginationError`.
+     *
+     * Published pages are pinned to the `cv` of the first page, unless `cache.cv` is
+     * `'manual'`. If a publish moves the edge past that snapshot mid-walk, the walk fails
+     * with a `PaginationError` that restarts it from the first page.
      */
     iterate: (
       options: Omit<ListOptions<boolean>, "throwOnError"> = {},

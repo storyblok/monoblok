@@ -1,4 +1,4 @@
-import { NODE_RENDER_MAP } from "./render-map.generated";
+import { NODE_RENDER_MAP } from "../generated/render-map.generated";
 import { isValidStyleValue, stringToStyle } from "./style";
 import type { StoryblokRichTextElement } from "./types";
 

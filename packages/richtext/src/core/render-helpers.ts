@@ -1,7 +1,24 @@
-import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "./render-map.generated";
+import { MARK_RENDER_MAP, NODE_RENDER_MAP } from "../generated/render-map.generated";
 import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
-import { SELF_CLOSING_TAGS } from "../utils";
 import { escapeAttr } from "./attribute";
+
+const SELF_CLOSING_TAGS = [
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+];
+
 /**
  * Resolves the HTML tag for a given Richtext node or mark.
  * @param node - The Richtext node or mark to resolve the tag for.

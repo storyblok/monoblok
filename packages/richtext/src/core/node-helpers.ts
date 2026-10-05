@@ -1,5 +1,4 @@
 import type { RichTextMark, RichTextNode } from "../generated/overlay/types.gen";
-import { deepEqual } from "../utils";
 
 // ============================================================================
 // Link Mark Helpers
@@ -40,6 +39,39 @@ export function areLinkMarksEqual(markA: LinkMark | null, markB: LinkMark | null
   }
 
   return deepEqual(markA.attrs ?? {}, markB.attrs ?? {});
+}
+
+/**
+ * Deep equality comparison for plain objects, arrays, and primitives.
+ */
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (a === null || a === undefined || b === null || b === undefined) {
+    return a === b;
+  }
+  if (typeof a !== typeof b) {
+    return false;
+  }
+  if (typeof a !== "object") {
+    return false;
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) {
+    return false;
+  }
+  if (Array.isArray(a)) {
+    if (a.length !== (b as any[]).length) {
+      return false;
+    }
+    return a.every((v: any, i: number) => deepEqual(v, (b as any[])[i]));
+  }
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+  return aKeys.every((k) => Object.prototype.hasOwnProperty.call(b, k) && deepEqual(a[k], b[k]));
 }
 
 /**

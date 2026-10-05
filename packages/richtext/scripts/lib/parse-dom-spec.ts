@@ -1,6 +1,6 @@
 import type { DOMOutputSpec } from "prosemirror-model";
-import type { StoryblokRichTextRenderSpec } from "../types";
-import { stringToStyle, styleToString } from "../style";
+import type { StoryblokRichTextRenderSpec } from "../../src/core/types";
+import { stringToStyle, styleToString } from "../../src/core/style";
 
 /** DOM spec in array form: [tag, attrs?, ...children] */
 type ArrayDOMSpec = readonly [string, ...unknown[]];

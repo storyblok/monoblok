@@ -1,4 +1,4 @@
-import type { StoryblokRichTextElementByType } from "./richtext-element-types.generated";
+import type { StoryblokRichTextElementByType } from "../generated/richtext-element-types.generated";
 import type { StoryblokRichTextMark, StoryblokRichTextNode } from "./types";
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ export {
   splitTableRows,
 } from "./node-helpers";
 export { normalizeNodes } from "./normalize-nodes";
-export type { StoryblokRichTextElementByType } from "./richtext-element-types.generated";
+export type { StoryblokRichTextElementByType } from "../generated/richtext-element-types.generated";
 
 export { stringToStyle, styleToString } from "./style";
 
@@ -39,6 +39,7 @@ export type {
   RenderSpec,
   SbRichTextDoc,
   SbRichTextElement,
+  SbRichTextImageOptions,
   SbRichTextInput,
   SbRichTextProps,
   SbRichTextRenderContext,
@@ -59,4 +60,4 @@ export {
   hasContent,
   isSelfClosing,
   resolveTag,
-} from "./util";
+} from "./render-helpers";

@@ -664,4 +664,29 @@ describe("onStoryblokEditorEvent", () => {
     expect(destroyMock).toHaveBeenCalledOnce();
     cleanupA();
   });
+
+  it("keeps a remaining subscriber reachable after a failed rebuild, instead of orphaning it", async () => {
+    inEditor();
+
+    const cleanupA = await subscribe(vi.fn(), { resolveRelations: ["a.rel"] });
+    expect(loadStoryblokBridge).toHaveBeenCalledTimes(1);
+
+    vi.mocked(loadStoryblokBridge).mockRejectedValueOnce(new Error("bad customParent"));
+    await expect(subscribe(vi.fn(), { resolveRelations: ["b.rel"] })).rejects.toThrow(
+      "bad customParent",
+    );
+
+    // A is still subscribed after B's failed build. A later, unrelated
+    // subscribe must fold A back into the retry — not spin up a brand new,
+    // disconnected broker that strands A without a bridge forever.
+    const cleanupC = await subscribe(vi.fn(), { resolveRelations: ["c.rel"] });
+
+    expect(loadStoryblokBridge).toHaveBeenLastCalledWith({
+      resolveRelations: ["a.rel", "c.rel"],
+      initOnlyOnce: false,
+    });
+
+    cleanupA();
+    cleanupC();
+  });
 });

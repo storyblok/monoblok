@@ -307,8 +307,15 @@ function ensureBridge(entry: BridgeEntry): Promise<StoryblokBridge> {
       entry.reconciling = false;
       if (entry.bridge) {
         entry.bridgePromise = Promise.resolve(entry.bridge);
-      } else if (broker === entry) {
-        broker = undefined;
+      } else if (entry.subscribers.size === 0) {
+        // No one is left to retry for — safe to tear the broker down.
+        if (broker === entry) broker = undefined;
+      } else {
+        // Remaining subscribers still need a bridge. Clear the rejected
+        // promise (instead of orphaning the entry) so the next subscribe or
+        // unsubscribe retries the build for them instead of being folded
+        // into a brand new, disconnected entry.
+        entry.bridgePromise = undefined;
       }
     },
   );

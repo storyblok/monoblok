@@ -49,7 +49,7 @@ const QA_STORAGE_KEY = "storyblok-live-preview-qa";
   template: `
     <main class="p-8 max-w-7xl mx-auto">
       <span data-testid="angular-qa-story" hidden>{{ story()?.name }}</span>
-      @if (isQaMode()) {
+      @if (qaMode()) {
         <section class="mb-8 rounded-lg border border-blue-200 bg-blue-50 p-4">
           <h1 class="mb-3 text-lg font-semibold text-blue-900">Live Preview Broker QA</h1>
           <div class="mb-3 flex flex-wrap gap-2">
@@ -86,6 +86,8 @@ export class LivePreviewComponent {
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
   readonly updatesA = signal(0);
   readonly updatesB = signal(0);
+  /** Starts `false` to match SSR, then flips post-hydration — avoids an NG0500 mismatch. */
+  readonly qaMode = signal(false);
   readonly scenarios = [
     { value: "singleA", label: "Single A" },
     { value: "singleB", label: "Single B" },
@@ -111,6 +113,7 @@ export class LivePreviewComponent {
   constructor() {
     if (this.isQaMode()) {
       this.installBrokerQaApi();
+      afterNextRender(() => this.qaMode.set(true));
       return;
     }
 

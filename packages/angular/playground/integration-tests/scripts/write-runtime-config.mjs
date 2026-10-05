@@ -11,7 +11,13 @@ const outputPath = resolve(scriptDir, "../public/storyblok-runtime-config.js");
 const accessToken = process.env.STORYBLOK_PREVIEW_TOKEN;
 
 if (!accessToken) {
-  throw new Error("Missing STORYBLOK_PREVIEW_TOKEN. Source .env.qa-engineer-manual first.");
+  // No token means no QA space — e.g. a CI build, or a type-check run,
+  // where nobody sourced `.env.qa-engineer-manual`. Skip the file instead of
+  // throwing, so `app.config.ts`'s public demo token fallback applies.
+  console.warn(
+    "[storyblok] Missing STORYBLOK_PREVIEW_TOKEN; skipping runtime config. Source .env.qa-engineer-manual first to use a real QA space.",
+  );
+  process.exit(0);
 }
 
 await mkdir(dirname(outputPath), { recursive: true });

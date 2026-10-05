@@ -56,6 +56,9 @@
     "tsx": "catalog:",
     "vitest": "catalog:"
   },
+  "inlinedDependencies": {
+    "ky": "1.14.3"
+  },
   "nx": {
     "targets": {
       "generate:openapi": {

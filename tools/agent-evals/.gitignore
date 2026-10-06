@@ -1,2 +1,5 @@
 .axis/reports/
 .axis/remotes/
+.axis/repos/
+.cache/
+arms/

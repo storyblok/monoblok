@@ -7,6 +7,8 @@ import { checkHiddenTests } from "../scripts/check-hidden-tests.ts";
 import { checkLabels } from "../scripts/check-labels.ts";
 import { checkMentions } from "../scripts/check-mentions.ts";
 import { checkMutation } from "../scripts/check-mutation.ts";
+import { revertTests } from "../scripts/revert-tests.ts";
+import { readBaseline } from "../src/baseline.ts";
 import { testCommand } from "../src/cases.ts";
 import type { BugCase } from "../src/cases.ts";
 import { addCheck, GRADE_PATH, gradePasses, readGrade } from "../src/grade.ts";
@@ -231,5 +233,27 @@ describe("checkLabels", () => {
     expect(checkLabels({ workspace: ws, case: CASE, file: "triage.json" }).pass).toBe(true);
     fs.writeFileSync(path.join(ws, "triage.json"), JSON.stringify({ labels: ["type: bug"] }));
     expect(checkLabels({ workspace: ws, case: CASE, file: "triage.json" }).pass).toBe(false);
+  });
+});
+
+describe("revertTests", () => {
+  it("restores the hidden test to its pre-fix contents and leaves a clean tree", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, {});
+    expect(fs.existsSync(path.join(workspace, HIDDEN_TEST))).toBe(true);
+    revertTests({ workspace, mirror, case: c });
+    expect(fs.existsSync(path.join(workspace, HIDDEN_TEST))).toBe(false);
+    const status = execFileSync("git", ["status", "--porcelain"], {
+      cwd: workspace,
+      encoding: "utf8",
+    });
+    expect(status).toBe("");
+  });
+
+  it("moves the grading baseline past the revert", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, {});
+    revertTests({ workspace, mirror, case: c });
+    expect(readBaseline(workspace)).toBe(
+      execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" }).trim(),
+    );
   });
 });

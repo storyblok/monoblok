@@ -36,7 +36,13 @@ type Options = {
   buggy?: boolean;
 };
 
-/** Builds a two-commit mirror (buggy, then fixed with a hidden test) and a workspace from it. */
+export const NOISE_FILE = "pkg/src/greet.mjs";
+export const NOISE_SUBJECT = "feat: add greet helper";
+
+/**
+ * Builds a mirror (buggy, fixed with a hidden test, then an unrelated change) and a workspace at
+ * the fix or, with `buggy`, at the buggy commit.
+ */
 export function workspaceWithFix(
   c: BugCase,
   options: Options,
@@ -55,6 +61,9 @@ export function workspaceWithFix(
   git(repo, "add", "-A");
   git(repo, "commit", "-q", "-m", "fix");
   const fixRef = git(repo, "rev-parse", "HEAD");
+  fs.writeFileSync(path.join(repo, NOISE_FILE), "export const greet = () => 'hi';\n");
+  git(repo, "add", "-A");
+  git(repo, "commit", "-q", "-m", NOISE_SUBJECT);
 
   const mirror = `${repo}-mirror.git`;
   tempDirs.push(mirror);

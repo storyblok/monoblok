@@ -257,6 +257,16 @@ describe("revertFixExtras", () => {
     expect(fs.readFileSync(path.join(workspace, "pkg/src/sum.mjs"), "utf8")).toContain("a + b");
   });
 
+  it("folds the revert into the single initial commit, keeping its message", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, {});
+    const git = (...args: string[]): string =>
+      execFileSync("git", args, { cwd: workspace, encoding: "utf8" }).trim();
+    const message = git("log", "-1", "--format=%B");
+    revertFixExtras({ workspace, mirror, case: c });
+    expect(git("rev-list", "--count", "HEAD")).toBe("1");
+    expect(git("log", "-1", "--format=%B")).toBe(message);
+  });
+
   it("moves the grading baseline past the revert", () => {
     const { workspace, mirror, c } = workspaceWithFix(CASE, {});
     revertFixExtras({ workspace, mirror, case: c });

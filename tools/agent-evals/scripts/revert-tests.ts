@@ -53,9 +53,9 @@ export function revertFixExtras(ctx: { workspace: string; mirror: string; case: 
       "user.email=eval@example.com",
       "commit",
       "-q",
+      "--amend",
+      "--no-edit",
       "--no-verify",
-      "-m",
-      "test: baseline",
     ]);
   }
   recordBaseline(ctx.workspace);

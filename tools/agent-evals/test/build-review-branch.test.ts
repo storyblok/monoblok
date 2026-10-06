@@ -45,6 +45,7 @@ describe("buildReviewBranch", () => {
     expect(diff).toContain("+export const sum = (a, b) => a - b;");
     expect(diff).toContain(NOISE_FILE);
     expect(fs.readFileSync(path.join(workspace, "pkg/src/sum.mjs"), "utf8")).toContain("a - b");
+    expect(git(workspace, "rev-list", "--count", "main")).toBe("1");
     for (const branch of ["main", "feature"]) {
       expect(git(workspace, "ls-tree", "-r", "--name-only", branch)).not.toContain(HIDDEN_TEST);
     }

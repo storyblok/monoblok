@@ -23,15 +23,27 @@ their frontmatter, so arms differ in content only, not in model routing. The jud
 
 Three profiles select the scenarios:
 
-| Profile  | Scenarios                                                                                    | Concurrency |
-| -------- | -------------------------------------------------------------------------------------------- | ----------- |
-| `skills` | 16 scenarios: `investigate`, `qa-engineer-unit`, `plan-implement`, `review-and-qa`, `triage` | 3           |
-| `spec`   | 2 cases × 4 arms, answered by a simulated user                                               | 3           |
-| `cli`    | CLI usage scenarios, `bare` arm only                                                         | 1           |
+| Profile  | Scenarios                                                                                         | Concurrency |
+| -------- | ------------------------------------------------------------------------------------------------- | ----------- |
+| `skills` | 16 cases × 4 arms: `investigate`, `qa-engineer-unit`, `plan-implement`, `review-and-qa`, `triage` | 3           |
+| `spec`   | 2 cases × 4 arms, answered by a simulated user                                                    | 3           |
+| `cli`    | CLI usage scenarios, `bare` arm only                                                              | 1           |
 
-Every `skills` and `spec` scenario replays a merged fix or feature from the repo history. The
-prompts invoke each arm's skill explicitly (`/spec`, `/superpowers:brainstorming`, or plain words
-for `bare`), so the suite measures how good the skills are when invoked, not whether they trigger.
+Every `skills` and `spec` scenario replays a merged fix or feature from the repo history. Each case
+runs as one variant per arm (`<skill>@<case>--<arm>`), and every prompt invokes that arm's skill
+explicitly on the same task text. Auto-triggering is not measured: the suites show how good the
+skills are when invoked, not whether an agent picks them.
+
+| Scenario           | `monoblok`, `monoblok-superpowers` | `superpowers`                                |
+| ------------------ | ---------------------------------- | -------------------------------------------- |
+| `investigate`      | `/investigate`                     | `/superpowers:systematic-debugging`          |
+| `plan-implement`   | `/plan`, then implement            | `/superpowers:writing-plans`, then implement |
+| `qa-engineer-unit` | `/qa-engineer-unit`                | `/superpowers:test-driven-development`       |
+| `review-and-qa`    | `/review-and-qa`                   | `/superpowers:requesting-code-review`        |
+| `triage`           | `/triage`                          | plain task (no matching skill)               |
+| `spec`             | `/spec`                            | `/superpowers:brainstorming`                 |
+
+The `bare` arm always gets the plain task.
 
 ### Objective checks and judge
 
@@ -46,12 +58,19 @@ Two kinds of grade combine per run:
 
 ### Workspaces
 
-Each workspace is a one-commit export of the case's `preFixRef` from a bare mirror in
-`tools/agent-evals/.cache/monoblok.git`, so the fix is not in its git history. Skills, agents, and
-project settings are stripped at any depth. `.claude/rules` and `AGENTS.md` stay, because real
-sessions have them. Setup installs dependencies against the shared pnpm store, builds, and reverts
-every non-source file of the fix (tests, snapshots). The resulting baseline is recorded in
-`.agent-evals/baseline`.
+Each workspace is a one-commit export from a bare mirror in `tools/agent-evals/.cache/monoblok.git`,
+so no other commit is in its git history. Scenarios that start before the fix (`investigate`,
+`plan-implement`, `triage`, `spec`) export the case's `preFixRef` and keep its commit message.
+Scenarios that start from the fixed code (`qa-engineer-unit`, `review-and-qa`) export its `fixRef`
+under the neutral message `chore: snapshot`, so `git log` does not describe the fix, and revert
+every non-source file of the fix (tests, snapshots), but never a `package.json` or `pnpm-lock.yaml`.
+Skills, agents, and project settings are stripped at any depth. `.claude/rules` and `AGENTS.md`
+stay, because real sessions have them. Setup installs dependencies and builds. The resulting
+baseline is recorded in `.agent-evals/baseline`.
+
+`run.sh` exports `npm_config_store_dir` as the store the repo's own install uses, so setup and agent
+installs share one warm pnpm store. AXIS kills a setup script after 3 minutes. A cold store can
+exceed that, so warm it before a large run by running a single case first.
 
 ## Run
 
@@ -119,8 +138,9 @@ public text only.
 ## Add a skill scenario
 
 1. Create the scenario factory in `src/scenarios/<skill>.ts`, modeled on `investigate.ts`. It maps
-   cases to AXIS `variants` with a `setup` (`prepare`), a prompt, optional teardown scripts that
-   write the grade, and weighted judge criteria. Include `NO_UPSTREAM_CHECK`.
+   cases to one AXIS variant per arm (`armVariants`) with a `setup` (`prepare`), a prompt that
+   invokes each arm's skill (`invokeSkill`), optional teardown scripts that write the grade, and
+   weighted judge criteria. Include `NO_UPSTREAM_CHECK`.
 2. Add `scenarios/skills/<skill>.ts` that calls the factory with a list of cases.
 3. Put new objective checks in `scripts/` and cover them in `test/`.
 
@@ -160,6 +180,5 @@ in each result's `setupOutput` and `teardownOutput`.
   reproduce on rerun; start the run again.
 - AXIS token counts exclude cache reads and possibly subagent usage. Compare cost (USD), not tokens.
 - Single runs do not separate arms. Use `--runs 3`.
-- `checkLabels` does not penalize extra labels.
 - Results depend on the model and on the superpowers version. Compare reports only within one pinned
   configuration.

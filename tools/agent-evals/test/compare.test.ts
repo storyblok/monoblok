@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderMarkdown, summarize } from "../scripts/compare.ts";
+import { GRADE_PATH } from "../src/grade.ts";
 
 const REPORT = path.resolve(import.meta.dirname, "fixtures/report");
 
@@ -46,6 +47,35 @@ describe("compare", () => {
       },
     ]);
     expect(md).toContain("| x | bare | 1 | n/a | n/a | n/a | n/a |");
+  });
+
+  it("groups per-arm variants of a skill into one row per arm", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "report-"));
+    try {
+      const results = [
+        { scenarioKey: "skills/triage@case-one--bare", agentName: "bare", axisScore: 60 },
+        { scenarioKey: "skills/triage@case-two--bare", agentName: "bare", axisScore: 80 },
+      ];
+      fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify({ version: 1, results }));
+      const grade = path.join(
+        dir,
+        "scenarios/skills/triage@case-one--bare/bare/artifacts",
+        GRADE_PATH,
+      );
+      fs.mkdirSync(path.dirname(grade), { recursive: true });
+      fs.writeFileSync(grade, JSON.stringify({ checks: [{ name: "a", pass: true, detail: "" }] }));
+      expect(summarize(dir)).toEqual([
+        expect.objectContaining({
+          skill: "triage",
+          arm: "bare",
+          runs: 2,
+          objectivePassRate: 0.5,
+          meanAxisScore: 70,
+        }),
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it.each(["spec/spec@case-one--monoblok", "cli/offline/validate-schema"])(

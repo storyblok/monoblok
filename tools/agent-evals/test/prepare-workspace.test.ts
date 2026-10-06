@@ -76,6 +76,13 @@ describe("prepareWorkspace", () => {
     expect(fs.existsSync(path.join(workspace, "AGENTS.md"))).toBe(true);
   });
 
+  it("commits the snapshot under a given message instead of the upstream one", () => {
+    const { mirror, newRef } = historyRepo();
+    const workspace = tempDir("ws-");
+    prepareWorkspace({ mirror, ref: newRef, workspace, message: "chore: snapshot" });
+    expect(git(workspace, "log", "--all", "--format=%B")).toBe("chore: snapshot");
+  });
+
   it("fails loudly on an unknown ref", () => {
     const { mirror } = historyRepo();
     const workspace = tempDir("ws-");

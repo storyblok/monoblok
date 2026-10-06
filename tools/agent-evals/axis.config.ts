@@ -10,7 +10,7 @@ const config: AxisConfig = {
   agents: ARM_NAMES.map((name) => ({ agent: "claude-code-arm", name, model: EVAL_MODEL })),
   judging: { agents: [{ agent: "claude-code", model: EVAL_MODEL }] },
   afterAll: [{ action: "run_script", command: "node ./scripts/compare.ts" }],
-  env: ["STORYBLOK_SPACE_ID", "AGENT_EVALS_PNPM_STORE"],
+  env: ["STORYBLOK_SPACE_ID", "npm_config_store_dir"],
   exclude: ["spec/**"],
   settings: {
     concurrency: 3,

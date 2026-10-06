@@ -35,8 +35,19 @@ type Options = {
   newTest?: string;
   /** Prepare the workspace at the buggy commit instead of the fix. */
   buggy?: boolean;
+  /** Commit message of the workspace snapshot; defaults to the upstream message. */
+  message?: string;
+  /** The fix also bumps a dependency in a package manifest and the lockfile. */
+  dependencyChange?: boolean;
 };
 
+function writeDependencyVersion(repo: string, version: string): void {
+  const manifest = { name: "pkg", dependencies: { dep: version } };
+  fs.writeFileSync(path.join(repo, "pkg/package.json"), JSON.stringify(manifest));
+  fs.writeFileSync(path.join(repo, "pnpm-lock.yaml"), `dep: ${version}\n`);
+}
+
+export const FIX_SUBJECT = "fix: add instead of subtracting in sum";
 export const NOISE_FILE = "pkg/src/greet.mjs";
 export const NOISE_SUBJECT = "feat: add greet helper";
 
@@ -54,6 +65,7 @@ export function workspaceWithFix(
   git(repo, "config", "user.name", "t");
   fs.mkdirSync(path.join(repo, "pkg/src"), { recursive: true });
   fs.writeFileSync(path.join(repo, "pkg/src/sum.mjs"), "export const sum = (a, b) => a - b;\n");
+  writeDependencyVersion(repo, "1.0.0");
   git(repo, "add", "-A");
   git(repo, "commit", "-q", "-m", "buggy");
   const preFixRef = git(repo, "rev-parse", "HEAD");
@@ -61,8 +73,9 @@ export function workspaceWithFix(
   fs.writeFileSync(path.join(repo, HIDDEN_TEST), HARNESS("expect(sum(2, 3)).toBe(5);"));
   fs.mkdirSync(path.join(repo, "pkg/e2e"), { recursive: true });
   fs.writeFileSync(path.join(repo, EXTRA_FILE), "export default 1;\n");
+  if (options.dependencyChange) writeDependencyVersion(repo, "2.0.0");
   git(repo, "add", "-A");
-  git(repo, "commit", "-q", "-m", "fix");
+  git(repo, "commit", "-q", "-m", FIX_SUBJECT);
   const fixRef = git(repo, "rev-parse", "HEAD");
   fs.writeFileSync(path.join(repo, NOISE_FILE), "export const greet = () => 'hi';\n");
   git(repo, "add", "-A");
@@ -73,7 +86,12 @@ export function workspaceWithFix(
   execFileSync("git", ["clone", "-q", "--mirror", repo, mirror]);
 
   const workspace = tempDir("fix-ws-");
-  prepareWorkspace({ mirror, ref: options.buggy ? preFixRef : fixRef, workspace });
+  prepareWorkspace({
+    mirror,
+    ref: options.buggy ? preFixRef : fixRef,
+    workspace,
+    message: options.message,
+  });
   if (options.newTest !== undefined) {
     fs.writeFileSync(path.join(workspace, "pkg/src/sum.test.mjs"), HARNESS(options.newTest));
   }

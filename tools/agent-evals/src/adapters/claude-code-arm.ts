@@ -9,6 +9,15 @@ type ArmAdapterOptions = { armsRoot?: string; pluginsFor?: (arm: ArmName) => str
 
 const INSTALLED_DIRS = ["skills", "agents"] as const;
 
+/** AXIS passes its own variables (config dir, lifecycle context) to the job; they point the agent at the eval harness. */
+const HARNESS_ENV_PREFIX = "AXIS_";
+
+function withoutHarnessEnv(env: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).filter(([key]) => !key.startsWith(HARNESS_ENV_PREFIX)),
+  );
+}
+
 export function createArmAdapter(
   base: AgentAdapter,
   options: ArmAdapterOptions = {},
@@ -25,15 +34,23 @@ export function createArmAdapter(
       if (!fs.existsSync(source)) {
         throw new Error(`Arm "${arm}" missing at ${source}; run scripts/prepare-arms.ts`);
       }
-      const configDir = input.env?.CLAUDE_CONFIG_DIR;
-      if (!configDir) throw new Error("CLAUDE_CONFIG_DIR is not set for the job");
+      const { env } = input;
+      const configDir = env?.CLAUDE_CONFIG_DIR;
+      if (!env || !configDir) throw new Error("CLAUDE_CONFIG_DIR is not set for the job");
       for (const dir of INSTALLED_DIRS) {
         const from = path.join(source, dir);
         if (fs.existsSync(from)) fs.cpSync(from, path.join(configDir, dir), { recursive: true });
       }
-      const [plugin] = pluginsFor(arm);
+      const plugins = pluginsFor(arm);
+      // The flag map holds one value per flag, so a second plugin would be dropped silently.
+      if (plugins.length > 1) throw new Error(`Arm "${arm}" has more than one plugin`);
+      const [plugin] = plugins;
       const flags = plugin ? { ...input.config.flags, "plugin-dir": plugin } : input.config.flags;
-      return base.run({ ...input, config: { ...input.config, flags } });
+      return base.run({
+        ...input,
+        env: withoutHarnessEnv(env),
+        config: { ...input.config, flags },
+      });
     },
   };
 }

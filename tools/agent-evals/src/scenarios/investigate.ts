@@ -1,6 +1,16 @@
 import type { ScenarioInput } from "@netlify/axis";
 import type { BugCase } from "../cases.ts";
-import { GRADE_ARTIFACTS, NO_UPSTREAM_CHECK, prepare, script, withIssue } from "./shared.ts";
+import {
+  GRADE_ARTIFACTS,
+  NO_UPSTREAM_CHECK,
+  armVariants,
+  invokeSkill,
+  prepare,
+  script,
+  withIssue,
+} from "./shared.ts";
+
+const SKILLS = { monoblok: "investigate", superpowers: "systematic-debugging" };
 
 export function investigateScenario(cases: readonly BugCase[]): ScenarioInput {
   return {
@@ -9,13 +19,16 @@ export function investigateScenario(cases: readonly BugCase[]): ScenarioInput {
     judge: "",
     limits: { time_minutes: 25 },
     artifacts: [...GRADE_ARTIFACTS, "findings.md"],
-    variants: cases.map((c) => ({
-      name: c.id,
+    variants: armVariants(cases, (c, arm) => ({
       setup: [prepare(c.preFixRef, c)],
-      prompt: withIssue(
-        c,
-        "Investigate this bug report against the code in this repository. Find the root cause; do not fix it. " +
-          "Reference code by file path. Write your findings to `findings.md` in the repository root.",
+      prompt: invokeSkill(
+        arm,
+        SKILLS,
+        withIssue(
+          c,
+          "Investigate this bug report against the code in this repository. Find the root cause; do not fix it. " +
+            "Reference code by file path. Write your findings to `findings.md` in the repository root.",
+        ),
       ),
       teardown: [
         {

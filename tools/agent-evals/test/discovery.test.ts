@@ -1,4 +1,8 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { readIssueLabels } from "../src/scenarios/triage.ts";
 import { discover } from "./discover.ts";
 
 describe("cli profile", () => {
@@ -27,34 +31,81 @@ describe("arms", () => {
   });
 });
 
+const SKILL_CASES = [
+  "investigate@cli-single-option-empty-type",
+  "investigate@js-client-strip-version-mapi",
+  "investigate@richtext-vue-slot-warning",
+  "plan-implement@cli-single-option-empty-type",
+  "plan-implement@js-client-strip-version-mapi",
+  "plan-implement@richtext-vue-slot-warning",
+  "qa-engineer-unit@astro-circular-dependency-tdz",
+  "qa-engineer-unit@cli-components-push-preview-tmpl",
+  "qa-engineer-unit@js-client-filter-query-brackets",
+  "review-and-qa@cli-components-push-preview-tmpl",
+  "review-and-qa@react-rsc-bridge-exports",
+  "review-and-qa@richtext-vue-slot-warning",
+  "triage@astro-circular-dependency-tdz",
+  "triage@cli-components-push-preview-tmpl",
+  "triage@js-client-filter-query-brackets",
+  "triage@js-client-strip-version-mapi",
+];
+const ARMS = ["bare", "monoblok", "superpowers", "monoblok-superpowers"];
+
 describe("skills profile", () => {
-  it("has one scenario per skill and case, all parallel-safe", async () => {
+  it("has one scenario per skill, case, and arm, each run only by its arm", async () => {
     const { config, scenarios } = await discover("skills");
     expect(config.settings?.concurrency).toBe(3);
-    expect(scenarios.map((s) => s.key).sort()).toEqual(
-      [
-        "skills/investigate@cli-single-option-empty-type",
-        "skills/investigate@js-client-strip-version-mapi",
-        "skills/investigate@richtext-vue-slot-warning",
-        "skills/plan-implement@cli-single-option-empty-type",
-        "skills/plan-implement@js-client-strip-version-mapi",
-        "skills/plan-implement@richtext-styled-link-shattered",
-        "skills/qa-engineer-unit@astro-circular-dependency-tdz",
-        "skills/qa-engineer-unit@cli-components-push-preview-tmpl",
-        "skills/qa-engineer-unit@js-client-filter-query-brackets",
-        "skills/review-and-qa@cli-components-push-preview-tmpl",
-        "skills/review-and-qa@react-rsc-bridge-exports",
-        "skills/review-and-qa@richtext-vue-slot-warning",
-        "skills/triage@astro-circular-dependency-tdz",
-        "skills/triage@cli-components-push-preview-tmpl",
-        "skills/triage@js-client-filter-query-brackets",
-        "skills/triage@js-client-strip-version-mapi",
-      ].sort(),
-    );
+    const expected = SKILL_CASES.flatMap((c) => ARMS.map((arm) => `skills/${c}--${arm}`));
+    expect(scenarios.map((s) => s.key).sort()).toEqual(expected.sort());
     for (const s of scenarios) {
       expect(s.artifacts).toContain(".agent-evals/grade.json");
       expect(s.setup?.[0]).toMatchObject({ action: "run_script" });
+      expect(s.agents).toEqual([s.key.split("--").at(-1)]);
     }
+  });
+
+  it.each([
+    ["investigate", "/investigate ", "/superpowers:systematic-debugging "],
+    ["plan-implement", "/plan ", "/superpowers:writing-plans "],
+    ["qa-engineer-unit", "/qa-engineer-unit ", "/superpowers:test-driven-development "],
+    ["review-and-qa", "/review-and-qa ", "/superpowers:requesting-code-review "],
+    ["triage", "/triage ", ""],
+  ])(
+    "invokes each arm's %s skill explicitly on the same task",
+    async (skill, monoblokPrefix, superpowersPrefix) => {
+      const { scenarios } = await discover("skills");
+      const caseKey = SKILL_CASES.find((c) => c.startsWith(`${skill}@`));
+      const promptOf = (arm: string): string =>
+        scenarios.find((s) => s.key === `skills/${caseKey}--${arm}`)?.prompt ?? "";
+      const task = promptOf("bare");
+      expect(task.startsWith("/")).toBe(false);
+      expect(promptOf("monoblok")).toBe(`${monoblokPrefix}${task}`);
+      expect(promptOf("monoblok-superpowers")).toBe(`${monoblokPrefix}${task}`);
+      expect(promptOf("superpowers")).toBe(`${superpowersPrefix}${task}`);
+    },
+  );
+
+  it("asks plan-implement arms to implement the plan, not stop after planning", async () => {
+    const { scenarios } = await discover("skills");
+    const plan = scenarios.find(
+      (s) => s.key === "skills/plan-implement@cli-single-option-empty-type--monoblok",
+    );
+    expect(plan?.prompt).toContain("then implement it");
+  });
+
+  it("snapshots workspaces exported at the fix under a neutral commit message", async () => {
+    const { scenarios } = await discover("skills");
+    const setupOf = (key: string): string =>
+      JSON.stringify(scenarios.find((s) => s.key === key)?.setup);
+    expect(setupOf("skills/qa-engineer-unit@astro-circular-dependency-tdz--bare")).toContain(
+      "--message 'chore: snapshot'",
+    );
+    expect(setupOf("skills/review-and-qa@react-rsc-bridge-exports--bare")).toContain(
+      "--message 'chore: snapshot'",
+    );
+    expect(setupOf("skills/investigate@richtext-vue-slot-warning--bare")).not.toContain(
+      "--message",
+    );
   });
 
   it("keeps skill scenarios out of the cli profile", async () => {
@@ -66,13 +117,28 @@ describe("skills profile", () => {
     const { scenarios } = await discover("skills");
     const setupOf = (key: string): string =>
       JSON.stringify(scenarios.find((s) => s.key === key)?.setup);
-    expect(setupOf("skills/triage@cli-components-push-preview-tmpl")).toContain("--no-install");
-    expect(setupOf("skills/investigate@richtext-vue-slot-warning")).not.toContain("--no-install");
+    expect(setupOf("skills/triage@cli-components-push-preview-tmpl--bare")).toContain(
+      "--no-install",
+    );
+    expect(setupOf("skills/investigate@richtext-vue-slot-warning--bare")).not.toContain(
+      "--no-install",
+    );
   });
+
+  it.each([['{"labels": ["pkg: cli"]}'], ['["pkg: cli", 3]']])(
+    "rejects a label vocabulary that is not a string array: %s",
+    (content) => {
+      const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "labels-")), "labels.json");
+      fs.writeFileSync(file, content);
+      expect(() => readIssueLabels(file)).toThrow(/array of label strings/);
+    },
+  );
 
   it("gives triage the repository's label vocabulary", async () => {
     const { scenarios } = await discover("skills");
-    const triage = scenarios.find((s) => s.key === "skills/triage@js-client-strip-version-mapi");
+    const triage = scenarios.find(
+      (s) => s.key === "skills/triage@js-client-strip-version-mapi--bare",
+    );
     expect(triage?.prompt).toContain("pkg: storyblok-js-client");
   });
 });

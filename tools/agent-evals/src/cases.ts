@@ -131,7 +131,7 @@ export function bugCase(id: string): BugCase {
   return found;
 }
 
-const shellQuote = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`;
+export const shellQuote = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`;
 
 /** Runs `files` (repo-relative) with the package's test runner, from the repo root. */
 export function testCommand(c: BugCase, files: string[]): string {

@@ -33,7 +33,9 @@ export type PrepareWorkspaceOptions = {
   mirror: string;
   ref: string;
   workspace: string;
-  install?: { packageName: string; storeDir?: string };
+  /** Commit message of the exported snapshot; defaults to the message of `ref`. */
+  message?: string;
+  install?: { packageName: string };
 };
 
 const git = (cwd: string, args: string[]): string =>
@@ -42,8 +44,8 @@ const git = (cwd: string, args: string[]): string =>
 const INSTALL_LOG_TAIL_LINES = 40;
 
 // The install and build path needs a real pnpm install; `run.sh` exercises it, not unit tests.
-function installDependencies(workspace: string, packageName: string, storeDir?: string): void {
-  const store = storeDir ? ["--store-dir", storeDir] : [];
+// pnpm reads the shared store from `npm_config_store_dir`, which `run.sh` exports.
+function installDependencies(workspace: string, packageName: string): void {
   const args = [
     "install",
     "--frozen-lockfile",
@@ -51,7 +53,6 @@ function installDependencies(workspace: string, packageName: string, storeDir?: 
     "--reporter=append-only",
     "--filter",
     `${packageName}...`,
-    ...store,
   ];
   const logPath = path.join(workspace, ".agent-evals", "install.log");
   fs.mkdirSync(path.dirname(logPath), { recursive: true });
@@ -74,9 +75,9 @@ export function prepareWorkspace({
   mirror,
   ref,
   workspace,
+  message = git(mirror, ["log", "-1", "--format=%B", ref]),
   install,
 }: PrepareWorkspaceOptions): void {
-  const message = git(mirror, ["log", "-1", "--format=%B", ref]);
   const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), "archive-"));
   try {
     const archive = path.join(archiveDir, "tree.tar");
@@ -105,7 +106,7 @@ export function prepareWorkspace({
   recordBaseline(workspace);
 
   if (install) {
-    installDependencies(workspace, install.packageName, install.storeDir);
+    installDependencies(workspace, install.packageName);
     const dependencies = `${install.packageName}^...`;
     const buildEnv = { ...process.env, NX_DAEMON: "false", NX_NO_CLOUD: "true" };
     const run = (script: string[]): void => {
@@ -132,6 +133,7 @@ if (import.meta.main) {
     options: {
       ref: { type: "string" },
       case: { type: "string" },
+      message: { type: "string" },
       "no-install": { type: "boolean" },
     },
   });
@@ -142,9 +144,7 @@ if (import.meta.main) {
     mirror: path.join(EVALS_DIR, ".cache", "monoblok.git"),
     ref,
     workspace: process.cwd(),
-    install:
-      c && !values["no-install"]
-        ? { packageName: c.packageName, storeDir: process.env.AGENT_EVALS_PNPM_STORE }
-        : undefined,
+    message: values.message,
+    install: c && !values["no-install"] ? { packageName: c.packageName } : undefined,
   });
 }

@@ -19,16 +19,25 @@ function parseLabels(file: string): string[] | null {
   }
 }
 
+const isJudged = (label: string): boolean => JUDGED_PREFIXES.some((p) => label.startsWith(p));
+
+/** Passes only when the judged (`pkg:`/`type:`) labels match exactly, so hedging with extra labels fails. */
 export function checkLabels(ctx: { workspace: string; case: BugCase; file: string }): Check {
   const given = parseLabels(path.join(ctx.workspace, ctx.file));
   if (!given)
     return { name: "labels-match", pass: false, detail: `${ctx.file} missing or invalid` };
-  const expected = ctx.case.issueLabels.filter((l) => JUDGED_PREFIXES.some((p) => l.startsWith(p)));
-  const missing = expected.filter((l) => !given.includes(l));
+  const judged = new Set(given.filter(isJudged));
+  const expected = new Set(ctx.case.issueLabels.filter(isJudged));
+  const missing = [...expected].filter((l) => !judged.has(l));
+  const extra = [...judged].filter((l) => !expected.has(l));
+  const problems = [
+    ...(missing.length ? [`missing ${missing.join(", ")}`] : []),
+    ...(extra.length ? [`extra ${extra.join(", ")}`] : []),
+  ];
   return {
     name: "labels-match",
-    pass: missing.length === 0,
-    detail: missing.length ? `missing ${missing.join(", ")}` : given.join(", "),
+    pass: problems.length === 0,
+    detail: problems.length ? problems.join("; ") : given.join(", "),
   };
 }
 

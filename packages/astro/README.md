@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/astro</h1>
  <p>
-     The Astro SDK to interact with <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guides/astro/visual-preview#enable-live-preview-in-the-visual-editor" target="_blank">Real-time Visual Editing Experience</a>.
+     Block registry, Visual Editor middleware, and Live Preview DOM bridge for rendering <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok</a> content in Astro.
   </p>
   <br />
 </div>
@@ -29,14 +29,125 @@
 
 ## Features
 
-- Fetch content from the Content Delivery API
-- Connect frontend components with the Visual Editor via StoryblokBridge
-- Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
-- `StoryblokComponent` for dynamic component rendering
+- Explicit, closure-scoped block registry via `defineStoryblokBlocks({ components, fallback })`
+- `StoryblokBlock`/`StoryblokBlocks` for rendering single or multiple blocks
 - Visual Editor integration using `storyblokEditable`
-- Real-time preview capability using `getLiveStory`
+- Real-time Live Preview via `liveEditMiddleware`, `getPayload`, and `StoryblokLivePreview`
+- Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Built-in TypeScript support with comprehensive type definitions
 - SSR/SSG compatibility for Astro applications
+
+## Usage
+
+```bash
+pnpm add @storyblok/astro
+```
+
+`astro` is a peer dependency.
+
+Register your components once, then render blocks anywhere:
+
+```astro
+---
+// src/storyblok.ts
+import { defineStoryblokBlocks } from '@storyblok/astro';
+import Page from '~/components/Page.astro';
+import Feature from '~/components/Feature.astro';
+
+export const { StoryblokBlock, StoryblokBlocks } = defineStoryblokBlocks({
+  components: { page: Page, feature: Feature },
+});
+```
+
+```ts
+// src/middleware.ts
+import { sequence } from 'astro:middleware';
+import { liveEditMiddleware } from '@storyblok/astro';
+
+export const onRequest = sequence(liveEditMiddleware);
+```
+
+```astro
+---
+// src/pages/index.astro
+import { getPayload, StoryblokLivePreview } from '@storyblok/astro';
+import { StoryblokBlock } from '~/storyblok';
+import { client } from '~/lib/storyblok-client';
+
+const payload = await getPayload({ locals: Astro.locals });
+const story = payload.story ?? (await client.stories.get('home')).data.story;
+---
+
+<StoryblokBlock block={story.content} />
+<StoryblokLivePreview />
+```
+
+`getPayload` returns the draft story posted by the Visual Editor, or nothing outside the editor — so
+the same page serves preview and published content. Fetching stories is not this package's job:
+bring your own client, e.g. [`@storyblok/api-client`](https://www.npmjs.com/package/@storyblok/api-client).
+
+### Component props
+
+Every registered component receives `block` (the block's content) and `editable` (spread onto the
+root element for the Visual Editor):
+
+```astro
+---
+import type { StoryblokBlockComponentProps } from '@storyblok/astro';
+
+type Props = StoryblokBlockComponentProps<{ headline: string }>;
+const { block, editable } = Astro.props;
+---
+
+<div {...editable}>{block.headline}</div>
+```
+
+Unlike `@storyblok/react`'s `defineStoryblokBlocks<TExtraProps>()`, Astro components cannot be
+generic, so extra props accepted by a block component are typed as `Record<string, any>` with no
+excess-property checking.
+
+### Rich text
+
+`StoryblokRichText` renders a Storyblok rich text field, resolving embedded blocks through the
+same registry:
+
+```astro
+---
+import { StoryblokRichText } from '@storyblok/astro';
+---
+
+<StoryblokRichText document={block.text} />
+```
+
+## API
+
+| Export                                            | Description                                                                           |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock` / `StoryblokBlocks`. |
+| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                         |
+| `StoryblokBlocks`                                 | Renders a list of blocks.                                                             |
+| `liveEditMiddleware`                              | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.   |
+| `getPayload({ locals })`                          | Reads that payload back.                                                              |
+| `StoryblokLivePreview`                            | Client island that morphs the DOM as the editor types. Renders no markup.             |
+| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.        |
+| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                   |
+| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                       |
+| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                                 |
+
+Types: `StoryblokBlockData`, `StoryblokBlockComponent`, `StoryblokBlockComponentProps<T, TExtra>`,
+`StoryblokComponentMap`, `DefineStoryblokBlocksOptions`, `StoryblokEditableProps`.
+
+Blocks with no matching component render nothing and log a warning in development. Pass `fallback`
+to render a placeholder instead.
+
+## Live Preview behaviour
+
+- The bridge is debounced by 500ms and aborts in-flight requests.
+- If the Visual Editor has a focused element, only that element is morphed; its interactive state
+  (`value`, `checked`, …) is preserved.
+- Elements carrying `data-preserve-state` are never replaced.
+- Opt out per page by not rendering `<StoryblokLivePreview />` there.
+- Events: `storyblok-live-preview-updating` (cancelable) and `storyblok-live-preview-updated`.
 
 ## Documentation
 

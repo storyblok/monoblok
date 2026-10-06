@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/astro",
-  "version": "10.3.2",
+  "version": "11.0.0",
   "private": false,
   "description": "Official Astro integration for the Storyblok Headless CMS",
   "keywords": [
@@ -21,29 +21,20 @@
     "directory": "packages/astro"
   },
   "files": [
-    "*.d.ts",
     "dist"
   ],
   "type": "module",
+  "sideEffects": [
+    "**/*.astro"
+  ],
   "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
-    "./middleware.ts": {
-      "types": "./dist/live-preview/middleware.d.mts",
-      "import": "./dist/live-preview/middleware.ts"
-    },
-    "./toolbarApp.ts": {
-      "types": "./dist/dev-toolbar/toolbarApp.d.mts",
-      "import": "./dist/dev-toolbar/toolbarApp.ts"
-    },
-    "./client": "./dist/lib/client.ts",
-    "./FallbackComponent.astro": "./dist/components/FallbackComponent.astro",
-    "./StoryblokComponent.astro": "./dist/components/StoryblokComponent.astro",
-    "./StoryblokServerData.astro": "./dist/components/StoryblokServerData.astro",
-    "./StoryblokRichText.astro": "./dist/components/StoryblokRichText.astro",
+    "./StoryblokBlock.astro": "./dist/components/StoryblokBlock.astro",
+    "./StoryblokBlocks.astro": "./dist/components/StoryblokBlocks.astro",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -75,18 +66,14 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:^",
     "@storyblok/live-preview": "workspace:^",
-    "@storyblok/richtext": "workspace:^",
-    "camelcase": "^8.0.0"
+    "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
     "@cypress/vite-dev-server": "^7.3.4",
     "@playwright/test": "catalog:",
-    "@rollup/plugin-dynamic-import-vars": "^2.1.5",
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/visual-editor-qa": "workspace:*",
-    "@types/lodash.mergewith": "^4.6.9",
     "@types/node": "catalog:",
     "astro": "^7.2.8",
     "cypress": "^15.21.0",

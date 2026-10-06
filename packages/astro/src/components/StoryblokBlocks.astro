@@ -1,0 +1,13 @@
+---
+import StoryblokBlock from "./StoryblokBlock.astro";
+import type { StoryblokBlockData } from "../types";
+
+type Props = {
+  /** The list of blocks to render. */
+  blocks?: StoryblokBlockData[] | null;
+} & Record<string, any>;
+
+const { blocks, ...rest } = Astro.props;
+---
+
+{blocks?.map((block) => <StoryblokBlock block={block} {...rest} />)}

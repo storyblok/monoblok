@@ -31,9 +31,9 @@ export function reviewAndQaScenario(cases: readonly BugCase[]): ScenarioInput {
           check: `The review flags the regression in ${c.sourceFiles.join(" or ")} as a defect`,
           weight: 3,
         },
-        { check: "The review explains the user-visible impact of that regression" },
+        { check: "The review explains the user-visible impact of that regression", weight: 1 },
         { check: "The review has few or no findings that are wrong or irrelevant", weight: 2 },
-        { check: "The QA plan has concrete steps that would catch the regression" },
+        { check: "The QA plan has concrete steps that would catch the regression", weight: 1 },
       ],
     })),
   };

@@ -33,8 +33,8 @@ export function triageScenario(cases: readonly BugCase[]): ScenarioInput {
       ],
       judge: [
         { check: "The assessment correctly says whether this is a real bug", weight: 2 },
-        { check: `The assessment locates the affected area in ${c.packageDir}` },
-        { check: "Severity and next steps are justified by the issue content" },
+        { check: `The assessment locates the affected area in ${c.packageDir}`, weight: 1 },
+        { check: "Severity and next steps are justified by the issue content", weight: 1 },
         NO_UPSTREAM_CHECK,
       ],
     })),

@@ -25,7 +25,6 @@ describe("arms", () => {
       ["bare", "claude-code-arm", "claude-opus-5-5"],
       ["monoblok", "claude-code-arm", "claude-opus-5-5"],
       ["superpowers", "claude-code-arm", "claude-opus-5-5"],
-      ["monoblok-superpowers", "claude-code-arm", "claude-opus-5-5"],
     ]);
     expect(config.judging?.agents).toEqual([{ agent: "claude-code", model: "claude-opus-5-5" }]);
   });
@@ -49,7 +48,7 @@ const SKILL_CASES = [
   "triage@js-client-filter-query-brackets",
   "triage@js-client-strip-version-mapi",
 ];
-const ARMS = ["bare", "monoblok", "superpowers", "monoblok-superpowers"];
+const ARMS = ["bare", "monoblok", "superpowers"];
 
 describe("skills profile", () => {
   it("has one scenario per skill, case, and arm, each run only by its arm", async () => {
@@ -80,7 +79,6 @@ describe("skills profile", () => {
       const task = promptOf("bare");
       expect(task.startsWith("/")).toBe(false);
       expect(promptOf("monoblok")).toBe(`${monoblokPrefix}${task}`);
-      expect(promptOf("monoblok-superpowers")).toBe(`${monoblokPrefix}${task}`);
       expect(promptOf("superpowers")).toBe(`${superpowersPrefix}${task}`);
     },
   );
@@ -148,7 +146,7 @@ describe("spec profile", () => {
     const { config, scenarios } = await discover("spec");
     const agents = config.agents.map((a) => (typeof a === "string" ? { agent: a } : a));
     expect(new Set(agents.map((a) => a.agent))).toEqual(new Set(["claude-code-interactive"]));
-    expect(scenarios).toHaveLength(2 * 4);
+    expect(scenarios).toHaveLength(2 * 3);
     const monoblok = scenarios.find((s) => s.key === "spec/spec@cli-stories-validate--monoblok");
     const superpowers = scenarios.find(
       (s) => s.key === "spec/spec@cli-stories-validate--superpowers",

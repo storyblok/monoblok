@@ -1,6 +1,6 @@
 import path from "node:path";
 
-export const ARM_NAMES = ["bare", "monoblok", "superpowers", "monoblok-superpowers"] as const;
+export const ARM_NAMES = ["bare", "monoblok", "superpowers"] as const;
 export type ArmName = (typeof ARM_NAMES)[number];
 
 export const EVAL_MODEL = "claude-opus-5-5";
@@ -17,7 +17,6 @@ const ARM_CONTENTS: Record<ArmName, { monoblok: boolean; superpowers: boolean }>
   bare: { monoblok: false, superpowers: false },
   monoblok: { monoblok: true, superpowers: false },
   superpowers: { monoblok: false, superpowers: true },
-  "monoblok-superpowers": { monoblok: true, superpowers: true },
 };
 
 export function isArmName(value: string): value is ArmName {

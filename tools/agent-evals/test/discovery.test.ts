@@ -90,11 +90,36 @@ describe("spec profile", () => {
     expect(monoblok?.agents).toEqual(["monoblok"]);
     expect(monoblok?.prompt.startsWith("/spec ")).toBe(true);
     expect(superpowers?.agents).toEqual(["superpowers"]);
-    expect(superpowers?.prompt.startsWith("/spec")).toBe(false);
+    expect(superpowers?.prompt.startsWith("/superpowers:brainstorming ")).toBe(true);
+    expect(superpowers?.prompt).toContain("Save it as a Markdown file");
+    const bare = scenarios.find((s) => s.key === "spec/spec@cli-stories-validate--bare");
+    expect(bare?.prompt.startsWith("/")).toBe(false);
+    expect(bare?.prompt).toContain("Save it as a Markdown file");
   });
 
   it("keeps spec scenarios out of the default run", async () => {
     const { scenarios } = await discover();
     expect(scenarios.some((s) => s.key.startsWith("spec/"))).toBe(false);
   });
+});
+
+describe("judge criteria", () => {
+  it.each([undefined, "skills", "spec", "cli"])(
+    "weights every criterion explicitly (profile %s)",
+    async (profile) => {
+      const { scenarios } = await discover(profile);
+      expect(scenarios.length).toBeGreaterThan(0);
+      for (const s of scenarios) {
+        expect(Array.isArray(s.judge), s.key).toBe(true);
+        const criteria = Array.isArray(s.judge) ? s.judge : [];
+        for (const criterion of criteria) {
+          const weight = typeof criterion === "object" ? criterion.weight : undefined;
+          expect(
+            typeof weight === "number" && weight > 0,
+            `${s.key}: ${JSON.stringify(criterion)}`,
+          ).toBe(true);
+        }
+      }
+    },
+  );
 });

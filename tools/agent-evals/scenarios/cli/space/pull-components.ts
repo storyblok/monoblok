@@ -11,11 +11,11 @@ export default {
   ].join(" "),
   setup: [{ action: "run_script", command: 'bash "$AXIS_CONFIG_DIR/scripts/login.sh"' }],
   judge: [
-    { check: "Component schemas from the space exist as local files in the workspace" },
+    { check: "Component schemas from the space exist as local files in the workspace", weight: 1 },
     {
       check: "A generated TypeScript declarations file with types for the pulled components exists",
       weight: 2,
     },
-    { check: "The final answer names the components page, blog, hero, and cta" },
+    { check: "The final answer names the components page, blog, hero, and cta", weight: 1 },
   ],
 };

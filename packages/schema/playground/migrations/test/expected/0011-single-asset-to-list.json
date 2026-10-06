@@ -1,0 +1,505 @@
+{
+  "legacy": {
+    "_uid": "55555555-0000-4000-8000-000000000001",
+    "component": "page",
+    "seo_title": "Legacy content",
+    "seo_description": "Authored under an older schema, so the migrations have something to migrate.",
+    "body": [
+      {
+        "_uid": "55555555-0000-4000-8000-000000000002",
+        "component": "card",
+        "title": "A card from before the headline rename",
+        "subtitle": "Carries the field newer cards no longer have",
+        "price": "twelve",
+        "image": {
+          "id": 223407129002961,
+          "alt": "About image",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+          "fieldtype": "asset"
+        },
+        "link": {
+          "id": "f2a6ea6e-e569-4557-b1a0-801b3afa6ac1",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "pricing"
+        },
+        "body": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "The old plans page moved: "
+                },
+                {
+                  "type": "text",
+                  "text": "see the pricing",
+                  "marks": [
+                    {
+                      "type": "link",
+                      "attrs": {
+                        "href": "/old-blog/pricing",
+                        "uuid": null,
+                        "anchor": null,
+                        "target": "_self",
+                        "linktype": "url"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "text": " for what replaced it."
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-00000000000a",
+        "component": "teaser",
+        "title": "The teaser that opens the page",
+        "description": "Two teasers sit on this page, so hoisting the opener has to pick one of them.",
+        "images": [
+          {
+            "id": 223407129002961,
+            "alt": "About image",
+            "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+            "fieldtype": "asset"
+          }
+        ],
+        "link": null,
+        "authors": []
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-000000000003",
+        "component": "card",
+        "headline": "Legacy Portal overview",
+        "headline__i18n__de": "Legacy Portal Übersicht",
+        "headline__i18n__fr": "Aperçu du Legacy Portal",
+        "subtitle": "Half migrated: the headline landed, the slug never did",
+        "price": "",
+        "link": null,
+        "images": [],
+        "body": null
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-000000000004",
+        "component": "section",
+        "heading": "Legacy section",
+        "theme": "light",
+        "items": [
+          {
+            "_uid": "55555555-0000-4000-8000-000000000005",
+            "component": "author",
+            "name": "Ada Lovelace",
+            "bio": "One name field, from before it was split in two.",
+            "avatar": null
+          },
+          {
+            "_uid": "55555555-0000-4000-8000-000000000006",
+            "component": "card",
+            "headline": "A card holding another card",
+            "price": "3",
+            "link": null,
+            "images": [],
+            "body": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Another old link: "
+                    },
+                    {
+                      "type": "text",
+                      "text": "the announcement",
+                      "marks": [
+                        {
+                          "type": "link",
+                          "attrs": {
+                            "href": "/old-blog/announcement",
+                            "uuid": null,
+                            "anchor": null,
+                            "target": "_self",
+                            "linktype": "url"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "blok",
+                  "attrs": {
+                    "id": "55555555-0000-4000-8000-000000000007",
+                    "body": [
+                      {
+                        "_uid": "55555555-0000-4000-8000-000000000007",
+                        "component": "card",
+                        "headline": "Embedded under a section and a card",
+                        "slug": "legacy-embedded",
+                        "price": "7",
+                        "link": null,
+                        "images": [],
+                        "body": {
+                          "type": "doc",
+                          "content": [
+                            {
+                              "type": "paragraph",
+                              "content": [
+                                {
+                                  "type": "text",
+                                  "text": "Embedded richtext with its own "
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "old link",
+                                  "marks": [
+                                    {
+                                      "type": "link",
+                                      "attrs": {
+                                        "href": "/old-blog/embedded",
+                                        "uuid": null,
+                                        "anchor": null,
+                                        "target": "_self",
+                                        "linktype": "url"
+                                      }
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "text": "."
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "_uid": "55555555-0000-4000-8000-00000000000b",
+        "component": "teaser",
+        "title": "A second teaser, further down",
+        "description": "It stays where the editor put it: only the first one is the page's opener.",
+        "images": null,
+        "link": null,
+        "authors": []
+      }
+    ]
+  },
+  "home": {
+    "_uid": "11111111-0000-4000-8000-000000000001",
+    "body": [
+      {
+        "_uid": "11111111-0000-4000-8000-000000000002",
+        "body": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "This card's richtext holds another card inside it. A migration that only walks the bloks arrays will never see it.",
+                  "type": "text"
+                }
+              ]
+            },
+            {
+              "type": "blok",
+              "attrs": {
+                "id": "11111111-0000-4000-8000-000000000003",
+                "body": [
+                  {
+                    "_uid": "11111111-0000-4000-8000-000000000003",
+                    "body": {
+                      "type": "doc",
+                      "content": [
+                        {
+                          "type": "paragraph",
+                          "content": [
+                            {
+                              "text": "Nested richtext, two levels down.",
+                              "type": "text"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "link": {
+                      "id": "",
+                      "url": "https://www.storyblok.com",
+                      "linktype": "url",
+                      "fieldtype": "multilink",
+                      "cached_url": "https://www.storyblok.com"
+                    },
+                    "slug": "embedded-card",
+                    "price": "5",
+                    "images": [],
+                    "headline": "Card embedded in richtext",
+                    "component": "card"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "Text after the embedded block.",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        "link": {
+          "id": "01e738c0-d36b-4178-b54d-97c4b85c45a1",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "team"
+        },
+        "slug": "loose-card",
+        "price": "19",
+        "images": [
+          {
+            "id": 223407128380368,
+            "alt": "Gallery image one",
+            "title": "Gallery One",
+            "filename": "https://a.storyblok.com/f/290020686946333/e446c01ff4/gallery-one.png",
+            "fieldtype": "asset"
+          },
+          {
+            "id": 223407129904082,
+            "alt": "Gallery image two",
+            "title": "Gallery Two",
+            "filename": "https://a.storyblok.com/f/290020686946333/91911a7941/gallery-two.png",
+            "fieldtype": "asset"
+          }
+        ],
+        "category": "01e738c0-d36b-4178-b54d-97c4b85c45a1",
+        "headline": "A loose card, directly on the page",
+        "component": "card"
+      },
+      {
+        "_uid": "11111111-0000-4000-8000-000000000004",
+        "items": [
+          {
+            "_uid": "11111111-0000-4000-8000-000000000005",
+            "body": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Plain richtext.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "link": null,
+            "slug": "section-card-one",
+            "price": "42",
+            "images": [],
+            "category": "f2a6ea6e-e569-4557-b1a0-801b3afa6ac1",
+            "headline": "First card in the section",
+            "component": "card"
+          },
+          {
+            "_uid": "11111111-0000-4000-8000-000000000006",
+            "images": [
+              {
+                "id": 223407128380368,
+                "alt": "Gallery image one",
+                "title": "Gallery One",
+                "filename": "https://a.storyblok.com/f/290020686946333/e446c01ff4/gallery-one.png",
+                "fieldtype": "asset"
+              },
+              {
+                "id": 223407129904082,
+                "alt": "Gallery image two",
+                "title": "Gallery Two",
+                "filename": "https://a.storyblok.com/f/290020686946333/91911a7941/gallery-two.png",
+                "fieldtype": "asset"
+              }
+            ],
+            "columns": "2",
+            "headline": "Gallery inside the section",
+            "component": "gallery",
+            "show_captions": true
+          },
+          {
+            "_uid": "11111111-0000-4000-8000-000000000007",
+            "items": [
+              {
+                "_uid": "11111111-0000-4000-8000-000000000008",
+                "text": "Three container levels deep, so an unwrap has somewhere to fall.",
+                "authors": [
+                  {
+                    "bio": "Quoted from four container levels down.",
+                    "_uid": "11111111-0000-4000-8000-000000000009",
+                    "avatar": null,
+                    "component": "author",
+                    "last_name": "Lovelace",
+                    "first_name": "Ada"
+                  }
+                ],
+                "component": "quote",
+                "attribution": "The seed",
+                "source_link": {
+                  "id": "",
+                  "url": "https://www.storyblok.com",
+                  "linktype": "url",
+                  "fieldtype": "multilink",
+                  "cached_url": "https://www.storyblok.com"
+                }
+              },
+              {
+                "_uid": "11111111-0000-4000-8000-00000000000a",
+                "image": {
+                  "id": 223407129002961,
+                  "alt": "About image",
+                  "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+                  "fieldtype": "asset"
+                },
+                "credit": "Playground",
+                "caption": "Media at the deepest level",
+                "component": "media"
+              }
+            ],
+            "theme": "dark",
+            "heading": "A section inside a section",
+            "component": "section"
+          }
+        ],
+        "theme": "light",
+        "heading": "An outer section",
+        "component": "section",
+        "accent_color": {
+          "value": "#4f46e5",
+          "plugin": "native-color-picker"
+        }
+      },
+      {
+        "_uid": "11111111-0000-4000-8000-00000000000b",
+        "link": {
+          "id": "f2a6ea6e-e569-4557-b1a0-801b3afa6ac1",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "pricing"
+        },
+        "images": [
+          {
+            "id": 223407129002961,
+            "alt": "About image",
+            "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+            "fieldtype": "asset"
+          }
+        ],
+        "title": "A teaser with a story link",
+        "authors": [],
+        "component": "teaser",
+        "description": "Its link points at another seed story, so a rename of that story shows up here."
+      }
+    ],
+    "component": "page",
+    "seo_title": "Migrations playground",
+    "seo_description": "A space shaped to make content migrations awkward."
+  },
+  "team": {
+    "_uid": "22222222-0000-4000-8000-000000000001",
+    "body": [
+      {
+        "_uid": "22222222-0000-4000-8000-000000000002",
+        "items": [
+          {
+            "bio": "Both halves of the name are filled.",
+            "_uid": "22222222-0000-4000-8000-000000000003",
+            "avatar": {
+              "id": 223407129002961,
+              "alt": "About image",
+              "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+              "fieldtype": "asset"
+            },
+            "component": "author",
+            "last_name": "Hopper",
+            "first_name": "Grace"
+          },
+          {
+            "bio": "Only first_name is filled, so a merge has to decide what to do with the empty half.",
+            "_uid": "22222222-0000-4000-8000-000000000004",
+            "avatar": null,
+            "component": "author",
+            "last_name": "",
+            "first_name": "Prince"
+          },
+          {
+            "bio": "",
+            "_uid": "22222222-0000-4000-8000-000000000005",
+            "avatar": null,
+            "component": "author",
+            "last_name": "Liskov",
+            "first_name": "Barbara"
+          }
+        ],
+        "theme": "light",
+        "heading": "Everyone",
+        "component": "section"
+      },
+      {
+        "bio": "An author directly on the page, outside any container.",
+        "_uid": "22222222-0000-4000-8000-000000000006",
+        "avatar": null,
+        "component": "author",
+        "last_name": "Turing",
+        "first_name": "Alan"
+      },
+      {
+        "_uid": "22222222-0000-4000-8000-000000000007",
+        "link": {
+          "id": "51c6f4a7-3aba-4dc2-b10d-a1e22d1aba84",
+          "url": "",
+          "linktype": "story",
+          "fieldtype": "multilink",
+          "cached_url": "home"
+        },
+        "images": null,
+        "title": "Authors inside a teaser",
+        "authors": [
+          {
+            "bio": "Nested two levels down.",
+            "_uid": "22222222-0000-4000-8000-000000000008",
+            "avatar": null,
+            "component": "author",
+            "last_name": "Johnson",
+            "first_name": "Katherine"
+          }
+        ],
+        "component": "teaser",
+        "description": "The same block appears at several depths so a rename has to reach all of them."
+      }
+    ],
+    "component": "page",
+    "seo_title": "The team",
+    "seo_description": "Author blocks, including one with only half a name."
+  }
+}

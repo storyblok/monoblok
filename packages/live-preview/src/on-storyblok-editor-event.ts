@@ -3,9 +3,9 @@ import type { BridgeParams } from "@storyblok/preview-bridge";
 import type { Prettify } from "./generated/types/_utils";
 import type { Story } from "./generated/types/story";
 
-import { loadStoryblokBridge, preloadStoryblokBridge } from "./loadStoryblokBridge";
-import { isBrowser } from "./utils/isBrowser";
-import { isInEditor } from "./utils/isInEditor";
+import { loadStoryblokBridge, preloadStoryblokBridge } from "./load-storyblok-bridge";
+import { isBrowser } from "./utils/is-browser";
+import { isInEditor } from "./utils/is-in-editor";
 
 /**
  * The story payload delivered by the Visual Editor `input` event.

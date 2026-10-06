@@ -34,4 +34,7 @@ fi
 
 cd "${evals_dir}"
 node "${evals_dir}/scripts/prepare-arms.ts"
+bash "${evals_dir}/scripts/ensure-mirror.sh"
+AGENT_EVALS_PNPM_STORE="$(pnpm store path)"
+export AGENT_EVALS_PNPM_STORE
 exec pnpm exec axis run "$@"

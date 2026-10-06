@@ -9,7 +9,7 @@ const config: AxisConfig = {
   adapters: { "claude-code-arm": "./src/adapters/claude-code-arm.ts" },
   agents: ARM_NAMES.map((name) => ({ agent: "claude-code-arm", name, model: EVAL_MODEL })),
   judging: { agents: [{ agent: "claude-code", model: EVAL_MODEL }] },
-  env: ["STORYBLOK_SPACE_ID"],
+  env: ["STORYBLOK_SPACE_ID", "AGENT_EVALS_PNPM_STORE"],
   settings: {
     concurrency: 3,
     limits: { scenario: { time_minutes: 30 } },

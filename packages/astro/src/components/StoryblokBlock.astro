@@ -1,0 +1,17 @@
+---
+import { storyblokEditable } from "@storyblok/live-preview";
+import { resolveBlockComponent } from "../registry";
+import type { StoryblokBlockData } from "../types";
+
+type Props = {
+  /** The block to render. */
+  block?: StoryblokBlockData;
+} & Record<string, any>;
+
+const { block, ...rest } = Astro.props;
+
+const Component = block ? resolveBlockComponent(block) : undefined;
+const editable = block ? storyblokEditable(block) : undefined;
+---
+
+{Component && <Component block={block} editable={editable} {...rest} />}

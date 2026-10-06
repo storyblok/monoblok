@@ -4,7 +4,7 @@
  *
  * Pass server-side data to the client that persists across live preview updates.
  * All props passed to this component will be serialized as JSON and available
- * to the client via the extraData parameter in getLiveStory().
+ * to the client via the `serverData` field returned by `getPayload()`.
  *
  * Data is automatically sanitized to prevent XSS attacks and script injection.
  *

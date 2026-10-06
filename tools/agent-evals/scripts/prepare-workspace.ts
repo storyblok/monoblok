@@ -1,4 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +7,7 @@ import { parseArgs } from "node:util";
 import { EVALS_DIR } from "../src/arms.ts";
 import { recordBaseline } from "../src/baseline.ts";
 import { bugCase } from "../src/cases.ts";
+import { cloneCachedDirectory } from "../src/workspace-cache.ts";
 
 /** Repo-relative paths, at any depth, that would hand the agent our skills or settings regardless of arm. */
 const STRIPPED_SUFFIXES = [
@@ -140,11 +142,25 @@ if (import.meta.main) {
   const ref = values.ref;
   if (!ref) throw new Error("--ref is required");
   const c = values.case ? bugCase(values.case) : undefined;
-  prepareWorkspace({
-    mirror: path.join(EVALS_DIR, ".cache", "monoblok.git"),
-    ref,
-    workspace: process.cwd(),
-    message: values.message,
-    install: c && !values["no-install"] ? { packageName: c.packageName } : undefined,
+  const install = c && !values["no-install"] ? { packageName: c.packageName } : undefined;
+  // Every arm and run of a case starts from the same workspace, so it is installed and built
+  // once and cloned per job. The key includes this script, so edits to it rebuild the cache.
+  const key = createHash("sha256")
+    .update(JSON.stringify({ ref, message: values.message, install }))
+    .update(fs.readFileSync(import.meta.filename))
+    .digest("hex")
+    .slice(0, 16);
+  cloneCachedDirectory({
+    cacheRoot: path.join(EVALS_DIR, ".cache", "workspaces"),
+    key,
+    target: process.cwd(),
+    build: (workspace) =>
+      prepareWorkspace({
+        mirror: path.join(EVALS_DIR, ".cache", "monoblok.git"),
+        ref,
+        workspace,
+        message: values.message,
+        install,
+      }),
   });
 }

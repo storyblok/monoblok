@@ -13,6 +13,7 @@ export function reviewAndQaScenario(cases: readonly BugCase[]): ScenarioInput {
       name: c.id,
       setup: [
         prepare(c.fixRef, c),
+        { action: "run_script", command: script("revert-tests.ts", `--case ${c.id}`) },
         { action: "run_script", command: script("build-review-branch.ts", `--case ${c.id}`) },
       ],
       prompt:

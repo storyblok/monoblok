@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { revertFixExtras } from "../scripts/revert-tests.ts";
 import { buildReviewBranch } from "../scripts/build-review-branch.ts";
 import { readBaseline } from "../src/baseline.ts";
 import type { BugCase } from "../src/cases.ts";
@@ -32,6 +33,7 @@ const CASE: BugCase = {
 describe("buildReviewBranch", () => {
   it("reintroduces the bug alongside an unrelated change on a `feature` branch", () => {
     const { workspace, mirror, c } = workspaceWithFix(CASE, {});
+    revertFixExtras({ workspace, mirror, case: c });
     const noise = buildReviewBranch({ workspace, mirror, case: c, mainRef: "refs/heads/main" });
 
     expect(git(workspace, "branch", "--show-current")).toBe("feature");
@@ -43,6 +45,9 @@ describe("buildReviewBranch", () => {
     expect(diff).toContain("+export const sum = (a, b) => a - b;");
     expect(diff).toContain(NOISE_FILE);
     expect(fs.readFileSync(path.join(workspace, "pkg/src/sum.mjs"), "utf8")).toContain("a - b");
+    for (const branch of ["main", "feature"]) {
+      expect(git(workspace, "ls-tree", "-r", "--name-only", branch)).not.toContain(HIDDEN_TEST);
+    }
   });
 
   it("moves the grading baseline to the feature commit", () => {

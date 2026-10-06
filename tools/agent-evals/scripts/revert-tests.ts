@@ -23,9 +23,17 @@ function sourceAt(mirror: string, ref: string, file: string): string | null {
   }
 }
 
-/** Resets the fix's test files to their pre-fix contents so the agent sees the fix but not its tests. */
-export function revertTests(ctx: { workspace: string; mirror: string; case: BugCase }): void {
-  for (const file of ctx.case.testFiles) {
+/** Files the fix commit changed besides the fixed sources and test setup: its tests and fixtures. */
+function fixExtras(mirror: string, c: BugCase): string[] {
+  const kept = new Set([...c.sourceFiles, ...c.testSetupFiles]);
+  return git(mirror, ["diff", "--name-only", c.preFixRef, c.fixRef])
+    .split("\n")
+    .filter((file) => file && !kept.has(file));
+}
+
+/** Resets everything the fix changed except its sources to pre-fix contents, so the tree has the fix but not its tests. */
+export function revertFixExtras(ctx: { workspace: string; mirror: string; case: BugCase }): void {
+  for (const file of fixExtras(ctx.mirror, ctx.case)) {
     const full = path.join(ctx.workspace, file);
     const before = sourceAt(ctx.mirror, ctx.case.preFixRef, file);
     if (before === null) {
@@ -55,7 +63,7 @@ export function revertTests(ctx: { workspace: string; mirror: string; case: BugC
 
 if (import.meta.main) {
   const { values } = parseArgs({ options: { case: { type: "string" } } });
-  revertTests({
+  revertFixExtras({
     workspace: process.cwd(),
     mirror: defaultMirror(),
     case: bugCase(values.case ?? ""),

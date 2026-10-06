@@ -56,10 +56,10 @@ every non-source file of the fix (tests, snapshots). The resulting baseline is r
 ## Run
 
 ```bash
-tools/agent-evals/run.sh -p skills --runs 3            # every skill scenario, three runs each
+tools/agent-evals/run.sh -p skills --runs 3              # every skill scenario, three runs each
 tools/agent-evals/run.sh -p skills -s 'skills/investigate@*' --runs 1
-tools/agent-evals/run.sh -p skills -a bare,monoblok # limit the arms
-tools/agent-evals/run.sh -p skills --concurrency 2     # lower the parallelism
+tools/agent-evals/run.sh -p skills -a bare,monoblok      # limit the arms
+tools/agent-evals/run.sh -p skills --concurrency 2       # lower the parallelism
 tools/agent-evals/run.sh -p spec
 npx @netlify/axis reports latest --html
 ```
@@ -78,8 +78,8 @@ Measured on a warm pnpm store:
 - Workspace install and build: about 29 seconds.
 - `spec` smoke run, two arms: about 6 minutes. The simulated user stops after 16 turns, and a "turn
   limit reached" note in the transcript marks a truncated run.
-- Full matrix of one skill (`investigate`, 3 cases × 4 arms, one run, concurrency 3):
-  FULL_MATRIX_TIME.
+- Full matrix of one skill (`investigate`: 4 arms × 3 cases × 1 run = 12 jobs, concurrency 3): about
+  14 minutes (832 s), about USD 0.29–0.57 per job as reported by Claude Code.
 
 All runs draw on your Claude Code subscription. Every scenario multiplies by four arms and by
 `--runs`, so lower `--concurrency` if you hit rate limits.
@@ -158,6 +158,8 @@ in each result's `setupOutput` and `teardownOutput`.
   the revert removes passes it too.
 - A failed workspace setup aborts the whole run. One install failure under concurrency 3 did not
   reproduce on rerun; start the run again.
+- AXIS token counts exclude cache reads and possibly subagent usage. Compare cost (USD), not tokens.
+- Single runs do not separate arms. Use `--runs 3`.
 - `checkLabels` does not penalize extra labels.
 - Results depend on the model and on the superpowers version. Compare reports only within one pinned
   configuration.

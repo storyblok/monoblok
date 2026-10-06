@@ -54,6 +54,8 @@ const server = setupServer(
   ),
 );
 
+const CDN_MAX_URL_LENGTH = 8192;
+
 const preconditions = {
   canLoadComponents(components: MockComponent[], space = DEFAULT_SPACE, basePath?: string) {
     const componentsDir = resolveCommandPath(directories.components, space, basePath);
@@ -159,6 +161,9 @@ const preconditions = {
     // fall back to returning everything for any unfiltered callers.
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories`, ({ request }) => {
+        if (request.url.length > CDN_MAX_URL_LENGTH) {
+          return new HttpResponse("414 ERROR", { status: 414 });
+        }
         const url = new URL(request.url);
         const bySlugs = url.searchParams.get("by_slugs");
         const byIds = url.searchParams.get("by_ids");
@@ -928,27 +933,22 @@ describe("stories push command", () => {
       );
     });
 
-    it("should push many stories with long slugs without exceeding the CDN URL length limit", async () => {
-      const CLOUDFRONT_MAX_URL_LENGTH = 8192;
+    it("should match many existing stories with long slugs", async () => {
       const fromSpace = "54321";
-      const localStories = Array.from({ length: 100 }, (_, i) => {
-        const slug = `page-with-a-long-descriptive-slug-from-a-legacy-system-${i}`;
-        return makeMockStory({
-          slug,
-          full_slug: `legacy-content-migration/deeply/nested/section/${slug}`,
+      const makeStories = () =>
+        Array.from({ length: 100 }, (_, i) => {
+          const slug = `page-with-a-long-descriptive-slug-from-a-legacy-system-${i}`;
+          return makeMockStory({
+            slug,
+            full_slug: `legacy-content-migration/deeply/nested/section/${slug}`,
+          });
         });
-      });
+      const localStories = makeStories();
+      const targetStories = makeStories();
       preconditions.canLoadStories(localStories, fromSpace);
       preconditions.canLoadComponents([makeMockComponent({ name: "page" })], fromSpace);
-      server.use(
-        http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) =>
-          request.url.length > CLOUDFRONT_MAX_URL_LENGTH
-            ? new HttpResponse("414 ERROR", { status: 414 })
-            : HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } }),
-        ),
-      );
-      const remoteStories = preconditions.canCreateStories(localStories);
-      preconditions.canUpdateStories(remoteStories);
+      preconditions.canListStories(targetStories);
+      preconditions.canUpdateStories(targetStories);
 
       await storiesCommand.parseAsync([
         "node",
@@ -961,9 +961,8 @@ describe("stories push command", () => {
       ]);
 
       expect(getReport()?.status).toBe("SUCCESS");
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Push results: 100 stories pushed, 0 stories failed"),
-      );
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).toHaveBeenCalledTimes(targetStories.length);
     });
 
     it("should match existing stories by full_slug in a duplicated space", async () => {

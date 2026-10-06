@@ -428,12 +428,9 @@ describe("stories/actions", () => {
     });
 
     it("should keep request URLs within CDN limits when slugs are long", async () => {
-      const CLOUDFRONT_MAX_URL_LENGTH = 8192;
-      const slugs = Array.from(
-        { length: 100 },
-        (_, i) =>
-          `legacy-content-migration-with-a-long-folder-name/deeply/nested/section/page-with-a-descriptive-slug-${i}`,
-      );
+      const CDN_MAX_URL_LENGTH = 8192;
+      // Many short folder levels: every `/` triples in length once URL-encoded.
+      const slugs = Array.from({ length: 100 }, (_, i) => `${"a/".repeat(30)}page-${i}`);
       const urlLengths: number[] = [];
       const queriedSlugs: string[] = [];
       server.use(
@@ -448,9 +445,23 @@ describe("stories/actions", () => {
 
       await prefetchTargetStoriesByKeys(space, { slugs, ids: [] });
 
-      expect(urlLengths.length).toBeGreaterThan(1);
-      expect(Math.max(...urlLengths)).toBeLessThan(CLOUDFRONT_MAX_URL_LENGTH);
+      expect(Math.max(...urlLengths)).toBeLessThan(CDN_MAX_URL_LENGTH);
       expect(queriedSlugs.toSorted()).toEqual(slugs.toSorted());
+    });
+
+    it("should reject a slug too long to look up without sending any request", async () => {
+      const requestUrls: string[] = [];
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
+          requestUrls.push(request.url);
+          return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+        }),
+      );
+
+      await expect(
+        prefetchTargetStoriesByKeys(space, { slugs: ["home", "a/".repeat(3000)], ids: [] }),
+      ).rejects.toThrow(/full slug is \d+ characters long when URL-encoded/);
+      expect(requestUrls).toEqual([]);
     });
 
     it("deduplicates a story returned by both slug and id queries", async () => {

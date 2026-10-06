@@ -241,21 +241,27 @@ export const prefetchTargetStoriesByKeys = async (
     }
   }
 
+  options?.onTotal?.(slugSet.size + idSet.size);
+
   const encodedSlugLength = (slug: string) =>
     encodeURIComponent(slug).length + ENCODED_SEPARATOR_LENGTH;
-  for (const slug of slugSet) {
-    if (encodedSlugLength(slug) > PREFETCH_MAX_ENCODED_SLUGS_LENGTH) {
+  const unmatchableSlugs = [...slugSet].filter(
+    (slug) => encodedSlugLength(slug) > PREFETCH_MAX_ENCODED_SLUGS_LENGTH,
+  );
+  if (unmatchableSlugs.length > 0) {
+    // Deep slugs share their leading folders, so the end identifies the story.
+    const reportedSlugs = unmatchableSlugs.map((slug) => {
       const reportedSlug =
-        slug.length > MAX_REPORTED_SLUG_LENGTH
-          ? `${slug.slice(0, MAX_REPORTED_SLUG_LENGTH)}…`
-          : slug;
-      throw new Error(
-        `Cannot match the story "${reportedSlug}" against the target space: its full slug is ${encodedSlugLength(slug)} characters long when URL-encoded, the maximum is ${PREFETCH_MAX_ENCODED_SLUGS_LENGTH}.`,
-      );
-    }
+        slug.length > MAX_REPORTED_SLUG_LENGTH ? `…${slug.slice(-MAX_REPORTED_SLUG_LENGTH)}` : slug;
+      return `  ${reportedSlug} (${encodedSlugLength(slug)} characters)`;
+    });
+    throw new Error(
+      [
+        `Full slugs longer than ${PREFETCH_MAX_ENCODED_SLUGS_LENGTH} URL-encoded characters can't be matched with existing stories in the target space. Shorten the slugs or nest the stories in fewer folders. Affected stories (${unmatchableSlugs.length}):`,
+        ...reportedSlugs,
+      ].join("\n"),
+    );
   }
-
-  options?.onTotal?.(slugSet.size + idSet.size);
 
   if (slugSet.size === 0 && idSet.size === 0) {
     return result;

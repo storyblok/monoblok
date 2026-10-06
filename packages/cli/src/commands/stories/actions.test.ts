@@ -449,7 +449,7 @@ describe("stories/actions", () => {
       expect(queriedSlugs.toSorted()).toEqual(slugs.toSorted());
     });
 
-    it("should reject a slug too long to look up without sending any request", async () => {
+    it("should reject slugs too long to look up without sending any request", async () => {
       const requestUrls: string[] = [];
       server.use(
         http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
@@ -458,9 +458,19 @@ describe("stories/actions", () => {
         }),
       );
 
-      await expect(
-        prefetchTargetStoriesByKeys(space, { slugs: ["home", "a/".repeat(3000)], ids: [] }),
-      ).rejects.toThrow(/full slug is \d+ characters long when URL-encoded/);
+      const tooLongSlugs = [`${"a/".repeat(3000)}first`, `${"b/".repeat(3000)}second`];
+
+      const error: unknown = await prefetchTargetStoriesByKeys(space, {
+        slugs: ["home", ...tooLongSlugs],
+        ids: [],
+      }).catch((error: unknown) => error);
+
+      expect(error).toBeInstanceOf(Error);
+      const message = error instanceof Error ? error.message : "";
+      expect(message).toContain("Affected stories (2)");
+      expect(message).toMatch(/a\/first \(\d+ characters\)/);
+      expect(message).toMatch(/b\/second \(\d+ characters\)/);
+      expect(message).not.toContain("home");
       expect(requestUrls).toEqual([]);
     });
 

@@ -12,7 +12,10 @@ function fixtureRepo(): string {
     "---\nname: plan\nmodel: sonnet\n---\n# Plan\n",
   );
   fs.mkdirSync(path.join(root, ".claude/agents"), { recursive: true });
-  fs.writeFileSync(path.join(root, ".claude/agents/reviewer.md"), "---\nname: reviewer\n---\n");
+  fs.writeFileSync(
+    path.join(root, ".claude/agents/reviewer.md"),
+    "---\nname: reviewer\nmodel: opus\neffort: high\n---\n",
+  );
   return root;
 }
 
@@ -26,7 +29,9 @@ describe("prepareArms", () => {
       expect(fs.readFileSync(path.join(outRoot, "arms", arm, "skills/plan/SKILL.md"), "utf8")).toBe(
         "---\nname: plan\n---\n# Plan\n",
       );
-      expect(fs.existsSync(path.join(outRoot, "arms", arm, "agents/reviewer.md"))).toBe(true);
+      expect(fs.readFileSync(path.join(outRoot, "arms", arm, "agents/reviewer.md"), "utf8")).toBe(
+        "---\nname: reviewer\n---\n",
+      );
     }
     for (const arm of ["bare", "superpowers"]) {
       expect(fs.readdirSync(path.join(outRoot, "arms", arm))).toEqual([]);

@@ -1,6 +1,13 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { ScenarioInput } from "@netlify/axis";
+import { EVALS_DIR } from "../arms.ts";
 import type { BugCase } from "../cases.ts";
 import { GRADE_ARTIFACTS, NO_UPSTREAM_CHECK, prepare, script, withIssue } from "./shared.ts";
+
+const ISSUE_LABELS: string[] = JSON.parse(
+  fs.readFileSync(path.join(EVALS_DIR, "fixtures/labels.json"), "utf8"),
+);
 
 export function triageScenario(cases: readonly BugCase[]): ScenarioInput {
   return {
@@ -15,8 +22,8 @@ export function triageScenario(cases: readonly BugCase[]): ScenarioInput {
       prompt: withIssue(
         c,
         "Triage this GitHub issue for the monoblok repository. Do not modify GitHub or any tracker. " +
-          'Write the labels you would apply as JSON to `triage.json` (`{ "labels": [...] }`, using ' +
-          "labels such as `type: bug` and `pkg: <package>`), and your assessment to `triage.md`.",
+          'Write the labels you would apply as JSON to `triage.json` (`{ "labels": [...] }`) and your assessment to `triage.md`. ' +
+          `Choose labels only from: ${ISSUE_LABELS.join(", ")}.`,
       ),
       teardown: [
         {

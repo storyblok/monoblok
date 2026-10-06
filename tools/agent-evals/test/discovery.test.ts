@@ -69,4 +69,10 @@ describe("skills profile", () => {
     expect(setupOf("skills/triage@cli-components-push-preview-tmpl")).toContain("--no-install");
     expect(setupOf("skills/investigate@richtext-vue-slot-warning")).not.toContain("--no-install");
   });
+
+  it("gives triage the repository's label vocabulary", async () => {
+    const { scenarios } = await discover("skills");
+    const triage = scenarios.find((s) => s.key === "skills/triage@js-client-strip-version-mapi");
+    expect(triage?.prompt).toContain("pkg: storyblok-js-client");
+  });
 });

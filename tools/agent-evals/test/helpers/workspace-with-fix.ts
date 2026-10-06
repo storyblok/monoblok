@@ -27,6 +27,7 @@ const expect = (v) => ({ toBe: (w) => assert.equal(v, w) });
 test("sum", () => { ${body} });
 `;
 
+export const EXTRA_FILE = "pkg/e2e/extra.fixture.mjs";
 export const HIDDEN_TEST = "pkg/src/sum.hidden.test.mjs";
 
 type Options = {
@@ -58,6 +59,8 @@ export function workspaceWithFix(
   const preFixRef = git(repo, "rev-parse", "HEAD");
   fs.writeFileSync(path.join(repo, "pkg/src/sum.mjs"), "export const sum = (a, b) => a + b;\n");
   fs.writeFileSync(path.join(repo, HIDDEN_TEST), HARNESS("expect(sum(2, 3)).toBe(5);"));
+  fs.mkdirSync(path.join(repo, "pkg/e2e"), { recursive: true });
+  fs.writeFileSync(path.join(repo, EXTRA_FILE), "export default 1;\n");
   git(repo, "add", "-A");
   git(repo, "commit", "-q", "-m", "fix");
   const fixRef = git(repo, "rev-parse", "HEAD");

@@ -44,7 +44,12 @@ function findNoiseCommit(o: Options): { sha: string; diff: string } | undefined 
     const touched = git(o.mirror, ["diff", "--name-only", `${sha}^`, sha, "--", o.case.packageDir])
       .split("\n")
       .filter(Boolean);
-    if (touched.length === 0 || touched.some((f) => o.case.sourceFiles.includes(f))) continue;
+    if (
+      touched.length === 0 ||
+      touched.some((f) => o.case.sourceFiles.includes(f) || o.case.testFiles.includes(f))
+    ) {
+      continue;
+    }
     const diff = gitRaw(o.mirror, ["diff", `${sha}^`, sha, "--", o.case.packageDir]);
     if (applies(o.workspace, diff, true)) return { sha, diff };
   }
@@ -70,7 +75,7 @@ export function buildReviewBranch(o: Options): string {
   const noise = findNoiseCommit(o);
   if (!noise)
     throw new Error(`No noise commit found after ${o.case.fixRef} in ${o.case.packageDir}`);
-  applies(o.workspace, noise.diff, false);
+  if (!applies(o.workspace, noise.diff, false)) throw new Error("Could not apply the noise commit");
 
   const subject = git(o.mirror, ["log", "-1", "--format=%s", noise.sha]);
   git(o.workspace, ["add", "-A"]);

@@ -7,12 +7,12 @@ import { checkHiddenTests } from "../scripts/check-hidden-tests.ts";
 import { checkLabels } from "../scripts/check-labels.ts";
 import { checkMentions } from "../scripts/check-mentions.ts";
 import { checkMutation } from "../scripts/check-mutation.ts";
-import { revertTests } from "../scripts/revert-tests.ts";
+import { revertFixExtras } from "../scripts/revert-tests.ts";
 import { readBaseline } from "../src/baseline.ts";
 import { testCommand } from "../src/cases.ts";
 import type { BugCase } from "../src/cases.ts";
 import { addCheck, GRADE_PATH, gradePasses, readGrade } from "../src/grade.ts";
-import { HIDDEN_TEST, workspaceWithFix } from "./helpers/workspace-with-fix.ts";
+import { EXTRA_FILE, HIDDEN_TEST, workspaceWithFix } from "./helpers/workspace-with-fix.ts";
 
 const tempDirs: string[] = [];
 const tempDir = (prefix: string): string => {
@@ -236,11 +236,11 @@ describe("checkLabels", () => {
   });
 });
 
-describe("revertTests", () => {
+describe("revertFixExtras", () => {
   it("restores the hidden test to its pre-fix contents and leaves a clean tree", () => {
     const { workspace, mirror, c } = workspaceWithFix(CASE, {});
     expect(fs.existsSync(path.join(workspace, HIDDEN_TEST))).toBe(true);
-    revertTests({ workspace, mirror, case: c });
+    revertFixExtras({ workspace, mirror, case: c });
     expect(fs.existsSync(path.join(workspace, HIDDEN_TEST))).toBe(false);
     const status = execFileSync("git", ["status", "--porcelain"], {
       cwd: workspace,
@@ -249,9 +249,17 @@ describe("revertTests", () => {
     expect(status).toBe("");
   });
 
+  it("also removes non-test files the fix added, and keeps the fixed source", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, {});
+    expect(fs.existsSync(path.join(workspace, EXTRA_FILE))).toBe(true);
+    revertFixExtras({ workspace, mirror, case: c });
+    expect(fs.existsSync(path.join(workspace, EXTRA_FILE))).toBe(false);
+    expect(fs.readFileSync(path.join(workspace, "pkg/src/sum.mjs"), "utf8")).toContain("a + b");
+  });
+
   it("moves the grading baseline past the revert", () => {
     const { workspace, mirror, c } = workspaceWithFix(CASE, {});
-    revertTests({ workspace, mirror, case: c });
+    revertFixExtras({ workspace, mirror, case: c });
     expect(readBaseline(workspace)).toBe(
       execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8" }).trim(),
     );

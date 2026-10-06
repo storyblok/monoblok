@@ -1,12 +1,32 @@
-import { execFileSync, execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { EVALS_DIR } from "../src/arms.ts";
 import { bugCase } from "../src/cases.ts";
 
-/** Paths that would hand the agent our skills regardless of arm. */
-const STRIPPED_PATHS = [".agents/skills", ".claude/skills", ".claude/agents", "claude-output"];
+/** Repo-relative paths, at any depth, that would hand the agent our skills or settings regardless of arm. */
+const STRIPPED_SUFFIXES = [
+  ".agents/skills",
+  ".claude/skills",
+  ".claude/agents",
+  ".claude/settings.json",
+  ".claude/settings.local.json",
+];
+const STRIPPED_ROOT_PATHS = ["claude-output"];
+
+function stripLeaks(dir: string, relative = ""): void {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const rel = relative ? `${relative}/${entry.name}` : entry.name;
+    const full = path.join(dir, entry.name);
+    if (STRIPPED_SUFFIXES.some((suffix) => rel === suffix || rel.endsWith(`/${suffix}`))) {
+      fs.rmSync(full, { recursive: true, force: true });
+    } else if (entry.isDirectory()) {
+      stripLeaks(full, rel);
+    }
+  }
+}
 
 export type PrepareWorkspaceOptions = {
   mirror: string;
@@ -25,8 +45,16 @@ export function prepareWorkspace({
   install,
 }: PrepareWorkspaceOptions): void {
   const message = git(mirror, ["log", "-1", "--format=%B", ref]);
-  execSync(`git -C "${mirror}" archive ${ref} | tar -x -C "${workspace}"`, { stdio: "inherit" });
-  for (const p of STRIPPED_PATHS)
+  const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), "archive-"));
+  try {
+    const archive = path.join(archiveDir, "tree.tar");
+    execFileSync("git", ["-C", mirror, "archive", "-o", archive, ref]);
+    execFileSync("tar", ["-xf", archive, "-C", workspace]);
+  } finally {
+    fs.rmSync(archiveDir, { recursive: true, force: true });
+  }
+  stripLeaks(workspace);
+  for (const p of STRIPPED_ROOT_PATHS)
     fs.rmSync(path.join(workspace, p), { recursive: true, force: true });
 
   git(workspace, ["init", "-q", "-b", "main"]);

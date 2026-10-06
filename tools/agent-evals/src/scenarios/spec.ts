@@ -12,13 +12,14 @@ function request(c: SpecCase): string {
 }
 
 const SAVE_INSTRUCTION = "Save it as a Markdown file in this repository.";
+const BARE_SAVE_INSTRUCTION = "Save it as a Markdown file under `claude-output/`.";
 
 function promptFor(arm: ArmName, requestText: string): string {
   if (armHasMonoblok(arm)) return `/spec ${requestText}`;
   if (arm === "superpowers") {
     return `/superpowers:brainstorming ${SAVE_INSTRUCTION}\n\n${requestText}`;
   }
-  return `Write a spec for this request, ready to hand to a developer. ${SAVE_INSTRUCTION}\n\n${requestText}`;
+  return `Write a spec for this request, ready to hand to a developer. ${BARE_SAVE_INSTRUCTION}\n\n${requestText}`;
 }
 
 export function specScenario(cases: readonly SpecCase[]): ScenarioInput {
@@ -51,7 +52,7 @@ export function specScenario(cases: readonly SpecCase[]): ScenarioInput {
             weight: 1,
           },
           {
-            check: "Questions to the requester were few, relevant, and answerable by them",
+            check: "Questions to the requester were relevant and answerable by them",
             weight: 2,
           },
           { check: "The spec does not prescribe internal implementation details", weight: 1 },

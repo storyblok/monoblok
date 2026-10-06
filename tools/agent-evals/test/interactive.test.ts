@@ -86,8 +86,13 @@ describe("interactive adapter", () => {
       simulatorFor: () => async () => "keep going",
     });
     const out = await adapter.run(input());
+    expect(MAX_TURNS).toBe(16);
     expect(calls).toHaveLength(MAX_TURNS);
     expect(out.result).toBe("done");
+    expect(out.metadata.exitCode).toBe(0);
+    expect(JSON.stringify(out.transcript.at(-1))).toContain(
+      "simulated user: turn limit reached (16)",
+    );
   });
 
   it("stops when a turn fails and reports that turn's error", async () => {

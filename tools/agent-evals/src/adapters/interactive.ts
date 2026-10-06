@@ -2,7 +2,7 @@ import type { AgentAdapter, AgentInput, AgentOutput, TranscriptEntry } from "@ne
 import { caseIdFromKey } from "../case-key.ts";
 import type { Simulate } from "./simulator.ts";
 
-export const MAX_TURNS = 8;
+export const MAX_TURNS = 16;
 export const DONE = "DONE";
 
 type InteractiveOptions = {
@@ -43,6 +43,7 @@ export function createInteractiveAdapter(
       let cost = 0;
       let durationMs = 0;
       let simulatorError: string | undefined;
+      let stoppedEarly = false;
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
         const resume = last?.metadata.sessionId;
@@ -54,7 +55,10 @@ export function createInteractiveAdapter(
         outputTokens += last.metadata.tokenUsage?.output ?? 0;
         cost += last.metadata.totalCostUsd ?? 0;
         durationMs += last.metadata.durationMs;
-        if (last.metadata.exitCode !== 0) break;
+        if (last.metadata.exitCode !== 0) {
+          stoppedEarly = true;
+          break;
+        }
 
         const agentMessage = last.result ?? "";
         history.push(`Agent: ${agentMessage}`);
@@ -64,14 +68,20 @@ export function createInteractiveAdapter(
           reply = await simulate({ brief, agentMessage, history });
         } catch (error) {
           simulatorError = error instanceof Error ? error.message : String(error);
+          stoppedEarly = true;
           break;
         }
         reply = reply.trim();
-        if (isDone(reply)) break;
+        if (isDone(reply)) {
+          stoppedEarly = true;
+          break;
+        }
         history.push(`User: ${reply}`);
         prompt = reply;
       }
 
+      if (!stoppedEarly)
+        transcript.push(userEntry(`simulated user: turn limit reached (${MAX_TURNS})`));
       if (!last) throw new Error("interactive adapter ran no turns");
       return {
         transcript,

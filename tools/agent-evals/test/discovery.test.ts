@@ -94,7 +94,7 @@ describe("spec profile", () => {
     expect(superpowers?.prompt).toContain("Save it as a Markdown file");
     const bare = scenarios.find((s) => s.key === "spec/spec@cli-stories-validate--bare");
     expect(bare?.prompt.startsWith("/")).toBe(false);
-    expect(bare?.prompt).toContain("Save it as a Markdown file");
+    expect(bare?.prompt).toContain("claude-output/");
   });
 
   it("keeps spec scenarios out of the default run", async () => {
@@ -105,7 +105,7 @@ describe("spec profile", () => {
 
 describe("judge criteria", () => {
   it.each([undefined, "skills", "spec", "cli"])(
-    "weights every criterion explicitly (profile %s)",
+    "weights every criterion explicitly so AXIS does not drop unweighted checks (profile %s)",
     async (profile) => {
       const { scenarios } = await discover(profile);
       expect(scenarios.length).toBeGreaterThan(0);

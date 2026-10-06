@@ -10,11 +10,16 @@ const config: AxisConfig = {
   agents: ARM_NAMES.map((name) => ({ agent: "claude-code-arm", name, model: EVAL_MODEL })),
   judging: { agents: [{ agent: "claude-code", model: EVAL_MODEL }] },
   env: ["STORYBLOK_SPACE_ID", "AGENT_EVALS_PNPM_STORE"],
+  exclude: ["spec/**"],
   settings: {
     concurrency: 3,
     limits: { scenario: { time_minutes: 30 } },
   },
   profiles: {
+    skills: {
+      include: ["skills/**"],
+      settings: { concurrency: 3, limits: { scenario: { time_minutes: 40 } } },
+    },
     cli: {
       include: ["cli/**"],
       agents: [{ agent: "claude-code-arm", name: "bare", model: EVAL_MODEL }],

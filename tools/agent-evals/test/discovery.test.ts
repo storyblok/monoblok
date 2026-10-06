@@ -26,3 +26,47 @@ describe("arms", () => {
     expect(config.judging?.agents).toEqual([{ agent: "claude-code", model: "claude-opus-5-5" }]);
   });
 });
+
+describe("skills profile", () => {
+  it("has one scenario per skill and case, all parallel-safe", async () => {
+    const { config, scenarios } = await discover("skills");
+    expect(config.settings?.concurrency).toBe(3);
+    expect(scenarios.map((s) => s.key).sort()).toEqual(
+      [
+        "skills/investigate@cli-single-option-empty-type",
+        "skills/investigate@js-client-strip-version-mapi",
+        "skills/investigate@richtext-vue-slot-warning",
+        "skills/plan-implement@cli-single-option-empty-type",
+        "skills/plan-implement@js-client-strip-version-mapi",
+        "skills/plan-implement@richtext-styled-link-shattered",
+        "skills/qa-engineer-unit@astro-circular-dependency-tdz",
+        "skills/qa-engineer-unit@cli-components-push-preview-tmpl",
+        "skills/qa-engineer-unit@js-client-filter-query-brackets",
+        "skills/review-and-qa@cli-components-push-preview-tmpl",
+        "skills/review-and-qa@react-rsc-bridge-exports",
+        "skills/review-and-qa@richtext-vue-slot-warning",
+        "skills/triage@astro-circular-dependency-tdz",
+        "skills/triage@cli-components-push-preview-tmpl",
+        "skills/triage@js-client-filter-query-brackets",
+        "skills/triage@js-client-strip-version-mapi",
+      ].sort(),
+    );
+    for (const s of scenarios) {
+      expect(s.artifacts).toContain(".agent-evals/grade.json");
+      expect(s.setup?.[0]).toMatchObject({ action: "run_script" });
+    }
+  });
+
+  it("keeps skill scenarios out of the cli profile", async () => {
+    const { scenarios } = await discover("cli");
+    expect(scenarios.every((s) => s.key.startsWith("cli/"))).toBe(true);
+  });
+
+  it("skips the dependency install when a scenario only reads source", async () => {
+    const { scenarios } = await discover("skills");
+    const setupOf = (key: string): string =>
+      JSON.stringify(scenarios.find((s) => s.key === key)?.setup);
+    expect(setupOf("skills/triage@cli-components-push-preview-tmpl")).toContain("--no-install");
+    expect(setupOf("skills/investigate@richtext-vue-slot-warning")).not.toContain("--no-install");
+  });
+});

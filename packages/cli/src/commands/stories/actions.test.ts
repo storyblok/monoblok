@@ -427,6 +427,32 @@ describe("stories/actions", () => {
       expect(result.bySlug.get("s3")).toHaveLength(1);
     });
 
+    it("should keep request URLs within CDN limits when slugs are long", async () => {
+      const CLOUDFRONT_MAX_URL_LENGTH = 8192;
+      const slugs = Array.from(
+        { length: 100 },
+        (_, i) =>
+          `legacy-content-migration-with-a-long-folder-name/deeply/nested/section/page-with-a-descriptive-slug-${i}`,
+      );
+      const urlLengths: number[] = [];
+      const queriedSlugs: string[] = [];
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
+          urlLengths.push(request.url.length);
+          queriedSlugs.push(
+            ...(new URL(request.url).searchParams.get("by_slugs")?.split(",") ?? []),
+          );
+          return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+        }),
+      );
+
+      await prefetchTargetStoriesByKeys(space, { slugs, ids: [] });
+
+      expect(urlLengths.length).toBeGreaterThan(1);
+      expect(Math.max(...urlLengths)).toBeLessThan(CLOUDFRONT_MAX_URL_LENGTH);
+      expect(queriedSlugs.toSorted()).toEqual(slugs.toSorted());
+    });
+
     it("deduplicates a story returned by both slug and id queries", async () => {
       const remote = buildRemoteStory({ id: 42, uuid: "uuid-42", full_slug: "shared" });
 

@@ -8,7 +8,7 @@ import type {
 } from "./constants";
 import { normalizeFullSlug } from "./constants";
 import { getMapiClient } from "../../api";
-import { chunk } from "../../utils/array";
+import { chunk, chunkByWeight } from "../../utils/array";
 import { handleAPIError } from "../../utils/error/api-error";
 
 /**
@@ -150,9 +150,13 @@ export const updateStory = async (
 
 // 100 keys per chunk: matches MAPI's `per_page=100` so id queries fill a page
 // exactly (1 result per id) and slug queries paginate when folder + startpage
-// pairs push the result count above one page. At ~30 char slugs, 100 entries
-// ≈ 3 KB — well below typical URL length limits.
+// pairs push the result count above one page.
 const PREFETCH_CHUNK_SIZE = 100;
+// The MAPI CDN rejects URLs above ~8 KB with a 414. Long, deeply nested slugs
+// reach that well before 100 entries, so slug chunks are also capped by their
+// encoded length, leaving headroom for the path and the other query params.
+const PREFETCH_MAX_ENCODED_SLUGS_LENGTH = 6000;
+const ENCODED_SEPARATOR_LENGTH = encodeURIComponent(",").length;
 const PREFETCH_PER_PAGE = 100;
 
 const addRef = (result: ExistingTargetStories, story: Story): void => {
@@ -241,7 +245,11 @@ export const prefetchTargetStoriesByKeys = async (
     return result;
   }
 
-  const slugChunks = chunk(slugSet, PREFETCH_CHUNK_SIZE);
+  const slugChunks = chunkByWeight(slugSet, {
+    maxSize: PREFETCH_CHUNK_SIZE,
+    maxWeight: PREFETCH_MAX_ENCODED_SLUGS_LENGTH,
+    weightOf: (slug) => encodeURIComponent(slug).length + ENCODED_SEPARATOR_LENGTH,
+  });
   const idChunks = chunk(idSet, PREFETCH_CHUNK_SIZE);
 
   const requests: Array<Promise<void>> = [];

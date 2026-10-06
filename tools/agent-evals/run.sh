@@ -36,6 +36,10 @@ fi
 cd "${evals_dir}"
 node "${evals_dir}/scripts/prepare-arms.ts"
 bash "${evals_dir}/scripts/ensure-mirror.sh"
-AGENT_EVALS_PNPM_STORE="$(pnpm store path)"
-export AGENT_EVALS_PNPM_STORE
+# Setup scripts and agents install into the store the repo's own install used, so they start warm.
+# `pnpm store path` can name a different store when the global pnpm is newer than the repo's.
+modules_yaml="${repo_root}/node_modules/.modules.yaml"
+npm_config_store_dir="$(sed -n 's/^storeDir: //p' "${modules_yaml}" 2>/dev/null || true)"
+if [ -z "${npm_config_store_dir}" ]; then npm_config_store_dir="$(pnpm store path)"; fi
+export npm_config_store_dir
 exec pnpm exec axis run "$@"

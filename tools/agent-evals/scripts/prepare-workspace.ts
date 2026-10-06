@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -39,6 +39,37 @@ export type PrepareWorkspaceOptions = {
 const git = (cwd: string, args: string[]): string =>
   execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 
+const INSTALL_LOG_TAIL_LINES = 40;
+
+// The install and build path needs a real pnpm install; `run.sh` exercises it, not unit tests.
+function installDependencies(workspace: string, packageName: string, storeDir?: string): void {
+  const store = storeDir ? ["--store-dir", storeDir] : [];
+  const args = [
+    "install",
+    "--frozen-lockfile",
+    "--prefer-offline",
+    "--reporter=append-only",
+    "--filter",
+    `${packageName}...`,
+    ...store,
+  ];
+  const logPath = path.join(workspace, ".agent-evals", "install.log");
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  let output = "";
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const result = spawnSync("pnpm", args, {
+      cwd: workspace,
+      encoding: "utf8",
+      env: { ...process.env, CI: "1" },
+    });
+    output += `--- attempt ${attempt} (exit ${result.status}) ---\n${result.stdout}${result.stderr}\n`;
+    fs.writeFileSync(logPath, output);
+    if (result.status === 0) return;
+  }
+  const tail = output.trimEnd().split("\n").slice(-INSTALL_LOG_TAIL_LINES).join("\n");
+  throw new Error(`pnpm install failed twice in ${workspace}. Last log lines:\n${tail}`);
+}
+
 export function prepareWorkspace({
   mirror,
   ref,
@@ -74,19 +105,7 @@ export function prepareWorkspace({
   recordBaseline(workspace);
 
   if (install) {
-    const store = install.storeDir ? ["--store-dir", install.storeDir] : [];
-    execFileSync(
-      "pnpm",
-      [
-        "install",
-        "--frozen-lockfile",
-        "--prefer-offline",
-        "--filter",
-        `${install.packageName}...`,
-        ...store,
-      ],
-      { cwd: workspace, stdio: "inherit", env: { ...process.env, CI: "1" } },
-    );
+    installDependencies(workspace, install.packageName, install.storeDir);
     const dependencies = `${install.packageName}^...`;
     const buildEnv = { ...process.env, NX_DAEMON: "false", NX_NO_CLOUD: "true" };
     const run = (script: string[]): void => {

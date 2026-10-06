@@ -1,4 +1,0 @@
-{
-  "extends": "../ssr/tsconfig.json",
-  "include": ["./**/*"]
-}

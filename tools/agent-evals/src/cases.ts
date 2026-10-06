@@ -131,9 +131,11 @@ export function bugCase(id: string): BugCase {
   return found;
 }
 
+const shellQuote = (value: string): string => `'${value.replaceAll("'", `'\\''`)}'`;
+
 /** Runs `files` (repo-relative) with the package's test runner, from the repo root. */
 export function testCommand(c: BugCase, files: string[]): string {
-  const relative = files.map((f) => f.slice(c.packageDir.length + 1)).join(" ");
+  const relative = files.map((f) => shellQuote(f.slice(c.packageDir.length + 1))).join(" ");
   const run = c.testRunner === "vp" ? "vp test run" : "vitest run";
   return `pnpm --filter ${c.packageName} exec ${run} ${relative}`;
 }

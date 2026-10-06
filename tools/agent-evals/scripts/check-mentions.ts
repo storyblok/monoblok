@@ -12,12 +12,12 @@ export function checkMentions(ctx: { workspace: string; case: BugCase; file: str
     return { name: "names-fix-location", pass: false, detail: `${ctx.file} missing` };
   }
   const text = fs.readFileSync(report, "utf8");
-  const names = ctx.case.sourceFiles.map((f) => path.basename(f).replace(/\.[^.]+$/, ""));
-  const hit = names.find((n) => text.includes(n));
+  const paths = ctx.case.sourceFiles.map((f) => path.posix.relative(ctx.case.packageDir, f));
+  const hit = paths.find((p) => text.includes(p));
   return {
     name: "names-fix-location",
     pass: hit !== undefined,
-    detail: hit ?? `none of ${names.join(", ")}`,
+    detail: hit ?? `none of ${paths.join(", ")}`,
   };
 }
 

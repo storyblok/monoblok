@@ -15,17 +15,21 @@ import { stripRoutingFrontmatter } from "../src/frontmatter.ts";
 
 type PrepareArmsOptions = { sourceRoot?: string; outRoot?: string; skipSuperpowers?: boolean };
 
+function stripMarkdownFiles(dir: string, filter?: (name: string) => boolean): void {
+  for (const entry of fs.readdirSync(dir, { recursive: true, withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".md") && (!filter || filter(entry.name))) {
+      const file = path.join(entry.parentPath, entry.name);
+      fs.writeFileSync(file, stripRoutingFrontmatter(fs.readFileSync(file, "utf8")));
+    }
+  }
+}
+
 function copySkills(from: string, to: string): void {
   fs.cpSync(from, to, {
     recursive: true,
     filter: (src) => !src.includes(`${path.sep}node_modules`),
   });
-  for (const entry of fs.readdirSync(to, { recursive: true, withFileTypes: true })) {
-    if (entry.isFile() && entry.name === "SKILL.md") {
-      const file = path.join(entry.parentPath, entry.name);
-      fs.writeFileSync(file, stripRoutingFrontmatter(fs.readFileSync(file, "utf8")));
-    }
-  }
+  stripMarkdownFiles(to, (name) => name === "SKILL.md");
 }
 
 function ensureSuperpowers(): void {
@@ -52,9 +56,11 @@ export async function prepareArms(options: PrepareArmsOptions = {}): Promise<voi
     fs.mkdirSync(dir, { recursive: true });
     if (!armHasMonoblok(arm)) continue;
     copySkills(path.join(sourceRoot, ".agents/skills"), path.join(dir, "skills"));
-    fs.cpSync(path.join(sourceRoot, ".claude/agents"), path.join(dir, "agents"), {
+    const agentsDir = path.join(dir, "agents");
+    fs.cpSync(path.join(sourceRoot, ".claude/agents"), agentsDir, {
       recursive: true,
     });
+    stripMarkdownFiles(agentsDir);
   }
   if (!options.skipSuperpowers) ensureSuperpowers();
 }

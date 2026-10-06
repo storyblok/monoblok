@@ -30,10 +30,20 @@ The QA route is available at `https://localhost:4200/`, with `/live-preview` and
 `STORYBLOK_PREVIEW_TOKEN` is required for local startup; source `.env.qa-engineer-manual` before
 starting the app.
 
+## Run a build
+
+```bash
+pnpm --filter @storyblok/angular-integration-tests build
+NG_ALLOWED_HOSTS=localhost node dist/integration-tests/server/server.mjs
+```
+
+`@angular/ssr` rejects requests whose `Host` header isn't in its allow list, so `NG_ALLOWED_HOSTS`
+is required — without it every route responds `400 Bad Request`.
+
 ## Seed fixtures
 
-See [the QA scenario seed command](../../../test/visual-editor/README.md#scenario-seeds), run from
-the repository root.
+See [the QA scenario seed command](../../test/visual-editor/README.md#scenario-seeds), run from the
+repository root.
 
 Do not commit access tokens or generated runtime configuration.
 

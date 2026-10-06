@@ -45,7 +45,6 @@ export class HomeComponent implements OnInit {
   readonly storyContent = computed(() => this.story()?.content as SbBlokData | undefined);
 
   private readonly bridgeConfig: BridgeParams = {
-    resolveRelations: ["featured-articles.articles", "article.author"],
     preventClicks: true,
   };
 

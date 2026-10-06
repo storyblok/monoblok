@@ -1,4 +1,4 @@
-import { ApplicationRef, Component, input, PendingTasks, signal, Type } from "@angular/core";
+import { ApplicationRef, Component, input, signal, Type } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { SbBlokDirective } from "./sb-blok.directive";
 import { StoryblokComponentResolver } from "./sb-blok.feature";
@@ -172,33 +172,12 @@ describe("SbBlokDirective", () => {
     expect(fixture.nativeElement.querySelector("h1").textContent).toBe("SSR");
   });
 
-  it("routes async component resolution through PendingTasks so SSR waits for it", async () => {
-    // Component resolution is a dynamic `import()`, invisible to Angular's
-    // stability/SSR-serialization tracking unless it goes through
-    // `PendingTasks.run`. Without that, SSR can serialize the response
-    // before a lazily-loaded child component has resolved, silently
-    // dropping it from the rendered HTML.
-    const pendingTasks = TestBed.inject(PendingTasks);
-    const runSpy = vi.spyOn(pendingTasks, "run");
-
-    fixture.componentInstance.blok.set({
-      _uid: "1",
-      component: "teaser",
-      headline: "Hello world!",
-    });
-
-    await waitForRender();
-
-    expect(runSpy).toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelector("h1").textContent).toBe("Hello world!");
-  });
-
   it("blocks application stability until the lazily-resolved component has rendered", async () => {
-    // Pins down the guarantee behind the PendingTasks test above: a lazy
-    // loader that resolves late must keep the app unstable until its
-    // component is in the DOM. `pendingTasks.run` being called is not
-    // enough on its own — the callback passed to it must also await the
-    // render, or the pending task completes before the component exists.
+    // Component resolution is a dynamic `import()`, invisible to Angular's
+    // stability/SSR-serialization tracking unless it is wrapped in
+    // `PendingTasks.run`. A lazy loader that resolves late must keep the app
+    // unstable until its component is in the DOM, or SSR can serialize the
+    // response before it renders, silently dropping it from the output.
     let resolveComponent!: (component: Type<unknown>) => void;
     const deferred = new Promise<Type<unknown>>((resolve) => {
       resolveComponent = resolve;

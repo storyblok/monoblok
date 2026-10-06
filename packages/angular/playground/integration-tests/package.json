@@ -14,8 +14,7 @@
   },
   "dependencies": {
     "@storyblok/angular": "workspace:*",
-    "@storyblok/api-client": "workspace:*",
-    "@storyblok/schema": "workspace:*"
+    "@storyblok/api-client": "workspace:*"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",

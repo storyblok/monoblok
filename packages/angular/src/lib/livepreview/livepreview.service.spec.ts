@@ -245,7 +245,8 @@ describe("LivePreviewService", () => {
       onStoryblokEditorEventMock.mockRejectedValue(bridgeError);
       const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const { ref } = makeDestroyRef();
+      const unregister = vi.fn();
+      const ref = { onDestroy: vi.fn().mockReturnValue(unregister) } as unknown as DestroyRef;
       const cleanup = await service.connect(() => {}, ref);
 
       expect(cleanup).toEqual(expect.any(Function));
@@ -254,6 +255,10 @@ describe("LivePreviewService", () => {
         "[Storyblok] connect() failed to subscribe to live preview updates:",
         bridgeError,
       );
+      // The onDestroy hook registered before the subscribe attempt must not
+      // linger once it has failed — otherwise it fires again, harmlessly but
+      // needlessly, whenever the component is later destroyed.
+      expect(unregister).toHaveBeenCalledOnce();
     });
 
     it("treats context as already destroyed and never touches the shared bridge when DestroyRef.onDestroy() throws (NG0911)", async () => {

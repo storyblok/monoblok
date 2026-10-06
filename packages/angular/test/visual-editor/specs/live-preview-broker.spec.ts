@@ -221,6 +221,14 @@ for (const [scenario, description] of scenarios) {
     const state = await getBrokerState(page);
     expect(state.active).toEqual(expectedSubscribers[scenario]);
 
+    // The playground is `OnPush`; active subscribers are tracked in plain
+    // fields read only by `state()`, not the template, so this catches a
+    // view that never re-renders after the `await` inside subscribe()
+    // settles, something `state()` alone cannot see.
+    await expect(editor.preview.locator('[data-testid="broker-qa-active"]')).toHaveText(
+      expectedSubscribers[scenario].join(", ") || "none",
+    );
+
     // One bridge per page, whatever the number of subscribers. This is what
     // separates the broker from one-bridge-per-subscriber on `main`.
     await expect.poll(() => messageListenerCount(page)).toBe(listenersBeforeSubscribing + 1);
@@ -264,6 +272,26 @@ test("keeps the remaining subscriber alive and supports re-subscription", async 
   expect((await getBrokerState(page)).active).toEqual(["B"]);
   await expect.poll(() => messageListenerCount(page)).toBe(listenersBeforeSubscribing + 1);
   await editArticleTitle(page, editor, { fanOut: ["B"], resolved: ["B"] });
+});
+
+test("resolves a pending `delayed` run as soon as it is cleared", async ({ page, request }) => {
+  const editor = new StoryblokEditor(page, QA_CONFIG);
+  await editor.openStory(await resolveStoryId(QA_CONFIG, request, "live-preview"));
+  const frame = await getPreviewFrame(page);
+
+  // `delayed` awaits a 3s timer before subscribing B. `run()` must settle as
+  // soon as `clear()` runs, not 3s later — the bug this guards against left
+  // that promise permanently pending once the scenario was cleared early.
+  const elapsedMs = await frame.evaluate(async () => {
+    const start = Date.now();
+    const run = window.__storyblokBrokerQa!.run("delayed");
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    window.__storyblokBrokerQa!.clear();
+    await run;
+    return Date.now() - start;
+  });
+
+  expect(elapsedMs).toBeLessThan(3000);
 });
 
 test.describe("connect() (non-QA) path", () => {

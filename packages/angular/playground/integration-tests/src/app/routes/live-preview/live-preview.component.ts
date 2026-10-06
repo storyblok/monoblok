@@ -65,8 +65,9 @@ const QA_STORAGE_KEY = "storyblok-live-preview-qa";
             <button type="button" (click)="clearSubscriber('B')">Clear B</button>
           </div>
           <p>
-            Active: {{ activeSubscribers() || "none" }} | Updates A: {{ updatesA() }} | Updates B:
-            {{ updatesB() }}
+            Active:
+            <span data-testid="broker-qa-active">{{ activeSubscribers() || "none" }}</span> |
+            Updates A: {{ updatesA() }} | Updates B: {{ updatesB() }}
           </p>
         </section>
       }
@@ -97,9 +98,9 @@ export class LivePreviewComponent {
     { value: "delayed", label: "A then B after 3s" },
   ] as const;
 
-  private cleanupA?: () => void;
-  private cleanupB?: () => void;
-  private delayedSubscription?: ReturnType<typeof setTimeout>;
+  private readonly cleanupA = signal<(() => void) | undefined>(undefined);
+  private readonly cleanupB = signal<(() => void) | undefined>(undefined);
+  private delayedSubscription?: { timeout: ReturnType<typeof setTimeout>; resolve: () => void };
   private scenarioVersion = 0;
   private readonly subscriberAOptions: BridgeParams = {
     resolveRelations: ["featured-articles.articles"],
@@ -140,7 +141,7 @@ export class LivePreviewComponent {
       clearA: () => this.clearSubscriber("A"),
       clearB: () => this.clearSubscriber("B"),
       state: () => ({
-        active: [this.cleanupA && "A", this.cleanupB && "B"].filter(
+        active: [this.cleanupA() && "A", this.cleanupB() && "B"].filter(
           (subscriber): subscriber is string => Boolean(subscriber),
         ),
         updatesA: this.updatesA(),
@@ -181,10 +182,13 @@ export class LivePreviewComponent {
       case "delayed":
         await this.subscribeA();
         await new Promise<void>((resolve) => {
-          this.delayedSubscription = setTimeout(() => {
-            this.delayedSubscription = undefined;
-            resolve();
-          }, 3000);
+          this.delayedSubscription = {
+            resolve,
+            timeout: setTimeout(() => {
+              this.delayedSubscription = undefined;
+              resolve();
+            }, 3000),
+          };
         });
         if (scenarioVersion !== this.scenarioVersion) return;
         await this.subscribeB();
@@ -197,29 +201,32 @@ export class LivePreviewComponent {
   }
 
   activeSubscribers(): string {
-    return [this.cleanupA && "A", this.cleanupB && "B"]
+    return [this.cleanupA() && "A", this.cleanupB() && "B"]
       .filter((subscriber): subscriber is string => Boolean(subscriber))
       .join(", ");
   }
 
   clearSubscriptions(): void {
     this.scenarioVersion += 1;
-    if (this.delayedSubscription) clearTimeout(this.delayedSubscription);
-    this.delayedSubscription = undefined;
-    this.cleanupA?.();
-    this.cleanupB?.();
-    this.cleanupA = undefined;
-    this.cleanupB = undefined;
+    if (this.delayedSubscription) {
+      clearTimeout(this.delayedSubscription.timeout);
+      this.delayedSubscription.resolve();
+      this.delayedSubscription = undefined;
+    }
+    this.cleanupA()?.();
+    this.cleanupB()?.();
+    this.cleanupA.set(undefined);
+    this.cleanupB.set(undefined);
   }
 
   clearSubscriber(subscriber: "A" | "B"): void {
     this.scenarioVersion += 1;
     if (subscriber === "A") {
-      this.cleanupA?.();
-      this.cleanupA = undefined;
+      this.cleanupA()?.();
+      this.cleanupA.set(undefined);
     } else {
-      this.cleanupB?.();
-      this.cleanupB = undefined;
+      this.cleanupB()?.();
+      this.cleanupB.set(undefined);
     }
   }
 
@@ -233,7 +240,7 @@ export class LivePreviewComponent {
       cleanup();
       return;
     }
-    this.cleanupA = cleanup;
+    this.cleanupA.set(cleanup);
   }
 
   private async subscribeB(): Promise<void> {
@@ -246,6 +253,6 @@ export class LivePreviewComponent {
       cleanup();
       return;
     }
-    this.cleanupB = cleanup;
+    this.cleanupB.set(cleanup);
   }
 }

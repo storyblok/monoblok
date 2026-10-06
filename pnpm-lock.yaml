@@ -256,9 +256,6 @@ importers:
       '@storyblok/api-client':
         specifier: workspace:*
         version: link:../../../capi-client
-      '@storyblok/schema':
-        specifier: workspace:*
-        version: link:../../../schema
     devDependencies:
       '@storyblok/lint-config':
         specifier: workspace:*

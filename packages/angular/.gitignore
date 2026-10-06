@@ -32,8 +32,11 @@ yarn-error.log
 # Miscellaneous
 /.angular/cache
 .sass-cache/
+/test-results/
+/test/visual-editor/test-results/
 /connect.lock
 /coverage
+/playground/integration-tests/public/storyblok-runtime-config.js
 /libpeerconnection.log
 testem.log
 /typings

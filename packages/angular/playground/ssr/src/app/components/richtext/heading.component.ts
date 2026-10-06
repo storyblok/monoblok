@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
-import { type SbAngularRichTextProps, SbRichTextComponent } from "@storyblok/angular";
+import { type StoryblokAngularRichTextProps, SbRichTextComponent } from "@storyblok/angular";
 
 /**
  * Custom heading component demonstrating dynamic heading levels.
@@ -34,7 +34,7 @@ import { type SbAngularRichTextProps, SbRichTextComponent } from "@storyblok/ang
   imports: [SbRichTextComponent],
 })
 export class HeadingComponent {
-  readonly data = input.required<SbAngularRichTextProps<"heading">>();
+  readonly data = input.required<StoryblokAngularRichTextProps<"heading">>();
 
   /** Extract the heading level (1-6) from attrs, defaulting to 1 */
   readonly level = computed(() => this.data().attrs?.level ?? 1);

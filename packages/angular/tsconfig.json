@@ -36,6 +36,12 @@
       "path": "./playground/ssr/tsconfig.spec.json"
     },
     {
+      "path": "./playground/integration-tests/tsconfig.app.json"
+    },
+    {
+      "path": "./playground/integration-tests/tsconfig.server.json"
+    },
+    {
       "path": "./playground/app/tsconfig.app.json"
     },
     {

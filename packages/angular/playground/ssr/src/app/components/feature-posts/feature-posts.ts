@@ -29,9 +29,4 @@ export interface FeaturePostsBlok {
 })
 export class FeaturePostsComponent {
   readonly blok = input.required<FeaturePostsBlok>();
-
-  ngOnInit() {
-    console.log(this.blok());
-    // console.log('blok value:', this.blok());
-  }
 }

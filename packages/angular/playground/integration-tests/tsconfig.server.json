@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "outDir": "../../out-tsc/integration-tests-server"
+  },
+  "include": ["src/main.server.ts", "src/server.ts"]
+}

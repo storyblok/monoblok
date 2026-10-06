@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ScenarioInput } from "@netlify/axis";
+import type { ArmName } from "../arms.ts";
 import { ARM_NAMES, EVALS_DIR, armHasMonoblok } from "../arms.ts";
 import { variantName } from "../case-key.ts";
 import type { SpecCase } from "../spec-cases.ts";
@@ -8,6 +9,16 @@ import { script } from "./shared.ts";
 
 function request(c: SpecCase): string {
   return fs.readFileSync(path.join(EVALS_DIR, "fixtures/requests", `${c.id}.md`), "utf8").trim();
+}
+
+const SAVE_INSTRUCTION = "Save it as a Markdown file in this repository.";
+
+function promptFor(arm: ArmName, requestText: string): string {
+  if (armHasMonoblok(arm)) return `/spec ${requestText}`;
+  if (arm === "superpowers") {
+    return `/superpowers:brainstorming ${SAVE_INSTRUCTION}\n\n${requestText}`;
+  }
+  return `Write a spec for this request, ready to hand to a developer. ${SAVE_INSTRUCTION}\n\n${requestText}`;
 }
 
 export function specScenario(cases: readonly SpecCase[]): ScenarioInput {
@@ -27,9 +38,7 @@ export function specScenario(cases: readonly SpecCase[]): ScenarioInput {
             command: script("prepare-workspace.ts", `--ref ${c.preFixRef}`),
           },
         ],
-        prompt: armHasMonoblok(arm)
-          ? `/spec ${request(c)}`
-          : `Write a spec for this request, ready to hand to a developer. Save it as a Markdown file in this repository.\n\n${request(c)}`,
+        prompt: promptFor(arm, request(c)),
         judge: [
           {
             check:

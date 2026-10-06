@@ -12,10 +12,11 @@ export default {
       check: "A TypeScript schema file defines an `article` component marked as a content type",
       weight: 2,
     },
-    { check: "`article` has a `title` text field marked required" },
-    { check: "`article` has a `body` rich text field" },
+    { check: "`article` has a `title` text field marked required", weight: 1 },
+    { check: "`article` has a `body` rich text field", weight: 1 },
     {
       check: "`article` has a `tags` multi-options field with the options news, guide, and release",
+      weight: 1,
     },
     {
       check: "Running `storyblok schema validate` on the entry file exits successfully",

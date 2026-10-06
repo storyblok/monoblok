@@ -18,8 +18,8 @@ export default {
       check: "The `hero` component in the space was updated with a `subtitle` field of type text",
       weight: 2,
     },
-    { check: "The `subtitle` field is marked required" },
-    { check: "The existing fields of `hero` were preserved" },
-    { check: "The agent verified the change against the space after applying it" },
+    { check: "The `subtitle` field is marked required", weight: 1 },
+    { check: "The existing fields of `hero` were preserved", weight: 1 },
+    { check: "The agent verified the change against the space after applying it", weight: 1 },
   ],
 };

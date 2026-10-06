@@ -10,6 +10,11 @@ type InteractiveOptions = {
   simulatorFor: (input: AgentInput) => Simulate;
 };
 
+function isDone(reply: string): boolean {
+  const normalized = reply.replace(/^[\s`*"'.!]+|[\s`*"'.!]+$/g, "");
+  return normalized === "" || normalized.toUpperCase() === DONE;
+}
+
 function userEntry(text: string): TranscriptEntry {
   return {
     type: "user",
@@ -37,6 +42,7 @@ export function createInteractiveAdapter(
       let outputTokens = 0;
       let cost = 0;
       let durationMs = 0;
+      let simulatorError: string | undefined;
 
       for (let turn = 0; turn < MAX_TURNS; turn++) {
         const resume = last?.metadata.sessionId;
@@ -52,9 +58,16 @@ export function createInteractiveAdapter(
 
         const agentMessage = last.result ?? "";
         history.push(`Agent: ${agentMessage}`);
-        simulate ??= options.simulatorFor(input);
-        const reply = (await simulate({ brief, agentMessage, history })).trim();
-        if (reply === DONE) break;
+        let reply: string;
+        try {
+          simulate ??= options.simulatorFor(input);
+          reply = await simulate({ brief, agentMessage, history });
+        } catch (error) {
+          simulatorError = error instanceof Error ? error.message : String(error);
+          break;
+        }
+        reply = reply.trim();
+        if (isDone(reply)) break;
         history.push(`User: ${reply}`);
         prompt = reply;
       }
@@ -65,6 +78,7 @@ export function createInteractiveAdapter(
         result: last.result,
         metadata: {
           ...last.metadata,
+          ...(simulatorError && { exitCode: 1, error: `simulator: ${simulatorError}` }),
           startTime,
           endTime: new Date().toISOString(),
           durationMs,

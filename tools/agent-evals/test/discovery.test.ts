@@ -76,3 +76,25 @@ describe("skills profile", () => {
     expect(triage?.prompt).toContain("pkg: storyblok-js-client");
   });
 });
+
+describe("spec profile", () => {
+  it("gives the monoblok arms /spec and the others the plain request, on the interactive adapter", async () => {
+    const { config, scenarios } = await discover("spec");
+    const agents = config.agents.map((a) => (typeof a === "string" ? { agent: a } : a));
+    expect(new Set(agents.map((a) => a.agent))).toEqual(new Set(["claude-code-interactive"]));
+    expect(scenarios).toHaveLength(2 * 4);
+    const monoblok = scenarios.find((s) => s.key === "spec/spec@cli-stories-validate--monoblok");
+    const superpowers = scenarios.find(
+      (s) => s.key === "spec/spec@cli-stories-validate--superpowers",
+    );
+    expect(monoblok?.agents).toEqual(["monoblok"]);
+    expect(monoblok?.prompt.startsWith("/spec ")).toBe(true);
+    expect(superpowers?.agents).toEqual(["superpowers"]);
+    expect(superpowers?.prompt.startsWith("/spec")).toBe(false);
+  });
+
+  it("keeps spec scenarios out of the default run", async () => {
+    const { scenarios } = await discover();
+    expect(scenarios.some((s) => s.key.startsWith("spec/"))).toBe(false);
+  });
+});

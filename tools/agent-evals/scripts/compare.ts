@@ -23,7 +23,7 @@ type RunMetrics = {
 
 type Group = { skill: string; arm: string; hasObjectiveChecks: boolean; runs: RunMetrics[] };
 
-const UNGRADED_SCENARIO_PREFIXES = ["cli/"];
+const UNGRADED_SCENARIO_PREFIXES = ["cli/", "spec/"];
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null

@@ -109,4 +109,29 @@ describe("interactive adapter", () => {
     expect(out.metadata.exitCode).toBe(1);
     expect(out.metadata.error).toBe("boom");
   });
+
+  it("keeps earlier turns and reports an error when the simulator fails", async () => {
+    const calls: AgentInput[] = [];
+    const adapter = createInteractiveAdapter(scriptedInner(["Which flags?"], calls), {
+      briefFor: () => "",
+      simulatorFor: () => async () => {
+        throw new Error("spawn failed");
+      },
+    });
+    const out = await adapter.run(input());
+    expect(out.transcript).toHaveLength(1);
+    expect(out.metadata.tokenUsage).toEqual({ input: 100, output: 10 });
+    expect(out.metadata.exitCode).toBe(1);
+    expect(out.metadata.error).toBe("simulator: spawn failed");
+  });
+
+  it.each(["", "DONE.", "`DONE`", " done \n"])("treats %j as DONE", async (reply) => {
+    const calls: AgentInput[] = [];
+    const adapter = createInteractiveAdapter(scriptedInner(["Spec written."], calls), {
+      briefFor: () => "",
+      simulatorFor: () => async () => reply,
+    });
+    await adapter.run(input());
+    expect(calls).toHaveLength(1);
+  });
 });

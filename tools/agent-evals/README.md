@@ -10,12 +10,11 @@ subscription. The results decide which skills to keep, rewrite, or delete.
 Each scenario gives an agent a task in an isolated workspace and grades the result. The same task
 runs once per arm:
 
-| Arm                    | Skills and agents                         |
-| ---------------------- | ----------------------------------------- |
-| `bare`                 | none                                      |
-| `monoblok`             | `.agents/skills/*` and `.claude/agents/*` |
-| `superpowers`          | superpowers v6.4.1, loaded as a plugin    |
-| `monoblok-superpowers` | both                                      |
+| Arm           | Skills and agents                         |
+| ------------- | ----------------------------------------- |
+| `bare`        | none                                      |
+| `monoblok`    | `.agents/skills/*` and `.claude/agents/*` |
+| `superpowers` | superpowers v6.4.1, loaded as a plugin    |
 
 All arms use `claude-opus-5-5`. The copied skills and agents have `model` and `effort` stripped from
 their frontmatter, so arms differ in content only, not in model routing. The judge also uses
@@ -25,8 +24,8 @@ Three profiles select the scenarios:
 
 | Profile  | Scenarios                                                                                         | Concurrency |
 | -------- | ------------------------------------------------------------------------------------------------- | ----------- |
-| `skills` | 16 cases × 4 arms: `investigate`, `qa-engineer-unit`, `plan-implement`, `review-and-qa`, `triage` | 3           |
-| `spec`   | 2 cases × 4 arms, answered by a simulated user                                                    | 3           |
+| `skills` | 16 cases × 3 arms: `investigate`, `qa-engineer-unit`, `plan-implement`, `review-and-qa`, `triage` | 3           |
+| `spec`   | 2 cases × 3 arms, answered by a simulated user                                                    | 3           |
 | `cli`    | CLI usage scenarios, `bare` arm only                                                              | 1           |
 
 Every `skills` and `spec` scenario replays a merged fix or feature from the repo history. Each case
@@ -34,14 +33,14 @@ runs as one variant per arm (`<skill>@<case>--<arm>`), and every prompt invokes 
 explicitly on the same task text. Auto-triggering is not measured: the suites show how good the
 skills are when invoked, not whether an agent picks them.
 
-| Scenario           | `monoblok`, `monoblok-superpowers` | `superpowers`                                |
-| ------------------ | ---------------------------------- | -------------------------------------------- |
-| `investigate`      | `/investigate`                     | `/superpowers:systematic-debugging`          |
-| `plan-implement`   | `/plan`, then implement            | `/superpowers:writing-plans`, then implement |
-| `qa-engineer-unit` | `/qa-engineer-unit`                | `/superpowers:test-driven-development`       |
-| `review-and-qa`    | `/review-and-qa`                   | `/superpowers:requesting-code-review`        |
-| `triage`           | `/triage`                          | plain task (no matching skill)               |
-| `spec`             | `/spec`                            | `/superpowers:brainstorming`                 |
+| Scenario           | `monoblok`              | `superpowers`                                |
+| ------------------ | ----------------------- | -------------------------------------------- |
+| `investigate`      | `/investigate`          | `/superpowers:systematic-debugging`          |
+| `plan-implement`   | `/plan`, then implement | `/superpowers:writing-plans`, then implement |
+| `qa-engineer-unit` | `/qa-engineer-unit`     | `/superpowers:test-driven-development`       |
+| `review-and-qa`    | `/review-and-qa`        | `/superpowers:requesting-code-review`        |
+| `triage`           | `/triage`               | plain task (no matching skill)               |
+| `spec`             | `/spec`                 | `/superpowers:brainstorming`                 |
 
 The `bare` arm always gets the plain task.
 
@@ -100,7 +99,7 @@ Measured on a warm pnpm store:
 - Full matrix of one skill (`investigate`: 4 arms × 3 cases × 1 run = 12 jobs, concurrency 3): about
   14 minutes (832 s), about USD 0.29–0.57 per job as reported by Claude Code.
 
-All runs draw on your Claude Code subscription. Every scenario multiplies by four arms and by
+All runs draw on your Claude Code subscription. Every scenario multiplies by three arms and by
 `--runs`, so lower `--concurrency` if you hit rate limits.
 
 ## Read the results

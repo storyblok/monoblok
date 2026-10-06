@@ -25,14 +25,12 @@ describe("prepareArms", () => {
     const outRoot = fs.mkdtempSync(path.join(os.tmpdir(), "arms-out-"));
     await prepareArms({ sourceRoot, outRoot, skipSuperpowers: true });
 
-    for (const arm of ["monoblok", "monoblok-superpowers"]) {
-      expect(fs.readFileSync(path.join(outRoot, "arms", arm, "skills/plan/SKILL.md"), "utf8")).toBe(
-        "---\nname: plan\n---\n# Plan\n",
-      );
-      expect(fs.readFileSync(path.join(outRoot, "arms", arm, "agents/reviewer.md"), "utf8")).toBe(
-        "---\nname: reviewer\n---\n",
-      );
-    }
+    expect(fs.readFileSync(path.join(outRoot, "arms/monoblok/skills/plan/SKILL.md"), "utf8")).toBe(
+      "---\nname: plan\n---\n# Plan\n",
+    );
+    expect(fs.readFileSync(path.join(outRoot, "arms/monoblok/agents/reviewer.md"), "utf8")).toBe(
+      "---\nname: reviewer\n---\n",
+    );
     for (const arm of ["bare", "superpowers"]) {
       expect(fs.readdirSync(path.join(outRoot, "arms", arm))).toEqual([]);
     }

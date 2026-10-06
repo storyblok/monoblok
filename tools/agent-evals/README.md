@@ -7,8 +7,8 @@ has an LLM judge grade the result against a rubric.
 ## Run
 
 ```bash
-tools/axis/run.sh                 # all scenarios
-tools/axis/run.sh -s 'offline/*'  # a subset
+tools/agent-evals/run.sh -p cli       # all CLI scenarios
+tools/agent-evals/run.sh -p cli -s 'cli/offline/*'  # a subset
 npx @netlify/axis reports latest --html
 ```
 
@@ -18,8 +18,8 @@ them are not exercised.
 
 - **Agent auth:** without `ANTHROPIC_API_KEY`, AXIS copies your local Claude Code login (macOS
   Keychain) into the isolated agent home, so a subscription works.
-- **`offline/*`:** no Storyblok space needed.
-- **`space/*`:** need `.env.qa-engineer-manual` in the repo root (see the `qa-engineer-manual`
+- **`cli/offline/*`:** no Storyblok space needed.
+- **`cli/space/*`:** need `.env.qa-engineer-manual` in the repo root (see the `qa-engineer-manual`
   skill). They are skipped without it. `beforeAll` wipes the QA space and seeds `has-stories`; each
   scenario logs the CLI in during setup, so the token never enters the agent's environment.
   Scenarios run with concurrency 1 because they share the space.

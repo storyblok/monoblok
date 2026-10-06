@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { morphStoryblokDom } from "./morphStoryblokDom";
+import { morphStoryblokDom } from "./morph-storyblok-dom";
 
 describe("morphStoryblokDom", () => {
   it("morphs only the focused Storyblok block", () => {

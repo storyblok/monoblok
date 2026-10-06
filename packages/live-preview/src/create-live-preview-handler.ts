@@ -1,6 +1,6 @@
-import type { DomMorphOptions } from "./dom/morphStoryblokDom";
+import type { DomMorphOptions } from "./dom/morph-storyblok-dom";
 
-import { morphStoryblokDom } from "./dom/morphStoryblokDom";
+import { morphStoryblokDom } from "./dom/morph-storyblok-dom";
 
 export type LivePreviewEvent<TStory extends object = Record<string, unknown>> = {
   action: string;

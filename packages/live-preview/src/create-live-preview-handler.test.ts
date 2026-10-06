@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createLivePreviewHandler } from "./createLivePreviewHandler";
+import { createLivePreviewHandler } from "./create-live-preview-handler";
 
 const story = { id: 1, content: { component: "page" } };
 

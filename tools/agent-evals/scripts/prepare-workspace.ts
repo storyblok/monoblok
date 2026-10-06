@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { EVALS_DIR } from "../src/arms.ts";
+import { recordBaseline } from "../src/baseline.ts";
 import { bugCase } from "../src/cases.ts";
 
 /** Repo-relative paths, at any depth, that would hand the agent our skills or settings regardless of arm. */
@@ -69,6 +70,8 @@ export function prepareWorkspace({
     "-m",
     message,
   ]);
+
+  recordBaseline(workspace);
 
   if (install) {
     const store = install.storeDir ? ["--store-dir", install.storeDir] : [];

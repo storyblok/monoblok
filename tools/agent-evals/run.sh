@@ -33,4 +33,5 @@ if [ "${profile}" = "cli" ]; then
 fi
 
 cd "${evals_dir}"
+node "${evals_dir}/scripts/prepare-arms.ts"
 exec pnpm exec axis run "$@"

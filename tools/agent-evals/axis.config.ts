@@ -9,6 +9,7 @@ const config: AxisConfig = {
   adapters: { "claude-code-arm": "./src/adapters/claude-code-arm.ts" },
   agents: ARM_NAMES.map((name) => ({ agent: "claude-code-arm", name, model: EVAL_MODEL })),
   judging: { agents: [{ agent: "claude-code", model: EVAL_MODEL }] },
+  afterAll: [{ action: "run_script", command: "node ./scripts/compare.ts" }],
   env: ["STORYBLOK_SPACE_ID", "AGENT_EVALS_PNPM_STORE"],
   exclude: ["spec/**"],
   settings: {

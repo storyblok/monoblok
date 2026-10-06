@@ -1,0 +1,21 @@
+[
+  "pkg: angular",
+  "pkg: api-client",
+  "pkg: astro",
+  "pkg: cli",
+  "pkg: js",
+  "pkg: live-preview",
+  "pkg: management-api-client",
+  "pkg: migrations",
+  "pkg: nuxt",
+  "pkg: react",
+  "pkg: richtext",
+  "pkg: storyblok-js-client",
+  "pkg: svelte",
+  "pkg: vue",
+  "type: bug",
+  "type: chore",
+  "type: docs",
+  "type: feature",
+  "type: improvement"
+]

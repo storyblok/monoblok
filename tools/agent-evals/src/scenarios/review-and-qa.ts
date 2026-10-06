@@ -1,6 +1,20 @@
 import type { ScenarioInput } from "@netlify/axis";
 import type { BugCase } from "../cases.ts";
-import { GRADE_ARTIFACTS, prepare, script } from "./shared.ts";
+import {
+  GRADE_ARTIFACTS,
+  NEUTRAL_MESSAGE,
+  armVariants,
+  invokeSkill,
+  prepare,
+  script,
+} from "./shared.ts";
+
+const SKILLS = { monoblok: "review-and-qa", superpowers: "requesting-code-review" };
+
+const TASK =
+  "Review the changes on the current branch `feature` against `main` and produce a QA plan. " +
+  "Reference code by file path. Write the review to `review.md` in the repository root. " +
+  "Work only from this repository; do not look up these changes on GitHub.";
 
 export function reviewAndQaScenario(cases: readonly BugCase[]): ScenarioInput {
   return {
@@ -9,17 +23,13 @@ export function reviewAndQaScenario(cases: readonly BugCase[]): ScenarioInput {
     judge: "",
     limits: { time_minutes: 25 },
     artifacts: [...GRADE_ARTIFACTS, "review.md"],
-    variants: cases.map((c) => ({
-      name: c.id,
+    variants: armVariants(cases, (c, arm) => ({
       setup: [
-        prepare(c.fixRef, c),
+        prepare(c.fixRef, c, { message: NEUTRAL_MESSAGE }),
         { action: "run_script", command: script("revert-tests.ts", `--case ${c.id}`) },
         { action: "run_script", command: script("build-review-branch.ts", `--case ${c.id}`) },
       ],
-      prompt:
-        "Review the changes on the current branch `feature` against `main` and produce a QA plan. " +
-        "Reference code by file path. Write the review to `review.md` in the repository root. " +
-        "Work only from this repository; do not look up these changes on GitHub.",
+      prompt: invokeSkill(arm, SKILLS, TASK),
       teardown: [
         {
           action: "run_script",

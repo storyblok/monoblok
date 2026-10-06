@@ -23,12 +23,18 @@ function sourceAt(mirror: string, ref: string, file: string): string | null {
   }
 }
 
-/** Files the fix commit changed besides the fixed sources and test setup: its tests and fixtures. */
+/** Reverting a manifest or the lockfile would desync the tree from the dependencies installed for the fix. */
+function isDependencyManifest(file: string): boolean {
+  const name = path.posix.basename(file);
+  return name === "package.json" || name === "pnpm-lock.yaml";
+}
+
+/** Files the fix commit changed besides the fixed sources, test setup, and dependency manifests: its tests and fixtures. */
 function fixExtras(mirror: string, c: BugCase): string[] {
   const kept = new Set([...c.sourceFiles, ...c.testSetupFiles]);
   return git(mirror, ["diff", "--name-only", c.preFixRef, c.fixRef])
     .split("\n")
-    .filter((file) => file && !kept.has(file));
+    .filter((file) => file && !kept.has(file) && !isDependencyManifest(file));
 }
 
 /** Resets everything the fix changed except its sources to pre-fix contents, so the tree has the fix but not its tests. */

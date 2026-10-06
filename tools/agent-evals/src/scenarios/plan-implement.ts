@@ -1,6 +1,16 @@
 import type { ScenarioInput } from "@netlify/axis";
 import type { BugCase } from "../cases.ts";
-import { GRADE_ARTIFACTS, NO_UPSTREAM_CHECK, prepare, script, withIssue } from "./shared.ts";
+import {
+  GRADE_ARTIFACTS,
+  NO_UPSTREAM_CHECK,
+  armVariants,
+  invokeSkill,
+  prepare,
+  script,
+  withIssue,
+} from "./shared.ts";
+
+const SKILLS = { monoblok: "plan", superpowers: "writing-plans" };
 
 export function planImplementScenario(cases: readonly BugCase[]): ScenarioInput {
   return {
@@ -9,13 +19,16 @@ export function planImplementScenario(cases: readonly BugCase[]): ScenarioInput 
     judge: "",
     limits: { time_minutes: 40 },
     artifacts: [...GRADE_ARTIFACTS],
-    variants: cases.map((c) => ({
-      name: c.id,
+    variants: armVariants(cases, (c, arm) => ({
       setup: [prepare(c.preFixRef, c)],
-      prompt: withIssue(
-        c,
-        "Fix this bug. Plan the change first, then implement it with tests, and verify it with the " +
-          "package's lint, type-check, and tests. Do not commit.",
+      prompt: invokeSkill(
+        arm,
+        SKILLS,
+        withIssue(
+          c,
+          "Fix this bug. Plan the change first. Consider the plan approved, then implement it with " +
+            "tests, and verify it with the package's lint, type-check, and tests. Do not commit.",
+        ),
       ),
       teardown: [
         { action: "run_script", command: script("check-hidden-tests.ts", `--case ${c.id}`) },

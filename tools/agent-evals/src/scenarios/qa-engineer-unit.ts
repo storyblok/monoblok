@@ -1,6 +1,17 @@
 import type { ScenarioInput } from "@netlify/axis";
 import type { BugCase } from "../cases.ts";
-import { GRADE_ARTIFACTS, NO_UPSTREAM_CHECK, prepare, script, withIssue } from "./shared.ts";
+import {
+  GRADE_ARTIFACTS,
+  NEUTRAL_MESSAGE,
+  NO_UPSTREAM_CHECK,
+  armVariants,
+  invokeSkill,
+  prepare,
+  script,
+  withIssue,
+} from "./shared.ts";
+
+const SKILLS = { monoblok: "qa-engineer-unit", superpowers: "test-driven-development" };
 
 export function qaEngineerUnitScenario(cases: readonly BugCase[]): ScenarioInput {
   return {
@@ -9,16 +20,19 @@ export function qaEngineerUnitScenario(cases: readonly BugCase[]): ScenarioInput
     judge: "",
     limits: { time_minutes: 25 },
     artifacts: [...GRADE_ARTIFACTS],
-    variants: cases.map((c) => ({
-      name: c.id,
+    variants: armVariants(cases, (c, arm) => ({
       setup: [
-        prepare(c.fixRef, c),
+        prepare(c.fixRef, c, { message: NEUTRAL_MESSAGE }),
         { action: "run_script", command: script("revert-tests.ts", `--case ${c.id}`) },
       ],
-      prompt: withIssue(
-        c,
-        "This bug has been fixed in the current code. Add unit tests that would have caught it, " +
-          "following the package's existing test conventions. Run them.",
+      prompt: invokeSkill(
+        arm,
+        SKILLS,
+        withIssue(
+          c,
+          "This bug has been fixed in the current code. Add unit tests that would have caught it, " +
+            "following the package's existing test conventions. Run them.",
+        ),
       ),
       teardown: [{ action: "run_script", command: script("check-mutation.ts", `--case ${c.id}`) }],
       judge: [

@@ -12,7 +12,13 @@ import { readBaseline } from "../src/baseline.ts";
 import { testCommand } from "../src/cases.ts";
 import type { BugCase } from "../src/cases.ts";
 import { addCheck, GRADE_PATH, gradePasses, readGrade } from "../src/grade.ts";
-import { EXTRA_FILE, HIDDEN_TEST, workspaceWithFix } from "./helpers/workspace-with-fix.ts";
+import { NEUTRAL_MESSAGE } from "../src/scenarios/shared.ts";
+import {
+  EXTRA_FILE,
+  FIX_SUBJECT,
+  HIDDEN_TEST,
+  workspaceWithFix,
+} from "./helpers/workspace-with-fix.ts";
 
 const tempDirs: string[] = [];
 const tempDir = (prefix: string): string => {
@@ -224,15 +230,31 @@ describe("checkMentions", () => {
 });
 
 describe("checkLabels", () => {
-  it("requires pkg and type labels and ignores status labels", () => {
+  const labelsCheck = (labels: string[]): ReturnType<typeof checkLabels> => {
+    const ws = tempDir("l-");
+    fs.writeFileSync(path.join(ws, "triage.json"), JSON.stringify({ labels }));
+    return checkLabels({ workspace: ws, case: CASE, file: "triage.json" });
+  };
+
+  it("passes on the exact pkg and type labels, ignoring other labels", () => {
+    expect(labelsCheck(["type: bug", "pkg: cli"]).pass).toBe(true);
+    expect(labelsCheck(["type: bug", "pkg: cli", "priority: high"]).pass).toBe(true);
+  });
+
+  it("fails when a pkg or type label is missing", () => {
+    expect(labelsCheck(["type: bug"]).pass).toBe(false);
+  });
+
+  it("fails when the agent hedges between two package labels", () => {
+    const hedgingCase = { ...CASE, issueLabels: ["pkg: storyblok-js-client", "type: bug"] };
     const ws = tempDir("l-");
     fs.writeFileSync(
       path.join(ws, "triage.json"),
-      JSON.stringify({ labels: ["type: bug", "pkg: cli"] }),
+      JSON.stringify({ labels: ["pkg: js", "pkg: storyblok-js-client", "type: bug"] }),
     );
-    expect(checkLabels({ workspace: ws, case: CASE, file: "triage.json" }).pass).toBe(true);
-    fs.writeFileSync(path.join(ws, "triage.json"), JSON.stringify({ labels: ["type: bug"] }));
-    expect(checkLabels({ workspace: ws, case: CASE, file: "triage.json" }).pass).toBe(false);
+    const result = checkLabels({ workspace: ws, case: hedgingCase, file: "triage.json" });
+    expect(result.pass).toBe(false);
+    expect(result.detail).toContain("extra pkg: js");
   });
 });
 
@@ -257,14 +279,30 @@ describe("revertFixExtras", () => {
     expect(fs.readFileSync(path.join(workspace, "pkg/src/sum.mjs"), "utf8")).toContain("a + b");
   });
 
-  it("folds the revert into the single initial commit, keeping its message", () => {
-    const { workspace, mirror, c } = workspaceWithFix(CASE, {});
+  it("folds the revert into the single snapshot commit, keeping the neutral message", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, { message: NEUTRAL_MESSAGE });
     const git = (...args: string[]): string =>
       execFileSync("git", args, { cwd: workspace, encoding: "utf8" }).trim();
-    const message = git("log", "-1", "--format=%B");
     revertFixExtras({ workspace, mirror, case: c });
     expect(git("rev-list", "--count", "HEAD")).toBe("1");
-    expect(git("log", "-1", "--format=%B")).toBe(message);
+    expect(git("log", "-1", "--format=%B")).toBe(NEUTRAL_MESSAGE);
+  });
+
+  it("leaves no trace of the fix commit message in a workspace exported at the fix", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, { message: NEUTRAL_MESSAGE });
+    revertFixExtras({ workspace, mirror, case: c });
+    const log = execFileSync("git", ["log", "--all", "--format=%B"], {
+      cwd: workspace,
+      encoding: "utf8",
+    });
+    expect(log).not.toContain(FIX_SUBJECT);
+  });
+
+  it("keeps package manifests and the lockfile at the fix", () => {
+    const { workspace, mirror, c } = workspaceWithFix(CASE, { dependencyChange: true });
+    revertFixExtras({ workspace, mirror, case: c });
+    expect(fs.readFileSync(path.join(workspace, "pkg/package.json"), "utf8")).toContain("2.0.0");
+    expect(fs.readFileSync(path.join(workspace, "pnpm-lock.yaml"), "utf8")).toContain("2.0.0");
   });
 
   it("moves the grading baseline past the revert", () => {

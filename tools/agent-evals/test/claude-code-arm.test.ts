@@ -77,6 +77,42 @@ describe("claude-code-arm", () => {
     expect(calls[0].config.flags).toEqual({ verbose: true, "plugin-dir": "/plugins/superpowers" });
   });
 
+  it("rejects an arm with more than one plugin instead of dropping one", async () => {
+    const calls: AgentInput[] = [];
+    const adapter = createArmAdapter(fakeBase(calls), {
+      armsRoot: armsRootWithMonoblok(),
+      pluginsFor: () => ["/plugins/a", "/plugins/b"],
+    });
+    await expect(adapter.run(inputFor("bare", freshConfigDir()))).rejects.toThrow(/more than one/);
+    expect(calls).toEqual([]);
+  });
+
+  it("hides the harness's AXIS_* variables from the agent and keeps the rest", async () => {
+    const calls: AgentInput[] = [];
+    const adapter = createArmAdapter(fakeBase(calls), {
+      armsRoot: armsRootWithMonoblok(),
+      pluginsFor: () => [],
+    });
+    const configDir = freshConfigDir();
+    const input = inputFor("bare", configDir);
+    await adapter.run({
+      ...input,
+      env: {
+        ...input.env,
+        AXIS_CONFIG_DIR: "/evals",
+        AXIS_OUTPUT: "/evals/out",
+        AXIS_SCENARIO: "skills/triage@x--bare",
+        HOME: "/home/job",
+        npm_config_store_dir: "/store",
+      },
+    });
+    expect(calls[0].env).toEqual({
+      CLAUDE_CONFIG_DIR: configDir,
+      HOME: "/home/job",
+      npm_config_store_dir: "/store",
+    });
+  });
+
   it("rejects an agent entry whose name is not an arm", async () => {
     const adapter = createArmAdapter(fakeBase([]), {
       armsRoot: armsRootWithMonoblok(),

@@ -10,6 +10,7 @@ args=("$@")
 for ((i = 0; i < ${#args[@]}; i++)); do
   case "${args[$i]}" in
     -p | --profile) profile="${args[$((i + 1))]:-}" ;;
+    --profile=*) profile="${args[$i]#--profile=}" ;;
   esac
 done
 

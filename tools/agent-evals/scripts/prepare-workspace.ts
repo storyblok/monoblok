@@ -87,11 +87,24 @@ export function prepareWorkspace({
       ],
       { cwd: workspace, stdio: "inherit", env: { ...process.env, CI: "1" } },
     );
-    execFileSync("pnpm", ["--filter", `${install.packageName}^...`, "run", "build"], {
-      cwd: workspace,
-      stdio: "inherit",
-      env: { ...process.env, NX_DAEMON: "false", NX_NO_CLOUD: "true" },
-    });
+    const dependencies = `${install.packageName}^...`;
+    const buildEnv = { ...process.env, NX_DAEMON: "false", NX_NO_CLOUD: "true" };
+    const run = (script: string[]): void => {
+      execFileSync("pnpm", ["--filter", dependencies, ...script], {
+        cwd: workspace,
+        stdio: "inherit",
+        env: buildEnv,
+      });
+    };
+    // Older refs do not commit generated sources. Generation needs the built OpenAPI
+    // package, so build once without bailing, generate, then build for real.
+    try {
+      run(["--no-bail", "run", "--if-present", "build"]);
+    } catch {
+      // Expected when generated sources are missing; the final build reports real failures.
+    }
+    run(["run", "--if-present", "generate"]);
+    run(["run", "build"]);
   }
 }
 

@@ -5,7 +5,8 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`.
 
 - `packages/`: Public packages and integrations.
-- `tools/`: Internal development tools and scripts.
+- `tools/`: Internal development tools and scripts. `tools/agent-evals/` measures skills against
+  baselines; read `tools/agent-evals/README.md` before changing skills or running evals.
 - Packages use the `@storyblok/` scope (with the exception of: `storyblok` (the CLI) and
   `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client`
   → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` →

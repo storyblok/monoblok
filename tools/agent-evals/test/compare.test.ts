@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { renderMarkdown, summarize } from "../scripts/compare.ts";
@@ -45,4 +47,20 @@ describe("compare", () => {
     ]);
     expect(md).toContain("| x | bare | 1 | n/a | n/a | n/a | n/a |");
   });
+
+  it.each(["spec/spec@case-one--monoblok", "cli/offline/validate-schema"])(
+    "reports no objective pass rate for ungraded scenario %s",
+    (scenarioKey) => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "report-"));
+      try {
+        const results = [{ scenarioKey, agentName: "monoblok", axisScore: 70 }];
+        fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify({ version: 1, results }));
+        expect(summarize(dir)).toEqual([
+          expect.objectContaining({ arm: "monoblok", runs: 1, objectivePassRate: null }),
+        ]);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
 });

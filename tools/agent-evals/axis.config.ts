@@ -29,6 +29,20 @@ const config: AxisConfig = {
         ? [{ action: "run_script", command: "bash ./scripts/seed.sh has-stories" }]
         : [],
     },
+    spec: {
+      include: ["spec/**"],
+      exclude: [],
+      adapters: {
+        "claude-code-arm": "./src/adapters/claude-code-arm.ts",
+        "claude-code-interactive": "./src/adapters/claude-code-interactive.ts",
+      },
+      agents: ARM_NAMES.map((name) => ({
+        agent: "claude-code-interactive",
+        name,
+        model: EVAL_MODEL,
+      })),
+      settings: { concurrency: 3, limits: { scenario: { time_minutes: 30 } } },
+    },
   },
 };
 

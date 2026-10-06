@@ -1,0 +1,19 @@
+---
+import { storyblokEditable } from "@storyblok/astro";
+
+const { block } = Astro.props;
+---
+
+<div {...storyblokEditable(block)}>
+  <h2 class="heading">{block.name}</h2>
+</div>
+
+<style>
+  .heading {
+    text-align: center;
+    color: var(--color-secondary);
+    font-size: 1.25rem; /* text-xl */
+    line-height: 1.75rem;
+    font-weight: 700; /* bold */
+  }
+</style>

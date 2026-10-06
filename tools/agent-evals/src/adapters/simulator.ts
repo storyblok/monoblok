@@ -34,7 +34,10 @@ export function createSimulator(options: { configDir: string; model?: string }):
           "--system-prompt",
           SYSTEM_PROMPT,
         ],
-        { env: { ...process.env, CLAUDE_CONFIG_DIR: options.configDir } },
+        {
+          cwd: options.configDir || undefined,
+          env: { ...process.env, CLAUDE_CONFIG_DIR: options.configDir },
+        },
       );
       let out = "";
       let err = "";

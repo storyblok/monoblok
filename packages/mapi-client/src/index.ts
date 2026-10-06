@@ -17,7 +17,8 @@ export type {
   MapiResourceDeps,
   RequestConfigOverrides,
 } from "./client";
-export { ClientError } from "./error";
+export { ClientError, PaginationError } from "./error";
+export type { PageResult } from "./utils/paginate";
 export type { ApiErrorBody } from "./error";
 
 // MAPI-only endpoint-specific types (raw SDK types).

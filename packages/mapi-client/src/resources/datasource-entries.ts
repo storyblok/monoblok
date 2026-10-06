@@ -11,6 +11,8 @@ import type {
   ReplaceDatasourceEntryResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import type { PageResult } from "../utils/paginate";
+import { paginateItems, paginatePages } from "../utils/paginate";
 import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(
@@ -19,7 +21,7 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
   const { client, spaceId, wrapRequest } = deps;
   const getSpaceId = (path?: SpaceIdPathOverride["path"]) => resolveSpaceId(spaceId, path);
 
-  return {
+  const resource = {
     list<ThrowOnError extends boolean = DefaultThrowOnError>(
       options: {
         query?: ListDatasourceEntriesData["query"];
@@ -168,5 +170,47 @@ export function createDatasourceEntriesResource<DefaultThrowOnError extends bool
         throwOnError,
       );
     },
+  };
+
+  type ListOptions<ThrowOnError extends boolean> = NonNullable<
+    Parameters<typeof resource.list<ThrowOnError>>[0]
+  >;
+
+  const toPaginateConfig = <ThrowOnError extends boolean>(options: ListOptions<ThrowOnError>) => ({
+    query: { ...options.query },
+    signal: options.signal,
+    fetchPage: (query: ListOptions<false>["query"], signal: AbortSignal) =>
+      resource.list({ ...options, query, signal, throwOnError: false }),
+    getItems: (data: DatasourceEntriesIndexResponse) => data.datasource_entries,
+  });
+
+  return {
+    ...resource,
+
+    /**
+     * Walks every page of data source entries, yielding one `list()` response per page. A failed
+     * page is the last value yielded, so check `error` on each one. With `throwOnError`, it throws
+     * a `PaginationError` instead.
+     */
+    pages: <ThrowOnError extends boolean = DefaultThrowOnError>(
+      options: ListOptions<ThrowOnError> = {},
+    ): AsyncGenerator<PageResult<DatasourceEntriesIndexResponse, ThrowOnError>, void, undefined> =>
+      paginatePages(
+        toPaginateConfig(options),
+        options.throwOnError,
+        client.getConfig().throwOnError ?? false,
+      ),
+
+    /**
+     * Walks every data source entry across all pages, fetching the next page while the current one
+     * is consumed. A failed page throws a `PaginationError`.
+     */
+    iterate: (
+      options: Omit<ListOptions<boolean>, "throwOnError"> = {},
+    ): AsyncGenerator<
+      DatasourceEntriesIndexResponse["datasource_entries"][number],
+      void,
+      undefined
+    > => paginateItems(toPaginateConfig(options)),
   };
 }

@@ -9,7 +9,7 @@ import { createMemoryCacheProvider, createStrategy, isTransientStatus } from "./
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
-import { applyCvToQuery, extractCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
+import { applyCvToQuery, extractServedCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
 import { createTokenId } from "./utils/token-id";
@@ -129,6 +129,8 @@ export interface ResourceDeps<DefaultThrowOnError extends boolean = false> {
     p: Promise<unknown>,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;
+  /** The client's `cache.cv` mode. `'manual'` stops pagination walks from pinning a `cv`. */
+  cvMode?: CacheConfig["cv"];
 }
 
 // ---------------------------------------------------------------------------
@@ -468,7 +470,7 @@ export const createApiClientBase = <
       generationAtIssue: number;
     },
   ): Promise<{ mayCache: boolean; cv?: number }> => {
-    const bodyCv = extractCv(result.data);
+    const bodyCv = extractServedCv(result);
     const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(result.data) : undefined;
     const current = await readVersions(cacheProvider, watermarksKey);
 
@@ -691,7 +693,7 @@ export const createApiClientBase = <
 
       // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the
       // current one, so only a response reporting the pinned `cv` or none is that snapshot.
-      const bodyCv = extractCv(result.data);
+      const bodyCv = extractServedCv(result);
       const isPinnedSnapshot =
         isCvPinnedByCaller && (bodyCv === undefined || bodyCv === Number(rawQuery.cv));
       const issuedUnder = isPinnedSnapshot
@@ -749,6 +751,7 @@ export const createApiClientBase = <
     requestWithCache,
     asApiResponse,
     throttleManager,
+    cvMode,
   };
 
   // Keep the declaration output aligned with ContentApiClient["stories"].

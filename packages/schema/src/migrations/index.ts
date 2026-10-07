@@ -14,8 +14,6 @@ export {
   alterField,
   coerceField,
   expandBlock,
-  isKeyOp,
-  KEY_OP_KINDS,
   mergeFields,
   moveField,
   removeField,
@@ -43,11 +41,7 @@ export type {
   WrapChildrenOp,
 } from "./ops";
 
-export { applyPatches, diffBlock, indexBlocks, TRANSLATION_SEPARATOR } from "./patch";
-export type { AnyBlock, ApplyConflict, ApplyResult, BlockPatch, BlockPatchOp } from "./patch";
-
-export { blockComponents, runMigrationOnStory } from "./runner";
-export type { StoryMigrationResult } from "./runner";
+export type { AnyBlock, BlockPatch, BlockPatchOp } from "./patch";
 
 export { deriveInverse } from "./derive-inverse";
 export type { DerivedInverse, UnderivableOp } from "./derive-inverse";
@@ -67,7 +61,8 @@ export type {
   StoryForMigration,
 } from "./apply-migration";
 
-export { MigrationError, planUndo, undoStories } from "./undo-run";
+export { MigrationError } from "./migration-error";
+export { planUndo, undoStories } from "./undo-run";
 export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./undo-run";
 
 export { checkPendingReleases } from "./releases";

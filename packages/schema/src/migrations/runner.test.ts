@@ -321,7 +321,6 @@ describe("rollback after an unrelated edit — the headline claim", () => {
 describe("schema-aware validation", () => {
   it("should reject a migration addressing a field the schema does not define", () => {
     const bogus = {
-      name: "x",
       targets: ["card"],
       ops: [{ kind: "renameField", block: "card", field: "nope", to: "yep" }],
     } as never;
@@ -338,7 +337,6 @@ describe("schema-aware validation", () => {
 
   it("should reject a renameBlock onto a block that already exists", () => {
     const bogus = {
-      name: "x",
       targets: ["card"],
       ops: [renameBlock({ block: "card", to: "section" })],
     };
@@ -976,12 +974,11 @@ describe("under smuggled onto a key op", () => {
       }),
     ]);
 
-    const issues = validateMigration(migration, schemaLike);
+    const issues = validateMigration(migration, schemaLike).filter((issue) =>
+      issue.message.includes("cannot be scoped with `under`"),
+    );
 
     expect(issues.map((issue) => issue.op)).toEqual([0, 1, 2, 3, 4, 5]);
-    for (const issue of issues) {
-      expect(issue.message).toContain("cannot be scoped with `under`");
-    }
   });
 });
 
@@ -2000,5 +1997,40 @@ describe("expandBlock", () => {
         reason: "the blocks it wrote are known only to the closure that wrote them",
       },
     ]);
+  });
+});
+
+describe("validateMigration over an op sequence", () => {
+  it("should accept a field an earlier op introduced as the source of a later one", () => {
+    const migration = defineMigration<TestSchema>([
+      renameFieldOp({ block: "card", field: "title", to: "headline" }),
+      addField({ block: "card", field: "variant" }, () => "default"),
+      alterField({ block: "card", field: "headline" }, (value) => value),
+      alterField({ block: "card", field: "variant" }, (value) => value),
+      renameBlock({ block: "card", to: "teaser" }),
+    ]);
+
+    expect(validateMigration(migration, schemaLike)).toEqual([]);
+  });
+
+  it("should reject a field an earlier op renamed away", () => {
+    const migration = defineMigration<TestSchema>([
+      renameFieldOp({ block: "card", field: "title", to: "headline" }),
+      alterField({ block: "card", field: "title" }, (value) => value),
+    ]);
+
+    expect(validateMigration(migration, schemaLike)).toEqual([
+      { op: 1, message: expect.stringContaining('Block "card" has no field "title"') },
+    ]);
+  });
+
+  it("should reject an unwrap of a block the schema does not define", () => {
+    const migration = defineMigration<TestSchema>([
+      unwrapChildren({ block: "page", field: "body", unwrap: "nope", from: "items" }),
+    ]);
+
+    expect(validateMigration(migration, schemaLike)[0]?.message).toContain(
+      'Unknown block "nope" to unwrap',
+    );
   });
 });

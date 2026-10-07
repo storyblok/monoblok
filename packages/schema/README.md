@@ -36,6 +36,8 @@
   dependencies
 - **Monorepo Aligned**: Built from the same source specifications used throughout the Storyblok
   monoblok repository
+- **Content Migrations**: Typed content migrations with recorded undo, from
+  `@storyblok/schema/migrations`
 
 ## Documentation
 

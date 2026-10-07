@@ -106,5 +106,6 @@ describe("nextMigrationId", () => {
 
     expect(id).toBe("0001-update-hero-block-card-v2");
     expect(selectMigrationFiles("m", [`${id}.ts`])).toHaveLength(1);
+    expect(nextMigrationId([], "Café Übersicht")).toBe("0001-cafe-ubersicht");
   });
 });

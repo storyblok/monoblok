@@ -16,6 +16,7 @@
     "dist"
   ],
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
@@ -26,9 +27,6 @@
       ],
       "migrations": [
         "./dist/migrations/index.d.cts"
-      ],
-      "migrations/node": [
-        "./dist/migrations/node/index.d.cts"
       ]
     }
   },
@@ -44,10 +42,6 @@
     "./migrations": {
       "import": "./dist/migrations/index.mjs",
       "require": "./dist/migrations/index.cjs"
-    },
-    "./migrations/node": {
-      "import": "./dist/migrations/node/index.mjs",
-      "require": "./dist/migrations/node/index.cjs"
     },
     "./package.json": "./package.json"
   },

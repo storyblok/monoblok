@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -137,5 +137,35 @@ describe("runId", () => {
     expect(runId("0002-rename-meta-author", new Date("2026-01-01T00:00:00Z"))).toContain(
       "0002-rename-meta-author",
     );
+  });
+});
+
+describe("localJournal safeguards", () => {
+  it("should not git-ignore a directory that is not a journal directory", async () => {
+    const migrations = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
+    await localJournal(migrations).record(run(), inverse);
+
+    expect(await readdir(migrations)).not.toContain(".gitignore");
+  });
+
+  it("should refuse a run id or space that would leave the journal directory", async () => {
+    const journal = localJournal(await mkdtemp(path.join(tmpdir(), "schema-journal-")));
+
+    await expect(journal.record(run({ id: "../../escape" }), inverse)).rejects.toThrow(
+      /Invalid run id/,
+    );
+    await expect(journal.record(run({ space: "../evil" }), inverse)).rejects.toThrow(
+      /Invalid space/,
+    );
+    expect(await journal.read("../../escape")).toBeUndefined();
+  });
+
+  it("should name the run whose patches file is missing", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "schema-journal-"));
+    const journal = localJournal(root);
+    await journal.record(run(), inverse);
+    await rm(path.join(root, "12345", `${run().id}.patches.json`));
+
+    await expect(journal.readInverse(run().id)).rejects.toThrow(/has no recorded patches/);
   });
 });

@@ -1,6 +1,6 @@
 /**
  * The op factories. Each returns a plain object; nothing runs at module load,
- * so `--dry-run` needs no network call, a key op can be inverted from the op
+ * so a dry run needs no network call, a key op can be inverted from the op
  * alone, and a user can add an op by writing a function that returns one.
  *
  * Every op type carries the two schema parameters on a phantom property. A
@@ -212,16 +212,11 @@ export type MigrationOpOf<TAfter extends SchemaShape, TBefore extends SchemaShap
 export type MigrationOp = MigrationOpOf<SchemaShape, SchemaShape>;
 
 /**
- * The op kinds that move the component schema and so must apply everywhere.
- * `renameBlock` moves the component's identity itself, which is the same
- * global reach: like the others, its factory takes no `under`.
- *
- * `wrapChildren` and `unwrapChildren` belong here for the same reason: each
- * introduces or dissolves a block of a named component (`in`/`unwrap`)
- * wherever the parent's field is, which is global in the same sense as a
- * field rename — scoping either to a subset of a component's instances would
- * leave the rest holding a shape none of its siblings has. Neither factory
- * takes an `under`.
+ * Op kinds that change a block's schema, which is global, so they apply to every
+ * instance and their factories take no `under`. `renameBlock`, `wrapChildren`
+ * and `unwrapChildren` qualify because each changes which block a field holds
+ * wherever that field appears; scoping one to a subset of instances would leave
+ * the rest holding a shape none of its siblings has.
  */
 export const KEY_OP_KINDS = [
   "renameField",
@@ -241,7 +236,7 @@ export function isKeyOp(op: MigrationOp): boolean {
 }
 
 /**
- * A key op moves the component schema, which is global: migrating only the
+ * A key op changes the block schema, which is global: migrating only the
  * instances under one parent would leave every other instance holding a key no
  * schema describes. So the spec objects have no `under`, and passing one is an
  * excess-property error on the object literal.
@@ -258,9 +253,9 @@ interface KeyOpSpec<
 
 /**
  * Declared, rather than merely absent, so the rule survives a spec that is not
- * a fresh object literal: excess-property checking fires only on a literal, so
- * a spread or a hoisted variable used to slip through. The type is the
- * explanation, which is what the compiler then prints.
+ * a fresh object literal: excess-property checking fires only on a fresh
+ * literal, and a declared member also catches a spread or a hoisted spec. The
+ * type is the explanation, which is what the compiler then prints.
  *
  * Named rather than written inline on {@link KeyOpSpec}, because the key ops
  * whose spec does not fit that interface — a merge names several fields, a
@@ -268,7 +263,7 @@ interface KeyOpSpec<
  * rule.
  */
 type KeyOpUnder =
-  "`under` is not allowed on a key op: a component's schema is global, so a key op applies to every instance";
+  "`under` is not allowed on a key op: a block's schema is global, so a key op applies to every instance";
 
 /** A value op: the schema does not move, so a subset of instances is coherent. */
 interface ValueOpSpec<
@@ -290,7 +285,7 @@ type SourceValue<TBefore extends SchemaShape, TBlock extends string, TField> =
     : unknown;
 
 /**
- * A key op never honours `under`, but it carries one through when a caller
+ * A key op never honors `under`, but it carries one through when a caller
  * smuggled it past the type system, so `validateMigration` can name the problem
  * instead of the op silently applying everywhere.
  */
@@ -298,6 +293,10 @@ function carriedUnder(spec: { under?: unknown }): { under?: string | readonly st
   return spec.under === undefined ? {} : { under: spec.under as string | readonly string[] };
 }
 
+/**
+ * Renames a field, translations included. A block whose target field already
+ * holds a value is refused rather than overwritten; use `moveField` for that.
+ */
 export function renameField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
@@ -314,7 +313,7 @@ export function renameField<
   };
 }
 
-/** Like `renameField`, but the target may already hold a value; it is overwritten. */
+/** Like `renameField`, but a value the target already holds is overwritten. */
 export function moveField<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,
@@ -341,7 +340,7 @@ export function removeField<
 
 /**
  * `from` is optional and only ever used to invert the op. Stating it is what
- * moves a coercion from "needs recorded patches" to "rolls back on any machine".
+ * lets a coercion be undone without recorded patches, on any machine.
  */
 export function coerceField<
   TAfter extends SchemaShape,
@@ -436,10 +435,9 @@ export function alterBlock<
  * finds nothing to do.
  *
  * The blocks it returns are content the migration authored, so no op in the
- * same migration is applied to them — including this one, which is what a
- * callback returning a block of the component it matched would need. The
- * runner reports that as non-idempotent and the run is refused, because a
- * rerun would expand it again.
+ * same migration is applied to them, this one included. A callback that returns
+ * a block of the type it matched is reported as non-idempotent and the story is
+ * refused, because a rerun would expand it again.
  *
  * Every block it returns needs a `_uid`, and one derived from the block being
  * replaced is what makes the rerun produce the same blocks rather than a
@@ -493,8 +491,8 @@ export function addField<
 
 /**
  * One field into several. `merge` is the counterpart that puts them back; it is
- * optional, and stating it is what moves the op from "needs recorded patches"
- * to "rolls back on any machine".
+ * optional, and stating it lets the op be undone without
+ * recorded patches, on any machine.
  *
  * The one op pair that cannot carry a field's translations along: how a German
  * value splits is not something the split of the default language can answer.
@@ -566,9 +564,8 @@ export function mergeFields<
 }
 
 /**
- * Renames a component across all content. The schema half — renaming the
- * component itself — belongs to `schema push`; this moves the content that
- * points at it.
+ * Renames a block across all content. The block schema is renamed separately,
+ * with `schema push`; this moves the content that references it.
  */
 export function renameBlock<
   TAfter extends SchemaShape,
@@ -607,7 +604,11 @@ export function wrapChildren<
   };
 }
 
-/** Dissolves a container level, splicing its children back into the parent. */
+/**
+ * Dissolves a container level, splicing its children back into the parent. The
+ * container's own fields are dropped with it; the recorded undo restores them,
+ * a derived inverse cannot.
+ */
 export function unwrapChildren<
   TAfter extends SchemaShape,
   TBefore extends SchemaShape,

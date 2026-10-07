@@ -1,5 +1,5 @@
 /**
- * Behaviour of the patch layer every other module rests on: which keys a field
+ * Behavior of the patch layer every other module rests on: which keys a field
  * occupies, whether a block can still be addressed by `_uid`, what a diff of one
  * block against itself records, and what replaying that record does to content
  * an editor has touched since.
@@ -360,7 +360,7 @@ describe("applyPatches", () => {
     const insert: BlockPatch = {
       uid: "card-1",
       component: "card",
-      ops: [{ kind: "listInsert", key: "meta", uid: "one", index: 0, block: one }],
+      ops: [{ kind: "listInsert", key: "meta", uid: "one", index: 0, after: null, block: one }],
     };
 
     applyPatches(content, [insert]);

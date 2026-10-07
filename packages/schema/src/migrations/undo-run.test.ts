@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { applyMigration, type StoryForMigration } from "./apply-migration";
-import { defineMigration } from "./define-migration";
+import { defineMigration, type MigrationOps } from "./define-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
 import { alterField, expandBlock, renameField, unwrapChildren, wrapChildren } from "./ops";
+import type { SchemaShape } from "./types";
 import type { BlockPatch } from "./patch";
 import { planUndo, undoStories } from "./undo-run";
 
@@ -289,9 +290,9 @@ describe("undoStories publish state", () => {
 describe("undoStories after a recorded run", () => {
   type Content = { _uid: string; component: string; [key: string]: unknown };
 
-  function migrate(ops: Parameters<typeof defineMigration>[0], content: Content) {
+  function migrate(ops: MigrationOps<SchemaShape, SchemaShape>, content: Content) {
     const outcome = applyMigration({
-      migration: defineMigration(ops),
+      migration: defineMigration<SchemaShape>(ops),
       id: "0001-x",
       space: "1",
       stories: [{ id: 1, slug: "home", content }],
@@ -318,9 +319,9 @@ describe("undoStories after a recorded run", () => {
     };
     const run = migrate(
       [
-        expandBlock({ block: "pair" }, (pair) => [
-          { _uid: `${pair._uid}1`, component: "text" },
-          { _uid: `${pair._uid}2`, component: "text" },
+        expandBlock({ block: "pair" }, (pair: Record<string, unknown>) => [
+          { _uid: `${String(pair._uid)}1`, component: "text" },
+          { _uid: `${String(pair._uid)}2`, component: "text" },
         ]),
       ],
       structuredClone(original),

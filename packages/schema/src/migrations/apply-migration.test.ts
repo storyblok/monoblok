@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyMigration, type StoryForMigration } from "./apply-migration";
-import { defineMigration } from "./define-migration";
+import { defineMigration, type MigrationOps } from "./define-migration";
 import { alterBlock, alterField, renameBlock, renameField, splitField } from "./ops";
+import type { SchemaShape } from "./types";
 
 const migration = defineMigration([renameField({ block: "card", field: "title", to: "headline" })]);
 
@@ -174,9 +175,9 @@ describe("applyMigration across ops and reruns", () => {
     return { id: 1, slug: "home", content: { _uid: "r", component: "page", body } };
   }
 
-  function run(ops: Parameters<typeof defineMigration>[0], story: StoryForMigration) {
+  function run(ops: MigrationOps<SchemaShape, SchemaShape>, story: StoryForMigration) {
     return applyMigration({
-      migration: defineMigration(ops),
+      migration: defineMigration<SchemaShape>(ops),
       id: "0001-x",
       space: "1",
       stories: [story],
@@ -206,7 +207,7 @@ describe("applyMigration across ops and reruns", () => {
   it("should apply a later op to children an earlier `alterBlock` replaced", () => {
     const outcome = run(
       [
-        alterBlock({ block: "page" }, (page) => ({
+        alterBlock({ block: "page" }, (page: Record<string, unknown>) => ({
           ...page,
           body: (page.body as Record<string, unknown>[]).map((child) => ({ ...child })),
         })),
@@ -238,7 +239,7 @@ describe("applyMigration across ops and reruns", () => {
   });
 
   it("should let a rerun of a rename chain refuse rather than destroy data", () => {
-    const chain: Parameters<typeof defineMigration>[0] = [
+    const chain: MigrationOps<SchemaShape, SchemaShape> = [
       renameField({ block: "card", field: "title", to: "headline" }),
       renameField({ block: "card", field: "subtitle", to: "title" }),
     ];
@@ -256,7 +257,12 @@ describe("applyMigration across ops and reruns", () => {
 
   it("should refuse an `alterBlock` result that drops the block's `_uid` or `component`", () => {
     const outcome = run(
-      [alterBlock({ block: "card" }, (card) => ({ title: String(card.title).trim() }) as never)],
+      [
+        alterBlock(
+          { block: "card" },
+          (card: Record<string, unknown>) => ({ title: String(card.title).trim() }) as never,
+        ),
+      ],
       storyWith([{ _uid: "k", component: "card", title: " x " }]),
     );
 

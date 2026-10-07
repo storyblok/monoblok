@@ -1,5 +1,5 @@
 /**
- * Behaviour of `deriveInverse`: which ops invert, what their mirror op looks
+ * Behavior of `deriveInverse`: which ops invert, what their mirror op looks
  * like, and that the derived list replays in reverse order.
  */
 import { describe, expect, it } from "vitest";
@@ -277,10 +277,8 @@ describe("deriveInverse", () => {
     expect(derived.lossy).toEqual([]);
   });
 
-  // Every earlier op targets the same block it read, so a caller could reuse
-  // the forward migration's `targets` by accident. A renameBlock inverse
-  // targets the *new* name instead, so `targets` has to be recomputed from the
-  // derived ops, not carried over.
+  // A renameBlock inverse targets the new name, so `targets` is recomputed from
+  // the derived ops.
   it("targets the renamed block's new name, not the forward migration's target", () => {
     const derived = deriveInverse([
       renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),

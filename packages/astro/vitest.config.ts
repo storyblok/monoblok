@@ -8,5 +8,8 @@ export default getViteConfig({
     // otherwise collects them, and importing one throws on the missing
     // STORYBLOK_SPACE_ID that only a QA run exports.
     include: ["tests/**/*.test.ts"],
+    typecheck: {
+      enabled: true,
+    },
   },
 });

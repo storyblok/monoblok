@@ -1,6 +1,6 @@
 import { createComponent, render, renderComponent } from "astro/runtime/server/index.js";
 import RawStoryblokBlock from "./components/StoryblokBlock.astro";
-import type { DefineStoryblokBlocksOptions } from "./types";
+import type { DefineStoryblokBlocksOptions, StoryblokBlockComponent } from "./types";
 
 /**
  * Registers the components that render Storyblok blocks and returns a
@@ -27,8 +27,27 @@ import type { DefineStoryblokBlocksOptions } from "./types";
  * <StoryblokBlock block={story.content} />
  * {block.body?.map((child) => <StoryblokBlock block={child} />)}
  * ```
+ *
+ * @example Extra props shared by every registered component
+ * ```astro
+ * ---
+ * import { defineStoryblokBlocks } from '@storyblok/astro';
+ * import Branch from '~/components/Branch.astro';
+ * import Leaf from '~/components/Leaf.astro';
+ *
+ * type ExtraComponentProps = { locale: string };
+ *
+ * const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>({
+ *   components: { branch: Branch, leaf: Leaf },
+ * });
+ * ---
+ *
+ * <StoryblokBlock block={root} locale="fr" />
+ * ```
  */
-export function defineStoryblokBlocks(options: DefineStoryblokBlocksOptions = {}) {
+export function defineStoryblokBlocks<TExtraProps extends object = {}>(
+  options: DefineStoryblokBlocksOptions = {},
+) {
   const components = options.components ?? {};
   const fallback = options.fallback;
 
@@ -49,5 +68,5 @@ export function defineStoryblokBlocks(options: DefineStoryblokBlocksOptions = {}
       )}`,
   );
 
-  return { StoryblokBlock };
+  return { StoryblokBlock: StoryblokBlock as StoryblokBlockComponent<TExtraProps> };
 }

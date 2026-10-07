@@ -4,6 +4,15 @@ import { isInEditor } from "@storyblok/live-preview";
 /**
  * Captures the Visual Editor's POST payload on `Astro.locals` so pages can
  * read it back with `getPayload`.
+ *
+ * @example
+ * ```ts
+ * // src/middleware.ts
+ * import { sequence } from 'astro:middleware';
+ * import { liveEditMiddleware } from '@storyblok/astro';
+ *
+ * export const onRequest = sequence(liveEditMiddleware);
+ * ```
  */
 export const liveEditMiddleware = defineMiddleware(async ({ locals, request }, next) => {
   if (request.method === "POST") {

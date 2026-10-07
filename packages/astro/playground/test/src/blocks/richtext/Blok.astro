@@ -1,0 +1,15 @@
+---
+import type { StoryblokAstroRichTextProps } from "@storyblok/astro";
+import type { StoryblokBlockData } from "@storyblok/astro";
+import { StoryblokBlock } from "../../storyblok";
+
+type Props = StoryblokAstroRichTextProps<"blok">;
+
+const { attrs } = Astro.props;
+---
+
+{
+  attrs.body?.map((block: StoryblokBlockData) => (
+    <StoryblokBlock block={block} />
+  ))
+}

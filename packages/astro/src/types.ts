@@ -23,7 +23,9 @@ export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
  * Props received by a component registered in `defineStoryblokBlocks`.
  *
  * `T` describes the block's own fields, `TExtraProps` any additional props the
- * component accepts.
+ * component accepts. `TExtraProps` controls its own optionality: mark a
+ * field optional there (`showCount?: boolean`) if callers may omit it, or
+ * required (`locale: string`) to make every `StoryblokBlock` usage supply it.
  *
  * @example
  * ```astro
@@ -48,7 +50,7 @@ export type StoryblokBlockComponentProps<
   block: StoryblokBlockData<T>;
   /** Editable attributes injected by `StoryblokBlock`. */
   editable?: StoryblokEditableProps;
-} & Partial<TExtraProps>;
+} & TExtraProps;
 
 /**
  * Any component capable of rendering a block. In practice an `.astro`
@@ -56,6 +58,31 @@ export type StoryblokBlockComponentProps<
  */
 
 export type StoryblokComponentMap = Record<string, AstroComponentFactory>;
+
+/**
+ * Props accepted by the `StoryblokBlock` component returned from
+ * `defineStoryblokBlocks`. `TExtraProps` are the additional props declared
+ * via `defineStoryblokBlocks<TExtraProps>()`; they're forwarded as-is to
+ * whichever component renders the block. Whether they're required follows
+ * `TExtraProps` itself: a required field there makes every `StoryblokBlock`
+ * usage, including recursive ones, supply it.
+ */
+export type StoryblokBlockProps<TExtraProps extends object = {}> = {
+  /** The block to render. */
+  block?: StoryblokBlockData;
+} & TExtraProps;
+
+/**
+ * An `AstroComponentFactory` carrying a `(props: Props) => any` call
+ * signature so `.astro`/`.tsx` files type-check the props passed to it, the
+ * same mechanism Astro's own framework integrations rely on. `createComponent`
+ * itself can't express this: it always returns the untyped
+ * `AstroComponentFactory` shape.
+ */
+export type StoryblokBlockComponent<TExtraProps extends object = {}> = ((
+  props: StoryblokBlockProps<TExtraProps>,
+) => any) &
+  AstroComponentFactory;
 
 export interface DefineStoryblokBlocksOptions {
   /**

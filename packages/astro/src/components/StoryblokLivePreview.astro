@@ -1,27 +1,3 @@
----
-/**
- * Enables Storyblok Live Preview in the Visual Editor.
- *
- * Renders no markup — only wires the editor bridge to the DOM update
- * handler. Drop it once in your layout:
- *
- * ```astro
- * ---
- * import { StoryblokLivePreview } from '@storyblok/astro';
- * import Layout from '~/layouts/BaseLayout.astro';
- * ---
- *
- * <Layout>
- *   <StoryblokLivePreview />
- *   <slot />
- * </Layout>
- * ```
- *
- * Outside the Visual Editor this is a no-op, so it is safe to render
- * unconditionally in production.
- */
----
-
 <script>
   import { onStoryblokEditorEvent } from '@storyblok/live-preview';
   import { previewHandler } from '../live-preview/preview-handler';

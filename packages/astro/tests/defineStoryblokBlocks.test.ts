@@ -44,4 +44,19 @@ describe("defineStoryblokBlocks", () => {
     });
     expect(heroMissingTeaser.trim()).toBe("");
   });
+
+  it("forwards extra props declared via the generic to the resolved component", async () => {
+    type ExtraComponentProps = { locale: string };
+
+    const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>({
+      components: { teaser: Teaser },
+    });
+
+    const container = await AstroContainer.create();
+    const result = await container.renderToString(StoryblokBlock, {
+      props: { block: { component: "teaser", headline: "Teaser" }, locale: "fr" },
+    });
+
+    expect(result).toContain("Teaser");
+  });
 });

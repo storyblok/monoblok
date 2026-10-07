@@ -209,9 +209,23 @@ describe("diffBlock", () => {
       key: "meta",
       uid: "two",
       index: 0,
+      after: null,
       block: two,
     });
-    expect(patch?.ops).toContainEqual({ kind: "listRemove", key: "meta", uid: "one" });
+    expect(patch?.ops).toContainEqual({ kind: "listRemove", key: "meta", uid: "one", expect: one });
+  });
+
+  it("should replace a value that turns into a block list whole, so it can be put back", () => {
+    const image = [{ _uid: "img", component: "image" }];
+    const forward = diffBlock(card({ media: "https://x" }), card({ media: image }));
+    const backward = diffBlock(card({ media: image }), card({ media: "https://x" }));
+
+    expect(forward?.ops).toEqual([
+      { kind: "set", key: "media", value: image, expect: "https://x" },
+    ]);
+    const live = card({ media: structuredClone(image) });
+    applyPatches(live, backward === null ? [] : [backward]);
+    expect(live.media).toBe("https://x");
   });
 
   it("should not fold a child block's own edits into its parent's patch", () => {

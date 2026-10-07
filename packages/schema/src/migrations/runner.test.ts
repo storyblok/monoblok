@@ -11,6 +11,7 @@ import {
   addField,
   alterBlock,
   alterField,
+  coerceField,
   expandBlock,
   mergeFields,
   removeField as removeFieldOp,
@@ -126,8 +127,37 @@ describe("coercion", () => {
     expect(block(run.content, "card-a1").legacy_price).toBe("19.99");
     expect(block(run.content, "card-a1").featured).toBe(true);
     expect(block(run.content, "card-b1").featured).toBe(false);
-    // Unparseable input becomes the empty string an unset number field holds.
-    expect(block(run.content, "card-a2").legacy_price).toBe("");
+  });
+
+  it("should refuse a value that has no counterpart in the target type instead of blanking it", () => {
+    const run = runMigrationOnStory(coerceFields, pageStoryContent());
+
+    expect(block(run.content, "card-a2").legacy_price).toBe("not-a-number");
+    expect(run.refusedOps).toContainEqual({
+      uid: "card-a2",
+      op: 0,
+      reason: 'field "legacy_price" holds "not-a-number", which has no number counterpart.',
+    });
+  });
+
+  it.each([
+    ["number", "abc"],
+    ["number", true],
+    ["number", "0x10"],
+    ["string", { url: "https://example.com" }],
+    ["boolean", "no"],
+  ] as const)("should refuse to coerce %s from %j", (to, value) => {
+    const migration = defineMigration<SchemaShape>([
+      coerceField({ block: "card", field: "x", to }),
+    ]);
+    const run = runMigrationOnStory(migration, {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "c", component: "card", x: value }],
+    });
+
+    expect(run.refusedOps).toHaveLength(1);
+    expect(block(run.content, "c").x).toEqual(value);
   });
 
   it("should NOT round-trip a lossy coercion", () => {
@@ -394,7 +424,7 @@ describe("reorder", () => {
     expect(block(live, "card-a1").title).toBe("Edited after the migration");
   });
 
-  it("should report a conflict when the order itself changed after the migration", () => {
+  it("should leave a list an editor already put back in its original order alone", () => {
     const run = runMigrationOnStory(reorderItems, pageStoryContent());
     const live = structuredClone(run.content);
     const section = block(live, "section-a") as Record<string, unknown>;
@@ -402,13 +432,8 @@ describe("reorder", () => {
 
     const result = applyPatches(live, run.inverse);
 
-    expect(result.conflicts).toEqual([
-      {
-        uid: "section-a",
-        key: "items",
-        reason: 'live order of "items" differs from the order the migration wrote',
-      },
-    ]);
+    expect(result.conflicts).toEqual([]);
+    expect(result.applied).toBe(0);
   });
 
   it("should keep a block the patch does not know about in its live slot", () => {

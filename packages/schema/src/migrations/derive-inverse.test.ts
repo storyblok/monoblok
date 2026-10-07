@@ -32,14 +32,14 @@ function joinNonEmpty(values: readonly unknown[]): unknown {
 }
 
 describe("deriveInverse", () => {
-  it("inverts addField to removeField", () => {
+  it("inverts addField to a lossy removeField, since it also removes values that predate the run", () => {
     const derived = deriveInverse([
       addField<AnySchema, AnySchema, "card">({ block: "card", field: "slug" }, () => "x"),
     ]);
 
     expect(derived.derivable).toBe(true);
     expect(derived.ops).toEqual([{ kind: "removeField", block: "card", field: "slug" }]);
-    expect(derived.lossy).toEqual([]);
+    expect(derived.lossy).toEqual([0]);
   });
 
   it("refuses to invert removeField", () => {
@@ -317,6 +317,28 @@ describe("deriveInverse", () => {
     );
 
     expect(rolledBack.content).toEqual(original);
+  });
+
+  it("addresses the inverse of a later op to the name a renameBlock gave the block", () => {
+    const forward = defineMigration<AnySchema>([
+      renameBlock<AnySchema, AnySchema, "card">({ block: "card", to: "teaser" }),
+      renameField<AnySchema, AnySchema, "card">({ block: "card", field: "title", to: "heading" }),
+    ]);
+    const original = {
+      _uid: "root",
+      component: "page",
+      body: [{ _uid: "a", component: "card", title: "one" }],
+    };
+
+    const migrated = runMigrationOnStory(forward, original);
+    const derived = deriveInverse(forward.ops);
+    const undone = runMigrationOnStory(
+      { ...forward, ops: derived.ops, targets: derived.targets },
+      migrated.content,
+    );
+
+    expect(migrated.content).toMatchObject({ body: [{ component: "teaser", heading: "one" }] });
+    expect(undone.content).toEqual(original);
   });
 
   it("inverts wrapChildren to unwrapChildren and back", () => {

@@ -69,6 +69,11 @@ Keep the snapshot unchanged once the migration ships, so the names the migration
 The names it writes are typed against `Schema`, so a later rename or removal of such a field is a
 type error in the migration. Once every space has applied the migration, delete it and its snapshot.
 
+The Storyblok CLI writes both files:
+[`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
+[`schema push`](/docs/tooling/cli/schema-push#breaking-changes-and-migrations) generate the
+migration and its snapshot from the space’s current components.
+
 ### Schema types
 
 The type arguments of `defineMigration()` decide which names the ops accept:

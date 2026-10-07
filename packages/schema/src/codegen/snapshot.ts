@@ -196,7 +196,7 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   if (stubs.length > 0) {
     lines.push("");
   }
-  lines.push("const schema = defineSchema({");
+  lines.push("export const schema = defineSchema({");
   lines.push(`${INDENT}blocks: {`);
   for (const varName of varNames) {
     lines.push(`${INDENT}${INDENT}${varName},`);

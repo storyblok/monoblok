@@ -92,4 +92,21 @@ describe("generateMigrationSource", () => {
     expect(typeErrors).toEqual([]);
     expect(migration.ops).toEqual([]);
   });
+
+  it("should keep a todo with line breaks inside its comment", async () => {
+    const { migration } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [
+        {
+          kind: "alterField",
+          block: "hero",
+          field: "title",
+          todo: ["convert 'x\nglobalThis.injected = true; //'"],
+        },
+      ],
+    });
+
+    expect(migration.ops).toHaveLength(1);
+    expect(Reflect.get(globalThis, "injected")).toBeUndefined();
+  });
 });

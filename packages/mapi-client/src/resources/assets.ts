@@ -19,8 +19,9 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { Asset } from "../generated/mapi/types-aliased.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
-import { ClientError } from "../error";
+import { ClientError } from "@storyblok/utils/errors";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "@storyblok/utils/http";
 
 export type AssetListQuery = NonNullable<ListAssetsData["query"]>;
 
@@ -109,10 +110,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -141,10 +139,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -164,9 +159,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
       const { body, file, signal, path, fetchOptions } = options;
       const { short_filename, ...rest } = body;
       const resolvedSpaceId = getSpaceId(path);
-      const kyOpts = fetchOptions
-        ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-        : {};
+      const kyOpts = buildCallOptions(client, undefined, fetchOptions);
 
       const signResult = await wrapRequest<CreateAssetResponses[200], true>(
         () =>
@@ -227,9 +220,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
     ): Promise<Asset> {
       const { body, file, signal, path, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      const kyOpts = fetchOptions
-        ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-        : {};
+      const kyOpts = buildCallOptions(client, undefined, fetchOptions);
 
       const {
         short_filename,
@@ -294,10 +285,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             client,
             path: { space_id: resolvedSpaceId, id: assetId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -316,9 +304,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
     ): Promise<void> {
       const { body, file, signal, path, fetchOptions } = options;
       const resolvedSpaceId = getSpaceId(path);
-      const kyOpts = fetchOptions
-        ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-        : {};
+      const kyOpts = buildCallOptions(client, undefined, fetchOptions);
 
       if (file !== undefined) {
         const { short_filename, ...assetBody } = body;
@@ -398,10 +384,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             client,
             path: { space_id: resolvedSpaceId, id: assetId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -422,10 +405,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             client,
             path: { space_id: resolvedSpaceId, id: assetId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -448,10 +428,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -474,10 +451,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -499,10 +473,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -539,10 +510,7 @@ export function createAssetsResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId, id: assetId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

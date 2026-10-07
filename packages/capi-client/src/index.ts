@@ -31,8 +31,8 @@ export type {
 } from "./client";
 
 // Error
-export { ClientError } from "./error";
-export type { ApiErrorBody } from "./error";
+export { ClientError } from "@storyblok/utils/errors";
+export type { ApiErrorBody } from "@storyblok/utils/errors";
 
 // Generated client utilities
 export type { Middleware } from "./generated/capi/client/utils.gen";
@@ -66,7 +66,7 @@ export type {
 } from "./utils/cache";
 
 // Rate limiting
-export { createDefaultRateLimiter } from "./utils/limiter";
+export { createDefaultRateLimiter } from "@storyblok/utils/rate-limiting";
 export type {
   AdaptiveConfig,
   CacheAwareConfig,
@@ -74,7 +74,7 @@ export type {
   RateLimitContext,
   RateLimiter,
   RateLimitStatus,
-} from "./utils/limiter";
+} from "@storyblok/utils/rate-limiting";
 // The stock `CacheAwareConfig.detectCacheHit`, so a caller assembling its own
 // cache-aware configuration does not have to reimplement it.
 export { parseCacheStatusHeader } from "./utils/rate-limit";

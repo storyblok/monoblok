@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEditorRequest } from "../src/utils/isEditorRequest";
+import { isEditorRequest } from "../src";
 
 describe("isEditorRequest", () => {
   describe("basic validation", () => {

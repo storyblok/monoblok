@@ -61,11 +61,16 @@
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/utils": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "jiti": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "inlinedDependencies": {
+    "filename-reserved-regex": "3.0.0",
+    "filenamify": "6.0.0"
   }
 }

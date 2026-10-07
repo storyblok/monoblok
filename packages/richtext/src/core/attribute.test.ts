@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapeAttr, EXCLUDED_ATTRS, processAttrs } from "./attribute";
+import { buildRenderAttrs, escapeAttr, EXCLUDED_ATTRS, processAttrs } from "./attribute";
 
 // ============================================================================
 // processAttrs - Basic Attribute Handling
@@ -545,5 +545,25 @@ describe("escapeAttr", () => {
 
   it("converts objects to string", () => {
     expect(escapeAttr({ a: 1 })).toBe("[object Object]");
+  });
+});
+
+describe("buildRenderAttrs", () => {
+  it("serializes the style object to a CSS string", () => {
+    expect(buildRenderAttrs("paragraph", { id: "intro", textAlign: "center" })).toEqual({
+      id: "intro",
+      style: "text-align: center;",
+    });
+  });
+
+  it("keeps colspan and rowspan in their HTML casing", () => {
+    expect(buildRenderAttrs("tableCell", { colspan: 2, rowspan: 3 })).toEqual({
+      colspan: 2,
+      rowspan: 3,
+    });
+  });
+
+  it("returns an empty object without attrs", () => {
+    expect(buildRenderAttrs("paragraph", undefined)).toEqual({});
   });
 });

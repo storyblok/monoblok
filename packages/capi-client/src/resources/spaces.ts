@@ -2,6 +2,7 @@ import { getSpace as getSpaceApi } from "../generated/capi/sdk.gen";
 import type { GetSpaceData, GetSpaceResponses } from "../generated/capi/types.gen";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
 import { SPACES_ME_PATH } from "../utils/request";
+import { buildCallOptions } from "@storyblok/utils/http";
 
 export function createSpacesResource<DefaultThrowOnError extends boolean = false>(
   deps: ResourceDeps<DefaultThrowOnError>,
@@ -30,10 +31,7 @@ export function createSpacesResource<DefaultThrowOnError extends boolean = false
                 client,
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           );

@@ -1,7 +1,7 @@
+import { decodeIfEncoded } from "@storyblok/utils/serialization";
 import {
   asyncMap,
   createCacheKey,
-  decodeIfEncoded,
   delay,
   flatMap,
   getOptionsPage,

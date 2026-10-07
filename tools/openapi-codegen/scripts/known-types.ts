@@ -17,6 +17,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "pathe";
 import { parse as parseYaml } from "yaml";
+import { isRecord } from "@storyblok/utils/guards";
 import { ALIASES, type SpecSource } from "../src/aliases.ts";
 import { TEMPLATES } from "../src/templates.ts";
 import { CACHE_DIR, TOOL_ROOT } from "../src/lock.ts";
@@ -33,10 +34,6 @@ interface OpenApiDoc {
   components: { schemas: Record<string, unknown> | undefined };
   paths: Record<string, unknown>;
   webhooks: Record<string, unknown>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

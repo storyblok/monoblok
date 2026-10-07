@@ -4,6 +4,7 @@ import type {
   ListCdnExperimentsV2Responses,
 } from "../generated/capi/types.gen";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { buildCallOptions } from "@storyblok/utils/http";
 
 export function createExperimentsResource<DefaultThrowOnError extends boolean = false>(
   deps: ResourceDeps<DefaultThrowOnError>,
@@ -48,10 +49,7 @@ export function createExperimentsResource<DefaultThrowOnError extends boolean = 
                 client,
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           );

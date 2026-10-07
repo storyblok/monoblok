@@ -2,6 +2,7 @@ import { readFile, unlink } from "node:fs/promises";
 import { extname, join, resolve } from "pathe";
 import { Readable, Transform, Writable } from "node:stream";
 import type { Sema } from "async-sema";
+import { getStoryFilename } from "@storyblok/utils/local-files";
 import { createStory, fetchStories, fetchStory, updateStory } from "./actions";
 import type {
   ExistingTargetStories,
@@ -15,7 +16,7 @@ import { appendToFile, readDirectory, saveToFile } from "../../utils/filesystem"
 import { toError } from "../../utils/error/error";
 import { createPipelineBackpressureLock } from "../../utils/backpressure-lock";
 import { type ComponentSchemas, type RefMaps, storyRefMapper } from "./ref-mapper";
-import { getStoryFilename, isStoryPublishedWithoutChanges } from "./utils";
+import { isStoryPublishedWithoutChanges } from "./utils";
 
 let _pipelineSlot: Sema | null = null;
 const getPipelineSlot = (): Sema => {

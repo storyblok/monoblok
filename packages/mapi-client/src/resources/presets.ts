@@ -11,6 +11,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "@storyblok/utils/http";
 
 export function createPresetsResource<DefaultThrowOnError extends boolean = false>(
   deps: MapiResourceDeps<DefaultThrowOnError>,
@@ -36,10 +37,7 @@ export function createPresetsResource<DefaultThrowOnError extends boolean = fals
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -60,10 +58,7 @@ export function createPresetsResource<DefaultThrowOnError extends boolean = fals
             client,
             path: { space_id: resolvedSpaceId, id: presetId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -85,10 +80,7 @@ export function createPresetsResource<DefaultThrowOnError extends boolean = fals
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -111,10 +103,7 @@ export function createPresetsResource<DefaultThrowOnError extends boolean = fals
             path: { space_id: resolvedSpaceId, id: presetId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -135,10 +124,7 @@ export function createPresetsResource<DefaultThrowOnError extends boolean = fals
             client,
             path: { space_id: resolvedSpaceId, id: presetId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

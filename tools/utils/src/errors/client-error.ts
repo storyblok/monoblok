@@ -1,5 +1,5 @@
 /**
- * Common shape of error bodies returned by the Storyblok Content Delivery API.
+ * Common shape of error bodies returned by the Storyblok APIs.
  *
  * Most error responses include an `error` or `message` field with a
  * human-readable description.
@@ -11,7 +11,7 @@ export interface ApiErrorBody {
 }
 
 /**
- * Structured error surfaced by the Content API client for a failed request.
+ * Structured error surfaced by the API clients for a failed request.
  *
  * For an HTTP error response, it's thrown when `throwOnError: true` and otherwise
  * returned as `result.error`. A transport failure (no HTTP response at all — a timeout,

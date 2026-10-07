@@ -40,21 +40,3 @@ export const findComponentSchemas = async (directoryPath: string) => {
     throw error;
   }
 };
-
-/**
- * A slug is remote data, so a path separator in it would escape the stories
- * directory. Replacing separators is enough to keep the result a single path
- * segment; anything else that survives here is a legal file name character and
- * must be preserved, or the file no longer round-trips to the story it came
- * from.
- */
-const toPathSegment = (value: string): string => value.replace(/[/\\]+/g, "-");
-
-/**
- * @method getStoryFilename
- * @param  {object} story - Story object with slug and uuid
- * @return {string} Filename in the format {slug}_{uuid}.json
- */
-export const getStoryFilename = (story: Pick<Story, "slug" | "uuid">) => {
-  return `${toPathSegment(story.slug)}_${toPathSegment(story.uuid)}.json`;
-};

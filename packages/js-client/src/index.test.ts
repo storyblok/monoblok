@@ -3393,7 +3393,7 @@ describe("storyblokClient", () => {
       const mockData = {
         data: { stories: [] },
         headers: {
-          "x-ratelimit-policy": '"concurrent-requests";q=100',
+          "x-ratelimit-policy": '"rate-limit";q=100;w=1',
         },
         status: 200,
       };
@@ -3428,6 +3428,32 @@ describe("storyblokClient", () => {
       expect(queues.size).toBe(2);
       expect(queues.has(100)).toBe(true); // Second request used server rate limit
       expect(queues.has(15)).toBe(true); // First request queue still exists
+    });
+
+    it("should not adopt a concurrent-requests policy as the rate", async () => {
+      const mockData = {
+        data: { stories: [] },
+        headers: {
+          "x-ratelimit-policy": '"concurrent-requests";q=100',
+        },
+        status: 200,
+      };
+      const mockGet = vi.fn().mockResolvedValue(mockData);
+
+      const client = new StoryblokClient({
+        accessToken: "test-token",
+      });
+
+      // @ts-expect-error - accessing private property for testing
+      client.client.get = mockGet;
+
+      await client.get("cdn/stories", { version: "draft", per_page: 50 });
+      await client.get("cdn/stories", { version: "draft", per_page: 50 });
+
+      // @ts-expect-error - accessing private property for testing
+      const queues = client.throttleManager.queues;
+      // Both requests stay on the automatic tier (15 req/s for per_page=50).
+      expect([...queues.keys()]).toEqual([15]);
     });
 
     it("should apply user rate limit to all requests", async () => {

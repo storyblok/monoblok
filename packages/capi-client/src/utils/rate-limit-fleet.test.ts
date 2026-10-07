@@ -4,7 +4,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createThrottleManager } from "./rate-limit";
-import { createDefaultRateLimiter, type RateLimiter } from "./limiter";
+import { createDefaultRateLimiter, type RateLimiter } from "@storyblok/utils/rate-limiting";
 
 const QUOTA_PER_SECOND = 10;
 const REQUESTS_PER_INSTANCE = 200;

@@ -1,7 +1,8 @@
 import { fetchAllPages, handleAPIError, handleFileSystemError } from "../../../utils";
 import { getMapiClient } from "../../../api";
 import { join, resolve } from "pathe";
-import { resolvePath, sanitizeFilename, saveToFile } from "../../../utils/filesystem";
+import { getDatasourceFilename } from "@storyblok/utils/local-files";
+import { resolvePath, saveToFile } from "../../../utils/filesystem";
 import type { DatasourceEntry, SpaceDatasource, SpaceDatasourceEntry } from "../constants";
 import { DEFAULT_DATASOURCES_FILENAME } from "../constants";
 import type { SaveDatasourcesOptions } from "./constants";
@@ -179,11 +180,7 @@ export const saveDatasourcesToFiles = async (
     if (separateFiles) {
       // Save in separate files without nested structure
       for (const datasource of datasources) {
-        const sanitizedName = sanitizeFilename(datasource.name || "");
-        const datasourceFilePath = join(
-          resolvedPath,
-          suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`,
-        );
+        const datasourceFilePath = join(resolvedPath, getDatasourceFilename(datasource, suffix));
         await saveToFile(datasourceFilePath, JSON.stringify(datasource, null, 2));
       }
       return;

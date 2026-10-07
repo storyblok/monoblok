@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "pathe";
 import { getLocalDatasources, updateLocalDatasource } from "./local-datasources";
@@ -47,7 +47,7 @@ describe("updateLocalDatasource", () => {
     await rm(TEST_DIR, { recursive: true, force: true });
   });
 
-  it("should write datasource as {slug}_{id}.json", async () => {
+  it("should write datasource as {name}.json", async () => {
     const datasource = {
       id: 99,
       name: "Test DS",
@@ -55,11 +55,23 @@ describe("updateLocalDatasource", () => {
       dimensions: [],
     };
     await updateLocalDatasource(TEST_DIR, datasource as any);
-    const filePath = join(TEST_DIR, "test-ds_99.json");
+    const filePath = join(TEST_DIR, "Test DS.json");
     const content = await readFile(filePath, "utf8");
     const parsed = JSON.parse(content);
     expect(parsed.slug).toBe("test-ds");
     expect(parsed.id).toBe(99);
+  });
+
+  it("should overwrite the file pulled by the CLI instead of writing a duplicate", async () => {
+    const pulledFilename = "Country _ Currency.json";
+    const datasource = { id: 4, name: "Country / Currency", slug: "country-currency" };
+    await writeFile(join(TEST_DIR, pulledFilename), JSON.stringify(datasource));
+
+    await updateLocalDatasource(TEST_DIR, { ...datasource, slug: "updated" } as any);
+
+    expect(await readdir(TEST_DIR)).toEqual([pulledFilename]);
+    const datasources = await getLocalDatasources(TEST_DIR);
+    expect(datasources[0].slug).toBe("updated");
   });
 
   it("should round-trip: write → read matches", async () => {

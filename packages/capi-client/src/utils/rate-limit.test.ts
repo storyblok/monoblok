@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createThrottleManager,
-  determineTier,
   parseCacheStatusHeader,
   parseRateLimitPolicyHeader,
 } from "./rate-limit";
-import type { RateLimitContext, RateLimiter, RateLimitStatus } from "./limiter";
+import type {
+  RateLimitContext,
+  RateLimiter,
+  RateLimitStatus,
+} from "@storyblok/utils/rate-limiting";
 
 const BASE = "https://api.storyblok.com";
 
@@ -97,60 +100,6 @@ async function recordPolicyHeader(
   // measurement that follows sees the whole limit.
   await vi.advanceTimersByTimeAsync(1000);
 }
-
-describe("determineTier()", () => {
-  it("should return SINGLE_OR_SMALL for a single story path", () => {
-    expect(determineTier("/v2/cdn/stories/my-story", {})).toBe("SINGLE_OR_SMALL");
-    // Nested slugs — per_page > 25 is supplied to confirm it's the regex, not the per_page default.
-    expect(determineTier("/v2/cdn/stories/folder/nested-story", { per_page: 100 })).toBe(
-      "SINGLE_OR_SMALL",
-    );
-  });
-
-  it("should return SINGLE_OR_SMALL when per_page is absent (default 25)", () => {
-    expect(determineTier("/v2/cdn/stories", {})).toBe("SINGLE_OR_SMALL");
-  });
-
-  it("should return SINGLE_OR_SMALL for per_page ≤ 25", () => {
-    expect(determineTier("/v2/cdn/stories", { per_page: 1 })).toBe("SINGLE_OR_SMALL");
-    expect(determineTier("/v2/cdn/stories", { per_page: 25 })).toBe("SINGLE_OR_SMALL");
-  });
-
-  it("should return MEDIUM for per_page 26–50", () => {
-    expect(determineTier("/v2/cdn/stories", { per_page: 26 })).toBe("MEDIUM");
-    expect(determineTier("/v2/cdn/stories", { per_page: 50 })).toBe("MEDIUM");
-  });
-
-  it("should return LARGE for per_page 51–75", () => {
-    expect(determineTier("/v2/cdn/stories", { per_page: 51 })).toBe("LARGE");
-    expect(determineTier("/v2/cdn/stories", { per_page: 75 })).toBe("LARGE");
-  });
-
-  it("should return VERY_LARGE for per_page > 75", () => {
-    expect(determineTier("/v2/cdn/stories", { per_page: 76 })).toBe("VERY_LARGE");
-    expect(determineTier("/v2/cdn/stories", { per_page: 100 })).toBe("VERY_LARGE");
-  });
-
-  it("should parse per_page when provided as a string", () => {
-    expect(determineTier("/v2/cdn/stories", { per_page: "26" })).toBe("MEDIUM");
-  });
-
-  it("should fall back to SINGLE_OR_SMALL for an unparseable per_page string", () => {
-    expect(determineTier("/v2/cdn/stories", { per_page: "invalid" })).toBe("SINGLE_OR_SMALL");
-  });
-
-  it("should not treat /v2/cdn/stories (no trailing identifier) as single story", () => {
-    expect(determineTier("/v2/cdn/stories", {})).toBe("SINGLE_OR_SMALL");
-    // Still SINGLE_OR_SMALL here because per_page defaults to 25, but it's
-    // because of per_page, not single-story detection.
-    expect(determineTier("/v2/cdn/stories", { per_page: 50 })).toBe("MEDIUM");
-  });
-
-  it("should work for non-story paths (links, tags, etc.)", () => {
-    expect(determineTier("/v2/cdn/links", { per_page: 100 })).toBe("VERY_LARGE");
-    expect(determineTier("/v2/cdn/tags", {})).toBe("SINGLE_OR_SMALL");
-  });
-});
 
 describe("parseRateLimitPolicyHeader()", () => {
   const makeResponse = (headerValue: string | null) =>
@@ -484,53 +433,6 @@ describe("createThrottleManager({ limiter })", () => {
     expect(acquired[1]).toMatchObject({ bucket: "fixed", limit: 7 });
   });
 
-  it("should never hand the access token to the limiter", async () => {
-    const { limiter, acquired } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-
-    await sendThrough(manager, 1, "/v2/cdn/stories", { per_page: 100 }).settled;
-
-    expect(acquired[0]?.query).toEqual({ per_page: "100" });
-  });
-
-  it("should give each in-flight request its own context to correlate on", async () => {
-    const { limiter, acquired, released } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-
-    await sendThrough(manager, 3, "/v2/cdn/stories/my-story").settled;
-
-    expect(new Set(acquired).size).toBe(3);
-    // A limiter pairing a release to its acquire by identity has to find each
-    // context it admitted.
-    expect(acquired.every((context) => released.includes(context))).toBe(true);
-  });
-
-  it("should release the slot even when the request fails", async () => {
-    const { limiter, released } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const send = manager.wrapFetch(() => Promise.reject(new Error("boom")));
-
-    await expect(send(urlFor("/v2/cdn/stories"))).rejects.toThrow("boom");
-
-    expect(released).toHaveLength(1);
-  });
-
-  it("should report every response, including the ones a retry replaced", async () => {
-    const { limiter, recorded } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const statuses = [429, 429, 200];
-    let attempt = 0;
-    const fetchWithRetries = manager.wrapFetch(
-      async () => new Response(null, { status: statuses[attempt++] }),
-    );
-
-    for (const _ of statuses) {
-      await fetchWithRetries("https://api.storyblok.com/v2/cdn/stories?per_page=100");
-    }
-
-    expect(recorded.map((entry) => entry.status)).toEqual(statuses);
-  });
-
   it("should derive the quota of a recorded response from the request URL", async () => {
     const { limiter, recorded } = createRecordingLimiter();
     const manager = createThrottleManager({ limiter });
@@ -598,69 +500,6 @@ describe("createThrottleManager({ adaptive })", () => {
     expect(await startedImmediately(manager, "/v2/cdn/stories", 20, { per_page: 100 })).toBe(3);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(await startedImmediately(manager, "/v2/cdn/stories/home", 60)).toBe(50);
-  });
-});
-
-describe("createThrottleManager - limiter failures and retries", () => {
-  afterEach(() => vi.useRealTimers());
-
-  it("should make a retry win a slot of its own", async () => {
-    const acquired: RateLimitContext[] = [];
-    const limiter: RateLimiter = {
-      acquire: async (context) => {
-        acquired.push(context);
-      },
-    };
-    const manager = createThrottleManager({ limiter });
-    // Stands in for the HTTP layer retrying inside one call: admission that
-    // only gated the call would let all of these through on one slot.
-    const send = manager.wrapFetch(async () => new Response(null, { status: 429 }));
-
-    for (let i = 0; i < 4; i++) {
-      await send(urlFor("/v2/cdn/stories"));
-    }
-
-    expect(acquired).toHaveLength(4);
-  });
-
-  it("should serve the response when the limiter fails to record it", async () => {
-    const manager = createThrottleManager({
-      limiter: {
-        acquire: () => Promise.resolve(),
-        recordResponse: () => Promise.reject(new Error("shared store unreachable")),
-        release: () => Promise.reject(new Error("shared store unreachable")),
-      },
-    });
-    const send = manager.wrapFetch(async () => new Response(null, { status: 200 }));
-
-    // A blip in shared storage must not turn a served request into an error,
-    // which inside the retry loop would also mean sending it again.
-    await expect(send(urlFor("/v2/cdn/stories"))).resolves.toMatchObject({ status: 200 });
-  });
-
-  it("should leave the response body readable by the caller", async () => {
-    const manager = createThrottleManager({
-      limiter: {
-        acquire: () => Promise.resolve(),
-        recordResponse: async (_context, response) => {
-          await response.text();
-        },
-      },
-    });
-    const send = manager.wrapFetch(async () => new Response("payload", { status: 200 }));
-
-    const response = await send(urlFor("/v2/cdn/stories"));
-
-    await expect(response.text()).resolves.toBe("payload");
-  });
-
-  it("should fail the request when the limiter refuses admission", async () => {
-    const manager = createThrottleManager({
-      limiter: { acquire: () => Promise.reject(new Error("no slot")) },
-    });
-    const send = manager.wrapFetch(async () => new Response(null, { status: 200 }));
-
-    await expect(send(urlFor("/v2/cdn/stories"))).rejects.toThrow("no slot");
   });
 });
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "pathe";
 import { getLocalComponents, updateLocalComponent } from "./local-components";
@@ -60,6 +60,18 @@ describe("updateLocalComponent", () => {
     const content = await readFile(filePath, "utf8");
     const parsed = JSON.parse(content);
     expect(parsed.name).toBe("test-component");
+  });
+
+  it("should overwrite the file pulled by the CLI instead of writing a duplicate", async () => {
+    const pulledFilename = "layout_hero.json";
+    const component = { id: 3, name: "layout/hero", schema: {} };
+    await writeFile(join(TEST_DIR, pulledFilename), JSON.stringify(component));
+
+    await updateLocalComponent(TEST_DIR, { ...component, display_name: "Updated" } as any);
+
+    expect(await readdir(TEST_DIR)).toEqual([pulledFilename]);
+    const components = await getLocalComponents(TEST_DIR);
+    expect(components[0].display_name).toBe("Updated");
   });
 
   it("should round-trip: write → read matches", async () => {

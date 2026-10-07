@@ -77,7 +77,7 @@ function isNonEmptyList(list: unknown): boolean {
  * - `raw` — restricted by folder, but at least one uuid is unknown: keep the wire keys.
  * - `none` — no restriction in force.
  */
-type FieldRestriction =
+export type FieldRestriction =
   | { kind: "disabled" }
   | { kind: "tags" }
   | { kind: "tagRefs"; allow?: TagRef[]; deny?: TagRef[] }
@@ -149,7 +149,7 @@ const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
  * Same round-trip hazard as the name/group tie below, in the same direction, and
  * reachable the same way, through the API rather than the editor.
  */
-function resolveFieldRestriction(
+export function resolveFieldRestriction(
   field: Record<string, unknown>,
   folderVarByUuid?: Map<string, string>,
   tagNameById?: Map<string, string>,

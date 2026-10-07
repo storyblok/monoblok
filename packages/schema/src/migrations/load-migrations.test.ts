@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { loadMigrations, selectMigrationFiles } from "./load-migrations";
+import { loadMigrations, nextMigrationId, selectMigrationFiles } from "./load-migrations";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "__fixtures__", "load");
 const spaceMigrations = path.join(fixtures, "space-migrations");
@@ -22,6 +22,12 @@ describe("loadMigrations", () => {
     const selected = selectMigrationFiles("m", ["10-b.ts", "20261007-d.ts", "9-a.ts", "010-c.ts"]);
 
     expect(selected.map((entry) => entry.id)).toEqual(["9-a", "010-c", "10-b", "20261007-d"]);
+  });
+
+  it("should leave the schema snapshots beside migrations alone", () => {
+    const selected = selectMigrationFiles("m", ["0001-x.ts", "0001-x.before.ts"]);
+
+    expect(selected.map((entry) => entry.id)).toEqual(["0001-x"]);
   });
 
   it("should refuse two files that would share an id", () => {
@@ -82,5 +88,23 @@ describe("loadMigrations", () => {
     expect(await loadMigrations(path.join(fixtures, "no-such-directory"), importDefault)).toEqual(
       [],
     );
+  });
+});
+
+describe("nextMigrationId", () => {
+  it("should start at 0001 in an empty directory", () => {
+    expect(nextMigrationId([], "rename card title")).toBe("0001-rename-card-title");
+  });
+
+  it("should follow the highest existing prefix, keeping its width", () => {
+    expect(nextMigrationId(["0002-a", "0010-b", "0009-c"], "next")).toBe("0011-next");
+    expect(nextMigrationId(["00007-a"], "next")).toBe("00008-next");
+  });
+
+  it("should reduce the name to a slug the loader accepts", () => {
+    const id = nextMigrationId([], "Update heroBlock & card_v2!");
+
+    expect(id).toBe("0001-update-hero-block-card-v2");
+    expect(selectMigrationFiles("m", [`${id}.ts`])).toHaveLength(1);
   });
 });

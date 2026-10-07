@@ -107,3 +107,17 @@ export interface DefineStoryblokBlocksOptions {
    */
   fallback?: AstroComponentFactory;
 }
+
+/** Return value of `defineStoryblokBlocks()`. */
+export interface DefineStoryblokBlocksResult<TExtraProps extends object = {}> {
+  /**
+   * Renders a block using the components registered in this
+   * `defineStoryblokBlocks()` call.
+   *
+   * ```astro
+   * <StoryblokBlock block={story.content} />
+   * {block.body?.map((child) => <StoryblokBlock block={child} />)}
+   * ```
+   */
+  StoryblokBlock: StoryblokBlockComponent<TExtraProps>;
+}

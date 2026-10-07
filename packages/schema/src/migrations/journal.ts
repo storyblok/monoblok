@@ -31,6 +31,8 @@ export interface MigrationRun {
   stories: number;
   /** Blocks the run patched, across all stories. */
   blocks: number;
+  /** When an undo restored every story the run changed; absent while any change is still in place. */
+  undoneAt?: string;
 }
 
 /** A story's publish state as the run found it, before writing. */
@@ -52,9 +54,13 @@ export interface Journal {
   /**
    * Writes both halves. Implementations write the patches before the entry: an
    * orphaned patch object is inert, whereas an entry pointing at patches that
-   * were never stored is an undo that fails when it is needed.
+   * were never stored is an undo that fails when it is needed. Recording a run
+   * id again replaces both halves, so a caller can record a run before writing
+   * and narrow it to the writes that landed afterwards.
    */
   record(run: MigrationRun, inverse: StoryInverse[]): Promise<void>;
+  /** Deletes both halves; an unknown id is a no-op. */
+  remove(id: string): Promise<void>;
   /** Metadata only — a listing must not have to pull patch bodies to print a table. */
   list(space: string): Promise<MigrationRun[]>;
   read(id: string): Promise<MigrationRun | undefined>;

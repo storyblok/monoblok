@@ -151,6 +151,11 @@ export {
   loadMigrations,
   selectMigrationFiles,
 } from "./migrations/load-migrations";
-export type { ImportDefault, LoadedMigration, MigrationFile } from "./migrations/load-migrations";
+export type {
+  ImportDefault,
+  LoadedMigration,
+  LoadMigrationsOptions,
+  MigrationFile,
+} from "./migrations/load-migrations";
 
 export { JOURNAL_DIRECTORY, localJournal, resolveJournal } from "./migrations/local-journal";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyMigration, type StoryForMigration } from "./apply-migration";
 import { defineMigration } from "./define-migration";
-import { alterField, renameField, splitField } from "./ops";
+import { alterBlock, alterField, renameBlock, renameField, splitField } from "./ops";
 
 const migration = defineMigration([renameField({ block: "card", field: "title", to: "headline" })]);
 
@@ -166,6 +166,127 @@ describe("applyMigration", () => {
     expect(stories[0].content).toMatchObject({
       body: [{ _uid: "a", component: "card", title: "Hi" }],
     });
+  });
+});
+
+describe("applyMigration across ops and reruns", () => {
+  function storyWith(body: unknown[]): StoryForMigration {
+    return { id: 1, slug: "home", content: { _uid: "r", component: "page", body } };
+  }
+
+  function run(ops: Parameters<typeof defineMigration>[0], story: StoryForMigration) {
+    return applyMigration({
+      migration: defineMigration(ops),
+      id: "0001-x",
+      space: "1",
+      stories: [story],
+    });
+  }
+
+  it("should address every op to the name the block had before the migration", () => {
+    const outcome = run(
+      [renameBlock({ block: "a", to: "b" }), renameField({ block: "a", field: "x", to: "y" })],
+      storyWith([{ _uid: "k", component: "a", x: 1 }]),
+    );
+
+    expect(outcome.refusals).toEqual([]);
+    expect(outcome.writes[0].content).toMatchObject({ body: [{ component: "b", y: 1 }] });
+  });
+
+  it("should refuse an op addressed to a name an earlier op introduced, which only a rerun would reach", () => {
+    const outcome = run(
+      [renameBlock({ block: "a", to: "b" }), renameField({ block: "b", field: "x", to: "y" })],
+      storyWith([{ _uid: "k", component: "a", x: 1 }]),
+    );
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals[0].reason).toMatch(/op 1 \(renameField\) on block k changed it again/);
+  });
+
+  it("should apply a later op to children an earlier `alterBlock` replaced", () => {
+    const outcome = run(
+      [
+        alterBlock({ block: "page" }, (page) => ({
+          ...page,
+          body: (page.body as Record<string, unknown>[]).map((child) => ({ ...child })),
+        })),
+        renameField({ block: "card", field: "x", to: "y" }),
+      ],
+      storyWith([{ _uid: "k", component: "card", x: 1 }]),
+    );
+
+    expect(outcome.writes[0].content).toMatchObject({ body: [{ y: 1 }] });
+  });
+
+  it("should refuse a rename onto a field that already holds a value", () => {
+    const outcome = run(
+      [renameField({ block: "card", field: "headline", to: "subtitle" })],
+      storyWith([{ _uid: "k", component: "card", headline: "A", subtitle: "B" }]),
+    );
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals[0].reason).toMatch(/"subtitle" already holds a value/);
+  });
+
+  it("should rename onto a field that is present but empty", () => {
+    const outcome = run(
+      [renameField({ block: "card", field: "headline", to: "subtitle" })],
+      storyWith([{ _uid: "k", component: "card", headline: "A", subtitle: "" }]),
+    );
+
+    expect(outcome.writes[0].content).toMatchObject({ body: [{ subtitle: "A" }] });
+  });
+
+  it("should let a rerun of a rename chain refuse rather than destroy data", () => {
+    const chain: Parameters<typeof defineMigration>[0] = [
+      renameField({ block: "card", field: "title", to: "headline" }),
+      renameField({ block: "card", field: "subtitle", to: "title" }),
+    ];
+    const first = run(
+      chain,
+      storyWith([{ _uid: "k", component: "card", title: "Main", subtitle: "Sub" }]),
+    );
+    expect(first.writes[0].content).toMatchObject({ body: [{ headline: "Main", title: "Sub" }] });
+
+    const second = run(chain, { ...first.writes[0].story, content: first.writes[0].content });
+
+    expect(second.writes).toEqual([]);
+    expect(second.refusals[0].reason).toMatch(/"headline" already holds a value/);
+  });
+
+  it("should refuse an `alterBlock` result that drops the block's `_uid` or `component`", () => {
+    const outcome = run(
+      [alterBlock({ block: "card" }, (card) => ({ title: String(card.title).trim() }) as never)],
+      storyWith([{ _uid: "k", component: "card", title: " x " }]),
+    );
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals[0].reason).toMatch(/op 0 \(alterBlock\) on block k was refused/);
+  });
+
+  it("should refuse a story whose shadowed duplicate uid is the one the migration targets", () => {
+    const outcome = run(
+      [renameField({ block: "card", field: "title", to: "headline" })],
+      storyWith([
+        { _uid: "dup", component: "card", title: "T" },
+        { _uid: "dup", component: "text" },
+      ]),
+    );
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals[0].reason).toMatch(/already contains repeated block ids/);
+  });
+
+  it("should refuse a story whose callback throws and name the op and block", () => {
+    const outcome = run(
+      [alterField({ block: "card", field: "title" }, (value) => (value as string).toUpperCase())],
+      storyWith([{ _uid: "k", component: "card", title: 42 }]),
+    );
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals[0].reason).toMatch(
+      /op 0 \(alterField\) on block k .*the callback threw/,
+    );
   });
 });
 

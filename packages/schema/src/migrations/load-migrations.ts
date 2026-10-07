@@ -6,10 +6,9 @@
  * admits no dots, so the `*.before.ts` schema snapshots that sit beside
  * migrations, and anything else in the directory, are left alone.
  */
-import { readdir } from "node:fs/promises";
-import path from "node:path";
-import type { CompiledMigration } from "../define-migration";
-import { isRecord } from "../../utils/is-record";
+import type { CompiledMigration } from "./define-migration";
+import { isRecord } from "../utils/is-record";
+import { joinPath } from "../utils/join-path";
 
 export type MigrationFile = {
   /** Filename without its extension; the migration's identity. */
@@ -34,15 +33,25 @@ function isCompiledMigration(value: unknown): value is CompiledMigration {
   return isRecord(value) && Array.isArray(value.ops) && Array.isArray(value.targets);
 }
 
-/** Migration files in run order: the numeric prefix is the order they are meant to run in. */
-export async function discoverMigrations(directory: string): Promise<MigrationFile[]> {
-  const files = await readdir(directory).catch((): string[] => []);
-  return files
-    .flatMap((file) => {
-      const match = MIGRATION_FILE.exec(file);
-      return match ? [{ id: match[1], file: path.join(directory, file) }] : [];
+/**
+ * The migrations among a directory's filenames, in run order: the numeric
+ * prefix is the order they are meant to run in, and a directory listing
+ * carries no order of its own.
+ */
+export function selectMigrationFiles(directory: string, filenames: string[]): MigrationFile[] {
+  return filenames
+    .flatMap((filename) => {
+      const match = MIGRATION_FILE.exec(filename);
+      return match ? [{ id: match[1], filename }] : [];
     })
-    .sort((a, b) => a.file.localeCompare(b.file));
+    .sort((a, b) => a.filename.localeCompare(b.filename))
+    .map(({ id, filename }) => ({ id, file: joinPath(directory, filename) }));
+}
+
+export async function discoverMigrations(directory: string): Promise<MigrationFile[]> {
+  const { readdir } = await import("node:fs/promises");
+  const filenames = await readdir(directory).catch((): string[] => []);
+  return selectMigrationFiles(directory, filenames);
 }
 
 export async function loadMigrations(
@@ -55,7 +64,7 @@ export async function loadMigrations(
       const migration = await importDefault(file);
       if (!isCompiledMigration(migration)) {
         throw new Error(
-          `${path.basename(file)} does not default-export a migration. Export \`defineMigration([…])\` as the default.`,
+          `${file} does not default-export a migration. Export \`defineMigration([…])\` as the default.`,
         );
       }
       return { id, file, migration };

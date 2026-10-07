@@ -1,5 +1,6 @@
 import type { CoercionTarget } from "../migrations/ops";
-import { formatValue, INDENT, quoteString } from "./format";
+import { isRecord } from "../utils/is-record";
+import { commentText, formatValue, INDENT, quoteString } from "./format";
 
 type OpTarget = { block: string; field: string };
 
@@ -38,9 +39,6 @@ function importOf(op: MigrationOpSource): string {
   return op.kind === "fillField" ? "alterBlock" : op.kind;
 }
 
-/** A line break in a comment would end it and turn the rest into code. */
-const LINE_TERMINATORS = /[\r\n\u2028\u2029]+/g;
-
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
 function accessor(field: string): string {
@@ -60,8 +58,12 @@ function renderOp(op: MigrationOpSource, depth: number): string {
     }
     case "alterField":
       return `alterField(${target(op)} }, (value) => value)`;
-    case "addField":
-      return `addField(${target(op)} }, () => ${formatValue(op.value, depth)})`;
+    case "addField": {
+      const value = formatValue(op.value, depth);
+      // An object literal after `=>` would parse as a block body.
+      const body = isRecord(op.value) ? `(${value})` : value;
+      return `addField(${target(op)} }, () => ${body})`;
+    }
     case "fillField": {
       const body =
         op.value === undefined
@@ -99,7 +101,7 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   }
   for (const op of ops) {
     for (const todo of op.todo ?? []) {
-      opLines.push(`${opIndent}// ${todo.replace(LINE_TERMINATORS, " ")}`);
+      opLines.push(`${opIndent}// ${commentText(todo)}`);
     }
     opLines.push(`${opIndent}${renderOp(op, depth)},`);
   }

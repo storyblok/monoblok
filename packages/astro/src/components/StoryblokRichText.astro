@@ -1,10 +1,17 @@
 ---
-import { normalizeNodes, type StoryblokRichTextInput } from "@storyblok/richtext";
-import type { StoryblokAstroRichTextRenderContext } from "../richtext-helpers";
+import {
+  normalizeNodes,
+  type StoryblokRichTextImageOptions,
+  type StoryblokRichTextInput,
+} from "@storyblok/richtext";
+import type { StoryblokAstroRichTextComponentMap } from "../richtext-helpers";
 import RenderChildren from "./richtext/RenderChildren.astro";
 
-interface Props extends StoryblokAstroRichTextRenderContext {
+interface Props {
   document: StoryblokRichTextInput;
+  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  components?: StoryblokAstroRichTextComponentMap;
+  data?: unknown;
 }
 
 const { document, components, optimizeImage, data } = Astro.props;

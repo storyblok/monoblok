@@ -1,4 +1,5 @@
 import { storyblokEditable } from "@storyblok/live-preview";
+import type { AstroComponentFactory } from "astro/runtime/server/render/astro/index.js";
 
 /**
  * A content block as returned by the Storyblok Content Delivery API.
@@ -45,7 +46,7 @@ export type StoryblokBlockComponentProps<
 > = {
   /** The block content being rendered. */
   block: StoryblokBlockData<T>;
-  /** Editable attributes injected by `StoryblokBlock`/`StoryblokBlocks`. */
+  /** Editable attributes injected by `StoryblokBlock`. */
   editable?: StoryblokEditableProps;
 } & Partial<TExtraProps>;
 
@@ -53,10 +54,8 @@ export type StoryblokBlockComponentProps<
  * Any component capable of rendering a block. In practice an `.astro`
  * component, but framework components work too.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type StoryblokBlockComponent = any;
 
-export type StoryblokComponentMap = Record<string, StoryblokBlockComponent>;
+export type StoryblokComponentMap = Record<string, AstroComponentFactory>;
 
 export interface DefineStoryblokBlocksOptions {
   /**
@@ -70,5 +69,5 @@ export interface DefineStoryblokBlocksOptions {
    * Rendered for block types that are not present in `components`. Receives
    * the same props as a registered component.
    */
-  fallback?: StoryblokBlockComponent;
+  fallback?: AstroComponentFactory;
 }

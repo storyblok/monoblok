@@ -24,6 +24,15 @@ export function quoteString(value: string): string {
   return `'${escaped}'`;
 }
 
+// A line break ends a line comment and a star-slash ends a block comment;
+// either would turn the rest of the text into code.
+const COMMENT_TERMINATORS = /[\r\n\u2028\u2029]+|\*\//g;
+
+/** Makes arbitrary text safe to place inside a line or block comment. */
+export function commentText(text: string): string {
+  return text.replace(COMMENT_TERMINATORS, (match) => (match === "*/" ? "* /" : " "));
+}
+
 /**
  * Formats a JavaScript value as a multi-line code string.
  * All object properties are placed on separate lines.

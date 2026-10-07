@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
 import { defineBlock, defineField } from "@storyblok/schema";
@@ -7,6 +8,8 @@ import "../index";
 import { migrationsCommand } from "../command";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";
 import { getUI } from "../../../lib/ui";
+import { session } from "../../../session";
+import { loggedInSessionState, loggedOutSessionState } from "../../../../test/setup";
 import {
   createRemoteSpace,
   journalEntries,
@@ -117,7 +120,8 @@ describe("migrations apply command", () => {
     ]);
   });
 
-  it("should fail when no migration has the given name", async () => {
+  it("should fail when no migration has the given name and name the ones there are", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
 
@@ -125,6 +129,29 @@ describe("migrations apply command", () => {
 
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain("Available: 0001-rename-card-title.");
+  });
+
+  it("should accept the migration's filename as its name", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply("0001-rename-card-title.ts");
+
+    expect(space.writes).toHaveLength(1);
+  });
+
+  it("should apply the named migration when another migration file is broken", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/0002-broken.ts`]: "export default 42;" });
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+
+    await apply("0001-rename-card-title");
+
+    expect(space.writes).toHaveLength(1);
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should not load schema snapshots that sit beside the migrations", async () => {
@@ -158,6 +185,24 @@ describe("migrations apply command", () => {
     );
   });
 
+  it("should list the recorded runs without a login", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    space.canUpdateStories();
+    await apply();
+    session().state = loggedOutSessionState();
+
+    try {
+      await migrationsCommand.parseAsync(["node", "test", "list", "--space", DEFAULT_SPACE]);
+    } finally {
+      session().state = loggedInSessionState();
+    }
+
+    expect(process.exitCode).toBeUndefined();
+    expect(info).toHaveBeenLastCalledWith(expect.stringContaining("0001-rename-card-title"));
+  });
+
   it("should neither write nor record anything on a dry run", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
@@ -170,6 +215,7 @@ describe("migrations apply command", () => {
 
   it("should report under a dry run what a real run does, including for a migration that matches only what an earlier one produced", async () => {
     const info = vi.spyOn(getUI(), "info");
+    const list = vi.spyOn(getUI(), "list");
     space.hasMigrations(
       ["0001-rename-card-to-teaser", renameCardToTeaser],
       ["0002-rename-teaser-title", renameTeaserTitle],
@@ -183,6 +229,7 @@ describe("migrations apply command", () => {
       "0001-rename-card-to-teaser: would change 1 story (1 block).",
       "0002-rename-teaser-title: would change 1 story (1 block).",
     ]);
+    expect(list).toHaveBeenCalledWith(["home: 1 block"]);
 
     await apply();
 
@@ -213,7 +260,36 @@ describe("migrations apply command", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  it("should record nothing when every write failed", async () => {
+  it("should fail when one of several migrations refused every story it matched", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      [
+        "0002-rename-hero-title",
+        defineMigration([renameField({ block: "hero", field: "title", to: "headline" })]),
+      ],
+    );
+    space.hasStories(
+      storyWithRepeatedIds(1),
+      storyWithCard({
+        id: 2,
+        slug: "about",
+        full_slug: "about",
+        content: {
+          _uid: "root-2",
+          component: "page",
+          body: [{ _uid: "hero-1", component: "hero", title: "Hi" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes.map((write) => write.id)).toEqual([2]);
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("should record nothing and fail when every write failed", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
     space.failsToUpdateStories();
@@ -221,6 +297,46 @@ describe("migrations apply command", () => {
     await apply();
 
     expect(journalEntries()).toEqual([]);
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("should record the run before the first write, so a run that stops partway can be undone", async () => {
+    const recordedAtWrite: number[] = [];
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    space.canUpdateStories(() => recordedAtWrite.push(journalEntries().length));
+
+    await apply();
+
+    expect(recordedAtWrite).toEqual([1]);
+  });
+
+  it("should record only the stories that were written when some writes failed, and fail", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
+    space.canUpdateStories();
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/2`, () =>
+        HttpResponse.json({ error: "Unprocessable Entity" }, { status: 422 }),
+      ),
+    );
+
+    await apply();
+
+    expect(journalEntries()).toMatchObject([{ stories: 1 }]);
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("should migrate the other stories and fail when one story could not be read", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
+    space.canUpdateStories();
+    space.failsToReadStory(1);
+
+    await apply();
+
+    expect(space.writes.map((write) => write.id)).toEqual([2]);
+    expect(process.exitCode).toBe(2);
   });
 
   it("should record nothing for a re-run that changes no story", async () => {
@@ -235,6 +351,19 @@ describe("migrations apply command", () => {
   });
 
   describe("--schema", () => {
+    it("should refuse to check several migrations against one schema", async () => {
+      space.hasMigrations(
+        ["0001-rename-card-title", renameCardTitle],
+        ["0002-rename-card-to-teaser", renameCardToTeaser],
+      );
+      server.resetHandlers();
+
+      await apply("--schema", "src/schema.ts");
+
+      expect(space.writes).toEqual([]);
+      expect(process.exitCode).toBe(2);
+    });
+
     it("should refuse a migration naming a block the schema does not define, before reaching the API", async () => {
       const error = vi.spyOn(console, "error").mockImplementation(() => {});
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
@@ -299,6 +428,33 @@ describe("migrations apply command", () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("Summer campaign (7)"));
     });
 
+    it("should refuse to run when the releases can't be checked", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard());
+      space.failsToListReleases();
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should warn and run with --allow-pending-releases when the releases can't be checked", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard());
+      space.failsToListReleases();
+      space.canUpdateStories();
+
+      await apply("--allow-pending-releases");
+
+      expect(space.writes).toHaveLength(1);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Could not check for pending releases"),
+      );
+    });
+
     it("should only warn on a dry run", async () => {
       const warn = vi.spyOn(getUI(), "warn");
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
@@ -339,8 +495,13 @@ describe("migrations apply command", () => {
       space.hasStories(publishedStory(1, false), publishedStory(2, true), storyWithCard({ id: 3 }));
       space.canUpdateStories();
 
+      const warn = vi.spyOn(getUI(), "warn");
+
       await apply("--publish", "published");
 
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("--publish published doesn't select it"),
+      );
       expect(space.writes.map(({ id, publish }) => ({ id, publish }))).toEqual([
         { id: 1, publish: true },
         { id: 2, publish: false },

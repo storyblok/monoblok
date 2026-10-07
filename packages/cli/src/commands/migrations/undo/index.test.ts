@@ -128,17 +128,81 @@ describe("migrations undo command", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("will be overwritten"));
   });
 
-  it("should undo the other stories when one was deleted since the run", async () => {
+  it("should undo the earlier run on a second undo and list the runs as undone", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard());
+    await run("apply");
+
+    await run("undo");
+    await run("undo");
+
+    expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+    info.mockClear();
+    await run("list");
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      expect.stringMatching(/0001-rename-card-title .*\(undone /),
+      expect.stringMatching(/0002-rename-card-to-teaser .*\(undone /),
+    ]);
+
+    await run("undo");
+    expect(process.exitCode).toBe(2);
+  });
+
+  it("should keep a run with blocks left in place open, so undo --force reaches them", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    await run("apply");
+    space.editsStory(1, (content) => {
+      (content.body as Record<string, unknown>[])[0].headline = "Edited";
+    });
+
+    await run("undo");
+    await run("undo", "--force");
+
+    expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
+  });
+
+  it("should fail, count the story as failed, and keep the run open when a write fails", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    const warn = vi.spyOn(getUI(), "warn");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    await run("apply", "--publish", "all");
+    space.failsToUpdateStories();
+
+    await run("undo");
+
+    expect(process.exitCode).toBe(2);
+    expect(info).toHaveBeenCalledWith(
+      expect.stringMatching(/Undid 0 stories .*; 1 story failed\.$/),
+    );
+    expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("for the first time"));
+    expect(journalEntries()).toEqual([
+      expect.not.objectContaining({ undoneAt: expect.anything() }),
+    ]);
+  });
+
+  it.each([
+    ["deleted", (space: ReturnType<typeof createRemoteSpace>) => space.deletesStory(2)],
+    ["moved to the trash", (space: ReturnType<typeof createRemoteSpace>) => space.trashesStory(2)],
+  ])("should undo the other stories when one was %s since the run", async (_, remove) => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
     await run("apply");
-    space.deletesStory(2);
+    remove(space);
 
     await run("undo");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
-    expect(warn).toHaveBeenCalledWith("Story 2 could not be read, so it was not undone.");
+    expect(warn).toHaveBeenCalledWith(
+      "1 story was deleted since the run, so there is nothing to undo there: 2",
+    );
+    expect(process.exitCode).toBeUndefined();
   });
 
   it("should refuse while a release is pending unless --allow-pending-releases is passed", async () => {

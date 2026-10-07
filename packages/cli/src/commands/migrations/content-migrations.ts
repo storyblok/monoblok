@@ -54,28 +54,44 @@ async function fetchReleases(space: string) {
 }
 
 /**
- * Content in a release is out of a migration's reach, and deploying the release
- * later replaces the migrated draft. Refuses unless `allow` is set; `warnOnly`
- * reports without refusing, for a run that writes nothing.
+ * Content in a release is stored apart from the story, so a run cannot change
+ * it, and deploying the release later replaces the story the run wrote.
+ * Refuses unless `allow` is set; `warnOnly` reports without refusing, for a run
+ * that writes nothing. When the run may proceed anyway, a failed release check
+ * is a warning rather than a reason to stop.
  */
 export async function guardPendingReleases(
   space: string,
   options: { allow?: boolean; warnOnly?: boolean },
 ): Promise<void> {
-  const check = checkPendingReleases(await fetchReleases(space), {
-    allowPendingReleases: options.allow || options.warnOnly,
-  });
+  const proceedAnyway = options.allow || options.warnOnly;
+  let releases: Awaited<ReturnType<typeof fetchReleases>>;
+  try {
+    releases = await fetchReleases(space);
+  } catch (maybeError) {
+    if (!proceedAnyway) {
+      throw maybeError;
+    }
+    getUI().warn(
+      `Could not check for pending releases: ${toError(maybeError).message}. Deploying a pending release overwrites the stories this run writes.`,
+    );
+    return;
+  }
+
+  const check = checkPendingReleases(releases, { allowPendingReleases: proceedAnyway });
   if (check.pending.length === 0) {
     return;
   }
 
   const names = check.pending.map((release) => `  - ${release.name} (${release.id})`).join("\n");
+  const one = check.pending.length === 1;
+  const consequence = `This run doesn't change release content, and deploying ${one ? "the release" : "a release"} overwrites the stories it writes`;
   if (!check.proceed) {
     throw new CommandError(
-      `Space ${space} has pending releases. Their content is out of the migration's reach, and deploying them would overwrite the migrated stories:\n${names}\nDeploy or delete them first, or pass --allow-pending-releases to run anyway.`,
+      `Space ${space} has ${plural(check.pending.length, "pending release", "pending releases")}. ${consequence}:\n${names}\nDeploy or delete ${one ? "it" : "them"} first, or pass --allow-pending-releases to run anyway.`,
     );
   }
   getUI().warn(
-    `${chalk.bold(plural(check.pending.length, "pending release", "pending releases"))} will not be migrated, and deploying them overwrites the migrated stories:\n${names}`,
+    `Space ${space} has ${chalk.bold(plural(check.pending.length, "pending release", "pending releases"))}. ${consequence}:\n${names}`,
   );
 }

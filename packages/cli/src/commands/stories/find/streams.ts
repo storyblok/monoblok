@@ -51,6 +51,7 @@ export const filterListedStoriesStream = ({
 export const filterStoriesStream = ({
   filters,
   isAlreadyMatched,
+  onStart,
   onMatch,
   onSkip,
   onIncrement,
@@ -59,6 +60,8 @@ export const filterStoriesStream = ({
   filters: ClientFilter[];
   /** Decided upstream: a match, with no filters left to evaluate. */
   isAlreadyMatched?: (story: Story) => boolean;
+  /** Called as a story is taken up; `onIncrement` is its end. */
+  onStart?: (story: Story) => void;
   onMatch?: (story: Story) => void;
   onSkip?: (story: Story) => void;
   onIncrement?: () => void;
@@ -67,6 +70,7 @@ export const filterStoriesStream = ({
   new Transform({
     objectMode: true,
     transform(story: Story, _encoding, callback) {
+      onStart?.(story);
       try {
         if (isAlreadyMatched?.(story) === true || applyClientFilters(story, filters)) {
           onMatch?.(story);
@@ -109,6 +113,7 @@ export const capiFilterStream = ({
   onCandidate,
   onPruned,
   onUnresolved,
+  onBatchStart,
   onBatchSettled,
   onBatchError,
 }: {
@@ -124,6 +129,8 @@ export const capiFilterStream = ({
   onPruned?: (story: Story) => void;
   /** CAPI had no content for it, so it passes through unfiltered. */
   onUnresolved?: (story: Story) => void;
+  /** Called as a batch is sent; `onBatchSettled` is its end. */
+  onBatchStart?: (size: number) => void;
   onBatchSettled?: (size: number) => void;
   onBatchError?: (error: Error, size: number) => void;
 }) => {
@@ -148,6 +155,7 @@ export const capiFilterStream = ({
   const settleBatch = async (pending: Story[]): Promise<Story[]> => {
     let contentByUuid: Map<string, StoryContent> | undefined;
 
+    onBatchStart?.(pending.length);
     try {
       contentByUuid = await fetchContent(pending.map((story) => story.uuid).filter(Boolean));
     } catch (maybeError) {

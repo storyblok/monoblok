@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { vol } from "memfs";
 import {
   createStoriesForLevel,
+  fetchStoriesStream,
   fetchStoryStream,
   groupStoriesByDepth,
   readLocalStoriesStream,
@@ -1010,5 +1011,52 @@ describe("fetchStoryStream", () => {
     );
 
     expect(stories[0]).toMatchObject({ content_type: "page", content: { component: "page" } });
+  });
+});
+
+describe("fetchStoriesStream", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should report a whole page as listed before the pipeline takes its first story", async () => {
+    vi.spyOn(actions, "fetchStories").mockResolvedValue({
+      stories: [1, 2, 3].map((id) => ({ id, uuid: `uuid-${id}` }) as Story),
+      headers: new Headers({ Total: "3", "Per-Page": "1000" }),
+    });
+    const listedBeforeFirstTaken: number[] = [];
+    let listed = 0;
+
+    const stream = fetchStoriesStream({
+      spaceId: "12345",
+      onStoryListed: () => {
+        listed += 1;
+      },
+    });
+    for await (const _story of stream) {
+      listedBeforeFirstTaken.push(listed);
+    }
+
+    // The stage below decides when it takes each story; the listing is done regardless.
+    expect(listedBeforeFirstTaken).toEqual([3, 3, 3]);
+  });
+
+  it("should bracket each page request with start and success", async () => {
+    vi.spyOn(actions, "fetchStories").mockResolvedValue({
+      stories: [{ id: 1, uuid: "uuid-1" } as Story],
+      headers: new Headers({ Total: "2", "Per-Page": "1" }),
+    });
+    const events: string[] = [];
+
+    const stream = fetchStoriesStream({
+      spaceId: "12345",
+      onPageStart: (page) => events.push(`start ${page}`),
+      onPageSuccess: (page) => events.push(`success ${page}`),
+    });
+    for await (const _story of stream) {
+      // drain
+    }
+
+    expect(events).toEqual(["start 1", "success 1", "start 2", "success 2"]);
   });
 });

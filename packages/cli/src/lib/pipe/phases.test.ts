@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProgressBar, UI } from "../ui";
 import type { PhaseDefinition } from "./phases";
-import { createPhaseTracker, formatMark, toPhaseSummary } from "./phases";
+import { createPhaseTracker, formatDuration, toPhaseSummary } from "./phases";
 
 /** Records what each bar was told, so the tracker's arithmetic is observable. */
 function fakeUI() {
@@ -159,23 +159,107 @@ describe("createPhaseTracker", () => {
     expect(bars.get("Fetching stories")?.increments).toEqual([1, 25]);
   });
 
-  it("should report a mark only for the phases that ran", () => {
+  it("should report a timing only for the phases that ran", () => {
     const { ui } = fakeUI();
     const tracker = createPhaseTracker({
       ui,
       phases: phasesOf({ capi: false, skipContent: true }),
     });
 
-    tracker.phase("list").tick();
-
     expect(Object.keys(tracker.timings())).toEqual(["list", "process"]);
-    expect(tracker.phase("list").mark()).toMatch(/^done @\d+\.\ds$/);
+  });
+
+  describe("busy time", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("should count overlapping work once and leave out idle gaps", () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+      const { ui } = fakeUI();
+      const tracker = createPhaseTracker({
+        ui,
+        phases: phasesOf({ capi: false, skipContent: false }),
+      });
+      const content = tracker.phase("content");
+
+      // Two fetches overlapping for 300ms in all…
+      content.start();
+      vi.advanceTimersByTime(100);
+      content.start();
+      vi.advanceTimersByTime(100);
+      content.finish();
+      vi.advanceTimersByTime(100);
+      content.finish();
+      // …then a second waiting on the stage below, which is not busy time…
+      vi.advanceTimersByTime(5_000);
+      // …and one more fetch.
+      content.start();
+      vi.advanceTimersByTime(200);
+      content.finish();
+
+      expect(tracker.timings().content).toBe(500);
+      expect(content.duration()).toBe("500ms");
+    });
+
+    it("should not measure a phase by when the run started", () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+      const { ui } = fakeUI();
+      const tracker = createPhaseTracker({
+        ui,
+        phases: phasesOf({ capi: false, skipContent: true }),
+      });
+
+      vi.advanceTimersByTime(30_000);
+      tracker.phase("process").start();
+      vi.advanceTimersByTime(12);
+      tracker.phase("process").finish();
+
+      expect(tracker.timings().process).toBe(12);
+      expect(tracker.elapsedMs()).toBe(30_012);
+    });
+
+    it("should include work still open, so a stopped run reads its partial time", () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+      const { ui } = fakeUI();
+      const tracker = createPhaseTracker({
+        ui,
+        phases: phasesOf({ capi: false, skipContent: true }),
+      });
+
+      tracker.phase("list").start();
+      vi.advanceTimersByTime(1_500);
+
+      expect(tracker.phase("list").duration()).toBe("1.5s");
+    });
+
+    it("should ignore a finish without a start", () => {
+      vi.useFakeTimers({ toFake: ["performance"] });
+      const { ui } = fakeUI();
+      const tracker = createPhaseTracker({
+        ui,
+        phases: phasesOf({ capi: false, skipContent: true }),
+      });
+      const list = tracker.phase("list");
+
+      list.finish();
+      list.start();
+      vi.advanceTimersByTime(40);
+      list.finish();
+      vi.advanceTimersByTime(1_000);
+
+      expect(tracker.timings().list).toBe(40);
+    });
   });
 });
 
-describe("formatMark", () => {
-  it("should read as an elapsed-since-start mark, not a duration", () => {
-    expect(formatMark(12_340)).toBe("done @12.3s");
+describe("formatDuration", () => {
+  it("should read in milliseconds under a second", () => {
+    expect(formatDuration(12.4)).toBe("12ms");
+  });
+
+  it("should read in seconds from a second on", () => {
+    expect(formatDuration(12_340)).toBe("12.3s");
   });
 });
 

@@ -1045,8 +1045,8 @@ can move between the read and the write.
 ### Exclude folders under `--capi-filter`
 
 The Content Delivery API holds no content for folders, so every folder in scope passes through the
-bulk stage undecided and costs an individual Management API request in any case. Adding
-`--entry-type story` excludes them, and usually removes the "could not be decided" warning as well.
+bulk stage and costs an individual Management API request in any case. Adding `--entry-type story`
+excludes them.
 
 ### Sort with `--sort` rather than in the output
 

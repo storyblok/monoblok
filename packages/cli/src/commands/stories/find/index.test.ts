@@ -246,7 +246,7 @@ describe("stories find command", () => {
 
     expect(written).toHaveLength(1);
     expect(process.exitCode).toBeFalsy();
-    expect(stderr).toContain("Results: 1 stories with reference issues");
+    expect(stderr).toContain("Found 1 story with reference issues");
     expect(stderr).not.toContain("aborted");
   });
 
@@ -404,7 +404,8 @@ describe("stories find command", () => {
     // Nothing that reads as a failure: no error line, and the teardown of the
     // listing that was still in flight is not counted against it.
     expect(stderr).not.toMatch(/operation was aborted/i);
-    expect(stderr).toMatch(/0 page\(s\) failed/);
+    expect(stderr).toMatch(/✔ Found \d+ stor(y|ies) in/);
+    expect(stderr).not.toMatch(/pages? failed/);
     // ...an explicit statement that it was on purpose...
     expect(stderr).toMatch(/Stopped early on purpose/);
     // ...and an exit code a script can trust.

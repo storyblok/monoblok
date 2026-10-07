@@ -1,4 +1,9 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+
+import { defineMigration } from "../migrations/define-migration";
+import { removeField, renameField } from "../migrations/ops";
+import { validateMigration } from "../migrations/validate-migration";
 
 import { writeModules } from "./__tests__/generated-modules";
 import { generateMigrationSource } from "./migration-source";
@@ -170,6 +175,31 @@ describe("generateSnapshot", () => {
 
       expect(errors).toHaveLength(1);
       expect(errors[0]).toMatch(/auhtor/);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should export the schema a migration is validated against", async () => {
+    const modules = await writeModules({
+      "0001.before.ts": generateSnapshot({ components, reads: ["article"] }),
+    });
+
+    try {
+      const { schema } = await import(path.join(modules.directory, "0001.before.ts"));
+
+      expect(
+        validateMigration(
+          defineMigration([renameField({ block: "article", field: "author", to: "byline" })]),
+          schema,
+        ),
+      ).toEqual([]);
+      expect(
+        validateMigration(
+          defineMigration([removeField({ block: "card", field: "headline" })]),
+          schema,
+        ),
+      ).toHaveLength(1);
     } finally {
       await modules.cleanup();
     }

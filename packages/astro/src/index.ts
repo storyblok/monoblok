@@ -99,6 +99,7 @@ export const StoryblokRichText = RawStoryblokRichText as (props: {
 
 export type {
   DefineStoryblokBlocksOptions,
+  DefineStoryblokBlocksResult,
   StoryblokBlockComponent,
   StoryblokBlockComponentProps,
   StoryblokBlockData,

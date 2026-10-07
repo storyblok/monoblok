@@ -34,8 +34,7 @@ import type { Before as ArticleBefore } from "./0001-rename-article-author.befor
 
 /**
  * The two-schema form against a real generated snapshot: the source field comes
- * from `Before`, the rename target from `After`. Neither authoring order
- * compiled when a single schema had to describe both ends.
+ * from `Before`, the rename target from `After`.
  */
 export const renameField = defineMigration<AfterRenameArticleAuthor, ArticleBefore>({
   ops: [renameFieldOp({ block: "article", field: "author", to: "byline" })],
@@ -51,8 +50,7 @@ export const removeField = defineMigration<AfterRemoveCardDescription, FixtureSc
 });
 
 /**
- * `from` is what makes a coercion invertible without recorded patches. Stating
- * it costs one key and moves the op from tier 3 to tier 2.
+ * `from` is what makes a coercion invertible without recorded patches.
  */
 export const coerceFields = defineMigration<AfterCoerceCardTypes, FixtureSchema>({
   ops: [

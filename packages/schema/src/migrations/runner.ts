@@ -266,8 +266,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       const children = block[op.field];
       if (!Array.isArray(children) || children.length === 0) break;
       // Derived from the parent and the field so a rerun produces the same
-      // uid, the backend has no reason to regenerate it on the write, and two
-      // fields wrapped into the same container component do not collide.
+      // uid, saving has no reason to regenerate it, and two fields wrapped
+      // into the same container block do not collide.
       const wrapperUid = `${block._uid}-${op.field}-${op.in}`;
       // Already wrapped: a rerun must not add a second layer.
       if (
@@ -406,7 +406,7 @@ type ScopedOp = { op: MigrationOp; index: number };
  *
  * The blocks a callback returns are content the migration authored: no op is
  * applied to them in the same run, this one included. A callback that returns
- * a block of the component it matched would therefore expand again on the next
+ * a block of the type it matched would therefore expand again on the next
  * run, which the rerun probe reports.
  */
 function expandBlocks(

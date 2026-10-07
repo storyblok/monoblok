@@ -5,14 +5,7 @@ import {
   isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
-import {
-  contentSummary,
-  findPhases,
-  listingSummary,
-  processStageName,
-  resultsHeadline,
-  stoppedEarlyMessage,
-} from "./phases";
+import { findPhases, findSummary, processStageName, stoppedEarlyMessage } from "./phases";
 import { STORY_COLUMNS } from "./columns";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
@@ -91,61 +84,51 @@ export async function runFind({
     const content = tracker.counts("content");
     const filtered = tracker.counts("process");
     ui.br();
-    ui.info(
-      resultsHeadline({
-        results: output.written,
-        tracker,
-        filters,
-        skipContent,
-        capi: capi !== undefined,
-      }),
-    );
+    for (const line of findSummary({
+      results: output.written,
+      tracker,
+      filters,
+      skipContent,
+      capi: capi !== undefined,
+    })) {
+      ui.log(line);
+    }
 
+    // Printed under the summary, so they are not lost above it.
+    const notes: Array<() => void> = [];
     if (earlyExit) {
-      ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined));
+      notes.push(() => ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined)));
     }
 
     // Zero matches here means the filters matched nothing, or were written
     // against content that was never fetched. Only the user can tell which.
     if (skipContent && !capi && filters.length > 0 && filtered.succeeded === 0) {
-      ui.warn(
-        "--where sees list metadata only while --skip-content is set (full_slug, updated_at, content_type, " +
-          "tag_list, published, …), never story content. If the expression reads content, drop " +
-          "--skip-content, and add --capi-filter to keep the run fast.",
+      notes.push(() =>
+        ui.warn(
+          "--where sees list metadata only while --skip-content is set (full_slug, updated_at, content_type, " +
+            "tag_list, published, …), never story content. If the expression reads content, drop " +
+            "--skip-content, and add --capi-filter to keep the run fast.",
+        ),
       );
     }
 
     // The API rejects an unknown sort column on the first page, and the error
     // alone does not name the flag.
     if (list.failed > 0 && params.sort_by) {
-      ui.warn(
-        `If the error above is "Not sortable by this column", --sort ${params.sort_by} names a column the API cannot sort by. ` +
-          "Use a story column such as updated_at, created_at, published_at, name, slug or position, or a content field with the 'content.' prefix.",
+      notes.push(() =>
+        ui.warn(
+          `If the error above is "Not sortable by this column", --sort ${params.sort_by} names a column the API cannot sort by. ` +
+            "Use a story column such as updated_at, created_at, published_at, name, slug or position, or a content field with the 'content.' prefix.",
+        ),
       );
     }
 
-    // With no MAPI fetch left, an undecided story is tested on metadata alone.
-    if (skipContent && capi && capiFilter.unresolved > 0) {
-      ui.warn(
-        `${capiFilter.unresolved} stor${capiFilter.unresolved === 1 ? "y" : "ies"} could not be decided from CDN content ` +
-          "(folders, stories the CDN holds no content for, or a failed batch) and were tested on list metadata only. " +
-          "Drop --skip-content to fetch and test those from MAPI instead.",
-      );
+    if (notes.length > 0) {
+      ui.br();
+      for (const note of notes) {
+        note();
+      }
     }
-
-    const lines = [listingSummary(tracker)];
-    if (capi) {
-      lines.push(
-        `Filtering via CAPI: ${capiFilter.candidates}/${capiFilter.total} candidates, ${capiFilter.pruned} pruned before fetch, ${capiFilter.unresolved} undecided, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`,
-      );
-    }
-    if (!skipContent) {
-      lines.push(contentSummary(tracker));
-    }
-    lines.push(
-      `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${tracker.phase("process").mark()})`,
-    );
-    ui.list(lines);
 
     const timings = tracker.timings();
     logger.info("Finding stories finished", {

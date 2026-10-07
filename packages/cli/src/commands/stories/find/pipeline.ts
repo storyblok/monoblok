@@ -134,15 +134,20 @@ export async function runStoryPipeline({
       setTotalStories: (total) => {
         list.setTotal(total);
       },
+      onPageStart: () => {
+        list.start();
+      },
       onStoryListed: (story) => {
         list.count("succeeded");
         list.tick();
         onListed?.(story);
       },
       onPageSuccess: (page, total) => {
+        list.finish();
         logger.info(`Fetched stories page ${page} of ${total}`);
       },
       onPageError: (error, page, total) => {
+        list.finish();
         if (causedByStop(error)) {
           return;
         }
@@ -172,7 +177,11 @@ export async function runStoryPipeline({
             onUnresolved: () => {
               capiFilter.count("unresolved");
             },
+            onBatchStart: () => {
+              capiFilter.start();
+            },
             onBatchSettled: (size) => {
+              capiFilter.finish();
               capiFilter.tick(size);
             },
             onBatchError: (error, size) => {
@@ -201,6 +210,12 @@ export async function runStoryPipeline({
             // Same fields as the listing-only paths (`--skip-content`, CAPI content).
             withListMetadata: true,
             signal,
+            onFetchStart: () => {
+              content.start();
+            },
+            onFetchSettled: () => {
+              content.finish();
+            },
             onIncrement: () => {
               content.tick();
             },
@@ -223,7 +238,11 @@ export async function runStoryPipeline({
       isAlreadyMatched: matchedByCapiFilter
         ? (story) => matchedByCapiFilter.has(story.id)
         : undefined,
+      onStart: () => {
+        processed.start();
+      },
       onIncrement: () => {
+        processed.finish();
         processed.tick();
       },
       onMatch: () => {

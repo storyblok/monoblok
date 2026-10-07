@@ -315,10 +315,11 @@ export class UI {
     // passed alongside the update. Keep forwarding the original options on every call.
     return {
       increment: (count = 1) => bar.increment(count, options),
-      // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
-      // Floor at 1 so an empty phase stays a clean 0/1 instead.
+      // A total of 0 draws as a finished `0/0` bar: a phase with nothing to do
+      // is done, not stuck at 0%. Only the payload is updated here: a value
+      // update at total 0 is what makes cli-progress render the ETA as "LLs".
       setTotal: (total) => {
-        bar.setTotal(Math.max(total, 1));
+        bar.setTotal(total);
         bar.update(options);
       },
       stop: () => bar.stop(),

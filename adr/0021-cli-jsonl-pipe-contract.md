@@ -107,7 +107,7 @@ The pipe is a module, not a feature of `find`:
 | `output.ts`   | JSONL out, the backpressured sink, and the closed-pipe signal                          |
 | `input.ts`    | _planned:_ `-`, the `fstat` probe, and the JSONL reader with its malformed-line policy |
 | `contract.ts` | the line contract above: required fields and sidecar keys                              |
-| `phases.ts`   | progress bars, counters, timing marks, and derived totals for a staged run             |
+| `phases.ts`   | progress bars, counters, busy-time timings, and derived totals for a staged run        |
 
 `phases.ts` is there because a streaming command's instrumentation is the other thing every consumer
 would otherwise reimplement. `find` alone had 300 lines of it, `assets` has a smaller copy, and the

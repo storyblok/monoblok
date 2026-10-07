@@ -20,5 +20,5 @@ export {
   LimitReachedError,
 } from "./output";
 export type { LineWriter, MachineOutput } from "./output";
-export { createPhaseTracker, formatMark, toPhaseSummary } from "./phases";
+export { createPhaseTracker, formatDuration, toPhaseSummary } from "./phases";
 export type { Phase, PhaseCounts, PhaseDefinition, PhaseTracker } from "./phases";

@@ -240,6 +240,22 @@ describe("ui", () => {
       expect(create).toHaveBeenCalled();
     });
 
+    // A phase with nothing to do is finished, not stuck: an empty space used to
+    // leave the listing bar at `0% | 0/1` above bars below it reading `0/0` done.
+    it("should draw an empty phase as a finished bar", () => {
+      const create = vi.spyOn(MultiBar.prototype, "create");
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(true, () => {
+        ui.createProgressBar({ title: "Fetching" }).setTotal(0);
+      });
+      const bar = create.mock.results[0]?.value;
+      ui.stopAllProgressBars();
+
+      expect(bar.getTotal()).toBe(0);
+      expect(bar.getProgress()).toBe(1);
+    });
+
     // Silence would be worse than no animation: the spinner's text is the only
     // trace a long fetch leaves in a CI log.
     it("should degrade a spinner to plain text when stderr is not a terminal", () => {

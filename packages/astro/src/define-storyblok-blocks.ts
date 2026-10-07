@@ -1,6 +1,10 @@
 import { createComponent, render, renderComponent } from "astro/runtime/server/index.js";
 import RawStoryblokBlock from "./components/StoryblokBlock.astro";
-import type { DefineStoryblokBlocksOptions, StoryblokBlockComponent } from "./types";
+import type {
+  DefineStoryblokBlocksOptions,
+  DefineStoryblokBlocksResult,
+  StoryblokBlockComponent,
+} from "./types";
 
 /**
  * Registers the components that render Storyblok blocks and returns a
@@ -47,7 +51,7 @@ import type { DefineStoryblokBlocksOptions, StoryblokBlockComponent } from "./ty
  */
 export function defineStoryblokBlocks<TExtraProps extends object = {}>(
   options: DefineStoryblokBlocksOptions = {},
-) {
+): DefineStoryblokBlocksResult<TExtraProps> {
   const components = options.components ?? {};
   const fallback = options.fallback;
 

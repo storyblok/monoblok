@@ -114,18 +114,12 @@ const preconditions = {
     return { linking, plain, missingUuid };
   },
   /**
-   * The reader on the other end of stdout exits after `afterLines`.
-   *
-   * Node surfaces a closed pipe as an asynchronous `'error'` event carrying
-   * `EPIPE`, which is the only signal the command ever gets, so that is what is
-   * reproduced here rather than a mocked-out abort.
-   */
-  /**
    * stdout is a terminal. `isTTY` is a plain data property, absent entirely when
-   * stdout is not one, so it is set and restored rather than spied on. `rows`
-   * stays unset, so the table is printed rather than paged.
+   * stdout is not one, so it is set and restored rather than spied on. `TERM`
+   * is `dumb`, a terminal no pager runs on, so the table is printed directly.
    */
   stdoutIsATerminal() {
+    vi.stubEnv("TERM", "dumb");
     const original = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
     cleanups.push(() => {
@@ -136,6 +130,13 @@ const preconditions = {
       }
     });
   },
+  /**
+   * The reader on the other end of stdout exits after `afterLines`.
+   *
+   * Node surfaces a closed pipe as an asynchronous `'error'` event carrying
+   * `EPIPE`, which is the only signal the command ever gets, so that is what is
+   * reproduced here rather than a mocked-out abort.
+   */
   readerClosesThePipeAfter(afterLines: number) {
     const written: string[] = [];
     vi.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
@@ -160,6 +161,7 @@ describe("stories find command", () => {
     }
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     vol.reset();
     server.resetHandlers();
     process.exitCode = undefined;

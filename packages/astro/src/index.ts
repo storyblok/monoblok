@@ -1,11 +1,11 @@
 export { defineStoryblokBlocks } from "./define-storyblok-blocks";
 export { liveEditMiddleware } from "./live-preview/middleware";
-export { getPayload } from "./lib/helpers";
+export { getPayload } from "./get-payload";
 export { default as StoryblokLivePreview } from "./components/StoryblokLivePreview.astro";
 export { default as StoryblokServerData } from "./components/StoryblokServerData.astro";
 export { default as StoryblokRichText } from "./components/StoryblokRichText.astro";
 export { storyblokEditable, isInEditor } from "@storyblok/live-preview";
-export { sanitizeJSON } from "./lib/sanitizeJSON";
+export { sanitizeJSON } from "./sanitize-json";
 
 export type {
   DefineStoryblokBlocksOptions,
@@ -21,7 +21,7 @@ export {
   type StoryblokAstroRichTextComponentMap,
   type StoryblokAstroRichTextProps,
   type StoryblokAstroRichTextRenderContext,
-} from "./utils/richtext-helpers";
+} from "./richtext-helpers";
 
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 

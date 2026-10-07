@@ -11,7 +11,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 /** Query parameters for `spaces.create()` (e.g. `in_org`, `assign_partner`, `space_type`, `dup_id`). */
 export type SpaceCreateQuery = NonNullable<CreateSpaceData["query"]>;

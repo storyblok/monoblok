@@ -9,7 +9,7 @@ import type { Asset, AssetUpdate } from "../generated/mapi/types-aliased.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { uploadToS3 } from "./assets";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 /**
  * Query params accepted by `POST /v1/spaces/{space_id}/shared_assets` (the

@@ -26,7 +26,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createExperimentsResource(deps: MapiResourceDeps) {
   const { client, spaceId, wrapRequest } = deps;

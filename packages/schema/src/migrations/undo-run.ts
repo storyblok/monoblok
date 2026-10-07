@@ -6,11 +6,8 @@
  */
 import type { StoryForMigration } from "./apply-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
+import { MigrationError } from "./migration-error";
 import { applyPatches } from "./patch";
-
-export class MigrationError extends Error {
-  override name = "MigrationError";
-}
 
 export type UndoPlan = {
   run: MigrationRun;

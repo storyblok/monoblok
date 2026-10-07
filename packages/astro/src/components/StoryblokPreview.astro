@@ -1,0 +1,40 @@
+---
+import type { StoryblokPreviewProps } from "../types";
+
+const { bridgeOptions, debounceMs }: StoryblokPreviewProps = Astro.props;
+---
+
+<script define:vars={{ bridgeOptions, debounceMs }} is:inline>
+  // `define:vars` only works on `is:inline` scripts, which can't `import`, so
+  // it hands the props off to the processed/bundled script below via a
+  // global instead of carrying the logic itself.
+  window.__storyblokPreviewProps = { bridgeOptions, debounceMs };
+</script>
+
+<script>
+  import { onStoryblokEditorEvent } from '@storyblok/live-preview';
+  import { createPreviewHandler } from '../live-preview/preview-handler';
+  import type { StoryblokPreviewProps } from '../types';
+
+  declare global {
+    interface Window {
+      __storyblokPreviewProps?: StoryblokPreviewProps;
+    }
+  }
+
+  const { bridgeOptions, debounceMs } = window.__storyblokPreviewProps ?? {};
+
+  const previewHandler = createPreviewHandler({ debounceMs });
+
+  // `onStoryblokEditorEvent` only calls back for `input`; it reloads the page
+  // itself for `change`/`published`.
+  const cleanup = onStoryblokEditorEvent((story) => {
+    previewHandler.handle({ action: 'input', story });
+  }, bridgeOptions);
+
+  // Destroy the bridge if the page is swapped out by Astro's view transitions.
+  window.addEventListener('astro:before-preparation', () => {
+    cleanup.then((off) => off());
+    previewHandler.dispose();
+  });
+</script>

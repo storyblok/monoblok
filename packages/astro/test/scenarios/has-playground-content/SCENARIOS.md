@@ -11,7 +11,7 @@ relation targets that `FeaturedArticles.astro` renders from the resolved story o
 `full_slug`).
 
 `test` exists because `playground/ssr/src/pages/[...slug].astro` skips rendering
-`<StoryblokLivePreview />` for the slugs `test`, `about-us`, and `contact` to opt them out of live
+`<StoryblokPreview />` for the slugs `test`, `about-us`, and `contact` to opt them out of live
 preview.
 
 `featured-articles.posts` holds the _local_ story UUIDs; the field is an `options` field with

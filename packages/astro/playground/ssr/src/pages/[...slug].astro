@@ -2,7 +2,7 @@
 import {
   getPayload,
   isInEditor,
-  StoryblokLivePreview,
+  StoryblokPreview,
   StoryblokServerData,
   type StoryblokBlockData,
 } from "@storyblok/astro";
@@ -51,6 +51,6 @@ const disableLivePreview = slugs.includes(slug || "");
       </Widget>
     )
   }
-  {!disableLivePreview && <StoryblokLivePreview />}
+  {!disableLivePreview && <StoryblokPreview />}
 </BaseLayout>
 <StoryblokServerData users={users} />

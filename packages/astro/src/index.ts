@@ -1,13 +1,15 @@
-import RawStoryblokLivePreview from "./components/StoryblokLivePreview.astro";
+import type { BridgeParams } from "@storyblok/live-preview";
+import RawStoryblokPreview from "./components/StoryblokPreview.astro";
 import RawStoryblokRichText from "./components/StoryblokRichText.astro";
 import RawStoryblokServerData from "./components/StoryblokServerData.astro";
 import type { StoryblokAstroRichTextComponentMap } from "./richtext-helpers";
 import type { StoryblokRichTextImageOptions, StoryblokRichTextInput } from "@storyblok/richtext";
 
 export { defineStoryblokBlocks } from "./define-storyblok-blocks";
-export { liveEditMiddleware } from "./live-preview/middleware";
+export { storyblokPreviewMiddleware } from "./live-preview/middleware";
 export { getPayload } from "./get-payload";
 export { storyblokEditable, isInEditor } from "@storyblok/live-preview";
+export type { BridgeParams } from "@storyblok/live-preview";
 export { sanitizeJSON } from "./sanitize-json";
 
 /**
@@ -16,13 +18,28 @@ export { sanitizeJSON } from "./sanitize-json";
  * @example
  * ```astro
  * ---
- * import { StoryblokLivePreview } from '@storyblok/astro';
+ * import { StoryblokPreview } from '@storyblok/astro';
  * ---
  *
- *   <StoryblokLivePreview />
+ *   <StoryblokPreview />
+ * ```
+ *
+ * @example Custom debounce and Preview Bridge options
+ * ```astro
+ * ---
+ * import { StoryblokPreview } from '@storyblok/astro';
+ * ---
+ *
+ * <StoryblokPreview debounceMs={200} bridgeOptions={{ resolveRelations: ['featured.articles'] }} />
  * ```
  */
-export const StoryblokLivePreview = RawStoryblokLivePreview as () => any;
+// Inlined (not cast through `StoryblokPreviewProps`) so hovers show the
+// real props instead of just the type name. Keep both in sync.
+export const StoryblokPreview = RawStoryblokPreview as (props: {
+  bridgeOptions?: BridgeParams;
+  /** Debounce delay for consecutive input events. Defaults to 500ms. */
+  debounceMs?: number;
+}) => any;
 
 /**
  * Passes server-side data to the client so it survives Live Preview updates.
@@ -88,6 +105,7 @@ export type {
   StoryblokBlockProps,
   StoryblokComponentMap,
   StoryblokEditableProps,
+  StoryblokPreviewProps,
 } from "./types";
 
 export {

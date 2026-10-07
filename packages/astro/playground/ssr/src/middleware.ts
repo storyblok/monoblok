@@ -1,4 +1,4 @@
 import { sequence } from "astro:middleware";
-import { liveEditMiddleware } from "@storyblok/astro";
+import { storyblokPreviewMiddleware } from "@storyblok/astro";
 
-export const onRequest = sequence(liveEditMiddleware);
+export const onRequest = sequence(storyblokPreviewMiddleware);

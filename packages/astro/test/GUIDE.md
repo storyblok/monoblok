@@ -13,10 +13,10 @@ only what is specific to this package.
 | App under test | `playground/ssr`                             |
 
 **Live editing works in both SSR and SSG.** The Visual Editor bridge drives DOM updates client-side
-regardless of Astro's rendering mode; only `getPayload`/`liveEditMiddleware` (used to read the
-Visual Editor's POST body during an SSR render) require `output: "server"`. `playground/ssr` wires
-`liveEditMiddleware` via `src/middleware.ts` and renders `<StoryblokLivePreview />` in its layout;
-`playground/ssg` does not, so edits there reload on `change`/`published` only.
+regardless of Astro's rendering mode; only `getPayload`/`storyblokPreviewMiddleware` (used to read
+the Visual Editor's POST body during an SSR render) require `output: "server"`. `playground/ssr`
+wires `storyblokPreviewMiddleware` via `src/middleware.ts` and renders `<StoryblokPreview />` in its
+layout; `playground/ssg` does not, so edits there reload on `change`/`published` only.
 
 ## Run
 
@@ -49,8 +49,8 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
 - `article` has no Astro component on purpose. The two article stories exist only as relation
   targets that `FeaturedArticles.astro` renders from the resolved story object (`name`,
   `full_slug`).
-- The `test` slug is special: `[...slug].astro` skips rendering `<StoryblokLivePreview />` for
-  `test`, `about-us`, and `contact`.
+- The `test` slug is special: `[...slug].astro` skips rendering `<StoryblokPreview />` for `test`,
+  `about-us`, and `contact`.
 - Every app-side selector lives in `tools/visual-editor-qa/src/editor.page.ts`, which this package
   shares with the other framework harnesses. When a Storyblok release breaks the harness, that is
   the file to repair, and the fix lands for every package at once. This package supplies only its

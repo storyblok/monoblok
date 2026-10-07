@@ -1,20 +1,33 @@
 import chalk from "chalk";
 import type { Command } from "commander";
-import { applyMigration, loadMigrations, validateMigration } from "@storyblok/schema/migrations";
+import {
+  applyMigration,
+  discoverMigrations,
+  loadMigrations,
+  validateMigration,
+} from "@storyblok/schema/migrations";
 import type {
+  ApplyMigrationOutcome,
   CompiledMigration,
   PublishMode,
   StoryForMigration,
-  StoryInverse,
 } from "@storyblok/schema/migrations";
 import { colorPalette, commands } from "../../../constants";
-import { CommandError, handleError, requireAuthentication, toError } from "../../../utils";
+import {
+  CommandError,
+  fetchAllPages,
+  handleError,
+  requireAuthentication,
+  toError,
+} from "../../../utils";
+import { handleAPIError } from "../../../utils/error/api-error";
 import { importUserModuleDefault } from "../../../utils/user-module";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
 import { loadSchemaEntry } from "../../../lib/validation/adapter";
+import { getMapiClient } from "../../../api";
 import { session } from "../../../session";
-import { fetchStories, fetchStory, updateStory } from "../../stories/actions";
+import { fetchStory, updateStory } from "../../stories/actions";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
@@ -27,6 +40,8 @@ import {
 
 const PER_PAGE = 100;
 const PUBLISH_MODES: readonly PublishMode[] = ["all", "published", "published-with-changes"];
+/** Lets a migration be named by its filename, as shell completion produces it. */
+const MIGRATION_EXTENSION = /\.(?:ts|js|mjs)$/;
 
 function isPublishMode(value: unknown): value is PublishMode {
   return PUBLISH_MODES.some((mode) => mode === value);
@@ -37,28 +52,26 @@ function isPublishMode(value: unknown): value is PublishMode {
  * so the content fetch scales with the blocks it names, not with the space.
  */
 async function findCandidateStories(space: string, targets: readonly string[]): Promise<number[]> {
+  const client = getMapiClient();
   const ids = new Set<number>();
 
-  for (const component of targets) {
-    for (let page = 1; ; page++) {
-      const result = await fetchStories(space, {
-        contain_component: component,
-        per_page: PER_PAGE,
-        page,
-        story_only: true,
-      });
-      if (!result) {
-        break;
-      }
-      for (const story of result.stories) {
+  try {
+    for (const component of targets) {
+      const stories = await fetchAllPages(
+        (page) =>
+          client.stories.list({
+            path: { space_id: Number(space) },
+            query: { contain_component: component, per_page: PER_PAGE, page, story_only: true },
+            throwOnError: true,
+          }),
+        (data) => data.stories ?? [],
+      );
+      for (const story of stories) {
         ids.add(story.id);
       }
-      const total = Number(result.headers.get("Total"));
-      const perPage = Number(result.headers.get("Per-Page")) || PER_PAGE;
-      if (!Number.isFinite(total) || page * perPage >= total) {
-        break;
-      }
     }
+  } catch (error) {
+    handleAPIError("pull_stories", error);
   }
 
   return [...ids];
@@ -76,19 +89,27 @@ async function readStories(
   candidates: number[],
   planned: Map<number, StoryForMigration>,
   names: Map<number, string>,
-): Promise<StoryForMigration[]> {
+): Promise<{ stories: StoryForMigration[]; unread: number }> {
   const stories = new Map(planned);
+  let unread = 0;
   for (const id of candidates) {
     if (stories.has(id)) {
       continue;
     }
-    const story = await fetchStory(space, id);
-    if (story) {
-      names.set(id, story.name);
-      stories.set(id, toStoryForMigration(story));
+    try {
+      const story = await fetchStory(space, id);
+      if (story) {
+        names.set(id, story.name);
+        stories.set(id, toStoryForMigration(story));
+      }
+    } catch (maybeError) {
+      unread++;
+      const error = toError(maybeError);
+      getUI().warn(`Story ${id} could not be read, so it was not migrated: ${error.message}`);
+      getLogger().error("Failed to read story", { storyId: id, space, error });
     }
   }
-  return [...stories.values()];
+  return { stories: [...stories.values()], unread };
 }
 
 function assertMatchesSchema(
@@ -106,6 +127,27 @@ function assertMatchesSchema(
   }
 }
 
+function warnPublishedDraftOnly(
+  id: string,
+  outcome: ApplyMigrationOutcome,
+  options: { dryRun: boolean; publish: PublishMode | undefined },
+): void {
+  const count = outcome.publishedDraftOnly;
+  if (count === 0) {
+    return;
+  }
+  const one = count === 1;
+  const migrated = options.dryRun
+    ? `${plural(count, "published story", "published stories")} would be`
+    : plural(count, "published story was", "published stories were");
+  const hint = options.publish
+    ? `--publish ${options.publish} doesn't select ${one ? "it" : "them"}`
+    : "pass --publish to publish with the migration";
+  getUI().warn(
+    `${id}: ${migrated} migrated as ${one ? "a draft" : "drafts"} only. The published version keeps the old content until someone publishes ${one ? "the story" : "them"}; ${hint}.`,
+  );
+}
+
 const applyCmd = migrationsCommand
   .command("apply [name]")
   .description("Apply content migrations and record each run so it can be undone")
@@ -113,7 +155,7 @@ const applyCmd = migrationsCommand
   .option("-d, --dry-run", "report what would change without writing")
   .option(
     "--schema <entry-file>",
-    "schema entry file to check the migrations' blocks and fields against before applying",
+    "schema entry file, as it stood before the migration, to check the migration's blocks and fields against",
   )
   .option(
     "--publish <publish>",
@@ -124,7 +166,7 @@ const applyCmd = migrationsCommand
     "run although releases are pending; their content is not migrated",
   );
 
-applyCmd.action(async (name: string | undefined, _options: unknown, command: Command) => {
+applyCmd.action(async (rawName: string | undefined, _options: unknown, command: Command) => {
   const ui = getUI();
   const logger = getLogger();
   const {
@@ -137,6 +179,7 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
     verbose,
   } = command.optsWithGlobals();
   const { state } = session();
+  const name = rawName?.replace(MIGRATION_EXTENSION, "");
 
   ui.title(
     `${commands.MIGRATIONS}`,
@@ -172,24 +215,34 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
 
   try {
     const directory = migrationsDirectory(path, space);
-    const loaded = await loadMigrations(directory, (file) =>
-      importUserModuleDefault(file, "migration file"),
+    const selected = await loadMigrations(
+      directory,
+      (file) => importUserModuleDefault(file, "migration file"),
+      { only: name },
     );
-    const selected = name ? loaded.filter((entry) => entry.id === name) : loaded;
 
     if (selected.length === 0) {
+      if (!name) {
+        throw new CommandError(`No content migrations found in ${directory}.`);
+      }
+      const available = (await discoverMigrations(directory)).map((entry) => entry.id);
       throw new CommandError(
-        name
-          ? `No content migration "${name}" in ${directory}.`
-          : `No content migrations found in ${directory}.`,
+        `No content migration "${name}" in ${directory}.${
+          available.length > 0 ? ` Available: ${available.join(", ")}.` : ""
+        }`,
       );
     }
 
     if (schemaEntry) {
-      const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-      for (const entry of selected) {
-        assertMatchesSchema(entry.migration, entry.id, schema);
+      // Each migration expects the schema as it stood before it, so one schema
+      // can only describe the first of several.
+      if (selected.length > 1) {
+        throw new CommandError(
+          `--schema checks one migration against the schema as it stood before that migration. Name the migration to check, for example: storyblok migrations apply ${selected[0].id} --schema ${schemaEntry}`,
+        );
       }
+      const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
+      assertMatchesSchema(selected[0].migration, selected[0].id, schema);
     }
 
     await guardPendingReleases(space, { allow: allowPendingReleases, warnOnly: dryRun });
@@ -198,16 +251,16 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
     const planned = new Map<number, StoryForMigration>();
     /** Carried into the write, which would otherwise clear the story's name. */
     const names = new Map<number, string>();
-    // Counted across the whole invocation: the exit code is one answer for it.
-    let refused = 0;
-    let written = 0;
+    const refusedEverything: string[] = [];
+    let failed = 0;
 
     for (const entry of selected) {
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
       const candidates = await findCandidateStories(space, entry.migration.targets);
-      const stories = await readStories(space, candidates, planned, names);
+      const { stories, unread } = await readStories(space, candidates, planned, names);
+      failed += unread;
       spinner.succeed(
-        `${entry.id}: ${plural(stories.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
+        `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
       );
 
       const outcome = applyMigration({
@@ -221,30 +274,38 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
       for (const refusal of outcome.refusals) {
         ui.warn(`${chalk.bold(refusal.slug)}: ${refusal.reason}`);
       }
-      refused += outcome.refusals.length;
-
-      if (outcome.publishedDraftOnly > 0) {
-        ui.warn(
-          `${entry.id}: ${plural(outcome.publishedDraftOnly, "published story", "published stories")} ${dryRun ? "would be" : "were"} migrated as a draft only. The published version keeps the old content until the story is published again; pass --publish to publish it with the migration.`,
-        );
+      if (outcome.refusals.length > 0 && outcome.writes.length === 0) {
+        refusedEverything.push(entry.id);
       }
+
+      warnPublishedDraftOnly(entry.id, outcome, { dryRun: Boolean(dryRun), publish });
 
       if (dryRun) {
         for (const write of outcome.writes) {
           planned.set(write.story.id, { ...write.story, content: write.content });
         }
-        written += outcome.writes.length;
         ui.info(
           `${entry.id}: would change ${plural(outcome.run.stories, "story", "stories")} (${plural(outcome.run.blocks, "block", "blocks")}).`,
+        );
+        ui.list(
+          outcome.writes.map(
+            (write, index) =>
+              `${write.story.slug}: ${plural(outcome.inverse[index].patches.length, "block", "blocks")}`,
+          ),
         );
         continue;
       }
 
-      const inverseByStory = new Map(outcome.inverse.map((item) => [item.story, item]));
-      // Only stories that were written go into the record, so a run that fails
-      // partway can still undo the part that landed.
-      const recorded: StoryInverse[] = [];
+      if (outcome.writes.length === 0) {
+        ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
+        continue;
+      }
 
+      // Recorded before the first write, so a run that stops partway can still
+      // be undone. Undo skips stories whose content never changed.
+      await journal.record(outcome.run, outcome.inverse);
+
+      const landed = new Set<number>();
       for (const write of outcome.writes) {
         try {
           await updateStory(space, write.story.id, {
@@ -252,12 +313,10 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
             force_update: "1",
             ...(write.publish ? { publish: 1 } : {}),
           });
-          const item = inverseByStory.get(write.story.id);
-          if (item) {
-            recorded.push(item);
-          }
+          landed.add(write.story.id);
           logger.info("Story migrated", { storyId: write.story.id, migration: entry.id, space });
         } catch (maybeError) {
+          failed++;
           const error = toError(maybeError);
           ui.warn(`${chalk.bold(write.story.slug)}: ${error.message}`);
           logger.error("Failed to migrate story", {
@@ -269,34 +328,40 @@ applyCmd.action(async (name: string | undefined, _options: unknown, command: Com
         }
       }
 
-      written += recorded.length;
-
-      // An empty entry would become the most recent run, which `undo` picks by
-      // default, and undoing it would leave the real work applied.
-      if (recorded.length === 0) {
+      // An entry for a run that changed nothing would become the most recent
+      // run, which `undo` picks by default, leaving the real work applied.
+      if (landed.size === 0) {
+        await journal.remove(outcome.run.id);
         ui.info(`${entry.id}: changed no stories, so nothing was recorded.`);
         continue;
       }
 
-      await journal.record(
-        {
-          ...outcome.run,
-          stories: recorded.length,
-          blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
-        },
-        recorded,
-      );
+      if (landed.size < outcome.writes.length) {
+        const recorded = outcome.inverse.filter((item) => landed.has(item.story));
+        await journal.record(
+          {
+            ...outcome.run,
+            stories: recorded.length,
+            blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
+          },
+          recorded,
+        );
+      }
       ui.info(
-        `${entry.id}: changed ${plural(recorded.length, "story", "stories")}, recorded as ${chalk.bold(outcome.run.id)}.`,
+        `${entry.id}: changed ${plural(landed.size, "story", "stories")}, recorded as ${chalk.bold(outcome.run.id)}.`,
       );
     }
 
-    // A partial run exits successfully: it wrote what it could and recorded an
-    // undo for it. Only a run that achieved nothing fails.
-    if (refused > 0 && written === 0) {
-      throw new CommandError(
-        `Every story the migration matched was refused; nothing was ${dryRun ? "planned" : "written"}.`,
-      );
+    const problems = [
+      ...refusedEverything.map((id) => `${id} refused every story it matched`),
+      ...(failed > 0
+        ? [
+            `${plural(failed, "story", "stories")} could not be ${dryRun ? "read" : "read or written"}`,
+          ]
+        : []),
+    ];
+    if (problems.length > 0) {
+      throw new CommandError(`${problems.join("; ")}. See the warnings above.`);
     }
   } catch (maybeError) {
     handleError(toMigrationCommandError(maybeError), verbose);

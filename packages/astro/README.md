@@ -29,8 +29,9 @@
 
 ## Features
 
-- Explicit, closure-scoped block registry via `defineStoryblokBlocks({ components, fallback })`
-- `StoryblokBlock`/`StoryblokBlocks` for rendering single or multiple blocks
+- Independent, closure-scoped block registries via `defineStoryblokBlocks({ components, fallback })`
+  — call it more than once for separate registries that never share state
+- `StoryblokBlock` for rendering single or nested blocks
 - Visual Editor integration using `storyblokEditable`
 - Real-time Live Preview via `liveEditMiddleware`, `getPayload`, and `StoryblokLivePreview`
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
@@ -54,15 +55,15 @@ import { defineStoryblokBlocks } from '@storyblok/astro';
 import Page from '~/components/Page.astro';
 import Feature from '~/components/Feature.astro';
 
-export const { StoryblokBlock, StoryblokBlocks } = defineStoryblokBlocks({
+export const { StoryblokBlock } = defineStoryblokBlocks({
   components: { page: Page, feature: Feature },
 });
 ```
 
 ```ts
 // src/middleware.ts
-import { sequence } from 'astro:middleware';
-import { liveEditMiddleware } from '@storyblok/astro';
+import { sequence } from "astro:middleware";
+import { liveEditMiddleware } from "@storyblok/astro";
 
 export const onRequest = sequence(liveEditMiddleware);
 ```
@@ -84,7 +85,8 @@ const story = payload.story ?? (await client.stories.get('home')).data.story;
 
 `getPayload` returns the draft story posted by the Visual Editor, or nothing outside the editor — so
 the same page serves preview and published content. Fetching stories is not this package's job:
-bring your own client, e.g. [`@storyblok/api-client`](https://www.npmjs.com/package/@storyblok/api-client).
+bring your own client, e.g.
+[`@storyblok/api-client`](https://www.npmjs.com/package/@storyblok/api-client).
 
 ### Component props
 
@@ -106,36 +108,69 @@ Unlike `@storyblok/react`'s `defineStoryblokBlocks<TExtraProps>()`, Astro compon
 generic, so extra props accepted by a block component are typed as `Record<string, any>` with no
 excess-property checking.
 
+To render a list of nested blocks, such as a `body` field, map over it with `StoryblokBlock`:
+
+```astro
+---
+import type { StoryblokBlockComponentProps, StoryblokBlockData } from '@storyblok/astro';
+import { StoryblokBlock } from '~/storyblok';
+
+type Props = StoryblokBlockComponentProps<{ body: StoryblokBlockData[] }>;
+const { block } = Astro.props;
+---
+
+{block.body?.map((child) => <StoryblokBlock block={child} />)}
+```
+
 ### Rich text
 
-`StoryblokRichText` renders a Storyblok rich text field, resolving embedded blocks through the
-same registry:
+`StoryblokRichText` renders a Storyblok rich text field. A `blok` node (an embedded block field) has
+no generic HTML representation, so — like `@storyblok/richtext`'s `renderRichText` — it always needs
+a renderer supplied through `components.blok`:
+
+```astro
+---
+// src/components/EmbeddedBlok.astro
+import type { StoryblokAstroRichTextProps } from '@storyblok/astro';
+import { StoryblokBlock } from '~/storyblok';
+
+type Props = StoryblokAstroRichTextProps<'blok'>;
+const { attrs } = Astro.props;
+---
+
+{attrs.body?.map((block) => <StoryblokBlock block={block} />)}
+```
 
 ```astro
 ---
 import { StoryblokRichText } from '@storyblok/astro';
+import EmbeddedBlok from '~/components/EmbeddedBlok.astro';
 ---
 
-<StoryblokRichText document={block.text} />
+<StoryblokRichText document={block.text} components={{ blok: EmbeddedBlok }} />
 ```
+
+Without `components.blok`, embedded blocks are skipped and a warning is logged — there's nothing
+sensible to fall back to. `components` also lets you override the renderer for any other rich text
+element (`heading`, `paragraph`, `code_block`, …); see
+[`@storyblok/richtext`](https://www.npmjs.com/package/@storyblok/richtext) for the full node set.
 
 ## API
 
-| Export                                            | Description                                                                           |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock` / `StoryblokBlocks`. |
-| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                         |
-| `StoryblokBlocks`                                 | Renders a list of blocks.                                                             |
-| `liveEditMiddleware`                              | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.   |
-| `getPayload({ locals })`                          | Reads that payload back.                                                              |
-| `StoryblokLivePreview`                            | Client island that morphs the DOM as the editor types. Renders no markup.             |
-| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.        |
-| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                   |
-| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                       |
-| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                                 |
+| Export                                            | Description                                                                         |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                   |
+| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                       |
+| `liveEditMiddleware`                              | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`. |
+| `getPayload({ locals })`                          | Reads that payload back.                                                            |
+| `StoryblokLivePreview`                            | Client island that morphs the DOM as the editor types. Renders no markup.           |
+| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.     |
+| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                |
+| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                     |
+| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                               |
 
-Types: `StoryblokBlockData`, `StoryblokBlockComponent`, `StoryblokBlockComponentProps<T, TExtra>`,
-`StoryblokComponentMap`, `DefineStoryblokBlocksOptions`, `StoryblokEditableProps`.
+Types: `StoryblokBlockData`, `StoryblokBlockComponentProps<T, TExtra>`, `StoryblokComponentMap`,
+`DefineStoryblokBlocksOptions`, `StoryblokEditableProps`.
 
 Blocks with no matching component render nothing and log a warning in development. Pass `fallback`
 to render a placeholder instead.

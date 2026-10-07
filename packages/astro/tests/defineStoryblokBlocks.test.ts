@@ -1,31 +1,47 @@
 import { describe, expect, it } from "vitest";
+import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { defineStoryblokBlocks } from "../src/define-storyblok-blocks";
-import { resolveBlockComponent } from "../src/registry";
+import Teaser from "./block-fixtures/Teaser.astro";
+import Hero from "./block-fixtures/Hero.astro";
 
 describe("defineStoryblokBlocks", () => {
-  it("registers components and returns StoryblokBlock/StoryblokBlocks", () => {
-    const Teaser = {};
-    const { StoryblokBlock, StoryblokBlocks } = defineStoryblokBlocks({
+  it("registers components and returns a StoryblokBlock component", () => {
+    const { StoryblokBlock } = defineStoryblokBlocks({
       components: { teaser: Teaser },
     });
 
     expect(StoryblokBlock).toBeDefined();
-    expect(StoryblokBlocks).toBeDefined();
-    expect(resolveBlockComponent({ component: "teaser" })).toBe(Teaser);
   });
 
-  it("returns the same StoryblokBlock/StoryblokBlocks components across calls", () => {
-    const first = defineStoryblokBlocks({ components: {} });
-    const second = defineStoryblokBlocks({ components: {} });
+  it("keeps independent calls from sharing or overwriting each other's components", async () => {
+    const { StoryblokBlock: ContentTypeBlock } = defineStoryblokBlocks({
+      components: { teaser: Teaser },
+    });
+    const { StoryblokBlock: OtherBlock } = defineStoryblokBlocks({
+      components: { hero: Hero },
+    });
 
-    expect(first.StoryblokBlock).toBe(second.StoryblokBlock);
-    expect(first.StoryblokBlocks).toBe(second.StoryblokBlocks);
-  });
+    const container = await AstroContainer.create();
 
-  it("registers the fallback", () => {
-    const Fallback = {};
-    defineStoryblokBlocks({ components: {}, fallback: Fallback });
+    const teaserResult = await container.renderToString(ContentTypeBlock, {
+      props: { block: { component: "teaser", headline: "Teaser" } },
+    });
+    expect(teaserResult).toContain("Teaser");
 
-    expect(resolveBlockComponent({ component: "unregistered" })).toBe(Fallback);
+    const heroResult = await container.renderToString(OtherBlock, {
+      props: { block: { component: "hero", headline: "Hero" } },
+    });
+    expect(heroResult).toContain("Hero");
+
+    // Each component only resolves what it was itself configured with.
+    const teaserMissingHero = await container.renderToString(ContentTypeBlock, {
+      props: { block: { component: "hero", headline: "Hero" } },
+    });
+    expect(teaserMissingHero.trim()).toBe("");
+
+    const heroMissingTeaser = await container.renderToString(OtherBlock, {
+      props: { block: { component: "teaser", headline: "Teaser" } },
+    });
+    expect(heroMissingTeaser.trim()).toBe("");
   });
 });

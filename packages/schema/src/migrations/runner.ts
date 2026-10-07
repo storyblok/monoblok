@@ -588,10 +588,3 @@ export function runMigrationOnStory(
     translatedReshapes: pass.translatedReshapes,
   };
 }
-
-/** Every block instance in a story tree, for reporting. */
-export function blockComponents(content: unknown): string[] {
-  return [...indexBlocks(content).values()].map((block) => block.component);
-}
-
-export { isBlock };

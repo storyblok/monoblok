@@ -1,6 +1,7 @@
 /**
- * `defineMigration<After, Before>`: a migration is a list of ops — plain
- * objects built by imported factories — not a script and not a chain.
+ * `defineMigration<After, Before>`: a migration is a list of ops, plain objects
+ * built by imported factories. Ops run in order, and every op addresses blocks
+ * by the name they had before the migration ran.
  *
  * Parameter order is `After` first because one type parameter has to mean the
  * schema people actually have. Under the one-parameter shorthand, reads widen
@@ -27,20 +28,13 @@ export type MigrationOps<
 export interface MigrationDefinition<TAfter extends SchemaShape, TBefore extends SchemaShape> {
   /** CLI output only; identity stays with the filename. */
   title?: string;
-  /**
-   * An explicit id, for a migration that has no filename to be keyed by —
-   * several declared in one module, say. Shipped migrations take their id from
-   * the filename instead.
-   */
-  name?: string;
   ops: MigrationOps<TAfter, TBefore>;
 }
 
 export interface CompiledMigration {
   title?: string;
-  name?: string;
   ops: MigrationOp[];
-  /** Block names any op targets — used to skip stories that contain none of them. */
+  /** Block names any op targets, so a caller can fetch only the stories that contain one. */
   targets: string[];
 }
 
@@ -54,7 +48,6 @@ export function defineMigration<TAfter extends SchemaShape, TBefore extends Sche
 
   return {
     title: spec.title,
-    name: spec.name,
     ops,
     targets: [...new Set(ops.map((op) => op.block))],
   };

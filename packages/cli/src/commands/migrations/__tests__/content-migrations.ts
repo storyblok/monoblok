@@ -4,6 +4,7 @@ import { vol } from "memfs";
 import { vi } from "vitest";
 import type { CompiledMigration } from "@storyblok/schema/migrations";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";
+import { isRecord } from "../../../utils";
 import { importUserModuleDefault } from "../../../utils/user-module";
 
 const MAPI = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}`;
@@ -17,6 +18,7 @@ export type RemoteStory = {
   full_slug: string;
   published?: boolean;
   unpublished_changes?: boolean;
+  deleted_at?: string | null;
   content: Record<string, unknown>;
 };
 
@@ -25,10 +27,9 @@ export type StoryWrite = { id: number; content: Record<string, unknown>; publish
 function componentsIn(value: unknown, into = new Set<string>()): Set<string> {
   if (Array.isArray(value)) {
     value.forEach((item) => componentsIn(item, into));
-  } else if (value && typeof value === "object") {
-    const record = value as Record<string, unknown>;
-    if (typeof record.component === "string") into.add(record.component);
-    Object.values(record).forEach((item) => componentsIn(item, into));
+  } else if (isRecord(value)) {
+    if (typeof value.component === "string") into.add(value.component);
+    Object.values(value).forEach((item) => componentsIn(item, into));
   }
   return into;
 }
@@ -107,18 +108,27 @@ export function createRemoteSpace(server: SetupServerApi) {
         ),
       );
     },
-    canUpdateStories() {
+    /** `onWrite` runs before each write lands, to observe what a run did up to that point. */
+    canUpdateStories(onWrite?: (id: number) => void) {
       server.use(
         http.put(`${MAPI}/stories/:id`, async ({ request, params }) => {
-          const body = (await request.json()) as { story: { content: Record<string, unknown> } };
+          const body = await request.json();
+          if (!isRecord(body) || !isRecord(body.story) || !isRecord(body.story.content)) {
+            return HttpResponse.json({ error: "Bad Request" }, { status: 400 });
+          }
+          const content = body.story.content;
           const id = Number(params.id);
+          if (stories.get(id)?.deleted_at) {
+            return HttpResponse.json({ error: "Not Found" }, { status: 404 });
+          }
           const publish = new URL(request.url).searchParams.get("publish") === "true";
-          writes.push({ id, content: body.story.content, publish });
+          onWrite?.(id);
+          writes.push({ id, content, publish });
           const story = stories.get(id);
           if (story) {
             stories.set(id, {
               ...story,
-              content: body.story.content,
+              content,
               published: story.published === true || publish,
               unpublished_changes: !publish && story.published === true,
             });
@@ -143,6 +153,26 @@ export function createRemoteSpace(server: SetupServerApi) {
     },
     deletesStory(id: number) {
       stories.delete(id);
+    },
+    /** A trashed story: the API still returns it, with `deleted_at` set, but refuses writes to it. */
+    trashesStory(id: number) {
+      const story = stories.get(id);
+      if (!story) throw new Error(`No story ${id}`);
+      stories.set(id, { ...story, deleted_at: "2026-01-02T00:00:00.000Z" });
+    },
+    failsToReadStory(id: number) {
+      server.use(
+        http.get(`${MAPI}/stories/${id}`, () =>
+          HttpResponse.json({ error: "Internal Server Error" }, { status: 500 }),
+        ),
+      );
+    },
+    failsToListReleases() {
+      server.use(
+        http.get(`${MAPI}/releases`, () =>
+          HttpResponse.json({ error: "Forbidden" }, { status: 403 }),
+        ),
+      );
     },
   };
 }

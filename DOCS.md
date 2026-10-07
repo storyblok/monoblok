@@ -31,13 +31,14 @@ description:
 
 Applies content migrations to the stories in a Storyblok space and records each run so
 [`migrations undo`](/docs/tooling/cli/migrations-undo) can revert it. A **content migration** is a
-file that default-exports `defineMigration([...])` from
+file whose default export is the result of `defineMigration()` from
 [@storyblok/schema/migrations](/docs/libraries/js/schema/migrations).
 
 ## Prerequisites
 
-- Content migration files in `.storyblok/migrations/<space-id>/`, named with a numeric prefix, for
-  example `0001-rename-article-author.ts`.
+- Content migration files in `.storyblok/migrations/<space-id>/`, named `<number>-<name>.ts`, where
+  `<name>` holds lowercase letters, digits, and hyphens, for example
+  `0001-rename-article-author.ts`. The command ignores files with other names.
 
 ## Usage
 
@@ -47,51 +48,65 @@ storyblok migrations apply [arguments] [flags]
 
 ## Arguments
 
-| Argument       | Type   | Description                                                                                                                        |
-| -------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Migration name | string | _Optional._ The file name of a single migration without its extension. If omitted, every migration in the directory runs in order. |
+| Argument       | Type   | Description                                                                                                                                 |
+| -------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Migration name | string | _Optional._ The file name of a single migration, with or without its extension. If omitted, every migration in the directory runs in order. |
 
 ## Flags
 
-| Flag                       | Type    | Description                                                                                                                                                    |
-| -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to apply migrations to.                                                                                              |
-| `--dry-run`, `-d`          | boolean | _Optional._ Report the stories and blocks each migration changes without writing them.                                                                         |
-| `--schema`                 | string  | _Optional._ Path to a schema entry file. Checks the blocks and fields each migration names against the schema before any story is fetched.                     |
-| `--publish`                | string  | _Optional._ Publish the migrated stories: `all`, `published` (only stories without unpublished changes), or `published-with-changes`. Defaults to drafts only. |
-| `--allow-pending-releases` | boolean | _Optional._ Apply the migrations while releases are pending. The command lists the releases it doesn’t migrate.                                                |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                           |
+| Flag                       | Type    | Description                                                                                                                                                                                                                                                              |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to apply migrations to.                                                                                                                                                                                                        |
+| `--dry-run`, `-d`          | boolean | _Optional._ Report the stories and blocks each migration changes without writing them.                                                                                                                                                                                   |
+| `--schema`                 | string  | _Optional._ Path to a schema entry file that describes the schema as it stood before the migration, such as the migration's `.before.ts` snapshot. Checks the blocks and fields the migration names against it before any story is fetched. Requires a single migration. |
+| `--publish`                | string  | _Optional._ Publish the migrated stories. See [Publishing](#publishing). Defaults to drafts only.                                                                                                                                                                        |
+| `--allow-pending-releases` | boolean | _Optional._ Apply the migrations while releases are pending. The command lists the releases it doesn’t migrate.                                                                                                                                                          |
+| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                                                                                                                                     |
 
 ## How a run works
 
 The command runs the migrations in the order of their numeric prefix, so `2-...` runs before
 `10-...`. Each migration only fetches the stories that contain a block it targets. Files named
-`*.before.ts` are schema snapshots and never run.
+`*.before.ts` are schema snapshots and never run. With a migration name, the command loads only that
+file.
 
-A story is left unchanged and reported, rather than written, when the migration would lose data,
-when the story already contains repeated block IDs, or when a second pass of the migration would
-change the story again. The command still writes the other stories. It exits with an error only when
-it refused every story it matched.
+The command skips and reports a story when the migration would lose data, when the story already
+contains repeated block IDs, or when a second pass of the migration would change the story again. It
+still writes the other stories. The command exits with an error when a migration skipped every story
+it matched, or when a story couldn’t be read or written.
 
-Every run that changed at least one story is recorded in `.storyblok/migrations/.journal/`. The
-journal writes its own `.gitignore`, so run records stay local. A rerun of a migration that already
-applied changes nothing and records nothing.
+The command records each run in `.storyblok/migrations/.journal/` before writing the first story, so
+a run that stops partway can still be undone. After the writes, it narrows the record to the stories
+that changed, and removes it when none did. The journal writes its own `.gitignore`, so run records
+stay local. A rerun of a migration that already applied changes nothing and records nothing.
 
-Write content migrations as `.ts` files. [`migrations run`](/docs/tooling/cli/migrations-run) reads
-every `.js` file in the same directory.
+Write content migrations as `.ts` files. [`migrations run`](/docs/tooling/cli/migrations-run) also
+loads every `.js` file in the same directory and reports a `.js` content migration as an error.
 
 ## Pending releases
 
-Content in a release is out of a migration’s reach, and deploying the release later replaces the
-migrated story. The command refuses to run while any release in the space is pending and lists the
-releases. Deploy or delete them first, or pass `--allow-pending-releases`. A dry run lists pending
-releases without refusing.
+The command changes only the current version of each story, not the content in releases. Deploying a
+release later overwrites the migrated story. The command refuses to run while a release in the space
+is pending and lists the releases. Deploy or delete them first, or pass `--allow-pending-releases`.
+A dry run lists pending releases without refusing.
+
+The check sees only the releases your account can access, and not releases that belong to a pipeline
+branch. If the command can’t list the releases, it stops, unless you pass `--allow-pending-releases`
+or `--dry-run`.
 
 ## Publishing
 
 By default, the command writes drafts. A published story then keeps its old content in the published
 version until someone publishes it, and the command reports how many published stories this affects.
-Pass `--publish` to publish the migrated stories along with the write.
+Pass `--publish` to publish migrated stories along with the write. The modes don’t overlap:
+
+- `all`: every migrated story, including stories that were never published.
+- `published`: published stories without unpublished changes.
+- `published-with-changes`: published stories with unpublished changes. Publishing them also
+  publishes those changes.
+
+No mode publishes every published story and nothing else. Use `all`, or publish the stories with
+unpublished changes yourself.
 
 ## Examples
 
@@ -101,8 +116,9 @@ The following examples assume that a `space` has been defined in a configuration
 # Preview every migration
 storyblok migrations apply --dry-run
 
-# Apply a single migration and check it against the schema first
-storyblok migrations apply 0001-rename-article-author --schema src/schema.ts
+# Apply a single migration and check it against its schema snapshot first
+storyblok migrations apply 0001-rename-article-author \
+  --schema .storyblok/migrations/12345/0001-rename-article-author.before.ts
 
 # Apply every migration and publish stories that had no unpublished changes
 storyblok migrations apply --publish published
@@ -119,8 +135,9 @@ description:
 ---
 
 Lists the content migration runs that [`migrations apply`](/docs/tooling/cli/migrations-apply)
-recorded for a Storyblok space, oldest first. Each line shows the run ID, the migration, and the
-number of stories and blocks the run changed.
+recorded for a Storyblok space, oldest first. Each line shows the run ID, the migration title (or
+file name), the number of stories and blocks the run changed, and when the run was undone. The
+command reads local records only, so it doesn’t require a login.
 
 ## Usage
 
@@ -166,28 +183,40 @@ storyblok migrations undo [flags]
 
 ## Flags
 
-| Flag                       | Type    | Description                                                                                                                                  |
-| -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to undo the run in.                                                                                |
-| `--run`                    | string  | _Optional._ The ID of the run to undo, as [`migrations list`](/docs/tooling/cli/migrations-list) prints it. Defaults to the most recent run. |
-| `--force`                  | boolean | _Optional._ Overwrite blocks that were edited since the run. The command lists them before it writes.                                        |
-| `--allow-pending-releases` | boolean | _Optional._ Undo the run while releases are pending. The command lists the releases it doesn’t restore.                                      |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                         |
+| Flag                       | Type    | Description                                                                                                                                                    |
+| -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to undo the run in.                                                                                                  |
+| `--run`                    | string  | _Optional._ The ID of the run to undo, as [`migrations list`](/docs/tooling/cli/migrations-list) prints it. Defaults to the most recent run that isn’t undone. |
+| `--force`                  | boolean | _Optional._ Overwrite blocks that were edited since the run. The command lists them before it writes.                                                          |
+| `--allow-pending-releases` | boolean | _Optional._ Undo the run while releases are pending. The command lists the releases it doesn’t restore.                                                        |
+| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                           |
 
 ## Conflicts
 
-The block is the unit of conflict. When a block the run changed was edited since, the command leaves
-that block as it is and reports it, and still restores the other blocks in the story. Pass `--force`
-to overwrite the edited blocks too.
+The block is the unit of conflict. When someone edited a block after the run changed it, the command
+leaves that block as it is and reports it, and still restores the other blocks in the story. Pass
+`--force` to overwrite the edited blocks too.
 
-The command also reports blocks that are no longer in the story and stories it can’t read, for
-example because they were deleted.
+The command also reports blocks that are no longer in the story and stories that were deleted.
+
+## Undone runs
+
+The command marks a run as undone once it restored every story, so the next `migrations undo` moves
+on to the run before it. A run stays open while blocks are left in place, so
+`migrations undo --force` still reaches them. When a story can’t be read or written, the command
+exits with an error and the run stays open. Run the undo again to retry.
+
+## Pending releases
+
+As with [`migrations apply`](/docs/tooling/cli/migrations-apply#pending-releases), the command
+refuses to run while a release is pending. Pass `--allow-pending-releases` to undo the run anyway.
+Deploying a release later overwrites the restored story.
 
 ## Publishing
 
 The command republishes a story the run published only if the story is still published and has no
 unpublished changes. Otherwise, it restores the draft and lists the story. A story the run published
-for the first time keeps its published state; unpublish it if it shouldn’t be live.
+for the first time stays published. Unpublish it if it shouldn’t be live.
 
 ## Examples
 

@@ -6,13 +6,16 @@ updating component structures or content.
 
 ## Subcommands
 
-- `apply`: Apply typed content migrations written with `defineMigration()` from
-  `@storyblok/schema/migrations`, and record each run.
-- `list`: List the content migration runs recorded for a space.
-- `undo`: Revert a recorded content migration run block by block.
 - [`generate`](./generate/README.md): Create a new migration file for a specific component.
 - [`run`](./run/README.md): Execute migrations on stories in your space.
 - [`rollback`](./rollback/README.md): Revert previously applied migrations.
+
+Typed content migrations, written as `.ts` files with `defineMigration()` from
+`@storyblok/schema/migrations`:
+
+- `apply`: Apply content migrations and record each run.
+- `list`: List the content migration runs recorded for a space.
+- `undo`: Revert a recorded content migration run block by block.
 
 > See each subcommand for detailed usage, options, and examples.
 
@@ -21,6 +24,8 @@ updating component structures or content.
 1. **Generate** a migration file for the component you want to modify
 2. **Run** the migration to apply changes to your stories
 3. If needed, **Rollback** the migration to revert changes
+
+For content migrations: **apply**, then **undo** if needed.
 
 ## File Structure
 
@@ -32,12 +37,15 @@ All migration files are stored in:
     └── YOUR_SPACE_ID/
         ├── component1.js
         ├── component2.js
+        ├── 0001-rename-card-title.ts   # content migration
         └── ...
 ```
 
+Content migration runs are recorded in `.storyblok/migrations/.journal/`.
+
 ## Notes
 
-- You must be logged in to use any migration command
+- You must be logged in to use any migration command except `list`
 - The space ID is required for all commands
 - Use `--dry-run` to preview changes before applying them
 - Migration files should include both forward and rollback logic

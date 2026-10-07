@@ -119,5 +119,8 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends object = {}> {
    * {block.body?.map((child) => <StoryblokBlock block={child} />)}
    * ```
    */
-  StoryblokBlock: StoryblokBlockComponent<TExtraProps>;
+  // Inlined (not cast through `StoryblokBlockComponent`) so hovers show the
+  // real props instead of just the type name, matching StoryblokPreview,
+  // StoryblokServerData, and StoryblokRichText. Keep both in sync.
+  StoryblokBlock: (props: { block: StoryblokBlockData } & TExtraProps) => any;
 }

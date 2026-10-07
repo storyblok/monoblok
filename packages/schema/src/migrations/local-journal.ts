@@ -81,6 +81,14 @@ export function localJournal(journalDirectory: string): Journal {
       await writeFile(entryPath(run.space, run.id), JSON.stringify(run, null, 2));
     },
 
+    async remove(id) {
+      const space = await locate(id);
+      if (!space) return;
+      const { rm } = await fs();
+      await rm(entryPath(space, id), { force: true });
+      await rm(patchPath(space, id), { force: true });
+    },
+
     async list(space) {
       assertSegment("space", space);
       const { readdir } = await fs();

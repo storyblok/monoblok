@@ -1,18 +1,7 @@
 ---
-import {
-  normalizeNodes,
-  type StoryblokRichTextImageOptions,
-  type StoryblokRichTextInput,
-} from "@storyblok/richtext";
-import type { StoryblokAstroRichTextComponentMap } from "../richtext-helpers";
+import { normalizeNodes } from "@storyblok/richtext";
+import type { StoryblokRichTextComponentProps as Props } from "../richtext-helpers";
 import RenderChildren from "./richtext/RenderChildren.astro";
-
-interface Props {
-  document: StoryblokRichTextInput;
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
-  components?: StoryblokAstroRichTextComponentMap;
-  data?: unknown;
-}
 
 const { document, components, optimizeImage, data } = Astro.props;
 const nodes = normalizeNodes(document);

@@ -23,6 +23,12 @@
     "*": {
       "field-plugins": [
         "./dist/field-plugins/index.d.cts"
+      ],
+      "migrations": [
+        "./dist/migrations/index.d.cts"
+      ],
+      "migrations/node": [
+        "./dist/migrations/node/index.d.cts"
       ]
     }
   },
@@ -34,6 +40,14 @@
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",
       "require": "./dist/field-plugins/index.cjs"
+    },
+    "./migrations": {
+      "import": "./dist/migrations/index.mjs",
+      "require": "./dist/migrations/index.cjs"
+    },
+    "./migrations/node": {
+      "import": "./dist/migrations/node/index.mjs",
+      "require": "./dist/migrations/node/index.cjs"
     },
     "./package.json": "./package.json"
   },

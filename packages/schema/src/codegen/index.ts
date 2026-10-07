@@ -13,3 +13,7 @@ export {
 } from "./field";
 export type { TagRef } from "./field";
 export { componentVarName, resolveVarNames, toCamelCaseIdentifier } from "./names";
+export { generateMigrationSource } from "./migration-source";
+export type { GenerateMigrationSourceOptions, MigrationOpSource } from "./migration-source";
+export { generateSnapshot } from "./snapshot";
+export type { GenerateSnapshotOptions, WireComponent } from "./snapshot";

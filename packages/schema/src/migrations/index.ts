@@ -66,6 +66,11 @@ export { checkPendingReleases } from "./releases";
 export type { PendingReleasesCheck, ReleaseForMigration } from "./releases";
 
 export { discoverMigrations, loadMigrations, selectMigrationFiles } from "./load-migrations";
-export type { ImportDefault, LoadedMigration, MigrationFile } from "./load-migrations";
+export type {
+  ImportDefault,
+  LoadedMigration,
+  LoadMigrationsOptions,
+  MigrationFile,
+} from "./load-migrations";
 
 export { JOURNAL_DIRECTORY, localJournal, resolveJournal } from "./local-journal";

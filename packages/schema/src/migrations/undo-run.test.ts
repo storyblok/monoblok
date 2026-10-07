@@ -10,6 +10,7 @@ import { planUndo, undoStories } from "./undo-run";
 function journalHolding(runs: MigrationRun[], inverse: Record<string, StoryInverse[]>): Journal {
   return {
     record: vi.fn(),
+    remove: vi.fn(),
     list: async () => runs,
     read: async (id) => runs.find((entry) => entry.id === id),
     readInverse: async (id) => inverse[id] ?? [],

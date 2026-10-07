@@ -38,6 +38,9 @@ function importOf(op: MigrationOpSource): string {
   return op.kind === "fillField" ? "alterBlock" : op.kind;
 }
 
+/** A line break in a comment would end it and turn the rest into code. */
+const LINE_TERMINATORS = /[\r\n\u2028\u2029]+/g;
+
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 
 function accessor(field: string): string {
@@ -96,7 +99,7 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   }
   for (const op of ops) {
     for (const todo of op.todo ?? []) {
-      opLines.push(`${opIndent}// ${todo}`);
+      opLines.push(`${opIndent}// ${todo.replace(LINE_TERMINATORS, " ")}`);
     }
     opLines.push(`${opIndent}${renderOp(op, depth)},`);
   }

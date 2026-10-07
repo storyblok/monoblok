@@ -1,9 +1,8 @@
 import type { Command } from "commander";
 import { colorPalette, commands } from "../../../constants";
-import { CommandError, handleError, requireAuthentication } from "../../../utils";
+import { CommandError, handleError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
-import { session } from "../../../session";
 import { migrationsCommand } from "../command";
 import { contentJournal, plural, toMigrationCommandError } from "../content-migrations";
 
@@ -16,13 +15,8 @@ listCmd.action(async (_options: unknown, command: Command) => {
   const ui = getUI();
   const logger = getLogger();
   const { space, path, verbose } = command.optsWithGlobals();
-  const { state } = session();
 
   ui.title(`${commands.MIGRATIONS}`, colorPalette.MIGRATIONS, "Listing content migration runs...");
-
-  if (!requireAuthentication(state, verbose)) {
-    return;
-  }
 
   if (!space) {
     handleError(
@@ -42,7 +36,7 @@ listCmd.action(async (_options: unknown, command: Command) => {
     }
     for (const run of runs) {
       ui.info(
-        `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}`,
+        `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${run.undoneAt ? `  (undone ${run.undoneAt})` : ""}`,
       );
     }
   } catch (maybeError) {

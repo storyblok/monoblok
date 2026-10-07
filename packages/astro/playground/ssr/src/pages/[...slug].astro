@@ -37,8 +37,11 @@ if (!story) {
 
 const users = payload?.serverData?.users ?? (await getUsers());
 const inEditor = isInEditor(Astro.url);
-const slugs = ["test", "about-us", "contact"];
-const disableLivePreview = slugs.includes(slug || "");
+// `test`/`contact` opt out of the preview bridge entirely: no live-morphing,
+// no reload-on-save. The "reload on save, no live morphing" scenario has its
+// own dedicated route: `src/pages/about-us.astro`.
+const disabledSlugs = ["test", "contact"];
+const disableLivePreview = disabledSlugs.includes(slug || "");
 ---
 
 <BaseLayout>
@@ -51,6 +54,6 @@ const disableLivePreview = slugs.includes(slug || "");
       </Widget>
     )
   }
-  {!disableLivePreview && <StoryblokPreview />}
+  {!disableLivePreview && <StoryblokPreview liveUpdate />}
 </BaseLayout>
 <StoryblokServerData users={users} />

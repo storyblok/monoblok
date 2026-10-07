@@ -14,7 +14,7 @@ export const QA_CONFIG = defineQaConfig({
   scenario: "has-playground-content",
   scenarioDir: "packages/astro/test/scenarios",
   accessTokenEnvVar: "STORYBLOK_ACCESS_TOKEN",
-  expectedSlugs: ["home", "test", "articles/first-article", "articles/second-article"],
+  expectedSlugs: ["home", "test", "about-us", "articles/first-article", "articles/second-article"],
   relation: {
     storySlug: "home",
     component: "featured-articles",

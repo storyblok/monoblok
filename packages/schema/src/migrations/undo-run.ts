@@ -70,17 +70,31 @@ export type UndoOutcome = {
   /** Stories {@link UndoStoriesInput.stories} did not include. */
   unread: number[];
   /**
-   * Stories the run published that are left as drafts: their draft moved on
-   * since the run, and publishing it would ship an editor's unpublished work.
+   * Stories the run published that undo leaves as drafts: their draft moved on
+   * since the run, they were unpublished since, or their publish state was not
+   * passed in. Publishing them could ship an editor's unpublished work.
    */
   notRepublished: string[];
+  /**
+   * Stories the run published for the first time. Undo restores their draft
+   * but leaves them published; unpublish them if they should not be live.
+   */
+  firstPublishedByRun: string[];
 };
 
 export type UndoStoriesInput = {
   inverse: StoryInverse[];
-  /** The stories {@link UndoPlan.stories} named, as they stand now. */
+  /**
+   * The stories {@link UndoPlan.stories} named, as they stand now. Pass
+   * `published` and `unpublished_changes`: without them a story the run
+   * published is not republished.
+   */
   stories: StoryForMigration[];
-  /** Overwrite blocks an editor changed since the run. */
+  /**
+   * Overwrite blocks an editor changed since the run. A block whose uid the
+   * story now holds elsewhere is still left alone, so the story never ends up
+   * with a repeated uid.
+   */
   force?: boolean;
 };
 
@@ -92,6 +106,7 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
     missing: [],
     unread: [],
     notRepublished: [],
+    firstPublishedByRun: [],
   };
 
   for (const entry of input.inverse) {
@@ -118,11 +133,16 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
       continue;
     }
 
-    const draftMovedOn = story.unpublished_changes === true;
-    if (entry.publishedByRun && draftMovedOn) {
-      outcome.notRepublished.push(story.slug);
+    let publish = false;
+    if (entry.publishedByRun && !entry.before.published) {
+      outcome.firstPublishedByRun.push(story.slug);
+    } else if (entry.publishedByRun) {
+      // Republishing ships the whole draft, so it needs positive evidence that
+      // the draft holds nothing but the migration and the story is still live.
+      publish = story.published === true && story.unpublished_changes === false;
+      if (!publish) outcome.notRepublished.push(story.slug);
     }
-    outcome.writes.push({ story, content, publish: entry.publishedByRun && !draftMovedOn });
+    outcome.writes.push({ story, content, publish });
   }
 
   return outcome;

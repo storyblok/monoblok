@@ -2,9 +2,8 @@
  * Fixture — the post-migration schemas.
  *
  * One per migration under test, because a migration has exactly one `After`:
- * the schema module the developer just edited. In the real design this is not a
- * fixture at all — it is the project's live schema, and only `Before` is a
- * generated snapshot.
+ * the schema module the developer just edited. In a project, `After` is the live
+ * schema module; only `Before` is a generated snapshot.
  *
  * Post-condition validation runs against these and never against `Before`: the
  * whole point of a migration is that the content stops matching `Before`.

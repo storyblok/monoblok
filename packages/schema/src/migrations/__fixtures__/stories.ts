@@ -1,7 +1,6 @@
 /**
- * Fixture content: the same story JSON a space is seeded with, so the local
- * tests and a run against a real space cannot drift. The shapes (richtext
- * document, embedded `blok` node) are what the editor writes, not inventions.
+ * Fixture content in the shape the Visual Editor writes: a rich text document
+ * with an embedded `blok` node.
  */
 import pageStory from "./stories/page_1.json";
 import articleStory from "./stories/article_2.json";

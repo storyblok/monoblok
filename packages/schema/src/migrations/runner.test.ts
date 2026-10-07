@@ -1,7 +1,7 @@
 /**
- * Behaviour of the runner, including the headline claim: a patch-derived
- * inverse rolls back without clobbering an edit made after the migration, where
- * a whole-story snapshot restore does.
+ * Behavior of the runner, including undo: a patch-derived inverse restores the
+ * original without overwriting an edit made after the migration, where a
+ * whole-story snapshot restore does not.
  */
 import { describe, expect, it } from "vitest";
 import { applyPatches, indexBlocks } from "./patch";
@@ -58,7 +58,7 @@ function block(content: unknown, uid: string): Record<string, unknown> {
 }
 
 describe("rename", () => {
-  it("should rename a field on a root block and restore it on rollback", () => {
+  it("should rename a field on a root block and restore it on undo", () => {
     const original = articleStoryContent();
     const run = runMigrationOnStory(renameField, original);
 
@@ -106,7 +106,7 @@ describe("rename", () => {
 });
 
 describe("remove", () => {
-  it("should bring the removed value back on rollback", () => {
+  it("should bring the removed value back on undo", () => {
     const original = pageStoryContent();
     const run = runMigrationOnStory(removeField, original);
     expect(block(run.content, "card-a1")).not.toHaveProperty("description");
@@ -189,7 +189,7 @@ describe("move", () => {
 });
 
 describe("alter", () => {
-  it("should rewrite a string and roll back", () => {
+  it("should rewrite a string and undo it", () => {
     const original = pageStoryContent();
     const run = runMigrationOnStory(alterString, original);
     expect(block(run.content, "section-a").heading).toBe("FIRST SECTION");
@@ -199,7 +199,7 @@ describe("alter", () => {
     expect(rolledBack).toEqual(original);
   });
 
-  it("should add and remove nested blocks and roll back both", () => {
+  it("should add and remove nested blocks and undo both", () => {
     const original = pageStoryContent();
     const run = runMigrationOnStory(alterStructure, original);
     // section-a had meta → emptied; section-b had none → one added.
@@ -245,7 +245,7 @@ describe("zero matches and idempotency", () => {
   });
 });
 
-describe("rollback after an unrelated edit — the headline claim", () => {
+describe("undo after an unrelated edit", () => {
   it("should preserve an edit to a different field of the same block", () => {
     const original = pageStoryContent();
     const run = runMigrationOnStory(removeField, original);
@@ -258,7 +258,7 @@ describe("rollback after an unrelated edit — the headline claim", () => {
     expect(block(live, "card-a1").description).toBe("First card");
     expect(block(live, "card-a1").title).toBe("Card A1 (edited after the migration)");
 
-    // Today's behaviour: restoring the whole-story snapshot throws the edit away.
+    // A whole-story snapshot restore, by contrast, discards the edit.
     const snapshotRestore = structuredClone(original);
     expect(block(snapshotRestore, "card-a1").title).toBe("Card A1");
   });
@@ -461,7 +461,6 @@ describe("reorderField context", () => {
     // original array's under a snapshot.
     let capturedContext: ReorderContext | undefined;
     const migration = defineMigration<TestSchema>({
-      name: "capture-context",
       ops: [
         reorderField({ block: "page", field: "body" }, (a, b, context) => {
           capturedContext ??= context;
@@ -504,7 +503,6 @@ describe("reorderField context", () => {
     // were missing an item, or held the wrong ones, would sum to something
     // else and leave the list unsorted.
     const migration = defineMigration<TestSchema>({
-      name: "observe-siblings",
       ops: [
         reorderField({ block: "page", field: "body" }, (a, b, context) => {
           const totalPriority = context.siblings.reduce(
@@ -586,7 +584,7 @@ describe("block identity", () => {
 
     const run = runMigrationOnStory(duplicating, pageStoryContent());
 
-    // The backend regenerates the repeated uid on write, which would leave the
+    // Saving regenerates the repeated uid, which would leave the
     // recorded patch addressing a block that no longer exists.
     expect(run.unstableUids.duplicate).toEqual(["card-a1", "meta-a1", "card-b1", "meta-b1"]);
   });
@@ -751,7 +749,7 @@ describe("idempotency check", () => {
   });
 });
 
-describe("derived inverse — rollback tier 2", () => {
+describe("derived inverse", () => {
   it("should invert a rename from the op alone, with no run and no recorded state", () => {
     const derived = deriveInverse(renameNestedField.ops);
 
@@ -935,11 +933,11 @@ describe("under smuggled onto a key op", () => {
       targets: ["meta"],
     } as unknown as Parameters<typeof runMigrationOnStory>[0];
 
-    // All four instances, not the two under a card. Honouring it would be
+    // All four instances, not the two under a card. Honoring it would be
     // the worse outcome of the two: a subset migrated leaves every other
     // instance holding a key no schema describes, which is precisely what the
-    // rule exists to prevent. Refusing the migration is the CLI's job, on the
-    // issue above; applying it globally is what the runner does meanwhile.
+    // rule exists to prevent. `validateMigration` reports the
+    // issue above, and the runner applies the op globally.
     expect(runMigrationOnStory(smuggled, pageStoryContent()).matched).toBe(4);
   });
 
@@ -985,7 +983,6 @@ describe("under smuggled onto a key op", () => {
 describe("key ops and translated fields", () => {
   it("should rename the translated siblings along with the base key", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "rename-old-slug",
       ops: [renameFieldOp({ block: "card", field: "old_slug", to: "slug" })],
     });
 
@@ -1020,7 +1017,6 @@ describe("key ops and translated fields", () => {
 
   it("should remove the translated siblings along with the base key", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "remove-description",
       ops: [removeFieldOp({ block: "card", field: "description" })],
     });
 
@@ -1046,7 +1042,6 @@ describe("key ops and translated fields", () => {
 
   it("should reach a block embedded in a richtext field", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "rename-old-slug",
       ops: [renameFieldOp({ block: "card", field: "old_slug", to: "slug" })],
     });
 
@@ -1081,7 +1076,6 @@ describe("key ops and translated fields", () => {
 describe("uid instability the content already had", () => {
   it("should report a duplicate uid that was already there as pre-existing", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "rename-old-slug",
       ops: [renameFieldOp({ block: "card", field: "old_slug", to: "slug" })],
     });
 
@@ -1094,7 +1088,7 @@ describe("uid instability the content already had", () => {
       ],
     });
 
-    // A caller must still refuse to write, because the backend re-uids these
+    // A caller must still refuse to write, because saving re-uids these
     // either way. What changes is who it blames: the content, not the migration.
     expect(result.unstableUids.preExisting).toEqual(["dup"]);
     expect(result.unstableUids.duplicate).toEqual([]);
@@ -1102,7 +1096,6 @@ describe("uid instability the content already had", () => {
 
   it("should not count a missing uid that was already there against the migration", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "rename-old-slug",
       ops: [renameFieldOp({ block: "card", field: "old_slug", to: "slug" })],
     });
 
@@ -1119,7 +1112,6 @@ describe("uid instability the content already had", () => {
 describe("addField", () => {
   it("should add the field with the computed value", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "add-slug",
       ops: [
         addField({ block: "card", field: "slug" }, (block) =>
           String(block.title ?? "")
@@ -1144,7 +1136,6 @@ describe("addField", () => {
 
   it("should leave a block alone when the backfill returns undefined", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "add-slug",
       ops: [addField({ block: "card", field: "slug" }, () => undefined)],
     });
 
@@ -1164,7 +1155,6 @@ describe("addField", () => {
 
   it("should not overwrite a value the field already holds", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "add-slug",
       ops: [addField({ block: "card", field: "slug" }, () => "computed")],
     });
 
@@ -1179,7 +1169,6 @@ describe("addField", () => {
 
   it("should not throw and should write the guarded fallback when the source field is absent", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "add-slug",
       ops: [
         addField({ block: "card", field: "slug" }, (block) =>
           String(block.title ?? "")
@@ -1208,7 +1197,6 @@ describe("addField", () => {
 
   it("should not throw and should write the guarded fallback when the source field is null", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "add-slug",
       ops: [
         addField({ block: "card", field: "slug" }, (block) =>
           String(block.title ?? "")
@@ -1235,7 +1223,6 @@ describe("addField", () => {
 
   it("should stay a no-op on a rerun after backfilling once", () => {
     const migration = defineMigration<FixtureSchema>({
-      name: "add-slug",
       ops: [
         addField({ block: "card", field: "slug" }, (block) =>
           String(block.title ?? "")
@@ -1262,7 +1249,6 @@ describe("addField", () => {
 
 describe("splitField", () => {
   const splitName = defineMigration<TestSchema>({
-    name: "split-name",
     ops: [
       splitField({ block: "author", field: "name", into: ["first_name", "last_name"] }, (name) => {
         const at = String(name).indexOf(" ");
@@ -1299,7 +1285,7 @@ describe("splitField", () => {
     });
   });
 
-  // Review Focus 3: a field nobody filled in is an ordinary state of real content.
+  // A field nobody filled in is ordinary content.
   it("should leave a block whose source field is absent untouched", () => {
     const result = runMigrationOnStory(splitName, {
       _uid: "root",
@@ -1329,12 +1315,10 @@ describe("splitField", () => {
   // "the full name becomes the first name, plus a new surname". It is the
   // ordering that is under test here, not end-to-end usability: a part sitting
   // on the source name is split again on the next pass, so this migration is
-  // reported as non-idempotent and every consumer refuses it. The fix turned
-  // silent data loss into a refusal, which is the outcome, and the assertion
+  // reported as non-idempotent and every consumer refuses it. The assertion
   // below covers only what the runner leaves behind.
   it("should keep the part that lands on the source field's own name", () => {
     const splitOntoItself = defineMigration<TestSchema>({
-      name: "split-name-onto-itself",
       ops: [
         splitField({ block: "author", field: "name", into: ["name", "surname"] }, (value) => {
           const at = String(value).indexOf(" ");
@@ -1406,7 +1390,6 @@ describe("splitField", () => {
 
 describe("mergeFields", () => {
   const mergeName = defineMigration<TestSchema>({
-    name: "merge-name",
     ops: [
       mergeFields(
         { block: "author", fields: ["first_name", "last_name"], into: "name" },
@@ -1465,7 +1448,6 @@ describe("mergeFields", () => {
   // this op: the target is one of the sources.
   it("should keep the merged value when the target is one of the source fields", () => {
     const mergeOntoSource = defineMigration<TestSchema>({
-      name: "merge-name-onto-source",
       ops: [
         mergeFields({ block: "author", fields: ["name", "surname"], into: "name" }, (values) =>
           values.filter(Boolean).join(" "),
@@ -1535,7 +1517,6 @@ describe("mergeFields", () => {
 
 describe("renameBlock", () => {
   const migration = defineMigration<TestSchema>({
-    name: "rename-card",
     ops: [renameBlock({ block: "card", to: "teaser" })],
   });
 
@@ -1588,7 +1569,7 @@ describe("renameBlock", () => {
     expect(twice.changed).toBe(false);
   });
 
-  it("should record a patch that restores the original component name on rollback", () => {
+  it("should record a patch that restores the original component name on undo", () => {
     const original = {
       _uid: "root",
       component: "page",
@@ -1625,7 +1606,6 @@ describe("renameBlock", () => {
 
 describe("wrapChildren", () => {
   const migration = defineMigration<TestSchema>({
-    name: "wrap-body",
     ops: [wrapChildren({ block: "page", field: "body", in: "section", into: "items" })],
   });
 
@@ -1657,7 +1637,6 @@ describe("wrapChildren", () => {
 
   it("should derive the wrapper uid from the parent and the field, so two fields wrapped into the same container component do not collide", () => {
     const twoFieldMigration = defineMigration<TestSchema>({
-      name: "wrap-body-and-footer",
       ops: [
         wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
         wrapChildren({ block: "page", field: "footer", in: "section", into: "items" }),
@@ -1697,8 +1676,8 @@ describe("wrapChildren", () => {
       _uid: "root",
       component: "page",
       body: [{ _uid: "a", component: "card" }],
-      // Pre-existing block that happens to sit at the uid the wrapper would
-      // otherwise have derived under the old, field-less scheme.
+      // Pre-existing block at the uid a wrapper derived from the parent alone
+      // would collide with.
       footer: [{ _uid: "root-section", component: "card" }],
     });
 
@@ -1742,7 +1721,6 @@ describe("wrapChildren", () => {
 
 describe("unwrapChildren", () => {
   const migration = defineMigration<TestSchema>({
-    name: "unwrap-body",
     ops: [unwrapChildren({ block: "page", field: "body", unwrap: "section", from: "items" })],
   });
 
@@ -1826,7 +1804,6 @@ describe("expandBlock", () => {
   }
 
   const migration = defineMigration<TestSchema>({
-    name: "expand-intro",
     ops: [
       expandBlock({ block: "intro" }, (intro: Record<string, unknown>) => [
         spacer(String(intro._uid), "before"),
@@ -1890,7 +1867,6 @@ describe("expandBlock", () => {
 
   it("should report a callback that returns a block of the component it matched", () => {
     const growing = defineMigration<TestSchema>({
-      name: "expand-forever",
       ops: [
         expandBlock({ block: "intro" }, (intro: Record<string, unknown>) => [
           spacer(String(intro._uid), "before"),
@@ -1904,9 +1880,8 @@ describe("expandBlock", () => {
     expect(result.nonIdempotent).toEqual([{ uid: "a", op: 0 }]);
   });
 
-  it("should honour under, so the same component expands in one location only", () => {
+  it("should honor under, so the same component expands in one location only", () => {
     const scoped = defineMigration<TestSchema>({
-      name: "expand-under-section",
       ops: [
         expandBlock({ block: "intro", under: "section" }, (intro: Record<string, unknown>) => [
           { ...intro, component: "teaser" },
@@ -1947,7 +1922,6 @@ describe("expandBlock", () => {
 
   it("should read the block as the earlier ops left it, whatever order they were written in", () => {
     const ordered = defineMigration<TestSchema>({
-      name: "expand-after-rename",
       ops: [
         expandBlock({ block: "intro" }, (intro: Record<string, unknown>) => [
           { ...intro, component: "teaser" },
@@ -1971,7 +1945,6 @@ describe("expandBlock", () => {
   it("should find nothing to do for a story's root block, which sits in no list", () => {
     const result = runMigrationOnStory(
       defineMigration<TestSchema>({
-        name: "expand-root",
         ops: [
           expandBlock({ block: "page" }, (page: Record<string, unknown>) => [
             page,
@@ -1986,7 +1959,7 @@ describe("expandBlock", () => {
     expect(result.matched).toBe(0);
   });
 
-  it("should leave a rollback to the recorded patches, since the blocks it wrote are known only to the callback", () => {
+  it("should leave an undo to the recorded patches, since the blocks it wrote are known only to the callback", () => {
     const derived = deriveInverse(migration.ops);
 
     expect(derived.derivable).toBe(false);

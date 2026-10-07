@@ -1,12 +1,8 @@
 /**
- * Tier 2 of rollback: the inverse of a migration computed from the op list
- * alone. No run, no recorded state, no I/O — so a migration whose ops are all
- * derivable rolls back on a machine that never applied it, which is the case
- * recorded patches cannot cover (CI applied it, you want it gone locally).
- *
- * This tier exists only because `up` is data. A script, or a chain that has
- * already executed, would have to be replayed through a recorder first — and a
- * recorder's output is an op list, which is the authoring surface itself.
+ * The inverse of a migration computed from the op list alone. No run, no
+ * recorded state, no I/O, so a migration whose ops are all derivable can be
+ * undone on a machine that never applied it, which recorded patches cannot
+ * cover (CI applied it, you want it gone locally).
  *
  * It is blind by construction: it cannot see that an editor changed the field
  * since, so recorded patches take precedence whenever they exist.
@@ -20,37 +16,49 @@ export interface UnderivableOp {
 }
 
 export interface DerivedInverse {
-  /** True when every op inverted, so the whole migration can be rolled back blind. */
+  /** True when every op inverted, so the whole migration can be undone blind. */
   derivable: boolean;
-  /** The inverses that could be derived, in reverse order of the forward ops. */
+  /**
+   * The inverses that could be derived, in reverse order of the forward ops,
+   * addressed to the block names the forward migration left behind.
+   */
   ops: MigrationOp[];
   blocked: UnderivableOp[];
   /**
    * Ops whose inverse exists but cannot restore the original value — a coercion
-   * that narrowed, a move that overwrote. A CLI should refuse these without an
-   * explicit opt-in.
+   * that narrowed, a move that overwrote, a field added only where it was
+   * absent. A CLI should refuse these without an explicit opt-in.
    */
   lossy: number[];
   /**
-   * Block names `ops` targets, computed the same way `defineMigration` computes
-   * `CompiledMigration.targets`. Every earlier op kind targets the same block it
-   * read, so reusing the forward migration's `targets` happened to work; a
-   * `renameBlock` inverse targets the *new* name instead, so a caller replaying
-   * `ops` needs this rather than the forward migration's own `targets`.
+   * Block names `ops` targets. Differs from the forward migration's `targets`
+   * wherever a `renameBlock` changed a name.
    */
   targets: string[];
 }
 
-function invert(op: MigrationOp): MigrationOp | string {
+/**
+ * The name a block carries after the forward migration ran. Every op addresses
+ * a block by its pre-migration name, so only a `renameBlock` of that name moves it.
+ */
+function renamedBy(ops: readonly MigrationOp[], name: string): string {
+  let final = name;
+  for (const op of ops) {
+    if (op.kind === "renameBlock" && op.block === name) final = op.to;
+  }
+  return final;
+}
+
+function invert(op: MigrationOp, block: string): MigrationOp | string {
   switch (op.kind) {
     case "renameField":
-      return { kind: "renameField", block: op.block, field: op.to, to: op.field };
+      return { kind: "renameField", block, field: op.to, to: op.field };
     case "moveField":
-      return { kind: "moveField", block: op.block, field: op.to, to: op.field };
+      return { kind: "moveField", block, field: op.to, to: op.field };
     case "coerceField":
       return op.from === undefined
         ? "no `from` was stated, so the original field type is unknown"
-        : { kind: "coerceField", block: op.block, field: op.field, to: op.from, from: op.to };
+        : { kind: "coerceField", block, field: op.field, to: op.from, from: op.to };
     case "removeField":
       return "the values are gone";
     case "reorderField":
@@ -61,15 +69,13 @@ function invert(op: MigrationOp): MigrationOp | string {
     case "expandBlock":
       return "the blocks it wrote are known only to the closure that wrote them";
     case "addField":
-      // Not lossy: removing a key the migration itself introduced restores
-      // exactly what was there.
-      return { kind: "removeField", block: op.block, field: op.field };
+      return { kind: "removeField", block, field: op.field };
     case "splitField":
       return op.merge === undefined
         ? "no `merge` counterpart was stated, so the parts cannot be put back together"
         : {
             kind: "mergeFields",
-            block: op.block,
+            block,
             fields: op.into,
             into: op.field,
             merge: op.merge,
@@ -80,18 +86,18 @@ function invert(op: MigrationOp): MigrationOp | string {
         ? "no `split` counterpart was stated, so the merged value cannot be taken apart"
         : {
             kind: "splitField",
-            block: op.block,
+            block,
             field: op.into,
             into: op.fields,
             split: op.split,
             ...(op.merge === undefined ? {} : { merge: op.merge }),
           };
     case "renameBlock":
-      return { kind: "renameBlock", block: op.to, to: op.block };
+      return { kind: "renameBlock", block, to: op.block };
     case "wrapChildren":
       return {
         kind: "unwrapChildren",
-        block: op.block,
+        block,
         field: op.field,
         unwrap: op.in,
         from: op.into,
@@ -99,7 +105,7 @@ function invert(op: MigrationOp): MigrationOp | string {
     case "unwrapChildren":
       return {
         kind: "wrapChildren",
-        block: op.block,
+        block,
         field: op.field,
         in: op.unwrap,
         into: op.from,
@@ -113,7 +119,7 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
   const lossy: number[] = [];
 
   ops.forEach((op, index) => {
-    const inverse = invert(op);
+    const inverse = invert(op, renamedBy(ops, op.block));
     if (typeof inverse === "string") {
       blocked.push({ index, kind: op.kind, reason: inverse });
       return;
@@ -121,17 +127,21 @@ export function deriveInverse(ops: readonly MigrationOp[]): DerivedInverse {
     // A move overwrites its target and a coercion narrows, so replaying the
     // mirror op puts the key back where it was without the value it displaced.
     // A split/merge round trip is lossy either direction: splitting then
-    // merging normalises whatever the merge discards (whitespace, a
+    // merging normalizes whatever the merge discards (whitespace, a
     // separator), and merging then splitting cannot recover a separator the
     // merge already threw away.
     // `unwrapChildren` collapses every container it dissolves into one
-    // rebuilt wrapper, and cannot recall which child came from which.
+    // rebuilt wrapper, cannot recall which child came from which, and drops
+    // the containers' own fields.
+    // `addField` only fills blocks that lacked the field, but its inverse
+    // removes the field from every block, values that predate the run included.
     if (
       op.kind === "moveField" ||
       op.kind === "coerceField" ||
       op.kind === "splitField" ||
       op.kind === "mergeFields" ||
-      op.kind === "unwrapChildren"
+      op.kind === "unwrapChildren" ||
+      op.kind === "addField"
     ) {
       lossy.push(index);
     }

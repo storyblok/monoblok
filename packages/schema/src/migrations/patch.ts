@@ -11,13 +11,25 @@ export type BlockPatchOp =
   | { kind: "set"; key: string; value: unknown; expect?: unknown }
   /** Field removed entirely. */
   | { kind: "unset"; key: string; expect?: unknown }
-  /** One child block put back into (or taken out of) a `bloks` array, by uid. */
-  | { kind: "listInsert"; key: string; uid: string; index: number; block: AnyBlock }
-  | { kind: "listRemove"; key: string; uid: string }
+  /**
+   * One child block put into a `bloks` array. `after` is the uid of the sibling
+   * it follows in the target list, `null` when it comes first; `index` is the
+   * fallback when that sibling is gone.
+   */
+  | {
+      kind: "listInsert";
+      key: string;
+      uid: string;
+      index: number;
+      after: string | null;
+      block: AnyBlock;
+    }
+  /** One child block taken out of a `bloks` array. `expect` is the whole subtree the migration left behind. */
+  | { kind: "listRemove"; key: string; uid: string; expect: AnyBlock }
   /**
    * Order of the surviving children of a `bloks` array, by uid. Carries only
-   * uids, so replaying it cannot clobber a concurrent edit to a child's own
-   * fields — unlike the whole-array `set` this replaces.
+   * uids, so replaying it cannot overwrite a concurrent edit to a child's own
+   * fields.
    */
   | { kind: "listOrder"; key: string; uids: string[]; expect: string[] };
 
@@ -32,8 +44,8 @@ export interface BlockPatch {
  * addresses the block itself and no op rewrites it; `_editable` is injected by
  * the delivery API for the Visual Editor and never stored, so it only appears
  * when content reaches the differ from a draft render rather than from the
- * Management API. `component` is excluded here only when no op targets it —
- * `renameBlock` does, so it is diffed like any other key below.
+ * Management API. `component` is diffed like any other key because
+ * `renameBlock` rewrites it.
  */
 const TRANSPORT_KEYS = new Set(["_uid", "_editable"]);
 
@@ -82,7 +94,7 @@ export function isBlock(value: unknown): value is AnyBlock {
 }
 
 function isBlockList(value: unknown): value is AnyBlock[] {
-  return Array.isArray(value) && value.length > 0 && value.every(isBlock);
+  return Array.isArray(value) && value.every(isBlock);
 }
 
 /** Deep structural equality over JSON-ish values. */
@@ -115,10 +127,10 @@ function ownView(value: unknown): unknown {
 
 /**
  * Block identity the whole patch scheme rests on: a `_uid` must be unique
- * within a story and must be present. The backend regenerates the `_uid` of the
- * second block that repeats one, and generates a `_uid` for a block that has
- * none — in both cases the patch and inverse recorded locally would address a
- * block that does not exist remotely, and the rollback would silently no-op.
+ * within a story and must be present. Saving a story regenerates the `_uid` of
+ * the second block that repeats one, and generates a `_uid` for a block that
+ * has none. In both cases the recorded patches would address a block that does
+ * not exist remotely, and an undo would silently do nothing.
  */
 export function findUnstableUids(content: unknown): { duplicate: string[]; missing: number } {
   const seen = new Set<string>();
@@ -191,18 +203,21 @@ export function diffBlock(before: AnyBlock, after: AnyBlock): BlockPatch | null 
     const afterOwn = ownView(afterValue);
     if (deepEqual(beforeOwn, afterOwn)) continue;
 
-    if (isBlockList(beforeValue) || isBlockList(afterValue)) {
-      const beforeList = Array.isArray(beforeValue) ? (beforeValue as AnyBlock[]) : [];
-      const afterList = Array.isArray(afterValue) ? (afterValue as AnyBlock[]) : [];
-      const beforeUids = beforeList.map((b) => b._uid);
-      const afterUids = afterList.map((b) => b._uid);
-      afterList.forEach((block, index) => {
+    // Both sides must be block lists: a value that turns into a list, or back,
+    // is replaced whole so the inverse can restore the value it displaced.
+    if (isBlockList(beforeValue) && isBlockList(afterValue)) {
+      const beforeUids = beforeValue.map((b) => b._uid);
+      const afterUids = afterValue.map((b) => b._uid);
+      afterValue.forEach((block, index) => {
         if (!beforeUids.includes(block._uid)) {
-          ops.push({ kind: "listInsert", key, uid: block._uid, index, block });
+          const after = index === 0 ? null : afterValue[index - 1]._uid;
+          ops.push({ kind: "listInsert", key, uid: block._uid, index, after, block });
         }
       });
-      for (const uid of beforeUids) {
-        if (!afterUids.includes(uid)) ops.push({ kind: "listRemove", key, uid });
+      for (const block of beforeValue) {
+        if (!afterUids.includes(block._uid)) {
+          ops.push({ kind: "listRemove", key, uid: block._uid, expect: block });
+        }
       }
       const survivorsBefore = beforeUids.filter((uid) => afterUids.includes(uid));
       const survivorsAfter = afterUids.filter((uid) => beforeUids.includes(uid));
@@ -231,40 +246,195 @@ export interface ApplyResult {
   missing: string[];
 }
 
+function listOf(block: AnyBlock, key: string): unknown[] {
+  return Array.isArray(block[key]) ? (block[key] as unknown[]) : [];
+}
+
+function findChild(block: AnyBlock, key: string, uid: string): AnyBlock | undefined {
+  return listOf(block, key).find((item): item is AnyBlock => isBlock(item) && item._uid === uid);
+}
+
+function liveOrder(block: AnyBlock, key: string, known: readonly string[]): string[] {
+  return listOf(block, key)
+    .filter(isBlock)
+    .map((item) => item._uid)
+    .filter((uid) => known.includes(uid));
+}
+
+/** Whether the live block already holds what the op would write. */
+function isSettled(block: AnyBlock, op: BlockPatchOp): boolean {
+  switch (op.kind) {
+    case "set":
+      return op.key in block && deepEqual(block[op.key], op.value);
+    case "unset":
+      return !(op.key in block);
+    case "listInsert": {
+      const child = findChild(block, op.key, op.uid);
+      return child !== undefined && deepEqual(child, op.block);
+    }
+    case "listRemove":
+      return findChild(block, op.key, op.uid) === undefined;
+    case "listOrder":
+      return deepEqual(liveOrder(block, op.key, op.uids), op.uids);
+  }
+}
+
 /**
  * Reports every op of a block patch whose live value no longer matches what the
- * migration left behind.
+ * migration left behind. Values are compared whole, nested blocks included: an
+ * op that replaces a value replaces every block inside it too, so an edit to
+ * any of them is an edit the op would discard.
  */
 function conflictsOf(block: AnyBlock, patch: BlockPatch): ApplyConflict[] {
   const conflicts: ApplyConflict[] = [];
+  const conflict = (key: string, reason: string) => conflicts.push({ uid: patch.uid, key, reason });
   for (const op of patch.ops) {
-    if (op.kind === "set" || op.kind === "unset") {
-      const expected = "expect" in op ? op.expect : undefined;
-      if (!deepEqual(ownView(block[op.key]), ownView(expected))) {
-        conflicts.push({
-          uid: patch.uid,
-          key: op.key,
-          reason: `live value differs from the value the migration wrote`,
-        });
+    switch (op.kind) {
+      case "set":
+      case "unset":
+        if (!deepEqual(block[op.key], op.expect)) {
+          conflict(op.key, "live value differs from the value the migration wrote");
+        }
+        break;
+      case "listRemove": {
+        const child = findChild(block, op.key, op.uid);
+        if (child === undefined) {
+          conflict(op.key, `block ${op.uid} is no longer in "${op.key}"`);
+        } else if (!deepEqual(child, op.expect)) {
+          conflict(op.key, `block ${op.uid} in "${op.key}" changed since the migration wrote it`);
+        }
+        break;
       }
-      continue;
-    }
-    if (op.kind === "listOrder") {
-      const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
-      const liveKnown = list
-        .filter(isBlock)
-        .map((item) => item._uid)
-        .filter((uid) => op.expect.includes(uid));
-      if (!deepEqual(liveKnown, op.expect)) {
-        conflicts.push({
-          uid: patch.uid,
-          key: op.key,
-          reason: `live order of "${op.key}" differs from the order the migration wrote`,
-        });
-      }
+      case "listOrder":
+        if (!deepEqual(liveOrder(block, op.key, op.expect), op.expect)) {
+          conflict(op.key, `live order of "${op.key}" differs from the order the migration wrote`);
+        }
+        break;
+      case "listInsert":
+        // Checked across all patches at once; see `collisionOf`.
+        break;
     }
   }
   return conflicts;
+}
+
+/** Every block uid in a value, at any depth, repeats included. */
+function uidsIn(value: unknown, into: string[] = []): string[] {
+  if (Array.isArray(value)) {
+    for (const item of value) uidsIn(item, into);
+  } else if (typeof value === "object" && value !== null) {
+    if (isBlock(value)) into.push(value._uid);
+    for (const nested of Object.values(value)) uidsIn(nested, into);
+  }
+  return into;
+}
+
+/** The live values a patch would drop: whatever a `set`, `unset` or `listRemove` replaces. */
+function displacedBy(block: AnyBlock, patch: BlockPatch): unknown[] {
+  return patch.ops.flatMap((op) => {
+    if (op.kind === "set" || op.kind === "unset") return [block[op.key]];
+    if (op.kind === "listRemove") return [findChild(block, op.key, op.uid)];
+    return [];
+  });
+}
+
+/** The values a patch would put in: whatever a `set` or `listInsert` writes. */
+function insertedBy(patch: BlockPatch): { key: string; value: unknown }[] {
+  return patch.ops.flatMap((op) => {
+    if (op.kind === "set") return [{ key: op.key, value: op.value }];
+    if (op.kind === "listInsert") return [{ key: op.key, value: op.block }];
+    return [];
+  });
+}
+
+type PendingPatch = { patch: BlockPatch; block: AnyBlock };
+
+/**
+ * The first patch that would write a block whose uid the story still holds
+ * after every other applicable patch ran. Restoring a block an editor moved
+ * elsewhere would leave the story with two blocks of one uid, which saving
+ * renumbers.
+ */
+function collisionOf(
+  content: unknown,
+  pending: readonly PendingPatch[],
+): { patch: BlockPatch; key: string; uid: string } | undefined {
+  const remaining = new Map<string, number>();
+  for (const uid of uidsIn(content)) remaining.set(uid, (remaining.get(uid) ?? 0) + 1);
+  for (const { patch, block } of pending) {
+    for (const uid of uidsIn(displacedBy(block, patch))) {
+      remaining.set(uid, (remaining.get(uid) ?? 0) - 1);
+    }
+  }
+  for (const { patch } of pending) {
+    for (const { key, value } of insertedBy(patch)) {
+      const uid = uidsIn(value).find((inserted) => (remaining.get(inserted) ?? 0) > 0);
+      if (uid !== undefined) return { patch, key, uid };
+    }
+  }
+  return undefined;
+}
+
+/** Removals first and inserts in target order, so each insert finds the sibling it follows. */
+const OP_ORDER: Record<BlockPatchOp["kind"], number> = {
+  listRemove: 0,
+  listInsert: 1,
+  listOrder: 2,
+  set: 3,
+  unset: 3,
+};
+
+function applyOrder(a: BlockPatchOp, b: BlockPatchOp): number {
+  const byKind = OP_ORDER[a.kind] - OP_ORDER[b.kind];
+  if (byKind !== 0) return byKind;
+  return a.kind === "listInsert" && b.kind === "listInsert" ? a.index - b.index : 0;
+}
+
+function applyOp(block: AnyBlock, op: BlockPatchOp): boolean {
+  switch (op.kind) {
+    case "set":
+      block[op.key] = structuredClone(op.value);
+      return true;
+    case "unset":
+      delete block[op.key];
+      return true;
+    case "listInsert": {
+      const list = listOf(block, op.key);
+      if (findChild(block, op.key, op.uid)) return false;
+      const sibling =
+        op.after === null ? -1 : list.findIndex((item) => isBlock(item) && item._uid === op.after);
+      const at =
+        op.after === null ? 0 : sibling === -1 ? Math.min(op.index, list.length) : sibling + 1;
+      list.splice(at, 0, structuredClone(op.block));
+      block[op.key] = list;
+      return true;
+    }
+    case "listOrder": {
+      const list = listOf(block, op.key);
+      const rank = new Map(op.uids.map((uid, index) => [uid, index]));
+      // Children the patch does not know about keep their live slot; the
+      // known ones are re-dealt into the slots they already occupied.
+      const slots: number[] = [];
+      list.forEach((item, index) => {
+        if (isBlock(item) && rank.has(item._uid)) slots.push(index);
+      });
+      const ordered = op.uids
+        .map((uid) => findChild(block, op.key, uid))
+        .filter((item): item is AnyBlock => item !== undefined);
+      slots.forEach((slot, index) => {
+        list[slot] = ordered[index]!;
+      });
+      block[op.key] = list;
+      return true;
+    }
+    case "listRemove": {
+      const list = listOf(block, op.key);
+      const at = list.findIndex((item) => isBlock(item) && item._uid === op.uid);
+      if (at === -1) return false;
+      list.splice(at, 1);
+      return true;
+    }
+  }
 }
 
 /**
@@ -276,6 +446,10 @@ function conflictsOf(block: AnyBlock, patch: BlockPatch): ApplyConflict[] {
  * as an `unset` of the old key plus a `set` of the new one, and applying half of
  * that pair would leave the block holding both names at once — content no
  * schema describes and no editor could have produced.
+ *
+ * A patch the live block already satisfies is skipped without a conflict, so
+ * replaying the same patches twice is a no-op. `force` overwrites conflicting
+ * blocks, but never restores a block whose uid the story holds elsewhere.
  */
 export function applyPatches(
   content: unknown,
@@ -285,65 +459,47 @@ export function applyPatches(
   const index = indexBlocks(content);
   const result: ApplyResult = { applied: 0, conflicts: [], missing: [] };
 
+  const pending: PendingPatch[] = [];
   for (const patch of patches) {
     const block = index.get(patch.uid);
     if (!block) {
       result.missing.push(patch.uid);
-      continue;
+    } else if (!patch.ops.every((op) => isSettled(block, op))) {
+      pending.push({ patch, block });
     }
-    const conflicts = options.force ? [] : conflictsOf(block, patch);
-    if (conflicts.length > 0) {
+  }
+
+  // Every check runs against the content as it stands, before any patch lands.
+  const blocked = new Map<BlockPatch, ApplyConflict[]>();
+  if (!options.force) {
+    for (const { patch, block } of pending) {
+      const conflicts = conflictsOf(block, patch);
+      if (conflicts.length > 0) blocked.set(patch, conflicts);
+    }
+  }
+  for (;;) {
+    const collision = collisionOf(
+      content,
+      pending.filter(({ patch }) => !blocked.has(patch)),
+    );
+    if (!collision) break;
+    blocked.set(collision.patch, [
+      {
+        uid: collision.patch.uid,
+        key: collision.key,
+        reason: `block ${collision.uid} now sits elsewhere in the story, and restoring it would repeat its uid`,
+      },
+    ]);
+  }
+
+  for (const { patch, block } of pending) {
+    const conflicts = blocked.get(patch);
+    if (conflicts) {
       result.conflicts.push(...conflicts);
       continue;
     }
-    for (const op of patch.ops) {
-      switch (op.kind) {
-        case "set":
-        case "unset": {
-          if (op.kind === "set") {
-            block[op.key] = op.value;
-          } else {
-            delete block[op.key];
-          }
-          result.applied++;
-          break;
-        }
-        case "listInsert": {
-          const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
-          if (list.some((item) => isBlock(item) && item._uid === op.uid)) break;
-          list.splice(Math.min(op.index, list.length), 0, op.block);
-          block[op.key] = list;
-          result.applied++;
-          break;
-        }
-        case "listOrder": {
-          const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
-          const rank = new Map(op.uids.map((uid, index) => [uid, index]));
-          // Children the patch does not know about keep their live slot; the
-          // known ones are re-dealt into the slots they already occupied.
-          const slots: number[] = [];
-          list.forEach((item, index) => {
-            if (isBlock(item) && rank.has(item._uid)) slots.push(index);
-          });
-          const ordered = op.uids
-            .map((uid) => list.find((item) => isBlock(item) && item._uid === uid))
-            .filter((item): item is AnyBlock => item !== undefined);
-          slots.forEach((slot, index) => {
-            list[slot] = ordered[index]!;
-          });
-          block[op.key] = list;
-          result.applied++;
-          break;
-        }
-        case "listRemove": {
-          const list = Array.isArray(block[op.key]) ? (block[op.key] as AnyBlock[]) : [];
-          const at = list.findIndex((item) => isBlock(item) && item._uid === op.uid);
-          if (at === -1) break;
-          list.splice(at, 1);
-          result.applied++;
-          break;
-        }
-      }
+    for (const op of [...patch.ops].sort(applyOrder)) {
+      if (applyOp(block, op)) result.applied++;
     }
   }
 

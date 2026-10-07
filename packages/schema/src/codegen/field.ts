@@ -97,7 +97,7 @@ export interface TagRef {
  *
  * A space can store those keys on any field type — the Management API takes a
  * component schema as an opaque blob and stores a stray `restrict_components: true`
- * on an `asset` field verbatim (verified against the API) — but the editor only
+ * on an `asset` field verbatim — but the editor only
  * reads them on these two, and `defineField` rejects an option the field type does
  * not own. Emitting such a stray key would generate code that does not compile, so
  * the restriction keys are only ever emitted for these types.
@@ -146,7 +146,7 @@ const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
  * Claiming the field for the tag dimension drops any group list it also holds,
  * and the editor would have read the group list instead: it evaluates groups
  * before tags, and its group arm does not gate the denylist on `restrict_type`.
- * Same round-trip hazard as the name/group tie below, in the same direction, and
+ * Same round-trip hazard as the name/group tie above, in the same direction, and
  * reachable the same way, through the API rather than the editor.
  */
 export function resolveFieldRestriction(
@@ -260,7 +260,7 @@ export function resolveFieldRestriction(
  *
  * `restrict_components: true` with no list in force is kept too, for the same
  * reason: with no `allow`/`deny` emitted there is nothing to re-derive it from, so
- * dropping it switched the restriction off on the next push.
+ * dropping it would switch the restriction off on the next push.
  *
  * None of these flags are emitted for a field type that does not own them; see
  * {@link RESTRICTABLE_FIELD_TYPES}.
@@ -359,7 +359,7 @@ function toDslField(
       // round trip, which is what makes a second push report `unchanged`. A field
       // whose only list is a tag denylist is genuinely restricted, because the
       // editor's tag arm does not gate the denylist on `restrict_type`, and
-      // dropping the flag there really did unrestrict it.
+      // dropping the flag there would unrestrict it.
       if (restrictable && restrict_components === true) {
         out.restrict_components = restrict_components;
         if (restrict_type !== undefined) {

@@ -75,6 +75,9 @@ const MAX_SLUG_LENGTH = 60;
 /** Reduces free text to a slug the migration filename pattern accepts. */
 function toMigrationSlug(name: string): string {
   const slug = name
+    // Splits accented letters into base letter and mark, so `é` keeps its `e`.
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")

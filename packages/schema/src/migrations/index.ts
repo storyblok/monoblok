@@ -1,8 +1,9 @@
 /**
  * Content migrations: apply a typed list of ops to a space's story content and
- * record enough to undo it. Free of I/O: functions return what to write, and
- * the caller performs the Management API calls. Filesystem helpers live in
- * `@storyblok/schema/migrations/node`.
+ * record enough to undo it. Functions return what to write; the caller performs
+ * the Management API calls. Only migration file discovery and the default
+ * journal touch the filesystem, and they load it on first call, so importing
+ * this module works in any runtime.
  */
 export { defineMigration } from "./define-migration";
 export type { CompiledMigration, MigrationDefinition, MigrationOps } from "./define-migration";
@@ -71,3 +72,8 @@ export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./undo-
 
 export { checkPendingReleases } from "./releases";
 export type { PendingReleasesCheck, ReleaseForMigration } from "./releases";
+
+export { discoverMigrations, loadMigrations, selectMigrationFiles } from "./load-migrations";
+export type { ImportDefault, LoadedMigration, MigrationFile } from "./load-migrations";
+
+export { JOURNAL_DIRECTORY, localJournal, resolveJournal } from "./local-journal";

@@ -10,6 +10,7 @@ import TestFallback from "./components/TestFallback.astro";
 
 export const client = createApiClient({
   accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OsvNv534kS2nivAAj1EPVgtt",
+  inlineRelations: true,
 });
 
 interface ExtraProps {

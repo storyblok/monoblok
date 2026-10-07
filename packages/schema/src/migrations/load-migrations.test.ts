@@ -1,25 +1,21 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { discoverMigrations, loadMigrations } from "./load-migrations";
+import { loadMigrations, selectMigrationFiles } from "./load-migrations";
 
-const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "__fixtures__");
+const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "__fixtures__", "load");
 const spaceMigrations = path.join(fixtures, "space-migrations");
 
 const importDefault = async (file: string): Promise<unknown> => (await import(file)).default;
 
 describe("loadMigrations", () => {
-  it("should return migrations in filename order however the directory lists them", async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), "schema-migrations-"));
-    // Written newest first, so creation order disagrees with run order.
-    await writeFile(path.join(directory, "0010-later.ts"), "");
-    await writeFile(path.join(directory, "0002-earlier.ts"), "");
+  it("should return migrations in filename order however the directory lists them", () => {
+    const selected = selectMigrationFiles("migrations", ["0010-later.ts", "0002-earlier.ts"]);
 
-    const discovered = await discoverMigrations(directory);
-
-    expect(discovered.map((entry) => entry.id)).toEqual(["0002-earlier", "0010-later"]);
+    expect(selected).toEqual([
+      { id: "0002-earlier", file: "migrations/0002-earlier.ts" },
+      { id: "0010-later", file: "migrations/0010-later.ts" },
+    ]);
   });
 
   it("should return the compiled migration each file exports", async () => {
@@ -35,9 +31,9 @@ describe("loadMigrations", () => {
   it("should ignore schema snapshots and files that are not migrations", async () => {
     const loaded = await loadMigrations(spaceMigrations, importDefault);
 
-    expect(loaded.map((entry) => entry.file)).toEqual([
-      path.join(spaceMigrations, "0001-rename-card-title.ts"),
-      path.join(spaceMigrations, "0002-drop-card-subtitle.ts"),
+    expect(loaded.map((entry) => path.basename(entry.file))).toEqual([
+      "0001-rename-card-title.ts",
+      "0002-drop-card-subtitle.ts",
     ]);
   });
 

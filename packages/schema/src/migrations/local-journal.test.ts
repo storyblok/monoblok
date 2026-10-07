@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { type Journal, type MigrationRun, runId, type StoryInverse } from "../journal";
+import { type Journal, type MigrationRun, runId, type StoryInverse } from "./journal";
 import { localJournal, resolveJournal } from "./local-journal";
 
 function run(overrides: Partial<MigrationRun> = {}): MigrationRun {

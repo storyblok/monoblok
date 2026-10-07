@@ -27,6 +27,9 @@
       ],
       "migrations": [
         "./dist/migrations/index.d.cts"
+      ],
+      "codegen": [
+        "./dist/codegen/index.d.cts"
       ]
     }
   },
@@ -34,6 +37,10 @@
     ".": {
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./codegen": {
+      "import": "./dist/codegen/index.mjs",
+      "require": "./dist/codegen/index.cjs"
     },
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",

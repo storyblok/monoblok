@@ -18,6 +18,18 @@ describe("loadMigrations", () => {
     ]);
   });
 
+  it("should order unpadded and timestamp prefixes by their numeric value", () => {
+    const selected = selectMigrationFiles("m", ["10-b.ts", "20261007-d.ts", "9-a.ts", "010-c.ts"]);
+
+    expect(selected.map((entry) => entry.id)).toEqual(["9-a", "010-c", "10-b", "20261007-d"]);
+  });
+
+  it("should refuse two files that would share an id", () => {
+    expect(() => selectMigrationFiles("m", ["0001-x.ts", "0001-x.js"])).toThrow(
+      /0001-x\.js and 0001-x\.ts share the id "0001-x"/,
+    );
+  });
+
   it("should return the compiled migration each file exports", async () => {
     const loaded = await loadMigrations(spaceMigrations, importDefault);
 

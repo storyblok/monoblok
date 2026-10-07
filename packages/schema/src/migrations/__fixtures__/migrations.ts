@@ -38,18 +38,15 @@ import type { Before as ArticleBefore } from "./0001-rename-article-author.befor
  * compiled when a single schema had to describe both ends.
  */
 export const renameField = defineMigration<AfterRenameArticleAuthor, ArticleBefore>({
-  name: "0001-rename-article-author",
   ops: [renameFieldOp({ block: "article", field: "author", to: "byline" })],
 });
 
 /** Same block name at several depths, under two different parents. */
 export const renameNestedField = defineMigration<AfterRenameMetaAuthor, FixtureSchema>({
-  name: "0002-rename-meta-author",
   ops: [renameFieldOp({ block: "meta", field: "author", to: "written_by" })],
 });
 
 export const removeField = defineMigration<AfterRemoveCardDescription, FixtureSchema>({
-  name: "0003-remove-card-description",
   ops: [removeFieldOp({ block: "card", field: "description" })],
 });
 
@@ -58,7 +55,6 @@ export const removeField = defineMigration<AfterRemoveCardDescription, FixtureSc
  * it costs one key and moves the op from tier 3 to tier 2.
  */
 export const coerceFields = defineMigration<AfterCoerceCardTypes, FixtureSchema>({
-  name: "0004-coerce-card-types",
   ops: [
     coerceField({ block: "card", field: "legacy_price", from: "string", to: "number" }),
     coerceField({ block: "card", field: "featured", from: "string", to: "boolean" }),
@@ -67,7 +63,6 @@ export const coerceFields = defineMigration<AfterCoerceCardTypes, FixtureSchema>
 
 /** Single-schema shorthand: `slug` already exists, so `Before` and `After` agree. */
 export const moveValue = defineMigration<FixtureSchema>({
-  name: "0005-move-old-slug",
   ops: [moveField({ block: "card", field: "old_slug", to: "slug" })],
 });
 
@@ -80,7 +75,6 @@ export const alterString = defineMigration<FixtureSchema>([
 
 /** Deliberately non-idempotent: a second pass keeps toggling `meta`. */
 export const alterStructure = defineMigration<FixtureSchema>({
-  name: "0007-ensure-section-meta",
   ops: [
     alterBlock({ block: "section" }, (block) => {
       const meta = block.meta ?? [];
@@ -101,7 +95,6 @@ export const alterStructure = defineMigration<FixtureSchema>({
 
 /** One migration file touching two different blocks. */
 export const twoBlocks = defineMigration<AfterTwoBlocks, FixtureSchema>({
-  name: "0008-two-blocks",
   ops: [
     renameFieldOp({ block: "article", field: "excerpt", to: "summary" }),
     coerceField({ block: "card", field: "title", from: "string", to: "string" }),
@@ -115,7 +108,6 @@ export const twoBlocks = defineMigration<AfterTwoBlocks, FixtureSchema>({
 
 /** Targets a block defined in the schema but present in no story. */
 export const noMatches = defineMigration<FixtureSchema>({
-  name: "0009-no-matches",
   ops: [removeFieldOp({ block: "banner", field: "label" })],
 });
 
@@ -125,7 +117,6 @@ export const noMatches = defineMigration<FixtureSchema>({
  * coherent — the same `under` on a key op is a type error.
  */
 export const scopedAlter = defineMigration<FixtureSchema>({
-  name: "0010-scoped-meta-og-title",
   ops: [
     alterField({ block: "meta", field: "og_title", under: "card" }, (title) =>
       typeof title === "string" && !title.startsWith("card:") ? `card:${title}` : title,
@@ -135,7 +126,6 @@ export const scopedAlter = defineMigration<FixtureSchema>({
 
 /** Explicit reorder, so ordering does not degrade to a whole-array replace. */
 export const reorderItems = defineMigration<FixtureSchema>({
-  name: "0011-sort-section-items",
   ops: [
     reorderField({ block: "section", field: "items" }, (a, b) =>
       String(b.title ?? "").localeCompare(String(a.title ?? "")),
@@ -149,7 +139,6 @@ export const reorderItems = defineMigration<FixtureSchema>({
  * the next, with gaps allowed at every step.
  */
 export const nestedUnder = defineMigration<FixtureSchema>({
-  name: "0012-meta-in-card-in-section",
   ops: [
     alterField({ block: "meta", field: "og_title", under: ["section", "card"] }, (title) =>
       typeof title === "string" ? `deep:${title}` : title,
@@ -159,7 +148,6 @@ export const nestedUnder = defineMigration<FixtureSchema>({
 
 /** The same two names in the wrong order, which must match nothing. */
 export const nestedUnderReversed = defineMigration<FixtureSchema>({
-  name: "0013-order-matters",
   ops: [
     alterField({ block: "meta", field: "og_title", under: ["card", "section"] }, (title) =>
       typeof title === "string" ? `wrong:${title}` : title,
@@ -169,7 +157,6 @@ export const nestedUnderReversed = defineMigration<FixtureSchema>({
 
 /** The object call shape: the op list plus a `title` for CLI output. */
 export const titledRename = defineMigration<AfterRenameMetaAuthor, FixtureSchema>({
-  name: "0014-titled-rename",
   title: "Rename meta.author to written_by",
   ops: [renameFieldOp({ block: "meta", field: "author", to: "written_by" })],
 });

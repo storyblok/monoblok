@@ -21,7 +21,14 @@ export default defineConfig({
     // `../types`, etc. relatively, so those modules have to exist next to
     // them as their own files. It also guarantees the block registry stays a
     // single module instance instead of being inlined into `index.js`.
-    entry: ["src/index.ts"],
+    //
+    // The bundler never parses `.astro` files (see `externalAstroComponents`
+    // below), so a module reachable only from a component's own `<script>` -
+    // not re-exported from `src/index.ts` - would otherwise be silently
+    // dropped from `dist/`. `live-preview/preview-handler` is only imported
+    // from `StoryblokPreview.astro`'s script, so it's listed as its own
+    // entry; `get-new-html-body` comes along for free as its dependency.
+    entry: ["src/index.ts", "src/live-preview/preview-handler.ts"],
     unbundle: true,
     format: ["esm"],
     copy: [{ from: "src/**/*.astro", to: "dist", flatten: false }],

@@ -1,4 +1,5 @@
 import { storyblokEditable } from "@storyblok/live-preview";
+import type { BridgeParams } from "@storyblok/live-preview";
 import type { AstroComponentFactory } from "astro/runtime/server/render/astro/index.js";
 
 /**
@@ -83,6 +84,14 @@ export type StoryblokBlockComponent<TExtraProps extends object = {}> = ((
   props: StoryblokBlockProps<TExtraProps>,
 ) => any) &
   AstroComponentFactory;
+
+/** Props accepted by the `StoryblokPreview` component. */
+export interface StoryblokPreviewProps {
+  /** Options forwarded to the Preview Bridge constructor. */
+  bridgeOptions?: BridgeParams;
+  /** Debounce delay for consecutive input events. Defaults to 500ms. */
+  debounceMs?: number;
+}
 
 export interface DefineStoryblokBlocksOptions {
   /**

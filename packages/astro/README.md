@@ -33,7 +33,7 @@
   — call it more than once for separate registries that never share state
 - `StoryblokBlock` for rendering single or nested blocks
 - Visual Editor integration using `storyblokEditable`
-- Real-time Live Preview via `liveEditMiddleware`, `getPayload`, and `StoryblokLivePreview`
+- Real-time Live Preview via `storyblokPreviewMiddleware`, `getPayload`, and `StoryblokPreview`
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Built-in TypeScript support with comprehensive type definitions
 - SSR/SSG compatibility for Astro applications
@@ -63,15 +63,15 @@ export const { StoryblokBlock } = defineStoryblokBlocks({
 ```ts
 // src/middleware.ts
 import { sequence } from "astro:middleware";
-import { liveEditMiddleware } from "@storyblok/astro";
+import { storyblokPreviewMiddleware } from "@storyblok/astro";
 
-export const onRequest = sequence(liveEditMiddleware);
+export const onRequest = sequence(storyblokPreviewMiddleware);
 ```
 
 ```astro
 ---
 // src/pages/index.astro
-import { getPayload, StoryblokLivePreview } from '@storyblok/astro';
+import { getPayload, StoryblokPreview } from '@storyblok/astro';
 import { StoryblokBlock } from '~/storyblok';
 import { client } from '~/lib/storyblok-client';
 
@@ -80,7 +80,7 @@ const story = payload.story ?? (await client.stories.get('home')).data.story;
 ---
 
 <StoryblokBlock block={story.content} />
-<StoryblokLivePreview />
+<StoryblokPreview />
 ```
 
 `getPayload` returns the draft story posted by the Visual Editor, or nothing outside the editor — so
@@ -161,9 +161,9 @@ element (`heading`, `paragraph`, `code_block`, …); see
 | ------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                   |
 | `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                       |
-| `liveEditMiddleware`                              | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`. |
+| `storyblokPreviewMiddleware`                      | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`. |
 | `getPayload({ locals })`                          | Reads that payload back.                                                            |
-| `StoryblokLivePreview`                            | Client island that morphs the DOM as the editor types. Renders no markup.           |
+| `StoryblokPreview`                                | Client island that morphs the DOM as the editor types. Renders no markup.           |
 | `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.     |
 | `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                |
 | `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                     |
@@ -181,7 +181,7 @@ to render a placeholder instead.
 - If the Visual Editor has a focused element, only that element is morphed; its interactive state
   (`value`, `checked`, …) is preserved.
 - Elements carrying `data-preserve-state` are never replaced.
-- Opt out per page by not rendering `<StoryblokLivePreview />` there.
+- Opt out per page by not rendering `<StoryblokPreview />` there.
 - Events: `storyblok-live-preview-updating` (cancelable) and `storyblok-live-preview-updated`.
 
 ## Documentation

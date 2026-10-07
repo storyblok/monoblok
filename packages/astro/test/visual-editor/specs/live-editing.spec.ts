@@ -101,9 +101,9 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText(resumed, { timeout: 30_000 });
   });
 
-  test("skipping <StoryblokLivePreview /> suppresses live updates", async ({ page, request }) => {
+  test("skipping <StoryblokPreview /> suppresses live updates", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
-    // `[...slug].astro` does not render <StoryblokLivePreview /> for this slug.
+    // `[...slug].astro` does not render <StoryblokPreview /> for this slug.
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "test"));
     const teaser = editor.block("teaser-test-1");
     await expect(teaser).toContainText("Live preview disabled teaser", { timeout: 60_000 });

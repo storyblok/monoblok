@@ -8,7 +8,7 @@ describe("getPayload", () => {
     expect(result).toEqual({ story: undefined, serverData: undefined });
   });
 
-  it("reads the story and serverData captured by liveEditMiddleware", async () => {
+  it("reads the story and serverData captured by storyblokPreviewMiddleware", async () => {
     const story = { content: { component: "page" } };
     const serverData = { users: [{ id: 1 }] };
 

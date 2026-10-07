@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { liveEditMiddleware } from "../src/live-preview/middleware";
+import { storyblokPreviewMiddleware } from "../src/live-preview/middleware";
 
 const EDITOR_URL =
   "https://example.com/?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789";
@@ -8,7 +8,7 @@ function next() {
   return new Response(null);
 }
 
-describe("liveEditMiddleware", () => {
+describe("storyblokPreviewMiddleware", () => {
   it("captures the preview payload for an editor POST request", async () => {
     const story = { content: { component: "page" }, is_storyblok_preview: true };
     const request = new Request(EDITOR_URL, {
@@ -17,7 +17,7 @@ describe("liveEditMiddleware", () => {
     });
     const locals: Record<string, unknown> = {};
 
-    await liveEditMiddleware({ locals, request } as any, next);
+    await storyblokPreviewMiddleware({ locals, request } as any, next);
 
     expect(locals._storyblok_preview_data).toEqual({ story });
   });
@@ -29,7 +29,7 @@ describe("liveEditMiddleware", () => {
     });
     const locals: Record<string, unknown> = {};
 
-    await liveEditMiddleware({ locals, request } as any, next);
+    await storyblokPreviewMiddleware({ locals, request } as any, next);
 
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
@@ -38,7 +38,7 @@ describe("liveEditMiddleware", () => {
     const request = new Request(EDITOR_URL, { method: "GET" });
     const locals: Record<string, unknown> = {};
 
-    await liveEditMiddleware({ locals, request } as any, next);
+    await storyblokPreviewMiddleware({ locals, request } as any, next);
 
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
@@ -50,7 +50,7 @@ describe("liveEditMiddleware", () => {
     });
     const locals: Record<string, unknown> = {};
 
-    await liveEditMiddleware({ locals, request } as any, next);
+    await storyblokPreviewMiddleware({ locals, request } as any, next);
 
     expect(locals._storyblok_preview_data).toBeUndefined();
   });

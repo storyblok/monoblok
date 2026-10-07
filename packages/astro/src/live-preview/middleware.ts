@@ -9,12 +9,12 @@ import { isInEditor } from "@storyblok/live-preview";
  * ```ts
  * // src/middleware.ts
  * import { sequence } from 'astro:middleware';
- * import { liveEditMiddleware } from '@storyblok/astro';
+ * import { storyblokPreviewMiddleware } from '@storyblok/astro';
  *
- * export const onRequest = sequence(liveEditMiddleware);
+ * export const onRequest = sequence(storyblokPreviewMiddleware);
  * ```
  */
-export const liveEditMiddleware = defineMiddleware(async ({ locals, request }, next) => {
+export const storyblokPreviewMiddleware = defineMiddleware(async ({ locals, request }, next) => {
   if (request.method === "POST") {
     // First do a check if its coming from within storyblok
     const editorRequest = isInEditor(new URL(request.url));

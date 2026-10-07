@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   customRendererFixture,
   integrationFixtures,
@@ -16,6 +16,7 @@ import CustomLink from "./richtext/CustomLink.astro";
 import CodeBlock from "./richtext/CodeBlock.astro";
 import CustomTable from "./richtext/CustomTable.astro";
 import CustomText from "./richtext/CustomText.astro";
+import Blok from "./richtext/Blok.astro";
 // Removes source file and location attributes that Astro adds for hydration
 const clean = (result: string) =>
   result
@@ -206,6 +207,45 @@ describe("storyblok Richtext", async () => {
         },
       });
       expect(clean(result)).toBe(infinite_loop.expected);
+    });
+  });
+
+  describe("blok nodes", async () => {
+    const document = {
+      type: "doc",
+      content: [
+        {
+          type: "blok",
+          attrs: {
+            id: "x",
+            body: [{ _uid: "1", component: "teaser" }],
+          },
+        },
+      ],
+    };
+
+    it("renders nothing and warns when no `components.blok` is provided", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document },
+      });
+
+      expect(result.trim()).toBe("");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("components.blok"));
+
+      warn.mockRestore();
+    });
+
+    it("renders through the component passed in `components.blok`", async () => {
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document, components: { blok: Blok } },
+      });
+
+      expect(result).toContain("teaser");
     });
   });
 });

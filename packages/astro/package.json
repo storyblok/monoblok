@@ -33,8 +33,6 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
-    "./StoryblokBlock.astro": "./dist/components/StoryblokBlock.astro",
-    "./StoryblokBlocks.astro": "./dist/components/StoryblokBlocks.astro",
     "./package.json": "./package.json"
   },
   "publishConfig": {

@@ -1,4 +1,3 @@
-// Mirrors the CLI's `slugify`: reduces a name to `[a-z0-9_-]`.
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -11,9 +10,9 @@ function slugify(text: string): string {
 
 /**
  * Converts an arbitrary name into a valid camelCase JS identifier.
- * `slugify` reduces the input to `[a-z0-9_-]` (symbols stripped, spaces → `-`);
- * we then camelCase across `_`/`-` runs and guard against an empty or
- * leading-digit result so the output is always usable as an identifier.
+ * `slugify` reduces the input to `[a-z0-9_-]` (symbols stripped, spaces → `-`),
+ * then `_`/`-` runs are camel-cased and an empty or leading-digit result is
+ * guarded, so the output is always usable as an identifier.
  */
 export function toCamelCaseIdentifier(str: string): string {
   const camel = slugify(str)
@@ -33,14 +32,16 @@ export function componentVarName(name: string): string {
 /**
  * Resolves an ordered list of raw names to unique variable names. Names that
  * sanitize to the same identifier get a numeric suffix (`…2`, `…3`), so the
- * generated `export const`s and schema-object keys never collide. Index-aligned
+ * generated `export const`s and schema-object keys never collide with each
+ * other or with `reserved` names such as the module's imports. Index-aligned
  * to `rawNames`.
  */
 export function resolveVarNames(
   rawNames: string[],
   baseVarName: (name: string) => string,
+  reserved: readonly string[] = [],
 ): string[] {
-  const used = new Set<string>();
+  const used = new Set<string>(reserved);
   return rawNames.map((raw) => {
     const base = baseVarName(raw);
     let candidate = base;

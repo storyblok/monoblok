@@ -145,6 +145,28 @@ describe("generateSnapshot", () => {
     }
   });
 
+  it("should compile when a block name or migration id collides with the module's own syntax", async () => {
+    const define: WireComponent = {
+      name: "define",
+      is_root: null,
+      is_nestable: null,
+      schema: { title: { type: "text" } },
+    };
+    const modules = await writeModules({
+      "define.before.ts": generateSnapshot({
+        components: [define],
+        reads: ["define"],
+        migrationId: "0001-x */ broken",
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
   it("should type a migration against the schema it was taken from", async () => {
     const modules = await writeModules({
       "schema.ts": [

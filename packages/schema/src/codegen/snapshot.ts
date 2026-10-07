@@ -1,14 +1,14 @@
 import { isRecord } from "../utils/is-record";
 import { generateFieldCode, resolveFieldRestriction, sortSchemaByPos } from "./field";
-import { INDENT, quoteString } from "./format";
+import { commentText, INDENT, quoteString } from "./format";
 import { componentVarName, resolveVarNames } from "./names";
 
 /** A component as the Management API returns it; only the keys a snapshot reads. */
 export type WireComponent = {
   name: string;
   schema?: Record<string, unknown> | null;
-  is_root?: boolean;
-  is_nestable?: boolean;
+  is_root?: boolean | null;
+  is_nestable?: boolean | null;
   component_group_uuid?: string | null;
   internal_tag_ids?: readonly (string | number)[] | null;
 };
@@ -25,6 +25,7 @@ export type GenerateSnapshotOptions = {
 /** Field types whose restriction lists name the blocks that may nest in them. */
 const NESTING_FIELD_TYPES = new Set(["bloks", "richtext"]);
 const OPTION_FIELD_TYPES = new Set(["option", "options"]);
+const SNAPSHOT_IMPORTS = ["defineBlock", "defineField", "defineSchema", "Schema"];
 
 type FieldRecord = Record<string, unknown>;
 
@@ -34,22 +35,17 @@ function fieldsOf(component: WireComponent): [string, FieldRecord][] {
     : [];
 }
 
+type RestrictionLookup = {
+  components: readonly WireComponent[];
+  groupUuids: Map<string, string>;
+  tagIds: Map<string, string>;
+};
+
 /**
- * The block names a nesting field's allow list resolves to, or `undefined` when
- * no allow list is in force. Folder and tag restrictions are resolved to the
- * blocks currently in that folder or carrying that tag. A denylist resolves to
- * `undefined` too: it admits every block it does not name, and following it
- * would drag the whole space into the snapshot.
+ * Identity maps make the shared resolver hand back the raw uuids and tag ids
+ * instead of `defineFolder` refs and tag names.
  */
-function allowedBlockNames(
-  field: FieldRecord,
-  components: readonly WireComponent[],
-): string[] | undefined {
-  if (!NESTING_FIELD_TYPES.has(String(field.type))) {
-    return undefined;
-  }
-  // Identity maps make the shared resolver hand back the raw uuids and tag ids
-  // instead of `defineFolder` refs and tag names.
+function restrictionLookup(components: readonly WireComponent[]): RestrictionLookup {
   const groupUuids = new Map<string, string>();
   const tagIds = new Map<string, string>();
   for (const component of components) {
@@ -60,6 +56,21 @@ function allowedBlockNames(
       tagIds.set(String(id), String(id));
     }
   }
+  return { components, groupUuids, tagIds };
+}
+
+/**
+ * The block names a nesting field's allow list resolves to, or `undefined` when
+ * no allow list is in force. Folder and tag restrictions are resolved to the
+ * blocks currently in that folder or carrying that tag. A denylist resolves to
+ * `undefined` too: it admits every block it does not name, and following it
+ * would drag the whole space into the snapshot.
+ */
+function allowedBlockNames(field: FieldRecord, lookup: RestrictionLookup): string[] | undefined {
+  if (!NESTING_FIELD_TYPES.has(String(field.type))) {
+    return undefined;
+  }
+  const { components, groupUuids, tagIds } = lookup;
   const restriction = resolveFieldRestriction(field, groupUuids, tagIds);
   switch (restriction.kind) {
     case "names":
@@ -130,12 +141,14 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   const reads = [...new Set(options.reads)].filter((name) => byName.has(name)).sort();
   const allowedByField = new Map<FieldRecord, string[] | undefined>();
 
+  const lookup = restrictionLookup(components);
+
   const reached = new Set(reads);
   const queue = [...reads];
-  while (queue.length > 0) {
-    const component = byName.get(queue.shift() as string) as WireComponent;
+  for (let next = 0; next < queue.length; next++) {
+    const component = byName.get(queue[next]) as WireComponent;
     for (const [, field] of fieldsOf(component)) {
-      const allowed = allowedBlockNames(field, components);
+      const allowed = allowedBlockNames(field, lookup);
       allowedByField.set(field, allowed);
       for (const name of allowed ?? []) {
         if (byName.has(name) && !reached.has(name)) {
@@ -148,17 +161,17 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
 
   const stubs = [...reached].filter((name) => !reads.includes(name)).sort();
   const ordered = [...reads, ...stubs];
-  const varNames = resolveVarNames(ordered, componentVarName);
+  const varNames = resolveVarNames(ordered, componentVarName, SNAPSHOT_IMPORTS);
   const hasFields = reads.some((name) => fieldsOf(byName.get(name) as WireComponent).length > 0);
 
   const lines: string[] = [
     "/**",
     migrationId
-      ? ` * The schema as it stood before migration ${migrationId}.`
+      ? ` * The schema as it stood before migration ${commentText(migrationId)}.`
       : " * The schema as it stood before the migration beside it.",
-    " * Generated: blocks the migration reads into carry their fields, and the",
-    " * blocks reachable from them are name-only stubs. Frozen once shipped, so",
-    " * the migration keeps typechecking after the schema moves on.",
+    " * Generated. Blocks the migration reads carry their fields; blocks they allow",
+    " * are name-only stubs. Keep this file unchanged once the migration ships, so",
+    " * the fields it reads stay typed after the schema moves on.",
     " */",
     `import { defineBlock, ${hasFields ? "defineField, " : ""}defineSchema } from '@storyblok/schema';`,
     "import type { Schema } from '@storyblok/schema';",
@@ -173,10 +186,10 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
     const component = byName.get(name) as WireComponent;
     lines.push(`const ${varNames[i]} = defineBlock({`);
     lines.push(`${INDENT}name: ${quoteString(name)},`);
-    if (component.is_root !== undefined) {
+    if (typeof component.is_root === "boolean") {
       lines.push(`${INDENT}is_root: ${component.is_root},`);
     }
-    if (component.is_nestable !== undefined) {
+    if (typeof component.is_nestable === "boolean") {
       lines.push(`${INDENT}is_nestable: ${component.is_nestable},`);
     }
     const fields = fieldsOf(component);

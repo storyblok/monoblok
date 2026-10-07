@@ -15,6 +15,7 @@ const SCHEMA = [
   "  defineField('count', { type: 'number' }),",
   "  defineField('subtitle', { type: 'text', required: true }),",
   "  defineField('cta-label', { type: 'text', required: true }),",
+  "  defineField('link', { type: 'multilink' }),",
   "] });",
   "const schema = defineSchema({ blocks: { hero } });",
   "export type Schema = InferSchema<typeof schema>;",
@@ -84,6 +85,31 @@ describe("generateMigrationSource", () => {
       subtitle: "",
       "cta-label": "Read more",
     });
+  });
+
+  it("should backfill an object value", async () => {
+    const link = {
+      id: "",
+      url: "https://example.com",
+      linktype: "url",
+      fieldtype: "multilink",
+      cached_url: "https://example.com",
+    };
+    const { migration, typeErrors } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [{ kind: "addField", block: "hero", field: "link", value: link }],
+    });
+
+    expect(typeErrors).toEqual([]);
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [{ id: 1, slug: "home", content: { _uid: "a", component: "hero" } }],
+    });
+
+    expect(outcome.writes[0].content).toEqual({ _uid: "a", component: "hero", link });
   });
 
   it("should generate a placeholder migration when there are no ops", async () => {

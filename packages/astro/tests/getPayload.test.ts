@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPayload } from "../src/lib/helpers";
+import { getPayload } from "../src/get-payload";
 
 describe("getPayload", () => {
   it("returns empty values outside the editor", async () => {

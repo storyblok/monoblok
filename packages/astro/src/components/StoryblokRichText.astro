@@ -1,10 +1,7 @@
 ---
-import {
-  type StoryblokRichTextInput,
-  type StoryblokAstroRichTextRenderContext,
-  normalizeNodes,
-} from '../';
-import RenderChildren from './richtext/RenderChildren.astro';
+import { normalizeNodes, type StoryblokRichTextInput } from "@storyblok/richtext";
+import type { StoryblokAstroRichTextRenderContext } from "../richtext-helpers";
+import RenderChildren from "./richtext/RenderChildren.astro";
 
 interface Props extends StoryblokAstroRichTextRenderContext {
   document: StoryblokRichTextInput;

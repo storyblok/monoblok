@@ -12,11 +12,11 @@ only what is specific to this package.
 | Scenario       | `has-playground-content` in `test/scenarios` |
 | App under test | `playground/ssr`                             |
 
-**Live editing works in both SSR and SSG.** The Visual Editor bridge drives DOM updates
-client-side regardless of Astro's rendering mode; only `getPayload`/`liveEditMiddleware` (used to
-read the Visual Editor's POST body during an SSR render) require `output: "server"`. `playground/ssr`
-wires `liveEditMiddleware` via `src/middleware.ts` and renders `<StoryblokLivePreview />` in its
-layout; `playground/ssg` does not, so edits there reload on `change`/`published` only.
+**Live editing works in both SSR and SSG.** The Visual Editor bridge drives DOM updates client-side
+regardless of Astro's rendering mode; only `getPayload`/`liveEditMiddleware` (used to read the
+Visual Editor's POST body during an SSR render) require `output: "server"`. `playground/ssr` wires
+`liveEditMiddleware` via `src/middleware.ts` and renders `<StoryblokLivePreview />` in its layout;
+`playground/ssg` does not, so edits there reload on `change`/`published` only.
 
 ## Run
 

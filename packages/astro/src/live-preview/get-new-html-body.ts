@@ -1,4 +1,4 @@
-import type { Story } from "@storyblok/live-preview";
+import type { LivePreviewStory } from "@storyblok/live-preview";
 
 const SERVER_DATA_ELEMENT_ID = "__STORYBLOK_SERVERDATA__";
 
@@ -9,7 +9,10 @@ const SERVER_DATA_ELEMENT_ID = "__STORYBLOK_SERVERDATA__";
  * Astro owns the POST payload and server-data conventions; the shared
  * live-preview package applies the resulting DOM.
  */
-export async function getNewHTMLBody(story: Story, signal: AbortSignal): Promise<HTMLElement> {
+export async function getNewHTMLBody(
+  story: LivePreviewStory,
+  signal: AbortSignal,
+): Promise<HTMLElement> {
   const serverData = extractServerData(document.body);
   const payload = {
     story: {

@@ -1,11 +1,12 @@
 /**
  * Applies a compiled migration to one story's content and returns the patch it
- * produced plus the inverse patch a rollback would replay.
+ * produced plus the inverse patch an undo would replay.
  */
 import type { CompiledMigration } from "./define-migration";
 import {
   type AlterFieldContext,
   type AnyChild,
+  type CoercionTarget,
   type ExpandBlockOp,
   isKeyOp,
   type MigrationOp,
@@ -31,9 +32,9 @@ export interface StoryMigrationResult {
   patches: BlockPatch[];
   inverse: BlockPatch[];
   /**
-   * Blocks left with a repeated or absent `_uid`. The backend re-uids these on
-   * write, which would strand the patch that addresses them, so a runner must
-   * refuse to write content that reports any — under either heading.
+   * Blocks left with a repeated or absent `_uid`. Saving a story re-uids these,
+   * which would strand the patch that addresses them, so a runner must refuse
+   * to write content that reports any — under either heading.
    *
    * `duplicate` and `missing` count only what the migration introduced;
    * `preExisting` names the uids the content already repeated before it ran. A
@@ -41,15 +42,21 @@ export interface StoryMigrationResult {
    */
   unstableUids: { duplicate: string[]; missing: number; preExisting: string[] };
   /**
-   * Ops that did not agree with themselves on a second pass over the same
-   * block. A rerun of the migration would keep moving, so the run is not safe
-   * to repeat and a runner must refuse it.
+   * Ops that changed a block again when the whole migration ran a second time
+   * over its own output. A rerun would keep changing the story, so a runner
+   * must refuse it.
    *
    * Any op kind can land here. A callback that toggles a value is the obvious
-   * case, but a structural op can fail to settle on the content rather than on
-   * the way it was written.
+   * case, but a structural op can fail to settle on the content, and two ops
+   * can undo each other's work.
    */
   nonIdempotent: { uid: string; op: number }[];
+  /**
+   * Ops that declined to change a block because the change would lose data or
+   * corrupt the block, with the reason. A callback that throws lands here too.
+   * A runner must refuse the story.
+   */
+  refusedOps: { uid: string; op: number; reason: string }[];
   /**
    * Reshaping ops that touch a field carrying translations. `splitField` and
    * `mergeFields` produce a value out of one or more others, and there is no
@@ -83,20 +90,38 @@ function translatedReshapeField(block: AnyBlock, op: MigrationOp): string | unde
   return fields.find((field) => translationKeysFor(block, field).length > 0);
 }
 
-function coerce(value: unknown, to: "string" | "number" | "boolean"): unknown {
-  if (value === null || value === undefined) return value;
-  if (to === "string") return typeof value === "string" ? value : String(value);
+const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+const TRUE_VALUES: readonly unknown[] = [true, "true", "1", 1];
+const FALSE_VALUES: readonly unknown[] = [false, "false", "0", 0, ""];
+
+/** The converted value, or `undefined` when the value has no faithful counterpart. */
+function coerce(value: unknown, to: CoercionTarget): { value: unknown } | undefined {
+  if (value === null || value === undefined) return { value };
+  if (typeof value === "object") return undefined;
+  if (to === "string") return { value: String(value) };
   if (to === "number") {
     // A Storyblok `number` field stores its value as a string, and an unset one
     // stores `""`. Writing a JSON number would leave every migrated story with
     // a value no editor would have produced.
-    const asNumber = typeof value === "number" ? value : Number(String(value).trim());
-    return Number.isFinite(asNumber) && String(value).trim() !== "" ? String(asNumber) : "";
+    if (typeof value === "number")
+      return Number.isFinite(value) ? { value: String(value) } : undefined;
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    if (trimmed === "") return { value: "" };
+    return DECIMAL.test(trimmed) ? { value: String(Number(trimmed)) } : undefined;
   }
-  if (typeof value === "boolean") return value;
-  if (value === "true" || value === "1" || value === 1) return true;
-  if (value === "false" || value === "0" || value === 0 || value === "") return false;
-  return Boolean(value);
+  if (TRUE_VALUES.includes(value)) return { value: true };
+  if (FALSE_VALUES.includes(value)) return { value: false };
+  return undefined;
+}
+
+function isEmptyValue(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
 }
 
 /** Rewrites a key in place while keeping its position in the object. */
@@ -114,37 +139,57 @@ function renameKey(block: AnyBlock, from: string, to: string): void {
  * key but a family: the base key plus one `__i18n__<lang>` sibling per
  * translated language.
  */
-function renameFieldFamily(block: AnyBlock, from: string, to: string): void {
+function renameFieldFamily(
+  block: AnyBlock,
+  from: string,
+  to: string,
+  overwrite: boolean,
+): string | undefined {
   const sourceKeys = [from, ...translationKeysFor(block, from)].filter((key) => key in block);
   // Nothing to move. Leaving early is also what makes a rerun a no-op, since
   // the second pass finds the family already sitting on the target name.
-  if (sourceKeys.length === 0 || from === to) return;
+  if (sourceKeys.length === 0 || from === to) return undefined;
 
-  // `moveField` allows an occupied target, so the target's whole family goes
-  // first. Dropping only the keys the source replaces would leave a translation
-  // of the target with no counterpart on the source in place, where it would
-  // then be read as a translation of the value that just landed on top of it.
-  for (const key of [to, ...translationKeysFor(block, to)]) delete block[key];
+  const targetKeys = [to, ...translationKeysFor(block, to)];
+  if (!overwrite && !isEmptyValue(block[to])) {
+    return `field "${to}" already holds a value, and renaming "${from}" onto it would overwrite it. Use \`moveField\` to overwrite it on purpose.`;
+  }
+
+  // The target's whole family goes first. Dropping only the keys the source
+  // replaces would leave a translation of the target with no counterpart on
+  // the source in place, where it would then be read as a translation of the
+  // value that just landed on top of it.
+  for (const key of targetKeys) delete block[key];
 
   for (const key of sourceKeys) renameKey(block, key, `${to}${key.slice(from.length)}`);
+  return undefined;
 }
 
-function applyOp(block: AnyBlock, op: MigrationOp): void {
+/**
+ * Applies one op to one block. Returns the reason instead of writing anything
+ * when the op would lose data or corrupt the block.
+ */
+function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
   switch (op.kind) {
     case "renameField":
     case "moveField":
-      renameFieldFamily(block, op.field, op.to);
-      break;
+      return renameFieldFamily(block, op.field, op.to, op.kind === "moveField");
     case "removeField":
       delete block[op.field];
       for (const key of translationKeysFor(block, op.field)) delete block[key];
       break;
-    case "coerceField":
-      if (op.field in block) block[op.field] = coerce(block[op.field], op.to);
-      for (const key of translationKeysFor(block, op.field)) {
-        block[key] = coerce(block[key], op.to);
+    case "coerceField": {
+      const keys = [op.field, ...translationKeysFor(block, op.field)].filter((key) => key in block);
+      const converted = keys.map((key) => coerce(block[key], op.to));
+      const failed = keys.find((_, at) => converted[at] === undefined);
+      if (failed !== undefined) {
+        return `field "${failed}" holds ${JSON.stringify(block[failed])?.slice(0, 80)}, which has no ${op.to} counterpart.`;
       }
+      keys.forEach((key, at) => {
+        block[key] = converted[at]!.value;
+      });
       break;
+    }
     case "alterField": {
       for (const key of [op.field, ...translationKeysFor(block, op.field)]) {
         if (!(key in block)) continue;
@@ -167,14 +212,20 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       break;
     }
     case "alterBlock": {
-      const returned = op.fn(block as never);
-      if (returned && returned !== block && typeof returned === "object") {
-        const next = returned as Record<string, unknown>;
-        for (const key of Object.keys(block)) {
-          if (!(key in next)) delete block[key];
-        }
-        Object.assign(block, next);
+      // The callback works on a copy, so a refused result leaves the block as it was.
+      const draft = structuredClone(block);
+      const returned = op.fn(draft as never);
+      const next =
+        typeof returned === "object" && returned !== null
+          ? (returned as Record<string, unknown>)
+          : draft;
+      if (next._uid !== block._uid || typeof next.component !== "string") {
+        return "`alterBlock` has to return the whole block with its `_uid` and `component`; spread the block it receives into the result.";
       }
+      for (const key of Object.keys(block)) {
+        if (!(key in next)) delete block[key];
+      }
+      Object.assign(block, next);
       break;
     }
     case "addField": {
@@ -251,25 +302,30 @@ function applyOp(block: AnyBlock, op: MigrationOp): void {
       break;
     }
   }
+  return undefined;
 }
 
+type PlacedBlock = { block: AnyBlock; chain: readonly string[] };
+
 /**
- * Component names of every block above each block in the tree, outermost first,
- * so an op scoped with `under` can be limited to one location.
+ * Every block in the tree in document order, each with the component names of
+ * the blocks above it, outermost first, so an op scoped with `under` can be
+ * limited to one location. A list rather than a uid index, so a block that
+ * repeats another's uid is still visited.
  */
-export function indexAncestors(
+function walkBlocks(
   content: unknown,
   chain: readonly string[] = [],
-  into = new Map<string, string[]>(),
-): Map<string, string[]> {
+  into: PlacedBlock[] = [],
+): PlacedBlock[] {
   if (Array.isArray(content)) {
-    for (const item of content) indexAncestors(item, chain, into);
+    for (const item of content) walkBlocks(item, chain, into);
     return into;
   }
   if (typeof content === "object" && content !== null) {
     const nextChain = isBlock(content) ? [...chain, content.component] : chain;
-    if (isBlock(content)) into.set(content._uid, [...chain]);
-    for (const value of Object.values(content)) indexAncestors(value, nextChain, into);
+    if (isBlock(content)) into.push({ block: content, chain });
+    for (const value of Object.values(content)) walkBlocks(value, nextChain, into);
   }
   return into;
 }
@@ -293,8 +349,8 @@ export function matchesUnder(chain: readonly string[], under: string | readonly 
 /**
  * Whether an op applies to a block at this position.
  *
- * A key op always does. It moves the component schema, which is global, so
- * honouring an `under` that reached it anyway would migrate a subset and leave
+ * A key op always does. It changes the block schema, which is global, so
+ * honoring an `under` that reached it anyway would migrate a subset and leave
  * every other instance holding a key no schema describes. The type system
  * rejects the combination and `validateMigration` refuses the migration; this is
  * the third guard, so that a key op that slipped through both still cannot
@@ -349,15 +405,15 @@ type ScopedOp = { op: MigrationOp; index: number };
  * block as the migration left it.
  *
  * The blocks a callback returns are content the migration authored: no op is
- * applied to them, this one included. A callback that returns a block of the
- * component it matched would therefore expand again on the next run, which is
- * reported here rather than discovered by whoever reruns the migration.
+ * applied to them in the same run, this one included. A callback that returns
+ * a block of the component it matched would therefore expand again on the next
+ * run, which the rerun probe reports.
  */
 function expandBlocks(
   value: unknown,
   ops: readonly ScopedOp[],
   chain: readonly string[],
-  report: { matched: number; nonIdempotent: { uid: string; op: number }[] },
+  report: PassReport,
 ): unknown {
   if (Array.isArray(value)) {
     const items = value.map((item) => expandBlocks(item, ops, chain, report));
@@ -375,17 +431,16 @@ function expandBlocks(
         out.push(item);
         continue;
       }
-      report.matched++;
-      const produced = [...(match.op as ExpandBlockOp<never, never>).fn(item as never)];
-      if (
-        produced.some(
-          (block) =>
-            isBlock(block) &&
-            ops.some(({ op }) => op.block === block.component && inScope(op, chain)),
-        )
-      ) {
-        report.nonIdempotent.push({ uid: item._uid, op: match.index });
+      report.matched.add(item._uid);
+      let produced: unknown[];
+      try {
+        produced = [...(match.op as ExpandBlockOp<never, never>).fn(item as never)];
+      } catch (error) {
+        report.refusedOps.push({ uid: item._uid, op: match.index, reason: thrown(error) });
+        out.push(item);
+        continue;
       }
+      report.changed.push({ uid: item._uid, op: match.index });
       out.push(...produced);
       expanded = true;
     }
@@ -404,6 +459,79 @@ function expandBlocks(
   return value;
 }
 
+type PassReport = {
+  matched: Set<string>;
+  changed: { uid: string; op: number }[];
+  refusedOps: StoryMigrationResult["refusedOps"];
+  translatedReshapes: StoryMigrationResult["translatedReshapes"];
+};
+
+function thrown(error: unknown): string {
+  return `the callback threw: ${error instanceof Error ? error.message : String(error)}`;
+}
+
+/**
+ * Runs every op in order over the whole tree.
+ *
+ * Every op addresses a block by the name and position it had before the
+ * migration ran, the same names the `Before` schema types them against, so a
+ * `renameBlock` does not change which later ops reach the block. A block the
+ * migration created has no such name and no op reaches it.
+ *
+ * The tree is still walked again for each op, so an op reaches a block an
+ * earlier op replaced with a copy. The original is looked up by object first,
+ * so a repeated uid cannot borrow another block's name, then by uid.
+ */
+function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
+  const report: PassReport = {
+    matched: new Set(),
+    changed: [],
+    refusedOps: [],
+    translatedReshapes: [],
+  };
+
+  type Origin = { component: string; chain: readonly string[] };
+  const byObject = new WeakMap<object, Origin>();
+  const byUid = new Map<string, Origin>();
+  for (const { block, chain } of walkBlocks(content)) {
+    const origin = { component: block.component, chain };
+    byObject.set(block, origin);
+    if (!byUid.has(block._uid)) byUid.set(block._uid, origin);
+  }
+
+  ops.forEach((op, index) => {
+    if (op.kind === "expandBlock") return;
+    for (const { block } of walkBlocks(content)) {
+      const origin = byObject.get(block) ?? byUid.get(block._uid);
+      if (!origin || op.block !== origin.component || !inScope(op, origin.chain)) continue;
+      report.matched.add(block._uid);
+      const translated = translatedReshapeField(block, op);
+      if (translated !== undefined) {
+        report.translatedReshapes.push({ uid: block._uid, op: index, field: translated });
+      }
+      const before = structuredClone(comparableKeys(block));
+      let refusal: string | undefined;
+      try {
+        refusal = applyOp(block, op);
+      } catch (error) {
+        refusal = thrown(error);
+      }
+      if (refusal !== undefined) {
+        report.refusedOps.push({ uid: block._uid, op: index, reason: refusal });
+      } else if (!deepEqual(before, comparableKeys(block))) {
+        report.changed.push({ uid: block._uid, op: index });
+      }
+    }
+  });
+
+  const expansions = ops
+    .map((op, index) => ({ op, index }))
+    .filter(({ op }) => op.kind === "expandBlock");
+  if (expansions.length > 0) expandBlocks(content, expansions, [], report);
+
+  return report;
+}
+
 export function runMigrationOnStory(
   migration: CompiledMigration,
   content: unknown,
@@ -413,55 +541,26 @@ export function runMigrationOnStory(
 
   const beforeIndex = indexBlocks(before);
   const unstableBefore = findUnstableUids(before);
-  const ancestors = indexAncestors(after);
-  const nonIdempotent: { uid: string; op: number }[] = [];
-  const translatedReshapes: StoryMigrationResult["translatedReshapes"] = [];
+  const pass = runPass(after, migration.ops);
 
-  let matched = 0;
-  for (const [uid, block] of indexBlocks(after)) {
-    const chain = ancestors.get(uid) ?? [];
-    const ops = migration.ops
-      .map((op, index) => ({ op, index }))
-      .filter(
-        ({ op }) => op.kind !== "expandBlock" && op.block === block.component && inScope(op, chain),
-      );
-    if (ops.length === 0) continue;
-    matched++;
-    for (const { op, index } of ops) {
-      const translated = translatedReshapeField(block, op);
-      if (translated !== undefined) {
-        translatedReshapes.push({ uid, op: index, field: translated });
-      }
-      applyOp(block, op);
-      // Every op runs twice and must agree, which is what makes a rerun safe by
-      // construction rather than by convention. The second pass runs on a copy,
-      // so an op that does not settle is reported rather than applied twice.
-      //
-      // Not only the `alter` ops, whose callback is the obvious way to get this
-      // wrong. A structural op can fail to settle on the content it is given
-      // rather than on anything the author wrote: unwrapping a container that
-      // nests inside itself lifts the next container into the field the op
-      // reads, where the following run dissolves that one too. The
-      // consequence is the same either way, so the check is too.
-      const probe = structuredClone(block) as AnyBlock;
-      applyOp(probe, op);
-      if (!deepEqual(comparableKeys(probe), comparableKeys(block))) {
-        nonIdempotent.push({ uid, op: index });
-      }
-    }
-  }
+  // The whole migration runs a second time over its own output, which is what
+  // makes a rerun safe by construction rather than by convention. Anything
+  // that changes again is reported, so the run is refused instead of a rerun
+  // discovering it. An op refused on this pass is fine: a rerun would refuse
+  // the story rather than change it.
+  //
+  // Not only the `alter` ops, whose callback is the obvious way to get this
+  // wrong. A structural op can fail to settle on the content it is given:
+  // unwrapping a container that nests inside itself lifts the next container
+  // into the field the op reads, where the following run dissolves that one
+  // too. And two ops can feed each other, like a rename onto a field that a
+  // later op renames another field onto.
+  const rerun = runPass(structuredClone(after), migration.ops);
+  const nonIdempotent = rerun.changed.filter(
+    (entry, at, all) =>
+      all.findIndex((other) => other.uid === entry.uid && other.op === entry.op) === at,
+  );
 
-  const expansions = migration.ops
-    .map((op, index) => ({ op, index }))
-    .filter(({ op }) => op.kind === "expandBlock");
-  if (expansions.length > 0) {
-    const report = { matched, nonIdempotent };
-    expandBlocks(after, expansions, [], report);
-    matched = report.matched;
-  }
-
-  // Re-index: an `alterBlock` may have added or removed nested blocks, and an
-  // `expandBlock` replaces one with several.
   const afterIndexFinal = indexBlocks(after);
   const patches: BlockPatch[] = [];
   const inverse: BlockPatch[] = [];
@@ -470,20 +569,23 @@ export function runMigrationOnStory(
     if (!afterBlock) continue; // captured by the parent's listRemove/listInsert ops
     const forward = diffBlock(beforeBlock, afterBlock);
     if (!forward) continue;
-    patches.push(forward);
+    // Patches hold values by reference; a copy keeps a caller's edits to the
+    // returned content out of the record of what the migration wrote.
+    patches.push(structuredClone(forward));
     const backward = diffBlock(afterBlock, beforeBlock);
-    if (backward) inverse.push(backward);
+    if (backward) inverse.push(structuredClone(backward));
   }
 
   return {
     changed: patches.length > 0,
     content: after,
-    matched,
+    matched: pass.matched.size,
     patches,
     inverse,
     unstableUids: instabilityCausedBy(unstableBefore, findUnstableUids(after)),
     nonIdempotent,
-    translatedReshapes,
+    refusedOps: pass.refusedOps,
+    translatedReshapes: pass.translatedReshapes,
   };
 }
 

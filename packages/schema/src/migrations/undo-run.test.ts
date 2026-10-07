@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { StoryForMigration } from "./apply-migration";
+import { applyMigration, type StoryForMigration } from "./apply-migration";
+import { defineMigration } from "./define-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
+import { alterField, expandBlock, renameField, unwrapChildren, wrapChildren } from "./ops";
 import type { BlockPatch } from "./patch";
 import { planUndo, undoStories } from "./undo-run";
 
@@ -232,5 +234,208 @@ describe("undoStories", () => {
 
     expect(outcome.writes[0]?.publish).toBe(false);
     expect(outcome.notRepublished).toEqual(["home"]);
+  });
+});
+
+describe("undoStories publish state", () => {
+  it("should report a story the run published for the first time instead of republishing it", () => {
+    const outcome = undoStories({
+      inverse: [
+        {
+          story: 1,
+          patches: [renameBack],
+          before: { published: false, unpublishedChanges: false },
+          publishedByRun: true,
+        },
+      ],
+      stories: [
+        home([{ _uid: "a", component: "card", headline: "Hi" }], {
+          published: true,
+          unpublished_changes: false,
+        }),
+      ],
+    });
+
+    expect(outcome.writes[0]?.publish).toBe(false);
+    expect(outcome.firstPublishedByRun).toEqual(["home"]);
+  });
+
+  it("should not republish a story unpublished since the run", () => {
+    const outcome = undoStories({
+      inverse: [entry(1, [renameBack], true)],
+      stories: [
+        home([{ _uid: "a", component: "card", headline: "Hi" }], {
+          published: false,
+          unpublished_changes: false,
+        }),
+      ],
+    });
+
+    expect(outcome.writes[0]?.publish).toBe(false);
+    expect(outcome.notRepublished).toEqual(["home"]);
+  });
+
+  it("should not republish a story whose publish state was not passed in", () => {
+    const outcome = undoStories({
+      inverse: [entry(1, [renameBack], true)],
+      stories: [home([{ _uid: "a", component: "card", headline: "Hi" }])],
+    });
+
+    expect(outcome.writes[0]?.publish).toBe(false);
+    expect(outcome.notRepublished).toEqual(["home"]);
+  });
+});
+
+describe("undoStories after a recorded run", () => {
+  type Content = { _uid: string; component: string; [key: string]: unknown };
+
+  function migrate(ops: Parameters<typeof defineMigration>[0], content: Content) {
+    const outcome = applyMigration({
+      migration: defineMigration(ops),
+      id: "0001-x",
+      space: "1",
+      stories: [{ id: 1, slug: "home", content }],
+    });
+    expect(outcome.refusals).toEqual([]);
+    return { inverse: outcome.inverse, content: outcome.writes[0].content as Content };
+  }
+
+  function undo(inverse: StoryInverse[], content: unknown, force = false) {
+    return undoStories({ inverse, stories: [{ id: 1, slug: "home", content }], force });
+  }
+
+  const uids = (list: unknown) => (list as { _uid: string }[]).map((item) => item._uid);
+
+  it("should put expanded blocks back in their original order", () => {
+    const original: Content = {
+      _uid: "r",
+      component: "page",
+      body: [
+        { _uid: "a", component: "pair" },
+        { _uid: "d", component: "text" },
+        { _uid: "e", component: "pair" },
+      ],
+    };
+    const run = migrate(
+      [
+        expandBlock({ block: "pair" }, (pair) => [
+          { _uid: `${pair._uid}1`, component: "text" },
+          { _uid: `${pair._uid}2`, component: "text" },
+        ]),
+      ],
+      structuredClone(original),
+    );
+    expect(uids(run.content.body)).toEqual(["a1", "a2", "d", "e1", "e2"]);
+
+    const outcome = undo(run.inverse, run.content);
+
+    expect(outcome.conflicts).toEqual([]);
+    expect(outcome.writes[0].content).toEqual(original);
+  });
+
+  it("should put unwrapped containers back in their original order", () => {
+    const original: Content = {
+      _uid: "r",
+      component: "page",
+      body: [
+        { _uid: "w1", component: "grid", items: [{ _uid: "x", component: "card" }] },
+        { _uid: "d", component: "text" },
+        { _uid: "w2", component: "grid", items: [{ _uid: "y", component: "card" }] },
+      ],
+    };
+    const run = migrate(
+      [unwrapChildren({ block: "page", field: "body", unwrap: "grid", from: "items" })],
+      structuredClone(original),
+    );
+
+    const outcome = undo(run.inverse, run.content);
+
+    expect(outcome.writes[0].content).toEqual(original);
+  });
+
+  describe("an edit made after a structural op", () => {
+    const original: Content = {
+      _uid: "r",
+      component: "page",
+      body: [{ _uid: "c", component: "card", title: "A" }],
+      aside: [],
+    };
+    const wrap = [wrapChildren({ block: "page", field: "body", in: "grid", into: "items" })];
+
+    function wrapped() {
+      const run = migrate(wrap, structuredClone(original));
+      const grid = (run.content.body as Content[])[0];
+      return { ...run, grid, child: (grid.items as Content[])[0] };
+    }
+
+    it("should report an edited child as a conflict and keep the edit", () => {
+      const run = wrapped();
+      run.child.title = "Edited";
+
+      const outcome = undo(run.inverse, run.content);
+
+      expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(outcome.writes).toEqual([]);
+    });
+
+    it("should report a block added inside the wrapper as a conflict", () => {
+      const run = wrapped();
+      (run.grid.items as Content[]).push({ _uid: "new", component: "card" });
+
+      expect(undo(run.inverse, run.content).conflicts).toEqual([{ slug: "home", count: 1 }]);
+    });
+
+    it("should never repeat a uid, even under force, when a child moved elsewhere", () => {
+      const run = wrapped();
+      run.grid.items = [];
+      run.content.aside = [run.child];
+
+      const outcome = undo(run.inverse, run.content, true);
+
+      expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(outcome.writes).toEqual([]);
+    });
+  });
+
+  it("should report an edit to a block inside a renamed field", () => {
+    const run = migrate([renameField({ block: "page", field: "body", to: "content" })], {
+      _uid: "r",
+      component: "page",
+      body: [{ _uid: "c", component: "card", title: "Old" }],
+    });
+    (run.content.content as Content[])[0].title = "Edited";
+
+    const outcome = undo(run.inverse, run.content);
+
+    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.writes).toEqual([]);
+  });
+
+  it("should restore a value an op turned into a block list", () => {
+    const original: Content = { _uid: "r", component: "page", media: "https://x" };
+    const run = migrate(
+      [
+        alterField({ block: "page", field: "media" }, (value) =>
+          typeof value === "string" ? [{ _uid: "img", component: "image", src: value }] : value,
+        ),
+      ],
+      structuredClone(original),
+    );
+
+    expect(undo(run.inverse, run.content).writes[0].content).toEqual(original);
+  });
+
+  it("should treat a second undo of the same run as already done", () => {
+    const run = migrate([renameField({ block: "card", field: "title", to: "headline" })], {
+      _uid: "r",
+      component: "page",
+      body: [{ _uid: "c", component: "card", title: "T" }],
+    });
+    const first = undo(run.inverse, run.content);
+
+    const second = undo(run.inverse, first.writes[0].content);
+
+    expect(second.conflicts).toEqual([]);
+    expect(second.writes).toEqual([]);
   });
 });

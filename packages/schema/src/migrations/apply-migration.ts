@@ -80,11 +80,18 @@ function shouldPublish(state: PublishState, mode: PublishMode | undefined): bool
   }
 }
 
-function refusalReason(result: ReturnType<typeof runMigrationOnStory>): string | undefined {
+function refusalReason(
+  migration: CompiledMigration,
+  result: ReturnType<typeof runMigrationOnStory>,
+): string | undefined {
+  const opLabel = (entry: { uid: string; op: number }) =>
+    `op ${entry.op} (${migration.ops[entry.op]?.kind}) on block ${entry.uid}`;
+
   // Both instabilities are refused, but they have different culprits: content
   // that arrived with repeated ids sends the author to the story, not to the
-  // migration.
-  if (result.unstableUids.preExisting.length > 0) {
+  // migration. Only a story the migration reaches is refused for them; one it
+  // does not touch is not its concern.
+  if (result.matched > 0 && result.unstableUids.preExisting.length > 0) {
     return `This story already contains repeated block ids (${result.unstableUids.preExisting.join(", ")}); they would be renumbered on write, stranding the record needed to undo the run.`;
   }
   if (result.unstableUids.duplicate.length > 0 || result.unstableUids.missing > 0) {
@@ -98,8 +105,13 @@ function refusalReason(result: ReturnType<typeof runMigrationOnStory>): string |
     const fields = [...new Set(result.translatedReshapes.map((entry) => entry.field))];
     return `Field ${fields.join(", ")} is translated, and splitting or merging a translated field would strand its translations, which are then dropped. Reshape it with \`alterBlock\`, where the translated keys can be handled explicitly.`;
   }
+  if (result.refusedOps.length > 0) {
+    return result.refusedOps
+      .map((entry) => `${opLabel(entry)} was refused: ${entry.reason}`)
+      .join(" ");
+  }
   if (result.nonIdempotent.length > 0) {
-    return `Op ${result.nonIdempotent.map((entry) => entry.op).join(", ")} disagrees with itself on a second pass, so running the migration again would keep changing this story.`;
+    return `Running the migration again would keep changing this story: ${result.nonIdempotent.map(opLabel).join(", ")} changed it again on a second pass.`;
   }
   return undefined;
 }
@@ -112,13 +124,12 @@ export function applyMigration(input: ApplyMigrationInput): ApplyMigrationOutcom
 
   for (const story of input.stories) {
     const result = runMigrationOnStory(input.migration, story.content);
-    if (!result.changed) {
-      continue;
-    }
-
-    const reason = refusalReason(result);
+    const reason = refusalReason(input.migration, result);
     if (reason) {
       refusals.push({ slug: story.slug, reason });
+      continue;
+    }
+    if (!result.changed) {
       continue;
     }
 

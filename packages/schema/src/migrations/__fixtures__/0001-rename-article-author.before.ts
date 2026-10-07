@@ -1,7 +1,7 @@
 /**
  * Stands in for a generated `Before` snapshot, so the two-schema form is
- * exercised against the shape a generated one has. The real file is written by
- * the tool and not edited by hand.
+ * exercised against the shape a generated one has. In a project this file is
+ * generated and not edited by hand.
  *
  * The schema as it stood before 0001-rename-article-author ran,
  * scoped to the blocks that migration touches plus everything reachable from

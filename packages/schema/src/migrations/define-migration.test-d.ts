@@ -1,12 +1,9 @@
 /**
- * Type-level probe of `defineMigration<After, Before>` and the op factories.
+ * Type-level tests for `defineMigration<After, Before>` and the op factories.
  *
- * Asserts what the inference actually delivers, and pins the points where it
- * degrades, so the findings are checked by the compiler rather than asserted in
- * prose. The first question the op-list surface raises that the builder did not:
- * a factory is called in the argument list, where the schema appears in no
- * argument, so everything below rests on TypeScript threading the type
- * parameters through the contextual return type.
+ * Factories are called in the argument list, where the schema appears in no
+ * argument, so inference relies on TypeScript threading the type parameters
+ * through the contextual return type.
  */
 import { describe, expectTypeOf, it } from "vitest";
 import type { AssetFieldValue, MultilinkFieldValue } from "../index";
@@ -43,8 +40,7 @@ describe("addressable names", () => {
   });
 
   it("should still derive the exact block/field pairs the schema declares", () => {
-    // No longer an addressing surface — there is no path grammar — but it is
-    // the set every op's `field` is checked against.
+    // The set every op's `field` is checked against.
     expectTypeOf<FieldPathOf<FixtureSchema>>().toEqualTypeOf<
       | "page.title"
       | "page.body"
@@ -192,7 +188,7 @@ describe("the under rule", () => {
 
   it("should refuse under on every key op", () => {
     defineMigration<AfterRenameMetaAuthor, FixtureSchema>([
-      // @ts-expect-error a component's schema is global, so a key op cannot be scoped
+      // @ts-expect-error a block's schema is global, so a key op cannot be scoped
       renameField({ block: "meta", field: "author", to: "written_by", under: "card" }),
     ]);
     defineMigration<FixtureSchema>([
@@ -292,7 +288,7 @@ describe("alterBlock() typing", () => {
         // Required field: non-optional.
         expectTypeOf(block.title).toEqualTypeOf<string>();
         // Optional field: `| null | undefined`, which forces a guard before any
-        // string method — the single biggest ergonomic cost of the design.
+        // string method.
         expectTypeOf(block.description).toEqualTypeOf<string | null | undefined>();
       }),
     ]);

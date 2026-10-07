@@ -21,11 +21,12 @@ export type StoryForMigration = {
 
 /**
  * Which written stories are also published:
- * - `all`: every one.
- * - `published`: those whose live version matched the draft, so publishing ships
- *   only the migration.
- * - `published-with-changes`: those whose draft was already ahead of the live
- *   version, so publishing also ships an editor's pending changes.
+ * - `all`: every one, including stories that were never published.
+ * - `published`: only published stories whose live version matched the draft,
+ *   so publishing ships only the migration.
+ * - `published-with-changes`: only published stories whose draft was already
+ *   ahead of the live version, so publishing also ships an editor's pending
+ *   changes.
  */
 export type PublishMode = "all" | "published" | "published-with-changes";
 

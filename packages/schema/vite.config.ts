@@ -8,7 +8,6 @@ export default defineConfig({
       index: "./src/index.ts",
       "field-plugins/index": "./src/field-plugins/index.ts",
       "migrations/index": "./src/migrations/index.ts",
-      "migrations/node/index": "./src/migrations/node/index.ts",
     },
     format: ["esm", "cjs"],
     plugins: [cjsInterop(), cjsDeprecation()],

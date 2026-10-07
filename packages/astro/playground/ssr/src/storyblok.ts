@@ -12,7 +12,10 @@ export const client = createApiClient({
   accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OsvNv534kS2nivAAj1EPVgtt",
 });
 
-export const { StoryblokBlock } = defineStoryblokBlocks({
+interface ExtraProps {
+  locale?: string;
+}
+export const { StoryblokBlock } = defineStoryblokBlocks<ExtraProps>({
   components: {
     page: Page,
     feature: Feature,

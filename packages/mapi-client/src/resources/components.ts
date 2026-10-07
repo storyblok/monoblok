@@ -19,7 +19,7 @@ import type {
 import type { Component } from "../generated/mapi/types-aliased.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 // Component definitions are MAPI wire shapes (a `schema` record), surfaced as the
 // public `Component`. This is distinct from the DSL `fields` blocks used to narrow

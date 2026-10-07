@@ -4,7 +4,7 @@ import type {
   ListCdnExperimentsV2Responses,
 } from "../generated/capi/types.gen";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createExperimentsResource<DefaultThrowOnError extends boolean = false>(
   deps: ResourceDeps<DefaultThrowOnError>,

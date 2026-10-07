@@ -21,7 +21,7 @@ import type { Asset } from "../generated/mapi/types-aliased.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { ClientError } from "@storyblok/utils/errors";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 export type AssetListQuery = NonNullable<ListAssetsData["query"]>;
 

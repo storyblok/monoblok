@@ -5,7 +5,7 @@ import type {
   UpdateCurrentUserResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createUsersResource<DefaultThrowOnError extends boolean = false>(
   deps: Omit<MapiResourceDeps<DefaultThrowOnError>, "spaceId">,

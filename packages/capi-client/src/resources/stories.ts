@@ -30,7 +30,7 @@ import type {
 } from "../generated/types/block";
 import type { Prettify } from "../generated/types/_utils";
 import type { Story } from "../generated/types/story";
-import { buildCallOptions } from "@storyblok/utils/http";
+import { buildCallOptions } from "../utils/call-options";
 
 /**
  * Top-level story fields that can be excluded from CDN API responses via

@@ -6,8 +6,8 @@ import type { Region } from "@storyblok/region-helper";
 import type { RetryOptions } from "ky";
 import type { Block } from "./generated/types/block";
 import { ClientError } from "@storyblok/utils/errors";
+import { buildCallOptions } from "./utils/call-options";
 import {
-  buildCallOptions,
   createErrorInterceptor,
   createKyOptions,
   withResponseFallbacks,

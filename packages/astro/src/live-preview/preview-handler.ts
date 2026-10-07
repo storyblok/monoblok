@@ -1,4 +1,4 @@
-import type { Story } from "@storyblok/live-preview";
+import type { LivePreviewStory } from "@storyblok/live-preview";
 import { createLivePreviewHandler } from "@storyblok/live-preview";
 import { getNewHTMLBody } from "./get-new-html-body";
 
@@ -11,7 +11,7 @@ const LIVE_PREVIEW_UPDATED_EVENT = "storyblok-live-preview-updated";
  * Astro owns the POST payload and server-data conventions, while the shared
  * live-preview package owns scheduling, cancellation, and DOM morphing.
  */
-export const previewHandler = createLivePreviewHandler<Story>({
+export const previewHandler = createLivePreviewHandler<LivePreviewStory>({
   currentRoot: () => document.body,
   update: ({ story, signal }) => getNewHTMLBody(story, signal),
   onBeforeUpdate: (story) =>

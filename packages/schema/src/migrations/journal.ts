@@ -1,12 +1,10 @@
 /**
- * Where a run's record lives. Rollback's first and only trustworthy tier is the
- * patches the run recorded, so those patches need somewhere durable to sit —
- * which also makes this the place that answers "has this migration already run
- * against this space?", a question that is wrong to answer per-machine.
+ * Where a run's record lives. Undo replays the patches a run recorded, so they
+ * need somewhere durable to sit.
  *
  * One interface, two kinds of record. A ledger entry is small, one per run, and
  * is what a listing prints. The inverse patches are proportional to the content
- * touched and are read only during a rollback. They are separate methods rather
+ * touched and are read only during an undo. They are separate methods rather
  * than separate interfaces because they share an id and a lifecycle: a run
  * writes both or neither, and splitting them would let a caller store one
  * without the other.
@@ -54,7 +52,7 @@ export interface Journal {
   /**
    * Writes both halves. Implementations write the patches before the entry: an
    * orphaned patch object is inert, whereas an entry pointing at patches that
-   * were never stored is a rollback that fails when it is needed.
+   * were never stored is an undo that fails when it is needed.
    */
   record(run: MigrationRun, inverse: StoryInverse[]): Promise<void>;
   /** Metadata only — a listing must not have to pull patch bodies to print a table. */

@@ -64,7 +64,7 @@ describe("localJournal", () => {
     expect(await journal.readInverse("never-happened")).toEqual([]);
   });
 
-  it("should list runs oldest first, so the latest is the one to roll back", async () => {
+  it("should list runs oldest first, so the latest is the one to undo", async () => {
     await journal.record(run({ id: "2026-01-01-a", appliedAt: "2026-01-01T00:00:00.000Z" }), []);
     await journal.record(run({ id: "2026-02-01-b", appliedAt: "2026-02-01T00:00:00.000Z" }), []);
     const ids = (await journal.list("12345")).map((entry) => entry.id);

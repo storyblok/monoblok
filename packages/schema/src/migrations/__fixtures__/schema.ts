@@ -1,11 +1,11 @@
 /**
  * Fixture schemas for the migration engine's tests.
  *
- * `fixtureSchema` is the "before" state the probe migrations run against.
+ * `fixtureSchema` is the "before" state the fixture migrations run against.
  *
  * Shaped for the migration cases under test: a block (`meta`) that nests
  * several levels deep under more than one parent, fields whose types want
- * coercing, and a root block matching the design doc's `article.author`.
+ * coercing, and a root block (`article`) with an `author` field.
  */
 import { defineBlock, defineField, defineSchema } from "../../index";
 import { storyblokColorField } from "../../field-plugins/index";

@@ -1,5 +1,5 @@
 /**
- * Type machinery for `defineMigration<Before, After>`: derives the addressable
+ * Type machinery for `defineMigration<After, Before>`: derives the addressable
  * block names and `block.field` paths from a `@storyblok/schema` schema type.
  */
 import type { Block, BlockContent } from "../index";
@@ -76,7 +76,7 @@ export type ValueOfPath<TSchema extends SchemaShape, TPath extends FieldPathOf<T
  * Falls back to `string` when the block is absent from the target schema, or
  * when the schema type carries no literal block/field names to resolve (the
  * bare `SchemaShape` interface, as opposed to a schema inferred from a real
- * `defineSchema` call), so a migration whose `After` snapshot is incomplete
+ * `defineSchema` call), so a migration whose `After` schema is incomplete
  * still compiles.
  */
 export type TargetFieldName<TAfter extends SchemaShape, TBlock extends string> =

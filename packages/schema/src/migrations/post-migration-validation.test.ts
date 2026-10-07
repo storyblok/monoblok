@@ -47,11 +47,13 @@ describe("post-condition validation against the post-migration schema", () => {
     expect(issuesFor(run.content, afterRemoveCardDescription)).toEqual([]);
   });
 
-  it("should report only the value a coercion could not produce", () => {
+  it("should report only the value a coercion could not convert", () => {
     const run = runMigrationOnStory(coerceFields, pageStoryContent());
-    // `asNumber()` writes the wire form of a number field (a numeric string),
-    // so `"not-a-number"` lands as `""` — the value an unset number field holds.
-    expect(issuesFor(run.content, afterCoerceCardTypes)).toEqual([]);
+    // A number coercion writes the wire form of a number field (a numeric
+    // string), and refuses `"not-a-number"` rather than blanking it.
+    expect(issuesFor(run.content, afterCoerceCardTypes)).toEqual([
+      "error:content.body.0.items.1.legacy_price",
+    ]);
   });
 
   it("should still report un-migrated content as invalid against the post-migration schema", () => {

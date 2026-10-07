@@ -32,10 +32,10 @@ schemaCommand
   .option("--delete", "Delete remote entities not present in local schema", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
-  .option("--no-before", "skip the .before.ts schema snapshot beside the generated migration")
+  .option("--no-before", "Skip the .before.ts schema snapshot next to the generated migration")
   .option(
     "--js",
-    "generate legacy .js migrations, one per component, instead of a defineMigration file",
+    "Generate one .js migration per component for `migrations run` instead of a defineMigration file",
   )
   .option(
     "--write-components",
@@ -133,7 +133,17 @@ schemaCommand
           );
 
           // Dry-run: show analysis only, no prompts, no file writes
-          if (!options.dryRun) {
+          if (options.dryRun) {
+            for (const comp of breakingChanges) {
+              for (const change of comp.changes) {
+                if (change.kind === "rename") {
+                  ui.log(
+                    `  Detected rename in '${comp.componentName}': ${change.oldField} → ${change.field}`,
+                  );
+                }
+              }
+            }
+          } else {
             // Determine if --migrations was explicitly passed (auto-generate) or is just the default (prompt)
             const explicitMigrations = command.getOptionValueSource("migrations") === "cli";
             const shouldGenerate =
@@ -224,9 +234,13 @@ schemaCommand
                     ? { components: rawComponents, reads: componentNames }
                     : undefined,
                 });
-                for (const path of [written.migrationPath, written.beforePath]) {
+                const generatedFiles = [
+                  { message: "Migration generated", path: written.migrationPath },
+                  { message: "Schema snapshot generated", path: written.beforePath },
+                ];
+                for (const { message, path } of generatedFiles) {
                   if (path) {
-                    logger.info("Migration generated", {
+                    logger.info(message, {
                       components: componentNames,
                       path: displayPath(path, basePath),
                     });
@@ -236,7 +250,10 @@ schemaCommand
               }
 
               ui.br();
-              ui.info(`Run migrations when ready: storyblok ${runCommand} --space ${space}`);
+              const pathFlag = basePath ? ` --path ${basePath}` : "";
+              ui.info(
+                `Run migrations when ready: storyblok ${runCommand} --space ${space}${pathFlag}`,
+              );
             }
           }
         }

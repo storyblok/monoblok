@@ -76,6 +76,22 @@ backup/
         └── hero.js  # Migration file
 ```
 
+4. Generate a typed content migration for `migrations apply`:
+
+```bash
+storyblok migrations generate hero --space 12345 --schema src/schema.ts
+```
+
+The command writes two files, numbered after the existing content migrations:
+
+```
+.storyblok/
+└── migrations/
+    └── 12345/
+        ├── 0001-hero.ts         # defineMigration file, typed against Schema and Before
+        └── 0001-hero.before.ts  # the hero block as the space holds it now
+```
+
 ## File Structure
 
 The command follows this pattern for file generation:
@@ -93,6 +109,9 @@ Where:
 - `{spaceId}` is your Storyblok space ID
 - `{componentName}` is the name of the component
 - `{suffix}` is the suffix in the file name if provided
+
+With `--schema`, the files are `{number}-{componentName}[-{suffix}].ts` and its `.before.ts`
+snapshot, where `{number}` follows the highest existing numeric prefix in the directory.
 
 ### Component names that are not file names
 
@@ -136,19 +155,3 @@ the component name, and `--filter` accepts it too.
 - The migration function receives a `block` parameter containing the component's data
 - You can modify the block's fields and return the updated block
 - Make sure to return the block at the end of the function
-
-3. Generate a typed content migration for `migrations apply`:
-
-```bash
-storyblok migrations generate hero --space 12345 --schema src/schema.ts
-```
-
-Generates, numbered after the existing content migrations:
-
-```
-.storyblok/
-└── migrations/
-    └── 12345/
-        ├── 0001-hero.ts         # defineMigration file, typed against Schema and Before
-        └── 0001-hero.before.ts  # the hero block as the space holds it now
-```

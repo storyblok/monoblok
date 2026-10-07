@@ -190,8 +190,21 @@ describe("toMigrationOps", () => {
     expect(
       toMigrationOps("hero", [
         { kind: "type_changed", field: "intro", oldType: "text", newType: "textarea" },
+        { kind: "type_changed", field: "notes", oldType: "textarea", newType: "markdown" },
       ]),
     ).toEqual([]);
+  });
+
+  it("should leave boolean and number conversions to the author", () => {
+    expect(
+      toMigrationOps("hero", [
+        { kind: "type_changed", field: "featured", oldType: "boolean", newType: "number" },
+        { kind: "type_changed", field: "rank", oldType: "number", newType: "boolean" },
+      ]),
+    ).toEqual([
+      expect.objectContaining({ kind: "alterField", field: "featured" }),
+      expect.objectContaining({ kind: "alterField", field: "rank" }),
+    ]);
   });
 
   it("should coerce between scalar types and leave other conversions to the author", () => {
@@ -238,7 +251,9 @@ describe("toMigrationOps", () => {
         kind: "removeField",
         block: "hero",
         field: "author_name",
-        todo: ["If 'author_name' was renamed to 'author', use renameField instead."],
+        todo: [
+          "TODO: if 'author_name' was renamed to 'author', replace removeField with renameField.",
+        ],
       },
     ]);
   });

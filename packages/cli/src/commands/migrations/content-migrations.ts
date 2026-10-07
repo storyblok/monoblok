@@ -44,7 +44,7 @@ export type WrittenContentMigration = { migrationPath: string; beforePath?: stri
 /** The module specifier a file in `fromDirectory` imports `file` by. */
 function importSpecifier(fromDirectory: string, file: string): string {
   const specifier = relative(fromDirectory, resolve(file)).replace(/\.(?:ts|tsx|js)$/, "");
-  return specifier.startsWith(".") ? specifier : `./${specifier}`;
+  return specifier.startsWith("../") ? specifier : `./${specifier}`;
 }
 
 /**

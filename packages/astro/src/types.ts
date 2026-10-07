@@ -70,7 +70,7 @@ export type StoryblokComponentMap = Record<string, AstroComponentFactory>;
  */
 export type StoryblokBlockProps<TExtraProps extends object = {}> = {
   /** The block to render. */
-  block?: StoryblokBlockData;
+  block: StoryblokBlockData;
 } & TExtraProps;
 
 /**

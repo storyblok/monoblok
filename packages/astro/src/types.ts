@@ -91,6 +91,12 @@ export interface StoryblokPreviewProps {
   bridgeOptions?: BridgeParams;
   /** Debounce delay for consecutive input events. Defaults to 500ms. */
   debounceMs?: number;
+  /**
+   * Morphs the DOM as the editor types (`input` events), in addition to
+   * reloading the page on save/publish. Defaults to `false`: the page only
+   * reloads on save/publish, with no live DOM morphing.
+   */
+  liveUpdate?: boolean;
 }
 
 export interface DefineStoryblokBlocksOptions {

@@ -27,7 +27,7 @@ describe("rateLimit", () => {
     it("should parse both X-RateLimit and X-RateLimit-Policy headers", () => {
       const headers = {
         "x-ratelimit": '"concurrent-requests";r=29',
-        "x-ratelimit-policy": '"concurrent-requests";q=30',
+        "x-ratelimit-policy": '"rate-limit";q=30;w=1',
       };
       const result = parseRateLimitHeaders(headers);
       expect(result).toEqual({
@@ -39,7 +39,7 @@ describe("rateLimit", () => {
     it("should handle case-sensitive header names", () => {
       const headers = {
         "X-RateLimit": '"concurrent-requests";r=15',
-        "X-RateLimit-Policy": '"concurrent-requests";q=50',
+        "X-RateLimit-Policy": '"rate-limit";q=50;w=1',
       };
       const result = parseRateLimitHeaders(headers);
       expect(result).toEqual({
@@ -60,12 +60,31 @@ describe("rateLimit", () => {
 
     it("should parse only X-RateLimit-Policy header when present", () => {
       const headers = {
-        "x-ratelimit-policy": '"concurrent-requests";q=100',
+        "x-ratelimit-policy": '"rate-limit";q=100;w=1',
       };
       const result = parseRateLimitHeaders(headers);
       expect(result).toEqual({
         max: 100,
       });
+    });
+
+    it("should not read a concurrent-requests policy as a rate", () => {
+      expect(
+        parseRateLimitHeaders({ "x-ratelimit-policy": '"concurrent-requests";q=30' }),
+      ).toBeNull();
+      expect(
+        parseRateLimitHeaders({
+          "x-ratelimit": '"concurrent-requests";r=29',
+          "x-ratelimit-policy": '"space-concurrent-requests";q=30',
+        }),
+      ).toEqual({ remaining: 29 });
+    });
+
+    it("should read the rate from the rate policy when listed after a concurrent-requests policy", () => {
+      const headers = {
+        "x-ratelimit-policy": '"concurrent-requests";q=30,"rate-limit";q=300;w=60',
+      };
+      expect(parseRateLimitHeaders(headers)).toEqual({ max: 5 });
     });
 
     it("should return null when no rate limit headers present", () => {

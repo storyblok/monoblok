@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "pathe";
 import { getLocalStories, updateLocalStory } from "./local-stories";
@@ -67,6 +67,38 @@ describe("updateLocalStory", () => {
     const parsed = JSON.parse(content);
     expect(parsed.slug).toBe("test-story");
     expect(parsed.uuid).toBe("test-uuid");
+  });
+
+  it("should keep a slug containing a path separator inside the directory", async () => {
+    const story = {
+      id: 2,
+      uuid: "nested-uuid",
+      slug: "blog/post",
+      full_slug: "blog/post",
+      name: "Post",
+      content: { component: "page" },
+    };
+    await updateLocalStory(TEST_DIR, story as any);
+    expect(await readdir(TEST_DIR)).toEqual(["blog-post_nested-uuid.json"]);
+  });
+
+  it("should overwrite the file pulled by the CLI instead of writing a duplicate", async () => {
+    const pulledFilename = "blog-post_nested-uuid.json";
+    const story = {
+      id: 2,
+      uuid: "nested-uuid",
+      slug: "blog/post",
+      full_slug: "blog/post",
+      name: "Post",
+      content: { component: "page" },
+    };
+    await writeFile(join(TEST_DIR, pulledFilename), JSON.stringify(story));
+
+    await updateLocalStory(TEST_DIR, { ...story, name: "Updated" } as any);
+
+    expect(await readdir(TEST_DIR)).toEqual([pulledFilename]);
+    const stories = await getLocalStories(TEST_DIR);
+    expect(stories[0].name).toBe("Updated");
   });
 
   it("should round-trip: read → modify → write → read matches", async () => {

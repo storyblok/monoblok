@@ -3,7 +3,7 @@ import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 import { createApiClient } from "../index";
 import type { CacheEntry, CacheProvider } from "../index";
-import { ClientError } from "../error";
+import { ClientError } from "@storyblok/utils/errors";
 
 const server = setupServer();
 

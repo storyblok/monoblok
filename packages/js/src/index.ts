@@ -1,3 +1,5 @@
+import { isBrowser } from "@storyblok/live-preview";
+
 import { loadBridge } from "./bridge";
 import type {
   ISbEventPayload,
@@ -56,8 +58,7 @@ export const useStoryblokBridge = <T extends StoryblokComponentType<string> = an
   cb: (newStory: ISbStoryData<T>) => void,
   options: StoryblokBridgeConfigV2 = {},
 ) => {
-  const isServer = typeof window === "undefined";
-  const isBridgeLoaded = !isServer && typeof window.storyblokRegisterEvent !== "undefined";
+  const isBridgeLoaded = isBrowser() && typeof window.storyblokRegisterEvent !== "undefined";
   const storyId = new URL(window.location?.href).searchParams.get("_storyblok");
   const inStory = storyId !== null && +storyId === id;
 
@@ -112,8 +113,7 @@ export const storyblokInit = (pluginOptions: SbSDKOptions = {}) => {
    ** Load bridge if you are on the Visual Editor.
    ** For more security: https://www.storyblok.com/faq/how-to-verify-the-preview-query-parameters-of-the-visual-editor
    */
-  const isServer = typeof window === "undefined";
-  const inEditor = !isServer && window.location?.search?.includes("_storyblok_tk");
+  const inEditor = isBrowser() && window.location?.search?.includes("_storyblok_tk");
   if (bridge !== false && inEditor) {
     loadBridge();
   }
@@ -126,7 +126,7 @@ export const loadStoryblokBridge = () => loadBridge();
 export { useStoryblokBridge as registerStoryblokBridge };
 
 export { default as apiPlugin } from "./api";
-export { default as storyblokEditable } from "./editable";
+export { storyblokEditable } from "@storyblok/live-preview";
 
 // Reexport all types so users can have access to them
 export * from "./types";

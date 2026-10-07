@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ComponentFolder } from "../../types";
-import {
-  buildGroupPathByUuid,
-  expandFolderPath,
-  mapSchemaGroupLists,
-  slugifyPath,
-} from "./folders";
+import { buildGroupPathByUuid, expandFolderPath, mapSchemaGroupLists } from "./folders";
 
 function folder(
   partial: Partial<ComponentFolder> & { name: string; uuid: string },
@@ -48,35 +43,6 @@ describe("buildGroupPathByUuid", () => {
     const b = folder({ name: "B", uuid: "uuid-b", parent_uuid: "uuid-a" });
 
     expect(() => buildGroupPathByUuid([a, b])).not.toThrow();
-  });
-});
-
-describe("slugifyPath", () => {
-  it("should slugify each segment", () => {
-    expect(slugifyPath("My Layout/Heros")).toBe("my-layout/heros");
-  });
-
-  it("should drop a trailing empty segment", () => {
-    expect(slugifyPath("Layout/")).toBe("layout");
-  });
-
-  // Golden cases shared with @storyblok/schema's slugifyFolderPath
-  // (packages/schema/src/utils/slugify-folder-path.test.ts). The two
-  // implementations live in separate packages but MUST agree so folder-path
-  // identity is the same in the schema validators and the CLI — keep both
-  // tables in sync when either changes.
-  it("should match the schema package folder-path canonicalization (golden cases)", () => {
-    expect(slugifyPath("Layout/Heros")).toBe(slugifyPath("layout/heros"));
-    expect(slugifyPath("My Layout")).toBe(slugifyPath("my-layout"));
-    expect(slugifyPath("Layout//Heros")).toBe("layout/heros");
-    expect(slugifyPath("Hero & Teaser")).toBe("hero-teaser");
-    expect(slugifyPath("")).toBe("");
-    expect(slugifyPath("/")).toBe("");
-    // Segment that is non-empty raw but slugifies to empty must be dropped
-    // (filter after slugify), not left as a double slash.
-    expect(slugifyPath("A/&/B")).toBe("a/b");
-    expect(slugifyPath("Layout/&/Heros")).toBe("layout/heros");
-    expect(slugifyPath("Layout/---/Heros")).toBe("layout/heros");
   });
 });
 

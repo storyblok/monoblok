@@ -1,7 +1,3 @@
-// This file is duplicated verbatim in @storyblok/api-client and
-// @storyblok/management-api-client. The two copies must stay identical; apply
-// any change to both.
-
 import { describe, expect, it, vi } from "vitest";
 import { createThrottle } from "./throttle";
 
@@ -130,6 +126,43 @@ describe("createThrottle (per-second rate limiter)", () => {
 
       // Every parked call resolves once the window ages out; none hang.
       await expect(Promise.all(promises)).resolves.toEqual([0, 1, 2]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("should apply the limit over a custom interval", async () => {
+    vi.useFakeTimers();
+    try {
+      const fn = vi.fn(async () => {});
+      const throttle = createThrottle(1, { intervalMs: 500 });
+
+      for (let i = 0; i < 3; i++) {
+        void throttle.execute(fn);
+      }
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fn).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(fn).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("should reject waiting and later calls with an AbortError once aborted", async () => {
+    vi.useFakeTimers();
+    try {
+      const throttle = createThrottle(1);
+      const started = throttle.execute(async () => "started");
+      const waiting = throttle.execute(async () => "waiting");
+      await vi.advanceTimersByTimeAsync(0);
+
+      throttle.abort();
+
+      await expect(started).resolves.toBe("started");
+      await expect(waiting).rejects.toHaveProperty("name", "AbortError");
+      await expect(throttle.acquire()).rejects.toHaveProperty("name", "AbortError");
     } finally {
       vi.useRealTimers();
     }

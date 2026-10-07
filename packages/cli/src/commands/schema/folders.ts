@@ -1,5 +1,5 @@
+import { slugify } from "@storyblok/utils/strings";
 import type { ComponentFolder } from "../../types";
-import { slugify } from "../../utils/format";
 import { isRecord } from "./utils";
 import type { LocalFolder } from "./types";
 
@@ -54,29 +54,6 @@ export function buildGroupPathByUuid(folders: ComponentFolder[]): Map<string, st
 }
 
 /**
- * Slugifies each `/` segment of a display path: `'My Layout/Heros'` →
- * `'my-layout/heros'`. Segments are dropped when they slugify to empty, so
- * `'Layout/'` → `'layout'` (not `'layout/'`) and `'A/&/B'` → `'a/b'` (the
- * symbol-only segment vanishes, not `'a//b'`).
- *
- * This is folder-path *identity*: a folder authored as a `defineFolder` ref or
- * as a string shorthand with different casing/separators must canonicalize to
- * the same value here and in `@storyblok/schema`'s `slugifyFolderPath`, which
- * the schema validators use. The two implementations share this algorithm (the
- * per-segment `slugify`, filtered *after* slugifying so a segment that reduces
- * to empty is dropped rather than left as a double slash) and are each locked by
- * golden-case tests; keep them in sync. (The CLI does not import the schema
- * helper to avoid a runtime dependency on `@storyblok/schema`.)
- */
-export function slugifyPath(displayPath: string): string {
-  return displayPath
-    .split("/")
-    .map((segment) => slugify(segment))
-    .filter(Boolean)
-    .join("/");
-}
-
-/**
  * The wire field keys holding component group references. Both the whitelist
  * (`allow`) and the denylist (`deny`) name groups, so anything translating
  * between the transient slug-path space and the server's uuid space has to walk
@@ -120,7 +97,7 @@ export function mapSchemaGroupLists(schema: unknown, mapEntry: (entry: string) =
  * `'Layout/Heros'` → Layout (root) then Heros (child). Paths are slug space;
  * names keep the display casing for group creation. Segments that slugify to
  * empty (blank or symbol-only, e.g. the `&` in `'Layout/&/Heros'`) are dropped,
- * matching {@link slugifyPath} so a path expands to the same identity it
+ * matching `slugifyPath` so a path expands to the same identity it
  * canonicalizes to.
  */
 export function expandFolderPath(displayPath: string): LocalFolder[] {

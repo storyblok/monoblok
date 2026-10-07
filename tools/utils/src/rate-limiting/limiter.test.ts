@@ -1,7 +1,3 @@
-// This file is duplicated verbatim in @storyblok/api-client and
-// @storyblok/management-api-client. The two copies must stay identical; apply
-// any change to both.
-
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createDefaultRateLimiter,

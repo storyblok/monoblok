@@ -6,6 +6,7 @@ import type {
   ListDatasourcesResponses,
 } from "../generated/capi/types.gen";
 import type { ApiResponse, FetchOptions, ResourceDeps } from "../client";
+import { buildCallOptions } from "@storyblok/utils/http";
 
 export function createDatasourcesResource<DefaultThrowOnError extends boolean = false>(
   deps: ResourceDeps<DefaultThrowOnError>,
@@ -36,10 +37,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
                 path: { id },
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           );
@@ -68,10 +66,7 @@ export function createDatasourcesResource<DefaultThrowOnError extends boolean = 
                 client,
                 query: requestQuery,
                 signal,
-                ...(throwOnError === undefined ? {} : { throwOnError }),
-                ...(fetchOptions
-                  ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-                  : {}),
+                ...buildCallOptions(client, throwOnError, fetchOptions),
               }),
             ),
           );

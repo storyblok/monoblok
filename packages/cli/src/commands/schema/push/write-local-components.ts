@@ -1,15 +1,11 @@
 import { unlink } from "node:fs/promises";
 import { join } from "pathe";
+import { getComponentFilename } from "@storyblok/utils/local-files";
 
 import type { Logger } from "../../../lib/logger/logger";
 import type { UI } from "../../../lib/ui";
 import { directories } from "../../../constants";
-import {
-  fileExists,
-  resolveCommandPath,
-  sanitizeFilename,
-  saveToFile,
-} from "../../../utils/filesystem";
+import { fileExists, resolveCommandPath, saveToFile } from "../../../utils/filesystem";
 import type { Component } from "../../../types";
 import type { DiffResult, SchemaData } from "../types";
 import { displayPath, isRecord } from "../utils";
@@ -117,7 +113,7 @@ export async function writeLocalComponents({
   }
 
   for (const component of resolved.components) {
-    const filePath = join(componentsDir, `${sanitizeFilename(component.name || "")}.json`);
+    const filePath = join(componentsDir, getComponentFilename(component));
     await saveToFile(filePath, JSON.stringify(sanitizeForLocalWrite(component), null, 2));
   }
 
@@ -141,7 +137,7 @@ export async function writeLocalComponents({
       (d) => d.type === "component" && d.action === "stale",
     );
     for (const stale of staleComponents) {
-      const filePath = join(componentsDir, `${sanitizeFilename(stale.name)}.json`);
+      const filePath = join(componentsDir, getComponentFilename(stale));
       try {
         await unlink(filePath);
         logger.info("Removed stale local component file", {

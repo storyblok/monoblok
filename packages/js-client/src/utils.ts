@@ -1,3 +1,6 @@
+import { EU_API_DOMAIN, isRegion, REGIONAL_DATA } from "@storyblok/region-helper";
+import { sortKeysDeep } from "@storyblok/utils/serialization";
+
 import type { AsyncFn, HtmlEscapes, ISbResult, ISbStoriesParams } from "./interfaces";
 
 // TODO: Revise this type, is it needed?
@@ -74,25 +77,6 @@ export const flatMap = (arr: ISbResult[] = [], func: FlatMapFn) =>
   arr.map(func).reduce((xs, ys) => [...xs, ...ys], []);
 
 /**
- * Decodes a string if it appears to be URL-encoded.
- * Detects common encoded characters (%2C for comma, %20 for space, etc.)
- * @param value - The string to potentially decode
- * @returns The decoded string, or the original if not encoded
- */
-export const decodeIfEncoded = (value: string): string => {
-  // Check if the string contains URL-encoded characters (% followed by hex digits)
-  if (/%[0-9A-F]{2}/i.test(value)) {
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      // If decoding fails (malformed encoding), return original
-      return value;
-    }
-  }
-  return value;
-};
-
-/**
  * Stringifies an object into a URL query string
  * @param params - Parameters to stringify
  * @param prefix - Prefix for nested keys
@@ -126,17 +110,8 @@ export const stringify = (params: ISbParams, prefix?: string, isArray?: boolean)
  * @param regionCode - Region code (eu, us, cn, ap, ca)
  * @returns Base URL for the region
  */
-export const getRegionURL = (regionCode?: string): string => {
-  const REGION_URLS = {
-    eu: "api.storyblok.com",
-    us: "api-us.storyblok.com",
-    cn: "app.storyblokchina.cn",
-    ap: "api-ap.storyblok.com",
-    ca: "api-ca.storyblok.com",
-  } as const;
-
-  return REGION_URLS[regionCode as keyof typeof REGION_URLS] ?? REGION_URLS.eu;
-};
+export const getRegionURL = (regionCode?: string): string =>
+  isRegion(regionCode) ? REGIONAL_DATA[regionCode].apiDomain : EU_API_DOMAIN;
 
 /**
  * Escapes HTML special characters in a string
@@ -158,24 +133,6 @@ export const escapeHTML = (string: string): string => {
   return string && reHasUnescapedHtml.test(string)
     ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
     : string;
-};
-
-/** Arrays keep their order, which is part of the value. */
-const sortKeysDeep = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map(sortKeysDeep);
-  }
-
-  if (value !== null && typeof value === "object") {
-    // Not assignment: assigning `__proto__` sets the prototype and drops the key.
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-        .map(([key, entry]) => [key, sortKeysDeep(entry)]),
-    );
-  }
-
-  return value;
 };
 
 /**

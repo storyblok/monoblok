@@ -50,6 +50,13 @@ describe("createCacheKey", () => {
     expect(withSlash).toBe(withoutSlash);
   });
 
+  it("should keep a __proto__ query key apart in the key", () => {
+    const first = createCacheKey("GET", "/v2/cdn/stories", JSON.parse('{"__proto__":"a"}'), "tid");
+    const second = createCacheKey("GET", "/v2/cdn/stories", JSON.parse('{"__proto__":"b"}'), "tid");
+
+    expect(first).not.toBe(second);
+  });
+
   it("should handle nested objects with sorted keys", () => {
     const first = createCacheKey(
       "GET",

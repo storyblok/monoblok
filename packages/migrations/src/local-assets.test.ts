@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "pathe";
 import { getLocalAssets, updateLocalAsset } from "./local-assets";
@@ -46,7 +46,7 @@ describe("updateLocalAsset", () => {
     await rm(TEST_DIR, { recursive: true, force: true });
   });
 
-  it("should write asset as {name}_{id}.json", async () => {
+  it("should write asset as {name}_{id}.json, without the file extension", async () => {
     const asset = {
       id: 999,
       filename: "https://example.com/test.jpg",
@@ -58,10 +58,31 @@ describe("updateLocalAsset", () => {
       focus: undefined,
     };
     await updateLocalAsset(TEST_DIR, asset as any);
-    // The filename should be derived from name without extension + id
-    const files = await (await import("node:fs/promises")).readdir(TEST_DIR);
-    expect(files).toHaveLength(1);
-    expect(files[0]).toMatch(/999\.json$/);
+    expect(await readdir(TEST_DIR)).toEqual(["test-image_999.json"]);
+  });
+
+  it("should sanitize characters that are not allowed in file names", async () => {
+    const asset = { id: 5, filename: "https://example.com/a.jpg", short_filename: "a:b.jpg" };
+    await updateLocalAsset(TEST_DIR, asset as any);
+    expect(await readdir(TEST_DIR)).toEqual(["a_b_5.json"]);
+  });
+
+  it("should fall back to the file URL's basename without a short file name", async () => {
+    const asset = { id: 6, filename: "https://a.storyblok.com/f/1/100x100/logo.png" };
+    await updateLocalAsset(TEST_DIR, asset as any);
+    expect(await readdir(TEST_DIR)).toEqual(["logo_6.json"]);
+  });
+
+  it("should overwrite the file pulled by the CLI instead of writing a duplicate", async () => {
+    const pulledFilename = "a_b_5.json";
+    const asset = { id: 5, filename: "https://example.com/a.jpg", short_filename: "a:b.jpg" };
+    await writeFile(join(TEST_DIR, pulledFilename), JSON.stringify(asset));
+
+    await updateLocalAsset(TEST_DIR, { ...asset, alt: "Updated" } as any);
+
+    expect(await readdir(TEST_DIR)).toEqual([pulledFilename]);
+    const assets = await getLocalAssets(TEST_DIR);
+    expect(assets[0].alt).toBe("Updated");
   });
 
   it("should round-trip: write → read matches", async () => {

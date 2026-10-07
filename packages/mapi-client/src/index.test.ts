@@ -2,8 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { createManagementApiClient } from "./index";
-import type { RateLimitContext, RateLimiter } from "./utils/limiter";
-import { ClientError } from "./error";
+import type { RateLimitContext, RateLimiter } from "@storyblok/utils/rate-limiting";
+import { ClientError } from "@storyblok/utils/errors";
 
 const server = setupServer();
 

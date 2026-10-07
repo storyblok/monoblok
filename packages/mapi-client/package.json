@@ -49,6 +49,7 @@
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
+    "@storyblok/utils": "workspace:*",
     "@types/node": "catalog:",
     "msw": "catalog:",
     "oxlint": "catalog:",

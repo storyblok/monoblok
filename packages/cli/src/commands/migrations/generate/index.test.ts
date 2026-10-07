@@ -317,6 +317,17 @@ describe("migrations generate command", () => {
       );
     });
 
+    it("should reject a directory as the schema entry", async () => {
+      preconditions.componentExists();
+      preconditions.hasSchemaEntry();
+
+      await generate("component-name", "--schema", "src");
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Schema entry file not found: src"),
+      );
+    });
+
     it("should refuse to overwrite a leftover snapshot", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();

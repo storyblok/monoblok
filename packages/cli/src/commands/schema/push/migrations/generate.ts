@@ -144,6 +144,24 @@ const COERCION_TARGETS: Record<string, CoercionTarget> = {
   boolean: "boolean",
 };
 
+/**
+ * `coerceField` refuses a boolean's `true`/`false` as a number and every number
+ * but 0 and 1 as a boolean, so these conversions need a hand-written mapping.
+ */
+const UNSUPPORTED_COERCIONS = new Set(["boolean:number", "number:boolean"]);
+
+function coercionOf(
+  oldType: string,
+  newType: string,
+): { from: CoercionTarget; to: CoercionTarget } | undefined {
+  const from = COERCION_TARGETS[oldType];
+  const to = COERCION_TARGETS[newType];
+  if (!from || !to || UNSUPPORTED_COERCIONS.has(`${from}:${to}`)) {
+    return undefined;
+  }
+  return { from, to };
+}
+
 /** The empty value a new required field is backfilled with. */
 function defaultValueForType(fieldType: string): unknown {
   switch (fieldType) {
@@ -180,29 +198,27 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
             field: change.field,
             todo: change.renameHint
               ? [
-                  `If '${change.field}' was renamed to '${change.renameHint.newField}', use renameField instead.`,
+                  `TODO: if '${change.field}' was renamed to '${change.renameHint.newField}', replace removeField with renameField.`,
                 ]
               : undefined,
           },
         ];
       case "type_changed": {
-        if (COMPATIBLE_TYPES.has(`${change.oldType}:${change.newType}`)) {
-          return [];
+        const coercion = coercionOf(change.oldType, change.newType);
+        if (coercion) {
+          // Text, textarea, and markdown all store a string.
+          return coercion.from === coercion.to
+            ? []
+            : [{ kind: "coerceField", block, field: change.field, ...coercion }];
         }
-        const from = COERCION_TARGETS[change.oldType];
-        const to = COERCION_TARGETS[change.newType];
-        return from && to
-          ? [{ kind: "coerceField", block, field: change.field, from, to }]
-          : [
-              {
-                kind: "alterField",
-                block,
-                field: change.field,
-                todo: [
-                  `TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}.`,
-                ],
-              },
-            ];
+        return [
+          {
+            kind: "alterField",
+            block,
+            field: change.field,
+            todo: [`TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}.`],
+          },
+        ];
       }
       case "required_added": {
         const value = defaultValueForType(change.fieldType);

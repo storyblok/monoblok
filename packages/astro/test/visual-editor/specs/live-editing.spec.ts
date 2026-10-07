@@ -5,7 +5,7 @@ import { QA_CONFIG } from "../qa.config";
 const SEEDED_HEADLINE = "QA teaser headline";
 
 // Only what the real editor can exercise. Everything the playground renders
-// standalone belongs in the Cypress suite (`pnpm --filter @storyblok/astro cy:run`).
+// standalone belongs in the e2e suite (`pnpm --filter @storyblok/astro pw:run`).
 //
 // The story under test is `home`, served by `playground/ssr`'s `[...slug].astro`
 // with `livePreview: true`: the bridge's `input` event POSTs the story back to

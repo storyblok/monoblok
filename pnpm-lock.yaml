@@ -568,9 +568,6 @@ importers:
         specifier: workspace:^
         version: link:../richtext
     devDependencies:
-      '@cypress/vite-dev-server':
-        specifier: ^7.3.4
-        version: 7.3.4(cypress@15.21.0)
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
@@ -586,9 +583,6 @@ importers:
       astro:
         specifier: ^7.2.8
         version: 7.3.2(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@types/node@24.11.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
-      cypress:
-        specifier: ^15.21.0
-        version: 15.21.0
       oxlint:
         specifier: 'catalog:'
         version: 1.76.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.8(@arethetypeswrong/core@0.18.2)(@opentelemetry/api@1.9.1)(@types/node@24.11.0)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(esbuild@0.28.1)(happy-dom@21.0.4)(jiti@2.7.0)(jsdom@28.1.0)(less@4.6.4)(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(publint@0.3.22)(sass@1.99.0)(svelte@5.57.0(@typescript-eslint/types@8.72.0))(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.28(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(synckit@0.11.12))(vite@8.1.1(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))(vue-tsc@3.3.10(typescript@6.0.3))(yaml@2.9.1))

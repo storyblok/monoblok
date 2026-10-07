@@ -55,12 +55,12 @@
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:unit": "vp test run",
     "playground:test:foreground": "ASTRO_DEV_BACKGROUND=1 STORYBLOK_E2E=1 pnpm run --filter ./playground/test dev",
-    "test:e2e": "start-server-and-test playground:test:foreground http://localhost:4321/ cy:run",
-    "cy:run": "cypress run",
-    "cy:open": "cypress open",
+    "test:e2e": "start-server-and-test playground:test:foreground http://localhost:4321/ pw:run",
+    "pw:install": "playwright install chromium",
+    "pw:run": "pnpm run pw:install && playwright test",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
-    "test:e2e:watch": "start-server-and-test playground:test:foreground http://localhost:4321/ cy:open",
+    "test:e2e:watch": "start-server-and-test playground:test:foreground http://localhost:4321/ pw:run --ui",
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
@@ -68,13 +68,11 @@
     "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {
-    "@cypress/vite-dev-server": "^7.3.4",
     "@playwright/test": "catalog:",
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/visual-editor-qa": "workspace:*",
     "@types/node": "catalog:",
     "astro": "^7.2.8",
-    "cypress": "^15.21.0",
     "oxlint": "catalog:",
     "start-server-and-test": "^2.0.11",
     "typescript": "catalog:",

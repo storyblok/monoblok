@@ -70,6 +70,11 @@ export type Before = InferSchema<typeof schema>;
 Keep the snapshot unchanged once the migration ships. Later schema changes then can’t break the
 migration’s types.
 
+The Storyblok CLI writes both files:
+[`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
+[`schema push`](/docs/tooling/cli/schema-push#breaking-changes-and-migrations) generate the
+migration and its snapshot from the space’s current components.
+
 ### Schema types
 
 The type arguments of `defineMigration()` decide which names the ops accept:

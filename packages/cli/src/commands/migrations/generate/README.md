@@ -25,6 +25,9 @@ This will generate a migration file for the specified component:
 | `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                              | -                       |
 | `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators | -                       |
 | `-p, --path <path>`       | Custom path to store the migration file                                                                                   | `.storyblok/migrations` |
+| `--schema <entry-file>`   | Schema entry file. Generates a typed `defineMigration` file and its `.before.ts` snapshot instead of a `.js` migration    | -                       |
+| `--no-before`             | Skip the `.before.ts` snapshot next to a typed migration                                                                  | -                       |
+| `--js`                    | Generate a `.js` migration even when `--schema` is set                                                                    | -                       |
 
 ## Examples
 
@@ -133,3 +136,19 @@ the component name, and `--filter` accepts it too.
 - The migration function receives a `block` parameter containing the component's data
 - You can modify the block's fields and return the updated block
 - Make sure to return the block at the end of the function
+
+3. Generate a typed content migration for `migrations apply`:
+
+```bash
+storyblok migrations generate hero --space 12345 --schema src/schema.ts
+```
+
+Generates, numbered after the existing content migrations:
+
+```
+.storyblok/
+└── migrations/
+    └── 12345/
+        ├── 0001-hero.ts         # defineMigration file, typed against Schema and Before
+        └── 0001-hero.before.ts  # the hero block as the space holds it now
+```

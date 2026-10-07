@@ -19,7 +19,8 @@ import { buildGroupPathByUuid } from "../folders";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
-import { renderMigrationCode, writeMigrationFile } from "./migrations/generate";
+import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
+import { writeContentMigration } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
 
 schemaCommand
@@ -31,6 +32,11 @@ schemaCommand
   .option("--delete", "Delete remote entities not present in local schema", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
+  .option("--no-before", "skip the .before.ts schema snapshot beside the generated migration")
+  .option(
+    "--js",
+    "generate legacy .js migrations, one per component, instead of a defineMigration file",
+  )
   .option(
     "--write-components",
     "Write component schemas as local JSON files after push (also removes local files for components deleted via --delete)",
@@ -121,8 +127,9 @@ schemaCommand
           ui.warn(
             `${totalChanges} breaking change(s) detected in ${breakingChanges.length} component(s).`,
           );
+          const runCommand = options.js ? "migrations run" : "migrations apply";
           ui.info(
-            "Generated migrations are scaffolds. Review and adjust them before running `storyblok migrations run`.",
+            `Generated migrations are scaffolds. Review and adjust them before running \`storyblok ${runCommand}\`.`,
           );
 
           // Dry-run: show analysis only, no prompts, no file writes
@@ -185,24 +192,51 @@ schemaCommand
                   }
                 }
 
-                const code = renderMigrationCode(comp.changes);
-                const path = await writeMigrationFile({
-                  spaceId: space,
-                  componentName: comp.componentName,
-                  code,
-                  timestamp: migrationTimestamp,
-                  basePath: resolvedBase,
+                if (options.js) {
+                  const code = renderMigrationCode(comp.changes);
+                  const path = await writeMigrationFile({
+                    spaceId: space,
+                    componentName: comp.componentName,
+                    code,
+                    timestamp: migrationTimestamp,
+                    basePath: resolvedBase,
+                  });
+                  const migrationPath = displayPath(path, basePath);
+                  logger.info("Migration generated", {
+                    component: comp.componentName,
+                    path: migrationPath,
+                  });
+                  ui.log(`  Generated: ${migrationPath}`);
+                }
+              }
+
+              if (!options.js) {
+                const componentNames = breakingChanges.map((comp) => comp.componentName);
+                const written = await writeContentMigration({
+                  path: basePath,
+                  space,
+                  name: `update-${componentNames.join("-")}`,
+                  schemaEntry: entryFile,
+                  ops: breakingChanges.flatMap((comp) =>
+                    toMigrationOps(comp.componentName, comp.changes),
+                  ),
+                  before: options.before
+                    ? { components: rawComponents, reads: componentNames }
+                    : undefined,
                 });
-                const migrationPath = displayPath(path, basePath);
-                logger.info("Migration generated", {
-                  component: comp.componentName,
-                  path: migrationPath,
-                });
-                ui.log(`  Generated: ${migrationPath}`);
+                for (const path of [written.migrationPath, written.beforePath]) {
+                  if (path) {
+                    logger.info("Migration generated", {
+                      components: componentNames,
+                      path: displayPath(path, basePath),
+                    });
+                    ui.log(`  Generated: ${displayPath(path, basePath)}`);
+                  }
+                }
               }
 
               ui.br();
-              ui.info(`Run migrations when ready: storyblok migrations run --space ${space}`);
+              ui.info(`Run migrations when ready: storyblok ${runCommand} --space ${space}`);
             }
           }
         }

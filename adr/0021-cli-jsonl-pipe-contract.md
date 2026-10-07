@@ -125,11 +125,16 @@ which stories matched, and a screen of story JSON buries the answer and fights t
 the same lines. So the output follows where stdout goes, as in `gh`: piped or redirected, it is the
 JSONL contract above; on a terminal, the progress stays up, each match is reduced to the cells of
 one row (`id`, `name`, `full_slug`), and a table is printed once the run ends. Only the cells are
-held, so memory stays small whatever the result set. A table taller than the screen goes through
-`less -FRX`, which gives scrolling and search without the CLI owning any interactive UI.
+held, so memory stays small whatever the result set. The table goes through `less -FRX`, which gives
+scrolling and search without the CLI owning any interactive UI, and `-F` decides whether the table
+fits the screen, since only the pager knows how many lines a wrapped row takes. The flags are
+arguments rather than a default for an unset `LESS`, as in `git`, because a common shell setup
+exports `LESS=-R`, which would drop `-F` and page even a three-row table. A `dumb` terminal, or one
+without `less`, gets the table printed directly.
 
 `output.ts` owns the choice (`createResultOutput`): both outputs share one sink, so `--limit` and an
-early stop behave the same in either.
+early stop behave the same in either. Interrupting the run with Ctrl+C is the exception: JSONL has
+already written the matches found so far, while the table, printed only at the end, is lost.
 
 ## Alternatives Considered
 

@@ -1,5 +1,6 @@
 import type { TableColumn } from "../../../lib/ui";
 import type { Story } from "../constants";
+import { ISSUE_TYPES } from "./references";
 import type { RefIssue } from "./references";
 
 /**
@@ -17,13 +18,15 @@ export const STORY_COLUMNS: TableColumn<Story>[] = [
   },
 ];
 
-/** Counts issues per type, in the order each type first appears: `2 broken, 1 stale_url`. */
-function summarizeIssues(issues: RefIssue[]): string {
-  const counts = new Map<string, number>();
-  for (const issue of issues) {
-    counts.set(issue.type, (counts.get(issue.type) ?? 0) + 1);
-  }
-  return [...counts].map(([type, count]) => `${count} ${type}`).join(", ");
+/**
+ * Counts issues per type, always in the same order so rows can be scanned down
+ * the column: `2 broken, 1 stale_url`.
+ */
+export function summarizeIssues(issues: RefIssue[]): string {
+  return ISSUE_TYPES.flatMap((type) => {
+    const count = issues.filter((issue) => issue.type === type).length;
+    return count > 0 ? [`${count} ${type}`] : [];
+  }).join(", ");
 }
 
 export const REF_ISSUE_COLUMNS: TableColumn<Story & { _ref_issues: RefIssue[] }>[] = [

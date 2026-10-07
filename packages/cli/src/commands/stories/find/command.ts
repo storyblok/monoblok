@@ -79,7 +79,7 @@ const findCmd = storiesCommand
   )
   .option(
     "--check-references [types]",
-    "report stories with broken, unpublished or stale_url references, listed in a `_ref_issues` array on each story. Optionally only these types, comma-separated, e.g. 'broken'",
+    "report stories with broken, unpublished or stale_url references, listed in a `_ref_issues` array on each story, or summarized in an issues column in a terminal. Optionally only these types, comma-separated, e.g. 'broken'",
   )
   .option(
     "--skip-content",

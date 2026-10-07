@@ -1,14 +1,14 @@
 ---
 import type { StoryblokPreviewProps } from "../types";
 
-const { bridgeOptions, debounceMs }: StoryblokPreviewProps = Astro.props;
+const { bridgeOptions, debounceMs, liveUpdate = false }: StoryblokPreviewProps = Astro.props;
 ---
 
-<script define:vars={{ bridgeOptions, debounceMs }} is:inline>
+<script define:vars={{ bridgeOptions, debounceMs, liveUpdate }} is:inline>
   // `define:vars` only works on `is:inline` scripts, which can't `import`, so
   // it hands the props off to the processed/bundled script below via a
   // global instead of carrying the logic itself.
-  window.__storyblokPreviewProps = { bridgeOptions, debounceMs };
+  window.__storyblokPreviewProps = { bridgeOptions, debounceMs, liveUpdate };
 </script>
 
 <script>
@@ -22,19 +22,20 @@ const { bridgeOptions, debounceMs }: StoryblokPreviewProps = Astro.props;
     }
   }
 
-  const { bridgeOptions, debounceMs } = window.__storyblokPreviewProps ?? {};
+  const { bridgeOptions, debounceMs, liveUpdate } = window.__storyblokPreviewProps ?? {};
 
-  const previewHandler = createPreviewHandler({ debounceMs });
+  // Only built when `liveUpdate` is on, so the morph path never runs otherwise.
+  const previewHandler = liveUpdate ? createPreviewHandler({ debounceMs }) : undefined;
 
   // `onStoryblokEditorEvent` only calls back for `input`; it reloads the page
-  // itself for `change`/`published`.
+  // itself for `change`/`published` regardless of what this callback does.
   const cleanup = onStoryblokEditorEvent((story) => {
-    previewHandler.handle({ action: 'input', story });
+    previewHandler?.handle({ action: 'input', story });
   }, bridgeOptions);
 
   // Destroy the bridge if the page is swapped out by Astro's view transitions.
   window.addEventListener('astro:before-preparation', () => {
     cleanup.then((off) => off());
-    previewHandler.dispose();
+    previewHandler?.dispose();
   });
 </script>

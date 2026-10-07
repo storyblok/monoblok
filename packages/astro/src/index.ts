@@ -13,7 +13,8 @@ export type { BridgeParams } from "@storyblok/live-preview";
 export { sanitizeJSON } from "./sanitize-json";
 
 /**
- * Enables Storyblok Live Preview in the Visual Editor.
+ * Reloads the page on save/publish from the Visual Editor. Pass
+ * `liveUpdate` to also morph the DOM live as the editor types.
  *
  * @example
  * ```astro
@@ -24,13 +25,17 @@ export { sanitizeJSON } from "./sanitize-json";
  *   <StoryblokPreview />
  * ```
  *
- * @example Custom debounce and Preview Bridge options
+ * @example Live DOM morphing, custom debounce, and Preview Bridge options
  * ```astro
  * ---
  * import { StoryblokPreview } from '@storyblok/astro';
  * ---
  *
- * <StoryblokPreview debounceMs={200} bridgeOptions={{ resolveRelations: ['featured.articles'] }} />
+ * <StoryblokPreview
+ *   liveUpdate
+ *   debounceMs={200}
+ *   bridgeOptions={{ resolveRelations: ['featured.articles'] }}
+ * />
  * ```
  */
 // Inlined (not cast through `StoryblokPreviewProps`) so hovers show the
@@ -39,6 +44,12 @@ export const StoryblokPreview = RawStoryblokPreview as (props: {
   bridgeOptions?: BridgeParams;
   /** Debounce delay for consecutive input events. Defaults to 500ms. */
   debounceMs?: number;
+  /**
+   * Morphs the DOM as the editor types (`input` events), in addition to
+   * reloading the page on save/publish. Defaults to `false`: the page only
+   * reloads on save/publish, with no live DOM morphing.
+   */
+  liveUpdate?: boolean;
 }) => any;
 
 /**

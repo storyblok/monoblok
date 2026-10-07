@@ -157,17 +157,17 @@ element (`heading`, `paragraph`, `code_block`, …); see
 
 ## API
 
-| Export                                            | Description                                                                         |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                   |
-| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                       |
-| `storyblokPreviewMiddleware`                      | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`. |
-| `getPayload({ locals })`                          | Reads that payload back.                                                            |
-| `StoryblokPreview`                                | Client island that morphs the DOM as the editor types. Renders no markup.           |
-| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.     |
-| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                |
-| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                     |
-| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                               |
+| Export                                            | Description                                                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                                         |
+| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                                             |
+| `storyblokPreviewMiddleware`                      | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.                       |
+| `getPayload({ locals })`                          | Reads that payload back.                                                                                  |
+| `StoryblokPreview`                                | Client island that reloads on save/publish, and morphs the DOM live with `liveUpdate`. Renders no markup. |
+| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.                           |
+| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                                      |
+| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                                           |
+| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                                                     |
 
 Types: `StoryblokBlockData`, `StoryblokBlockComponentProps<T, TExtra>`, `StoryblokComponentMap`,
 `DefineStoryblokBlocksOptions`, `StoryblokEditableProps`.
@@ -177,11 +177,13 @@ to render a placeholder instead.
 
 ## Live Preview behaviour
 
-- The bridge is debounced by 500ms and aborts in-flight requests.
+- `<StoryblokPreview />` always reloads the page on save/publish from the Visual Editor.
+- Pass `liveUpdate` to also morph the DOM as the editor types, instead of waiting for save/publish.
+- The live-morph bridge is debounced by 500ms and aborts in-flight requests.
 - If the Visual Editor has a focused element, only that element is morphed; its interactive state
   (`value`, `checked`, …) is preserved.
 - Elements carrying `data-preserve-state` are never replaced.
-- Opt out per page by not rendering `<StoryblokPreview />` there.
+- Opt out of both behaviours per page by not rendering `<StoryblokPreview />` there.
 - Events: `storyblok-live-preview-updating` (cancelable) and `storyblok-live-preview-updated`.
 
 ## Documentation

@@ -1,5 +1,7 @@
 // session.ts
-import { type RegionCode, regionsDomain } from "./constants";
+import { REGIONAL_DATA } from "@storyblok/region-helper";
+
+import type { RegionCode } from "./constants";
 import { addCredentials, getCredentials } from "./creds";
 
 export interface SessionState {
@@ -66,7 +68,7 @@ function createSession() {
   async function persistCredentials(region: RegionCode) {
     if (state.isLoggedIn && state.login && state.password && state.region) {
       await addCredentials({
-        machineName: regionsDomain[region] || "mapi.storyblok.com",
+        machineName: REGIONAL_DATA[region]?.apiDomain || "mapi.storyblok.com",
         login: state.login,
         password: state.password,
         region: state.region,

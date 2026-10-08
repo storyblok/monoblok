@@ -19,6 +19,7 @@ import type {
 import type { Component } from "../generated/mapi/types-aliased.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 // Component definitions are MAPI wire shapes (a `schema` record), surfaced as the
 // public `Component`. This is distinct from the DSL `fields` blocks used to narrow
@@ -62,10 +63,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -86,10 +84,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             client,
             path: { space_id: resolvedSpaceId, id: String(componentId) },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -111,10 +106,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -137,10 +129,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             path: { space_id: resolvedSpaceId, id: String(componentId) },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -161,10 +150,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             client,
             path: { space_id: resolvedSpaceId, id: String(componentId) },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -185,10 +171,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             client,
             path: { space_id: resolvedSpaceId, id: componentId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -211,10 +194,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             path: { space_id: resolvedSpaceId },
             query: { ...query, model: "components", model_id: componentId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -236,10 +216,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             client,
             path: { space_id: resolvedSpaceId, component_id: componentId, id: versionId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -263,10 +240,7 @@ export function createComponentsResource<DefaultThrowOnError extends boolean = f
             path: { space_id: resolvedSpaceId, id: versionId },
             query: { ...query, model: "components", model_id: componentId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

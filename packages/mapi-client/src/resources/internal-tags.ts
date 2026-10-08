@@ -9,6 +9,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createInternalTagsResource<DefaultThrowOnError extends boolean = false>(
   deps: MapiResourceDeps<DefaultThrowOnError>,
@@ -34,10 +35,7 @@ export function createInternalTagsResource<DefaultThrowOnError extends boolean =
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -59,10 +57,7 @@ export function createInternalTagsResource<DefaultThrowOnError extends boolean =
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -85,10 +80,7 @@ export function createInternalTagsResource<DefaultThrowOnError extends boolean =
             path: { space_id: resolvedSpaceId, id: internalTagId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -109,10 +101,7 @@ export function createInternalTagsResource<DefaultThrowOnError extends boolean =
             client,
             path: { space_id: resolvedSpaceId, id: internalTagId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

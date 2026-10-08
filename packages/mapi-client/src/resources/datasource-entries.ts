@@ -11,7 +11,8 @@ import type {
   ReplaceDatasourceEntryResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
-import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createDatasourceEntriesResource<DefaultThrowOnError extends boolean = false>(
   deps: MapiResourceDeps<DefaultThrowOnError>,

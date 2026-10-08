@@ -12,7 +12,8 @@ import type {
   ReplaceSpaceRoleResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
-import { buildCallOptions, resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
+import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 export function createSpaceRolesResource<DefaultThrowOnError extends boolean = false>(
   deps: MapiResourceDeps<DefaultThrowOnError>,

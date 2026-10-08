@@ -10,6 +10,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 export function createComponentFoldersResource<DefaultThrowOnError extends boolean = false>(
   deps: MapiResourceDeps<DefaultThrowOnError>,
@@ -35,10 +36,7 @@ export function createComponentFoldersResource<DefaultThrowOnError extends boole
             path: { space_id: resolvedSpaceId },
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -59,10 +57,7 @@ export function createComponentFoldersResource<DefaultThrowOnError extends boole
             client,
             path: { space_id: resolvedSpaceId, id: componentGroupId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -84,10 +79,7 @@ export function createComponentFoldersResource<DefaultThrowOnError extends boole
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -110,10 +102,7 @@ export function createComponentFoldersResource<DefaultThrowOnError extends boole
             path: { space_id: resolvedSpaceId, id: componentGroupId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -134,10 +123,7 @@ export function createComponentFoldersResource<DefaultThrowOnError extends boole
             client,
             path: { space_id: resolvedSpaceId, id: componentGroupId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

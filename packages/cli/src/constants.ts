@@ -1,3 +1,5 @@
+import { AP_CODE, CA_CODE, CN_CODE, EU_CODE, type Region, US_CODE } from "@storyblok/region-helper";
+
 // Please do not change the casing of the commands, it's used for the CLI commands definition
 export const commands = {
   LOGIN: "login",
@@ -39,35 +41,16 @@ export const colorPalette = {
   SCHEMA: "#e91e63",
 } as const;
 
-export interface ReadonlyArray<T> {
-  includes: (searchElement: any, fromIndex?: number) => searchElement is T;
-}
-export const regionCodes = ["eu", "us", "cn", "ca", "ap"] as const;
-export type RegionCode = (typeof regionCodes)[number];
+export type RegionCode = Region;
 
-export const regions: Record<Uppercase<RegionCode>, RegionCode> = {
-  EU: "eu",
-  US: "us",
-  CN: "cn",
-  CA: "ca",
-  AP: "ap",
-} as const;
-
-export const regionsDomain: Record<RegionCode, string> = {
-  eu: "api.storyblok.com",
-  us: "api-us.storyblok.com",
-  cn: "app.storyblokchina.cn",
-  ca: "api-ca.storyblok.com",
-  ap: "api-ap.storyblok.com",
-} as const;
-
-export const managementApiRegions: Record<RegionCode, string> = {
-  eu: "mapi.storyblok.com",
-  us: "api-us.storyblok.com",
-  cn: "app.storyblokchina.cn",
-  ca: "api-ca.storyblok.com",
-  ap: "api-ap.storyblok.com",
-} as const;
+/** Region codes keyed by their uppercase name, in the order the CLI lists them. */
+export const regions = {
+  EU: EU_CODE,
+  US: US_CODE,
+  CN: CN_CODE,
+  CA: CA_CODE,
+  AP: AP_CODE,
+} as const satisfies Record<Uppercase<RegionCode>, RegionCode>;
 
 export const appDomains: Record<RegionCode, string> = {
   eu: "app.storyblok.com",
@@ -75,14 +58,6 @@ export const appDomains: Record<RegionCode, string> = {
   cn: "app.storyblokchina.cn/fe/editor_v2",
   ca: "app.storyblok.com",
   ap: "app.storyblok.com",
-} as const;
-
-export const regionNames: Record<RegionCode, string> = {
-  eu: "Europe",
-  us: "United States",
-  cn: "China",
-  ca: "Canada",
-  ap: "Australia",
 } as const;
 
 export const DEFAULT_AGENT = {

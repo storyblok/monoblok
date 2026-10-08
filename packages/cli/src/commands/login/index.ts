@@ -1,9 +1,10 @@
 import chalk from "chalk";
 import { select } from "@inquirer/prompts";
+import { isRegion, REGIONAL_DATA } from "@storyblok/region-helper";
 import type { RegionCode } from "../../constants";
-import { colorPalette, commands, regionNames, regions } from "../../constants";
+import { colorPalette, commands, regions } from "../../constants";
 import { getProgram } from "../../program";
-import { CommandError, handleError, isRegion } from "../../utils";
+import { CommandError, handleError } from "../../utils";
 import { loginWithToken } from "./actions";
 import { session } from "../../session";
 import { performInteractiveLogin } from "./helpers";
@@ -59,7 +60,7 @@ export const loginCommand = program
             {
               message: "Please select the region you would like to work in:",
               choices: Object.values(regions).map((region: RegionCode) => ({
-                name: regionNames[region],
+                name: REGIONAL_DATA[region].name,
                 value: region,
               })),
               default: regions.EU,
@@ -76,7 +77,7 @@ export const loginCommand = program
           spinner.succeed();
 
           ui.ok(
-            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${regionNames[userRegion]} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
+            `Successfully logged in to region ${chalk.hex(colorPalette.PRIMARY)(`${REGIONAL_DATA[userRegion].name} (${userRegion})`)}. Welcome ${chalk.hex(colorPalette.PRIMARY)(user.friendly_name)}.`,
             true,
           );
         }

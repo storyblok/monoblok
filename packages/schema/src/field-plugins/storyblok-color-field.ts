@@ -1,6 +1,6 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { isRecord } from "@storyblok/utils/guards";
 import { defineFieldPlugin } from "../helpers/define-field-plugin";
-import { isRecord } from "../utils/is-record";
 
 /** Value stored by Storyblok's official Colorpicker field plugin. */
 export interface StoryblokColorFieldValue {

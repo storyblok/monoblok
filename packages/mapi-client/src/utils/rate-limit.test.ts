@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createThrottleManager } from "./rate-limit";
-import type { RateLimitContext, RateLimiter } from "./limiter";
+import type { RateLimitContext, RateLimiter } from "@storyblok/utils/rate-limiting";
 
 const URL_UNDER_TEST = "https://mapi.storyblok.com/v1/spaces/1/stories";
 
@@ -133,66 +133,6 @@ describe("createThrottleManager({ limiter })", () => {
       limit: 9,
       path: "/v1/spaces/1/stories",
     });
-  });
-
-  it("should give the limiter the query the request is sending", async () => {
-    const { limiter, acquired } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const send = manager.wrapFetch(async () => new Response(null));
-
-    await send(`${URL_UNDER_TEST}?page=2&per_page=100`);
-
-    expect(acquired[0]?.query).toEqual({ page: "2", per_page: "100" });
-  });
-
-  it("should keep the access token out of the limiter's query", async () => {
-    const { limiter, acquired } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const send = manager.wrapFetch(async () => new Response(null));
-
-    await send(`${URL_UNDER_TEST}?token=secret&per_page=100`);
-
-    expect(acquired[0]?.query).toEqual({ per_page: "100" });
-  });
-
-  it("should release the slot even when the request fails", async () => {
-    const { limiter, released } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const send = manager.wrapFetch(() => Promise.reject(new Error("boom")));
-
-    await expect(send(URL_UNDER_TEST)).rejects.toThrow("boom");
-
-    expect(released).toHaveLength(1);
-  });
-
-  it("should give each in-flight request its own context to correlate on", async () => {
-    const { limiter, acquired, released } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const { settled } = sendThrough(manager, 3);
-
-    await settled;
-
-    expect(new Set(acquired).size).toBe(3);
-    // A limiter pairing a release to its acquire by identity has to find each
-    // context it admitted.
-    expect(acquired.every((context) => released.includes(context))).toBe(true);
-  });
-
-  it("should report every response, including the ones a retry replaced", async () => {
-    const { limiter, recorded } = createRecordingLimiter();
-    const manager = createThrottleManager({ limiter });
-    const statuses = [429, 429, 200];
-    let attempt = 0;
-    const fetchWithRetries = manager.wrapFetch(
-      async () => new Response(null, { status: statuses[attempt++] }),
-    );
-
-    for (const _ of statuses) {
-      await fetchWithRetries("https://mapi.storyblok.com/v1/spaces/1/stories");
-    }
-
-    expect(recorded.map((entry) => entry.status)).toEqual(statuses);
-    expect(recorded[0]?.context.path).toBe("/v1/spaces/1/stories");
   });
 });
 

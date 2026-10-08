@@ -1,4 +1,5 @@
 import { join, resolve } from "pathe";
+import { getComponentFilename } from "@storyblok/utils/local-files";
 import type {
   Component,
   ComponentFolder,
@@ -137,10 +138,7 @@ export const saveComponentsToFiles = async (
       // Save in separate files without nested structure
       for (const component of components) {
         const sanitizedName = sanitizeFilename(component.name || "");
-        const componentFilePath = join(
-          resolvedPath,
-          suffix ? `${sanitizedName}.${suffix}.json` : `${sanitizedName}.json`,
-        );
+        const componentFilePath = join(resolvedPath, getComponentFilename(component, suffix));
         await saveToFile(componentFilePath, JSON.stringify(component, null, 2));
 
         // Find and save associated presets

@@ -1,0 +1,34 @@
+{
+  "name": "@storyblok/utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal: source shared by the published packages. Consumers list it as a devDependency and bundle it at build time, so it never becomes a runtime dependency. Not published.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./content-refs": "./src/content-refs/index.ts",
+    "./errors": "./src/errors/index.ts",
+    "./guards": "./src/guards/index.ts",
+    "./http": "./src/http/index.ts",
+    "./local-files": "./src/local-files/index.ts",
+    "./rate-limiting": "./src/rate-limiting/index.ts",
+    "./serialization": "./src/serialization/index.ts",
+    "./strings": "./src/strings/index.ts"
+  },
+  "scripts": {
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test": "vp test run",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:watch": "vp test"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "filenamify": "^6.0.0",
+    "ky": "^1.14.3",
+    "oxlint": "catalog:",
+    "pathe": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,7 +1,7 @@
 import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+import { slugify } from "@storyblok/utils/strings";
 
 import type { Component, ComponentFolder, Datasource } from "../../../types";
-import { slugify } from "../../../utils/format";
 import { buildGroupPathByUuid } from "../folders";
 import {
   COMPONENT_DEFAULTS,

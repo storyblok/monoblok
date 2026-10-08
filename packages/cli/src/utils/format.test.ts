@@ -4,7 +4,6 @@ import {
   maskToken,
   objectToStringParams,
   removePropertyRecursively,
-  slugify,
   toCamelCase,
   toPascalCase,
   toSnakeCase,
@@ -49,20 +48,6 @@ describe("format utils", () => {
     it("should not mask token with 4 or fewer characters", () => {
       expect(maskToken("1234")).toBe("1234");
       expect(maskToken("123")).toBe("123");
-    });
-  });
-
-  describe("slugify", () => {
-    it("should convert text to URL-friendly slug", () => {
-      expect(slugify("Hello World!")).toBe("hello-world");
-    });
-
-    it("should handle special characters and multiple spaces", () => {
-      expect(slugify("Hello   World!!!   Test")).toBe("hello-world-test");
-    });
-
-    it("should remove non-word characters", () => {
-      expect(slugify("Hello@World#123")).toBe("helloworld123");
     });
   });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApiClient } from "./client";
-import type { RateLimitContext, RateLimiter } from "./utils/limiter";
+import type { RateLimitContext, RateLimiter } from "@storyblok/utils/rate-limiting";
 
 const storyResponse = () =>
   new Response(JSON.stringify({ story: { id: 1, content: {} }, cv: 1 }), {

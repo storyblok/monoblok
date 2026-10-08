@@ -1,5 +1,6 @@
 import { basename, dirname, extname, join } from "pathe";
 import { readdir, readFile } from "node:fs/promises";
+import { getAssetNameAndExt } from "@storyblok/utils/local-files";
 import { SUPPORTED_ASSET_EXTENSIONS } from "../../constants";
 import { toError } from "../../utils/error/error";
 import type { ManifestEntry } from "../../utils/filesystem";
@@ -134,29 +135,6 @@ export const extractAssetSizeFromFilename = (filename?: string): string | undefi
   } catch {
     return undefined;
   }
-};
-
-/**
- * Extracts the sanitized name and extension from an asset.
- * Uses short_filename if available, otherwise falls back to the filename basename.
- */
-export const getAssetNameAndExt = (asset: Partial<Asset> & Required<Pick<Asset, "id">>) => {
-  const filename = asset.short_filename || (asset.filename ? basename(asset.filename) : undefined);
-  if (!filename) {
-    throw new Error(`Filename for asset with id ${asset.id} could not be determined!`);
-  }
-
-  const ext = extname(filename);
-  const name = sanitizeFilename(filename.replace(ext, ""));
-  return { name, ext };
-};
-
-/**
- * Generates the asset filename in the format: `${name}_${id}.json`
- */
-export const getAssetFilename = (asset: Partial<Asset> & Required<Pick<Asset, "id">>) => {
-  const { name } = getAssetNameAndExt(asset);
-  return `${name}_${asset.id}.json`;
 };
 
 /**

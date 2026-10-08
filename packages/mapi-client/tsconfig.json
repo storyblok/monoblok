@@ -18,7 +18,12 @@
     "noUnusedParameters": true,
     "noEmit": true,
     "isolatedModules": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    /* Resolve the bundled internal utils as source so their declarations are emitted inline. */
+    "paths": {
+      "@storyblok/utils/*": ["../../tools/utils/src/*/index.ts"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["dist", "node_modules", "src/generated", "playground"]

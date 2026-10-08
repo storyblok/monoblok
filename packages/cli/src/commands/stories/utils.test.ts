@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { vol } from "memfs";
 import {
   findComponentSchemas,
-  getStoryFilename,
   isStoryPublishedWithoutChanges,
   isStoryWithUnpublishedChanges,
 } from "./utils";
@@ -118,30 +117,6 @@ describe("findComponentSchemas", () => {
           error.message.includes("Duplicate components found")
         );
       },
-    );
-  });
-});
-
-describe("getStoryFilename", () => {
-  it("should combine slug and uuid", () => {
-    expect(getStoryFilename({ slug: "about-us", uuid: "abc-123" })).toBe("about-us_abc-123.json");
-  });
-
-  it("should keep a traversing slug inside a single path segment", () => {
-    expect(getStoryFilename({ slug: "../../etc/passwd", uuid: "abc-123" })).toBe(
-      "..-..-etc-passwd_abc-123.json",
-    );
-  });
-
-  it("should keep a traversing uuid inside a single path segment", () => {
-    expect(getStoryFilename({ slug: "about-us", uuid: "../../../evil" })).toBe(
-      "about-us_..-..-..-evil.json",
-    );
-  });
-
-  it("should preserve consecutive hyphens so the file round-trips to the story", () => {
-    expect(getStoryFilename({ slug: "summer--sale", uuid: "abc-123" })).toBe(
-      "summer--sale_abc-123.json",
     );
   });
 });

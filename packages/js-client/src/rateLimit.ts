@@ -1,5 +1,10 @@
+import {
+  determineRateLimitTier,
+  MAX_RATE_LIMIT,
+  parseRateLimitPolicy,
+  RATE_LIMIT_TIERS,
+} from "@storyblok/utils/rate-limiting";
 import type { ISbStoriesParams } from "./interfaces";
-import { DEFAULT_PER_PAGE, PER_PAGE_THRESHOLDS } from "./constants";
 
 export interface RateLimitConfig {
   // User-provided rate limit
@@ -16,54 +21,9 @@ export interface RateLimitHeaders {
 }
 
 /**
- * Rate limit tiers based on per_page parameter
- * These limits apply to all CDN API requests regardless of version
- */
-const RATE_LIMIT_TIERS = {
-  SINGLE_OR_SMALL: 50, // Single entries or listings ≤25 entries
-  MEDIUM: 15, // 26-50 entries
-  LARGE: 10, // 51-75 entries
-  VERY_LARGE: 6, // 76-100 entries
-} as const;
-
-/**
- * Maximum rate limit that should never be exceeded
- */
-const MAX_RATE_LIMIT = 1000;
-
-/**
  * Default rate limit for Management API (when using oauthToken)
  */
 export const MANAGEMENT_API_DEFAULT_RATE_LIMIT = 3;
-
-/**
- * Determines if a request is for a single story based on URL and params
- */
-function isSingleStoryRequest(url: string, params: ISbStoriesParams): boolean {
-  // Single story requests typically have a specific story slug/id in the URL
-  // or use find_by parameter
-  const isCdnStories = url.includes("/cdn/stories/");
-  const hasSpecificPath = url.split("/").length > 3 && !url.endsWith("/cdn/stories");
-  const hasFindBy = "find_by" in params;
-
-  return (isCdnStories && hasSpecificPath) || hasFindBy;
-}
-
-/**
- * Calculates the appropriate rate limit tier based on the per_page parameter
- * These tiers match the backend rate limiting logic
- */
-function getRateLimitTier(perPage: number): number {
-  if (perPage <= PER_PAGE_THRESHOLDS.SMALL) {
-    return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
-  } else if (perPage <= PER_PAGE_THRESHOLDS.MEDIUM) {
-    return RATE_LIMIT_TIERS.MEDIUM;
-  } else if (perPage <= PER_PAGE_THRESHOLDS.LARGE) {
-    return RATE_LIMIT_TIERS.LARGE;
-  } else {
-    return RATE_LIMIT_TIERS.VERY_LARGE;
-  }
-}
 
 /**
  * Determines the appropriate rate limit for a request based on:
@@ -110,14 +70,7 @@ export function determineRateLimit(
     return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
   }
 
-  // Single story requests
-  if (isSingleStoryRequest(url, params)) {
-    return RATE_LIMIT_TIERS.SINGLE_OR_SMALL;
-  }
-
-  // For listings, determine tier based on per_page
-  const perPage = params.per_page || DEFAULT_PER_PAGE;
-  return getRateLimitTier(perPage);
+  return RATE_LIMIT_TIERS[determineRateLimitTier(url, params)];
 }
 
 /**
@@ -125,11 +78,11 @@ export function determineRateLimit(
  *
  * Example headers:
  * X-RateLimit: "concurrent-requests";r=29
- * X-RateLimit-Policy: "concurrent-requests";q=30
+ * X-RateLimit-Policy: "rate-limit";q=50;w=1
  *
- * Where:
- * - r = remaining requests
- * - q = maximum requests allowed (quota)
+ * `remaining` is the `r` of `X-RateLimit`. `max` is the per-second rate of the
+ * strictest rate policy in `X-RateLimit-Policy`; a policy capping concurrent
+ * requests states a count, not a rate, and never sets it.
  */
 export function parseRateLimitHeaders(headers: any): RateLimitHeaders | null {
   if (!headers) {
@@ -154,11 +107,9 @@ export function parseRateLimitHeaders(headers: any): RateLimitHeaders | null {
   }
 
   // Parse max from X-RateLimit-Policy header
-  if (rateLimitPolicyHeader) {
-    const maxMatch = rateLimitPolicyHeader.match(/q=(\d+)/);
-    if (maxMatch) {
-      result.max = Number.parseInt(maxMatch[1], 10);
-    }
+  const max = parseRateLimitPolicy(rateLimitPolicyHeader);
+  if (max !== undefined) {
+    result.max = max;
   }
 
   return Object.keys(result).length > 0 ? result : null;

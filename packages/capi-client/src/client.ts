@@ -6,7 +6,12 @@ import type {
   StrategyFailure,
 } from "./utils/cache";
 import { createMemoryCacheProvider, createStrategy, isTransientStatus } from "./utils/cache";
-import { ClientError } from "./error";
+import { ClientError } from "@storyblok/utils/errors";
+import {
+  createErrorInterceptor,
+  createKyOptions,
+  withResponseFallbacks,
+} from "@storyblok/utils/http";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
 import { applyCvToQuery, extractCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
@@ -24,7 +29,7 @@ import {
 import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
 import type { Block as Component } from "./generated/types/block";
 import type { RetryOptions } from "ky";
-import type { Client, RequestOptions, ResolvedRequestOptions } from "./generated/capi/client";
+import type { Client, RequestOptions } from "./generated/capi/client";
 import { createStoriesResource } from "./resources/stories";
 import { createLinksResource } from "./resources/links";
 import { createTagsResource } from "./resources/tags";
@@ -338,75 +343,27 @@ export const createApiClientBase = <
   const tokenId = createTokenId(accessToken);
   const watermarksKey = versionsKey(tokenId);
 
+  const resolvedBaseUrl = baseUrl || getRegionBaseUrl(region);
+
   const client: Client = createClient(
     createConfig({
       auth: accessToken,
-      baseUrl: baseUrl || getRegionBaseUrl(region),
+      baseUrl: resolvedBaseUrl,
       headers,
       // Default serializer throws on nested objects; CAPI needs `filter_query`
       // serialized as a nested hash (`filter_query[field][op]=value`).
       querySerializer,
       throwOnError,
-      kyOptions: {
-        // Enable `throwHttpErrors` to make retry work, even if `throwOnError`
-        // is `false`. The client's error handling will still work because it
-        // catches `HTTPError`.
-        throwHttpErrors: true,
+      kyOptions: createKyOptions({
         timeout,
-        // Admission waits here, before ky starts the timeout clock: a queue
-        // longer than `timeout` must delay requests, not fail them.
-        hooks: { beforeRequest: [throttleManager.beforeRequest] },
         retry: retryOptions,
-        // `globalThis.fetch` is read per call so a fetch swapped in after the
-        // client was created still applies.
-        fetch: throttleManager.wrapFetch(
-          customFetch ?? ((input, init) => globalThis.fetch(input, init)),
-        ),
-      },
+        admission: throttleManager,
+        fetch: customFetch,
+      }),
     }),
   );
 
-  client.interceptors.error.use(
-    (
-      error: unknown,
-      response: Response | undefined,
-      _request: Request | undefined,
-      options: ResolvedRequestOptions,
-    ) => {
-      if (!response) {
-        // A transport failure only ever reaches the interceptor through the generated
-        // client's outer catch, which — unlike the HTTP-error path below — passes the
-        // options as given to this call, not merged with the client-level default. A
-        // call that relies on that default rather than overriding `throwOnError` itself
-        // would otherwise read as `undefined` here regardless of the effective value.
-        if (options.throwOnError ?? throwOnError) {
-          // No HTTP answer at all — a timeout, an abort, a DNS failure. This rejects as-is
-          // rather than being wrapped, so its name, message, and `instanceof` checks (e.g.
-          // `AbortError`) survive.
-          return error;
-        }
-
-        // Without `throwOnError` this resolves as `result.error`, which `ApiResponse`
-        // types as `ClientError`. Wrap it here to keep that contract accurate — unlike the
-        // rejection path, callers can't narrow a resolved value by `instanceof` before
-        // touching it, so it has to already be the declared shape. The original error
-        // stays reachable via `cause`.
-        return new ClientError("API request failed", {
-          status: 0,
-          statusText: "",
-          data: undefined,
-          cause: error,
-        });
-      }
-
-      return new ClientError(response.statusText || "API request failed", {
-        status: response.status,
-        statusText: response.statusText,
-        data: error,
-      });
-    },
-  );
-
+  client.interceptors.error.use(createErrorInterceptor(throwOnError));
   const security = [
     {
       in: "query" as const,
@@ -527,20 +484,6 @@ export const createApiClientBase = <
   };
 
   /**
-   * Builds a placeholder `Request` for a call that never got far enough to produce one
-   * — a malformed `baseUrl` fails here too, in which case a request pointing nowhere in
-   * particular still beats losing `result.error`, which carries the original, more
-   * useful message (including the full attempted request URL).
-   */
-  const createFallbackRequest = (): Request => {
-    try {
-      return new Request(baseUrl || getRegionBaseUrl(region));
-    } catch {
-      return new Request("about:blank");
-    }
-  };
-
-  /**
    * Wraps a raw SDK call to cast the `error: unknown` type returned by
    * generated code to `ClientError` — the error interceptor ensures the
    * runtime value IS a ClientError. Also keeps the public response contract
@@ -551,14 +494,9 @@ export const createApiClientBase = <
   const asApiResponse = <TData, ThrowOnError extends boolean = false>(
     p: Promise<unknown>,
   ): Promise<ApiResponse<TData, ThrowOnError>> =>
-    p.then((result) => {
-      const typedResult = result as ApiResponse<TData, ThrowOnError>;
-      return {
-        ...typedResult,
-        response: typedResult.response ?? Response.error(),
-        request: typedResult.request ?? createFallbackRequest(),
-      };
-    });
+    p.then((result) =>
+      withResponseFallbacks(result as ApiResponse<TData, ThrowOnError>, resolvedBaseUrl),
+    );
 
   const requestNetwork = (
     method: "GET",

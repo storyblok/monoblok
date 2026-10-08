@@ -3,6 +3,7 @@ import { basename, extname, join } from "pathe";
 import { Readable, Transform, Writable } from "node:stream";
 import type { Sema } from "async-sema";
 import { readdir, readFile, unlink } from "node:fs/promises";
+import { getAssetFilename } from "@storyblok/utils/local-files";
 import { appendToFile, fileExists, saveToFile } from "../../utils/filesystem";
 import { toError } from "../../utils/error/error";
 import type { RegionCode } from "../../constants";
@@ -47,7 +48,6 @@ import { createPipelineBackpressureLock } from "../../utils/backpressure-lock";
 import {
   extractAssetSizeFromFilename,
   getAssetBinaryFilename,
-  getAssetFilename,
   getFolderFilename,
   getSidecarFilename,
   isRemoteSource,

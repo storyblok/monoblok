@@ -1,10 +1,8 @@
+import { getComponentFilename } from "@storyblok/utils/local-files";
+
 import type { Component } from "./types";
 
 import { readLocalJsonFiles, writeLocalJsonFile } from "./local-utils";
-
-function getComponentFilename(component: Pick<Component, "name">): string {
-  return `${component.name}.json`;
-}
 
 export async function getLocalComponents(dir: string): Promise<Component[]> {
   return readLocalJsonFiles<Component>(dir);

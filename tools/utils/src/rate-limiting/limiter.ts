@@ -1,8 +1,3 @@
-// This file is duplicated verbatim in @storyblok/api-client and
-// @storyblok/management-api-client. The two copies must stay identical; apply
-// any change to both. It is intentionally not extracted into a shared package
-// so the two independently published clients keep no shared runtime dependency.
-
 import { createThrottle, type Throttle } from "./throttle";
 
 /**

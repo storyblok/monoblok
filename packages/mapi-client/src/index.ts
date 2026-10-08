@@ -17,8 +17,8 @@ export type {
   MapiResourceDeps,
   RequestConfigOverrides,
 } from "./client";
-export { ClientError } from "./error";
-export type { ApiErrorBody } from "./error";
+export { ClientError } from "@storyblok/utils/errors";
+export type { ApiErrorBody } from "@storyblok/utils/errors";
 
 // MAPI-only endpoint-specific types (raw SDK types).
 export type {
@@ -96,7 +96,7 @@ export type { StoryListQuery } from "./resources/stories";
 export { normalizeAssetUrl } from "./utils/normalize-asset-url";
 // Rate limit config
 export type { RateLimitConfig } from "./utils/rate-limit";
-export { createDefaultRateLimiter } from "./utils/limiter";
+export { createDefaultRateLimiter } from "@storyblok/utils/rate-limiting";
 export type {
   AdaptiveConfig,
   CacheAwareConfig,
@@ -104,4 +104,4 @@ export type {
   RateLimitContext,
   RateLimiter,
   RateLimitStatus,
-} from "./utils/limiter";
+} from "@storyblok/utils/rate-limiting";

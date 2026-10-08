@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
+import { slugifyPath } from "@storyblok/utils/strings";
 import type { SchemaBlockLike, SchemaFieldLike, SchemaLike } from "./shapes";
 import type { ValidationIssue, ValidationResult } from "./types";
 import {
@@ -9,7 +10,6 @@ import {
   zTableFieldValue,
 } from "./internal-schemas";
 import { isRecord, toValues } from "./shapes";
-import { slugifyFolderPath } from "../utils/slugify-folder-path";
 
 /** Field-content keys that are not user-defined fields. */
 const RESERVED_KEYS = new Set(["_uid", "component", "_editable"]);
@@ -476,12 +476,12 @@ function matchesRestriction(
   if (typeof blockFolder !== "string") {
     return false;
   }
-  const blockFolderSlug = slugifyFolderPath(blockFolder);
+  const blockFolderSlug = slugifyPath(blockFolder);
   return entries.some((entry) => {
     if (typeof entry === "string" || !("folder" in entry)) {
       return false;
     }
-    const entrySlug = slugifyFolderPath(entry.folder);
+    const entrySlug = slugifyPath(entry.folder);
     return blockFolderSlug === entrySlug || blockFolderSlug.startsWith(`${entrySlug}/`);
   });
 }

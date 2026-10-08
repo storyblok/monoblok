@@ -5,6 +5,7 @@ import { baseFieldName, isStoryRelationField } from "../content-fields";
 
 export type RefType = "multilink" | "richtext" | "relation";
 export type IssueType = "broken" | "unpublished" | "stale_url";
+export const ISSUE_TYPES: readonly IssueType[] = ["broken", "unpublished", "stale_url"];
 
 export interface RefEntry {
   targetUuid: string;

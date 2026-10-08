@@ -56,6 +56,7 @@ export const fetchStoriesStream = ({
   setTotalStories,
   setTotalPages,
   onIncrement,
+  onPageStart,
   onStoryListed,
   onPageSuccess,
   onPageError,
@@ -66,7 +67,13 @@ export const fetchStoriesStream = ({
   setTotalPages?: (totalPages: number) => void;
   /** Called once per fetched page, on success and on failure alike. */
   onIncrement?: () => void;
-  /** Called for every story the list endpoint yields, before it enters the pipeline. */
+  /** Called before each page is requested. */
+  onPageStart?: (page: number) => void;
+  /**
+   * Called for every story of a page as soon as the page arrives, before any of
+   * them enters the pipeline. The pipeline takes them as fast as the stage below
+   * can, so counting at the yield would report the listing at that stage's pace.
+   */
   onStoryListed?: (story: Story) => void;
   onPageSuccess?: (page: number, total: number) => void;
   onPageError?: (error: Error, page: number, total: number) => void;
@@ -80,6 +87,7 @@ export const fetchStoriesStream = ({
 
     while (page <= totalPages) {
       try {
+        onPageStart?.(page);
         const result = await fetchStories(spaceId, {
           ...params,
           per_page: perPage,
@@ -98,10 +106,12 @@ export const fetchStoriesStream = ({
         setTotalPages?.(totalPages);
         onPageSuccess?.(page, totalPages);
 
-        for (const story of result.stories) {
-          onStoryListed?.(story);
-          yield story;
+        if (onStoryListed) {
+          for (const story of result.stories) {
+            onStoryListed(story);
+          }
         }
+        yield* result.stories;
 
         page += 1;
       } catch (maybeError) {
@@ -122,6 +132,8 @@ export const fetchStoryStream = ({
   withListMetadata = false,
   signal,
   onIncrement,
+  onFetchStart,
+  onFetchSettled,
   onStorySuccess,
   onStoryError,
 }: {
@@ -137,6 +149,10 @@ export const fetchStoryStream = ({
   /** Cancels queued and in-flight fetches, including their rate-limit retries. */
   signal?: AbortSignal;
   onIncrement?: () => void;
+  /** Called as a story's fetch is sent, once it has a slot. */
+  onFetchStart?: () => void;
+  /** Called once a story's fetch has succeeded or failed, before it waits to be emitted. */
+  onFetchSettled?: () => void;
   onStorySuccess?: (story: Story) => void;
   onStoryError?: (error: Error, story: Story) => void;
 }) => {
@@ -150,6 +166,7 @@ export const fetchStoryStream = ({
       // Wait for a slot
       await getPipelineSlot().acquire();
 
+      onFetchStart?.();
       // `.catch` (not a second `.then` argument) so a throw in the success branch is reported too.
       const fetched = (
         signal?.aborted
@@ -167,7 +184,8 @@ export const fetchStoryStream = ({
         .catch((maybeError: unknown) => {
           onStoryError?.(toError(maybeError), listStory);
           return undefined;
-        });
+        })
+        .finally(() => onFetchSettled?.());
       // Never rejects: in ordered mode every later emit is chained onto this one.
       const emit = (story: Story | undefined): void => {
         if (!story) {

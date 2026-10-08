@@ -2,18 +2,26 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import {
   createCollectingSink,
-  createJsonlOutput,
   createPhaseTracker,
-  formatMark,
+  createResultOutput,
+  formatDuration,
   isDeliberateStop,
   isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
+import { renderRunSummary } from "../../../lib/ui";
 import { fetchComponents } from "../../components/pull/actions";
 import { applyClientFilters, resolveReferenceTargets } from "./actions";
+import { REF_ISSUE_COLUMNS } from "./columns";
 import { buildRelationFieldMap, detectIssues, extractReferences, toTargetMeta } from "./references";
 import type { IssueType, RefEntry, RefIssue, TargetMeta } from "./references";
-import { findPhases, contentSummary, listingSummary, stoppedEarlyMessage } from "./phases";
+import {
+  findPhases,
+  contentSummary,
+  listingSummary,
+  storiesCount,
+  stoppedEarlyMessage,
+} from "./phases";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -86,7 +94,7 @@ export async function runCheckReferences({
     `Loaded ${components.length} components (${relationFieldMap.size} with relation fields)`,
   );
 
-  const output = createJsonlOutput({ limit });
+  const output = createResultOutput({ columns: REF_ISSUE_COLUMNS, limit });
   const tracker = createPhaseTracker({
     ui,
     phases: findPhases({
@@ -104,6 +112,9 @@ export async function runCheckReferences({
   let stoppedByLimit = false;
   let checked = 0;
   let externalTargets = 0;
+  /** When the post-listing step began, which only the pipeline finishing starts. */
+  let resolveStartedAt: number | undefined;
+  const checking = tracker.phase("process");
 
   try {
     await runStoryPipeline({
@@ -129,7 +140,10 @@ export async function runCheckReferences({
       // until the whole scope has been listed, because deciding one needs the
       // *target's* current slug and publish state. This is the one mode of the
       // command that does not stream — see the emit below.
+      // Timed as part of the last stage: extracting references is the check,
+      // and the stage above it only passes stories through.
       sink: createCollectingSink<Story>((story) => {
+        checking.start();
         checked += 1;
         const refs = extractReferences(story, relationFieldMap);
         // A story with no references can never have a reference issue, so it is
@@ -138,6 +152,7 @@ export async function runCheckReferences({
         if (refs.length > 0) {
           candidates.push({ story, refs });
         }
+        checking.finish();
       }),
       signal: output.signal,
       logger,
@@ -145,6 +160,7 @@ export async function runCheckReferences({
     });
 
     tracker.stop();
+    resolveStartedAt = performance.now();
 
     const missingUuids = new Set<string>();
     for (const { refs } of candidates) {
@@ -203,6 +219,7 @@ export async function runCheckReferences({
   } finally {
     tracker.stop();
     output.close();
+    await output.flush();
 
     // Counted at the sink, so a story decided while an early stop tears the
     // pipeline down is not reported as a result nobody received.
@@ -212,10 +229,49 @@ export async function runCheckReferences({
     const capiFilter = tracker.counts("capiFilter");
     const content = tracker.counts("content");
     ui.br();
-    ui.info(
-      `Results: ${matched} stories with reference issues (${checked} checked, ${externalTargets} external targets resolved)`,
-    );
+    for (const line of renderRunSummary({
+      headline: `Found ${storiesCount(matched)} with reference issues`,
+      duration: formatDuration(tracker.elapsedMs()),
+      failed: list.failed > 0,
+      qualifier: list.failed > 0 ? "incomplete, part of the space could not be listed" : undefined,
+      stages: [
+        listingSummary(tracker),
+        capi
+          ? {
+              label: "CAPI content",
+              result: `${capiFilter.candidates} read`,
+              notes: [
+                {
+                  count: capiFilter.failed,
+                  text: ["batch failed", "batches failed"],
+                  failure: true,
+                },
+              ],
+              duration: tracker.phase("capiFilter").duration(),
+            }
+          : contentSummary(tracker),
+        {
+          label: "Checking references",
+          result: `${checked} checked`,
+          notes: [{ count: candidates.length, text: "with references" }],
+          duration: tracker.phase("process").duration(),
+        },
+        {
+          label: "Resolving targets",
+          result: `${externalTargets} external`,
+          duration: formatDuration(
+            resolveStartedAt === undefined ? 0 : performance.now() - resolveStartedAt,
+          ),
+        },
+      ],
+    })) {
+      ui.log(line);
+    }
 
+    // Printed under the summary, so they are not lost above it.
+    if (earlyExit || (capi && capiFilter.unresolved > 0)) {
+      ui.br();
+    }
     if (earlyExit) {
       ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined));
     }
@@ -230,15 +286,6 @@ export async function runCheckReferences({
           "Drop --capi-filter to read every story from MAPI instead.",
       );
     }
-
-    ui.list([
-      listingSummary(tracker),
-      capi
-        ? `Reading content via CAPI: ${capiFilter.candidates}/${capiFilter.total} resolved, ${capiFilter.unresolved} without content, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`
-        : contentSummary(tracker),
-      `Checking references: ${checked} checked, ${candidates.length} with references, ${matched} with issues. (${tracker.phase("process").mark()})`,
-      `Resolving + detecting: ${externalTargets} external targets. (${formatMark(tracker.elapsedMs())})`,
-    ]);
 
     const timings = tracker.timings();
     reporter.addMeta("phaseTimingsMs", { ...timings, total: tracker.elapsedMs() });

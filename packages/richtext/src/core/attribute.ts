@@ -1,5 +1,5 @@
 import { NODE_RENDER_MAP } from "../generated/render-map.generated";
-import { isValidStyleValue, stringToStyle } from "./style";
+import { isValidStyleValue, stringToStyle, styleToString } from "./style";
 import type { StoryblokRichTextElement } from "./types";
 
 type StyleMap = Partial<{
@@ -232,6 +232,37 @@ export function processAttrs(
     ...rest,
     ...(Object.keys(style).length > 0 && { style }),
   };
+}
+
+/**
+ * Resolves a node's or mark's attributes into the attributes of its rendered
+ * element: {@link processAttrs} with `colspan`/`rowspan` kept as-is, and the
+ * `style` object serialized to a CSS string.
+ *
+ * Framework renderers use this to spread attributes onto an element; use
+ * `attrsToHtmlString` on the result to get an HTML attribute string.
+ *
+ * @param type - {@link StoryblokRichTextElement}
+ * @param attrs - Attributes from the node/mark
+ * @returns Element attributes, with `style` as a CSS string if present
+ * @example
+ * buildRenderAttrs("paragraph", { textAlign: "center" });
+ * // { style: "text-align: center;" }
+ */
+export function buildRenderAttrs(
+  type: StoryblokRichTextElement,
+  attrs: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  const renderAttrs = processAttrs(type, attrs, {
+    colspan: "colspan",
+    rowspan: "rowspan",
+  });
+
+  if (renderAttrs.style) {
+    renderAttrs.style = styleToString(renderAttrs.style as Record<string, unknown>);
+  }
+
+  return renderAttrs;
 }
 
 /**

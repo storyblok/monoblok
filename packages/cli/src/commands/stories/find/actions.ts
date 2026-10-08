@@ -12,6 +12,7 @@ import { ISSUE_TYPES, toTargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
 import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
 import { parseCapiParams } from "./capi";
+import { isInDateRange, parseDateRange } from "./date-range";
 
 /**
  * One UUID in the canonical form, per RFC 4122 and RFC 9562.
@@ -239,6 +240,7 @@ export function parseIssueTypes(raw: string | boolean | undefined): Set<IssueTyp
 export function buildQueryParams(
   text: string | undefined,
   options: FindOptions,
+  now: Date = new Date(),
 ): StoriesQueryParams {
   // Without it the listing returns `stages: null`. Undeclared in the API spec, hence the widened type.
   const params: StoriesQueryParams & { with_stages?: boolean } = { with_stages: true };
@@ -286,6 +288,21 @@ export function buildQueryParams(
     Object.assign(params, publishStatusToQueryParams(options.publishStatus));
   }
 
+  // The one story date the API filters on. It only lists stories with a
+  // pending schedule, and both bounds are inclusive, like every date flag.
+  if (options.scheduled !== undefined) {
+    const { from, to } = parseDateRange("--scheduled", options.scheduled, {
+      now,
+      direction: "future",
+    });
+    if (from) {
+      params.scheduled_at_gt = from.toISOString();
+    }
+    if (to) {
+      params.scheduled_at_lt = to.toISOString();
+    }
+  }
+
   // Ordering is the server's job: it decides which stories are on the first
   // page, so it has to be applied before the walk rather than to the results.
   // An unsortable column is rejected by the API, which is the only place that
@@ -330,6 +347,33 @@ export function buildPublishStatusFilters(options: FindOptions): ClientFilter[] 
     return [];
   }
   return [(story) => matchesPublishStatus(story, status)];
+}
+
+/** The date flags the API cannot filter on, and the story field each one reads. */
+const DATE_FILTERS = [
+  { flag: "--created", option: "created", field: "created_at" },
+  { flag: "--updated", option: "updated", field: "updated_at" },
+  { flag: "--published", option: "published", field: "published_at" },
+  { flag: "--first-published", option: "firstPublished", field: "first_published_at" },
+] as const;
+
+/**
+ * `--created`, `--updated`, `--published` and `--first-published`.
+ *
+ * The story listing filters on none of these dates, but carries all of them, so
+ * like the client-side half of `--publish-status` they run as
+ * `preContentFilters`: a story outside the range costs nothing beyond the page
+ * it was listed on.
+ */
+export function buildDateFilters(options: FindOptions, now: Date = new Date()): ClientFilter[] {
+  return DATE_FILTERS.flatMap(({ flag, option, field }) => {
+    const raw = options[option];
+    if (raw === undefined) {
+      return [];
+    }
+    const range = parseDateRange(flag, raw, { now, direction: "past" });
+    return [(story: Story) => isInDateRange(story[field], range)];
+  });
 }
 
 /**

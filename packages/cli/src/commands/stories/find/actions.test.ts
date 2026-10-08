@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assertSupportedOptions,
+  buildDateFilters,
   buildQueryParams,
   buildWhereFilters,
   parseIssueTypes,
@@ -336,6 +337,70 @@ describe("the server-side scope filters", () => {
     expect(params.with_tag).toBeUndefined();
     expect(params.in_workflow_stages).toBeUndefined();
     expect(params.sort_by).toBeUndefined();
+  });
+});
+
+describe("--scheduled", () => {
+  const NOW = new Date("2026-03-31T12:00:00.000Z");
+
+  it("should hand the range to the API, counting a bare duration forward", () => {
+    const params = buildQueryParams(undefined, options({ scheduled: "7d" }), NOW);
+    expect(params.scheduled_at_gt).toBe("2026-03-31T12:00:00.000Z");
+    expect(params.scheduled_at_lt).toBe("2026-04-07T12:00:00.000Z");
+  });
+
+  it("should send only the bound that was given", () => {
+    const params = buildQueryParams(undefined, options({ scheduled: "2026-04-01.." }), NOW);
+    expect(params.scheduled_at_gt).toBe("2026-04-01T00:00:00.000Z");
+    expect(params).not.toHaveProperty("scheduled_at_lt");
+  });
+
+  it("should reject a malformed range before any request", () => {
+    expect(() => buildQueryParams(undefined, options({ scheduled: "soon" }), NOW)).toThrow(
+      /--scheduled expects/,
+    );
+  });
+});
+
+describe("buildDateFilters", () => {
+  const NOW = new Date("2026-03-31T12:00:00.000Z");
+  const dated = (fields: Partial<Story>): Story => ({ id: 1, ...fields }) as Story;
+
+  it("should build no filter without a date flag", () => {
+    expect(buildDateFilters(options(), NOW)).toEqual([]);
+  });
+
+  it.each([
+    ["created", "created_at"],
+    ["updated", "updated_at"],
+    ["published", "published_at"],
+    ["firstPublished", "first_published_at"],
+  ] as const)("should filter --%s on %s", (option, field) => {
+    const [filter] = buildDateFilters(options({ [option]: "2024-06" }), NOW);
+    expect(filter(dated({ [field]: "2024-06-10T08:00:00.000Z" }))).toBe(true);
+    expect(filter(dated({ [field]: "2024-07-10T08:00:00.000Z" }))).toBe(false);
+  });
+
+  it("should combine several date flags with AND", () => {
+    const filters = buildDateFilters(options({ created: "2024", updated: "7d" }), NOW);
+    const match = (story: Story) => filters.every((filter) => filter(story));
+    expect(
+      match(dated({ created_at: "2024-05-01T00:00:00Z", updated_at: "2026-03-30T00:00:00Z" })),
+    ).toBe(true);
+    expect(
+      match(dated({ created_at: "2023-05-01T00:00:00Z", updated_at: "2026-03-30T00:00:00Z" })),
+    ).toBe(false);
+  });
+
+  it("should never match a story that was never published", () => {
+    const [filter] = buildDateFilters(options({ published: "..now" }), NOW);
+    expect(filter(dated({ published_at: null }))).toBe(false);
+  });
+
+  it("should name the flag in a usage error", () => {
+    expect(() => buildDateFilters(options({ firstPublished: "Q3" }), NOW)).toThrow(
+      /--first-published expects/,
+    );
   });
 });
 

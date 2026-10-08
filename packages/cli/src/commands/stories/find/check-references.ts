@@ -35,7 +35,7 @@ type ReferenceCandidate = {
 export async function runCheckReferences({
   spaceId,
   params,
-  publishStatusFilters,
+  preContentFilters,
   whereFilters,
   issueTypes,
   limit,
@@ -45,7 +45,8 @@ export async function runCheckReferences({
   reporter,
   verbose,
 }: FindContext & {
-  publishStatusFilters: ClientFilter[];
+  /** Filters decidable from list metadata: publish status and story dates. */
+  preContentFilters: ClientFilter[];
   whereFilters: ClientFilter[];
   /** The issue types to report; a story with none of them is left out. */
   issueTypes: Set<IssueType>;
@@ -120,9 +121,9 @@ export async function runCheckReferences({
     await runStoryPipeline({
       spaceId,
       params,
-      // Publish status is decidable from list metadata, so it narrows before the
-      // content fetch. `--where` runs after enrichment so it can match `_ref_issues`.
-      preContentFilters: publishStatusFilters,
+      // Publish status and dates are decidable from list metadata, so they narrow
+      // before the content fetch. `--where` runs after enrichment so it can match `_ref_issues`.
+      preContentFilters,
       filters: [],
       tracker,
       capi,

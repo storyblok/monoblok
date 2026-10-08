@@ -269,6 +269,52 @@ describe("stories find command", () => {
     expect(process.exitCode).toBeFalsy();
   });
 
+  // The listing carries every story date, so a story outside the range must
+  // never cost a content fetch.
+  it("should filter on a date flag before fetching any content", async () => {
+    const [inRange, outOfRange] = preconditions.canFindStories(2);
+    Object.assign(inRange, { updated_at: "2024-06-10T08:00:00.000Z" });
+    Object.assign(outOfRange, { updated_at: "2024-07-10T08:00:00.000Z" });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+    const fetched: string[] = [];
+    const recordFetch = ({ request }: { request: Request }): void => {
+      fetched.push(new URL(request.url).pathname);
+    };
+    server.events.on("request:start", recordFetch);
+
+    try {
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "find",
+        "--space",
+        "12345",
+        "--updated",
+        "2024-06",
+      ]);
+    } finally {
+      server.events.removeListener("request:start", recordFetch);
+    }
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual([inRange.id]);
+    expect(fetched).not.toContain(`/v1/spaces/12345/stories/${outOfRange.id}`);
+  });
+
+  it("should reject a malformed date range before any request", async () => {
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--created",
+      "last week",
+    ]);
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain("--created expects");
+  });
+
   it("should reject an unknown --query operation before any request", async () => {
     await storiesCommand.parseAsync([
       "node",

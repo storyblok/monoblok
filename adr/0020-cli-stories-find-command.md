@@ -63,12 +63,13 @@ jq, AWS CLI, or Kubernetes. The flag is repeatable; multiple expressions compose
 earlier design had a `--translation-status <missing|stale|unpublished|complete>` enum; it was
 dropped because each value is one JSONPath expression over the `translated_stories` metadata the
 response already carries, and the enum baked in aggregation rules (ANY for problems, ALL for
-completeness) that users could not adjust. The same reasoning keeps date-range, author, and tag
-filters out of the flag surface.
+completeness) that users could not adjust. The same reasoning keeps author filters out of the flag
+surface.
 
-The exception is a filter the server can push down (`--includes-block`, `--container-block`,
-`--starts-with`, `--query`, `--references`, `--publish-status`): those earn a flag because they
-change what is fetched, not just what is kept.
+The exception is a filter that changes what is fetched, not just what is kept: one the server can
+push down (`--includes-block`, `--container-block`, `--starts-with`, `--query`, `--references`,
+`--tag`, `--workflow-stage`, `--scheduled`), or one decided from list metadata before the content
+fetch (`--publish-status`, the date flags in decision 8).
 
 ### 5. `--check-references` as a client-side scan
 
@@ -105,6 +106,34 @@ The one collision that _is_ observable is stdout being a terminal, which puts th
 bars on the same screen with certainty rather than by guess. Progress rendering is dropped for those
 runs; text output on stderr, which scrolls rather than redraws, stays. Everything else is left to
 the user, who knows what is downstream: `2>/dev/null`, or the global `--no-ui-enabled`.
+
+### 8. Date filters as one range flag per story date
+
+An earlier position kept date ranges in `--where`. That turned out to cost more than it saved:
+
+- **A `--where` runs after the content fetch.** A date answer is on the listing, but
+  `--where "$[?($.updated_at > '2025-01-01')]"` still fetches every story in scope unless the user
+  knows to add `--skip-content`. A date flag runs as a pre-content filter, next to the client half
+  of `--publish-status`, so a story outside the range costs nothing beyond its listing page.
+- **The questions people ask are relative.** "Touched this week" needs today's date computed in the
+  shell, and string comparison on ISO timestamps silently gets inclusive upper bounds wrong:
+  `<= '2025-06-30'` excludes everything on the 30th.
+
+`--created`, `--updated`, `--published`, and `--first-published` filter on the matching list fields
+in the CLI. The Management API listing filters on none of them. `--scheduled` is the one date it
+does filter on, so that flag is pushed down instead.
+
+Each flag takes a single range rather than a `--*-since`/`--*-until` pair, which keeps five flags
+rather than ten. The syntax follows GitHub search's `a..b`, and avoids `>=`, which an unquoted shell
+argument turns into a redirect. A bare value is a duration (`7d`, "within the last 7 days") or a
+calendar period (`2024-06`, "that whole month"). Both ends of a range are inclusive, and widened to
+the precision they are written at. Dates without an offset are UTC, the zone the API reports in, so
+a range reads the same as the output on any machine; local time would make `--updated 2024-06-15`
+mean a different window on a laptop and in CI. Durations under `--scheduled` count forward, because
+a pending schedule is always ahead. A story without the date never matches. A malformed or inverted
+range is a usage error before the first request.
+
+`sort_by_date`, an editor-set date, gets no flag: it is rarely filtered on, and `--where` covers it.
 
 ## Alternatives Considered
 

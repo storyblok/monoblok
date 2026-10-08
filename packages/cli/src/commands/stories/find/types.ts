@@ -17,6 +17,12 @@ export interface FindOptions {
   tag?: string;
   workflowStage?: string;
   publishStatus?: PublishStatus;
+  /** Date ranges, as `parseDateRange` reads them. */
+  created?: string;
+  updated?: string;
+  published?: string;
+  firstPublished?: string;
+  scheduled?: string;
   sort?: string;
   limit?: string;
   references?: string;

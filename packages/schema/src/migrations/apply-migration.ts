@@ -1,16 +1,12 @@
 /**
  * Applies one content migration across a set of stories and reports what should
- * be written, without writing anything itself. Keeping the decision separate
- * from the I/O is what lets a dry run be the same code path minus the write:
- * there is no dry-run branch here, so a dry run and a real run cannot disagree
- * about what a migration does.
+ * be written.
  */
 import type { CompiledMigration } from "./define-migration";
 import { type MigrationRun, type PublishState, runId, type StoryInverse } from "./journal";
 import { runMigrationOnStory } from "./runner";
 import { isRecord } from "../utils/is-record";
 
-/** The fields of a Management API story a migration reads. */
 export type StoryForMigration = {
   id: number;
   slug: string;

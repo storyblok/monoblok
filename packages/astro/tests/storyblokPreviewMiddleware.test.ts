@@ -5,7 +5,7 @@ const EDITOR_URL =
   "https://example.com/?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789";
 
 function next() {
-  return new Response(null);
+  return Promise.resolve(new Response(null));
 }
 
 describe("storyblokPreviewMiddleware", () => {

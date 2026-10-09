@@ -1,0 +1,71 @@
+{
+  "name": "@storyblok/accessibility-checker",
+  "version": "0.0.0",
+  "private": false,
+  "description": "Accessibility checks for the Storyblok Visual Editor",
+  "keywords": [
+    "a11y",
+    "accessibility",
+    "axe",
+    "storyblok",
+    "visual-editor"
+  ],
+  "homepage": "https://github.com/storyblok/monoblok/tree/main/packages/accessibility-checker#readme",
+  "bugs": {
+    "url": "https://github.com/storyblok/monoblok/issues"
+  },
+  "license": "MIT",
+  "author": "Storyblok",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storyblok/monoblok.git",
+    "directory": "packages/accessibility-checker"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "play": "pnpm --filter ./playground dev",
+    "test": "vp test run",
+    "test:watch": "vp test",
+    "test:ui": "vp test --ui",
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test:coverage": "vp test run --coverage",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "axe-core": "^4.14.0"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "jsdom": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "implicitDependencies": [
+      "!@storyblok/playground-accessibility-checker"
+    ]
+  }
+}

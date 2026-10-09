@@ -3,6 +3,7 @@ import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { defineStoryblokBlocks } from "../src/define-storyblok-blocks";
 import Teaser from "./block-fixtures/Teaser.astro";
 import Hero from "./block-fixtures/Hero.astro";
+import ExtraPropsEcho from "./block-fixtures/ExtraPropsEcho.astro";
 
 describe("defineStoryblokBlocks", () => {
   it("registers components and returns a StoryblokBlock component", () => {
@@ -58,5 +59,25 @@ describe("defineStoryblokBlocks", () => {
     });
 
     expect(result).toContain("Teaser");
+  });
+
+  it("forwards extra props named `components` or `fallback` instead of letting the registry clobber them", async () => {
+    type ExtraComponentProps = { components: string; fallback: string };
+
+    const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>({
+      components: { echo: ExtraPropsEcho },
+    });
+
+    const container = await AstroContainer.create();
+    const result = await container.renderToString(StoryblokBlock, {
+      props: {
+        block: { component: "echo" },
+        components: "user-value",
+        fallback: "user-fallback",
+      },
+    });
+
+    expect(result).toContain("components&quot;:&quot;user-value");
+    expect(result).toContain("fallback&quot;:&quot;user-fallback");
   });
 });

@@ -4,7 +4,11 @@
  */
 import type { Block, BlockContent } from "../index";
 
-/** The `blocks`/`fieldPlugins` members of a `Schema<typeof schema>`. */
+/**
+ * The `blocks`/`fieldPlugins` members of a `Schema<typeof schema>`. Not
+ * `Schema<SchemaConfig>`: a concrete `Schema<typeof schema>` is not assignable
+ * to it, because `Schema` is invariant in its config.
+ */
 export interface SchemaShape {
   blocks: Block;
   fieldPlugins: unknown;

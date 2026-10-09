@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/astro</h1>
  <p>
-     The Astro SDK to interact with <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guides/astro/visual-preview#enable-live-preview-in-the-visual-editor" target="_blank">Real-time Visual Editing Experience</a>.
+     Block registry, Visual Editor middleware, and Live Preview DOM bridge for rendering <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok</a> content in Astro.
   </p>
   <br />
 </div>
@@ -29,14 +29,22 @@
 
 ## Features
 
-- Fetch content from the Content Delivery API
-- Connect frontend components with the Visual Editor via StoryblokBridge
-- Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
-- `StoryblokComponent` for dynamic component rendering
+- Independent, closure-scoped block registries via `defineStoryblokBlocks({ components, fallback })`
+  — call it more than once for separate registries that never share state
+- `StoryblokBlock` for rendering single or nested blocks
 - Visual Editor integration using `storyblokEditable`
-- Real-time preview capability using `getLiveStory`
+- Real-time Live Preview via `storyblokPreviewMiddleware`, `getPayload`, and `StoryblokPreview`
+- Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Built-in TypeScript support with comprehensive type definitions
 - SSR/SSG compatibility for Astro applications
+
+## Usage
+
+```bash
+pnpm add @storyblok/astro
+```
+
+`astro` is a peer dependency.
 
 ## Documentation
 

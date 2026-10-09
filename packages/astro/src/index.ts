@@ -1,29 +1,134 @@
-import storyblokIntegration from "./lib/storyblok-integration";
+import type { BridgeParams } from "@storyblok/live-preview";
+import RawStoryblokPreview from "./components/StoryblokPreview.astro";
+import RawStoryblokRichText from "./components/StoryblokRichText.astro";
+import RawStoryblokServerData from "./components/StoryblokServerData.astro";
+import type { StoryblokAstroRichTextComponentMap } from "./richtext-helpers";
+import type { StoryblokRichTextImageOptions, StoryblokRichTextInput } from "@storyblok/richtext";
 
-export { getLiveStory, getPayload, useStoryblokApi } from "./lib/helpers";
+export { defineStoryblokBlocks } from "./define-storyblok-blocks";
+export { storyblokPreviewMiddleware } from "./live-preview/middleware";
+export { getPayload } from "./get-payload";
+export { storyblokEditable, isInEditor } from "@storyblok/live-preview";
+export type { BridgeParams } from "@storyblok/live-preview";
+export { sanitizeJSON } from "./sanitize-json";
 
-export { sanitizeJSON } from "./lib/sanitizeJSON";
-export type { IntegrationOptions } from "./lib/storyblok-integration";
-export { handleStoryblokMessage } from "./live-preview/handleStoryblokMessage";
-export * from "./types";
-export { isEditorRequest } from "./utils/isEditorRequest";
+/**
+ * Reloads the page on save/publish from the Visual Editor. Pass
+ * `liveUpdate` to also morph the DOM live as the editor types.
+ *
+ * @example
+ * ```astro
+ * ---
+ * import { StoryblokPreview } from '@storyblok/astro';
+ * ---
+ *
+ *   <StoryblokPreview />
+ * ```
+ *
+ * @example Live DOM morphing, custom debounce, and Preview Bridge options
+ * ```astro
+ * ---
+ * import { StoryblokPreview } from '@storyblok/astro';
+ * ---
+ *
+ * <StoryblokPreview
+ *   liveUpdate
+ *   debounceMs={200}
+ *   bridgeOptions={{ resolveRelations: ['featured.articles'] }}
+ * />
+ * ```
+ */
+// Inlined (not cast through `StoryblokPreviewProps`) so hovers show the
+// real props instead of just the type name. Keep both in sync.
+export const StoryblokPreview = RawStoryblokPreview as (props: {
+  bridgeOptions?: BridgeParams;
+  /** Debounce delay for consecutive input events. Defaults to 500ms. */
+  debounceMs?: number;
+  /**
+   * Morphs the DOM as the editor types (`input` events), in addition to
+   * reloading the page on save/publish. Defaults to `false`: the page only
+   * reloads on save/publish, with no live DOM morphing.
+   */
+  liveUpdate?: boolean;
+}) => any;
+
+/**
+ * Passes server-side data to the client so it survives Live Preview updates.
+ * Props are serialized as JSON (sanitized against XSS) and read back with
+ * {@link getPayload}.
+ *
+ * @example
+ * ```astro
+ * ---
+ * import { StoryblokServerData } from '@storyblok/astro';
+ * const users = await getUsers();
+ * ---
+ *
+ * <StoryblokServerData users={users} />
+ * ```
+ */
+export const StoryblokServerData = RawStoryblokServerData as (
+  props: Record<string, unknown>,
+) => any;
+
+/**
+ * Renders a Storyblok rich text field.
+ *
+ * @example Basic
+ * ```astro
+ * ---
+ * import { StoryblokRichText } from '@storyblok/astro';
+ * ---
+ *
+ * <StoryblokRichText document={block.text} />
+ * ```
+ *
+ * @example Advanced — custom renderers, image optimization, and extra data
+ * ```astro
+ * ---
+ * import { StoryblokRichText } from '@storyblok/astro';
+ * import Heading from '~/components/richtext/Heading.astro';
+ * import Bold from '~/components/richtext/Bold.astro';
+ * ---
+ *
+ * <StoryblokRichText
+ *   document={block.text}
+ *   components={{ heading: Heading, bold: Bold }}
+ *   optimizeImage={{ width: 800 }}
+ *   data={{ locale: Astro.currentLocale }}
+ * />
+ * ```
+ */
+// Inlined (not cast through `StoryblokRichTextComponentProps`) so hovers show
+// the real props instead of just the type name. Keep both in sync.
+export const StoryblokRichText = RawStoryblokRichText as (props: {
+  document: StoryblokRichTextInput;
+  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  components?: StoryblokAstroRichTextComponentMap;
+  data?: unknown;
+}) => any;
+
+export type {
+  DefineStoryblokBlocksOptions,
+  DefineStoryblokBlocksResult,
+  StoryblokBlockComponent,
+  StoryblokBlockComponentProps,
+  StoryblokBlockData,
+  StoryblokBlockProps,
+  StoryblokComponentMap,
+  StoryblokEditableProps,
+  StoryblokPreviewProps,
+} from "./types";
+
 export {
   buildAstroAttrs,
   isValidAstroComponent,
   type StoryblokAstroRichTextComponentMap,
   type StoryblokAstroRichTextProps,
   type StoryblokAstroRichTextRenderContext,
-} from "./utils/richtext-helpers";
-
-// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
-export {
-  type SbAstroRichTextComponentMap,
-  type SbAstroRichTextProps,
-  type SbAstroRichTextRenderContext,
-} from "./utils/richtext-helpers";
-export { toCamelCase } from "./utils/toCamelCase";
-export { storyblokIntegration as storyblok };
-export { apiPlugin, loadStoryblokBridge, storyblokEditable, storyblokInit } from "@storyblok/js";
+  type StoryblokRichTextComponent,
+  type StoryblokRichTextComponentProps,
+} from "./richtext-helpers";
 
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 
@@ -37,20 +142,6 @@ export type {
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from "@storyblok/richtext";
-
-// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
-export type {
-  RenderSpec,
-  SbRichTextDoc,
-  SbRichTextElement,
-  SbRichTextImageOptions,
-  SbRichTextInput,
-  SbRichTextMark,
-  SbRichTextNode,
-  SbRichTextProps,
-  SbRichTextRenderContext,
-  SbRichTextTextNode,
 } from "@storyblok/richtext";
 
 // Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.astro component.

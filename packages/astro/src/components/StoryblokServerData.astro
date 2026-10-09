@@ -1,26 +1,5 @@
 ---
-/**
- * StoryblokServerData Component
- *
- * Pass server-side data to the client that persists across live preview updates.
- * All props passed to this component will be serialized as JSON and available
- * to the client via the extraData parameter in getLiveStory().
- *
- * Data is automatically sanitized to prevent XSS attacks and script injection.
- *
- * @example
- * ```astro
- * ---
- * import { StoryblokServerData } from '@storyblok/astro';
- * const users = await getUsers();
- * const config = { apiUrl: 'https://api.example.com' };
- * ---
- *
- * <StoryblokServerData users={users} config={config} />
- * ```
- */
-
-import { sanitizeJSON } from '../';
+import { sanitizeJSON } from "../sanitize-json";
 
 const props = Astro.props;
 const safeJson = sanitizeJSON(props);

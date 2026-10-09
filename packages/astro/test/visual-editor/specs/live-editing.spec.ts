@@ -5,7 +5,7 @@ import { QA_CONFIG } from "../qa.config";
 const SEEDED_HEADLINE = "QA teaser headline";
 
 // Only what the real editor can exercise. Everything the playground renders
-// standalone belongs in the Cypress suite (`pnpm --filter @storyblok/astro cy:run`).
+// standalone belongs in the e2e suite (`pnpm --filter @storyblok/astro pw:run`).
 //
 // The story under test is `home`, served by `playground/ssr`'s `[...slug].astro`
 // with `livePreview: true`: the bridge's `input` event POSTs the story back to
@@ -101,19 +101,48 @@ test.describe("the Visual Editor live-updates the SSR playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText(resumed, { timeout: 30_000 });
   });
 
-  test("the disable meta tag suppresses live updates", async ({ page, request }) => {
+  test("skipping <StoryblokPreview /> suppresses live updates", async ({ page, request }) => {
     const editor = new StoryblokEditor(page, QA_CONFIG);
-    // `[...slug].astro` renders <meta name="storyblok-live-preview"
-    // content="disabled"> for this slug.
+    // `[...slug].astro` does not render <StoryblokPreview /> for this slug, so
+    // no bridge ever loads on the page. `selectBlock`'s iframe click depends on
+    // the bridge's own click handler to switch the editor's form panel, which
+    // doesn't exist here — so this opens the teaser's form directly via the
+    // sidebar's block-list fold-toggle instead, which is the editor's own UI
+    // and needs no bridge at all.
     await editor.openStory(await resolveStoryId(QA_CONFIG, request, "test"));
     const teaser = editor.block("teaser-test-1");
     await expect(teaser).toContainText("Live preview disabled teaser", { timeout: 60_000 });
 
-    await editor.selectBlock("teaser-test-1", "headline");
-    await editor.textField("headline").fill("should not appear");
+    const headline = editor.textField("headline");
+    await page.locator('[data-testid="field-type-bloks-fold-toggle-teaser-test-1"]').click();
+    await expect
+      .poll(() => headline.getAttribute("id"), { timeout: 10_000 })
+      .toContain("teaser-test-1");
+
+    await headline.fill("should not appear");
     await page.waitForTimeout(6000);
     await expect(teaser).toContainText("Live preview disabled teaser");
     await expect(teaser).not.toContainText("should not appear");
+  });
+
+  test("<StoryblokPreview /> without liveUpdate suppresses live updates", async ({
+    page,
+    request,
+  }) => {
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    // `playground/ssr/src/pages/about-us.astro` is a dedicated route that renders
+    // <StoryblokPreview /> without `liveUpdate`: the `input` callback never morphs
+    // the DOM. The companion reload-on-save assertion lives below, in the
+    // describe block that mutates the space.
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "about-us"));
+    const teaser = editor.block("teaser-about-us-1");
+    await expect(teaser).toContainText("Reload-only teaser", { timeout: 60_000 });
+
+    await editor.selectBlock("teaser-about-us-1", "headline");
+    await editor.textField("headline").fill("should not appear live");
+    await page.waitForTimeout(6000);
+    await expect(teaser).toContainText("Reload-only teaser");
+    await expect(teaser).not.toContainText("should not appear live");
   });
 });
 
@@ -135,6 +164,28 @@ test.describe("saving and publishing re-render the preview", () => {
 
     await expect(editor.block("teaser-home-1")).toContainText(saved, { timeout: 60_000 });
     await expect(editor.block("teaser-home-1")).not.toContainText(SEEDED_HEADLINE);
+  });
+
+  test("save reloads a liveUpdate-less preview, proving the bridge stayed attached", async ({
+    page,
+    request,
+  }) => {
+    const editor = new StoryblokEditor(page, QA_CONFIG);
+    await editor.openStory(await resolveStoryId(QA_CONFIG, request, "about-us"));
+    await expect(editor.block("teaser-about-us-1")).toContainText("Reload-only teaser", {
+      timeout: 60_000,
+    });
+
+    await editor.selectBlock("teaser-about-us-1", "headline");
+    const saved = "Reload-only teaser saved";
+    await editor.textField("headline").fill(saved);
+    // The default `<StoryblokPreview />` (no `liveUpdate`) never morphs the DOM
+    // on `input`, so this would otherwise time out whether `save()`'s reload
+    // works or not. Asserting the reloaded content, not just its presence,
+    // rules out a dead reload path being masked by a stale render.
+    await editor.save();
+
+    await expect(editor.block("teaser-about-us-1")).toContainText(saved, { timeout: 60_000 });
   });
 
   test("publish reloads the preview with the published content", async ({ page, request }) => {

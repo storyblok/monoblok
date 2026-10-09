@@ -6,14 +6,12 @@ import {
   getStaticChildren,
   hasContent,
 } from '../../';
-import StoryblokComponent from '../StoryblokComponent.astro';
 import RenderChildren from './RenderChildren.astro';
 import ElementTag from './ElementTag.astro';
 import RenderImage from './RenderImage.astro';
 import RenderStaticChildren from './RenderStaticChildren.astro';
 import RenderTable from './RenderTable.astro';
 import RenderTextNodeWithMarks from './RenderTextNodeWithMarks.astro';
-import type { SbBlokData } from '../../';
 
 interface Props {
   node: StoryblokRichTextNode;
@@ -28,6 +26,13 @@ const Custom = components ? components[node.type] : undefined;
 const contextForCustom = Custom
   ? { ...options, components: { ...components, [node.type]: undefined } }
   : options;
+
+if (node.type === 'blok' && !isValidAstroComponent(Custom)) {
+  // Mirrors `@storyblok/richtext`'s `renderRichText`: a `blok` node has no
+  // generic HTML representation, so it always needs a renderer supplied
+  // through `components.blok` — there's nothing sensible to fall back to.
+  console.warn('"blok" nodes require a custom renderer passed through `components.blok`.');
+}
 ---
 
 {
@@ -41,17 +46,7 @@ const contextForCustom = Custom
     <RenderTextNodeWithMarks node={node} marks={node.marks} options={options} />
   ) : node.type === 'image' ? (
     <RenderImage node={node} options={options} />
-  ) : node.type === 'blok' ? (
-    <Fragment>
-      {Array.isArray(node.attrs?.body) &&
-        node.attrs.body.map((blok, index) => (
-          <StoryblokComponent
-            blok={blok as SbBlokData}
-            key={blok._uid || index}
-          />
-        ))}
-    </Fragment>
-  ) : node.type === 'table' ? (
+  ) : node.type === 'blok' ? null : node.type === 'table' ? (
     <RenderTable node={node} options={options} />
   ) : node.type === 'emoji' ? (
     <ElementTag node={node}>{node.attrs.emoji}</ElementTag>

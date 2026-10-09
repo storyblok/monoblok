@@ -1,0 +1,57 @@
+---
+import { storyblokEditable } from "@storyblok/live-preview";
+import type { AstroComponentFactory } from "astro/runtime/server/render/astro/index.js";
+import type { StoryblokBlockData, StoryblokComponentMap } from "../types";
+
+type Props = {
+  /** The block to render. */
+  block?: StoryblokBlockData;
+  /**
+   * Map of Storyblok technical block names to the components rendering them.
+   *
+   * Namespaced so a user-declared `components`/`fallback` extra prop (see
+   * `defineStoryblokBlocks<TExtraProps>()`) passes through untouched instead
+   * of colliding with the registry.
+   */
+  __storyblokComponents: StoryblokComponentMap;
+  /** Rendered for block types that are not present in `__storyblokComponents`. */
+  __storyblokFallback?: AstroComponentFactory;
+} & Record<string, any>;
+
+const { block, __storyblokComponents: components, __storyblokFallback: fallback, ...rest } =
+  Astro.props;
+
+const Component = block ? resolve(block) : undefined;
+const editable = block ? storyblokEditable(block) : undefined;
+
+function resolve(block: StoryblokBlockData): AstroComponentFactory | undefined {
+  const name = block.component;
+  const component = name ? components[name] : undefined;
+
+  if (component) return component;
+  if (fallback) return fallback;
+
+  if (isDev()) {
+    console.warn(
+      `[storyblok] No component registered for block type "${name}". ` +
+        `Register it in \`defineStoryblokBlocks({ components })\` or provide a \`fallback\`.`,
+    );
+  }
+
+  return undefined;
+}
+
+/**
+ * Dev-only warning gate.
+ *
+ * `import.meta.env.DEV` is not reliable here: this module ships as a
+ * dependency, and Vite only substitutes it in code it processes. When the
+ * guard is left in the output it evaluates to `undefined.DEV` and throws, so
+ * we fall back to the runtime environment instead.
+ */
+function isDev(): boolean {
+  return typeof process === "undefined" || process.env?.NODE_ENV !== "production";
+}
+---
+
+{Component && <Component block={block} editable={editable} {...rest} />}

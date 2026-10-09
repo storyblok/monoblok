@@ -6,6 +6,7 @@ import type { Region } from "@storyblok/region-helper";
 import type { RetryOptions } from "ky";
 import type { Block } from "./generated/types/block";
 import { ClientError } from "./error";
+import { buildCallOptions } from "./utils/call-options";
 import type { RateLimitConfig } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
 import { querySerializer } from "./utils/query-serializer";
@@ -296,9 +297,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
       client.get({
         url: path,
         ...rest,
-        ...(fetchOptions
-          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-          : {}),
+        ...buildCallOptions(client, undefined, fetchOptions),
       }),
     );
   };
@@ -316,9 +315,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
       client.post({
         url: path,
         ...rest,
-        ...(fetchOptions
-          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-          : {}),
+        ...buildCallOptions(client, undefined, fetchOptions),
       }),
     );
   };
@@ -336,9 +333,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
       client.put({
         url: path,
         ...rest,
-        ...(fetchOptions
-          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-          : {}),
+        ...buildCallOptions(client, undefined, fetchOptions),
       }),
     );
   };
@@ -356,9 +351,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
       client.patch({
         url: path,
         ...rest,
-        ...(fetchOptions
-          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-          : {}),
+        ...buildCallOptions(client, undefined, fetchOptions),
       }),
     );
   };
@@ -376,9 +369,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
       client.delete({
         url: path,
         ...rest,
-        ...(fetchOptions
-          ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-          : {}),
+        ...buildCallOptions(client, undefined, fetchOptions),
       }),
     );
   };

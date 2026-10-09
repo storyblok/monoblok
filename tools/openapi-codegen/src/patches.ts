@@ -48,8 +48,38 @@ function widenComponentGroupUuid(schema: unknown): void {
   }
 }
 
+const ORG_BY_ID_PATH = "/v1/orgs/{id}";
+const CURRENT_ORG_PATH = "/v1/orgs/me";
+
+/**
+ * Serve "Retrieve Organization" from `GET /v1/orgs/me`.
+ *
+ * The upstream spec declares it as `GET /v1/orgs/{id}`, but the API ignores the
+ * id and always returns the caller's organization, which every other org
+ * operation (`PUT`/`PATCH`) already addresses as `/v1/orgs/me`. Move the
+ * operation next to them so the generated SDK needs no fake id. No-op once
+ * upstream declares `GET /v1/orgs/me` itself.
+ */
+function moveGetOrganizationToMe(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths)) {
+    return;
+  }
+  const byId = spec.paths[ORG_BY_ID_PATH];
+  const current = spec.paths[CURRENT_ORG_PATH];
+  if (!isRecord(byId) || !isRecord(byId.get) || !isRecord(current) || current.get) {
+    return;
+  }
+  current.get = byId.get;
+  delete byId.get;
+  const remainingMethods = Object.keys(byId).filter((key) => key !== "parameters");
+  if (remainingMethods.length === 0) {
+    delete spec.paths[ORG_BY_ID_PATH];
+  }
+}
+
 const MAPI_PARSER: Parser = {
   patch: {
+    input: moveGetOrganizationToMe,
     schemas: {
       ComponentCreateRequest: widenComponentGroupUuid,
       ComponentUpdateRequest: widenComponentGroupUuid,

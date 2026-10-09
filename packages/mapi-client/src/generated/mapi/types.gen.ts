@@ -28823,6 +28823,38 @@ export type BulkFlowmotionAccessResponses = {
 
 export type BulkFlowmotionAccessResponse = BulkFlowmotionAccessResponses[keyof BulkFlowmotionAccessResponses];
 
+export type GetOrganizationData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include password complexity settings in the response.
+         */
+        show_password_complexity?: string;
+    };
+    url: '/v1/orgs/me';
+};
+
+export type GetOrganizationErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type GetOrganizationError = GetOrganizationErrors[keyof GetOrganizationErrors];
+
+export type GetOrganizationResponses = {
+    /**
+     * Organization returned.
+     */
+    200: {
+        org: Org | MemberRoleOrg;
+    };
+};
+
+export type GetOrganizationResponse = GetOrganizationResponses[keyof GetOrganizationResponses];
+
 export type PartialUpdateOrganizationData = {
     body: UpdateOrganizationRequest;
     path?: never;
@@ -29061,43 +29093,6 @@ export type BulkOwnershipTransferResponses = {
 };
 
 export type BulkOwnershipTransferResponse = BulkOwnershipTransferResponses[keyof BulkOwnershipTransferResponses];
-
-export type GetOrganizationData = {
-    body?: never;
-    path: {
-        /**
-         * Organization ID or 'me' for the current user's organization
-         */
-        id: string;
-    };
-    query?: {
-        /**
-         * Include password complexity settings in the response.
-         */
-        show_password_complexity?: string;
-    };
-    url: '/v1/orgs/{id}';
-};
-
-export type GetOrganizationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-};
-
-export type GetOrganizationError = GetOrganizationErrors[keyof GetOrganizationErrors];
-
-export type GetOrganizationResponses = {
-    /**
-     * Organization returned.
-     */
-    200: {
-        org: Org | MemberRoleOrg;
-    };
-};
-
-export type GetOrganizationResponse = GetOrganizationResponses[keyof GetOrganizationResponses];
 
 export type GetAiCreditsStatisticsData = {
     body?: never;

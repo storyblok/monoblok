@@ -6,13 +6,20 @@ import type { StoryblokBlockData, StoryblokComponentMap } from "../types";
 type Props = {
   /** The block to render. */
   block?: StoryblokBlockData;
-  /** Map of Storyblok technical block names to the components rendering them. */
-  components: StoryblokComponentMap;
-  /** Rendered for block types that are not present in `components`. */
-  fallback?: AstroComponentFactory;
+  /**
+   * Map of Storyblok technical block names to the components rendering them.
+   *
+   * Namespaced so a user-declared `components`/`fallback` extra prop (see
+   * `defineStoryblokBlocks<TExtraProps>()`) passes through untouched instead
+   * of colliding with the registry.
+   */
+  __storyblokComponents: StoryblokComponentMap;
+  /** Rendered for block types that are not present in `__storyblokComponents`. */
+  __storyblokFallback?: AstroComponentFactory;
 } & Record<string, any>;
 
-const { block, components, fallback, ...rest } = Astro.props;
+const { block, __storyblokComponents: components, __storyblokFallback: fallback, ...rest } =
+  Astro.props;
 
 const Component = block ? resolve(block) : undefined;
 const editable = block ? storyblokEditable(block) : undefined;

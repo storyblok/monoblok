@@ -10,6 +10,12 @@ export default getViteConfig({
     include: ["tests/**/*.test.ts"],
     typecheck: {
       enabled: true,
+      // `tsconfig.json` only `include`s `src`, so `tests/**/*.test-d.ts`
+      // fall outside its program and Vitest silently skips typechecking
+      // them — no error, no warning, the suite just reports no type
+      // errors regardless of what the file says. Point at a dedicated
+      // tsconfig that also covers `tests` instead.
+      tsconfig: "./tsconfig.vitest.json",
     },
   },
 });

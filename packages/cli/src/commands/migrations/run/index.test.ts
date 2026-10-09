@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolve } from "pathe";
+import { defineMigration, renameField } from "@storyblok/schema/migrations";
 import { vol } from "memfs";
 // Import the main module first to ensure proper initialization
 import "../index";
@@ -307,6 +308,25 @@ describe("migrations run command", () => {
         }),
       }),
     );
+  });
+
+  it("should not write anything for a content migration in the same directory", async () => {
+    preconditions.canFetchStories();
+    preconditions.canFetchStory();
+    preconditions.canUpdateStory();
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/0001-rename-migration-component.js":
+        "only the filename matters!",
+    });
+    vi.spyOn(filesystem, "importModule").mockResolvedValue({
+      default: defineMigration([
+        renameField({ block: "migration-component", field: "unchanged", to: "renamed" }),
+      ]),
+    });
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).not.toHaveBeenCalled();
   });
 
   it("should run migrations successfully", async () => {

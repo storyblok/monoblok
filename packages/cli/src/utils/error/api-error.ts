@@ -27,6 +27,7 @@ export const API_ACTIONS = {
   pull_story: "Failed to pull story",
   create_story: "Failed to create story",
   update_story: "Failed to update story",
+  pull_releases: "Failed to pull releases",
   pull_asset: "Failed to pull asset",
   pull_assets: "Failed to pull assets",
   transfer_enumerate_assets: "Failed to enumerate assets for transfer",

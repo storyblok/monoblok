@@ -75,14 +75,28 @@ export async function discoverMigrations(directory: string): Promise<MigrationFi
   return selectMigrationFiles(directory, filenames);
 }
 
+export type LoadMigrationsOptions = {
+  /**
+   * Load only the migration with this id. The other files are not imported, so
+   * a broken migration elsewhere in the directory does not block this one.
+   */
+  only?: string;
+};
+
 export async function loadMigrations(
   directory: string,
   importDefault: ImportDefault,
+  options: LoadMigrationsOptions = {},
 ): Promise<LoadedMigration[]> {
-  const files = await discoverMigrations(directory);
+  const files = (await discoverMigrations(directory)).filter(
+    ({ id }) => options.only === undefined || id === options.only,
+  );
   return Promise.all(
     files.map(async ({ id, file }) => {
-      const migration = await importDefault(file);
+      const migration = await importDefault(file).catch((error: unknown) => {
+        const reason = error instanceof Error ? error.message : String(error);
+        throw new MigrationError(`${file} could not be loaded: ${reason}`, { cause: error });
+      });
       if (!isCompiledMigration(migration)) {
         throw new MigrationError(
           `${file} does not default-export a migration. Export \`defineMigration([…])\` as the default.`,

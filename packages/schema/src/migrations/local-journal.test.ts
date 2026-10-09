@@ -54,6 +54,24 @@ describe("localJournal", () => {
     expect(await journal.list("12345")).toEqual([]);
   });
 
+  it("should replace a run recorded again under the same id", async () => {
+    await journal.record(run(), inverse);
+    await journal.record(run({ stories: 0, undoneAt: "2026-01-02T00:00:00.000Z" }), []);
+
+    expect(await journal.list("12345")).toEqual([
+      run({ stories: 0, undoneAt: "2026-01-02T00:00:00.000Z" }),
+    ]);
+    expect(await journal.readInverse(run().id)).toEqual([]);
+  });
+
+  it("should forget a removed run", async () => {
+    await journal.record(run(), inverse);
+    await journal.remove(run().id);
+
+    expect(await journal.list("12345")).toEqual([]);
+    expect(await journal.read(run().id)).toBeUndefined();
+  });
+
   it("should read back the inverse patches a run recorded", async () => {
     await journal.record(run(), inverse);
     expect(await journal.readInverse(run().id)).toEqual(inverse);

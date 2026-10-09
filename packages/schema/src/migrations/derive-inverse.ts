@@ -1,11 +1,7 @@
 /**
- * The inverse of a migration computed from the op list alone. No run, no
- * recorded state, no I/O, so a migration whose ops are all derivable can be
- * undone on a machine that never applied it, which recorded patches cannot
- * cover (CI applied it, you want it gone locally).
- *
- * It is blind by construction: it cannot see that an editor changed the field
- * since, so recorded patches take precedence whenever they exist.
+ * The inverse of a migration computed from the op list alone, so a run can be
+ * undone where its recorded patches are unavailable. It cannot see edits made
+ * since the run, so recorded patches take precedence whenever they exist.
  */
 import type { MigrationOp } from "./ops";
 

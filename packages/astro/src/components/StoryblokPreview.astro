@@ -4,38 +4,61 @@ import type { StoryblokPreviewProps } from "../types";
 const { bridgeOptions, debounceMs, liveUpdate = false }: StoryblokPreviewProps = Astro.props;
 ---
 
-<script define:vars={{ bridgeOptions, debounceMs, liveUpdate }} is:inline>
-  // `define:vars` only works on `is:inline` scripts, which can't `import`, so
-  // it hands the props off to the processed/bundled script below via a
-  // global instead of carrying the logic itself.
-  window.__storyblokPreviewProps = { bridgeOptions, debounceMs, liveUpdate };
-</script>
+<storyblok-preview
+  data-bridge-options={bridgeOptions ? JSON.stringify(bridgeOptions) : undefined}
+  data-debounce-ms={debounceMs}
+  data-live-update={liveUpdate ? "" : undefined}></storyblok-preview>
 
 <script>
   import { onStoryblokEditorEvent } from '@storyblok/live-preview';
-  import { createPreviewHandler } from '../live-preview/preview-handler';
-  import type { StoryblokPreviewProps } from '../types';
+  import type { LivePreviewHandler, Story } from '@storyblok/live-preview';
 
-  declare global {
-    interface Window {
-      __storyblokPreviewProps?: StoryblokPreviewProps;
+  /**
+   * A custom element instead of a one-shot script: Astro's `<ClientRouter />`
+   * swaps the whole `<body>` between navigations, which removes/re-adds this
+   * element and reliably fires `connectedCallback`/`disconnectedCallback` for
+   * it. That also scopes each `<StoryblokPreview>` instance's own options,
+   * so rendering it more than once on a page (e.g. once in a layout, once on
+   * a page) can't have one instance's options clobber another's.
+   */
+  class StoryblokPreviewElement extends HTMLElement {
+    #cleanup?: Promise<() => void>;
+    #previewHandler?: Promise<LivePreviewHandler<Story>>;
+
+    connectedCallback(): void {
+      const liveUpdate = this.hasAttribute('data-live-update');
+      const debounceMs = this.dataset.debounceMs ? Number(this.dataset.debounceMs) : undefined;
+      const bridgeOptions = this.dataset.bridgeOptions
+        ? JSON.parse(this.dataset.bridgeOptions)
+        : undefined;
+
+      // Imported lazily so the morph path — and the `morphdom` dependency it
+      // bundles — is left out of every page that doesn't opt into
+      // `liveUpdate`.
+      this.#previewHandler = liveUpdate
+        ? import('../live-preview/preview-handler').then(({ createPreviewHandler }) =>
+            createPreviewHandler({ debounceMs }),
+          )
+        : undefined;
+
+      // `onStoryblokEditorEvent` only calls back for `input`; it reloads the
+      // page itself for `change`/`published` regardless of what this
+      // callback does.
+      this.#cleanup = onStoryblokEditorEvent((story) => {
+        this.#previewHandler?.then((previewHandler) =>
+          previewHandler.handle({ action: 'input', story }),
+        );
+      }, bridgeOptions).catch((error: unknown) => {
+        console.error('[storyblok] Failed to attach the Preview Bridge:', error);
+        return () => {};
+      });
+    }
+
+    disconnectedCallback(): void {
+      this.#cleanup?.then((off) => off());
+      this.#previewHandler?.then((previewHandler) => previewHandler.dispose());
     }
   }
 
-  const { bridgeOptions, debounceMs, liveUpdate } = window.__storyblokPreviewProps ?? {};
-
-  // Only built when `liveUpdate` is on, so the morph path never runs otherwise.
-  const previewHandler = liveUpdate ? createPreviewHandler({ debounceMs }) : undefined;
-
-  // `onStoryblokEditorEvent` only calls back for `input`; it reloads the page
-  // itself for `change`/`published` regardless of what this callback does.
-  const cleanup = onStoryblokEditorEvent((story) => {
-    previewHandler?.handle({ action: 'input', story });
-  }, bridgeOptions);
-
-  // Destroy the bridge if the page is swapped out by Astro's view transitions.
-  window.addEventListener('astro:before-preparation', () => {
-    cleanup.then((off) => off());
-    previewHandler?.dispose();
-  });
+  customElements.define('storyblok-preview', StoryblokPreviewElement);
 </script>

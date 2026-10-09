@@ -1,4 +1,5 @@
 import { createManagementApiClient } from "@storyblok/management-api-client";
+import type { MemberOrganization, Organization } from "@storyblok/management-api-client";
 import { describe, expectTypeOf, it } from "vitest";
 
 const CLIENT_CONFIG = { personalAccessToken: "test-token", spaceId: 12345 };
@@ -207,6 +208,54 @@ describe("users type tests", () => {
     const result = await client.users.me();
     if (result.data) {
       expectTypeOf(result.data).toHaveProperty("user");
+    }
+  });
+});
+
+describe("webhooks type tests", () => {
+  it("should require name, endpoint, and actions on create", () => {
+    const client = createManagementApiClient(CLIENT_CONFIG);
+    void client.webhooks.create({
+      body: {
+        webhook_endpoint: {
+          name: "Deploy",
+          endpoint: "https://example.com",
+          actions: ["story.published"],
+        },
+      },
+    });
+    // @ts-expect-error `endpoint` and `actions` are required
+    void client.webhooks.create({ body: { webhook_endpoint: { name: "Deploy" } } });
+  });
+
+  it("should accept a partial body on update", () => {
+    const client = createManagementApiClient(CLIENT_CONFIG);
+    void client.webhooks.update(1, { body: { webhook_endpoint: { activated: false } } });
+  });
+});
+
+describe("workflow stages type tests", () => {
+  it("should require name and color on create", () => {
+    const client = createManagementApiClient(CLIENT_CONFIG);
+    void client.workflowStages.create({
+      body: { workflow_stage: { name: "Review", color: "#ff0000" } },
+    });
+    // @ts-expect-error `color` is required
+    void client.workflowStages.create({ body: { workflow_stage: { name: "Review" } } });
+  });
+
+  it("should accept a partial body on update", () => {
+    const client = createManagementApiClient(CLIENT_CONFIG);
+    void client.workflowStages.update(1, { body: { workflow_stage: { color: "#00ff00" } } });
+  });
+});
+
+describe("organizations type tests", () => {
+  it("should return an organization or the member shape from get", async () => {
+    const client = createManagementApiClient(CLIENT_CONFIG);
+    const result = await client.orgs.get();
+    if (result.data) {
+      expectTypeOf(result.data.org).toEqualTypeOf<Organization | MemberOrganization>();
     }
   });
 });

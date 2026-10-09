@@ -2998,7 +2998,10 @@ export type CreateWorkflowStageChangeRequest = {
 };
 
 export type CreateWorkflowStageRequest = {
-    workflow_stage: WorkflowStageAttributes;
+    workflow_stage: WorkflowStageAttributes & {
+        name: string;
+        color: string;
+    };
 };
 
 export type CustomPasswordComplexityResponse = {
@@ -13549,6 +13552,35 @@ export type ErrorsObject = {
      */
     error_code?: 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region';
     [key: string]: Array<string> | string | ErrorsMap | 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region' | undefined;
+};
+
+export type CreateWebhookEndpointRequest = {
+    webhook_endpoint: {
+        /**
+         * Name of the webhook endpoint
+         */
+        name: string;
+        /**
+         * Optional description
+         */
+        description?: string;
+        /**
+         * URL to receive webhook payloads (http or https)
+         */
+        endpoint: string;
+        /**
+         * Optional secret for request signing
+         */
+        secret?: string;
+        /**
+         * Whether the webhook is active
+         */
+        activated?: boolean;
+        /**
+         * List of event actions to subscribe to (e.g. story.published, asset.created)
+         */
+        actions: Array<string>;
+    };
 };
 
 export type InvoiceShowResponseWritable = {
@@ -28823,6 +28855,38 @@ export type BulkFlowmotionAccessResponses = {
 
 export type BulkFlowmotionAccessResponse = BulkFlowmotionAccessResponses[keyof BulkFlowmotionAccessResponses];
 
+export type GetOrganizationData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Include password complexity settings in the response.
+         */
+        show_password_complexity?: string;
+    };
+    url: '/v1/orgs/me';
+};
+
+export type GetOrganizationErrors = {
+    /**
+     * Unauthorized
+     */
+    401: UnauthorizedError;
+};
+
+export type GetOrganizationError = GetOrganizationErrors[keyof GetOrganizationErrors];
+
+export type GetOrganizationResponses = {
+    /**
+     * Organization returned.
+     */
+    200: {
+        org: Org | MemberRoleOrg;
+    };
+};
+
+export type GetOrganizationResponse = GetOrganizationResponses[keyof GetOrganizationResponses];
+
 export type PartialUpdateOrganizationData = {
     body: UpdateOrganizationRequest;
     path?: never;
@@ -29061,43 +29125,6 @@ export type BulkOwnershipTransferResponses = {
 };
 
 export type BulkOwnershipTransferResponse = BulkOwnershipTransferResponses[keyof BulkOwnershipTransferResponses];
-
-export type GetOrganizationData = {
-    body?: never;
-    path: {
-        /**
-         * Organization ID or 'me' for the current user's organization
-         */
-        id: string;
-    };
-    query?: {
-        /**
-         * Include password complexity settings in the response.
-         */
-        show_password_complexity?: string;
-    };
-    url: '/v1/orgs/{id}';
-};
-
-export type GetOrganizationErrors = {
-    /**
-     * Unauthorized
-     */
-    401: UnauthorizedError;
-};
-
-export type GetOrganizationError = GetOrganizationErrors[keyof GetOrganizationErrors];
-
-export type GetOrganizationResponses = {
-    /**
-     * Organization returned.
-     */
-    200: {
-        org: Org | MemberRoleOrg;
-    };
-};
-
-export type GetOrganizationResponse = GetOrganizationResponses[keyof GetOrganizationResponses];
 
 export type GetAiCreditsStatisticsData = {
     body?: never;
@@ -40315,7 +40342,7 @@ export type ListWebhookEndpointsResponses = {
 export type ListWebhookEndpointsResponse = ListWebhookEndpointsResponses[keyof ListWebhookEndpointsResponses];
 
 export type CreateWebhookEndpointData = {
-    body: WebhookEndpointRequest;
+    body: CreateWebhookEndpointRequest;
     path: {
         /**
          * Numeric ID of the space

@@ -154,6 +154,7 @@ export const ALIASES = [
   { source: "User", spec: "mapi", emitAs: "User" },
   { source: "UserUpdateRequest", spec: "mapi", emitAs: "UserUpdate", unwrap: "user" },
   { source: "Org", spec: "mapi", emitAs: "Organization" },
+  { source: "MemberRoleOrg", spec: "mapi", emitAs: "MemberOrganization" },
   {
     source: "UpdateOrganizationRequest",
     spec: "mapi",
@@ -175,7 +176,7 @@ export const ALIASES = [
   },
   { source: "WebhookEndpoint", spec: "mapi", emitAs: "Webhook" },
   {
-    source: "WebhookEndpointRequest",
+    source: "CreateWebhookEndpointRequest",
     spec: "mapi",
     emitAs: "WebhookCreate",
     unwrap: "webhook_endpoint",

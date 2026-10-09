@@ -55,9 +55,9 @@ const CURRENT_ORG_PATH = "/v1/orgs/me";
  * Serve "Retrieve Organization" from `GET /v1/orgs/me`.
  *
  * The upstream spec declares it as `GET /v1/orgs/{id}`, but the API ignores the
- * id and always returns the caller's organization, which every other org
- * operation (`PUT`/`PATCH`) already addresses as `/v1/orgs/me`. Move the
- * operation next to them so the generated SDK needs no fake id. No-op once
+ * id and always returns the caller's organization, which every other
+ * organization operation (`PUT`/`PATCH`) already addresses as `/v1/orgs/me`.
+ * Move the operation next to them so callers need no placeholder id. No-op once
  * upstream declares `GET /v1/orgs/me` itself.
  */
 function moveGetOrganizationToMe(spec: unknown): void {
@@ -77,12 +77,91 @@ function moveGetOrganizationToMe(spec: unknown): void {
   }
 }
 
+const WORKFLOW_STAGE_CREATE_REQUIRED = ["name", "color"];
+
+/**
+ * Require `name` and `color` on "Create Workflow Stage".
+ *
+ * Upstream declares `required` next to a single-`allOf` `$ref`, which hey-api
+ * drops, and also lists `workflow_id`, which the API does not require (it
+ * defaults to the space's default workflow). The API rejects a create without
+ * `name` or `color` (422). Put exactly those two in a second `allOf` member so
+ * the generated type is an intersection that keeps them required.
+ */
+function requireWorkflowStageCreateFields(schema: unknown): void {
+  if (!isRecord(schema) || !isRecord(schema.properties)) {
+    return;
+  }
+  const stage = schema.properties.workflow_stage;
+  if (!isRecord(stage) || !Array.isArray(stage.allOf) || stage.allOf.length !== 1) {
+    return;
+  }
+  stage.allOf = [
+    ...stage.allOf,
+    {
+      type: "object",
+      required: WORKFLOW_STAGE_CREATE_REQUIRED,
+      properties: Object.fromEntries(
+        WORKFLOW_STAGE_CREATE_REQUIRED.map((name) => [name, { type: "string" }]),
+      ),
+    },
+  ];
+  delete stage.required;
+}
+
+const SCHEMA_REF_PREFIX = "#/components/schemas/";
+const WEBHOOKS_PATH = "/v1/spaces/{space_id}/webhook_endpoints";
+const WEBHOOK_CREATE_SCHEMA = "CreateWebhookEndpointRequest";
+const WEBHOOK_CREATE_REQUIRED = ["name", "endpoint", "actions"];
+
+/**
+ * Give "Create Webhook" a request body with its required fields.
+ *
+ * Upstream, create (`POST`) and partial update (`PATCH`) share
+ * `WebhookEndpointRequest`, which marks every field optional. The API rejects a
+ * create without `name`, `endpoint`, or `actions` (422), so create gets its own
+ * copy that requires them, and update keeps the shared, all-optional schema.
+ */
+function requireWebhookCreateFields(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths) || !isRecord(spec.components)) {
+    return;
+  }
+  const { schemas } = spec.components;
+  const webhooks = spec.paths[WEBHOOKS_PATH];
+  if (!isRecord(schemas) || schemas[WEBHOOK_CREATE_SCHEMA] || !isRecord(webhooks)) {
+    return;
+  }
+  const createSchema = structuredClone(schemas.WebhookEndpointRequest);
+  const body =
+    isRecord(createSchema) && isRecord(createSchema.properties)
+      ? createSchema.properties.webhook_endpoint
+      : undefined;
+  const jsonBody =
+    isRecord(webhooks.post) &&
+    isRecord(webhooks.post.requestBody) &&
+    isRecord(webhooks.post.requestBody.content)
+      ? webhooks.post.requestBody.content["application/json"]
+      : undefined;
+  if (!isRecord(body) || !isRecord(jsonBody)) {
+    return;
+  }
+  body.required = WEBHOOK_CREATE_REQUIRED;
+  schemas[WEBHOOK_CREATE_SCHEMA] = createSchema;
+  jsonBody.schema = { $ref: `${SCHEMA_REF_PREFIX}${WEBHOOK_CREATE_SCHEMA}` };
+}
+
+function patchMapiInput(spec: unknown): void {
+  moveGetOrganizationToMe(spec);
+  requireWebhookCreateFields(spec);
+}
+
 const MAPI_PARSER: Parser = {
   patch: {
-    input: moveGetOrganizationToMe,
+    input: patchMapiInput,
     schemas: {
       ComponentCreateRequest: widenComponentGroupUuid,
       ComponentUpdateRequest: widenComponentGroupUuid,
+      CreateWorkflowStageRequest: requireWorkflowStageCreateFields,
     },
   },
 };

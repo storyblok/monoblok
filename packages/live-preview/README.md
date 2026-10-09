@@ -105,6 +105,11 @@ const handler = createLivePreviewHandler({
 storyblokInstance.on(["published", "change", "input"], handler.handle);
 ```
 
+Failures from `update` or the morph are logged with `console.error` unless an `onError` callback is
+provided. `change` and `published` events reload the page (`window.location.reload()`) unless an
+`onReload` callback is provided; either way, a pending debounced `input` update is cancelled first
+so it can't overwrite the reload with stale content.
+
 For lower-level control, `morphStoryblokDom` only handles DOM transformation. It does not fetch
 content or listen to Preview Bridge events.
 
@@ -115,6 +120,17 @@ morphStoryblokDom(document.body, nextBody, {
   focusedElement: document.querySelector('[data-blok-focused="true"]'),
 });
 ```
+
+When a focused block is found, only that subtree is morphed; everything else in `currentRoot` is
+left untouched until an update finds no focused block, or the caller reloads. Attribute changes from
+the server (new `src`, `href`, `class`, …) are applied by default; pass
+`preserveElementAttributes: true` to keep the current tree's attributes instead. Interactive form
+state (`value`, `checked`, `selected`) that the user has changed is preserved automatically;
+elements nobody has touched still pick up a new server-rendered default. To protect a subtree a
+framework owns (e.g. a hydrated island) from being touched at all — attributes and children — mark
+its root with `data-preserve-state` (configurable via `preserveStateAttribute`); the morph skips it
+entirely. `morphStoryblokDom` mutates `nextRoot`, so don't reuse or cache it after calling this
+function.
 
 ## Documentation
 

@@ -67,7 +67,11 @@ export function defineStoryblokBlocks<TExtraProps extends object = {}>(
         result,
         "StoryblokBlock",
         RawStoryblokBlock,
-        { ...props, components, fallback },
+        // Namespaced so a user-declared `components`/`fallback` extra prop
+        // (see `TExtraProps`) is forwarded as-is instead of being
+        // overwritten by the registry and then stripped by
+        // `StoryblokBlock.astro`'s own destructuring.
+        { ...props, __storyblokComponents: components, __storyblokFallback: fallback },
         slots,
       )}`,
   );

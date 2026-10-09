@@ -19,7 +19,21 @@ export const storyblokPreviewMiddleware = defineMiddleware(async ({ locals, requ
     // First do a check if its coming from within storyblok
     const editorRequest = isInEditor(new URL(request.url));
 
-    if (editorRequest) {
+    // The `_storyblok*` params above are public and guessable, so they can't
+    // gate this alone. A plain HTML form can forge a cross-site POST without
+    // a CORS preflight, but only with `Content-Type: text/plain`,
+    // `multipart/form-data`, or `application/x-www-form-urlencoded` — never
+    // `application/json`. Requiring it here forces any cross-origin caller
+    // through a preflight, which `Sec-Fetch-Site` then catches: the preview
+    // bridge's own POST (`getNewHTMLBody`) is always same-origin, so a
+    // present, non-`same-origin` value can only mean a cross-site request.
+    const isJson = (request.headers.get("content-type") ?? "")
+      .toLowerCase()
+      .includes("application/json");
+    const secFetchSite = request.headers.get("sec-fetch-site");
+    const isSameOrigin = secFetchSite === null || secFetchSite === "same-origin";
+
+    if (editorRequest && isJson && isSameOrigin) {
       try {
         // Create a copy of the request
         const requestBody = await request.clone().json();

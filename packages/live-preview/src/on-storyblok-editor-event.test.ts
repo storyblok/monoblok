@@ -4,21 +4,21 @@ import type StoryblokBridge from "@storyblok/preview-bridge";
 
 // ---- mocks ----
 
-vi.mock("./utils/isBrowser", () => ({ isBrowser: vi.fn() }));
-vi.mock("./utils/isInEditor", () => ({ isInEditor: vi.fn() }));
+vi.mock("./utils/is-browser", () => ({ isBrowser: vi.fn() }));
+vi.mock("./utils/is-in-editor", () => ({ isInEditor: vi.fn() }));
 
 const onMock = vi.fn();
 const destroyMock = vi.fn();
 
-vi.mock("./loadStoryblokBridge", () => ({
+vi.mock("./load-storyblok-bridge", () => ({
   loadStoryblokBridge: vi.fn(async () => ({ on: onMock, destroy: destroyMock })),
   preloadStoryblokBridge: vi.fn(async () => undefined),
 }));
 
-import { isBrowser } from "./utils/isBrowser";
-import { isInEditor } from "./utils/isInEditor";
-import { loadStoryblokBridge } from "./loadStoryblokBridge";
-import { onStoryblokEditorEvent } from "./onStoryblokEditorEvent";
+import { isBrowser } from "./utils/is-browser";
+import { isInEditor } from "./utils/is-in-editor";
+import { loadStoryblokBridge } from "./load-storyblok-bridge";
+import { onStoryblokEditorEvent } from "./on-storyblok-editor-event";
 
 /** Advances several microtask ticks — enough for a chain of `.then()`s to settle. */
 async function flushMicrotasks(times = 5): Promise<void> {

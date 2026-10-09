@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isInEditor } from "./isInEditor";
+import { isInEditor } from "./is-in-editor";
 
 describe("isInEditor", () => {
   it("returns false when required Storyblok params are missing", () => {

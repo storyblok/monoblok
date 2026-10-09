@@ -1557,77 +1557,214 @@ export type UserUpdate = {
     disclaimer_ids?: Array<number>;
 };
 
-export type StoryTranslatedSlug = {
-    /**
-     * id
-     */
-    id: number;
-    /**
-     * The name for this translated slug
-     */
-    name: string | null;
-    /**
-     * URL-friendly identifier for the app category.
-     */
-    slug: string;
-    /**
-     * The language code for this translation.
-     */
-    lang: string;
-    published: boolean | null;
-};
-
-export type StoryLocalizedPath = {
-    /**
-     * The localized path
-     */
-    path: string;
-    /**
-     * The translated name
-     */
-    name: string | null;
-    /**
-     * The language code for this translation.
-     */
-    lang: string;
-    /**
-     * Published status or date
-     */
-    published: boolean | string | null;
-    /**
-     * The translated slug (only present when folders are used).
-     */
-    translated_slug?: string;
-};
-
-/**
- * A dimension for datasource entries, enabling localized or context-specific values
- */
-export type Dimension = {
-    /**
-     * ID
-     */
-    id: number;
-    /**
-     * Name
-     */
+export type Organization = {
+    readonly id?: number;
     name: string;
+    users: Array<OrgUser>;
+    spaces: Array<OrgSpace>;
+    plan: string;
+    billing_address?: BillingAddress;
+    euid?: string | null;
+    user_count: number;
+    plan_level: number;
+    max_spaces: number;
+    max_collaborators: number;
+    traffic_used: number;
+    traffic_limit: number;
+    plans: Array<Plan>;
+    external_users: Array<OrgUser>;
+    extended_external_users: Array<OrgUser>;
+    invitations: Array<Invitations>;
     /**
-     * The value provided for the datasource dimension.
+     * Stable, immutable identifier used for SSO/SAML routing.
      */
-    entry_value: string;
+    sso_identifier?: string | null;
+    sso_firstname?: string | null;
+    sso_lastname?: string | null;
+    sso_alt_email?: string | null;
+    strong_auth?: boolean | null;
+    restricted_regions: Array<string>;
+    ai_text_generator_disabled: boolean;
+    ai_text_generator_feature_disabled: boolean;
+    ai_credits_used?: number;
+    ideation_room_enabled: boolean;
+    concept_room_enabled: boolean;
+    ab_testing_enabled?: boolean;
+    ai_translation_enabled: boolean;
+    storyblok_agents_enabled?: boolean;
+    strata_available?: boolean;
+    token_timeout_in?: number | null;
+    disable_private_spaces?: boolean | null;
+    enable_content_distributions_ai_translation?: boolean;
+    storyblok_lab: {
+        allowed_apps?: Array<PublicApp>;
+    };
+    custom_upload_limit_in_mb?: number | null;
+    force_org_ai_styles: boolean;
+    allow_space_ai_styles: boolean;
+    ai_style_space_composition_mode: string | null;
+    flowmotion_access: boolean;
+    scim_provisioning_enabled: boolean;
+    environments_count: number;
+    password_rule_min_length?: number | null;
+    feature_limits: Array<{
+        key?: string;
+        origin?: string | null;
+        limit?: string | null;
+        limit_type?: string | null;
+        is_available?: boolean | null;
+        terms?: Array<{
+            [key: string]: unknown;
+        }>;
+    }>;
     /**
-     * The numeric ID of the datasource that the dimension belongs to.
+     * Organization settings
      */
-    datasource_id?: number;
+    settings?: {
+        [key: string]: unknown;
+    } | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Subscription ID
      */
-    created_at?: string;
+    subscription_id?: string | null;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Organization limits
      */
-    updated_at?: string;
+    limits?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Identity provider metadata
+     */
+    idp_meta?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Organization domain
+     */
+    domain?: string | null;
+    /**
+     * Organization domains
+     */
+    domains?: Array<string> | null;
+    /**
+     * Organization status
+     */
+    status?: string | null;
+    [key: string]: unknown;
+};
+
+export type OrganizationUpdate = {
+    /**
+     * Name of the organization
+     */
+    name?: string;
+    /**
+     * Enable statistics tracking
+     */
+    track_statistics?: boolean;
+    /**
+     * SSO field mapping for first name
+     */
+    sso_firstname?: string | null;
+    /**
+     * SSO field mapping for last name
+     */
+    sso_lastname?: string | null;
+    /**
+     * SSO field mapping for alternative email
+     */
+    sso_alt_email?: string | null;
+    /**
+     * Enable strong authentication
+     */
+    strong_auth?: boolean;
+    /**
+     * Disable AI text generator
+     */
+    ai_text_generator_disabled?: boolean;
+    /**
+     * Enable AI translation
+     */
+    ai_translation_enabled?: boolean;
+    /**
+     * Enable concept room
+     */
+    concept_room_enabled?: boolean;
+    /**
+     * Enable ideation room
+     */
+    ideation_room_enabled?: boolean;
+    /**
+     * Enable A/B Testing for org spaces
+     */
+    ab_testing_enabled?: boolean;
+    /**
+     * Enable Storyblok Agents for org spaces
+     */
+    storyblok_agents_enabled?: boolean;
+    /**
+     * Enable confidentiality disclaimer
+     */
+    confidentiality_disclaimer_enabled?: boolean;
+    /**
+     * Confidentiality disclaimer message
+     */
+    confidentiality_disclaimer_message?: string | null;
+    /**
+     * Token timeout in seconds
+     */
+    token_timeout_in?: number | null;
+    /**
+     * Disable private spaces
+     */
+    disable_private_spaces?: boolean;
+    /**
+     * Enable AI translation in the Content Distribution
+     */
+    enable_content_distributions_ai_translation?: boolean;
+    /**
+     * Minimum password length requirement
+     */
+    password_rule_min_length?: number | null;
+    /**
+     * Force organization AI styles
+     */
+    force_org_ai_styles?: boolean;
+    /**
+     * Allow space-level AI styles
+     */
+    allow_space_ai_styles?: boolean;
+    /**
+     * AI style composition mode for spaces
+     */
+    ai_style_space_composition_mode?: string | null;
+    billing_address?: BillingAddressRequest;
+    custom_settings?: CustomSettingsRequest;
+    /**
+     * List of restricted regions
+     */
+    restricted_regions?: Array<string>;
+    /**
+     * Default shared-asset metadata fields that must be filled in when uploading. Allowed values: alt, title, copyright, source.
+     */
+    required_shared_asset_fields?: Array<string>;
+    /**
+     * Shared-asset metadata fields that are translatable. Allowed values: alt, title, copyright, source.
+     */
+    shared_asset_translatable_asset_fields?: Array<string>;
+    /**
+     * Custom metadata schema applied to shared assets across the organization
+     */
+    shared_asset_custom_meta_data_schema?: Array<{
+        key?: string;
+        display_name?: string;
+        regex?: string | null;
+        regex_message?: string | null;
+        required?: boolean;
+        translatable?: boolean;
+        filetypes?: Array<string>;
+    }>;
 };
 
 /**
@@ -1748,6 +1885,549 @@ export type SpaceRole = {
     blocked_asset_folder_ids: Array<number>;
 };
 
+export type SpaceRoleCreate = {
+    /**
+     * User ID to associate with the role
+     */
+    user_id?: number;
+    /**
+     * The role name (must be unique within the space)
+     */
+    role: string;
+    /**
+     * Optional subtitle for the role
+     */
+    subtitle?: string;
+    /**
+     * External ID for integrations
+     */
+    ext_id?: string;
+    /**
+     * List of permissions to grant
+     */
+    permissions?: Array<string>;
+    /**
+     * Allowed language codes
+     */
+    allowed_languages?: Array<string>;
+    /**
+     * Blocked language codes
+     */
+    blocked_languages?: Array<string>;
+    /**
+     * Allowed content paths (story IDs)
+     */
+    allowed_paths?: Array<string>;
+    /**
+     * Blocked content paths (story IDs)
+     */
+    blocked_paths?: Array<string>;
+    /**
+     * Field-level permissions
+     */
+    field_permissions?: Array<string>;
+    /**
+     * Allowed field permissions
+     */
+    allowed_field_permissions?: Array<string>;
+    /**
+     * Read-only field permissions
+     */
+    readonly_field_permissions?: Array<string>;
+    /**
+     * Blocked permissions
+     */
+    blocked_permissions?: Array<string>;
+    /**
+     * Allowed datasource IDs
+     */
+    datasource_ids?: Array<number>;
+    /**
+     * Component IDs for usage restriction
+     */
+    component_ids?: Array<number>;
+    /**
+     * Allowed component IDs for usage
+     */
+    allowed_component_ids?: Array<number>;
+    /**
+     * Managed component IDs
+     */
+    managed_component_ids?: Array<number>;
+    /**
+     * Blocked manage component IDs
+     */
+    blocked_manage_component_ids?: Array<number>;
+    /**
+     * Managed component group UUIDs
+     */
+    managed_component_group_uuids?: Array<string>;
+    /**
+     * Blocked manage component group UUIDs
+     */
+    blocked_manage_component_group_uuids?: Array<string>;
+    /**
+     * Allowed component group UUIDs for usage
+     */
+    component_group_uuids?: Array<string>;
+    /**
+     * Blocked component group UUIDs for usage
+     */
+    blocked_component_group_uuids?: Array<string>;
+    /**
+     * Allowed branch IDs
+     */
+    branch_ids?: Array<number>;
+    /**
+     * Allowed asset folder IDs
+     */
+    asset_folder_ids?: Array<number>;
+    /**
+     * Blocked asset folder IDs
+     */
+    blocked_asset_folder_ids?: Array<number>;
+    /**
+     * Blocked datasource IDs
+     */
+    blocked_datasource_ids?: Array<number>;
+    /**
+     * Blocked branch IDs
+     */
+    blocked_branch_ids?: Array<number>;
+};
+
+export type SpaceRoleUpdate = {
+    /**
+     * User ID to associate with the role
+     */
+    user_id?: number;
+    /**
+     * The role name (must be unique within the space)
+     */
+    role?: string;
+    /**
+     * Optional subtitle for the role
+     */
+    subtitle?: string;
+    /**
+     * External ID for integrations
+     */
+    ext_id?: string;
+    /**
+     * List of permissions to grant
+     */
+    permissions?: Array<string>;
+    /**
+     * Allowed language codes
+     */
+    allowed_languages?: Array<string>;
+    /**
+     * Blocked language codes
+     */
+    blocked_languages?: Array<string>;
+    /**
+     * Allowed content paths (story IDs)
+     */
+    allowed_paths?: Array<string>;
+    /**
+     * Blocked content paths (story IDs)
+     */
+    blocked_paths?: Array<string>;
+    /**
+     * Field-level permissions
+     */
+    field_permissions?: Array<string>;
+    /**
+     * Allowed field permissions
+     */
+    allowed_field_permissions?: Array<string>;
+    /**
+     * Read-only field permissions
+     */
+    readonly_field_permissions?: Array<string>;
+    /**
+     * Blocked permissions
+     */
+    blocked_permissions?: Array<string>;
+    /**
+     * Allowed datasource IDs
+     */
+    datasource_ids?: Array<number>;
+    /**
+     * Component IDs for usage restriction
+     */
+    component_ids?: Array<number>;
+    /**
+     * Allowed component IDs for usage
+     */
+    allowed_component_ids?: Array<number>;
+    /**
+     * Managed component IDs
+     */
+    managed_component_ids?: Array<number>;
+    /**
+     * Blocked manage component IDs
+     */
+    blocked_manage_component_ids?: Array<number>;
+    /**
+     * Managed component group UUIDs
+     */
+    managed_component_group_uuids?: Array<string>;
+    /**
+     * Blocked manage component group UUIDs
+     */
+    blocked_manage_component_group_uuids?: Array<string>;
+    /**
+     * Allowed component group UUIDs for usage
+     */
+    component_group_uuids?: Array<string>;
+    /**
+     * Blocked component group UUIDs for usage
+     */
+    blocked_component_group_uuids?: Array<string>;
+    /**
+     * Allowed branch IDs
+     */
+    branch_ids?: Array<number>;
+    /**
+     * Allowed asset folder IDs
+     */
+    asset_folder_ids?: Array<number>;
+    /**
+     * Blocked asset folder IDs
+     */
+    blocked_asset_folder_ids?: Array<number>;
+    /**
+     * Blocked datasource IDs
+     */
+    blocked_datasource_ids?: Array<number>;
+    /**
+     * Blocked branch IDs
+     */
+    blocked_branch_ids?: Array<number>;
+};
+
+export type Webhook = {
+    /**
+     * ID of the webhook endpoint
+     */
+    id: number;
+    /**
+     * Name of the webhook endpoint
+     */
+    name: string;
+    /**
+     * Optional description
+     */
+    description?: string | null;
+    /**
+     * URL to receive webhook payloads (http or https)
+     */
+    endpoint: string;
+    /**
+     * ID of the space
+     */
+    space_id: number;
+    /**
+     * Optional secret for request signing
+     */
+    secret?: string | null;
+    /**
+     * List of event actions this webhook subscribes to
+     */
+    actions: Array<string>;
+    /**
+     * Whether the webhook is active
+     */
+    activated: boolean;
+    /**
+     * Soft-delete timestamp when set
+     */
+    deleted_at?: string | null;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+};
+
+export type WebhookCreate = {
+    /**
+     * Name of the webhook endpoint
+     */
+    name?: string;
+    /**
+     * Optional description
+     */
+    description?: string;
+    /**
+     * URL to receive webhook payloads (http or https)
+     */
+    endpoint?: string;
+    /**
+     * Optional secret for request signing
+     */
+    secret?: string;
+    /**
+     * Whether the webhook is active
+     */
+    activated?: boolean;
+    /**
+     * List of event actions to subscribe to (e.g. story.published, asset.created)
+     */
+    actions?: Array<string>;
+};
+
+export type WebhookUpdate = WebhookCreate;
+
+export type Workflow = {
+    /**
+     * Unique identifier for the workflow
+     */
+    readonly id: number;
+    /**
+     * Name of the workflow.
+     */
+    name: string;
+    /**
+     * Array of content types this workflow applies to.
+     */
+    content_types: Array<string>;
+    /**
+     * Whether this is the default workflow for the space
+     */
+    is_default: boolean;
+    /**
+     * Array of workflow stages. Present only when include_stages=true.
+     */
+    workflow_stages?: Array<WorkflowStage> | null;
+    /**
+     * Whether stages are tracked per language
+     */
+    per_language_stages: boolean;
+};
+
+export type WorkflowCreate = {
+    /**
+     * Name of the workflow
+     */
+    name: string;
+    /**
+     * Content types this workflow applies to
+     */
+    content_types: Array<string>;
+    /**
+     * Optional workflow stages to create
+     */
+    workflow_stages?: Array<{
+        id?: number;
+        after_publish_id?: number | null;
+        allow_publish?: boolean;
+        is_default?: boolean;
+        position?: number;
+        allow_all_stages?: boolean;
+        allow_admin_publish?: boolean;
+        allow_all_users?: boolean;
+        allow_editor_change?: boolean;
+        allow_admin_change?: boolean;
+        story_editing_locked?: boolean;
+        auto_remove_assignee?: boolean;
+        name?: string;
+        color?: string;
+        user_ids?: Array<number>;
+        space_role_ids?: Array<number>;
+        workflow_stage_ids?: Array<number>;
+    }>;
+    /**
+     * Enable per-language stage tracking
+     */
+    per_language_stages?: boolean;
+};
+
+export type WorkflowUpdate = {
+    /**
+     * Name of the workflow
+     */
+    name?: string;
+    /**
+     * Content types this workflow applies to
+     */
+    content_types?: Array<string>;
+    /**
+     * Array of workflow stage attributes to update (typically just position)
+     */
+    workflow_stages_attributes?: Array<{
+        id: number;
+        position?: number;
+    }>;
+    /**
+     * Enable per-language stage tracking
+     */
+    per_language_stages?: boolean;
+};
+
+/**
+ * A stage within a workflow defining a step in the content lifecycle
+ */
+export type WorkflowStage = {
+    /**
+     * The unique identifier of the workflow stage.
+     */
+    id: number;
+    /**
+     * The name of the workflow stage.
+     */
+    name: string;
+    /**
+     * The color of the workflow stage
+     */
+    color: string;
+    /**
+     * Numeric representation of the story's position in the folder.
+     */
+    position: number;
+    /**
+     * Whether this is the default workflow stage
+     */
+    is_default: boolean;
+    /**
+     * Whether publishing is allowed in this stage
+     */
+    allow_publish: boolean;
+    /**
+     * Whether transitions to all stages are allowed
+     */
+    allow_all_stages: boolean;
+    /**
+     * Whether admin publishing is allowed in this stage
+     */
+    allow_admin_publish: boolean;
+    /**
+     * Whether all users can move content to this stage
+     */
+    allow_all_users: boolean;
+    /**
+     * Whether admins can change this stage
+     */
+    allow_admin_change: boolean;
+    /**
+     * Whether editors can change this stage
+     */
+    allow_editor_change: boolean;
+    /**
+     * Whether 'none' is allowed for next stages selection
+     */
+    allow_none_for_next_stages: boolean;
+    /**
+     * Whether story editing is locked in this stage
+     */
+    story_editing_locked: boolean;
+    /**
+     * Whether assignees are automatically removed on stage change
+     */
+    auto_remove_assignee: boolean;
+    /**
+     * The ID of the workflow stage to transition to after publishing
+     */
+    after_publish_id: number | null;
+    /**
+     * The ID of the workflow this stage belongs to
+     */
+    workflow_id: number | null;
+    /**
+     * IDs of users assigned to this workflow stage
+     */
+    user_ids: Array<number>;
+    /**
+     * IDs of space roles assigned to this workflow stage
+     */
+    space_role_ids: Array<number>;
+    /**
+     * IDs of allowed next workflow stages
+     */
+    workflow_stage_ids: Array<number>;
+};
+
+export type WorkflowStageCreate = WorkflowStageAttributes;
+
+export type WorkflowStageUpdate = WorkflowStageAttributes;
+
+export type StoryTranslatedSlug = {
+    /**
+     * id
+     */
+    id: number;
+    /**
+     * The name for this translated slug
+     */
+    name: string | null;
+    /**
+     * URL-friendly identifier for the app category.
+     */
+    slug: string;
+    /**
+     * The language code for this translation.
+     */
+    lang: string;
+    published: boolean | null;
+};
+
+export type StoryLocalizedPath = {
+    /**
+     * The localized path
+     */
+    path: string;
+    /**
+     * The translated name
+     */
+    name: string | null;
+    /**
+     * The language code for this translation.
+     */
+    lang: string;
+    /**
+     * Published status or date
+     */
+    published: boolean | string | null;
+    /**
+     * The translated slug (only present when folders are used).
+     */
+    translated_slug?: string;
+};
+
+/**
+ * A dimension for datasource entries, enabling localized or context-specific values
+ */
+export type Dimension = {
+    /**
+     * ID
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * The value provided for the datasource dimension.
+     */
+    entry_value: string;
+    /**
+     * The numeric ID of the datasource that the dimension belongs to.
+     */
+    datasource_id?: number;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at?: string;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at?: string;
+};
+
 /**
  * Organization details returned in user context. Empty object {} when user has no organization.
  */
@@ -1756,6 +2436,544 @@ export type UserOrg = {
     name?: string;
     status?: 'active' | 'disabled' | 'deactivated';
     settings?: OrgSettings;
+};
+
+/**
+ * A user belonging to an organization with assigned role
+ */
+export type OrgUser = {
+    /**
+     * User ID string
+     */
+    userid: string;
+    /**
+     * User email address
+     */
+    email: string;
+    /**
+     * Username
+     */
+    username: string | null;
+    /**
+     * Real email address
+     */
+    real_email: string;
+    /**
+     * Avatar URL
+     */
+    avatar: string | null;
+    /**
+     * Numeric user ID.
+     */
+    id: number;
+    /**
+     * Organization name
+     */
+    organization: string | null;
+    /**
+     * Number of sign ins.
+     */
+    sign_in_count: number;
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+    /**
+     * First name
+     */
+    firstname: string | null;
+    /**
+     * Last name
+     */
+    lastname: string | null;
+    /**
+     * User's role in the organization
+     */
+    org_role: 'owner' | 'admin' | 'member' | null;
+    /**
+     * Last sign in timestamp.
+     */
+    last_sign_in_at: string | null;
+    /**
+     * Last sign in IP address.
+     */
+    last_sign_in_ip: string | null;
+    /**
+     * Whether the user account is disabled.
+     */
+    disabled: boolean;
+    /**
+     * Partner role
+     */
+    partner_role: 'partner_owner' | 'partner_member' | null;
+    /**
+     * Friendly display name
+     */
+    friendly_name: string;
+    /**
+     * Array of space IDs user is on.
+     */
+    on_spaces?: Array<number>;
+    /**
+     * Map of space_id (as string) to an array of role names the user has on that space. "owner" indicates the space owner; other values are collaborator role names (including custom space roles). Returns an empty array when no per-user space-role data has been computed for the organization (i.e. users_info.users_on_spaces is not populated).
+     */
+    roles_on_spaces?: {
+        [key: string]: Array<string>;
+    } | Array<unknown>;
+    /**
+     * Whether user has FlowMotion access
+     */
+    flowmotion_access?: boolean;
+    /**
+     * FlowMotion role
+     */
+    flowmotion_role?: 'member' | 'admin' | null;
+};
+
+export type OrgSpace = {
+    /**
+     * Space ID.
+     */
+    id: number;
+    /**
+     * Space name.
+     */
+    name: string;
+    /**
+     * Number of users in space
+     */
+    user_count: number;
+    owner: {
+        /**
+         * Owner user ID
+         */
+        id: number;
+        /**
+         * Owner user ID string
+         */
+        userid: string;
+        /**
+         * Owner email address
+         */
+        real_email: string;
+    };
+    /**
+     * Creation timestamp (format is ISO 8601 standard in UTC).
+     */
+    created_at: string;
+};
+
+/**
+ * Billing address associated with an organization or space subscription
+ */
+export type BillingAddress = {
+    /**
+     * Tax identification number
+     */
+    tax_number?: string | null;
+    /**
+     * Order number reference
+     */
+    order_number?: string | null;
+    /**
+     * Company name
+     */
+    company?: string | null;
+    /**
+     * Billing contact email
+     */
+    email?: string | null;
+    /**
+     * Billing contact name.
+     */
+    name?: string | null;
+    /**
+     * City
+     */
+    address_city?: string | null;
+    /**
+     * Country name
+     */
+    address_country?: string | null;
+    /**
+     * ISO country code
+     */
+    address_iso_country?: string | null;
+    /**
+     * Address line 1
+     */
+    address_line1?: string | null;
+    /**
+     * Postal/ZIP code
+     */
+    address_zip?: string | null;
+};
+
+export type Plan = {
+    /**
+     * Plan ID
+     */
+    id: number;
+    /**
+     * Plan name
+     */
+    name: string;
+    /**
+     * Plan price
+     */
+    price: number;
+    /**
+     * Plan currency
+     */
+    currency: string;
+    /**
+     * Maximum collaborators
+     */
+    max?: number;
+    /**
+     * Minimum collaborators
+     */
+    min?: number;
+    /**
+     * Plan level
+     */
+    level?: number;
+    /**
+     * Number of users included
+     */
+    users?: number;
+    /**
+     * Maximum spaces
+     */
+    max_spaces?: number;
+    /**
+     * Feature set identifier
+     */
+    feature_set?: string;
+    /**
+     * Billing interval
+     */
+    payment_interval?: string;
+    /**
+     * Unique UUID identifier for the discussion.
+     */
+    uuid?: string | null;
+    /**
+     * Subscriber type
+     */
+    subscriber?: string | null;
+};
+
+/**
+ * An invitation to join an organization. Returned by V1::InvitationsSerializer.
+ */
+export type Invitations = {
+    /**
+     * Invitation ID
+     */
+    id: number;
+    /**
+     * Invited user email
+     */
+    email: string;
+    /**
+     * Associated organization ID
+     */
+    org_id?: number | null;
+    /**
+     * ID of the invited user once they have registered
+     */
+    user_id?: number | null;
+    /**
+     * Invitation expiration timestamp
+     */
+    expires_at: string;
+    /**
+     * Role the invited user will have in the organization
+     */
+    org_role?: string | null;
+    /**
+     * ID of the user who sent the invitation
+     */
+    inviter_id: number;
+    /**
+     * Whether the invited user has registered
+     */
+    registered: boolean;
+    /**
+     * The registered user associated with this invitation, or an empty object if the user has not registered
+     */
+    user: OrgUser | {
+        [key: string]: never;
+    };
+};
+
+/**
+ * Public marketplace app
+ */
+export type PublicApp = {
+    /**
+     * Unique identifier for the app.
+     */
+    id: number;
+    /**
+     * Name.
+     */
+    name: string;
+    /**
+     * URL-friendly identifier for the app category.
+     */
+    slug: string;
+    /**
+     * Coarse classification of the app
+     */
+    app_type?: 'extension' | 'integration';
+    /**
+     * URL
+     */
+    icon?: string | null;
+    /**
+     * Minimum plan level required to use this app
+     */
+    plan_level: number | null;
+    /**
+     * URL to a preview video
+     */
+    preview_video?: string | null;
+    /**
+     * Main URL
+     */
+    app_url?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Introduction text for the app
+     */
+    intro?: string | null;
+    /**
+     * URL to a screenshot
+     */
+    screenshot?: string | null;
+    /**
+     * Current status
+     */
+    status: 'created' | 'in_review' | 'approved' | 'rejected' | 'approved_unlisted';
+    /**
+     * Official website
+     */
+    website?: string | null;
+    /**
+     * Author or company that created the app
+     */
+    author?: string | null;
+    /**
+     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     */
+    updated_at: string;
+    /**
+     * Array of field type IDs
+     */
+    field_type_ids: Array<number>;
+    /**
+     * URL for the embedded version
+     */
+    embedded_app_url?: string | null;
+    /**
+     * Development URL for the embedded version
+     */
+    dev_embedded_app_url?: string | null;
+    /**
+     * Development OAuth redirect URI
+     */
+    dev_oauth_redirect_uri?: string | null;
+    /**
+     * Whether the app appears in the sidebar
+     */
+    in_sidebar: boolean;
+    /**
+     * Whether the app appears in the toolbar
+     */
+    in_toolbar: boolean;
+    /**
+     * Icon to display in the sidebar
+     */
+    sidebar_icon?: string | null;
+    /**
+     * Whether the app has space-level settings
+     */
+    enable_space_settings: boolean;
+    /**
+     * Whether the app uses Storyblok's App Bridge
+     */
+    use_app_bridge: boolean;
+    /**
+     * Array of terms and conditions for the app
+     */
+    terms: Array<{
+        /**
+         * Unique key for the terms
+         */
+        key: string;
+        /**
+         * ID of the terms record
+         */
+        id: number;
+        /**
+         * Display name of the terms
+         */
+        name: string;
+        /**
+         * URL
+         */
+        url: string;
+        /**
+         * Version of the terms
+         */
+        version: string;
+    }>;
+};
+
+export type BillingAddressRequest = {
+    /**
+     * Tax identification number
+     */
+    tax_number?: string | null;
+    /**
+     * Order number reference
+     */
+    order_number?: string | null;
+    /**
+     * Company name
+     */
+    company?: string | null;
+    /**
+     * Billing contact email
+     */
+    email?: string | null;
+    /**
+     * Billing contact name.
+     */
+    name?: string | null;
+    /**
+     * City
+     */
+    address_city?: string | null;
+    /**
+     * Country name
+     */
+    address_country?: string | null;
+    /**
+     * ISO country code
+     */
+    address_iso_country?: string | null;
+    /**
+     * Address line 1
+     */
+    address_line1?: string | null;
+    /**
+     * Postal/ZIP code
+     */
+    address_zip?: string | null;
+};
+
+export type CustomSettingsRequest = {
+    /**
+     * Organization logo URL
+     */
+    logo?: string | null;
+    /**
+     * Custom editor URL
+     */
+    editor_url?: string | null;
+    /**
+     * Primary color hex code
+     */
+    primary_color?: string | null;
+    /**
+     * Primary background color hex code
+     */
+    primary_bg_color?: string | null;
+};
+
+export type WorkflowStageAttributes = {
+    /**
+     * The name of the workflow stage.
+     */
+    name?: string;
+    /**
+     * The color of the workflow stage
+     */
+    color?: string;
+    /**
+     * The ID of the workflow this stage belongs to
+     */
+    workflow_id?: number;
+    /**
+     * Whether this is the default workflow stage
+     */
+    is_default?: boolean;
+    /**
+     * Whether publishing is allowed in this stage
+     */
+    allow_publish?: boolean;
+    /**
+     * Whether transitions to all stages are allowed
+     */
+    allow_all_stages?: boolean;
+    /**
+     * Whether admin publishing is allowed
+     */
+    allow_admin_publish?: boolean;
+    /**
+     * Whether all users can move content to this stage
+     */
+    allow_all_users?: boolean;
+    /**
+     * Whether admins can change this stage
+     */
+    allow_admin_change?: boolean;
+    /**
+     * Whether editors can change this stage
+     */
+    allow_editor_change?: boolean;
+    /**
+     * Whether 'none' is allowed for next stages selection
+     */
+    allow_none_for_next_stages?: boolean;
+    /**
+     * Whether story editing is locked in this stage
+     */
+    story_editing_locked?: boolean;
+    /**
+     * Whether assignees are automatically removed on stage change
+     */
+    auto_remove_assignee?: boolean;
+    /**
+     * Numeric representation of the story's position in the folder.
+     */
+    position?: number;
+    /**
+     * Whether to swap positions with another stage.
+     */
+    update_position?: boolean;
+    /**
+     * The ID of the stage to transition to after publishing
+     */
+    after_publish_id?: number | null;
+    /**
+     * IDs of users to assign to this workflow stage
+     */
+    user_ids?: Array<number>;
+    /**
+     * IDs of space roles to assign to this workflow stage
+     */
+    space_role_ids?: Array<number>;
+    /**
+     * IDs of allowed next workflow stages
+     */
+    workflow_stage_ids?: Array<number>;
 };
 
 /**

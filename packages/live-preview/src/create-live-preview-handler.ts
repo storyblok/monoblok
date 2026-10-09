@@ -1,40 +1,66 @@
 import type { DomMorphOptions } from "./dom/morph-storyblok-dom";
+import type { LivePreviewStory } from "./on-storyblok-editor-event";
+import type { Story } from "./generated/types/story";
 
 import { morphStoryblokDom } from "./dom/morph-storyblok-dom";
 
-export type LivePreviewEvent<TStory extends object = Record<string, unknown>> = {
+export type LivePreviewEvent<TStory extends Story = Story> = {
   action: string;
-  story?: TStory;
+  story?: LivePreviewStory<TStory>;
 };
 
-export type LivePreviewUpdateContext<TStory extends object> = {
-  story: TStory;
+export type LivePreviewUpdateContext<TStory extends Story> = {
+  story: LivePreviewStory<TStory>;
   signal: AbortSignal;
 };
 
-export type LivePreviewHandlerOptions<TStory extends object> = {
+export type LivePreviewHandlerOptions<TStory extends Story> = {
   /** Returns the current DOM root that should be updated. */
-  currentRoot: () => Node;
+  currentRoot: () => Element;
   /** Fetches or renders the next DOM root for a story update. */
-  update: (context: LivePreviewUpdateContext<TStory>) => Promise<Node>;
+  update: (context: LivePreviewUpdateContext<TStory>) => Promise<Element>;
   /** Debounce delay for consecutive input events. Defaults to 500ms. */
   debounceMs?: number;
   /** DOM morphing behavior. */
   morph?: Omit<DomMorphOptions, "focusedElement">;
   /** Return false to cancel an update before calling `update`. */
-  onBeforeUpdate?: (story: TStory) => boolean | void;
+  onBeforeUpdate?: (story: LivePreviewStory<TStory>) => boolean | void;
   /** Called after the next DOM tree has been applied. */
-  onUpdated?: (story: TStory) => void;
-  /** Called for non-abort update failures. */
-  onError?: (error: unknown, story: TStory) => void;
-  /** Called for `change` and `published` events. */
+  onUpdated?: (story: LivePreviewStory<TStory>) => void;
+  /**
+   * Called for non-abort update failures: `update` throwing or rejecting,
+   * or the morph throwing. Defaults to `console.error` when not given, so
+   * failures never disappear silently.
+   */
+  onError?: (error: unknown, story: LivePreviewStory<TStory>) => void;
+  /**
+   * Called for `change` and `published` events. Defaults to
+   * `window.location.reload()`, matching `onStoryblokEditorEvent`. Any
+   * pending debounced `input` update is cancelled first, so a non-reloading
+   * `onReload` (e.g. a refetch) can't be overwritten by a stale morph that
+   * was already in flight.
+   */
   onReload?: (action: "change" | "published") => void;
 };
 
-export type LivePreviewHandler<TStory extends object> = {
+export type LivePreviewHandler<TStory extends Story> = {
+  /**
+   * Resolves once the event has been scheduled (and, for `change`/
+   * `published`, once `onReload` has run). For `input`, that's before the
+   * debounce delay, `update`, and the morph: it does not resolve once the
+   * DOM has actually been updated.
+   */
   handle: (event: LivePreviewEvent<TStory> | null | undefined) => Promise<void>;
   dispose: () => void;
 };
+
+function defaultOnError(error: unknown): void {
+  console.error("[Storyblok] Live preview update failed:", error);
+}
+
+function defaultOnReload(): void {
+  window.location.reload();
+}
 
 /**
  * Creates an isolated Storyblok live-preview event handler.
@@ -43,13 +69,23 @@ export type LivePreviewHandler<TStory extends object> = {
  * owns how updated content is fetched or rendered. Each instance has its own
  * timer and AbortController, so independent previews cannot cancel each other.
  */
-export function createLivePreviewHandler<TStory extends object>(
+export function createLivePreviewHandler<TStory extends Story = Story>(
   options: LivePreviewHandlerOptions<TStory>,
 ): LivePreviewHandler<TStory> {
   const debounceMs = options.debounceMs ?? 500;
+  const reportError = options.onError ?? defaultOnError;
+  const reload = options.onReload ?? defaultOnReload;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let abortController: AbortController | null = null;
   let active = true;
+
+  const cancelPendingUpdate = (): void => {
+    abortController?.abort();
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = undefined;
+    }
+  };
 
   const handle = async (event: LivePreviewEvent<TStory> | null | undefined): Promise<void> => {
     if (!active || !event) {
@@ -57,7 +93,16 @@ export function createLivePreviewHandler<TStory extends object>(
     }
 
     if (event.action === "change" || event.action === "published") {
-      options.onReload?.(event.action);
+      cancelPendingUpdate();
+      try {
+        reload(event.action);
+      } catch (error) {
+        if (event.story) {
+          reportError(error, event.story);
+        } else {
+          defaultOnError(error);
+        }
+      }
       return;
     }
 
@@ -65,10 +110,7 @@ export function createLivePreviewHandler<TStory extends object>(
       return;
     }
 
-    abortController?.abort();
-    if (timeout) {
-      clearTimeout(timeout);
-    }
+    cancelPendingUpdate();
 
     const story = event.story;
     timeout = setTimeout(async () => {
@@ -88,10 +130,13 @@ export function createLivePreviewHandler<TStory extends object>(
         morphStoryblokDom(options.currentRoot(), nextRoot, options.morph);
         options.onUpdated?.(story);
       } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
+        if (
+          requestController.signal.aborted ||
+          (error instanceof Error && error.name === "AbortError")
+        ) {
           return;
         }
-        options.onError?.(error, story);
+        reportError(error, story);
       }
     }, debounceMs);
   };
@@ -101,10 +146,7 @@ export function createLivePreviewHandler<TStory extends object>(
       return;
     }
     active = false;
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    abortController?.abort();
+    cancelPendingUpdate();
   };
 
   return { handle, dispose };

@@ -1,7 +1,7 @@
 /**
- * The op factories. Each returns a plain object; nothing runs at module load,
- * so a dry run needs no network call, a key op can be inverted from the op
- * alone, and a user can add an op by writing a function that returns one.
+ * The op factories. Each returns a plain object, so a key op can be inverted
+ * from the op alone, and a user can add an op by writing a function that
+ * returns one.
  *
  * Every op type carries the two schema parameters on a phantom property. A
  * top-level factory is called in the argument list of

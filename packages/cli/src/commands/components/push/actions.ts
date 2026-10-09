@@ -115,6 +115,7 @@ export const upsertComponent = async (
     icon,
     preview_field,
     preview_tmpl,
+    image,
     internal_tag_ids,
   } = component;
   const payload = {
@@ -128,6 +129,7 @@ export const upsertComponent = async (
     icon: icon ?? undefined,
     preview_field: preview_field ?? undefined,
     preview_tmpl: preview_tmpl ?? undefined,
+    image: image ?? undefined,
     internal_tag_ids: toRequestTagIds(internal_tag_ids),
   };
 

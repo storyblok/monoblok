@@ -67,8 +67,14 @@ export const schema = defineSchema({ blocks: { articleBlock } });
 export type Before = InferSchema<typeof schema>;
 ```
 
-Keep the snapshot unchanged once the migration ships. Later schema changes then can’t break the
-migration’s types.
+Keep the snapshot unchanged once the migration ships. The fields the migration reads then stay typed
+after later schema changes. The fields it writes are typed against the current `Schema`, so a later
+rename or removal of one of them shows up as a type error in the migration.
+
+The Storyblok CLI writes both files:
+[`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
+[`schema push`](/docs/tooling/cli/schema-push#breaking-changes-and-migrations) generate the
+migration and its snapshot from the space’s current components.
 
 ### Schema types
 

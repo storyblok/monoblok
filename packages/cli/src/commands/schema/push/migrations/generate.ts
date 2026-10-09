@@ -1,5 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
+import type { MigrationOpSource } from "@storyblok/schema/codegen";
+import type { CoercionTarget } from "@storyblok/schema/migrations";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { fileTimestamp } from "../../utils";
@@ -131,6 +133,119 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
   const body = lines.length > 0 ? `\n${lines.join("\n")}` : "\n";
 
   return `export default function (block) {${body}  return block;\n}\n`;
+}
+
+/** Field types whose values `coerceField` converts between. */
+const COERCION_TARGETS: Record<string, CoercionTarget> = {
+  text: "string",
+  textarea: "string",
+  markdown: "string",
+  number: "number",
+  boolean: "boolean",
+};
+
+/**
+ * `coerceField` refuses a boolean's `true`/`false` as a number and every number
+ * but 0 and 1 as a boolean, so these conversions need a hand-written mapping.
+ */
+const UNSUPPORTED_COERCIONS = new Set(["boolean:number", "number:boolean"]);
+
+function coercionOf(
+  oldType: string,
+  newType: string,
+): { from: CoercionTarget; to: CoercionTarget } | undefined {
+  const from = COERCION_TARGETS[oldType];
+  const to = COERCION_TARGETS[newType];
+  if (!from || !to || UNSUPPORTED_COERCIONS.has(`${from}:${to}`)) {
+    return undefined;
+  }
+  return { from, to };
+}
+
+/** The empty value a new required field is backfilled with. */
+function defaultValueForType(fieldType: string): unknown {
+  switch (fieldType) {
+    case "text":
+    case "textarea":
+    case "markdown":
+    case "number":
+      // A Storyblok `number` field stores its value as a string.
+      return "";
+    case "boolean":
+      return false;
+    default:
+      return undefined;
+  }
+}
+
+function defaultTodo(field: string, fieldType: string, value: unknown): string {
+  return value === undefined
+    ? `TODO: provide a default for the required ${fieldType} field '${field}'.`
+    : `TODO: replace the placeholder default for the required field '${field}'.`;
+}
+
+/** Maps one component's breaking changes to `defineMigration` ops. */
+export function toMigrationOps(block: string, changes: BreakingChange[]): MigrationOpSource[] {
+  return changes.flatMap((change): MigrationOpSource[] => {
+    switch (change.kind) {
+      case "rename":
+        return [{ kind: "renameField", block, field: change.oldField, to: change.field }];
+      case "removed":
+        return [
+          {
+            kind: "removeField",
+            block,
+            field: change.field,
+            todo: change.renameHint
+              ? [
+                  `TODO: if '${change.field}' was renamed to '${change.renameHint.newField}', replace removeField with renameField.`,
+                ]
+              : undefined,
+          },
+        ];
+      case "type_changed": {
+        const coercion = coercionOf(change.oldType, change.newType);
+        if (coercion) {
+          // Text, textarea, and markdown all store a string.
+          return coercion.from === coercion.to
+            ? []
+            : [{ kind: "coerceField", block, field: change.field, ...coercion }];
+        }
+        return [
+          {
+            kind: "alterField",
+            block,
+            field: change.field,
+            todo: [`TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}.`],
+          },
+        ];
+      }
+      case "required_added": {
+        const value = defaultValueForType(change.fieldType);
+        return [
+          {
+            kind: "addField",
+            block,
+            field: change.field,
+            value,
+            todo: [defaultTodo(change.field, change.fieldType, value)],
+          },
+        ];
+      }
+      case "required_changed": {
+        const value = defaultValueForType(change.fieldType);
+        return [
+          {
+            kind: "fillField",
+            block,
+            field: change.field,
+            value,
+            todo: [defaultTodo(change.field, change.fieldType, value)],
+          },
+        ];
+      }
+    }
+  });
 }
 
 /** Options for writing a migration file. */

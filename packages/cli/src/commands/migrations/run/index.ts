@@ -10,6 +10,8 @@ import type { MigrationsRunOptions } from "./constants";
 import { migrationsCommand } from "../command";
 import { createStoriesStream } from "./streams/stories-stream";
 import { readMigrationFiles } from "./actions";
+import { discoverMigrations } from "@storyblok/schema/migrations";
+import { migrationsDirectory, plural } from "../content-migrations";
 import { MigrationStream } from "./streams/migrations-transform";
 import { isLegacyMigrationFilename, migrationTargetsComponent } from "../migration-filename";
 import { UpdateStream } from "./streams/update-stream";
@@ -93,6 +95,14 @@ runCmd.action(
           `No migration files found${componentName ? ` for component "${componentName}"` : ""}${filter ? ` matching filter "${filter}"` : ""} in space "${fromSpace}".`,
         );
         logger.warn("No migration files found");
+        const contentMigrations = await discoverMigrations(
+          migrationsDirectory(path, fromSpace),
+        ).catch(() => []);
+        if (!componentName && !filter && contentMigrations.length > 0) {
+          ui.info(
+            `Found ${plural(contentMigrations.length, "defineMigration file", "defineMigration files")}. Run them with \`storyblok migrations apply\`.`,
+          );
+        }
         logger.info("Migration finished");
         return;
       }

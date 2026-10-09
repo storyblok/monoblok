@@ -25,6 +25,9 @@ This will generate a migration file for the specified component:
 | `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                              | -                       |
 | `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators | -                       |
 | `-p, --path <path>`       | Custom path to store the migration file                                                                                   | `.storyblok/migrations` |
+| `--schema <entry-file>`   | Schema entry file. Generates a typed `defineMigration` file and its `.before.ts` snapshot instead of a `.js` migration    | -                       |
+| `--no-before`             | Skip the `.before.ts` snapshot next to a typed migration                                                                  | -                       |
+| `--js`                    | Generate a `.js` migration even when `--schema` is set                                                                    | -                       |
 
 ## Examples
 
@@ -73,6 +76,22 @@ backup/
         └── hero.js  # Migration file
 ```
 
+4. Generate a typed content migration for `migrations apply`:
+
+```bash
+storyblok migrations generate hero --space 12345 --schema src/schema.ts
+```
+
+The command writes two files, numbered after the existing content migrations:
+
+```
+.storyblok/
+└── migrations/
+    └── 12345/
+        ├── 0001-hero.ts         # defineMigration file, typed against Schema and Before
+        └── 0001-hero.before.ts  # the hero block as the space holds it now
+```
+
 ## File Structure
 
 The command follows this pattern for file generation:
@@ -90,6 +109,9 @@ Where:
 - `{spaceId}` is your Storyblok space ID
 - `{componentName}` is the name of the component
 - `{suffix}` is the suffix in the file name if provided
+
+With `--schema`, the files are `{number}-{componentName}[-{suffix}].ts` and its `.before.ts`
+snapshot, where `{number}` follows the highest existing numeric prefix in the directory.
 
 ### Component names that are not file names
 

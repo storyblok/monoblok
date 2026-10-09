@@ -196,6 +196,16 @@ const preconditions = {
   },
 };
 
+function writtenFile(suffix: string): string | undefined {
+  return Object.entries(vol.toJSON()).find(([file]) => file.endsWith(suffix))?.[1] ?? undefined;
+}
+
+function migrationFiles(): string[] {
+  return Object.keys(vol.toJSON())
+    .filter((file) => file.includes(`migrations/${DEFAULT_SPACE}/`))
+    .sort();
+}
+
 describe("schema push command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
@@ -204,6 +214,9 @@ describe("schema push command", () => {
     vi.clearAllMocks();
     vol.reset();
     server.resetHandlers();
+    const pushCmd = schemaCommand.commands.find((command) => command.name() === "push");
+    pushCmd?.setOptionValueWithSource("js", undefined, "default");
+    pushCmd?.setOptionValueWithSource("before", true, "default");
   });
 
   afterAll(() => server.close());
@@ -805,13 +818,46 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    const migrationFile = Object.entries(vol.toJSON()).find(
-      ([filename]) =>
-        filename.includes("migrations/") && filename.includes("hero.") && filename.endsWith(".js"),
+    const migration = writtenFile(`migrations/${DEFAULT_SPACE}/0001-update-hero.ts`);
+    expect(migration).toContain("import type { Schema } from '../../../schema';");
+    expect(migration).toContain("export default defineMigration<Schema, Before>([");
+    expect(migration).toContain(
+      "renameField({ block: 'hero', field: 'author_name', to: 'author' })",
     );
-    expect(migrationFile).toBeDefined();
-    expect(migrationFile![1]).toContain("block.author = block.author_name");
-    expect(migrationFile![1]).toContain("delete block.author_name");
+    expect(writtenFile(`migrations/${DEFAULT_SPACE}/0001-update-hero.before.ts`)).toContain(
+      "defineField('author_name'",
+    );
+  });
+
+  it("should skip the snapshot with --no-before", async () => {
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    const localComp = makeMockComponent({
+      name: "hero",
+      schema: { author: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    preconditions.hasLocalSchema({ components: [localComp] as any, datasources: [] });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+      "--no-before",
+    ]);
+
+    expect(writtenFile("0001-update-hero.ts")).toContain("defineMigration<Schema>([");
+    expect(writtenFile(".before.ts")).toBeUndefined();
   });
 
   it("should skip migration generation with --no-migrations", async () => {
@@ -847,10 +893,7 @@ describe("schema push command", () => {
       "--no-migrations",
     ]);
 
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
   });
 
@@ -881,10 +924,7 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
   });
 
   it("should auto-generate migrations without prompting when --migrations is explicit", async () => {
@@ -922,10 +962,10 @@ describe("schema push command", () => {
     ]);
 
     // Should generate without prompting
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(1);
+    expect(migrationFiles()).toEqual([
+      expect.stringMatching(/0001-update-hero\.before\.ts$/),
+      expect.stringMatching(/0001-update-hero\.ts$/),
+    ]);
     // confirm should NOT have been called (auto-generate mode)
     expect(confirm).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(
@@ -1001,15 +1041,12 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    const migrationFile = Object.entries(vol.toJSON()).find(
-      ([filename]) =>
-        filename.includes("migrations/") && filename.includes("hero.") && filename.endsWith(".js"),
+    expect(writtenFile("0001-update-hero.ts")).toContain(
+      "coerceField({ block: 'hero', field: 'rating', from: 'string', to: 'number' })",
     );
-    expect(migrationFile).toBeDefined();
-    expect(migrationFile![1]).toContain("Number(block.rating)");
   });
 
-  it("should include review guidance in generated migration files", async () => {
+  it("should write legacy .js migrations with --js", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: {
@@ -1042,6 +1079,7 @@ describe("schema push command", () => {
       "--space",
       DEFAULT_SPACE,
       "--migrations",
+      "--js",
     ]);
 
     const migrationFile = Object.entries(vol.toJSON()).find(
@@ -1091,10 +1129,7 @@ describe("schema push command", () => {
       "--migrations",
     ]);
 
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
   });
@@ -1134,10 +1169,7 @@ describe("schema push command", () => {
 
     // Must not prompt — dry-run is non-interactive
     expect(confirm).not.toHaveBeenCalled();
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
   });
 });

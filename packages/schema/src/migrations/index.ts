@@ -65,7 +65,12 @@ export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./undo-
 export { checkPendingReleases } from "./releases";
 export type { PendingReleasesCheck, ReleaseForMigration } from "./releases";
 
-export { discoverMigrations, loadMigrations, selectMigrationFiles } from "./load-migrations";
+export {
+  discoverMigrations,
+  loadMigrations,
+  nextMigrationId,
+  selectMigrationFiles,
+} from "./load-migrations";
 export type {
   ImportDefault,
   LoadedMigration,

@@ -1,8 +1,8 @@
-# Staged docs: `migrations apply`, `list`, `undo`, and `client.releases`
+# Staged docs: `migrations apply`, `list`, `undo`, `generate`, `schema push`, and `client.releases`
 
-Staged docs-site content for the CLI's content migration commands and the Management API client's
-`releases` resource. Each section starts with a `target` marker naming the docs platform page and
-heading it belongs to.
+Staged docs-site content for the CLI's content migration commands, the migration files
+`migrations generate` and `schema push` write, and the Management API client's `releases` resource.
+Each section starts with a `target` marker naming the docs platform page and heading it belongs to.
 
 - **New pages:** `src/content/docs/docs/tooling/cli/migrations-apply.mdx`, `migrations-list.mdx`,
   and `migrations-undo.mdx`.
@@ -16,8 +16,9 @@ heading it belongs to.
   ```
 
 - **Existing pages:** `src/content/docs/docs/tooling/cli/index.mdx` gets three link cards,
-  `src/content/docs/docs/libraries/js/schema/migrations.mdx` gets a pointer to the CLI, and
-  `src/content/docs/docs/libraries/js/management-api-client/index.mdx` gets the `releases` resource.
+  `src/content/docs/docs/libraries/js/schema/migrations.mdx` gets a pointer to the CLI,
+  `src/content/docs/docs/libraries/js/management-api-client/index.mdx` gets the `releases` resource,
+  and `migrations-generate.mdx` and `schema-push.mdx` document the typed migration files they write.
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations-apply.mdx (new page) -->
 
@@ -287,3 +288,80 @@ Pass `query.branch_id` to list only the releases of one branch.
 <!-- target: src/content/docs/docs/libraries/js/management-api-client/index.mdx (introduction) -->
 
 In the introduction’s list of resource clients, add `releases` after `presets`.
+
+<!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx (after the paragraph about the template function) -->
+
+````mdx
+## Typed content migrations
+
+Pass `--schema` with your project’s schema entry file to generate a typed content migration for
+[`migrations apply`](/docs/tooling/cli/migrations-apply) instead. The command numbers the file after
+the existing content migrations in the directory and writes a schema snapshot next to it:
+
+```text
+.storyblok/
+└── migrations/
+    └── <space-id>/
+        ├── <number>-<component-name>[-<suffix>].ts
+        └── <number>-<component-name>[-<suffix>].before.ts
+```
+
+The migration file default-exports an empty `defineMigration()` call from
+[@storyblok/schema/migrations](/docs/libraries/js/schema/migrations), typed against the `Schema`
+type your schema entry file exports and the `Before` type the snapshot exports. The snapshot holds
+the block’s fields as they are in the space now, and a name-only definition for every block its
+fields allow, so the migration can name fields that no longer exist in your schema. Commit both
+files, and keep the snapshot unchanged once the migration ships. The command refuses to overwrite an
+existing migration or snapshot.
+
+Pass `--no-before` to skip the snapshot. Pass `--js` to generate the `.js` template even when
+`--schema` is set.
+````
+
+<!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx#flags (add the rows after `--suffix`) -->
+
+| Flag       | Type    | Description                                                                                                                          |
+| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `--schema` | string  | _Optional._ Path to the schema entry file. Generates a typed content migration and its schema snapshot instead of a `.js` migration. |
+| `--before` | boolean | _Optional._ Write a schema snapshot next to a typed content migration. Enabled by default. Pass `--no-before` to skip.               |
+| `--js`     | boolean | _Optional._ Generate a `.js` migration even when `--schema` is set.                                                                  |
+
+<!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx#examples (append to the code block) -->
+
+```bash
+# Generate a typed content migration for the "hero-section" component
+storyblok migrations generate hero-section --schema src/schema.ts
+```
+
+<!-- target: src/content/docs/docs/tooling/cli/schema-push.mdx#breaking-changes-and-migrations (replace the section body) -->
+
+```mdx
+When a push contains breaking changes (field removals, type changes, renames, or new required
+fields), the command analyzes them and, unless `--no-migrations` is set, writes one typed content
+migration for all changed blocks. The command confirms detected renames interactively.
+
+The migration is numbered after the existing content migrations in
+`.storyblok/migrations/<space-id>/`, next to a `.before.ts` schema snapshot of the blocks as they
+are in the space before the push. The migration renames and removes fields, converts values between
+text, textarea, markdown, and number fields and between text and boolean fields, and fills new
+required text, number, and boolean fields with an empty value. Comments starting with `TODO` mark
+the operations to complete, such as a conversion between other field types or a default value for a
+new required field of another type. Review the migration before running
+[`migrations apply`](/docs/tooling/cli/migrations-apply).
+
+`migrations apply` writes a story only when every operation in the migration succeeds on it. If an
+operation fails on one block, the story keeps its content, including the changes to other blocks.
+
+Pass `--no-before` to skip the snapshot. Pass `--js` to write one `.js` migration per component for
+[`migrations run`](/docs/tooling/cli/migrations-run) instead.
+
+With `--dry-run`, the command prints the number of breaking changes and the detected renames, but
+doesn’t write migration files.
+```
+
+<!-- target: src/content/docs/docs/tooling/cli/schema-push.mdx#flags (add the rows after `--migrations`) -->
+
+| Flag       | Type    | Description                                                                                                                  |
+| ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `--before` | boolean | _Optional._ Write a schema snapshot next to the generated content migration. Enabled by default. Pass `--no-before` to skip. |
+| `--js`     | boolean | _Optional._ Generate one `.js` migration per block for `migrations run` instead.                                             |

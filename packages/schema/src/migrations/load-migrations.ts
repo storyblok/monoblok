@@ -69,6 +69,40 @@ export function selectMigrationFiles(directory: string, filenames: string[]): Mi
   return selected.map(({ id, filename }) => ({ id, file: joinPath(directory, filename) }));
 }
 
+const MIN_PREFIX_WIDTH = 4;
+const MAX_SLUG_LENGTH = 60;
+
+/** Reduces free text to a slug the migration filename pattern accepts. */
+function toMigrationSlug(name: string): string {
+  const slug = name
+    // Splits accented letters into base letter and mark, so `é` keeps its `e`.
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/^-+|-+$/g, "");
+  return slug || "migration";
+}
+
+/**
+ * The id for a new migration: one past the highest numeric prefix among the
+ * existing ids, zero-padded to the width they use (at least four digits), with
+ * `name` reduced to a slug the loader accepts.
+ */
+export function nextMigrationId(existingIds: readonly string[], name: string): string {
+  let highest = 0;
+  let width = MIN_PREFIX_WIDTH;
+  for (const id of existingIds) {
+    const prefix = /^(\d+)-/.exec(id)?.[1];
+    if (prefix === undefined) continue;
+    highest = Math.max(highest, Number(prefix));
+    width = Math.max(width, prefix.length);
+  }
+  return `${String(highest + 1).padStart(width, "0")}-${toMigrationSlug(name)}`;
+}
+
 export async function discoverMigrations(directory: string): Promise<MigrationFile[]> {
   const { readdir } = await import("node:fs/promises");
   const filenames = await readdir(directory).catch((): string[] => []);

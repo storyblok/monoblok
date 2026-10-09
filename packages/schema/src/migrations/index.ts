@@ -1,9 +1,6 @@
 /**
  * Content migrations: apply a typed list of ops to a space's story content and
- * record enough to undo it. Functions return what to write; the caller performs
- * the Management API calls. Only migration file discovery and the default
- * journal touch the filesystem, and they load it on first call, so importing
- * this module works in any runtime.
+ * record enough to undo it.
  */
 export { defineMigration } from "./define-migration";
 export type { CompiledMigration, MigrationDefinition, MigrationOps } from "./define-migration";

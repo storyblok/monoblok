@@ -1,3 +1,4 @@
+import { MultiBar } from "cli-progress";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UI } from "./ui";
 
@@ -14,6 +15,24 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
 });
+
+/**
+ * `process.stderr.isTTY` is a plain data property, absent entirely when stderr
+ * is not a terminal, so it is set and restored rather than spied on.
+ */
+function withStderrTTY(value: boolean, run: () => void) {
+  const original = Object.getOwnPropertyDescriptor(process.stderr, "isTTY");
+  Object.defineProperty(process.stderr, "isTTY", { value, configurable: true });
+  try {
+    run();
+  } finally {
+    if (original) {
+      Object.defineProperty(process.stderr, "isTTY", original);
+    } else {
+      delete (process.stderr as { isTTY?: boolean }).isTTY;
+    }
+  }
+}
 
 describe("ui", () => {
   describe("stderr routing", () => {
@@ -183,6 +202,102 @@ describe("ui", () => {
       ui.ok("after");
       // Only one additional call (the second ok), not a reset
       expect(errorSpy.mock.calls.length).toBe(callCount + 1);
+    });
+  });
+  // A spinner or a bar redraws by emitting cursor escapes. Sent to a file those
+  // are just bytes, so `sb stories find 2> run.log` would collect every frame it
+  // ever drew instead of one line that updates.
+  describe("redraw guard", () => {
+    beforeEach(() => {
+      vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    });
+
+    it("should return a noop progress bar when stderr is not a terminal", () => {
+      const create = vi.spyOn(MultiBar.prototype, "create");
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(false, () => {
+        const bar = ui.createProgressBar({ title: "Fetching" });
+        bar.setTotal(10);
+        bar.increment(1);
+        bar.stop();
+      });
+
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it("should render a real progress bar when stderr is a terminal", () => {
+      const create = vi.spyOn(MultiBar.prototype, "create");
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(true, () => {
+        const bar = ui.createProgressBar({ title: "Fetching" });
+        bar.setTotal(10);
+        bar.stop();
+      });
+      ui.stopAllProgressBars();
+
+      expect(create).toHaveBeenCalled();
+    });
+
+    // Silence would be worse than no animation: the spinner's text is the only
+    // trace a long fetch leaves in a CI log.
+    it("should degrade a spinner to plain text when stderr is not a terminal", () => {
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(false, () => {
+        const spinner = ui.createSpinner("Fetching stories");
+        expect(errorSpy).toHaveBeenCalledWith("Fetching stories");
+
+        spinner.succeed("Fetched 42 stories");
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Fetched 42 stories"));
+        expect(spinner.elapsedTime).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    it("should report a failed plain spinner", () => {
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(false, () => {
+        ui.createSpinner("Fetching stories").failed("Fetch failed");
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Fetch failed"));
+    });
+
+    // Falls back to the title so a caller that passes no text still closes the
+    // line it opened.
+    it("should fall back to the title when a plain spinner finishes without text", () => {
+      const ui = new UI({ enabled: true });
+
+      withStderrTTY(false, () => {
+        ui.createSpinner("Fetching stories").succeed();
+      });
+
+      expect(errorSpy).toHaveBeenNthCalledWith(2, expect.stringContaining("Fetching stories"));
+    });
+
+    it("should not print plain spinner lines when the UI is disabled", () => {
+      const ui = new UI({ enabled: false });
+
+      withStderrTTY(false, () => {
+        ui.createSpinner("Fetching stories").succeed("done");
+      });
+
+      expect(errorSpy).not.toHaveBeenCalled();
+    });
+
+    // Progress is suppressed when results stream to the same terminal; adding
+    // plain spinner lines there would reintroduce the interleaving it prevents.
+    it("should stay silent when progress is suppressed", () => {
+      const ui = new UI({ enabled: true });
+      ui.suppressProgress();
+
+      withStderrTTY(false, () => {
+        ui.createSpinner("Fetching stories").succeed("done");
+      });
+
+      expect(errorSpy).not.toHaveBeenCalled();
     });
   });
 });

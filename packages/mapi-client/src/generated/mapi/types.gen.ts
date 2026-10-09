@@ -2998,7 +2998,10 @@ export type CreateWorkflowStageChangeRequest = {
 };
 
 export type CreateWorkflowStageRequest = {
-    workflow_stage: WorkflowStageAttributes;
+    workflow_stage: WorkflowStageAttributes & {
+        name: string;
+        color: string;
+    };
 };
 
 export type CustomPasswordComplexityResponse = {
@@ -13549,6 +13552,35 @@ export type ErrorsObject = {
      */
     error_code?: 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region';
     [key: string]: Array<string> | string | ErrorsMap | 'org_role_forbidden' | 'feature_not_available' | 'feature_limit_reached' | 'no_spaces_in_region' | undefined;
+};
+
+export type CreateWebhookEndpointRequest = {
+    webhook_endpoint: {
+        /**
+         * Name of the webhook endpoint
+         */
+        name: string;
+        /**
+         * Optional description
+         */
+        description?: string;
+        /**
+         * URL to receive webhook payloads (http or https)
+         */
+        endpoint: string;
+        /**
+         * Optional secret for request signing
+         */
+        secret?: string;
+        /**
+         * Whether the webhook is active
+         */
+        activated?: boolean;
+        /**
+         * List of event actions to subscribe to (e.g. story.published, asset.created)
+         */
+        actions: Array<string>;
+    };
 };
 
 export type InvoiceShowResponseWritable = {
@@ -40310,7 +40342,7 @@ export type ListWebhookEndpointsResponses = {
 export type ListWebhookEndpointsResponse = ListWebhookEndpointsResponses[keyof ListWebhookEndpointsResponses];
 
 export type CreateWebhookEndpointData = {
-    body: WebhookEndpointRequest;
+    body: CreateWebhookEndpointRequest;
     path: {
         /**
          * Numeric ID of the space

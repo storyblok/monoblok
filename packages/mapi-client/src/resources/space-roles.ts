@@ -86,7 +86,7 @@ export function createSpaceRolesResource<DefaultThrowOnError extends boolean = f
         throwOnError,
       );
     },
-    /** Partially updates a space role (`PATCH`). */
+    /** Updates a space role (`PATCH`). Only the fields in the body change. */
     update<ThrowOnError extends boolean = DefaultThrowOnError>(
       spaceRoleId: number,
       options: {
@@ -110,7 +110,7 @@ export function createSpaceRolesResource<DefaultThrowOnError extends boolean = f
         throwOnError,
       );
     },
-    /** Replaces a space role (`PUT`). */
+    /** Updates a space role (`PUT`). Behaves like `update()`: only the fields in the body change. */
     replace<ThrowOnError extends boolean = DefaultThrowOnError>(
       spaceRoleId: number,
       options: {

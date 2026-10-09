@@ -46,6 +46,7 @@ export type {
   InternalTagUpdate,
   MapiDatasource as Datasource,
   MapiDatasourceEntry as DatasourceEntry,
+  MemberOrganization,
   Organization,
   OrganizationUpdate,
   Preset,

@@ -87,6 +87,7 @@ export function createWorkflowsResource<DefaultThrowOnError extends boolean = fa
         throwOnError,
       );
     },
+    /** Updates a workflow (`PUT`; workflows have no `PATCH`). Only the fields in the body change. */
     update<ThrowOnError extends boolean = DefaultThrowOnError>(
       workflowId: number,
       options: {

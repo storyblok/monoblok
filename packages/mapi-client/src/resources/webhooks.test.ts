@@ -117,7 +117,9 @@ describe("webhooks.create()", () => {
     );
 
     const result = await createClient(123).webhooks.create({
-      body: { webhook_endpoint: { endpoint: "not-a-url" } },
+      body: {
+        webhook_endpoint: { name: "Deploy", endpoint: "not-a-url", actions: ["story.published"] },
+      },
     });
 
     expect(result.error?.response.status).toBe(422);

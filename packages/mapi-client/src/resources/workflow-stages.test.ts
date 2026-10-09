@@ -95,7 +95,7 @@ describe("workflowStages.create()", () => {
         return HttpResponse.json({ workflow_stage: WORKFLOW_STAGE }, { status: 201 });
       }),
     );
-    const body = { workflow_stage: { name: "Drafting", workflow_id: 3 } };
+    const body = { workflow_stage: { name: "Drafting", color: "#ff0000", workflow_id: 3 } };
 
     const result = await createClient(123).workflowStages.create({ body });
 

@@ -48,6 +48,7 @@ await generate({
     "SpaceUpdate",
     "User",
     "UserUpdate",
+    "MemberOrganization",
     "Organization",
     "OrganizationUpdate",
     "SpaceRole",

@@ -17,6 +17,7 @@ export function createOrgsResource<DefaultThrowOnError extends boolean = false>(
   const { client, wrapRequest } = deps;
 
   return {
+    /** Members of the organization receive the reduced `MemberOrganization` shape. */
     get<ThrowOnError extends boolean = DefaultThrowOnError>(
       options: {
         query?: GetOrganizationData["query"];
@@ -37,7 +38,7 @@ export function createOrgsResource<DefaultThrowOnError extends boolean = false>(
         throwOnError,
       );
     },
-    /** Partially updates the organization (`PATCH`). */
+    /** Updates the organization (`PATCH`). Only the fields in the body change. */
     update<ThrowOnError extends boolean = DefaultThrowOnError>(options: {
       body: PartialUpdateOrganizationData["body"];
       signal?: AbortSignal;
@@ -56,7 +57,7 @@ export function createOrgsResource<DefaultThrowOnError extends boolean = false>(
         throwOnError,
       );
     },
-    /** Replaces the organization settings (`PUT`). */
+    /** Updates the organization (`PUT`). Behaves like `update()`: only the fields in the body change. */
     replace<ThrowOnError extends boolean = DefaultThrowOnError>(options: {
       body: UpdateOrganizationData["body"];
       signal?: AbortSignal;

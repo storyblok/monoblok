@@ -105,7 +105,7 @@ describe("workflows.create()", () => {
 });
 
 describe("workflows.update()", () => {
-  it("should send the update for the workflow", async () => {
+  it("should update the workflow with a PUT", async () => {
     let requestedId: string | undefined;
     let requestBody: unknown;
     server.use(

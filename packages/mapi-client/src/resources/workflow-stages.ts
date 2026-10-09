@@ -86,7 +86,7 @@ export function createWorkflowStagesResource<DefaultThrowOnError extends boolean
         throwOnError,
       );
     },
-    /** Partially updates a workflow stage (`PATCH`). */
+    /** Updates a workflow stage (`PATCH`). Only the fields in the body change. */
     update<ThrowOnError extends boolean = DefaultThrowOnError>(
       workflowStageId: number,
       options: {
@@ -110,7 +110,7 @@ export function createWorkflowStagesResource<DefaultThrowOnError extends boolean
         throwOnError,
       );
     },
-    /** Replaces a workflow stage (`PUT`). */
+    /** Updates a workflow stage (`PUT`). Behaves like `update()`: only the fields in the body change. */
     replace<ThrowOnError extends boolean = DefaultThrowOnError>(
       workflowStageId: number,
       options: {

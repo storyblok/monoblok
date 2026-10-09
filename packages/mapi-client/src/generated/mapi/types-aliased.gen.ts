@@ -1557,6 +1557,132 @@ export type UserUpdate = {
     disclaimer_ids?: Array<number>;
 };
 
+export type MemberOrganization = {
+    /**
+     * Organization name
+     */
+    name: string;
+    /**
+     * Stable, immutable identifier used for SSO/SAML routing.
+     */
+    sso_identifier?: string | null;
+    /**
+     * Whether statistics tracking is enabled
+     */
+    track_statistics: boolean;
+    /**
+     * Organization plan
+     */
+    plan: string;
+    /**
+     * Plan level
+     */
+    plan_level: number;
+    /**
+     * Maximum number of spaces
+     */
+    max_spaces: number;
+    /**
+     * Maximum number of collaborators
+     */
+    max_collaborators: number;
+    /**
+     * Traffic used
+     */
+    traffic_used: number;
+    /**
+     * Traffic limit
+     */
+    traffic_limit: number;
+    /**
+     * List of restricted regions
+     */
+    restricted_regions: Array<string>;
+    /**
+     * Whether AI text generator is disabled
+     */
+    ai_text_generator_disabled: boolean;
+    /**
+     * Whether AI translation is enabled
+     */
+    ai_translation_enabled: boolean;
+    /**
+     * Whether concept room is enabled
+     */
+    concept_room_enabled: boolean;
+    /**
+     * Whether ideation room is enabled
+     */
+    ideation_room_enabled: boolean;
+    /**
+     * Token timeout in seconds
+     */
+    token_timeout_in?: number | null;
+    /**
+     * Whether private spaces are disabled
+     */
+    disable_private_spaces: boolean | null;
+    /**
+     * Whether to force organization AI styles
+     */
+    force_org_ai_styles: boolean;
+    /**
+     * Whether to allow space-level AI styles
+     */
+    allow_space_ai_styles: boolean;
+    /**
+     * AI style composition mode for spaces
+     */
+    ai_style_space_composition_mode: string;
+    /**
+     * Whether the confidentiality disclaimer is enabled
+     */
+    confidentiality_disclaimer_enabled?: boolean | null;
+    /**
+     * Confidentiality disclaimer message
+     */
+    confidentiality_disclaimer_message?: string | null;
+    /**
+     * Resolved feature limits for the organization
+     */
+    feature_limits: Array<{
+        key?: string;
+        origin?: string | null;
+        limit?: string | null;
+        limit_type?: string | null;
+        is_available?: boolean | null;
+        terms?: Array<{
+            [key: string]: unknown;
+        }>;
+    }>;
+    settings: {
+        users_info: {
+            /**
+             * Count of internal users
+             */
+            saved_internal_users_count: number | null;
+            /**
+             * Count of external users
+             */
+            saved_external_users_count: number | null;
+            /**
+             * Count of pending invitations
+             */
+            saved_invitations_count: number | null;
+        };
+        spaces_info: {
+            /**
+             * Count of standard spaces
+             */
+            standard_spaces_count: number | null;
+            /**
+             * Count of pro spaces
+             */
+            pro_spaces_count: number | null;
+        };
+    };
+};
+
 export type Organization = {
     readonly id?: number;
     name: string;
@@ -2158,6 +2284,33 @@ export type WebhookCreate = {
     /**
      * Name of the webhook endpoint
      */
+    name: string;
+    /**
+     * Optional description
+     */
+    description?: string;
+    /**
+     * URL to receive webhook payloads (http or https)
+     */
+    endpoint: string;
+    /**
+     * Optional secret for request signing
+     */
+    secret?: string;
+    /**
+     * Whether the webhook is active
+     */
+    activated?: boolean;
+    /**
+     * List of event actions to subscribe to (e.g. story.published, asset.created)
+     */
+    actions: Array<string>;
+};
+
+export type WebhookUpdate = {
+    /**
+     * Name of the webhook endpoint
+     */
     name?: string;
     /**
      * Optional description
@@ -2180,8 +2333,6 @@ export type WebhookCreate = {
      */
     actions?: Array<string>;
 };
-
-export type WebhookUpdate = WebhookCreate;
 
 export type Workflow = {
     /**
@@ -2351,7 +2502,10 @@ export type WorkflowStage = {
     workflow_stage_ids: Array<number>;
 };
 
-export type WorkflowStageCreate = WorkflowStageAttributes;
+export type WorkflowStageCreate = WorkflowStageAttributes & {
+    name: string;
+    color: string;
+};
 
 export type WorkflowStageUpdate = WorkflowStageAttributes;
 

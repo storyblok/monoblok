@@ -42,7 +42,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "play": "pnpm --filter ./playground dev",
+    "play": "nx dev @storyblok/playground-accessibility-checker",
     "test": "vp test run",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",

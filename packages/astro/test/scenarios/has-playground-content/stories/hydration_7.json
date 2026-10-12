@@ -1,0 +1,20 @@
+{
+  "id": 7,
+  "uuid": "7",
+  "name": "Hydration",
+  "slug": "hydration",
+  "full_slug": "hydration",
+  "is_folder": false,
+  "is_startpage": false,
+  "parent_id": 0,
+  "content": {
+    "component": "page",
+    "body": [
+      {
+        "_uid": "load-counter-hydration-1",
+        "component": "load_counter",
+        "headline": "Client-load counter, present since page load"
+      }
+    ]
+  }
+}

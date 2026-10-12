@@ -1,0 +1,17 @@
+---
+import { storyblokEditable } from "@storyblok/astro";
+import Counter from "./react/Counter.jsx";
+
+const { block } = Astro.props;
+---
+
+<!--
+  Not part of the seeded story: added live, through the Visual Editor, while
+  the page is already open. That's the first time `client:visible`'s
+  directive runtime is needed in this render — the exact condition the
+  reported bug depends on. The spacer guarantees it starts below the fold so
+  hydration depends on its IntersectionObserver actually firing.
+-->
+<div style="margin-top: 1500px" {...storyblokEditable(block)}>
+  <Counter block={block} testId="visible-counter" client:visible />
+</div>

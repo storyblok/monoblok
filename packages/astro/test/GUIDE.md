@@ -8,16 +8,17 @@ only what is specific to this package.
 
 | What           | Value                                        |
 | -------------- | -------------------------------------------- |
-| Preview domain | `https://localhost:4321/`                    |
+| Preview domain | `https://localhost:4322/`                    |
 | Scenario       | `has-playground-content` in `test/scenarios` |
-| App under test | `playground/ssr`                             |
+| App under test | `playground/integration-tests`               |
 
 **Live editing works in both SSR and SSG.** The Visual Editor bridge drives DOM updates client-side
 regardless of Astro's rendering mode; only `getPayload`/`storyblokPreviewMiddleware` (used to read
-the Visual Editor's POST body during an SSR render) require `output: "server"`. `playground/ssr`
-wires `storyblokPreviewMiddleware` via `src/middleware.ts` and renders
-`<StoryblokPreview liveUpdate />` in its layout; `playground/ssg` does not, so edits there reload on
-`change`/`published` only.
+the Visual Editor's POST body during an SSR render) require `output: "server"`.
+`playground/integration-tests` wires `storyblokPreviewMiddleware` via `src/middleware.ts` and
+renders `<StoryblokPreview liveUpdate />` in its layout; `playground/ssg` does not, so edits there
+reload on `change`/`published` only. `playground/ssr` is a separate, manual-testing-only app and is
+not driven by this harness.
 
 ## Run
 
@@ -35,12 +36,12 @@ The harness starts the https playground itself and reuses an already-running one
 single-worker: the specs share one seeded space, and a parallel re-seed produces failures that look
 like product defects.
 
-Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
+Stop the server with `pnpm --filter @storyblok/playground-astro-integration-tests qa:stop`.
 
 ## Notes
 
 - `STORYBLOK_ACCESS_TOKEN` overrides the demo token committed in `playground/*/astro.config.mjs`.
-  Both playgrounds read it; without it they serve the shared demo space and every seeded-content
+  Every playground reads it; without it they serve the shared demo space and every seeded-content
   assertion fails for a reason that looks like a bridge problem.
 - Blocks are addressed by the `_uid` the scenario seeded (`editor.block("teaser-home-1")`), not by a
   `data-test` attribute: the playground components carry almost none, and `storyblokEditable` emits
@@ -52,8 +53,12 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
   `full_slug`).
 - The `test` slug is special: `[...slug].astro` skips rendering `<StoryblokPreview />` entirely for
   `test` and `contact`. `about-us` is a dedicated static route
-  (`playground/ssr/src/pages/about-us.astro`) that renders it without `liveUpdate`, so it reloads on
-  save/publish but never live-morphs the DOM.
+  (`playground/integration-tests/src/pages/about-us.astro`) that renders it without `liveUpdate`, so
+  it reloads on save/publish but never live-morphs the DOM.
+- `hydration` seeds the client-directive hydration regression: a `load_counter` (`client:load`)
+  block is present from the first render, and the spec adds a `react_counter` (`client:visible`)
+  block live through the editor to reproduce a directive introduced only by a live-preview DOM
+  morph.
 - Every app-side selector lives in `tools/visual-editor-qa/src/editor.page.ts`, which this package
   shares with the other framework harnesses. When a Storyblok release breaks the harness, that is
   the file to repair, and the fix lands for every package at once. This package supplies only its

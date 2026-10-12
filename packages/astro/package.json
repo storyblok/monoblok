@@ -45,8 +45,6 @@
     "playground": "pnpm run --filter ./playground/ssg dev",
     "playground:ssr": "pnpm run --filter ./playground/ssr dev",
     "playground:test": "pnpm run --filter ./playground/test dev",
-    "qa:dev": "pnpm --filter @storyblok/playground-astro-ssr exec astro dev --port 4321 --background && pnpm --filter @storyblok/playground-astro-ssr exec astro dev logs --follow",
-    "qa:stop": "pnpm --filter @storyblok/playground-astro-ssr exec astro dev stop",
     "qa:editor": "playwright test --config test/visual-editor/playwright.config.ts",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",

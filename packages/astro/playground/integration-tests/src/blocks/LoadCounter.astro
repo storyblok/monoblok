@@ -1,0 +1,15 @@
+---
+import { storyblokEditable } from "@storyblok/astro";
+import Counter from "./react/Counter.jsx";
+
+const { block } = Astro.props;
+---
+
+<!--
+  Present in the story from the first render, so its `client:load` runtime is
+  always on the page already — this is the "page already had client:load
+  islands" half of the reported scenario.
+-->
+<div {...storyblokEditable(block)}>
+  <Counter block={block} testId="load-counter" client:load />
+</div>

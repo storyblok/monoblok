@@ -9,7 +9,7 @@ import { createMemoryCacheProvider, createStrategy, isTransientStatus } from "./
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
-import { applyCvToQuery, extractCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
+import { applyCvToQuery, extractServedCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
 import { createTokenId } from "./utils/token-id";
@@ -468,7 +468,7 @@ export const createApiClientBase = <
       generationAtIssue: number;
     },
   ): Promise<{ mayCache: boolean; cv?: number }> => {
-    const bodyCv = extractCv(result.data);
+    const bodyCv = extractServedCv(result);
     const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(result.data) : undefined;
     const current = await readVersions(cacheProvider, watermarksKey);
 
@@ -691,7 +691,7 @@ export const createApiClientBase = <
 
       // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the
       // current one, so only a response reporting the pinned `cv` or none is that snapshot.
-      const bodyCv = extractCv(result.data);
+      const bodyCv = extractServedCv(result);
       const isPinnedSnapshot =
         isCvPinnedByCaller && (bodyCv === undefined || bodyCv === Number(rawQuery.cv));
       const issuedUnder = isPinnedSnapshot
@@ -705,8 +705,8 @@ export const createApiClientBase = <
       });
 
       if (result.error === undefined && mayCache) {
-        // Endpoints reporting no `cv` (`/cdn/tags`, `/cdn/links`) are tagged with the one
-        // they were requested under.
+        // Endpoints reporting no `cv` (`/cdn/tags`, `/cdn/links`) are tagged with the one in
+        // their final URL, else the one they were requested under.
         await cacheProvider.set(key, {
           value: result,
           ttlMs: cacheTtlMs,

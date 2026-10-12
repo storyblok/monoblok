@@ -10,11 +10,7 @@ import {
   vi,
 } from "vitest";
 
-import {
-  type AccessibilityChecker,
-  createAccessibilityChecker,
-  createAccessibilityCheckerPlugin,
-} from "./index";
+import { type AccessibilityChecker, createAccessibilityChecker } from "./index";
 import type { AccessibilityCheckResultMessage } from "./types";
 
 const EDITOR_ORIGIN = "https://app.storyblok.com";
@@ -26,6 +22,15 @@ const PAGE = `
     </section>
   </main>
   <div id="storyblok__overlay"><img src="/bridge-icon.png"></div>`;
+
+const isHighlighted = (element: Element): boolean =>
+  element instanceof HTMLElement && element.style.getPropertyValue("outline") !== "";
+
+describe("createAccessibilityChecker", () => {
+  it("should reject an empty list of rule tags", () => {
+    expect(() => createAccessibilityChecker({ ruleTags: [] })).toThrow("ruleTags");
+  });
+});
 
 describe("outside the Visual Editor", () => {
   it("should do nothing and register no listener", () => {
@@ -73,12 +78,16 @@ describe("inside the Visual Editor", () => {
     postMessage = vi.spyOn(editor, "postMessage").mockImplementation(() => {});
     vi.spyOn(window, "parent", "get").mockReturnValue(editor);
     vi.spyOn(document, "referrer", "get").mockReturnValue(`${EDITOR_ORIGIN}/`);
-    window.history.replaceState(null, "", "/?_storyblok=1");
+    window.history.replaceState(
+      null,
+      "",
+      "/?_storyblok=1&_storyblok_c=page&_storyblok_tk[space_id]=1",
+    );
   });
 
   beforeEach(() => {
     checker = createAccessibilityChecker({
-      allowedOrigins: ["http://localhost:3000"],
+      allowedOrigins: ["http://localhost:3000", /http:\/\/localhost:\d+/g],
       ruleTags: ["wcag2a", "wcag2aa"],
     });
     checker.enable();
@@ -116,16 +125,15 @@ describe("inside the Visual Editor", () => {
     );
   const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 50));
 
-  it("should remove its listener, styles, and highlight when disabled, and enable again", async () => {
+  it("should remove its listener and highlight when disabled, and enable again", async () => {
     const image = await highlightFirstImage("before-disable");
-    expect(image.hasAttribute("data-a11y-highlight")).toBe(true);
+    expect(isHighlighted(image)).toBe(true);
 
     checker.disable();
     send({ action: "accessibilityCheck", requestId: "after-disable" });
     await settle();
 
-    expect(image.hasAttribute("data-a11y-highlight")).toBe(false);
-    expect(document.head.innerHTML).not.toContain("data-a11y-highlight");
+    expect(isHighlighted(image)).toBe(false);
     expect(repliesTo("after-disable")).toEqual([]);
 
     checker.enable();
@@ -150,8 +158,20 @@ describe("inside the Visual Editor", () => {
 
     older.disable();
 
-    expect(image.hasAttribute("data-a11y-highlight")).toBe(true);
-    expect(document.head.innerHTML).toContain("data-a11y-highlight");
+    expect(isHighlighted(image)).toBe(true);
+  });
+
+  it("should reject a check while a replaced checker's check is still running", async () => {
+    send({ action: "accessibilityCheck", requestId: "before-swap" });
+    checker.disable();
+    checker = createAccessibilityChecker();
+    checker.enable();
+    send({ action: "accessibilityCheck", requestId: "after-swap" });
+
+    expect(await waitForReply("after-swap")).toMatchObject({
+      action: "accessibilityCheckError",
+      error: { code: "check-in-progress" },
+    });
   });
 
   it("should replace a checker enabled by another copy of the module", async () => {
@@ -164,15 +184,6 @@ describe("inside the Visual Editor", () => {
 
     expect(repliesTo("copy")).toHaveLength(1);
     copy.disable();
-  });
-
-  it("should enable a checker as an @storyblok/js plugin, replacing the previous one", async () => {
-    expect(createAccessibilityCheckerPlugin()({})).toEqual({});
-    send({ action: "accessibilityCheck", requestId: "plugin" });
-    await waitForReply("plugin");
-    await settle();
-
-    expect(repliesTo("plugin")).toHaveLength(1);
   });
 
   it("should run axe and reply with the findings for the request", async () => {
@@ -220,6 +231,17 @@ describe("inside the Visual Editor", () => {
     run.mockRestore();
   });
 
+  it("should fail a check when the rule tags select no rules", async () => {
+    checker = createAccessibilityChecker({ ruleTags: ["wcag2aaaa"] });
+    checker.enable();
+    send({ action: "accessibilityCheck", requestId: "unknown-tag" });
+
+    expect(await waitForReply("unknown-tag")).toMatchObject({
+      action: "accessibilityCheckError",
+      error: { code: "check-failed", message: "No axe rules have any of the tags: wcag2aaaa." },
+    });
+  });
+
   it("should reject a second check while one is running", async () => {
     send({ action: "accessibilityCheck", requestId: "first" });
     send({ action: "accessibilityCheck", requestId: "second" });
@@ -259,6 +281,26 @@ describe("inside the Visual Editor", () => {
     );
   });
 
+  it("should match a regular expression against the whole origin, on every request", async () => {
+    send(
+      { action: "accessibilityCheck", requestId: "regex-1" },
+      { origin: "http://localhost:4000" },
+    );
+    await waitForReply("regex-1");
+    send(
+      { action: "accessibilityCheck", requestId: "regex-2" },
+      { origin: "http://localhost:4000" },
+    );
+    await waitForReply("regex-2");
+    send(
+      { action: "accessibilityCheck", requestId: "regex-partial" },
+      { origin: "http://localhost:4000.evil.example" },
+    );
+    await settle();
+
+    expect(repliesTo("regex-partial")).toEqual([]);
+  });
+
   it("should highlight the element of a finding and clear it on null", async () => {
     document.body.innerHTML = PAGE;
     const image = document.querySelector("main img")!;
@@ -267,10 +309,32 @@ describe("inside the Visual Editor", () => {
     await waitForReply("r2");
 
     send({ action: "accessibilityHighlight", findingId: "violations-image-alt-0" });
-    expect(image.hasAttribute("data-a11y-highlight")).toBe(true);
+    expect(isHighlighted(image)).toBe(true);
     expect(image.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
 
     send({ action: "accessibilityHighlight", findingId: null });
-    expect(image.hasAttribute("data-a11y-highlight")).toBe(false);
+    expect(isHighlighted(image)).toBe(false);
+  });
+
+  it("should clear the highlight when the requested finding is unknown", async () => {
+    const image = await highlightFirstImage("unknown-finding");
+    send({ action: "accessibilityHighlight", findingId: "violations-missing-0" });
+
+    expect(isHighlighted(image)).toBe(false);
+  });
+
+  it("should restore the element's own outline when the highlight is cleared", async () => {
+    document.body.innerHTML = PAGE;
+    const image = document.querySelector<HTMLElement>("main img")!;
+    image.style.outline = "1px dashed blue";
+    send({ action: "accessibilityCheck", requestId: "own-outline" });
+    await waitForReply("own-outline");
+
+    send({ action: "accessibilityHighlight", findingId: "violations-image-alt-0" });
+    expect(image.style.outline).toBe("3px solid #ff5630");
+    send({ action: "accessibilityHighlight", findingId: null });
+
+    expect(image.style.outline).toBe("1px dashed blue");
+    expect(image.style.outlineOffset).toBe("");
   });
 });

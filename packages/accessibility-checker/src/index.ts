@@ -1,5 +1,7 @@
+import { isBrowser, isInEditor } from "@storyblok/live-preview";
+
 import { version as pluginVersion } from "../package.json";
-import { clearHighlight, highlight, injectHighlightStyles } from "./highlight";
+import { clearHighlight, highlight } from "./highlight";
 import { buildResult } from "./results";
 import { accessibilityProtocolVersion } from "./types";
 
@@ -46,7 +48,8 @@ function isStoryblokOrigin(origin: string): boolean {
 export type AccessibilityCheckerConfig = {
   /**
    * Origins allowed to request checks in addition to Storyblok's, as exact
-   * origins (`"http://localhost:3000"`) or patterns.
+   * origins (`"http://localhost:3000"`) or regular expressions. A regular
+   * expression must match the whole origin.
    */
   allowedOrigins?: Array<string | RegExp>;
   /**
@@ -61,11 +64,7 @@ function isMessage(data: unknown, action: string): data is Record<string, unknow
 }
 
 function isInVisualEditor(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.parent !== window &&
-    new URLSearchParams(window.location.search).has("_storyblok")
-  );
+  return isBrowser() && window.parent !== window && isInEditor(new URL(window.location.href));
 }
 
 function getEditorOrigin(isAllowedOrigin: (origin: string) => boolean): string | undefined {
@@ -75,10 +74,31 @@ function getEditorOrigin(isAllowedOrigin: (origin: string) => boolean): string |
   return origin && isAllowedOrigin(origin) ? origin : undefined;
 }
 
-// The active checker's stop function, kept on `globalThis` so that a second copy of
-// this module (a duplicate install, or a hot reload of the module) can still
-// replace it instead of leaving its listener behind.
-const ACTIVE_CHECKER = Symbol.for("@storyblok/accessibility-checker");
+type SharedState = {
+  /** Stops the active checker. */
+  stop?: () => void;
+  /** axe runs one check at a time per page, whichever checker started it. */
+  isChecking: boolean;
+};
+
+function isSharedState(value: unknown): value is SharedState {
+  return typeof value === "object" && value !== null && "isChecking" in value;
+}
+
+// Kept on `globalThis` so that a second copy of this module (a duplicate
+// install, or a hot reload of the module) can still replace the active checker
+// instead of leaving its listener behind, and sees a check it started.
+const SHARED_STATE = Symbol.for("@storyblok/accessibility-checker");
+
+function getSharedState(): SharedState {
+  const existing: unknown = Reflect.get(globalThis, SHARED_STATE);
+  if (isSharedState(existing)) {
+    return existing;
+  }
+  const state: SharedState = { isChecking: false };
+  Reflect.set(globalThis, SHARED_STATE, state);
+  return state;
+}
 
 /**
  * Starts answering the Visual Editor and replaces any other active checker.
@@ -91,19 +111,16 @@ function startChecker({
   if (!isInVisualEditor()) {
     return undefined;
   }
-  const previous: unknown = Reflect.get(globalThis, ACTIVE_CHECKER);
-  if (typeof previous === "function") {
-    previous();
-  }
+  const shared = getSharedState();
+  shared.stop?.();
 
   const isAllowedOrigin = (origin: string): boolean =>
     isStoryblokOrigin(origin) ||
     allowedOrigins.some((allowed) =>
-      typeof allowed === "string" ? allowed === origin : allowed.test(origin),
+      // `match` instead of `test`: it ignores a `g` or `y` flag's `lastIndex`.
+      typeof allowed === "string" ? allowed === origin : origin.match(allowed)?.[0] === origin,
     );
-  const removeHighlightStyles = injectHighlightStyles();
   let elements = new Map<string, Element>();
-  let isChecking = false;
   let isDisabled = false;
 
   const onMessage = async (event: MessageEvent): Promise<void> => {
@@ -114,9 +131,8 @@ function startChecker({
     const { data } = event;
 
     if (isMessage(data, "accessibilityHighlight")) {
-      if (data.findingId === null) {
-        clearHighlight();
-      }
+      // Also for an unknown finding or a removed element, so nothing stale stays outlined.
+      clearHighlight();
       const element = typeof data.findingId === "string" ? elements.get(data.findingId) : undefined;
       if (element?.isConnected) {
         highlight(element);
@@ -138,7 +154,7 @@ function startChecker({
       );
     };
 
-    if (isChecking) {
+    if (shared.isChecking) {
       reply({
         action: "accessibilityCheckError",
         error: { code: "check-in-progress", message: "Another check is still running." },
@@ -146,11 +162,15 @@ function startChecker({
       return;
     }
 
-    isChecking = true;
+    shared.isChecking = true;
     clearHighlight();
     try {
       // Lazy import: axe-core is large and must not load until a check is requested.
       const { default: axe } = await import("axe-core");
+      // Tags that select no rules (such as typos) would look like a clean page.
+      if (axe.getRules(ruleTags).length === 0) {
+        throw new Error(`No axe rules have any of the tags: ${ruleTags.join(", ")}.`);
+      }
       const results = await axe.run(
         { exclude: BRIDGE_OVERLAYS },
         { runOnly: { type: "tag", values: ruleTags }, elementRef: true },
@@ -165,7 +185,7 @@ function startChecker({
       const message = error instanceof Error ? error.message : String(error);
       reply({ action: "accessibilityCheckError", error: { code: "check-failed", message } });
     } finally {
-      isChecking = false;
+      shared.isChecking = false;
     }
   };
 
@@ -191,13 +211,12 @@ function startChecker({
     isDisabled = true;
     window.removeEventListener("message", onMessage);
     clearHighlight();
-    removeHighlightStyles();
     elements = new Map();
-    if (Reflect.get(globalThis, ACTIVE_CHECKER) === stop) {
-      Reflect.deleteProperty(globalThis, ACTIVE_CHECKER);
+    if (shared.stop === stop) {
+      shared.stop = undefined;
     }
   };
-  Reflect.set(globalThis, ACTIVE_CHECKER, stop);
+  shared.stop = stop;
   return stop;
 }
 
@@ -226,12 +245,15 @@ export type AccessibilityChecker = {
 export function createAccessibilityChecker(
   config: AccessibilityCheckerConfig = {},
 ): AccessibilityChecker {
+  if (config.ruleTags?.length === 0) {
+    throw new Error("`ruleTags` must list at least one tag.");
+  }
   let stop: (() => void) | undefined;
 
   return {
     enable: () => {
       // Still the active checker on the page: nothing to do.
-      if (stop && Reflect.get(globalThis, ACTIVE_CHECKER) === stop) {
+      if (stop && getSharedState().stop === stop) {
         return;
       }
       stop = startChecker(config);
@@ -240,24 +262,5 @@ export function createAccessibilityChecker(
       stop?.();
       stop = undefined;
     },
-  };
-}
-
-/** A plugin for `storyblokInit({ use })`. It ignores the SDK options it receives. */
-export type AccessibilityCheckerPlugin = (sdkOptions?: unknown) => Record<string, never>;
-
-/**
- * An accessibility checker as an `@storyblok/js` plugin. It is enabled when
- * `storyblokInit` runs.
- *
- * @example
- * storyblokInit({ accessToken: "<token>", use: [createAccessibilityCheckerPlugin({ ruleTags: ["wcag2a"] })] });
- */
-export function createAccessibilityCheckerPlugin(
-  config?: AccessibilityCheckerConfig,
-): AccessibilityCheckerPlugin {
-  return () => {
-    createAccessibilityChecker(config).enable();
-    return {};
   };
 }

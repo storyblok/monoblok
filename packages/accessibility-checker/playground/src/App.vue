@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { apiPlugin, storyblokInit, useStoryblokBridge, type ISbStoryData } from "@storyblok/js";
+import {
+  apiPlugin,
+  storyblokEditable,
+  storyblokInit,
+  useStoryblokBridge,
+  type ISbStoryData,
+} from "@storyblok/js";
 import { onMounted, ref } from "vue";
 
 const { storyblokApi } = storyblokInit({
   accessToken: import.meta.env.VITE_STORYBLOK_TOKEN,
-  use: [
-    apiPlugin,
-    // createAccessibilityCheckerPlugin({
-    //   allowedOrigins: [/^https?:\/\/localhost(:\d+)?$/],
-    //   ruleTags: ["wcag2a", "wcag2aa"]
-    // })
-  ],
+  use: [apiPlugin],
 });
 
 const story = ref<ISbStoryData | null>(null);
@@ -30,6 +30,20 @@ onMounted(async () => {
 
 <template>
   <main>
+    <p v-if="error">{{ error }}</p>
+    <template v-if="story">
+      <h1>{{ story.name }}</h1>
+      <!-- Each block has an empty button, so its findings show the block's uid and component name. -->
+      <section
+        v-for="blok in story.content.body ?? []"
+        :key="blok._uid"
+        v-bind="storyblokEditable(blok)"
+      >
+        <h2>Block: {{ blok.component }}</h2>
+        <button></button>
+      </section>
+    </template>
+
     <section>
       <h2>Image without alt text</h2>
       <img src="https://a.storyblok.com/f/1/missing-alt.jpg" width="64" height="64" />
@@ -42,7 +56,7 @@ onMounted(async () => {
 
     <section>
       <h2>Input without an associated label</h2>
-      <input type="text" placeholder="Email address" />
+      <input type="text" />
     </section>
 
     <section>
@@ -51,3 +65,9 @@ onMounted(async () => {
     </section>
   </main>
 </template>
+
+<style>
+.low-contrast {
+  color: #cccccc;
+}
+</style>

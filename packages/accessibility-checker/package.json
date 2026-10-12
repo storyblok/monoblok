@@ -53,6 +53,7 @@
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
+    "@storyblok/live-preview": "workspace:^",
     "axe-core": "^4.14.0"
   },
   "devDependencies": {

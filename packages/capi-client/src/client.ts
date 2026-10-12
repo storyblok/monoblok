@@ -176,7 +176,7 @@ export interface ResourceDeps<DefaultThrowOnError extends boolean = false> {
     p: Promise<unknown>,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;
-  /** `'manual'` keeps follow-up requests free of a `cv`. */
+  /** `'manual'` keeps follow-up requests free of a `cv` and pagination walks from pinning one. */
   cvMode?: CacheConfig["cv"];
 }
 

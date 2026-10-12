@@ -129,6 +129,8 @@ export interface ResourceDeps<DefaultThrowOnError extends boolean = false> {
     p: Promise<unknown>,
   ) => Promise<ApiResponse<TData, ThrowOnError>>;
   throttleManager: ThrottleManager;
+  /** The client's `cache.cv` mode. `'manual'` stops pagination walks from pinning a `cv`. */
+  cvMode?: CacheConfig["cv"];
 }
 
 // ---------------------------------------------------------------------------
@@ -749,6 +751,7 @@ export const createApiClientBase = <
     requestWithCache,
     asApiResponse,
     throttleManager,
+    cvMode,
   };
 
   // Keep the declaration output aligned with ContentApiClient["stories"].

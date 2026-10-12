@@ -1,0 +1,27 @@
+---
+import { storyblokEditable } from "@storyblok/astro";
+import { StoryblokBlock } from "../storyblok";
+import type { StoryblokBlockData } from "@storyblok/astro";
+
+const { block } = Astro.props;
+---
+
+<div {...storyblokEditable(block)}>
+  <div class="grid">
+    {
+      block.columns?.map((child: StoryblokBlockData) => {
+        return <StoryblokBlock block={child} />;
+      })
+    }
+  </div>
+</div>
+
+<style>
+  .grid {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3rem;
+  }
+</style>

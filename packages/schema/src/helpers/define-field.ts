@@ -385,14 +385,16 @@ export type DefinedField<TName extends string, TField extends FieldInput> = Pret
     (TField extends { datasource: infer D } ? { datasource: SlugOf<D> } : unknown)
 >;
 
-// Legacy field types get `@deprecated` overloads of `defineField`: TypeScript
-// does not flag a deprecated property inside an object literal, only a call that
-// resolves to a deprecated signature. Overload order matters. The first
+// Legacy field types and the wire restriction keys get `@deprecated` overloads of
+// `defineField`: TypeScript does not flag a deprecated property inside an object
+// literal, only a call that resolves to a deprecated signature. Overload order matters. The first
 // declaration decides whether the `defineField` import itself reads as
 // deprecated, and the last one supplies the error for a call no overload matches.
 type LegacyFieldType = "link" | "image" | "file" | "group";
 type LegacyFieldInput<TType extends LegacyFieldType> = Extract<FieldInput, { type: TType }>;
 type CurrentFieldInput = Exclude<FieldInput, { type: LegacyFieldType }>;
+/** Mapped over the documented keys so completions keep their `@deprecated` tags. */
+type WithoutWireRestrictions = { [K in keyof WireRestrictionDocs]?: never };
 
 /**
  * Returns a {@link Field} stamped with the given `name`, normalizing reference
@@ -415,6 +417,17 @@ type CurrentFieldInput = Exclude<FieldInput, { type: LegacyFieldType }>;
  * defineField('body', { type: 'bloks', deny: ['banner'] });
  * defineField('body', { type: 'bloks', deny: [legacyFolder] });
  * defineField('theme', { type: 'option', source: 'internal', datasource: colors });
+ */
+export function defineField<
+  const TName extends string,
+  const TField extends CurrentFieldInput & WithoutWireRestrictions,
+>(name: TName, field: CheckedField<TField>): DefinedField<TName, TField>;
+/**
+ * @deprecated The wire restriction keys (`component_whitelist`,
+ * `component_group_whitelist`, `component_tag_whitelist`, their `denylist`
+ * counterparts, `restrict_components`, `restrict_type`) are superseded by `allow`
+ * and `deny`, which take block names, `defineBlock` refs, `defineFolder` refs, or
+ * `{ tag: name }` entries and derive the wire keys for you.
  */
 export function defineField<const TName extends string, const TField extends CurrentFieldInput>(
   name: TName,

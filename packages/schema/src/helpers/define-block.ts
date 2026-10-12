@@ -42,6 +42,17 @@ type BlockInput<
   } & Partial<Pick<Block, Exclude<BlockOptional, "is_root" | "is_nestable">>>
 >;
 
+/**
+ * Rejects the space-local id keys on the first `defineBlock` overload, so a call
+ * that sets them resolves to the deprecated one: TypeScript flags a call that
+ * resolves to a deprecated signature, but not a deprecated property inside an
+ * object literal. Mapped over `Block` so completions keep the keys' `@deprecated`
+ * tags.
+ */
+type WithoutRawIdKeys = {
+  [K in keyof Pick<Block, "component_group_uuid" | "internal_tag_ids">]?: never;
+};
+
 type DefinedBlock<
   TName extends string,
   TFields extends BlockFields,
@@ -75,6 +86,21 @@ type DefinedBlock<
  *     defineField('headline', { type: 'text', required: true }),
  *   ],
  * });
+ */
+export function defineBlock<
+  TName extends string,
+  const TFields extends BlockFields,
+  TIsRoot extends boolean = false,
+  TIsNestable extends boolean = true,
+  const TFolder extends FolderInput | undefined = undefined,
+  const TTags extends TagsInput | undefined = undefined,
+>(
+  block: BlockInput<TName, TFields, TIsRoot, TIsNestable, TFolder, TTags> & WithoutRawIdKeys,
+): DefinedBlock<TName, TFields, TIsRoot, TIsNestable, TFolder, TTags>;
+/**
+ * @deprecated `component_group_uuid` and `internal_tag_ids` are space-local ids.
+ * Use `folder` (a `defineFolder` ref or display path) and `tags` (tag names)
+ * instead: push resolves them to the target space's ids.
  */
 export function defineBlock<
   TName extends string,

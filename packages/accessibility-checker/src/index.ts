@@ -1,4 +1,5 @@
 import { isBrowser, isInEditor } from "@storyblok/live-preview";
+import { isEditorOrigin } from "@storyblok/region-helper";
 
 import { version as pluginVersion } from "../package.json";
 import { clearHighlight, highlight } from "./highlight";
@@ -32,18 +33,6 @@ const DEFAULT_RULE_TAGS: AccessibilityRuleTag[] = [
 // Overlays that @storyblok/preview-bridge appends to the page. Scanning them
 // would report the editor's UI instead of the website.
 const BRIDGE_OVERLAYS = ["#storyblok__overlay", ".storyblok__hint", ".storyblok__highlight"];
-
-// The Visual Editor runs on an HTTPS host with "storyblok" in its name, such as
-// https://app.storyblok.com.
-function isStoryblokOrigin(origin: string): boolean {
-  try {
-    const { protocol, hostname } = new URL(origin);
-    return protocol === "https:" && hostname.includes("storyblok");
-  } catch {
-    // Sandboxed frames send the origin "null".
-    return false;
-  }
-}
 
 export type AccessibilityCheckerConfig = {
   /**
@@ -115,7 +104,7 @@ function startChecker({
   shared.stop?.();
 
   const isAllowedOrigin = (origin: string): boolean =>
-    isStoryblokOrigin(origin) ||
+    isEditorOrigin(origin) ||
     allowedOrigins.some((allowed) =>
       // `match` instead of `test`: it ignores a `g` or `y` flag's `lastIndex`.
       typeof allowed === "string" ? allowed === origin : origin.match(allowed)?.[0] === origin,

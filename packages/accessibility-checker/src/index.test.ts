@@ -264,9 +264,17 @@ describe("inside the Visual Editor", () => {
     );
     send({ action: "accessibilityCheck", requestId: "sandboxed" }, { origin: "null" });
     send({ action: "accessibilityCheck", requestId: "self" }, { source: window });
+    send(
+      { action: "accessibilityCheck", requestId: "lookalike" },
+      { origin: "https://evil-storyblok.io" },
+    );
+    send(
+      { action: "accessibilityCheck", requestId: "suffixed" },
+      { origin: "https://app.storyblok.com.evil.example" },
+    );
     await settle();
 
-    for (const requestId of ["foreign", "insecure", "sandboxed", "self"]) {
+    for (const requestId of ["foreign", "insecure", "sandboxed", "self", "lookalike", "suffixed"]) {
       expect(messages()).not.toContainEqual(expect.objectContaining({ requestId }));
     }
   });

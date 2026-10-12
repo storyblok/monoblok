@@ -168,6 +168,9 @@ importers:
       '@storyblok/live-preview':
         specifier: workspace:^
         version: link:../live-preview
+      '@storyblok/region-helper':
+        specifier: workspace:^
+        version: link:../region-helper
       axe-core:
         specifier: ^4.14.0
         version: 4.14.0

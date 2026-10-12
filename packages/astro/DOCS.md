@@ -191,7 +191,8 @@ import { StoryblokPreview } from '@storyblok/astro';
 
 Live preview only works on an on-demand rendered route (`output: 'server'`, or a hybrid route
 without `export const prerender = true`). A prerendered route serves static HTML regardless of what
-the Visual Editor sends.
+the Visual Editor sends; `<StoryblokPreview />` logs a dev-only console warning when the route it's
+rendered on is prerendered.
 
 ### `StoryblokServerData`
 

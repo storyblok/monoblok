@@ -633,6 +633,18 @@ importers:
         specifier: ^1.17.10
         version: 1.17.10(vite@8.3.5(@types/node@25.6.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
 
+  packages/astro/playground/prerender-warning:
+    dependencies:
+      '@astrojs/node':
+        specifier: ^11.1.5
+        version: 11.1.5(astro@7.4.1(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      '@storyblok/astro':
+        specifier: workspace:*
+        version: file:packages/astro(astro@7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+      astro:
+        specifier: ^7.2.8
+        version: 7.4.1(@netlify/blobs@11.1.5)(@types/node@25.6.0)(@vercel/functions@3.9.7(ws@8.21.3))(db0@0.3.4(@electric-sql/pglite@0.3.16))(esbuild@0.28.1)(ioredis@6.0.0)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1)
+
   packages/astro/playground/ssg:
     dependencies:
       '@astrojs/react':
@@ -8104,7 +8116,7 @@ packages:
   '@storyblok/astro@file:packages/astro':
     resolution: {directory: packages/astro, type: directory}
     peerDependencies:
-      astro: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+      astro: ^4.14.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
   '@storyblok/js@file:packages/js':
     resolution: {directory: packages/js, type: directory}

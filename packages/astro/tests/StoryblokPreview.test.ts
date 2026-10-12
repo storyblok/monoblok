@@ -1,8 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import StoryblokPreview from "../src/components/StoryblokPreview.astro";
 
 describe("StoryblokPreview", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Astro's test container always renders a non-prerendered route, so this
+  // only pins the no-op side: the warning for actual prerendered routes is
+  // covered manually (the container API has no way to mark a route
+  // prerendered) per the dev warning added in `StoryblokPreview.astro`.
+  it("does not warn when the route isn't prerendered", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const container = await AstroContainer.create();
+
+    await container.renderToString(StoryblokPreview, { props: {} });
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
   it("renders a <storyblok-preview> custom element instead of a global", async () => {
     const container = await AstroContainer.create();
 

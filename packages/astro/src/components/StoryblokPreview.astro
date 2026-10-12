@@ -2,6 +2,16 @@
 import type { StoryblokPreviewProps } from "../types";
 
 const { bridgeOptions, debounceMs, liveUpdate = false }: StoryblokPreviewProps = Astro.props;
+
+if (import.meta.env.DEV && Astro.isPrerendered) {
+  console.warn(
+    "[storyblok] <StoryblokPreview /> is rendered on a prerendered route " +
+      `(${Astro.url.pathname}). Prerendered routes serve static HTML, so the ` +
+      "Visual Editor's edits never reach the page: remove `export const prerender = true` " +
+      "from this route, or set `output: 'server'`/ use a hybrid output without " +
+      "prerendering it.",
+  );
+}
 ---
 
 <storyblok-preview

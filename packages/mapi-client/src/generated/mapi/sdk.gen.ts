@@ -4000,6 +4000,17 @@ export const bulkFlowmotionAccess = <ThrowOnError extends boolean = false>(optio
 });
 
 /**
+ * Retrieve Organization.
+ *
+ * Retrieve the current user's organization details including users, spaces, plans, and feature limits.
+ */
+export const getOrganization = <ThrowOnError extends boolean = false>(options?: Options<GetOrganizationData, ThrowOnError>): RequestResult<GetOrganizationResponses, GetOrganizationErrors, ThrowOnError> => (options?.client ?? client).get<GetOrganizationResponses, GetOrganizationErrors, ThrowOnError>({
+    security: [{ name: 'authorization', type: 'apiKey' }, { scheme: 'bearer', type: 'http' }],
+    url: '/v1/orgs/me',
+    ...options
+});
+
+/**
  * Update Organization (PATCH).
  *
  * Partially update the current user's organization details.
@@ -4105,17 +4116,6 @@ export const bulkOwnershipTransfer = <ThrowOnError extends boolean = false>(opti
         'Content-Type': 'application/json',
         ...options.headers
     }
-});
-
-/**
- * Retrieve Organization.
- *
- * Retrieve the current user's organization details including users, spaces, plans, and feature limits.
- */
-export const getOrganization = <ThrowOnError extends boolean = false>(options: Options<GetOrganizationData, ThrowOnError>): RequestResult<GetOrganizationResponses, GetOrganizationErrors, ThrowOnError> => (options.client ?? client).get<GetOrganizationResponses, GetOrganizationErrors, ThrowOnError>({
-    security: [{ name: 'authorization', type: 'apiKey' }, { scheme: 'bearer', type: 'http' }],
-    url: '/v1/orgs/{id}',
-    ...options
 });
 
 /**

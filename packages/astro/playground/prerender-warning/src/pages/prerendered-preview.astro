@@ -1,0 +1,8 @@
+---
+import { StoryblokPreview } from "@storyblok/astro";
+
+// No `prerender` export: keeps the project's `output: 'static'` default, so
+// `Astro.isPrerendered` is `true` and the dev warning must fire.
+---
+
+<StoryblokPreview />

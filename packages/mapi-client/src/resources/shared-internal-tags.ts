@@ -9,6 +9,8 @@ import type {
   UpdateSharedInternalTagResponses,
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
+import type { PageResult, PaginateConfig } from "../utils/paginate";
+import { paginateItems, paginatePages } from "../utils/paginate";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
 
 /**
@@ -27,7 +29,7 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
   const maybeThrow = (throwOnError?: boolean) =>
     throwOnError === undefined ? {} : { throwOnError };
 
-  return {
+  const resource = {
     list<ThrowOnError extends boolean = false>(
       options: {
         query: ListSharedInternalTagsData["query"];
@@ -118,5 +120,60 @@ export function createSharedInternalTagsResource<DefaultThrowOnError extends boo
         throwOnError,
       );
     },
+  };
+
+  type ListOptions = Omit<Parameters<typeof resource.list>[0], "throwOnError">;
+
+  // Hand-wired rather than built with `createPaginationMethods()`: `list()` requires `query`.
+  const toPaginateConfig = (
+    options: ListOptions,
+  ): PaginateConfig<
+    ListSharedInternalTagsResponses[200],
+    ListSharedInternalTagsResponses[200]["internal_tags"][number]
+  > => ({
+    query: options.query,
+    signal: options.signal,
+    fetchPage: (pageQuery, signal) =>
+      resource.list({
+        ...options,
+        query: { ...options.query, ...pageQuery },
+        signal,
+        throwOnError: false,
+      }),
+    getItems: (data) => data.internal_tags,
+  });
+
+  return {
+    ...resource,
+
+    /**
+     * Walks every page of shared internal tags, yielding one `list()` response per page. A
+     * failed page is the last value yielded, so check `error` on each one. With
+     * `throwOnError`, it throws a `PaginationError` instead.
+     */
+    pages: <ThrowOnError extends boolean = DefaultThrowOnError>(
+      options: ListOptions & { throwOnError?: ThrowOnError },
+    ): AsyncGenerator<
+      PageResult<ListSharedInternalTagsResponses[200], ThrowOnError>,
+      void,
+      undefined
+    > =>
+      paginatePages(
+        toPaginateConfig(options),
+        options.throwOnError,
+        client.getConfig().throwOnError ?? false,
+      ),
+
+    /**
+     * Walks every shared internal tag across all pages, fetching the next page while the
+     * current one is consumed. A failed page throws a `PaginationError`.
+     */
+    iterate: (
+      options: ListOptions,
+    ): AsyncGenerator<
+      ListSharedInternalTagsResponses[200]["internal_tags"][number],
+      void,
+      undefined
+    > => paginateItems(toPaginateConfig(options)),
   };
 }

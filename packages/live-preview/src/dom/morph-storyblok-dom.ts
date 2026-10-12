@@ -152,7 +152,27 @@ function updateDom(currentRoot: Element, nextRoot: Element, options: UpdateOptio
       }
       return options.onBeforeElUpdated?.(fromEl, toEl) ?? true;
     },
+    onNodeAdded: reviveInsertedScript,
   });
+}
+
+/**
+ * A `<script>` morphdom inserts never runs: it was parsed by `DOMParser`
+ * (see `get-new-html-body.ts`), which keeps the HTML spec's "already
+ * started" flag even once moved into the live document. Replace it with a
+ * freshly created script element — `cloneNode` carries the flag over too.
+ */
+function reviveInsertedScript(node: Node): void {
+  if (node.nodeType !== ELEMENT_NODE || node.nodeName !== "SCRIPT") {
+    return;
+  }
+  const inert = node as HTMLScriptElement;
+  const script = (inert.ownerDocument ?? document).createElement("script");
+  for (const attribute of Array.from(inert.attributes)) {
+    script.setAttribute(attribute.name, attribute.value);
+  }
+  script.textContent = inert.textContent;
+  inert.replaceWith(script);
 }
 
 /**

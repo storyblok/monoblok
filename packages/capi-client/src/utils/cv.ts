@@ -1,4 +1,4 @@
-import { isDraftRequest } from "./request";
+import { isDraftRequest, shouldUseCache } from "./request";
 
 /**
  * Whether the caller pinned a `cv`. Only a positive `cv` is a version: `storyblok-js-client`
@@ -8,8 +8,8 @@ import { isDraftRequest } from "./request";
 export const isCvPinned = (value: unknown): boolean => Number(value) > 0;
 
 /**
- * Reads the `cv` of the snapshot a response was served from. Non-positive values are
- * ignored: the API redirects `cv=0` like any `cv` the edge doesn't hold.
+ * Reads the `cv` a response body reports. Non-positive values are ignored: the API
+ * redirects `cv=0` like any `cv` the edge doesn't hold.
  */
 export const extractCv = (maybeData: unknown) => {
   if (!maybeData || typeof maybeData !== "object" || !("cv" in maybeData)) {
@@ -17,6 +17,36 @@ export const extractCv = (maybeData: unknown) => {
   }
 
   return typeof maybeData.cv === "number" && maybeData.cv > 0 ? maybeData.cv : undefined;
+};
+
+const extractCvFromUrl = (url: string | undefined) => {
+  if (!url) {
+    return undefined;
+  }
+  let cv: number;
+  try {
+    cv = Number(new URL(url).searchParams.get("cv"));
+  } catch {
+    return undefined;
+  }
+  return Number.isSafeInteger(cv) && cv > 0 ? cv : undefined;
+};
+
+/**
+ * Reads the `cv` of the snapshot a response was served from: the body's or else the final
+ * URL's, which a redirect to the current snapshot rewrites (`/cdn/links` reports no body
+ * `cv`). Only a cacheable published request's URL names the served snapshot; draft and
+ * `/cdn/spaces/me` URLs keep whatever `cv` the caller sent.
+ */
+export const extractServedCv = (
+  result: { data?: unknown; response?: Pick<Response, "url"> },
+  request: { method: string; path: string; query: Record<string, unknown> },
+) => {
+  const bodyCv = extractCv(result.data);
+  if (bodyCv !== undefined || !shouldUseCache(request.method, request.path, request.query)) {
+    return bodyCv;
+  }
+  return extractCvFromUrl(result.response?.url);
 };
 
 /**

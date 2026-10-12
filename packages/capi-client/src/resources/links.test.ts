@@ -10,6 +10,136 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 describe("links.list()", () => {
+  it("should track the current cv a cache-busting cv was redirected to", async () => {
+    const CURRENT_CV = "2000";
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+        const url = new URL(request.url);
+        // The edge redirects a cv it does not hold to the current version.
+        if (url.searchParams.get("cv") !== CURRENT_CV) {
+          url.searchParams.set("cv", CURRENT_CV);
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        // `/cdn/links` responses carry no cv of their own.
+        return HttpResponse.json({ links: {} });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: Number(CURRENT_CV) });
+      }),
+    );
+    const client = createApiClient({ accessToken: "links-cache-bust-token" });
+
+    await client.links.list({ query: { cv: 9_999_999_999 } });
+    await client.stories.list();
+
+    expect(new URL(storyUrls[0] ?? "").searchParams.get("cv")).toBe(CURRENT_CV);
+  });
+
+  describe("without a cv known beforehand", () => {
+    const spaceHandler = (version: () => number) =>
+      http.get("https://api.storyblok.com/v2/cdn/spaces/me", () => {
+        return HttpResponse.json({
+          space: {
+            id: 1,
+            name: "Test Space",
+            domain: "https://test.storyblok.com",
+            version: version(),
+            language_codes: [],
+          },
+        });
+      });
+
+    const setup = (accessToken: string) => {
+      const state = { currentCv: 2000 };
+      const linkUrls: string[] = [];
+      server.use(
+        spaceHandler(() => state.currentCv),
+        http.get("https://api.storyblok.com/v2/cdn/links", ({ request }) => {
+          linkUrls.push(request.url);
+          const url = new URL(request.url);
+          // The edge still holds cv 2000 and redirects any other cv it doesn't hold.
+          const requestedCv = Number(url.searchParams.get("cv"));
+          if (requestedCv !== state.currentCv && requestedCv !== 2000) {
+            url.searchParams.set("cv", String(state.currentCv));
+            return HttpResponse.redirect(url.toString(), 301);
+          }
+          // `/cdn/links` responses carry no cv of their own.
+          return HttpResponse.json({ links: {} });
+        }),
+      );
+      return { state, linkUrls, client: createApiClient({ accessToken }) };
+    };
+
+    it("should send the cv it was redirected to on the next request", async () => {
+      const { linkUrls, client } = setup("links-only-learn-token");
+
+      await client.links.list();
+      await client.links.list({ query: { starts_with: "blog/" } });
+
+      // The first request is redirected and followed; the second goes out with the cv.
+      expect(linkUrls).toHaveLength(3);
+      expect(new URL(linkUrls[2] ?? "").searchParams.get("cv")).toBe("2000");
+    });
+
+    it("should refetch after a space poll notices a publish", async () => {
+      const { state, linkUrls, client } = setup("links-only-poll-token");
+
+      await client.links.list();
+      await client.spaces.get();
+      await client.links.list();
+      expect(linkUrls).toHaveLength(2);
+
+      state.currentCv = 3000; // content was published
+      await client.spaces.get();
+      await client.links.list();
+
+      expect(linkUrls).toHaveLength(4);
+      expect(new URL(linkUrls[3] ?? "").searchParams.get("cv")).toBe("3000");
+    });
+
+    it("should refetch after a redirect reveals a publish", async () => {
+      const { state, linkUrls, client } = setup("links-only-redirect-token");
+
+      await client.links.list();
+      state.currentCv = 3000; // content was published
+      await client.links.list({ query: { cv: 9_999_999_999 } });
+      await client.links.list();
+
+      expect(linkUrls).toHaveLength(5);
+      expect(new URL(linkUrls[4] ?? "").searchParams.get("cv")).toBe("3000");
+    });
+  });
+
+  it("should not track a cv a draft request was sent with", async () => {
+    const CURRENT_CV = "2000";
+    const storyUrls: string[] = [];
+    server.use(
+      http.get("https://api.storyblok.com/v2/cdn/links", () => {
+        // Drafts are never redirected, so the URL keeps the caller's cv.
+        return HttpResponse.json({ links: {} });
+      }),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get("cv") !== CURRENT_CV) {
+          url.searchParams.set("cv", CURRENT_CV);
+          return HttpResponse.redirect(url.toString(), 301);
+        }
+        storyUrls.push(request.url);
+        return HttpResponse.json({ stories: [], cv: Number(CURRENT_CV) });
+      }),
+    );
+    const client = createApiClient({ accessToken: "links-draft-cv-token" });
+
+    await client.links.list({ query: { version: "draft", cv: 9_999_999_999 } });
+    await client.stories.list();
+    await client.stories.list();
+
+    expect(storyUrls).toHaveLength(1);
+    expect(new URL(storyUrls[0] ?? "").searchParams.get("cv")).toBe(CURRENT_CV);
+  });
+
   it("should successfully retrieve multiple links", async () => {
     server.use(
       http.get("https://api.storyblok.com/v2/cdn/links", () => {

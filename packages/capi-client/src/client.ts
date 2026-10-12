@@ -9,7 +9,7 @@ import { createMemoryCacheProvider, createStrategy, isTransientStatus } from "./
 import { ClientError } from "./error";
 import type { RateLimitConfig, ThrottleManager } from "./utils/rate-limit";
 import { createThrottleManager } from "./utils/rate-limit";
-import { applyCvToQuery, extractCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
+import { applyCvToQuery, extractServedCv, extractSpaceVersion, isCvPinned } from "./utils/cv";
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
 import { createTokenId } from "./utils/token-id";
@@ -276,6 +276,11 @@ export interface ContentApiClientConfig<
    * - SSR framework fetch wrappers (e.g., Next.js `fetch` with caching)
    * - Custom instrumentation or logging around requests
    *
+   * The client reads the final `response.url` to learn the `cv` a redirect moved a request
+   * to. A wrapper that rebuilds the `Response` (e.g. `new Response(r.body, r)`) loses it, so
+   * `/cdn/links` responses teach no `cv` and their entries can fall back to TTL-only
+   * invalidation.
+   *
    * @default globalThis.fetch
    */
   fetch?: typeof globalThis.fetch;
@@ -521,7 +526,7 @@ export const createApiClientBase = <
    * costs one repeated invalidation on the next poll, never serving an entry past its
    * version.
    *
-   * @param learnCv whether this response's `cv` may advance the watermark.
+   * @param learnCv whether `servedCv` may advance the watermark.
    * @param honorOlderSnapshot keep a response reporting a `cv` below the known one, which
    * only a caller-pinned snapshot may.
    * @param issuedUnder the versions the request was issued under; omitted for a pinned
@@ -532,23 +537,24 @@ export const createApiClientBase = <
     path: string,
     result: ApiResponse,
     {
+      servedCv,
       learnCv,
       honorOlderSnapshot = false,
       issuedUnder,
       generationAtIssue,
     }: {
+      servedCv: number | undefined;
       learnCv: boolean;
       honorOlderSnapshot?: boolean;
       issuedUnder?: { knownCv?: number; knownSpaceVersion?: number };
       generationAtIssue: number;
     },
-  ): Promise<{ mayCache: boolean; cv?: number }> => {
-    const bodyCv = extractCv(result.data);
+  ): Promise<boolean> => {
     const spaceVersion = isSpacesMeRequest(path) ? extractSpaceVersion(result.data) : undefined;
     const current = await readVersions(cacheProvider, watermarksKey);
 
-    // A superseded response whose body reports the new `cv` only lost a race; keep it.
-    const carriesKnownCv = bodyCv !== undefined && bodyCv === current?.knownCv;
+    // A superseded response served from the new `cv` only lost a race; keep it.
+    const carriesKnownCv = servedCv !== undefined && servedCv === current?.knownCv;
     const wasFlushedInFlight = (current?.generation ?? 0) !== generationAtIssue;
     // Without a `cv` at issue, a moved space version is the publish that superseded it.
     const wasPublishedInFlight =
@@ -563,13 +569,13 @@ export const createApiClientBase = <
     // because an invalidation resets `knownCv`.
     const isStaleEdgeRead =
       !honorOlderSnapshot &&
-      bodyCv !== undefined &&
+      servedCv !== undefined &&
       current?.highestCv !== undefined &&
-      bodyCv < current.highestCv;
+      servedCv < current.highestCv;
     const mayCache = !isSuperseded && !isStaleEdgeRead;
 
     let next = mergeVersions(current, {
-      knownCv: learnCv && mayCache ? bodyCv : undefined,
+      knownCv: learnCv && mayCache ? servedCv : undefined,
       knownSpaceVersion: spaceVersion,
     });
 
@@ -592,13 +598,13 @@ export const createApiClientBase = <
       // to the write itself.
       const latest = await readVersions(cacheProvider, watermarksKey);
       if ((latest?.generation ?? 0) !== (current?.generation ?? 0)) {
-        return { mayCache: false };
+        return false;
       }
 
       await writeVersions(cacheProvider, watermarksKey, next);
     }
 
-    return { mayCache, cv: bodyCv };
+    return mayCache;
   };
 
   /**
@@ -709,6 +715,7 @@ export const createApiClientBase = <
       try {
         const versions = await versionsAtIssue;
         await applyResponseVersions(path, networkResult, {
+          servedCv: extractServedCv(networkResult, { method, path, query: rawQuery }),
           learnCv: true,
           issuedUnder: {
             knownCv: versions?.knownCv,
@@ -768,13 +775,14 @@ export const createApiClientBase = <
 
       // A pinned `cv` the edge doesn't hold (e.g. `cv: Date.now()`) is redirected to the
       // current one, so only a response reporting the pinned `cv` or none is that snapshot.
-      const bodyCv = extractCv(result.data);
+      const servedCv = extractServedCv(result, { method, path, query });
       const isPinnedSnapshot =
-        isCvPinnedByCaller && (bodyCv === undefined || bodyCv === Number(rawQuery.cv));
+        isCvPinnedByCaller && (servedCv === undefined || servedCv === Number(rawQuery.cv));
       const issuedUnder = isPinnedSnapshot
         ? undefined
         : { knownCv: versions?.knownCv, knownSpaceVersion: versions?.knownSpaceVersion };
-      const { mayCache, cv } = await applyResponseVersions(path, result, {
+      const mayCache = await applyResponseVersions(path, result, {
+        servedCv,
         learnCv: !isPinnedSnapshot,
         honorOlderSnapshot: isPinnedSnapshot,
         issuedUnder,
@@ -782,12 +790,10 @@ export const createApiClientBase = <
       });
 
       if (result.error === undefined && mayCache) {
-        // Endpoints reporting no `cv` (`/cdn/tags`, `/cdn/links`) are tagged with the one
-        // they were requested under.
         await cacheProvider.set(key, {
           value: result,
           ttlMs: cacheTtlMs,
-          cv: cv ?? issuedUnder?.knownCv,
+          cv: servedCv ?? issuedUnder?.knownCv,
         });
       }
 

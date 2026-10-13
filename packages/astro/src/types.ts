@@ -66,10 +66,11 @@ export type StoryblokBlockComponentProps<
 } & TExtraProps;
 
 /**
- * Any component capable of rendering a block. In practice an `.astro`
- * component, but framework components work too.
+ * Components that render blocks must be `.astro` components. A framework
+ * component (React, Vue, ...) can't be registered directly: wrap it in an
+ * `.astro` component and apply the `client:*` directive there, the way the
+ * playgrounds' `ReactCounter.astro` wraps `Counter.jsx`.
  */
-
 export type StoryblokComponentMap = Record<string, AstroComponentFactory>;
 
 /**

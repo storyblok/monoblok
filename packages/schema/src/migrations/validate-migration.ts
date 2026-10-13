@@ -123,10 +123,11 @@ export function validateMigration(
       );
     }
     if (op.kind === "wrapChildren") {
-      // An unknown container is a block the migration introduces; a known one
-      // has to declare the field the children land in.
+      // An unknown container is a block the migration introduces. A known one
+      // without fields is skipped: schema snapshots list the blocks a migration
+      // only nests by name.
       const container = fields.get(op.in);
-      if (container && !container.has(op.into)) {
+      if (container && container.size > 0 && !container.has(op.into)) {
         issue(
           `Block "${op.in}" already exists and has no field "${op.into}"; wrapping into it would leave the children under a field its schema does not define.`,
         );

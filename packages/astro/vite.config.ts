@@ -25,10 +25,10 @@ export default defineConfig({
     // The bundler never parses `.astro` files (see `externalAstroComponents`
     // below), so a module reachable only from a component's own `<script>` -
     // not re-exported from `src/index.ts` - would otherwise be silently
-    // dropped from `dist/`. `live-preview/preview-handler` is only imported
-    // from `StoryblokPreview.astro`'s script, so it's listed as its own
-    // entry; `get-new-html-body` comes along for free as its dependency.
-    entry: ["src/index.ts", "src/live-preview/preview-handler.ts"],
+    // dropped from `dist/`. `live-preview/preview-handler` and
+    // `richtext-helpers` are each only imported that way, so they're listed
+    // as their own entries; their own dependencies come along for free.
+    entry: ["src/index.ts", "src/live-preview/preview-handler.ts", "src/richtext-helpers.ts"],
     unbundle: true,
     format: ["esm"],
     copy: [{ from: "src/**/*.astro", to: "dist", flatten: false }],

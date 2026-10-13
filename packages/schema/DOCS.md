@@ -259,11 +259,20 @@ inverse, and neither do `coerceField()` without `from`, `splitField()` without `
 ### Programmatic use
 
 `applyMigration()` applies a migration to a set of stories fetched with the Management API and
-returns the content to write back:
+returns the content to write back. It doesn’t receive the schema, so it can’t detect an op that
+addresses an unknown block or field, a `renameBlock()` onto an existing block, or a `wrapChildren()`
+into an existing block that lacks the `into` field. Check the migration with `validateMigration()`
+against the schema as it was before the migration, and apply it only when no issues are returned:
 
 ```ts
-import { applyMigration } from "@storyblok/schema/migrations";
+import { applyMigration, validateMigration } from "@storyblok/schema/migrations";
 import migration from "./.storyblok/migrations/12345/0002-rename-article-author";
+import schema from "./schema";
+
+const issues = validateMigration(migration, schema);
+if (issues.length > 0) {
+  throw new Error(issues.map((issue) => `op ${issue.op}: ${issue.message}`).join("\n"));
+}
 
 const { writes, refusals } = applyMigration({
   migration,

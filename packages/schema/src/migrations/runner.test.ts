@@ -345,6 +345,29 @@ describe("schema-aware validation", () => {
     expect(issues[0].message).toContain('Block "section" already exists');
   });
 
+  it("should reject wrapping children into an existing block that lacks the target field", () => {
+    const migration = defineMigration<TestSchema>([
+      wrapChildren({ block: "page", field: "body", in: "card", into: "items" }),
+    ]);
+    const issues = validateMigration(migration, schemaLike);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].message).toContain('Block "card" already exists and has no field "items"');
+  });
+
+  it("should accept wrapping children into an existing block that declares the target field", () => {
+    const migration = defineMigration<TestSchema>([
+      wrapChildren({ block: "page", field: "body", in: "section", into: "items" }),
+    ]);
+    expect(validateMigration(migration, schemaLike)).toEqual([]);
+  });
+
+  it("should accept wrapping children into a block the schema does not define yet", () => {
+    const migration = defineMigration<TestSchema>([
+      wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
+    ]);
+    expect(validateMigration(migration, schemaLike)).toEqual([]);
+  });
+
   it("should accept every probe migration against the pre-migration schema", () => {
     for (const migration of [
       renameField,

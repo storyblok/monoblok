@@ -28,13 +28,17 @@ vi.mock("../../../utils/user-module", async (importOriginal) => ({
 }));
 
 let schemaModule: Record<string, unknown> = {};
-/** Schema snapshot exports by migration id. */
-let snapshotModules: Record<string, Record<string, unknown>> = {};
+/** Schema snapshot exports by migration id, or the error loading the snapshot throws. */
+let snapshotModules: Record<string, Record<string, unknown> | Error> = {};
 vi.mock("../../../utils/schema/classify-exports", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../utils/schema/classify-exports")>()),
-  loadSchemaModule: async (path: string) =>
-    Object.entries(snapshotModules).find(([id]) => path.endsWith(`${id}.before.ts`))?.[1] ??
-    schemaModule,
+  loadSchemaModule: async (path: string) => {
+    const snapshot = Object.entries(snapshotModules).find(([id]) =>
+      path.endsWith(`${id}.before.ts`),
+    )?.[1];
+    if (snapshot instanceof Error) throw snapshot;
+    return snapshot ?? schemaModule;
+  },
 }));
 
 const server = setupServer();
@@ -56,6 +60,12 @@ const pageBlock = defineBlock({ name: "page", fields: [defineField("body", { typ
 function hasSnapshot(id: string, ...blocks: unknown[]): void {
   vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.before.ts`]: "export {};" });
   snapshotModules[id] = Object.fromEntries(blocks.map((block, index) => [`block${index}`, block]));
+}
+
+function hasNameOnlyBlocks(id: string, ...names: string[]): void {
+  const snapshot = snapshotModules[id];
+  if (snapshot instanceof Error || !snapshot) throw new Error(`no snapshot for ${id}`);
+  snapshot.nameOnlyBlocks = names;
 }
 
 const renameTeaserTitle = defineMigration([
@@ -483,6 +493,91 @@ describe("migrations apply command", () => {
       expect(warn.mock.calls.flat().join("\n")).toContain(
         "Not checked against a schema, because no .before.ts snapshot sits beside it: 0001-rename-card-title",
       );
+    });
+
+    it("should report the mismatches of every migration in one failure", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(
+        ["0001-rename-card-to-teaser", renameCardToTeaser],
+        ["0002-wrap-page-body", wrapPageBody],
+      );
+      hasSnapshot(
+        "0001-rename-card-to-teaser",
+        cardBlock,
+        defineBlock({ name: "teaser", fields: [defineField("headline", { type: "text" })] }),
+      );
+      hasSnapshot(
+        "0002-wrap-page-body",
+        pageBlock,
+        defineBlock({ name: "grid", fields: [defineField("columns", { type: "bloks" })] }),
+      );
+      server.resetHandlers();
+
+      await apply();
+
+      const output = error.mock.calls.flat().join("\n");
+      expect(output).toContain("0001-rename-card-to-teaser does not match the schema");
+      expect(output).toContain("0002-wrap-page-body does not match the schema");
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should refuse a renameBlock onto a block the snapshot lists by name only", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+      hasSnapshot("0001-rename-card-to-teaser", cardBlock);
+      hasNameOnlyBlocks("0001-rename-card-to-teaser", "teaser");
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain('Block "teaser" already exists');
+    });
+
+    it("should warn and apply when wrapping children into a block the snapshot lists by name only", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-wrap-page-body", wrapPageBody]);
+      hasSnapshot("0001-wrap-page-body", pageBlock, defineBlock({ name: "grid", fields: [] }));
+      hasNameOnlyBlocks("0001-wrap-page-body", "grid");
+      space.hasStories(storyWithCard());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.writes).toHaveLength(1);
+      expect(warn.mock.calls.flat().join("\n")).toContain(
+        '0001-wrap-page-body: op 0: Block "grid" already exists but is listed by name only',
+      );
+    });
+
+    it("should name the migration and its snapshot when the snapshot can't be loaded", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      hasSnapshot("0001-rename-card-title");
+      snapshotModules["0001-rename-card-title"] = new Error(
+        "Cannot find module './schema'\nRequire stack:\n- somewhere",
+      );
+      server.resetHandlers();
+
+      await apply();
+
+      const output = error.mock.calls.flat().join("\n");
+      expect(output).toMatch(
+        /0001-rename-card-title: the schema snapshot \S*0001-rename-card-title\.before\.ts could not be loaded: Cannot find module '\.\/schema'/,
+      );
+      expect(output).toContain("--no-validate");
+      expect(output).not.toContain("Require stack");
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should refuse --schema together with --no-validate", async () => {
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      server.resetHandlers();
+
+      await apply("--schema", "src/schema.ts", "--no-validate");
+
+      expect(space.writes).toEqual([]);
+      expect(process.exitCode).toBe(2);
     });
 
     it("should skip the snapshot check with --no-validate", async () => {

@@ -89,9 +89,14 @@ loads every `.js` file in the same directory and reports a `.js` content migrati
 Before it fetches any story, the command checks each migration against the `.before.ts` snapshot
 next to it: the schema as it was before the migration. The command stops when a migration names a
 block or field that the snapshot doesn’t define, renames a field or block onto one that already
-exists, or wraps blocks in an existing block that lacks the target field. A migration without a
-snapshot runs unchecked, and the command lists it in a warning. Pass `--schema` to check a single
-migration against another schema entry file, or `--no-validate` to skip the check.
+exists, or wraps blocks in an existing block that lacks the target field. It reports the mismatches
+of every migration before it stops. A migration without a snapshot runs unchecked, and the command
+lists it in a warning. Pass `--schema` to check a single migration against another schema entry
+file, or `--no-validate` to skip the check. The two flags can’t be combined.
+
+A snapshot can also export `nameOnlyBlocks`, the blocks that exist in the space but whose fields it
+doesn’t list. The check counts them as existing blocks. It stops when an op reads one of their
+fields, and only warns when blocks are wrapped in or unwrapped from one of them.
 
 ## Pending releases
 

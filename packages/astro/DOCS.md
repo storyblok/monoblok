@@ -100,9 +100,12 @@ if (!story) {
 <StoryblokPreview />
 ```
 
-`getPayload` returns the draft story posted by the Visual Editor, or nothing outside the editor, so
-the same page serves preview and published content. Request `version: 'draft'` from the fallback
-fetch too, or the first (non-editor) load renders published content instead.
+`getPayload` returns the draft story posted by the Visual Editor, so the same page serves preview
+and published content. `storyblokPreviewMiddleware` only captures it for same-origin, JSON POSTs
+that carry the editor's query params, so in practice it stays empty outside the editor — this isn't
+a hard guarantee against a same-origin script that deliberately replicates that request, only
+against cross-site forgery. Request `version: 'draft'` from the fallback fetch too, or the first
+(non-editor) load renders published content instead.
 
 <Aside type="tip">
   `getPayload` only reads the payload the middleware captured; fetching stories is not this

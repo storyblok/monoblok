@@ -74,6 +74,25 @@ describe("storyblokPreviewMiddleware", () => {
     expect(locals._storyblok_preview_data).toBeUndefined();
   });
 
+  it("rejects a cross-site POST forged with a CORS-safelisted `text/plain; x=application/json` type", async () => {
+    // `text/plain` with parameters is still CORS-safelisted, so this never
+    // triggers a preflight, and a browser that doesn't send `Sec-Fetch-Site`
+    // (Safari < 16.4, Firefox < 90) wouldn't be caught by that check either.
+    // A naive `.includes("application/json")` check on the raw header
+    // would also match this; comparing the MIME essence must not.
+    const attackerStory = { content: { component: "page" }, is_storyblok_preview: true };
+    const request = new Request(EDITOR_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; x=application/json" },
+      body: JSON.stringify({ story: attackerStory }),
+    });
+    const locals: Record<string, unknown> = {};
+
+    await storyblokPreviewMiddleware({ locals, request } as any, next);
+
+    expect(locals._storyblok_preview_data).toBeUndefined();
+  });
+
   it("rejects a same-site-looking POST whose `Sec-Fetch-Site` says otherwise", async () => {
     const attackerStory = { content: { component: "page" }, is_storyblok_preview: true };
     const request = new Request(EDITOR_URL, {

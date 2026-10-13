@@ -97,7 +97,10 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   const depth = title === undefined ? 1 : 2;
   const opIndent = INDENT.repeat(depth);
   if (ops.length === 0) {
-    opLines.push(`${opIndent}// renameField({ block: 'article', field: 'author', to: 'byline' }),`);
+    opLines.push(
+      `${opIndent}// Import each op from '@storyblok/schema/migrations', for example:`,
+      `${opIndent}// renameField({ block: 'article', field: 'author', to: 'byline' }),`,
+    );
   }
   for (const op of ops) {
     for (const todo of op.todo ?? []) {

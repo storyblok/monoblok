@@ -134,6 +134,8 @@ function typingField(field: FieldRecord, allowed: string[] | undefined): FieldRe
  * Every other block reachable from them through an allow list, transitively, is
  * a name-only stub: enough to keep nested `bloks` fields typed, while keeping
  * the file small on a space where one section whitelists most of the schema.
+ * `nameOnlyBlocks` names every block not emitted with its fields, so a check
+ * against the snapshot can tell an existing block from a new one.
  */
 export function generateSnapshot(options: GenerateSnapshotOptions): string {
   const { components, migrationId } = options;
@@ -217,6 +219,22 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   lines.push(`${INDENT}},`);
   lines.push("});", "");
   lines.push("export type Before = Schema<typeof schema>;", "");
+
+  const nameOnlyBlocks = components
+    .map((component) => component.name)
+    .filter((name) => !reads.includes(name))
+    .sort();
+  lines.push(
+    "/** Every other block in the space. Their fields are not part of this snapshot. */",
+    nameOnlyBlocks.length === 0
+      ? "export const nameOnlyBlocks: string[] = [];"
+      : [
+          "export const nameOnlyBlocks: string[] = [",
+          ...nameOnlyBlocks.map((name) => `${INDENT}${quoteString(name)},`),
+          "];",
+        ].join("\n"),
+    "",
+  );
 
   return lines.join("\n");
 }

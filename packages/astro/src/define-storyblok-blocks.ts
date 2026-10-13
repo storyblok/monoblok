@@ -14,6 +14,12 @@ import type {
  * define as many registries as you like (e.g. one per content area) without
  * them overwriting each other.
  *
+ * Takes a factory rather than the options object directly: block components
+ * often import `StoryblokBlock` back from this same registry (to recurse
+ * into `body` fields), making this an import cycle. A factory defers
+ * reading `components` until the first render, by which point the cycle has
+ * finished initializing.
+ *
  * @example
  * ```astro
  * ---
@@ -22,10 +28,10 @@ import type {
  * import Teaser from '~/components/Teaser.astro';
  * import Fallback from '~/components/Fallback.astro';
  *
- * const { StoryblokBlock } = defineStoryblokBlocks({
+ * const { StoryblokBlock } = defineStoryblokBlocks(() => ({
  *   components: { page: Page, teaser: Teaser },
  *   fallback: Fallback,
- * });
+ * }));
  * ---
  *
  * <StoryblokBlock block={story.content} />
@@ -41,26 +47,27 @@ import type {
  *
  * type ExtraComponentProps = { locale: string };
  *
- * const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>({
+ * const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>(() => ({
  *   components: { branch: Branch, leaf: Leaf },
- * });
+ * }));
  * ---
  *
  * <StoryblokBlock block={root} locale="fr" />
  * ```
  */
 export function defineStoryblokBlocks<TExtraProps extends object = {}>(
-  options: DefineStoryblokBlocksOptions = {},
+  factory: () => DefineStoryblokBlocksOptions,
 ): DefineStoryblokBlocksResult<TExtraProps> {
-  const components = options.components ?? {};
-  const fallback = options.fallback;
+  // Cached after the first call so a factory with side effects (e.g. logging)
+  // only ever runs once, no matter how many blocks render.
+  let resolved: DefineStoryblokBlocksOptions | undefined;
+  const getComponents = () => (resolved ??= factory()).components ?? {};
+  const getFallback = () => (resolved ??= factory()).fallback;
 
-  // `StoryblokBlock.astro` is compiled like any other Astro component, so it
-  // can't be parameterized by calling it — there's no instance to bind
-  // `components`/`fallback` to. We build a thin wrapper with Astro's own
-  // low-level render primitives instead — the same `createComponent`/`render`
-  // pair the Astro compiler itself targets — closing over this call's
-  // registry so multiple `defineStoryblokBlocks()` calls never share state.
+  // `StoryblokBlock.astro` can't be parameterized by calling it directly, so
+  // this wraps it with Astro's own low-level render primitives, closing over
+  // this call's registry so multiple `defineStoryblokBlocks()` calls never
+  // share state.
   const StoryblokBlock = createComponent(
     (result, props, slots) =>
       render`${renderComponent(
@@ -68,10 +75,12 @@ export function defineStoryblokBlocks<TExtraProps extends object = {}>(
         "StoryblokBlock",
         RawStoryblokBlock,
         // Namespaced so a user-declared `components`/`fallback` extra prop
-        // (see `TExtraProps`) is forwarded as-is instead of being
-        // overwritten by the registry and then stripped by
-        // `StoryblokBlock.astro`'s own destructuring.
-        { ...props, __storyblokComponents: components, __storyblokFallback: fallback },
+        // doesn't collide with the registry.
+        {
+          ...props,
+          __storyblokComponents: getComponents(),
+          __storyblokFallback: getFallback(),
+        },
         slots,
       )}`,
   );

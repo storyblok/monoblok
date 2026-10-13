@@ -14,7 +14,7 @@ export const client = createApiClient({
   accessToken: "hjfIuqpPLxaJIYlgCAylKgtt",
 });
 
-export const { StoryblokBlock } = defineStoryblokBlocks({
+export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: {
     page: Page,
     feature: Feature,
@@ -26,4 +26,4 @@ export const { StoryblokBlock } = defineStoryblokBlocks({
     embedded_blok: EmbeddedBlok,
   },
   fallback: CustomFallback,
-});
+}));

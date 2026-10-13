@@ -53,7 +53,7 @@ function resolve(block: StoryblokBlockData): AstroComponentFactory | undefined {
   if (import.meta.env.DEV) {
     console.warn(
       `[storyblok] No component registered for block type "${name}". ` +
-        `Register it in \`defineStoryblokBlocks({ components })\` or provide a \`fallback\`.`,
+        `Register it in \`defineStoryblokBlocks(() => ({ components }))\` or provide a \`fallback\`.`,
     );
   }
 

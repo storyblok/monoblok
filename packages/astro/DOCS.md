@@ -59,10 +59,16 @@ import { defineStoryblokBlocks } from "@storyblok/astro";
 import Page from "~/components/Page.astro";
 import Feature from "~/components/Feature.astro";
 
-export const { StoryblokBlock } = defineStoryblokBlocks({
+export const { StoryblokBlock } = defineStoryblokBlocks(() => ({
   components: { page: Page, feature: Feature },
-});
+}));
 ```
+
+`defineStoryblokBlocks` takes a factory, not the options object directly, so `components` is only
+resolved the first time a block renders. Block components commonly import `StoryblokBlock` back from
+this same module to recurse into `body` fields (see "Extra props" below), which makes this module
+circular with every block it registers; passing a factory defers reading `Page`/`Feature` until that
+cycle has finished initializing, instead of capturing them while still `undefined`.
 
 `defineStoryblokBlocks` is closure-scoped: call it more than once (for example, once per content
 area) to get independent registries that never share state or overwrite each other.
@@ -171,9 +177,9 @@ import Leaf from "~/components/Leaf.astro";
 
 type ExtraComponentProps = { locale: string };
 
-export const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>({
+export const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>(() => ({
   components: { branch: Branch, leaf: Leaf },
-});
+}));
 ```
 
 ```astro title="src/components/Branch.astro"
@@ -314,18 +320,18 @@ custom components, such as custom image or table rendering:
 
 ## API reference
 
-| Export                                            | Description                                                                              |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                        |
-| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                            |
-| `storyblokPreviewMiddleware`                      | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.      |
-| `getPayload({ locals })`                          | Reads that payload back.                                                                 |
-| `StoryblokPreview`                                | Client island that reloads on save/publish, and morphs the DOM live with `liveUpdate`.   |
-| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.          |
-| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                     |
-| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                          |
-| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                                    |
-| `sanitizeJSON`                                    | Safely serializes data for embedding in a `<script>` tag. Used by `StoryblokServerData`. |
+| Export                                                    | Description                                                                              |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `defineStoryblokBlocks(() => ({ components, fallback }))` | Registers the block → component map and returns `StoryblokBlock`.                        |
+| `StoryblokBlock`                                          | Renders one block, resolving its component from the registry.                            |
+| `storyblokPreviewMiddleware`                              | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.      |
+| `getPayload({ locals })`                                  | Reads that payload back.                                                                 |
+| `StoryblokPreview`                                        | Client island that reloads on save/publish, and morphs the DOM live with `liveUpdate`.   |
+| `StoryblokServerData`                                     | Passes server-fetched data through live preview updates so edits don't lose it.          |
+| `StoryblokRichText`                                       | Renders a Storyblok rich text field.                                                     |
+| `storyblokEditable`                                       | Re-export of the Storyblok helper for Visual Editor attributes.                          |
+| `isInEditor`                                              | Checks whether a request came from the Visual Editor.                                    |
+| `sanitizeJSON`                                            | Safely serializes data for embedding in a `<script>` tag. Used by `StoryblokServerData`. |
 
 Types: `StoryblokBlockData`, `StoryblokBlockComponentProps<T, TExtra>`,
 `StoryblokBlockProps<TExtra>`, `StoryblokBlockComponent<TExtra>`, `StoryblokComponentMap`,

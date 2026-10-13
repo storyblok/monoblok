@@ -16,7 +16,7 @@ export const client = createApiClient({
 interface ExtraProps {
   locale?: string;
 }
-export const { StoryblokBlock } = defineStoryblokBlocks<ExtraProps>({
+export const { StoryblokBlock } = defineStoryblokBlocks<ExtraProps>(() => ({
   components: {
     page: Page,
     feature: Feature,
@@ -26,4 +26,4 @@ export const { StoryblokBlock } = defineStoryblokBlocks<ExtraProps>({
     "featured-articles": FeaturedArticles,
   },
   fallback: TestFallback,
-});
+}));

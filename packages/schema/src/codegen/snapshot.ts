@@ -225,7 +225,7 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
     .filter((name) => !reads.includes(name))
     .sort();
   lines.push(
-    "/** Every other block in the space. Their fields are not part of this snapshot. */",
+    "/** Blocks in the space whose fields are not part of this snapshot. */",
     nameOnlyBlocks.length === 0
       ? "export const nameOnlyBlocks: string[] = [];"
       : [

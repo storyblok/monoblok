@@ -1,5 +1,6 @@
 ---
 import { storyblokEditable } from "@storyblok/live-preview";
+import { isValidAstroComponent } from "../richtext-helpers";
 import type { StoryblokBlockData, StoryblokComponentMap, AstroComponentFactory } from "../types";
 
 type Props = {
@@ -25,9 +26,20 @@ const editable = block ? storyblokEditable(block) : undefined;
 
 function resolve(block: StoryblokBlockData): AstroComponentFactory | undefined {
   const name = block.component;
-  const component = name ? components[name] : undefined;
+  const registered = name ? components[name] : undefined;
 
-  if (component) return component;
+  if (registered && !isValidAstroComponent(registered)) {
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[storyblok] The component registered for block type "${name}" isn't a valid Astro ` +
+          `component. Wrap framework components (React, Vue, ...) in an \`.astro\` component ` +
+          `with the appropriate \`client:*\` directive instead of registering them directly.`,
+      );
+    }
+  } else if (registered) {
+    return registered;
+  }
+
   if (fallback) return fallback;
 
   if (import.meta.env.DEV) {

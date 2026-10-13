@@ -36,7 +36,7 @@ Live Preview DOM bridge for rendering Storyblok content in Astro.
 
 ## Requirements
 
-- **Astro** version 3.0 or later
+- **Astro** version 4.14 or later
 - **Node.js** LTS (version 22.x recommended)
 - **Modern web browser** (for example, Chrome, Firefox, Safari, Edge — latest versions)
 
@@ -54,11 +54,10 @@ pnpm add @storyblok/astro
 
 Register components once, then render blocks anywhere:
 
-```astro title="src/storyblok.ts"
----
-import { defineStoryblokBlocks } from '@storyblok/astro';
-import Page from '~/components/Page.astro';
-import Feature from '~/components/Feature.astro';
+```ts title="src/storyblok.ts"
+import { defineStoryblokBlocks } from "@storyblok/astro";
+import Page from "~/components/Page.astro";
+import Feature from "~/components/Feature.astro";
 
 export const { StoryblokBlock } = defineStoryblokBlocks({
   components: { page: Page, feature: Feature },
@@ -87,7 +86,14 @@ import { StoryblokBlock } from '~/storyblok';
 import { client } from '~/lib/storyblok-client';
 
 const payload = await getPayload({ locals: Astro.locals });
-const story = payload.story ?? (await client.stories.get('home')).data.story;
+const response = payload.story
+  ? undefined
+  : await client.stories.get('home', { query: { version: 'draft' } });
+const story = payload.story ?? response?.data?.story;
+
+if (!story) {
+  throw new Error('Story not found');
+}
 ---
 
 <StoryblokBlock block={story.content} />
@@ -95,7 +101,8 @@ const story = payload.story ?? (await client.stories.get('home')).data.story;
 ```
 
 `getPayload` returns the draft story posted by the Visual Editor, or nothing outside the editor, so
-the same page serves preview and published content.
+the same page serves preview and published content. Request `version: 'draft'` from the fallback
+fetch too, or the first (non-editor) load renders published content instead.
 
 <Aside type="tip">
   `getPayload` only reads the payload the middleware captured; fetching stories is not this
@@ -120,9 +127,10 @@ const { block, editable } = Astro.props;
 ```
 
 <Aside type="note">
-  Unlike `@storyblok/react`'s `defineStoryblokBlocks<TExtraProps>()`, Astro components can't be
-  generic, so extra props a block component accepts are typed as `Record<string, any>` with no
-  excess-property checking.
+  `defineStoryblokBlocks<TExtraProps>()` type-checks extra props at the `<StoryblokBlock>` call
+  site: a required field must be supplied, and an undeclared one is rejected. It does not check a
+  registered component's own declared `Props` against that same `TExtraProps` — each `.astro`
+  component's prop shape has to be kept in sync by hand.
 </Aside>
 
 To render a list of nested blocks, such as a `body` field, map over it with `StoryblokBlock`:
@@ -264,18 +272,18 @@ custom components, such as custom image or table rendering:
 
 ## API reference
 
-| Export                                            | Description                                                                                |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                          |
-| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                              |
-| `storyblokPreviewMiddleware`                      | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.        |
-| `getPayload({ locals })`                          | Reads that payload back.                                                                   |
-| `StoryblokPreview`                                | Client island that reloads on save/publish, and morphs the DOM live with `liveUpdate`.     |
-| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.            |
-| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                       |
-| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                            |
-| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                                      |
-| `sanitizeJSON` / `parseSanitizedJSON`             | Safely serializes/parses data embedded in a `<script>` tag. Used by `StoryblokServerData`. |
+| Export                                            | Description                                                                              |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `defineStoryblokBlocks({ components, fallback })` | Registers the block → component map and returns `StoryblokBlock`.                        |
+| `StoryblokBlock`                                  | Renders one block, resolving its component from the registry.                            |
+| `storyblokPreviewMiddleware`                      | Astro middleware that captures the Visual Editor preview payload on `Astro.locals`.      |
+| `getPayload({ locals })`                          | Reads that payload back.                                                                 |
+| `StoryblokPreview`                                | Client island that reloads on save/publish, and morphs the DOM live with `liveUpdate`.   |
+| `StoryblokServerData`                             | Passes server-fetched data through live preview updates so edits don't lose it.          |
+| `StoryblokRichText`                               | Renders a Storyblok rich text field.                                                     |
+| `storyblokEditable`                               | Re-export of the Storyblok helper for Visual Editor attributes.                          |
+| `isInEditor`                                      | Checks whether a request came from the Visual Editor.                                    |
+| `sanitizeJSON`                                    | Safely serializes data for embedding in a `<script>` tag. Used by `StoryblokServerData`. |
 
 Types: `StoryblokBlockData`, `StoryblokBlockComponentProps<T, TExtra>`,
 `StoryblokBlockProps<TExtra>`, `StoryblokBlockComponent<TExtra>`, `StoryblokComponentMap`,

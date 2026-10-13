@@ -368,6 +368,14 @@ describe("schema-aware validation", () => {
     expect(validateMigration(migration, schemaLike)).toEqual([]);
   });
 
+  it("should accept wrapping children into a block the schema lists without fields", () => {
+    const migration = defineMigration<TestSchema>([
+      wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
+    ]);
+    const schema = { blocks: [...schemaLike.blocks, { name: "grid", fields: [] }] };
+    expect(validateMigration(migration, schema)).toEqual([]);
+  });
+
   it("should accept every probe migration against the pre-migration schema", () => {
     for (const migration of [
       renameField,

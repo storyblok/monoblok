@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { experimental_AstroContainer as AstroContainer } from "astro/container";
 import { defineStoryblokBlocks } from "../src/define-storyblok-blocks";
 import Teaser from "./block-fixtures/Teaser.astro";
@@ -36,5 +36,24 @@ describe("StoryblokBlock", () => {
     });
 
     expect(result).toContain("Missing component for unknown");
+  });
+
+  it("falls back and warns when the registered component isn't a valid Astro component", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks({
+      // Simulates a plain object slipping into `components` (e.g. block data
+      // passed by mistake), which isn't callable and isn't an Astro factory.
+      components: { teaser: {} as any },
+      fallback: Fallback,
+    });
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: { block: { component: "teaser" } },
+    });
+
+    expect(result).toContain("Missing component for teaser");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("isn't a valid Astro component"));
+    warn.mockRestore();
   });
 });

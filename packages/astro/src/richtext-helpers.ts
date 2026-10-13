@@ -38,16 +38,16 @@ export interface StoryblokRichTextComponentProps {
 }
 
 /**
- * An `AstroComponentFactory` carrying a `(props: Props) => any` call
- * signature so `.astro`/`.tsx` files type-check the props passed to it, the
- * same mechanism Astro's own framework integrations rely on. `createComponent`
- * itself can't express this: it always returns the untyped
- * `AstroComponentFactory` shape.
+ * Checks whether `component` is a real Astro component factory, i.e. one
+ * produced by compiling an `.astro` file. Framework components (React, Vue,
+ * ...) are plain functions too, but only `.astro`-compiled factories set
+ * `isAstroComponentFactory`, the same flag Astro's own renderer checks.
  */
 export function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
   return (
-    typeof component === "function" ||
-    (typeof component === "object" && component !== null && "isAstroComponentFactory" in component)
+    typeof component === "function" &&
+    "isAstroComponentFactory" in component &&
+    component.isAstroComponentFactory === true
   );
 }
 

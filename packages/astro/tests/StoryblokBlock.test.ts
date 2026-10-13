@@ -57,6 +57,26 @@ describe("StoryblokBlock", () => {
     warn.mockRestore();
   });
 
+  it("falls back and warns when the registered component is a plain function without `isAstroComponentFactory` (e.g. a React component)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    function FakeReactComponent() {
+      return "<div>not an astro component</div>";
+    }
+    const { StoryblokBlock } = defineStoryblokBlocks({
+      components: { teaser: FakeReactComponent as any },
+      fallback: Fallback,
+    });
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: { block: { component: "teaser" } },
+    });
+
+    expect(result).toContain("Missing component for teaser");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("isn't a valid Astro component"));
+    warn.mockRestore();
+  });
+
   it("renders nothing and warns in dev when `block` is undefined", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { StoryblokBlock } = defineStoryblokBlocks({ components: { teaser: Teaser } });

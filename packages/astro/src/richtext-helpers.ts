@@ -13,7 +13,7 @@ export type StoryblokAstroRichTextComponentMap = {
 };
 
 export interface StoryblokAstroRichTextRenderContext {
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   components?: StoryblokAstroRichTextComponentMap;
   data?: unknown;
 }
@@ -30,7 +30,7 @@ export interface StoryblokRichTextComponentProps {
   /** The Storyblok rich text field to render. */
   document: StoryblokRichTextInput;
   /** Resolves `StoryblokRichTextImageOptions` or enables defaults when `true`. */
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   /** Overrides the default renderer for specific node/mark types. */
   components?: StoryblokAstroRichTextComponentMap;
   /** Arbitrary data forwarded to custom `components`. */

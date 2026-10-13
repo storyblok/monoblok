@@ -76,7 +76,7 @@ function applyToFields(op: MigrationOp, fields: Set<string>): void {
 }
 
 function listOf(names: Iterable<string>): string {
-  return [...names].sort().join(", ");
+  return [...names].sort().join(", ") || "none";
 }
 
 /**

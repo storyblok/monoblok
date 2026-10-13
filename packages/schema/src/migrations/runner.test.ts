@@ -376,6 +376,12 @@ describe("schema-aware validation", () => {
     expect(validateMigration(migration, schema)).toMatchObject([
       { severity: "error", message: expect.stringContaining('has no field "columns"') },
     ]);
+    expect(
+      validateMigration(
+        defineMigration<TestSchema>([removeFieldOp({ block: "grid", field: "columns" })]),
+        schema,
+      ),
+    ).toMatchObject([{ message: expect.stringContaining("Known fields: none.") }]);
   });
 
   describe("name-only blocks", () => {

@@ -80,6 +80,27 @@ describe("StoryblokBlock", () => {
     warn.mockRestore();
   });
 
+  it("renders nothing and warns when `fallback` isn't a valid Astro component", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    function FakeReactComponent() {
+      return "<div>not an astro component</div>";
+    }
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: {},
+      fallback: FakeReactComponent as any,
+    }));
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: { block: { component: "unknown" } },
+    });
+
+    expect(result.trim()).toBe("");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("`fallback`"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("isn't a valid Astro component"));
+    warn.mockRestore();
+  });
+
   it("renders nothing and warns in dev when `block` is undefined", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));

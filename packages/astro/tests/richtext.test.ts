@@ -265,4 +265,37 @@ describe("storyblok Richtext", async () => {
       expect(result).toContain("teaser");
     });
   });
+
+  describe("optimizeImage", async () => {
+    const document = {
+      type: "doc",
+      content: [
+        {
+          type: "image",
+          attrs: { src: "https://example.com/image.jpg", alt: "Image" },
+        },
+      ],
+    };
+
+    it("applies optimized attributes as HTML attributes, not a serialized blob", async () => {
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document, optimizeImage: { width: 800 } },
+      });
+
+      expect(clean(result)).toContain('width="800"');
+      expect(result).not.toContain("attrs=");
+    });
+
+    it("overrides src with the optimized URL", async () => {
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document, optimizeImage: { width: 800 } },
+      });
+
+      expect(clean(result)).toContain('src="https://example.com/image.jpg/m/800x0/"');
+    });
+  });
 });

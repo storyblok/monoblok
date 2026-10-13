@@ -103,7 +103,7 @@ export const StoryblokServerData = RawStoryblokServerData as (
 // the real props instead of just the type name. Keep both in sync.
 export const StoryblokRichText = RawStoryblokRichText as (props: {
   document: StoryblokRichTextInput;
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   components?: StoryblokAstroRichTextComponentMap;
   data?: unknown;
 }) => any;

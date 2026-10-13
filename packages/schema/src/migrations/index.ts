@@ -44,7 +44,7 @@ export { deriveInverse } from "./derive-inverse";
 export type { DerivedInverse, UnderivableOp } from "./derive-inverse";
 
 export { validateMigration } from "./validate-migration";
-export type { MigrationIssue } from "./validate-migration";
+export type { MigrationIssue, ValidateMigrationOptions } from "./validate-migration";
 
 export { runId } from "./journal";
 export type { Journal, MigrationRun, PublishState, StoryInverse } from "./journal";

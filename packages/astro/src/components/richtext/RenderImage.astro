@@ -1,9 +1,6 @@
 ---
-import {
-  type StoryblokRichTextNode,
-  type StoryblokAstroRichTextRenderContext,
-  buildStoryblokImage,
-} from '../../';
+import { type StoryblokRichTextNode, buildStoryblokImage } from '@storyblok/richtext';
+import type { StoryblokAstroRichTextRenderContext } from '../../richtext-helpers';
 import ElementTag from './ElementTag.astro';
 
 type ImageNode = StoryblokRichTextNode & { type: 'image' };

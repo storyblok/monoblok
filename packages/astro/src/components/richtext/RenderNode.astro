@@ -1,11 +1,13 @@
 ---
 import {
   type StoryblokRichTextNode,
-  type StoryblokAstroRichTextRenderContext,
-  isValidAstroComponent,
   getStaticChildren,
   hasContent,
-} from '../../';
+} from '@storyblok/richtext';
+import {
+  type StoryblokAstroRichTextRenderContext,
+  isValidAstroComponent,
+} from '../../richtext-helpers';
 import RenderChildren from './RenderChildren.astro';
 import ElementTag from './ElementTag.astro';
 import RenderImage from './RenderImage.astro';

@@ -6,7 +6,7 @@ import {
   type StoryblokRichTextProps,
   styleToString,
 } from "@storyblok/richtext";
-import type { AstroComponentFactory } from "astro/runtime/server/render/astro/index.js";
+import type { AstroComponentFactory } from "./types";
 
 export type StoryblokAstroRichTextComponentMap = {
   [K in StoryblokRichTextElement]?: AstroComponentFactory;

@@ -1,4 +1,4 @@
-import { createComponent, render, renderComponent } from "astro/runtime/server/index.js";
+import { createComponent, render, renderComponent } from "astro/compiler-runtime";
 import RawStoryblokBlock from "./components/StoryblokBlock.astro";
 import type {
   DefineStoryblokBlocksOptions,

@@ -1,6 +1,18 @@
 import { storyblokEditable } from "@storyblok/live-preview";
 import type { BridgeParams } from "@storyblok/live-preview";
-import type { AstroComponentFactory } from "astro/runtime/server/render/astro/index.js";
+
+/**
+ * Structural stand-in for Astro's own `AstroComponentFactory` (defined in
+ * `astro/runtime/server/render/astro/factory.ts`). Importing that type
+ * directly would pull it from Astro's private, unversioned `astro/runtime/*`
+ * export path, so any real Astro component factory — the only thing this
+ * package ever assigns here — satisfies this shape instead.
+ */
+export interface AstroComponentFactory {
+  (result: any, props: any, slots: any): any;
+  isAstroComponentFactory?: boolean;
+  moduleId?: string;
+}
 
 /**
  * A content block as returned by the Storyblok Content Delivery API.

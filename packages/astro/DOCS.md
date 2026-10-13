@@ -36,7 +36,7 @@ Live Preview DOM bridge for rendering Storyblok content in Astro.
 
 ## Requirements
 
-- **Astro** version 4.14 or later
+- **Astro** version 5.0 or later
 - **Node.js** LTS (version 22.x recommended)
 - **Modern web browser** (for example, Chrome, Firefox, Safari, Edge — latest versions)
 

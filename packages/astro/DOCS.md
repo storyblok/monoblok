@@ -155,24 +155,55 @@ to `defineStoryblokBlocks` to render a placeholder instead.
 `defineStoryblokBlocks<TExtraProps>()` threads extra props through to every registered component and
 onto `StoryblokBlock` itself:
 
-```astro
----
-import { defineStoryblokBlocks } from '@storyblok/astro';
-import Branch from '~/components/Branch.astro';
-import Leaf from '~/components/Leaf.astro';
+```ts title="src/storyblok.ts"
+import { defineStoryblokBlocks } from "@storyblok/astro";
+import Branch from "~/components/Branch.astro";
+import Leaf from "~/components/Leaf.astro";
 
 type ExtraComponentProps = { locale: string };
 
 export const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>({
   components: { branch: Branch, leaf: Leaf },
 });
+```
+
+```astro title="src/components/Branch.astro"
+---
+import type { StoryblokBlockComponentProps, StoryblokBlockData } from '@storyblok/astro';
+import { StoryblokBlock } from '~/storyblok';
+
+type ExtraComponentProps = { locale: string };
+type Props = StoryblokBlockComponentProps<{ body: StoryblokBlockData[] }, ExtraComponentProps>;
+const { block, locale } = Astro.props;
 ---
 
-<StoryblokBlock block={root} locale="fr" />
+{block.body?.map((child) => <StoryblokBlock block={child} locale={locale} />)}
+```
+
+```astro title="src/pages/index.astro"
+---
+import { StoryblokBlock } from '~/storyblok';
+import { client } from '~/lib/storyblok-client';
+import { getPayload } from '@storyblok/astro';
+
+const payload = await getPayload({ locals: Astro.locals });
+const response = payload.story
+  ? undefined
+  : await client.stories.get('home', { query: { version: 'draft' } });
+const story = payload.story ?? response?.data?.story;
+
+if (!story) {
+  throw new Error('Story not found');
+}
+---
+
+<StoryblokBlock block={story.content} locale="fr" />
 ```
 
 A required field in `ExtraComponentProps` (`locale: string`) makes every `StoryblokBlock` usage,
-including recursive ones, supply it. An optional field (`locale?: string`) stays optional.
+including recursive ones like `Branch.astro`'s, supply it. An optional field (`locale?: string`)
+stays optional. Since the registry lives in `src/storyblok.ts`, any component — not just the page —
+can import `StoryblokBlock` from it to render its own children.
 
 ## Live preview
 

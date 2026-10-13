@@ -368,12 +368,51 @@ describe("schema-aware validation", () => {
     expect(validateMigration(migration, schemaLike)).toEqual([]);
   });
 
-  it("should accept wrapping children into a block the schema lists without fields", () => {
+  it("should reject wrapping children into an existing block that has no fields", () => {
     const migration = defineMigration<TestSchema>([
       wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
     ]);
     const schema = { blocks: [...schemaLike.blocks, { name: "grid", fields: [] }] };
-    expect(validateMigration(migration, schema)).toEqual([]);
+    expect(validateMigration(migration, schema)).toMatchObject([
+      { severity: "error", message: expect.stringContaining('has no field "columns"') },
+    ]);
+  });
+
+  describe("name-only blocks", () => {
+    const schema = { blocks: [...schemaLike.blocks, { name: "grid", fields: [] }] };
+    const nameOnlyBlocks = ["grid", "teaser"];
+
+    it("should warn instead of reject when wrapping children into a name-only block", () => {
+      const migration = defineMigration<TestSchema>([
+        wrapChildren({ block: "page", field: "body", in: "grid", into: "columns" }),
+      ]);
+      expect(validateMigration(migration, schema, { nameOnlyBlocks })).toMatchObject([
+        { severity: "warning", message: expect.stringContaining('"grid" already exists') },
+      ]);
+    });
+
+    it("should reject a renameBlock onto a name-only block the schema does not define", () => {
+      const migration = defineMigration<TestSchema>([renameBlock({ block: "card", to: "teaser" })]);
+      expect(validateMigration(migration, schema, { nameOnlyBlocks })).toMatchObject([
+        { severity: "error", message: expect.stringContaining('Block "teaser" already exists') },
+      ]);
+    });
+
+    it("should reject an op that reads a field of a name-only block", () => {
+      const migration = defineMigration<TestSchema>([
+        renameFieldOp({ block: "teaser", field: "title", to: "headline" }),
+      ]);
+      expect(validateMigration(migration, schema, { nameOnlyBlocks })).toMatchObject([
+        { severity: "error", message: expect.stringContaining('"teaser" is listed by name only') },
+      ]);
+    });
+
+    it("should accept renaming a name-only block to a new name", () => {
+      const migration = defineMigration<TestSchema>([
+        renameBlock({ block: "teaser", to: "promo" }),
+      ]);
+      expect(validateMigration(migration, schema, { nameOnlyBlocks })).toEqual([]);
+    });
   });
 
   it("should accept every probe migration against the pre-migration schema", () => {
@@ -2024,7 +2063,11 @@ describe("validateMigration over an op sequence", () => {
     ]);
 
     expect(validateMigration(migration, schemaLike)).toEqual([
-      { op: 1, message: expect.stringContaining('Block "card" has no field "title"') },
+      {
+        op: 1,
+        severity: "error",
+        message: expect.stringContaining('Block "card" has no field "title"'),
+      },
     ]);
   });
 

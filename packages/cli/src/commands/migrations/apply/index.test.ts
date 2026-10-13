@@ -3,7 +3,12 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
 import { defineBlock, defineField } from "@storyblok/schema";
-import { defineMigration, renameBlock, renameField } from "@storyblok/schema/migrations";
+import {
+  defineMigration,
+  renameBlock,
+  renameField,
+  wrapChildren,
+} from "@storyblok/schema/migrations";
 import "../index";
 import { migrationsCommand } from "../command";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";
@@ -23,9 +28,13 @@ vi.mock("../../../utils/user-module", async (importOriginal) => ({
 }));
 
 let schemaModule: Record<string, unknown> = {};
+/** Schema snapshot exports by migration id. */
+let snapshotModules: Record<string, Record<string, unknown>> = {};
 vi.mock("../../../utils/schema/classify-exports", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../utils/schema/classify-exports")>()),
-  loadSchemaModule: async () => schemaModule,
+  loadSchemaModule: async (path: string) =>
+    Object.entries(snapshotModules).find(([id]) => path.endsWith(`${id}.before.ts`))?.[1] ??
+    schemaModule,
 }));
 
 const server = setupServer();
@@ -37,6 +46,18 @@ const renameCardTitle = defineMigration([
   renameField({ block: "card", field: "title", to: "headline" }),
 ]);
 const renameCardToTeaser = defineMigration([renameBlock({ block: "card", to: "teaser" })]);
+const wrapPageBody = defineMigration([
+  wrapChildren({ block: "page", field: "body", in: "grid", into: "items" }),
+]);
+const cardBlock = defineBlock({ name: "card", fields: [defineField("title", { type: "text" })] });
+const pageBlock = defineBlock({ name: "page", fields: [defineField("body", { type: "bloks" })] });
+
+/** Writes a `.before.ts` snapshot beside a migration, exporting `blocks`. */
+function hasSnapshot(id: string, ...blocks: unknown[]): void {
+  vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.before.ts`]: "export {};" });
+  snapshotModules[id] = Object.fromEntries(blocks.map((block, index) => [`block${index}`, block]));
+}
+
 const renameTeaserTitle = defineMigration([
   renameField({ block: "teaser", field: "title", to: "headline" }),
 ]);
@@ -68,6 +89,7 @@ describe("migrations apply command", () => {
 
   beforeEach(() => {
     schemaModule = {};
+    snapshotModules = {};
     space = createRemoteSpace(server);
     space.hasReleases();
   });
@@ -154,9 +176,9 @@ describe("migrations apply command", () => {
     expect(process.exitCode).toBeUndefined();
   });
 
-  it("should not load schema snapshots that sit beside the migrations", async () => {
+  it("should not apply schema snapshots that sit beside the migrations as migrations", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
-    vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/0001-rename-card-title.before.ts`]: "" });
+    hasSnapshot("0001-rename-card-title", cardBlock);
     space.hasStories(storyWithCard());
     space.canUpdateStories();
 
@@ -392,6 +414,91 @@ describe("migrations apply command", () => {
       await apply("--schema", "src/schema.ts");
 
       expect(space.writes).toHaveLength(1);
+    });
+  });
+
+  describe("schema snapshots", () => {
+    it("should refuse a renameBlock onto a block its snapshot already defines, before reaching the API", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+      hasSnapshot(
+        "0001-rename-card-to-teaser",
+        cardBlock,
+        defineBlock({ name: "teaser", fields: [defineField("headline", { type: "text" })] }),
+      );
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(process.exitCode).toBe(2);
+      expect(error.mock.calls.flat().join("\n")).toContain('Block "teaser" already exists');
+    });
+
+    it("should refuse wrapping children into an existing block that lacks the target field", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(["0001-wrap-page-body", wrapPageBody]);
+      hasSnapshot(
+        "0001-wrap-page-body",
+        pageBlock,
+        defineBlock({ name: "grid", fields: [defineField("columns", { type: "bloks" })] }),
+      );
+      server.resetHandlers();
+
+      await apply();
+
+      expect(space.writes).toEqual([]);
+      expect(process.exitCode).toBe(2);
+      expect(error.mock.calls.flat().join("\n")).toContain('has no field "items"');
+    });
+
+    it("should check each of several migrations against its own snapshot", async () => {
+      space.hasMigrations(
+        ["0001-rename-card-title", renameCardTitle],
+        ["0002-rename-card-to-teaser", renameCardToTeaser],
+      );
+      hasSnapshot("0001-rename-card-title", cardBlock);
+      hasSnapshot(
+        "0002-rename-card-to-teaser",
+        defineBlock({ name: "card", fields: [defineField("headline", { type: "text" })] }),
+      );
+      space.hasStories(storyWithCard());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.writes).toHaveLength(2);
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("should apply without a check and warn when a migration has no snapshot", async () => {
+      const warn = vi.spyOn(getUI(), "warn");
+      space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+      space.hasStories(storyWithCard());
+      space.canUpdateStories();
+
+      await apply();
+
+      expect(space.writes).toHaveLength(1);
+      expect(warn.mock.calls.flat().join("\n")).toContain(
+        "Not checked against a schema, because no .before.ts snapshot sits beside it: 0001-rename-card-title",
+      );
+    });
+
+    it("should skip the snapshot check with --no-validate", async () => {
+      space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+      hasSnapshot(
+        "0001-rename-card-to-teaser",
+        cardBlock,
+        defineBlock({ name: "teaser", fields: [defineField("headline", { type: "text" })] }),
+      );
+      space.hasStories(storyWithCard());
+      space.canUpdateStories();
+
+      await apply("--no-validate");
+
+      expect(space.writes).toHaveLength(1);
+      expect(process.exitCode).toBeUndefined();
     });
   });
 

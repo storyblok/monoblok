@@ -39,19 +39,11 @@ export interface StoryblokRichTextComponentProps {
 
 /**
  * An `AstroComponentFactory` carrying a `(props: Props) => any` call
- * signature so `.astro`/`.tsx` files type-check the props passed to
- * `StoryblokRichText`, the same mechanism Astro's own framework
- * integrations rely on. `createComponent` itself can't express this: it
- * always returns the untyped `AstroComponentFactory` shape.
+ * signature so `.astro`/`.tsx` files type-check the props passed to it, the
+ * same mechanism Astro's own framework integrations rely on. `createComponent`
+ * itself can't express this: it always returns the untyped
+ * `AstroComponentFactory` shape.
  */
-export type StoryblokRichTextComponent = ((props: {
-  document: StoryblokRichTextInput;
-  optimizeImage?: boolean | StoryblokRichTextImageOptions;
-  components?: StoryblokAstroRichTextComponentMap;
-  data?: unknown;
-}) => any) &
-  AstroComponentFactory;
-
 export function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
   return (
     typeof component === "function" ||

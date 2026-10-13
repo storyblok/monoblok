@@ -54,14 +54,15 @@ storyblok migrations apply [arguments] [flags]
 
 ## Flags
 
-| Flag                       | Type    | Description                                                                                                                                                                                                                                                              |
-| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to apply migrations to.                                                                                                                                                                                                        |
-| `--dry-run`, `-d`          | boolean | _Optional._ Report the stories and blocks each migration changes without writing them.                                                                                                                                                                                   |
-| `--schema`                 | string  | _Optional._ Path to a schema entry file that describes the schema as it stood before the migration, such as the migration's `.before.ts` snapshot. Checks the blocks and fields the migration names against it before any story is fetched. Requires a single migration. |
-| `--publish`                | string  | _Optional._ Publish the migrated stories. See [Publishing](#publishing). Defaults to drafts only.                                                                                                                                                                        |
-| `--allow-pending-releases` | boolean | _Optional._ Apply the migrations while releases are pending. The command lists the releases it doesn’t migrate.                                                                                                                                                          |
-| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                                                                                                                                     |
+| Flag                       | Type    | Description                                                                                                                                                                                            |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to apply migrations to.                                                                                                                                      |
+| `--dry-run`, `-d`          | boolean | _Optional._ Report the stories and blocks each migration changes without writing them.                                                                                                                 |
+| `--schema`                 | string  | _Optional._ Path to a schema entry file that describes the schema as it stood before the migration. Checks the migration against it instead of its `.before.ts` snapshot. Requires a single migration. |
+| `--no-validate`            | boolean | _Optional._ Skip checking each migration against its `.before.ts` snapshot.                                                                                                                            |
+| `--publish`                | string  | _Optional._ Publish the migrated stories. See [Publishing](#publishing). Defaults to drafts only.                                                                                                      |
+| `--allow-pending-releases` | boolean | _Optional._ Apply the migrations while releases are pending. The command lists the releases it doesn’t migrate.                                                                                        |
+| `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                                                                   |
 
 ## How a run works
 
@@ -82,6 +83,15 @@ stay local. A rerun of a migration that already applied changes nothing and reco
 
 Write content migrations as `.ts` files. [`migrations run`](/docs/tooling/cli/migrations-run) also
 loads every `.js` file in the same directory and reports a `.js` content migration as an error.
+
+## Schema check
+
+Before it fetches any story, the command checks each migration against the `.before.ts` snapshot
+next to it: the schema as it was before the migration. The command stops when a migration names a
+block or field that the snapshot doesn’t define, renames a field or block onto one that already
+exists, or wraps blocks in an existing block that lacks the target field. A migration without a
+snapshot runs unchecked, and the command lists it in a warning. Pass `--schema` to check a single
+migration against another schema entry file, or `--no-validate` to skip the check.
 
 ## Pending releases
 
@@ -116,9 +126,8 @@ The following examples assume that a `space` has been defined in a configuration
 # Preview every migration
 storyblok migrations apply --dry-run
 
-# Apply a single migration and check it against its schema snapshot first
-storyblok migrations apply 0001-rename-article-author \
-  --schema .storyblok/migrations/12345/0001-rename-article-author.before.ts
+# Apply a single migration and check it against a schema entry file instead of its snapshot
+storyblok migrations apply 0001-rename-article-author --schema src/schema-before.ts
 
 # Apply every migration and publish stories that had no unpublished changes
 storyblok migrations apply --publish published

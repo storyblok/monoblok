@@ -562,11 +562,34 @@ describe("migrations apply command", () => {
       await apply();
 
       const output = error.mock.calls.flat().join("\n");
-      expect(output).toMatch(
-        /0001-rename-card-title: the schema snapshot \S*0001-rename-card-title\.before\.ts could not be loaded: Cannot find module '\.\/schema'/,
+      expect(output).toContain(
+        "0001-rename-card-title: the schema snapshot .storyblok/migrations/12345/0001-rename-card-title.before.ts could not be loaded: Cannot find module './schema'",
       );
       expect(output).toContain("--no-validate");
       expect(output).not.toContain("Require stack");
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should report a snapshot that can't be loaded together with the mismatches of other migrations", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations(
+        ["0001-rename-card-to-teaser", renameCardToTeaser],
+        ["0002-rename-card-title", renameCardTitle],
+      );
+      hasSnapshot(
+        "0001-rename-card-to-teaser",
+        cardBlock,
+        defineBlock({ name: "teaser", fields: [defineField("headline", { type: "text" })] }),
+      );
+      hasSnapshot("0002-rename-card-title");
+      snapshotModules["0002-rename-card-title"] = new Error("ParseError: Unexpected token ");
+      server.resetHandlers();
+
+      await apply();
+
+      const output = error.mock.calls.flat().join("\n");
+      expect(output).toContain("0001-rename-card-to-teaser does not match the schema");
+      expect(output).toContain("0002-rename-card-title: the schema snapshot");
       expect(process.exitCode).toBe(2);
     });
 

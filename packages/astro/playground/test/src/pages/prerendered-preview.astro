@@ -1,8 +1,8 @@
 ---
 import { StoryblokPreview } from "@storyblok/astro";
 
-// No `prerender` export: keeps the project's `output: 'static'` default, so
-// `Astro.isPrerendered` is `true` and the dev warning must fire.
+// Default `output: 'static'` makes this route prerendered. No `liveUpdate`,
+// so the dev warning must stay silent.
 ---
 
 <StoryblokPreview />

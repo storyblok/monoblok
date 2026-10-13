@@ -3,13 +3,15 @@ import type { StoryblokPreviewProps } from "../types";
 
 const { bridgeOptions, debounceMs, liveUpdate = false }: StoryblokPreviewProps = Astro.props;
 
-if (import.meta.env.DEV && Astro.isPrerendered) {
+// Only `liveUpdate`'s morph needs an on-demand route (it POSTs back for a
+// fresh render); plain reload-on-save works fine on a prerendered route.
+if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
   console.warn(
-    "[storyblok] <StoryblokPreview /> is rendered on a prerendered route " +
-      `(${Astro.url.pathname}). Prerendered routes serve static HTML, so the ` +
-      "Visual Editor's edits never reach the page: remove `export const prerender = true` " +
-      "from this route, or set `output: 'server'`/ use a hybrid output without " +
-      "prerendering it.",
+    "[storyblok] <StoryblokPreview liveUpdate /> is rendered on a prerendered route " +
+      `(${Astro.url.pathname}). Its live-update morph needs an on-demand route to POST ` +
+      "re-renders to, which a prerendered route can't serve: remove " +
+      "`export const prerender = true` from this route, or set `output: 'server'`/use a " +
+      "hybrid output without prerendering it.",
   );
 }
 ---

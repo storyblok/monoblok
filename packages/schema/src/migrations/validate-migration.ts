@@ -122,6 +122,16 @@ export function validateMigration(
         `Block "${op.to}" already exists; renaming "${op.block}" onto it would merge two blocks' content under one name, which cannot be undone.`,
       );
     }
+    if (op.kind === "wrapChildren") {
+      // An unknown container is a block the migration introduces; a known one
+      // has to declare the field the children land in.
+      const container = fields.get(op.in);
+      if (container && !container.has(op.into)) {
+        issue(
+          `Block "${op.in}" already exists and has no field "${op.into}"; wrapping into it would leave the children under a field its schema does not define.`,
+        );
+      }
+    }
     if (op.kind === "unwrapChildren") {
       const container = known.get(op.unwrap);
       if (!container) {

@@ -98,6 +98,18 @@ describe("undoStories", () => {
     ]);
   });
 
+  it("should keep an edit to a field the run did not change without reporting a conflict", () => {
+    const outcome = undoStories({
+      inverse: [entry(1, [renameBack])],
+      stories: [home([{ _uid: "a", component: "card", headline: "Hi", subtitle: "Edited" }])],
+    });
+
+    expect(outcome.conflicts).toEqual([]);
+    expect(outcome.writes[0]?.content).toMatchObject({
+      body: [{ _uid: "a", component: "card", title: "Hi", subtitle: "Edited" }],
+    });
+  });
+
   it("should leave the story it was handed untouched, so a failed write cannot half-apply", () => {
     const story = home([{ _uid: "a", component: "card", headline: "Hi" }]);
 
@@ -110,7 +122,7 @@ describe("undoStories", () => {
     });
   });
 
-  it("should count one conflicting block once however many of its fields the run changed", () => {
+  it("should report a conflicting block once with every field edited since the run", () => {
     const outcome = undoStories({
       inverse: [
         entry(1, [
@@ -127,7 +139,9 @@ describe("undoStories", () => {
       stories: [home([{ _uid: "a", component: "card", title: "edited since" }])],
     });
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "a", component: "card", fields: ["title", "headline"] }] },
+    ]);
     expect(outcome.writes).toEqual([]);
   });
 
@@ -138,7 +152,9 @@ describe("undoStories", () => {
       force: true,
     });
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "a", component: "card", fields: ["title"] }] },
+    ]);
     expect(outcome.writes[0]?.content).toMatchObject({
       body: [{ _uid: "a", component: "card", title: "Hi" }],
     });
@@ -175,7 +191,9 @@ describe("undoStories", () => {
       ],
     });
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "b", component: "card", fields: ["title"] }] },
+    ]);
     expect(outcome.writes[0]?.content).toMatchObject({
       body: [
         { _uid: "a", component: "card", title: "Hi" },
@@ -376,7 +394,9 @@ describe("undoStories after a recorded run", () => {
 
       const outcome = undo(run.inverse, run.content);
 
-      expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(outcome.conflicts).toEqual([
+        { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["body"] }] },
+      ]);
       expect(outcome.writes).toEqual([]);
     });
 
@@ -384,7 +404,9 @@ describe("undoStories after a recorded run", () => {
       const run = wrapped();
       (run.grid.items as Content[]).push({ _uid: "new", component: "card" });
 
-      expect(undo(run.inverse, run.content).conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(undo(run.inverse, run.content).conflicts).toEqual([
+        { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["body"] }] },
+      ]);
     });
 
     it("should never repeat a uid, even under force, when a child moved elsewhere", () => {
@@ -394,7 +416,9 @@ describe("undoStories after a recorded run", () => {
 
       const outcome = undo(run.inverse, run.content, true);
 
-      expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+      expect(outcome.conflicts).toEqual([
+        { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["body"] }] },
+      ]);
       expect(outcome.writes).toEqual([]);
     });
   });
@@ -409,7 +433,9 @@ describe("undoStories after a recorded run", () => {
 
     const outcome = undo(run.inverse, run.content);
 
-    expect(outcome.conflicts).toEqual([{ slug: "home", count: 1 }]);
+    expect(outcome.conflicts).toEqual([
+      { slug: "home", blocks: [{ uid: "r", component: "page", fields: ["content"] }] },
+    ]);
     expect(outcome.writes).toEqual([]);
   });
 

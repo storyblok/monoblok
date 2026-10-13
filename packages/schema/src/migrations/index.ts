@@ -60,7 +60,13 @@ export type {
 
 export { MigrationError } from "./migration-error";
 export { planUndo, undoStories } from "./undo-run";
-export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./undo-run";
+export type {
+  ConflictingBlock,
+  UndoOutcome,
+  UndoPlan,
+  UndoStoriesInput,
+  UndoWrite,
+} from "./undo-run";
 
 export { checkPendingReleases } from "./releases";
 export type { PendingReleasesCheck, ReleaseForMigration } from "./releases";

@@ -8,6 +8,7 @@ import type { StoryForMigration } from "./apply-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
 import { MigrationError } from "./migration-error";
 import { applyPatches } from "./patch";
+import type { ApplyConflict, BlockPatch } from "./patch";
 
 export type UndoPlan = {
   run: MigrationRun;
@@ -48,6 +49,13 @@ export type UndoWrite = {
   publish: boolean;
 };
 
+export type ConflictingBlock = {
+  uid: string;
+  component: string;
+  /** The fields edited since the run, by their names after the run. */
+  fields: string[];
+};
+
 export type UndoOutcome = {
   /**
    * Only the stories the inverse actually changed. A story nothing landed on is
@@ -56,12 +64,11 @@ export type UndoOutcome = {
    */
   writes: UndoWrite[];
   /**
-   * Blocks an editor changed since the run: left as they are, or overwritten
-   * under `force`. Counted in blocks, like {@link UndoOutcome.missing}: the
-   * engine reports one conflict per op, and a rename inverse is two ops on a
-   * single block.
+   * Blocks with a field the run changed and an editor changed since: left as
+   * they are, or overwritten under `force`. An edit to a field the run did not
+   * touch is kept without a conflict.
    */
-  conflicts: { slug: string; count: number }[];
+  conflicts: { slug: string; blocks: ConflictingBlock[] }[];
   /** Blocks the run recorded that the story no longer holds, so nothing to undo. */
   missing: { slug: string; count: number }[];
   /** Stories {@link UndoStoriesInput.stories} did not include. */
@@ -116,9 +123,11 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
     // Conflicts are collected on an unforced pass even under `force`, so the
     // caller can say what is about to be overwritten.
     const probe = applyPatches(structuredClone(story.content), entry.patches);
-    const conflictingBlocks = new Set(probe.conflicts.map((conflict) => conflict.uid)).size;
-    if (conflictingBlocks > 0) {
-      outcome.conflicts.push({ slug: story.slug, count: conflictingBlocks });
+    if (probe.conflicts.length > 0) {
+      outcome.conflicts.push({
+        slug: story.slug,
+        blocks: conflictingBlocks(probe.conflicts, entry.patches),
+      });
     }
     if (probe.missing.length > 0) {
       outcome.missing.push({ slug: story.slug, count: probe.missing.length });
@@ -143,4 +152,19 @@ export function undoStories(input: UndoStoriesInput): UndoOutcome {
   }
 
   return outcome;
+}
+
+/** Groups per-op conflicts by block: a rename inverse is two ops on one block. */
+function conflictingBlocks(conflicts: ApplyConflict[], patches: BlockPatch[]): ConflictingBlock[] {
+  const byUid = new Map<string, ConflictingBlock>();
+  for (const conflict of conflicts) {
+    const block = byUid.get(conflict.uid) ?? {
+      uid: conflict.uid,
+      component: patches.find((patch) => patch.uid === conflict.uid)?.component ?? "",
+      fields: [],
+    };
+    if (!block.fields.includes(conflict.key)) block.fields.push(conflict.key);
+    byUid.set(conflict.uid, block);
+  }
+  return [...byUid.values()];
 }

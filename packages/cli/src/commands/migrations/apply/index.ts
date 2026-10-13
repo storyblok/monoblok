@@ -8,11 +8,11 @@ import {
 } from "@storyblok/schema/migrations";
 import type {
   ApplyMigrationOutcome,
-  CompiledMigration,
   LoadedMigration,
   PublishMode,
   StoryForMigration,
 } from "@storyblok/schema/migrations";
+import type { SchemaLike } from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import {
   CommandError,
@@ -27,6 +27,7 @@ import { importUserModuleDefault } from "../../../utils/user-module";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
 import { loadSchemaEntry } from "../../../lib/validation/adapter";
+import { loadSchemaModule } from "../../../utils/schema/classify-exports";
 import { getMapiClient } from "../../../api";
 import { session } from "../../../session";
 import { fetchStory, updateStory } from "../../stories/actions";
@@ -114,19 +115,36 @@ async function readStories(
   return { stories: [...stories.values()], unread };
 }
 
-function assertMatchesSchema(
-  migration: CompiledMigration,
-  id: string,
-  schema: Parameters<typeof validateMigration>[1],
-): void {
-  const issues = validateMigration(migration, schema);
-  if (issues.length > 0) {
-    throw new CommandError(
-      `${id} does not match the schema:\n${issues
-        .map((issue) => `  - op ${issue.op}: ${issue.message}`)
-        .join("\n")}`,
-    );
+type SchemaCheck = {
+  entry: LoadedMigration;
+  schema: SchemaLike;
+  nameOnlyBlocks?: readonly string[];
+};
+
+/** Reports every warning, and the errors of every migration in one failure. */
+function assertMatchesSchemas(checks: SchemaCheck[]): void {
+  const failures: string[] = [];
+  for (const { entry, schema, nameOnlyBlocks } of checks) {
+    const issues = validateMigration(entry.migration, schema, { nameOnlyBlocks });
+    for (const issue of issues.filter(({ severity }) => severity === "warning")) {
+      getUI().warn(`${entry.id}: op ${issue.op}: ${issue.message}`);
+    }
+    const errors = issues.filter(({ severity }) => severity === "error");
+    if (errors.length > 0) {
+      failures.push(
+        `${entry.id} does not match the schema:\n${errors
+          .map((issue) => `  - op ${issue.op}: ${issue.message}`)
+          .join("\n")}`,
+      );
+    }
   }
+  if (failures.length > 0) {
+    throw new CommandError(failures.join("\n"));
+  }
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 /** The `.before.ts` snapshot of the schema a migration was written against. */
@@ -135,21 +153,39 @@ async function findBeforeSnapshot(file: string): Promise<string | undefined> {
   return (await fileExists(snapshot)) ? snapshot : undefined;
 }
 
+async function loadSnapshotCheck(entry: LoadedMigration, snapshot: string): Promise<SchemaCheck> {
+  try {
+    const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
+    const { nameOnlyBlocks } = await loadSchemaModule(snapshot);
+    return {
+      entry,
+      schema,
+      nameOnlyBlocks: isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined,
+    };
+  } catch (maybeError) {
+    const [reason] = toError(maybeError).message.split("\n");
+    throw new CommandError(
+      `${entry.id}: the schema snapshot ${snapshot} could not be loaded: ${reason}\nFix the snapshot, check the migration against another schema entry file with --schema, or skip the check with --no-validate.`,
+    );
+  }
+}
+
 /**
  * Checks each migration against its own snapshot, so several migrations can be
  * checked in one run. Returns the ids of the migrations that have none.
  */
 async function assertMatchesSnapshots(selected: LoadedMigration[]): Promise<string[]> {
   const unchecked: string[] = [];
+  const checks: SchemaCheck[] = [];
   for (const entry of selected) {
     const snapshot = await findBeforeSnapshot(entry.file);
-    if (!snapshot) {
+    if (snapshot) {
+      checks.push(await loadSnapshotCheck(entry, snapshot));
+    } else {
       unchecked.push(entry.id);
-      continue;
     }
-    const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
-    assertMatchesSchema(entry.migration, entry.id, schema);
   }
+  assertMatchesSchemas(checks);
   return unchecked;
 }
 
@@ -261,6 +297,10 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       );
     }
 
+    if (schemaEntry && !validate) {
+      throw new CommandError("Pass either --schema or --no-validate, not both.");
+    }
+
     if (schemaEntry) {
       // Each migration expects the schema as it stood before it, so one schema
       // can only describe the first of several.
@@ -270,12 +310,12 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
         );
       }
       const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-      assertMatchesSchema(selected[0].migration, selected[0].id, schema);
+      assertMatchesSchemas([{ entry: selected[0], schema }]);
     } else if (validate) {
       const unchecked = await assertMatchesSnapshots(selected);
       if (unchecked.length > 0) {
         ui.warn(
-          `Not checked against a schema, because no .before.ts snapshot sits beside ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.join(", ")}. Pass --schema to check a migration.`,
+          `Not checked against a schema, because no .before.ts snapshot sits beside ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.join(", ")}. Name a migration and pass --schema to check it against a schema entry file.`,
         );
       }
     }

@@ -263,7 +263,8 @@ describe("migrations generate command", () => {
       expect(migration).toContain("export default defineMigration<Schema, Before>([");
       expect(snapshot).toContain("defineField('title'");
       expect(snapshot).toContain("defineBlock({ name: 'child', fields: [] })");
-      expect(snapshot).not.toContain("unrelated");
+      expect(snapshot).not.toContain("name: 'unrelated'");
+      expect(snapshot).toMatch(/export const nameOnlyBlocks: string\[\] = \[[^\]]*'unrelated'/);
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining(
           "You can find the migration file in .storyblok/migrations/12345/0001-component-name.ts",

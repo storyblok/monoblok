@@ -30,10 +30,11 @@ const contextForCustom = Custom
   : options;
 
 if (node.type === 'blok' && !isValidAstroComponent(Custom)) {
-  // Mirrors `@storyblok/richtext`'s `renderRichText`: a `blok` node has no
-  // generic HTML representation, so it always needs a renderer supplied
-  // through `components.blok` — there's nothing sensible to fall back to.
-  console.warn('"blok" nodes require a custom renderer passed through `components.blok`.');
+  if (import.meta.env.DEV) {
+    console.warn(
+      '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`.',
+    );
+  }
 }
 ---
 

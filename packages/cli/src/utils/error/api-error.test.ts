@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { ClientError } from "@storyblok/management-api-client";
-import { APIError, handleAPIError } from "./api-error";
+import { API_ACTIONS, APIError, handleAPIError } from "./api-error";
+import { resetCredentialContext, setCredentialContext } from "./credential-context";
 import { FetchError } from "../fetch";
 
 // ClientError tests verify that mapi-client errors (which have a .response property)
@@ -413,6 +414,112 @@ describe("aPIError server message extraction", () => {
       expect((e as APIError).message).toBe(
         "internal_tag_ids: Invalid internal_tag, there is at least one internal_tag not found in our database",
       );
+    }
+  });
+});
+
+describe("APIError credential rewrites", () => {
+  afterEach(() => {
+    resetCredentialContext();
+  });
+
+  it("should classify a plain 403 as forbidden rather than generic", () => {
+    const error = new FetchError("Forbidden", {
+      status: 403,
+      statusText: "Forbidden",
+      data: {},
+    });
+
+    try {
+      handleAPIError("push_component", error);
+    } catch (e) {
+      expect((e as APIError).errorId).toBe("forbidden");
+      expect((e as APIError).code).toBe(403);
+    }
+  });
+
+  it("should rewrite an insufficient-scope 403 into an actionable message", () => {
+    setCredentialContext({ kind: "oauth" });
+    const error = new FetchError("Forbidden", {
+      status: 403,
+      statusText: "Forbidden",
+      data: { error: "Insufficient scope: stories:write is required" },
+    });
+
+    try {
+      handleAPIError("update_story", error);
+    } catch (e) {
+      const apiError = e as APIError;
+      expect(apiError.errorId).toBe("insufficient_scope");
+      expect(apiError.fatal).toBe(true);
+      expect(apiError.message).toBe(
+        'Your OAuth login is missing the "stories:write" permission. Run `storyblok logout`, then `storyblok login --oauth` and grant it at the consent screen.',
+      );
+    }
+  });
+
+  it("should keep the failed action as the first message stack entry", () => {
+    setCredentialContext({ kind: "oauth" });
+    const error = new FetchError("Forbidden", {
+      status: 403,
+      statusText: "Forbidden",
+      data: { error: "Insufficient scope: stories:write is required" },
+    });
+
+    try {
+      handleAPIError("update_story", error);
+    } catch (e) {
+      const apiError = e as APIError;
+      expect(apiError.messageStack[0]).toBe(API_ACTIONS.update_story);
+      expect(apiError.messageStack.at(-1)).toBe(apiError.message);
+    }
+  });
+
+  it("should leave the raw server string alone when the credential kind is unknown", () => {
+    const error = new FetchError("Forbidden", {
+      status: 403,
+      statusText: "Forbidden",
+      data: { error: "Insufficient scope: stories:write is required" },
+    });
+
+    try {
+      handleAPIError("update_story", error);
+    } catch (e) {
+      const apiError = e as APIError;
+      expect(apiError.message).toBe("Insufficient scope: stories:write is required");
+      expect(apiError.fatal).toBe(false);
+    }
+  });
+
+  it("should let a customMessage suppress the credential rewrite entirely", () => {
+    setCredentialContext({ kind: "oauth" });
+    const error = new FetchError("Forbidden", {
+      status: 403,
+      statusText: "Forbidden",
+      data: { error: "Insufficient scope: stories:write is required" },
+    });
+
+    try {
+      handleAPIError("update_story", error, "Custom override message");
+    } catch (e) {
+      const apiError = e as APIError;
+      expect(apiError.message).toBe("Custom override message");
+      expect(apiError.fatal).toBe(false);
+    }
+  });
+
+  it("should not mark unrelated errors as fatal", () => {
+    setCredentialContext({ kind: "oauth" });
+    const error = new FetchError("Unprocessable", {
+      status: 422,
+      statusText: "Unprocessable Entity",
+      data: { slug: ["has already been taken"] },
+    });
+
+    try {
+      handleAPIError("create_story", error);
+    } catch (e) {
+      expect((e as APIError).fatal).toBe(false);
     }
   });
 });

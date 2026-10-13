@@ -178,6 +178,8 @@ including recursive ones, supply it. An optional field (`locale?: string`) stays
 
 - `<StoryblokPreview />` always reloads the page on save/publish from the Visual Editor.
 - Pass `liveUpdate` to also morph the DOM as the editor types, instead of waiting for save/publish.
+- Render exactly one `<StoryblokPreview />` per page. A second instance throws in development and is
+  a silent no-op in production.
 - The live-morph bridge is debounced by 500ms and aborts in-flight requests.
 - If the Visual Editor has a focused element, only that element is morphed; its interactive state
   (`value`, `checked`, …) is preserved.

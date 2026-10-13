@@ -9,6 +9,7 @@
     "preview": "astro preview"
   },
   "dependencies": {
+    "@astrojs/node": "^11.1.5",
     "@astrojs/react": "^6.0.0",
     "@storyblok/api-client": "workspace:*",
     "@storyblok/astro": "workspace:*",

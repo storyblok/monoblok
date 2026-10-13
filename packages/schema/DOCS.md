@@ -262,16 +262,16 @@ inverse, and neither do `coerceField()` without `from`, `splitField()` without `
 returns the content to write back. It doesn’t receive the schema, so it can’t detect an op that
 addresses an unknown block or field, a `renameBlock()` onto an existing block, or a `wrapChildren()`
 into an existing block that lacks the `into` field. Check the migration with `validateMigration()`
-against the schema as it was before the migration, and apply it only when no issues are returned:
+against the schema as it was before the migration, and apply it only when it returns no errors:
 
 ```ts
 import { applyMigration, validateMigration } from "@storyblok/schema/migrations";
 import migration from "./.storyblok/migrations/12345/0002-rename-article-author";
-import schema from "./schema";
+import { schema } from "./.storyblok/migrations/12345/0002-rename-article-author.before";
 
-const issues = validateMigration(migration, schema);
-if (issues.length > 0) {
-  throw new Error(issues.map((issue) => `op ${issue.op}: ${issue.message}`).join("\n"));
+const errors = validateMigration(migration, schema).filter((issue) => issue.severity === "error");
+if (errors.length > 0) {
+  throw new Error(errors.map((issue) => `op ${issue.op}: ${issue.message}`).join("\n"));
 }
 
 const { writes, refusals } = applyMigration({
@@ -281,3 +281,7 @@ const { writes, refusals } = applyMigration({
   stories,
 });
 ```
+
+Pass `{ nameOnlyBlocks }` as the third argument to name blocks that exist but whose fields the
+schema doesn’t describe. An op that reads their fields is an error. A check that needs their fields,
+such as wrapping blocks into one of them, returns a warning.

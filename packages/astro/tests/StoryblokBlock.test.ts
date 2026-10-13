@@ -56,4 +56,35 @@ describe("StoryblokBlock", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("isn't a valid Astro component"));
     warn.mockRestore();
   });
+
+  it("renders nothing and warns in dev when `block` is undefined", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks({ components: { teaser: Teaser } });
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: {},
+    });
+
+    expect(result.trim()).toBe("");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("[storyblok]"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("undefined `block` prop"));
+    warn.mockRestore();
+  });
+
+  it("does not warn outside dev when `block` is undefined", async () => {
+    vi.stubEnv("DEV", false);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks({ components: { teaser: Teaser } });
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: {},
+    });
+
+    expect(result.trim()).toBe("");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+    vi.unstubAllEnvs();
+  });
 });

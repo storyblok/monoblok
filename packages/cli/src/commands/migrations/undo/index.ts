@@ -29,7 +29,7 @@ const undoCmd = migrationsCommand
   .description("Undo a recorded content migration run")
   .option("-s, --space <space>", "space ID")
   .option("--run <id>", "the recorded run to undo; defaults to the most recent one not yet undone")
-  .option("--force", "overwrite blocks that were edited since the run")
+  .option("--force", "overwrite blocks with fields edited since the run")
   .option(
     "--allow-pending-releases",
     "run although releases are pending; their content is not restored",
@@ -125,10 +125,15 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     const outcome = undoStories({ inverse: plan.inverse, stories, force });
 
     for (const conflict of outcome.conflicts) {
+      const count = conflict.blocks.length;
+      const edited = `${chalk.bold(conflict.slug)}: ${plural(count, "block was", "blocks were")} edited since the run`;
+      const blocks = conflict.blocks
+        .map((block) => `${block.component} ${block.uid} (${block.fields.join(", ")})`)
+        .join("; ");
       ui.warn(
         force
-          ? `${chalk.bold(conflict.slug)}: ${plural(conflict.count, "block was", "blocks were")} edited since the run and will be overwritten.`
-          : `${chalk.bold(conflict.slug)}: ${plural(conflict.count, "block was", "blocks were")} edited since the run and ${conflict.count === 1 ? "is" : "are"} left as ${conflict.count === 1 ? "it is" : "they are"}. Pass --force to overwrite.`,
+          ? `${edited} and will be overwritten: ${blocks}`
+          : `${edited} and ${count === 1 ? "is" : "are"} left as ${count === 1 ? "it is" : "they are"}: ${blocks}. Pass --force to overwrite.`,
       );
     }
     for (const gone of outcome.missing) {
@@ -172,11 +177,18 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       );
     }
 
-    const unchanged = plan.stories.length - restored.size - failed;
+    const keptEdits = new Set(force ? [] : outcome.conflicts.map((conflict) => conflict.slug));
+    const written = new Set(outcome.writes.map((write) => write.story.slug));
+    const partly = [...restored].filter((slug) => keptEdits.has(slug)).length;
+    const keptAsEdited = [...keptEdits].filter((slug) => !written.has(slug)).length;
+    const nothingToUndo = plan.stories.length - restored.size - keptAsEdited - failed;
+    const tally = [
+      keptAsEdited > 0 && `${plural(keptAsEdited, "story", "stories")} kept as edited`,
+      nothingToUndo > 0 && `${plural(nothingToUndo, "story", "stories")} had nothing left to undo`,
+      failed > 0 && `${plural(failed, "story", "stories")} failed`,
+    ].filter(Boolean);
     ui.info(
-      `Undid ${plural(restored.size, "story", "stories")} of run ${chalk.bold(id)}${
-        unchanged > 0 ? `; ${plural(unchanged, "story", "stories")} left unchanged` : ""
-      }${failed > 0 ? `; ${plural(failed, "story", "stories")} failed` : ""}.`,
+      `Undid ${plural(restored.size, "story", "stories")}${partly > 0 ? ` (${partly} partly)` : ""} of run ${chalk.bold(id)}${tally.map((part) => `; ${part}`).join("")}.`,
     );
 
     if (failed > 0) {

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // Playwright specs run in Node, not the browser/Vite runtime `../tsconfig.json`
+    // targets, and use `node:*` imports (`spawn`, `createRequire`, ...) that need
+    // `@types/node` on the program. Editors pick this config for files under
+    // `e2e/` instead of the parent one, whose `include` only covers `src`.
+    "types": ["node"]
+  },
+  "include": ["**/*"]
+}

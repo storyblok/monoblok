@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import type { Command } from "commander";
+import { relative } from "pathe";
 import {
   applyMigration,
   discoverMigrations,
@@ -121,9 +122,11 @@ type SchemaCheck = {
   nameOnlyBlocks?: readonly string[];
 };
 
-/** Reports every warning, and the errors of every migration in one failure. */
-function assertMatchesSchemas(checks: SchemaCheck[]): void {
-  const failures: string[] = [];
+/**
+ * Reports every warning, and the errors of every migration in one failure,
+ * together with `failures` found before the check, such as unloadable snapshots.
+ */
+function assertMatchesSchemas(checks: SchemaCheck[], failures: string[] = []): void {
   for (const { entry, schema, nameOnlyBlocks } of checks) {
     const issues = validateMigration(entry.migration, schema, { nameOnlyBlocks });
     for (const issue of issues.filter(({ severity }) => severity === "warning")) {
@@ -153,7 +156,11 @@ async function findBeforeSnapshot(file: string): Promise<string | undefined> {
   return (await fileExists(snapshot)) ? snapshot : undefined;
 }
 
-async function loadSnapshotCheck(entry: LoadedMigration, snapshot: string): Promise<SchemaCheck> {
+/** The check against a snapshot, or why the snapshot could not be loaded. */
+async function loadSnapshotCheck(
+  entry: LoadedMigration,
+  snapshot: string,
+): Promise<SchemaCheck | string> {
   try {
     const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
     const { nameOnlyBlocks } = await loadSchemaModule(snapshot);
@@ -164,9 +171,7 @@ async function loadSnapshotCheck(entry: LoadedMigration, snapshot: string): Prom
     };
   } catch (maybeError) {
     const [reason] = toError(maybeError).message.split("\n");
-    throw new CommandError(
-      `${entry.id}: the schema snapshot ${snapshot} could not be loaded: ${reason}\nFix the snapshot, check the migration against another schema entry file with --schema, or skip the check with --no-validate.`,
-    );
+    return `${entry.id}: the schema snapshot ${relative(process.cwd(), snapshot)} could not be loaded: ${reason.trim()}`;
   }
 }
 
@@ -177,15 +182,26 @@ async function loadSnapshotCheck(entry: LoadedMigration, snapshot: string): Prom
 async function assertMatchesSnapshots(selected: LoadedMigration[]): Promise<string[]> {
   const unchecked: string[] = [];
   const checks: SchemaCheck[] = [];
+  const loadFailures: string[] = [];
   for (const entry of selected) {
     const snapshot = await findBeforeSnapshot(entry.file);
-    if (snapshot) {
-      checks.push(await loadSnapshotCheck(entry, snapshot));
-    } else {
+    if (!snapshot) {
       unchecked.push(entry.id);
+      continue;
+    }
+    const check = await loadSnapshotCheck(entry, snapshot);
+    if (typeof check === "string") {
+      loadFailures.push(check);
+    } else {
+      checks.push(check);
     }
   }
-  assertMatchesSchemas(checks);
+  if (loadFailures.length > 0) {
+    loadFailures.push(
+      "Fix the snapshots, check a migration against another schema entry file with --schema, or skip the check with --no-validate.",
+    );
+  }
+  assertMatchesSchemas(checks, loadFailures);
   return unchecked;
 }
 

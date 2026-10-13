@@ -21,6 +21,14 @@ type Props = {
 const { block, __storyblokComponents: components, __storyblokFallback: fallback, ...rest } =
   Astro.props;
 
+if (!block && import.meta.env.DEV) {
+  console.warn(
+    "[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. " +
+      "Check that the value you're passing in exists, e.g. `story?.content` when the fetch " +
+      "may have failed, or a typo in the prop name (`block`, not `blok`).",
+  );
+}
+
 const Component = block ? resolve(block) : undefined;
 const editable = block ? storyblokEditable(block) : undefined;
 

@@ -20,36 +20,54 @@ if (import.meta.env.DEV && Astro.isPrerendered) {
   data-live-update={liveUpdate ? "" : undefined}></storyblok-preview>
 
 <script>
-  import { onStoryblokEditorEvent } from '@storyblok/live-preview';
+  import { isInEditor, onStoryblokEditorEvent } from '@storyblok/live-preview';
   import type { LivePreviewHandler, Story } from '@storyblok/live-preview';
 
   /**
    * A custom element instead of a one-shot script: Astro's `<ClientRouter />`
    * swaps the whole `<body>` between navigations, which removes/re-adds this
    * element and reliably fires `connectedCallback`/`disconnectedCallback` for
-   * it. That also scopes each `<StoryblokPreview>` instance's own options,
-   * so rendering it more than once on a page (e.g. once in a layout, once on
-   * a page) can't have one instance's options clobber another's.
+   * it.
+   *
+   * Exactly one instance is allowed per page — a second one would create its
+   * own bridge subscription and, with `liveUpdate`, its own morph handler,
+   * doubling every POST and morph. Dev throws so the mistake is obvious;
+   * production silently ignores the second instance.
    */
+  let hasActiveInstance = false;
+
   class StoryblokPreviewElement extends HTMLElement {
     #cleanup?: Promise<() => void>;
     #previewHandler?: Promise<LivePreviewHandler<Story>>;
+    #isActiveInstance = false;
 
     connectedCallback(): void {
+      if (hasActiveInstance) {
+        if (import.meta.env.DEV) {
+          throw new Error(
+            '[storyblok] More than one <StoryblokPreview /> is mounted on this page.',
+          );
+        }
+        return;
+      }
+      hasActiveInstance = true;
+      this.#isActiveInstance = true;
+
       const liveUpdate = this.hasAttribute('data-live-update');
       const debounceMs = this.dataset.debounceMs ? Number(this.dataset.debounceMs) : undefined;
       const bridgeOptions = this.dataset.bridgeOptions
         ? JSON.parse(this.dataset.bridgeOptions)
         : undefined;
 
-      // Imported lazily so the morph path — and the `morphdom` dependency it
-      // bundles — is left out of every page that doesn't opt into
-      // `liveUpdate`.
-      this.#previewHandler = liveUpdate
-        ? import('../live-preview/preview-handler').then(({ createPreviewHandler }) =>
-            createPreviewHandler({ debounceMs }),
-          )
-        : undefined;
+      // Only loaded inside the Visual Editor — same `isInEditor` check
+      // `onStoryblokEditorEvent` uses internally — so a plain visitor never
+      // fetches the morph chunk (`morphdom` and friends).
+      this.#previewHandler =
+        liveUpdate && isInEditor(new URL(location.href))
+          ? import('../live-preview/preview-handler').then(({ createPreviewHandler }) =>
+              createPreviewHandler({ debounceMs }),
+            )
+          : undefined;
 
       // `onStoryblokEditorEvent` only calls back for `input`; it reloads the
       // page itself for `change`/`published` regardless of what this
@@ -65,8 +83,13 @@ if (import.meta.env.DEV && Astro.isPrerendered) {
     }
 
     disconnectedCallback(): void {
+      if (!this.#isActiveInstance) {
+        return;
+      }
       this.#cleanup?.then((off) => off());
       this.#previewHandler?.then((previewHandler) => previewHandler.dispose());
+      hasActiveInstance = false;
+      this.#isActiveInstance = false;
     }
   }
 

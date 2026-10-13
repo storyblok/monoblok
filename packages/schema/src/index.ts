@@ -141,7 +141,13 @@ export type {
 
 export { MigrationError } from "./migrations/migration-error";
 export { planUndo, undoStories } from "./migrations/undo-run";
-export type { UndoOutcome, UndoPlan, UndoStoriesInput, UndoWrite } from "./migrations/undo-run";
+export type {
+  ConflictingBlock,
+  UndoOutcome,
+  UndoPlan,
+  UndoStoriesInput,
+  UndoWrite,
+} from "./migrations/undo-run";
 
 export { checkPendingReleases } from "./migrations/releases";
 export type { PendingReleasesCheck, ReleaseForMigration } from "./migrations/releases";

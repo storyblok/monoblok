@@ -109,7 +109,11 @@ describe("migrations undo command", () => {
       component: "card",
       headline: "Edited",
     });
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Pass --force to overwrite"));
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "1 block was edited since the run and is left as it is: card card-1 (headline). Pass --force to overwrite.",
+      ),
+    );
   });
 
   it("should overwrite a block edited since the run with --force, after saying so", async () => {
@@ -125,7 +129,44 @@ describe("migrations undo command", () => {
     await run("undo", "--force");
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("will be overwritten"));
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "1 block was edited since the run and will be overwritten: card card-1 (headline)",
+      ),
+    );
+  });
+
+  it("should tell restored stories apart from stories kept as edited or with nothing left to undo", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    const twoCards = storyWithCard({ id: 2, slug: "about", full_slug: "about" });
+    twoCards.content.body = [
+      { _uid: "card-2", component: "card", title: "Hi" },
+      { _uid: "card-3", component: "card", title: "Hi" },
+    ];
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(
+      storyWithCard(),
+      twoCards,
+      storyWithCard({ id: 3, slug: "contact", full_slug: "contact" }),
+    );
+    await run("apply");
+    const editHeadline = (content: Record<string, unknown>) => {
+      (content.body as Record<string, unknown>[])[0].headline = "Edited";
+    };
+    space.editsStory(1, editHeadline);
+    space.editsStory(2, editHeadline);
+
+    await run("undo");
+
+    expect(info).toHaveBeenLastCalledWith(
+      expect.stringMatching(/^Undid 2 stories \(1 partly\) of run .*; 1 story kept as edited\.$/),
+    );
+
+    await run("undo", "--force");
+
+    expect(info).toHaveBeenLastCalledWith(
+      expect.stringMatching(/^Undid 2 stories of run .*; 1 story had nothing left to undo\.$/),
+    );
   });
 
   it("should undo the earlier run on a second undo and list the runs as undone", async () => {

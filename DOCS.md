@@ -201,15 +201,15 @@ storyblok migrations undo [flags]
 | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--space`, `-s`            | integer | _Required._ The ID of the Storyblok space to undo the run in.                                                                                                  |
 | `--run`                    | string  | _Optional._ The ID of the run to undo, as [`migrations list`](/docs/tooling/cli/migrations-list) prints it. Defaults to the most recent run that isn’t undone. |
-| `--force`                  | boolean | _Optional._ Overwrite blocks that were edited since the run. The command lists them before it writes.                                                          |
+| `--force`                  | boolean | _Optional._ Overwrite blocks with fields edited since the run. The command lists them before it writes.                                                        |
 | `--allow-pending-releases` | boolean | _Optional._ Undo the run while releases are pending. The command lists the releases it doesn’t restore.                                                        |
 | `--path`, `-p`             | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`.                                                                           |
 
 ## Conflicts
 
-The block is the unit of conflict. When someone edited a block after the run changed it, the command
-leaves that block as it is and reports it, and still restores the other blocks in the story. Pass
-`--force` to overwrite the edited blocks too.
+A block conflicts when someone edited a field the run changed. The command leaves that block as it
+is, reports its fields, and restores the other blocks. It keeps edits to fields the run didn’t
+change without a conflict. Pass `--force` to overwrite conflicting blocks.
 
 The command also reports blocks that are no longer in the story and stories that were deleted.
 

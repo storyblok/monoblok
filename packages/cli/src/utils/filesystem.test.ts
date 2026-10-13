@@ -6,7 +6,6 @@ import {
   getComponentNameFromFilename,
   getStoryblokGlobalPath,
   resolvePath,
-  sanitizeFilename,
   saveToFile,
 } from "./filesystem";
 import { join, resolve } from "pathe";
@@ -223,15 +222,6 @@ describe("filesystem utils", async () => {
 
     it("should return empty when suffix does not match any file", () => {
       expect(filterJsonBySuffix(["a.dev.json"], "staging")).toEqual([]);
-    });
-  });
-
-  describe("sanitizeFilename", () => {
-    it("should convert strings to URL-friendly slugs", () => {
-      expect(sanitizeFilename("Country / Currency")).toBe("Country _ Currency");
-      expect(sanitizeFilename("path/to/file")).toBe("path_to_file");
-      expect(sanitizeFilename("My Component Name")).toBe("My Component Name");
-      expect(sanitizeFilename("Special@Characters!")).toBe("Special@Characters!");
     });
   });
 });

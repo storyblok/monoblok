@@ -1,8 +1,8 @@
 import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+import { slugifyPath } from "@storyblok/utils/strings";
 
 import type { Component, Datasource, Field } from "../../types";
 import { isRecord } from "./utils";
-import { slugifyPath } from "./folders";
 
 /** The three parts of an `allow`/`deny` list: block names, slugified folder paths, and tag names. */
 interface SplitRestriction {

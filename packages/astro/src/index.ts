@@ -6,9 +6,8 @@ export { sanitizeJSON } from "./lib/sanitizeJSON";
 export type { IntegrationOptions } from "./lib/storyblok-integration";
 export { handleStoryblokMessage } from "./live-preview/handleStoryblokMessage";
 export * from "./types";
-export { isEditorRequest } from "./utils/isEditorRequest";
+export { isInEditor as isEditorRequest } from "@storyblok/live-preview";
 export {
-  buildAstroAttrs,
   isValidAstroComponent,
   type StoryblokAstroRichTextComponentMap,
   type StoryblokAstroRichTextProps,
@@ -25,7 +24,12 @@ export { toCamelCase } from "./utils/toCamelCase";
 export { storyblokIntegration as storyblok };
 export { apiPlugin, loadStoryblokBridge, storyblokEditable, storyblokInit } from "@storyblok/js";
 
-export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
+export {
+  buildRenderAttrs as buildAstroAttrs,
+  buildStoryblokImage,
+  renderRichText,
+  splitTableRows,
+} from "@storyblok/richtext";
 
 export type {
   StoryblokRichTextElement,
@@ -56,6 +60,7 @@ export type {
 // Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.astro component.
 export {
   attrsToHtmlString,
+  excludeComponentFromContext,
   getInnerMarks,
   getStaticChildren,
   groupLinkNodes,

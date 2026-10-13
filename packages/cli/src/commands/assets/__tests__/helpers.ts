@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { vol } from "memfs";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
-import { getAssetBinaryFilename, getAssetFilename, getFolderFilename } from "../utils";
+import { getAssetFilename } from "@storyblok/utils/local-files";
+import { getAssetBinaryFilename, getFolderFilename } from "../utils";
 
 /**
  * MockAsset interface - unified interface for asset mocking in tests.

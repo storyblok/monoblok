@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/utils": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "vitest": "catalog:"

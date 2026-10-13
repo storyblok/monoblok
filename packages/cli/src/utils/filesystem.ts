@@ -11,9 +11,10 @@ import {
 } from "node:fs/promises";
 import { handleFileSystemError } from "./error/filesystem-error";
 import type { FileReaderResult } from "../types";
-import filenamify from "filenamify";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { toError } from "./error";
+
+export { sanitizeFilename } from "@storyblok/utils/local-files";
 
 // Default working folder for commands that do not pass --path explicitly.
 export const DEFAULT_STORAGE_DIR = ".storyblok";
@@ -209,18 +210,6 @@ export function resolveCommandPath(commandPath: string, space?: string, baseDir?
 export const getComponentNameFromFilename = (filename: string): string => {
   // Remove the .js extension
   return filename.replace(/\.js$/, "");
-};
-
-/**
- * Sanitizes a string to be safe for use as a filename by removing/replacing problematic characters
- * https://github.com/parshap/node-sanitize-filename/blob/master/index.js
- * @param filename - The filename to sanitize
- * @returns A safe filename string
- */
-export const sanitizeFilename = (filename: string): string => {
-  return filenamify(filename, {
-    replacement: "_",
-  });
 };
 
 export async function readDirectory(directoryPath: string) {

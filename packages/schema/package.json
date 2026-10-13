@@ -60,6 +60,7 @@
     "@storyblok/lint-config": "workspace:*",
     "@storyblok/openapi-codegen": "workspace:*",
     "@storyblok/richtext": "workspace:*",
+    "@storyblok/utils": "workspace:*",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",

@@ -1,7 +1,8 @@
+import { normalizeAssetUrl } from "@storyblok/management-api-client";
+import { mapStoryRefs } from "@storyblok/utils/content-refs";
 import type { Component } from "../components/constants";
 import type { Story } from "./constants";
 import type { AssetMap } from "../assets/types";
-import { normalizeAssetUrl } from "@storyblok/management-api-client";
 
 export interface RefMaps {
   assets?: AssetMap;
@@ -10,260 +11,15 @@ export interface RefMaps {
 
 export type ComponentSchemas = Record<Component["name"], Component["schema"]>;
 
-/** A single field definition within a component's wire `schema` record. */
-type SchemaFieldDefinition = NonNullable<Component["schema"]>[string];
-
-type RefMapper = <const T extends Record<string, unknown>>(
-  data: T,
-  options: {
-    schema: SchemaFieldDefinition | undefined;
-    schemas: ComponentSchemas;
-    maps: RefMaps;
-    fieldRefMappers: FieldRefMappers;
-  },
-) => T;
-
-type FieldRefMappers = Record<string, RefMapper>;
-
-const traverseAndMapBySchema = (
-  data: any,
-  {
-    schemas,
-    maps,
-    fieldRefMappers,
-  }: {
-    schemas: ComponentSchemas;
-    maps: RefMaps;
-    fieldRefMappers: FieldRefMappers;
-  },
-): any => {
-  if (!data?.component) {
-    return data ?? {};
-  }
-  const schema = schemas[data.component];
-  if (!schema) {
-    return data;
-  }
-  const dataNew = { ...data };
-
-  for (const [fieldName, fieldValue] of Object.entries(data)) {
-    const fieldSchema = schema[fieldName.replace(/__i18n__.*/, "")];
-    const fieldType =
-      fieldSchema && typeof fieldSchema === "object" && "type" in fieldSchema
-        ? fieldSchema.type
-        : undefined;
-    const fieldRefMapper = typeof fieldType === "string" ? fieldRefMappers[fieldType] : undefined;
-
-    if (fieldRefMapper) {
-      dataNew[fieldName] = fieldRefMapper(fieldValue as Record<string, unknown>, {
-        schema: fieldSchema,
-        schemas,
-        maps,
-        fieldRefMappers,
-      });
-    }
-  }
-
-  return dataNew;
-};
-
-const traverseAndMapRichtextDoc = (
-  data: any,
-  {
-    schemas,
-    maps,
-    fieldRefMappers,
-  }: {
-    schemas: ComponentSchemas;
-    maps: RefMaps;
-    fieldRefMappers: FieldRefMappers;
-  },
-): any => {
-  if (Array.isArray(data)) {
-    return data.map((item) =>
-      traverseAndMapRichtextDoc(item, {
-        schemas,
-        maps,
-        fieldRefMappers,
-      }),
-    );
-  }
-
-  if (data && typeof data === "object") {
-    if (data.type === "link" && data.attrs?.linktype === "story") {
-      return {
-        ...data,
-        attrs: {
-          ...data.attrs,
-          uuid: maps.stories?.get(data.attrs.uuid) || data.attrs.uuid,
-        },
-      };
-    }
-    if (data.type === "blok") {
-      return {
-        ...data,
-        attrs: {
-          ...data.attrs,
-          body: (data.attrs?.body ?? []).map((d: any) =>
-            traverseAndMapBySchema(d, {
-              schemas,
-              maps,
-              fieldRefMappers,
-            }),
-          ),
-        },
-      };
-    }
-
-    const newData: any = {};
-    for (const [k, value] of Object.entries(data)) {
-      newData[k] = traverseAndMapRichtextDoc(value, {
-        schemas,
-        maps,
-        fieldRefMappers,
-      });
-    }
-    return newData;
-  }
-
-  return data;
-};
-
-/**
- * Richtext field reference mapper.
- */
-const richtextFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }) =>
-  traverseAndMapRichtextDoc(data, {
-    schemas,
-    maps,
-    fieldRefMappers,
-  });
-
-/**
- * Multilink field reference mapper.
- */
-const multilinkFieldRefMapper: RefMapper = (data, { maps }) => {
-  if (!data || typeof data !== "object") {
-    return data;
-  }
-
-  if (data.linktype !== "story") {
-    return data;
-  }
-
-  return {
-    ...data,
-    id: maps.stories?.get(data.id) || data.id,
-  };
-};
-
-/**
- * Bloks field reference mapper.
- */
-const bloksFieldRefMapper: RefMapper = (data, { schemas, maps, fieldRefMappers }) => {
-  if (!Array.isArray(data)) {
-    throw new TypeError(
-      `Invalid bloks field: expected an array, but received ${JSON.stringify(data)}. Please make sure your bloks field value is an array of components (e.g. [{ component: "my_blok", ... }]).`,
-    );
-  }
-
-  return data.map((d: any) =>
-    traverseAndMapBySchema(d, {
-      schemas,
-      maps,
-      fieldRefMappers,
-    }),
-  ) as any;
-};
-
-/**
- * Asset field reference mapper.
- *
- * Normalizes asset filenames from S3 origin URLs to CDN URLs. The MAPI returns
- * asset filenames as S3 URLs (https://s3.amazonaws.com/a.storyblok.com/f/...)
- * but story content must reference the CDN URL (https://a.storyblok.com/f/...)
- * so that the Storyblok Image Service (/m/...) works correctly.
- */
-const assetFieldRefMapper: RefMapper = (data, { maps }) => {
-  if (!data || typeof data !== "object") {
-    return data;
-  }
-
-  const mappedAsset = typeof data.id === "number" ? maps.assets?.get(data.id) : undefined;
-
-  if (!mappedAsset) {
-    return data;
-  }
-
-  return {
-    ...data,
-    ...mappedAsset.new,
-    filename: normalizeAssetUrl(mappedAsset.new.filename),
-  };
-};
-
-/**
- * Multi asset field reference mapper.
- */
-const multiassetFieldRefMapper: RefMapper = (data, options) => {
-  if (!Array.isArray(data)) {
-    throw new TypeError(
-      `Invalid multiasset field: expected an array, but received ${JSON.stringify(data)}. Please make sure your multiasset field value is an array of asset objects (e.g. [{ filename: "...", id: 123 }]).`,
-    );
-  }
-
-  return data.map((d: any) => assetFieldRefMapper(d, options)) as any;
-};
-
-/**
- * An option field only holds a cross-space reference when its source is
- * `internal_stories`: the value is then a story uuid (or id, with `use_uuid`
- * off), which differs per space. Every other source is space-independent, so
- * remapping it would corrupt the value: `self` holds the inline option's own
- * `value`, `internal` and `external` hold a datasource entry's `value`, and
- * `internal_languages` holds a language code.
- */
-const mapOptionValue = (
-  value: unknown,
-  schema: SchemaFieldDefinition | undefined,
-  maps: RefMaps,
-): unknown => {
-  if (!schema || !("source" in schema) || schema.source !== "internal_stories") {
-    return value;
-  }
-
-  return maps.stories?.get(value) ?? value;
-};
-
-/**
- * Single option field reference mapper.
- */
-const optionFieldRefMapper: RefMapper = (data, { schema, maps }) =>
-  mapOptionValue(data, schema, maps) as any;
-
-/**
- * Options field reference mapper.
- */
-const optionsFieldRefMapper: RefMapper = (data, { schema, maps }) => {
-  if (!Array.isArray(data)) {
-    return data;
-  }
-
-  return data.map((d: any) => mapOptionValue(d, schema, maps)) as any;
-};
-
-const fieldRefMappers = {
-  asset: assetFieldRefMapper,
-  bloks: bloksFieldRefMapper,
-  multiasset: multiassetFieldRefMapper,
-  multilink: multilinkFieldRefMapper,
-  option: optionFieldRefMapper,
-  options: optionsFieldRefMapper,
-  richtext: richtextFieldRefMapper,
-} as const;
+const ROOT_PARENT_ID = 0;
 
 /**
  * Story field reference mapper.
+ *
+ * Mapped assets take over the target asset's fields. The MAPI returns asset
+ * filenames as S3 URLs (https://s3.amazonaws.com/a.storyblok.com/f/...) but
+ * story content must reference the CDN URL (https://a.storyblok.com/f/...) so
+ * that the Storyblok Image Service (/m/...) works correctly.
  */
 export const storyRefMapper = (
   story: Story,
@@ -275,27 +31,23 @@ export const storyRefMapper = (
     maps: RefMaps;
   },
 ) => {
-  const alternates = story.alternates
-    ? (story.alternates as Required<Story>["alternates"]).map((a: any) => ({
-        ...a,
-        id: maps.stories?.get(a.id) ?? a.id,
-        parent_id: maps.stories?.get(a.parent_id) ?? a.parent_id,
-      }))
-    : story.alternates;
+  const { story: mappedStory } = mapStoryRefs(story, {
+    schemas,
+    stories: maps.stories,
+    parentIdFallback: ROOT_PARENT_ID,
+    mapAsset: (asset, assetId) => {
+      const mappedAsset = maps.assets?.get(assetId);
+      if (!mappedAsset) {
+        return asset;
+      }
+      return {
+        ...asset,
+        ...mappedAsset.new,
+        filename: normalizeAssetUrl(mappedAsset.new.filename),
+      };
+    },
+  });
 
-  const parentId = maps.stories?.get(story.parent_id) ?? story.parent_id;
-  return {
-    ...story,
-    content: story.content?.component
-      ? traverseAndMapBySchema(story.content, {
-          schemas,
-          maps,
-          fieldRefMappers,
-        })
-      : story.content,
-    id: Number(maps.stories?.get(story.id) ?? story.id),
-    uuid: String(maps.stories?.get(story.uuid) ?? story.uuid),
-    parent_id: parentId != null ? Number(parentId) : 0,
-    alternates,
-  } satisfies Story;
+  // The content is walked untyped, so callers index into it without narrowing.
+  return { ...mappedStory, content: mappedStory.content as any };
 };

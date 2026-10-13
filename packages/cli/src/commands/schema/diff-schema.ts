@@ -1,3 +1,4 @@
+import { asRecord } from "@storyblok/utils/guards";
 import type { Component, Datasource } from "../../types";
 import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema } from "./types";
 import {
@@ -112,10 +113,6 @@ function diffKeyed(before: Record<string, unknown>, after: Record<string, unknow
   }
 
   return changes;
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  return isRecord(value) ? value : {};
 }
 
 /**

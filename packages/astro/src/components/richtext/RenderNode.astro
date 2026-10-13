@@ -3,6 +3,7 @@ import {
   type StoryblokRichTextNode,
   type StoryblokAstroRichTextRenderContext,
   isValidAstroComponent,
+  excludeComponentFromContext,
   getStaticChildren,
   hasContent,
 } from '../../';
@@ -23,11 +24,7 @@ const { node, options } = Astro.props;
 const components = options.components;
 const Custom = components ? components[node.type] : undefined;
 
-// When passing context to a custom component, exclude that component type
-// to prevent infinite loops if the custom component uses StoryblokRichText internally
-const contextForCustom = Custom
-  ? { ...options, components: { ...components, [node.type]: undefined } }
-  : options;
+const contextForCustom = excludeComponentFromContext(options, node.type);
 ---
 
 {

@@ -1,3 +1,5 @@
+import { isRecord } from "@storyblok/utils/guards";
+import { decodeIfEncoded } from "@storyblok/utils/serialization";
 import type { Client } from "../generated/capi/client";
 import type { Story } from "../generated/types/story";
 import type { StoryWithInlinedRelations } from "../resources/stories";
@@ -12,28 +14,8 @@ interface ComponentNode {
   [key: string]: unknown;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
 const isComponentNode = (value: Record<string, unknown>): value is ComponentNode =>
   typeof value.component === "string" && typeof value._uid === "string";
-
-/**
- * Decodes a string if it appears to be URL-encoded.
- * Detects common encoded characters (%2C for comma, %20 for space, etc.)
- */
-const decodeIfEncoded = (value: string): string => {
-  // Check if the string contains URL-encoded characters (% followed by hex digits)
-  if (/%[0-9A-F]{2}/i.test(value)) {
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      // If decoding fails (malformed encoding), return original
-      return value;
-    }
-  }
-  return value;
-};
 
 const inlineStoryContentInternal = <TStory extends Story | StoryWithInlinedRelations>(
   story: TStory,

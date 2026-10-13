@@ -59,6 +59,8 @@
   "devDependencies": {
     "@arethetypeswrong/core": "^0.18.2",
     "@storyblok/lint-config": "workspace:*",
+    "@storyblok/region-helper": "workspace:*",
+    "@storyblok/utils": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "msw": "catalog:",
     "oxlint": "catalog:",

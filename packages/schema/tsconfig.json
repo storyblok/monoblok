@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "paths": { "@storyblok/utils/*": ["../../tools/utils/src/*/index.ts"] },
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",

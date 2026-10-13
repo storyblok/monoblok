@@ -1,3 +1,4 @@
+import { isRecord } from "@storyblok/utils/guards";
 import type {
   AssetFieldValue,
   BlockContent,
@@ -16,7 +17,6 @@ import type {
 import type { BlockFolder } from "./define-folder";
 import type { Prettify } from "../utils/prettify";
 import { DENIABLE_FIELD_TYPES, type DerivedRestrictionKey } from "../restrictions";
-import { isRecord } from "../utils/is-record";
 
 export type {
   AssetFieldValue,

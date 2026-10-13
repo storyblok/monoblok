@@ -233,9 +233,26 @@ describe("storyblok Richtext", async () => {
       });
 
       expect(result.trim()).toBe("");
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("[storyblok]"));
       expect(warn).toHaveBeenCalledWith(expect.stringContaining("components.blok"));
 
       warn.mockRestore();
+    });
+
+    it("does not warn outside dev when no `components.blok` is provided", async () => {
+      vi.stubEnv("DEV", false);
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+
+      const result = await container.renderToString(StoryblokRichText, {
+        props: { document },
+      });
+
+      expect(result.trim()).toBe("");
+      expect(warn).not.toHaveBeenCalled();
+
+      warn.mockRestore();
+      vi.unstubAllEnvs();
     });
 
     it("renders through the component passed in `components.blok`", async () => {

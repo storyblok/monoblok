@@ -2,7 +2,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { defineMigration } from "../migrations/define-migration";
-import { removeField, renameField } from "../migrations/ops";
+import { removeField, renameBlock, renameField, wrapChildren } from "../migrations/ops";
 import { validateMigration } from "../migrations/validate-migration";
 
 import { writeModules } from "./__tests__/generated-modules";
@@ -65,7 +65,9 @@ describe("generateSnapshot", () => {
     expect(blockNames(source)).toEqual(["article", "badge", "card", "seo"]);
     expect(source).toContain("defineField('author', {\n      type: 'text',\n    })");
     expect(source).toContain("defineBlock({ name: 'card', fields: [] })");
-    expect(source).not.toContain("footer");
+    expect(source).toContain(
+      "export const nameOnlyBlocks: string[] = [\n  'badge',\n  'card',\n  'footer',\n  'seo',\n];",
+    );
   });
 
   it("should flatten folder and name restrictions to block-name allow lists", () => {
@@ -208,20 +210,31 @@ describe("generateSnapshot", () => {
     });
 
     try {
-      const { schema } = await import(path.join(modules.directory, "0001.before.ts"));
+      const { schema, nameOnlyBlocks } = await import(
+        path.join(modules.directory, "0001.before.ts")
+      );
+      const check = (migration: Parameters<typeof validateMigration>[0]) =>
+        validateMigration(migration, schema, { nameOnlyBlocks });
 
       expect(
-        validateMigration(
-          defineMigration([renameField({ block: "article", field: "author", to: "byline" })]),
-          schema,
-        ),
+        check(defineMigration([renameField({ block: "article", field: "author", to: "byline" })])),
       ).toEqual([]);
       expect(
-        validateMigration(
-          defineMigration([removeField({ block: "card", field: "headline" })]),
-          schema,
+        check(defineMigration([removeField({ block: "card", field: "headline" })])),
+      ).toMatchObject([{ severity: "error" }]);
+      // `footer` is not reachable from `article`, but it exists in the space.
+      expect(
+        check(defineMigration([renameBlock({ block: "article", to: "footer" })])),
+      ).toMatchObject([
+        { severity: "error", message: expect.stringContaining('"footer" already exists') },
+      ]);
+      expect(
+        check(
+          defineMigration([
+            wrapChildren({ block: "article", field: "body", in: "card", into: "items" }),
+          ]),
         ),
-      ).toHaveLength(1);
+      ).toMatchObject([{ severity: "warning" }]);
     } finally {
       await modules.cleanup();
     }

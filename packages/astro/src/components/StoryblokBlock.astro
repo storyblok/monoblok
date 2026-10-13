@@ -36,7 +36,10 @@ function resolve(block: StoryblokBlockData): AstroComponentFactory | undefined {
   const name = block.component;
   const registered = name ? components[name] : undefined;
 
-  if (registered && !isValidAstroComponent(registered)) {
+  if (registered) {
+    if (isValidAstroComponent(registered)) {
+      return registered;
+    }
     if (import.meta.env.DEV) {
       console.warn(
         `[storyblok] The component registered for block type "${name}" isn't a valid Astro ` +
@@ -44,11 +47,24 @@ function resolve(block: StoryblokBlockData): AstroComponentFactory | undefined {
           `with the appropriate \`client:*\` directive instead of registering them directly.`,
       );
     }
-  } else if (registered) {
-    return registered;
   }
 
-  if (fallback) return fallback;
+  if (fallback) {
+    // Held to the same bar as a registered component: a `fallback` that
+    // isn't a real Astro component factory would otherwise fail silently,
+    // with no warning telling you why nothing rendered.
+    if (isValidAstroComponent(fallback)) {
+      return fallback;
+    }
+    if (import.meta.env.DEV) {
+      console.warn(
+        "[storyblok] The `fallback` passed to `defineStoryblokBlocks` isn't a valid Astro " +
+          "component. Wrap framework components (React, Vue, ...) in an `.astro` component " +
+          "with the appropriate `client:*` directive instead of passing them directly.",
+      );
+    }
+    return undefined;
+  }
 
   if (import.meta.env.DEV) {
     console.warn(

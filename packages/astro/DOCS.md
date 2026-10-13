@@ -67,6 +67,12 @@ export const { StoryblokBlock } = defineStoryblokBlocks({
 `defineStoryblokBlocks` is closure-scoped: call it more than once (for example, once per content
 area) to get independent registries that never share state or overwrite each other.
 
+<Aside type="note">
+  Components registered here must be `.astro` components. A framework component (React, Vue, ...)
+  can't be registered directly: wrap it in an `.astro` component and apply the `client:*` directive
+  there, the way the playgrounds' `ReactCounter.astro` wraps `Counter.jsx`.
+</Aside>
+
 Add the Visual Editor middleware so preview edits reach the page:
 
 ```ts title="src/middleware.ts"

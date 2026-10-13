@@ -9,6 +9,7 @@ import {
 import type {
   ApplyMigrationOutcome,
   CompiledMigration,
+  LoadedMigration,
   PublishMode,
   StoryForMigration,
 } from "@storyblok/schema/migrations";
@@ -21,6 +22,7 @@ import {
   toError,
 } from "../../../utils";
 import { handleAPIError } from "../../../utils/error/api-error";
+import { fileExists } from "../../../utils/filesystem";
 import { importUserModuleDefault } from "../../../utils/user-module";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
@@ -127,6 +129,30 @@ function assertMatchesSchema(
   }
 }
 
+/** The `.before.ts` snapshot of the schema a migration was written against. */
+async function findBeforeSnapshot(file: string): Promise<string | undefined> {
+  const snapshot = file.replace(MIGRATION_EXTENSION, ".before.ts");
+  return (await fileExists(snapshot)) ? snapshot : undefined;
+}
+
+/**
+ * Checks each migration against its own snapshot, so several migrations can be
+ * checked in one run. Returns the ids of the migrations that have none.
+ */
+async function assertMatchesSnapshots(selected: LoadedMigration[]): Promise<string[]> {
+  const unchecked: string[] = [];
+  for (const entry of selected) {
+    const snapshot = await findBeforeSnapshot(entry.file);
+    if (!snapshot) {
+      unchecked.push(entry.id);
+      continue;
+    }
+    const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
+    assertMatchesSchema(entry.migration, entry.id, schema);
+  }
+  return unchecked;
+}
+
 function warnPublishedDraftOnly(
   id: string,
   outcome: ApplyMigrationOutcome,
@@ -157,6 +183,7 @@ const applyCmd = migrationsCommand
     "--schema <entry-file>",
     "schema entry file, as it stood before the migration, to check the migration's blocks and fields against",
   )
+  .option("--no-validate", "skip checking each migration against its .before.ts schema snapshot")
   .option(
     "--publish <publish>",
     "publish the migrated stories: all | published | published-with-changes",
@@ -174,6 +201,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
     path,
     dryRun,
     schema: schemaEntry,
+    validate,
     publish,
     allowPendingReleases,
     verbose,
@@ -243,6 +271,13 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       }
       const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
       assertMatchesSchema(selected[0].migration, selected[0].id, schema);
+    } else if (validate) {
+      const unchecked = await assertMatchesSnapshots(selected);
+      if (unchecked.length > 0) {
+        ui.warn(
+          `Not checked against a schema, because no .before.ts snapshot sits beside ${unchecked.length === 1 ? "it" : "them"}: ${unchecked.join(", ")}. Pass --schema to check a migration.`,
+        );
+      }
     }
 
     await guardPendingReleases(space, { allow: allowPendingReleases, warnOnly: dryRun });

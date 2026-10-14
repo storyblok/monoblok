@@ -351,6 +351,7 @@ describe("migrations apply command", () => {
   });
 
   it("should record only the stories that were written when some writes failed, and fail", async () => {
+    const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
     space.canUpdateStories();
@@ -364,6 +365,7 @@ describe("migrations apply command", () => {
 
     expect(journalEntries()).toMatchObject([{ stories: 1 }]);
     expect(process.exitCode).toBe(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^.*about.* could not be written: /));
   });
 
   it("should migrate the other stories and fail when one story could not be read", async () => {

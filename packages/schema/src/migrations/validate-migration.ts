@@ -5,6 +5,7 @@
  * one-schema shorthand deliberately widens reads to any string.
  */
 import type { SchemaLike } from "../index";
+import { toValues } from "../validators/shapes";
 import type { CompiledMigration } from "./define-migration";
 import { isKeyOp, type MigrationOp } from "./ops";
 
@@ -25,9 +26,8 @@ export type ValidateMigrationOptions = {
 };
 
 function fieldsByBlock(schema: SchemaLike): Map<string, Set<string>> {
-  const blocks = Array.isArray(schema.blocks) ? schema.blocks : Object.values(schema.blocks ?? {});
   const map = new Map<string, Set<string>>();
-  for (const block of blocks as { name: string; fields?: { name: string }[] }[]) {
+  for (const block of toValues(schema.blocks)) {
     map.set(block.name, new Set((block.fields ?? []).map((field) => field.name)));
   }
   return map;

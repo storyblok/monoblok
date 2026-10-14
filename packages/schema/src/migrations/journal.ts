@@ -33,6 +33,8 @@ export interface MigrationRun {
   blocks: number;
   /** When an undo restored every story the run changed; absent while any change is still in place. */
   undoneAt?: string;
+  /** When an undo last restored some of the run's changes but left others in place. */
+  partlyUndoneAt?: string;
 }
 
 /** A story's publish state as the run found it, before writing. */

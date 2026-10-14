@@ -150,8 +150,9 @@ description:
 
 Lists the content migration runs that [`migrations apply`](/docs/tooling/cli/migrations-apply)
 recorded for a Storyblok space, oldest first. Each line shows the run ID, the migration title (or
-file name), the number of stories and blocks the run changed, and when the run was undone. The
-command reads local records only, so it doesn’t require a login.
+file name), the number of stories and blocks the run changed, and when the run was undone, or partly
+undone when an undo left some blocks in place. The command reads local records only, so it doesn’t
+require a login.
 
 ## Usage
 
@@ -219,8 +220,9 @@ The command also reports blocks that are no longer in the story and stories that
 
 The command marks a run as undone once it restored every story, so the next `migrations undo` moves
 on to the run before it. A run stays open while blocks are left in place, so
-`migrations undo --force` still reaches them. When a story can’t be read or written, the command
-exits with an error and the run stays open. Run the undo again to retry.
+`migrations undo --force` still reaches them, and `migrations list` shows it as partly undone. When
+a story can’t be read or written, the command exits with an error and the run stays open. Run the
+undo again to retry.
 
 ## Undo order
 

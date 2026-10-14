@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import type { MigrationRun } from "@storyblok/schema/migrations";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";
@@ -10,6 +11,12 @@ const listCmd = migrationsCommand
   .command("list")
   .description("List the content migration runs recorded for a space")
   .option("-s, --space <space>", "space ID");
+
+function undoState(run: MigrationRun): string {
+  if (run.undoneAt) return `  (undone ${run.undoneAt})`;
+  if (run.partlyUndoneAt) return `  (partly undone ${run.partlyUndoneAt})`;
+  return "";
+}
 
 listCmd.action(async (_options: unknown, command: Command) => {
   const ui = getUI();
@@ -36,7 +43,7 @@ listCmd.action(async (_options: unknown, command: Command) => {
     }
     for (const run of runs) {
       ui.info(
-        `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${run.undoneAt ? `  (undone ${run.undoneAt})` : ""}`,
+        `${run.id}  ${run.title ?? run.migration}  ${plural(run.stories, "story", "stories")}, ${plural(run.blocks, "block", "blocks")}${undoState(run)}`,
       );
     }
   } catch (maybeError) {

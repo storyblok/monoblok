@@ -172,6 +172,12 @@ function dropSubsumedIssues(issues: ValidationIssue[]): ValidationIssue[] {
   });
 }
 
+/** Standard Schema allows symbol keys, which issue paths cannot hold or join. */
+function toIssuePathSegment(segment: PropertyKey | StandardSchemaV1.PathSegment): string | number {
+  const key = typeof segment === "object" ? segment.key : segment;
+  return typeof key === "symbol" ? String(key) : key;
+}
+
 /**
  * Maps a Standard Schema validator to a {@link ValidationIssue} reporter at `path`.
  * `expected` describes the accepted shape and is used when the validator's own
@@ -203,11 +209,7 @@ function checkValue(
   }
   if (result.issues) {
     for (const rawIssue of result.issues) {
-      const issuePath = (rawIssue.path ?? []).map((segment) =>
-        typeof segment === "object" && segment !== null
-          ? String(segment.key)
-          : (segment as string | number),
-      );
+      const issuePath = (rawIssue.path ?? []).map(toIssuePathSegment);
       const { message, vague } = formatValidatorMessage(
         rawIssue.message,
         expected,

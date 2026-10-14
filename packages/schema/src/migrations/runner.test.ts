@@ -200,6 +200,20 @@ describe("alter", () => {
     expect(rolledBack).toEqual(original);
   });
 
+  it("should leave a field unchanged where the callback returns undefined", () => {
+    const original = pageStoryContent();
+    const migration = defineMigration<FixtureSchema>([
+      alterField({ block: "section", field: "heading" }, (heading) =>
+        heading === "First section" ? undefined : heading,
+      ),
+    ]);
+
+    const run = runMigrationOnStory(migration, original);
+
+    expect(run.content).toEqual(original);
+    expect(run.inverse).toEqual([]);
+  });
+
   it("should add and remove nested blocks and undo both", () => {
     const original = pageStoryContent();
     const run = runMigrationOnStory(alterStructure, original);

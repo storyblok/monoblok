@@ -15,6 +15,7 @@ const listCmd = migrationsCommand
 function undoState(run: MigrationRun): string {
   if (run.undoneAt) return `  (undone ${run.undoneAt})`;
   if (run.partlyUndoneAt) return `  (partly undone ${run.partlyUndoneAt})`;
+  if (run.interrupted) return "  (interrupted)";
   return "";
 }
 

@@ -350,6 +350,32 @@ describe("migrations apply command", () => {
     expect(recordedAtWrite).toEqual([1]);
   });
 
+  it("should list a run that stopped before it finished as interrupted", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    let journalAtWrite: Record<string, string | null> = {};
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    space.canUpdateStories(() => {
+      journalAtWrite = Object.fromEntries(
+        Object.entries(vol.toJSON()).filter(([file]) => file.includes(".journal")),
+      );
+    });
+    const list = () =>
+      migrationsCommand.parseAsync(["node", "test", "list", "--space", DEFAULT_SPACE]);
+
+    await apply();
+    await list();
+
+    expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/1 story, 1 block$/));
+
+    vol.fromJSON(journalAtWrite);
+    await list();
+
+    expect(info).toHaveBeenLastCalledWith(
+      expect.stringMatching(/1 story, 1 block {2}\(interrupted\)$/),
+    );
+  });
+
   it("should record only the stories that were written when some writes failed, and fail", async () => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);

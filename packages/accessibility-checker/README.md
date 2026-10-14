@@ -52,9 +52,9 @@ export default defineNuxtPlugin(() => {
 
 ## Message protocol
 
-The checker accepts messages only from `window.parent` on an HTTPS origin whose hostname contains
-`storyblok` (or one of `allowedOrigins`), and replies to the origin of the request. The types are
-exported from the package.
+The checker accepts messages only from `window.parent` on a Visual Editor origin (`EDITOR_ORIGINS`
+from [`@storyblok/region-helper`](https://www.npmjs.com/package/@storyblok/region-helper)) or one of
+`allowedOrigins`, and replies to the origin of the request. The types are exported from the package.
 
 | Direction     | `action`                   | Payload                                                                             |
 | ------------- | -------------------------- | ----------------------------------------------------------------------------------- |

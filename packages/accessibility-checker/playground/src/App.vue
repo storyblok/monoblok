@@ -17,13 +17,13 @@ const story = ref<ISbStoryData | null>(null);
 const error = ref("");
 
 onMounted(async () => {
-  const slug = window.location.pathname.replace(/^\/|\/$/g, "") || "home";
+  const slug = window.location.pathname.replace(/^\/|\/$/g, "") || "a11y-checker";
   try {
     const { data } = await storyblokApi!.get(`cdn/stories/${slug}`, { version: "draft" });
     story.value = data.story;
     useStoryblokBridge(data.story.id, (updated) => (story.value = updated));
   } catch (cause) {
-    error.value = `Could not load the story "${slug}". Check VITE_STORYBLOK_TOKEN. ${String(cause)}`;
+    error.value = `Could not load the story "${slug}". Check VITE_STORYBLOK_TOKEN. ${cause}`;
   }
 });
 </script>
@@ -35,7 +35,7 @@ onMounted(async () => {
       <h1>{{ story.name }}</h1>
       <!-- Each block has an empty button, so its findings show the block's uid and component name. -->
       <section
-        v-for="blok in story.content.body ?? []"
+        v-for="blok in story.content.content ?? []"
         :key="blok._uid"
         v-bind="storyblokEditable(blok)"
       >

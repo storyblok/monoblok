@@ -3,6 +3,7 @@
  * tree, so an inverse still lands after unrelated blocks were added, removed,
  * or reordered around the one it targets.
  */
+import { isRecord } from "../utils/is-record";
 
 export type AnyBlock = Record<string, unknown> & { _uid: string; component: string };
 
@@ -85,12 +86,7 @@ export function baseFieldOf(key: string): string {
 }
 
 export function isBlock(value: unknown): value is AnyBlock {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as Record<string, unknown>)._uid === "string" &&
-    typeof (value as Record<string, unknown>).component === "string"
-  );
+  return isRecord(value) && typeof value._uid === "string" && typeof value.component === "string";
 }
 
 function isBlockList(value: unknown): value is AnyBlock[] {
@@ -119,7 +115,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 function ownView(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(ownView);
   if (isBlock(value)) return { __blockRef: value._uid };
-  if (typeof value === "object" && value !== null) {
+  if (isRecord(value)) {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, ownView(v)]));
   }
   return value;
@@ -141,18 +137,17 @@ export function findUnstableUids(content: unknown): { duplicate: string[]; missi
       node.forEach(visit);
       return;
     }
-    if (typeof node !== "object" || node === null) return;
-    const record = node as Record<string, unknown>;
-    if (typeof record.component === "string") {
-      if (typeof record._uid !== "string" || record._uid === "") {
+    if (!isRecord(node)) return;
+    if (typeof node.component === "string") {
+      if (typeof node._uid !== "string" || node._uid === "") {
         missing++;
-      } else if (seen.has(record._uid)) {
-        duplicate.add(record._uid);
+      } else if (seen.has(node._uid)) {
+        duplicate.add(node._uid);
       } else {
-        seen.add(record._uid);
+        seen.add(node._uid);
       }
     }
-    Object.values(record).forEach(visit);
+    Object.values(node).forEach(visit);
   };
   visit(content);
   return { duplicate: [...duplicate], missing };
@@ -167,7 +162,7 @@ export function indexBlocks(
     for (const item of content) indexBlocks(item, into);
     return into;
   }
-  if (typeof content === "object" && content !== null) {
+  if (isRecord(content)) {
     if (isBlock(content)) into.set(content._uid, content);
     for (const value of Object.values(content)) indexBlocks(value, into);
   }
@@ -322,7 +317,7 @@ function conflictsOf(block: AnyBlock, patch: BlockPatch): ApplyConflict[] {
 function uidsIn(value: unknown, into: string[] = []): string[] {
   if (Array.isArray(value)) {
     for (const item of value) uidsIn(item, into);
-  } else if (typeof value === "object" && value !== null) {
+  } else if (isRecord(value)) {
     if (isBlock(value)) into.push(value._uid);
     for (const nested of Object.values(value)) uidsIn(nested, into);
   }

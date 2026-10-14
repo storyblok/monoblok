@@ -72,10 +72,10 @@ The command runs the migrations in the order of their numeric prefix, so `2-...`
 `*.before.ts` are schema snapshots and never run. With a migration name, the command loads only that
 file.
 
-The command skips and reports a story when the migration would lose data, when the story already
-contains repeated block IDs, or when a second pass of the migration would change the story again. It
-still writes the other stories. The command exits with an error when a migration skipped every story
-it matched, or when a story couldn’t be read or written.
+The command skips and reports a story when the migration would lose data, when a migration callback
+throws, when the story already contains repeated block IDs, or when a second pass of the migration
+would change the story again. It still writes the other stories. The command exits with an error
+when a migration skipped every story it matched, or when a story couldn’t be read or written.
 
 The command records each run in `.storyblok/migrations/.journal/` before writing the first story, so
 a run that stops partway can still be undone. After the writes, it narrows the record to the stories
@@ -154,8 +154,8 @@ description:
 Lists the content migration runs that [`migrations apply`](/docs/tooling/cli/migrations-apply)
 recorded for a Storyblok space, oldest first. Each line shows the run ID, the migration title (or
 file name), the number of stories and blocks the run changed, and when the run was undone, or partly
-undone when an undo left some blocks in place. The command reads local records only, so it doesn’t
-require a login.
+undone when an undo restored some blocks and left others in place. The command reads local records
+only, so it doesn’t require a login.
 
 ## Usage
 
@@ -223,9 +223,9 @@ The command also reports blocks that are no longer in the story and stories that
 
 The command marks a run as undone once it restored every story, so the next `migrations undo` moves
 on to the run before it. A run stays open while blocks are left in place, so
-`migrations undo --force` still reaches them, and `migrations list` shows it as partly undone. When
-a story can’t be read or written, the command exits with an error and the run stays open. Run the
-undo again to retry.
+`migrations undo --force` still reaches them. When the undo restored some blocks and left others in
+place, `migrations list` shows the run as partly undone. When a story can’t be read or written, the
+command exits with an error and the run stays open. Run the undo again to retry.
 
 ## Undo order
 

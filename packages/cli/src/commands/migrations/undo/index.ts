@@ -89,7 +89,7 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     if (plan.run.undoneAt) {
       ui.info(`Run ${chalk.bold(id)} was already undone at ${plan.run.undoneAt}.`);
     }
-    await guardPendingReleases(space, { allow: allowPendingReleases });
+    await guardPendingReleases(space, { command: "undo", allow: allowPendingReleases });
 
     const access = storyAccess(space);
     const stories: StoryForMigration[] = [];

@@ -323,10 +323,14 @@ describe("migrations undo command", () => {
     space.hasReleases({ id: 7, name: "Summer campaign", released: false });
     space.writes.length = 0;
 
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     await run("undo");
 
     expect(space.writes).toEqual([]);
     expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain(
+      "This undo doesn't restore release content, and deploying the release overwrites the stories it restores",
+    );
 
     process.exitCode = undefined;
     await run("undo", "--allow-pending-releases");

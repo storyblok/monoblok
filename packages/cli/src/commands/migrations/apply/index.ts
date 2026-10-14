@@ -341,7 +341,11 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       }
     }
 
-    await guardPendingReleases(space, { allow: allowPendingReleases, warnOnly: dryRun });
+    await guardPendingReleases(space, {
+      command: "apply",
+      allow: allowPendingReleases,
+      warnOnly: dryRun,
+    });
 
     const journal = contentJournal(path);
     const planned = new Map<number, StoryForMigration>();

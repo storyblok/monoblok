@@ -361,6 +361,37 @@ describe("alterField() typing", () => {
   });
 });
 
+describe("callback return typing", () => {
+  it("should check a written value against the field's type in the post-migration schema", () => {
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error a bloks field cannot hold a string
+      alterField({ block: "section", field: "items" }, () => "not blocks"),
+    ]);
+    defineMigration<FixtureSchema>([
+      // @ts-expect-error a text field cannot hold a number
+      addField({ block: "card", field: "slug" }, () => 42),
+    ]);
+    defineMigration<FixtureSchema>([
+      mergeFields(
+        { block: "card", fields: ["title", "description"], into: "slug" },
+        // @ts-expect-error a text field cannot hold an array
+        (values) => values,
+      ),
+    ]);
+  });
+
+  it("should let addField leave a block untouched by returning undefined", () => {
+    defineMigration<FixtureSchema>([addField({ block: "card", field: "slug" }, () => undefined)]);
+  });
+
+  it("should accept any value for a field the post-migration schema does not describe", () => {
+    defineMigration<AfterRenameMetaAuthor, FixtureSchema>([
+      alterField({ block: "meta", field: "author" }, () => 42),
+      renameField({ block: "meta", field: "author", to: "written_by" }),
+    ]);
+  });
+});
+
 describe("call shapes", () => {
   it("should accept a bare array", () => {
     defineMigration<FixtureSchema>([removeField({ block: "card", field: "description" })]);

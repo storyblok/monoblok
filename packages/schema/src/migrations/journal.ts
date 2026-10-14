@@ -35,6 +35,12 @@ export interface MigrationRun {
   undoneAt?: string;
   /** When an undo last restored some of the run's changes but left others in place. */
   partlyUndoneAt?: string;
+  /**
+   * Set on the record written before the first story, and cleared once the
+   * writes are done. Still set when the run stopped partway, so its counts are
+   * what it planned rather than what landed.
+   */
+  interrupted?: boolean;
 }
 
 /** A story's publish state as the run found it, before writing. */

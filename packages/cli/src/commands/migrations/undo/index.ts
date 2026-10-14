@@ -152,7 +152,7 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       } catch (maybeError) {
         failed++;
         const error = toError(maybeError);
-        ui.warn(`${chalk.bold(write.story.slug)}: ${error.message}`);
+        ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
         logger.error("Failed to undo story", { storyId: write.story.id, run: id, space, error });
       }
     }

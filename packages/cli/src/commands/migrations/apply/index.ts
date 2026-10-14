@@ -415,7 +415,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
         } catch (maybeError) {
           failed++;
           const error = toError(maybeError);
-          ui.warn(`${chalk.bold(write.story.slug)}: ${error.message}`);
+          ui.warn(`${chalk.bold(write.story.slug)} could not be written: ${error.message}`);
           logger.error("Failed to migrate story", {
             storyId: write.story.id,
             migration: entry.id,

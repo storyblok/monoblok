@@ -314,7 +314,7 @@ function conflictsOf(block: AnyBlock, patch: BlockPatch): ApplyConflict[] {
 }
 
 /** Every block uid in a value, at any depth, repeats included. */
-function uidsIn(value: unknown, into: string[] = []): string[] {
+export function uidsIn(value: unknown, into: string[] = []): string[] {
   if (Array.isArray(value)) {
     for (const item of value) uidsIn(item, into);
   } else if (isRecord(value)) {

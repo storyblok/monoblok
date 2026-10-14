@@ -7,7 +7,7 @@
 import type { StoryForMigration } from "./apply-migration";
 import type { Journal, MigrationRun, StoryInverse } from "./journal";
 import { MigrationError } from "./migration-error";
-import { applyPatches } from "./patch";
+import { applyPatches, uidsIn } from "./patch";
 import type { ApplyConflict, BlockPatch } from "./patch";
 
 export type UndoPlan = {
@@ -39,7 +39,57 @@ export async function planUndo(input: {
   }
 
   const inverse = await input.journal.readInverse(input.id);
+  const later = await laterRunsSharingBlocks(input.journal, run, inverse);
+  if (later.length > 0) {
+    throw new MigrationError(
+      `Run ${input.id} can't be undone while later runs that changed the same blocks are still applied: undoing it would remove content they built on. Undo them first, newest first:\n${[
+        ...later,
+      ]
+        .reverse()
+        .map((id) => `  - ${id}`)
+        .join("\n")}`,
+    );
+  }
   return { run, inverse, stories: inverse.map((entry) => entry.story) };
+}
+
+/**
+ * A later run may have read, rewritten, or moved a block this run changed, and
+ * the inverse cannot tell: when the later run left a value this run wrote in
+ * place, the value looks untouched, so the undo would remove it silently.
+ * Runs are therefore undone newest first wherever they share a block.
+ */
+async function laterRunsSharingBlocks(
+  journal: Journal,
+  run: MigrationRun,
+  inverse: StoryInverse[],
+): Promise<string[]> {
+  const runs = await journal.list(run.space);
+  const position = runs.findIndex((entry) => entry.id === run.id);
+  const later = runs.slice(position + 1).filter((entry) => !entry.undoneAt);
+  if (later.length === 0) return [];
+
+  const touched = blocksByStory(inverse);
+  const sharing: string[] = [];
+  for (const entry of later) {
+    const theirs = blocksByStory(await journal.readInverse(entry.id));
+    const overlaps = [...theirs].some(([story, uids]) => {
+      const ours = touched.get(story);
+      return ours !== undefined && [...uids].some((uid) => ours.has(uid));
+    });
+    if (overlaps) sharing.push(entry.id);
+  }
+  return sharing;
+}
+
+/** Each story's patched blocks, plus every block nested in what the patches insert or remove. */
+function blocksByStory(inverse: StoryInverse[]): Map<number, Set<string>> {
+  return new Map(
+    inverse.map((entry) => [
+      entry.story,
+      new Set(entry.patches.flatMap((patch) => [patch.uid, ...uidsIn(patch.ops)])),
+    ]),
+  );
 }
 
 export type UndoWrite = {

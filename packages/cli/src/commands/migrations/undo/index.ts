@@ -29,7 +29,7 @@ const undoCmd = migrationsCommand
   .description("Undo a recorded content migration run")
   .option("-s, --space <space>", "space ID")
   .option("--run <id>", "the recorded run to undo; defaults to the most recent one not yet undone")
-  .option("--force", "overwrite blocks with fields edited since the run")
+  .option("--force", "overwrite blocks with fields changed since the run")
   .option(
     "--allow-pending-releases",
     "run although releases are pending; their content is not restored",
@@ -126,14 +126,14 @@ undoCmd.action(async (_options: unknown, command: Command) => {
 
     for (const conflict of outcome.conflicts) {
       const count = conflict.blocks.length;
-      const edited = `${chalk.bold(conflict.slug)}: ${plural(count, "block was", "blocks were")} edited since the run`;
+      const changed = `${chalk.bold(conflict.slug)}: ${plural(count, "block was", "blocks were")} changed since the run`;
       const blocks = conflict.blocks
         .map((block) => `${block.component} ${block.uid} (${block.fields.join(", ")})`)
         .join("; ");
       ui.warn(
         force
-          ? `${edited} and will be overwritten: ${blocks}`
-          : `${edited} and ${count === 1 ? "is" : "are"} left as ${count === 1 ? "it is" : "they are"}: ${blocks}. Pass --force to overwrite.`,
+          ? `${changed} and will be overwritten: ${blocks}`
+          : `${changed} and ${count === 1 ? "is" : "are"} left as ${count === 1 ? "it is" : "they are"}: ${blocks}. Pass --force to overwrite.`,
       );
     }
     for (const gone of outcome.missing) {
@@ -166,7 +166,7 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     const notRepublished = outcome.notRepublished.filter((slug) => restored.has(slug));
     if (notRepublished.length > 0) {
       ui.warn(
-        `The run published ${plural(notRepublished.length, "story", "stories")} that ${notRepublished.length === 1 ? "was" : "were"} edited or unpublished since, so only the draft was restored: ${notRepublished.join(", ")}`,
+        `The run published ${plural(notRepublished.length, "story", "stories")} that ${notRepublished.length === 1 ? "was" : "were"} changed or unpublished since, so only the draft was restored: ${notRepublished.join(", ")}`,
       );
     }
     const firstPublished = outcome.firstPublishedByRun.filter((slug) => restored.has(slug));
@@ -177,13 +177,13 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       );
     }
 
-    const keptEdits = new Set(force ? [] : outcome.conflicts.map((conflict) => conflict.slug));
+    const keptChanges = new Set(force ? [] : outcome.conflicts.map((conflict) => conflict.slug));
     const written = new Set(outcome.writes.map((write) => write.story.slug));
-    const partly = [...restored].filter((slug) => keptEdits.has(slug)).length;
-    const keptAsEdited = [...keptEdits].filter((slug) => !written.has(slug)).length;
-    const nothingToUndo = plan.stories.length - restored.size - keptAsEdited - failed;
+    const partly = [...restored].filter((slug) => keptChanges.has(slug)).length;
+    const leftAsIs = [...keptChanges].filter((slug) => !written.has(slug)).length;
+    const nothingToUndo = plan.stories.length - restored.size - leftAsIs - failed;
     const tally = [
-      keptAsEdited > 0 && `${plural(keptAsEdited, "story", "stories")} kept as edited`,
+      leftAsIs > 0 && `${plural(leftAsIs, "story", "stories")} left as changed since the run`,
       nothingToUndo > 0 && `${plural(nothingToUndo, "story", "stories")} had nothing left to undo`,
       failed > 0 && `${plural(failed, "story", "stories")} failed`,
     ].filter(Boolean);

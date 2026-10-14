@@ -68,8 +68,10 @@ surface.
 
 The exception is a filter that changes what is fetched, not just what is kept: one the server can
 push down (`--includes-block`, `--container-block`, `--starts-with`, `--query`, `--references`,
-`--tag`, `--workflow-stage`, `--scheduled`), or one decided from list metadata before the content
-fetch (`--publish-status`, the date flags in decision 8).
+`--tag`, `--workflow-stage`, `--scheduled`), or one whose question `--where` expresses badly
+(`--publish-status`, which combines two fields; the date flags in decision 8, which need relative
+windows and upper bounds that cover a whole named period). Being decidable from list metadata alone
+is not enough: an author filter is, but `--where` asks it exactly.
 
 ### 5. `--check-references` as a client-side scan
 
@@ -130,8 +132,14 @@ calendar period (`2024-06`, "that whole month"). Both ends of a range are inclus
 the precision they are written at. Dates without an offset are UTC, the zone the API reports in, so
 a range reads the same as the output on any machine; local time would make `--updated 2024-06-15`
 mean a different window on a laptop and in CI. Durations under `--scheduled` count forward, because
-a pending schedule is always ahead. A story without the date never matches. A malformed or inverted
-range is a usage error before the first request.
+a pending schedule is always ahead, and a bare one leaves the lower bound open, since a schedule
+stays pending for a moment after its time. A range of two durations is ordered automatically, so
+`30d..7d` reads the same under every flag. A story without the date never matches. A malformed or
+inverted range is a usage error before the first request.
+
+`--scheduled` matches a schedule in any language, so the API can list a story once per language; the
+CLI keeps the first listing. `--published` reads `published_at`, which survives an unpublish: pair
+it with `--publish-status published` for stories that are live.
 
 `sort_by_date`, an editor-set date, gets no flag: it is rarely filtered on, and `--where` covers it.
 

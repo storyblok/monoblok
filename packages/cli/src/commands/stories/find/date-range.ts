@@ -54,27 +54,50 @@ export function parseDateRange(
         (reason ? `\n${reason}` : "\nDurations take m (minutes), h, d, w, mo (months) or y."),
     );
   };
-  const point = (text: string): Point => parsePoint(text.trim(), now, direction) ?? fail();
+  const point = (text: string): Point => {
+    const trimmed = text.trim();
+    const parsed = parsePoint(trimmed, now, direction);
+    if (parsed) {
+      return parsed;
+    }
+    if (DURATION.test(trimmed)) {
+      return fail(`'${trimmed}' reaches further from now than a date can.`);
+    }
+    if (CALENDAR.test(trimmed) || DATETIME.test(trimmed)) {
+      return fail(`'${trimmed}' is not a date or time that exists.`);
+    }
+    return fail();
+  };
 
   if (!value.includes("..")) {
     if (value === "now") {
-      fail("'now' is a single instant. Use it as one end of a range, e.g. 'now..7d'.");
+      const example = direction === "past" ? "'7d..now'" : "'now..7d'";
+      fail(`'now' is a single instant. Use it as one end of a range, e.g. ${example}.`);
     }
     const { start, end, relative } = point(value);
     if (!relative) {
       return { from: start, to: end };
     }
-    // "In the last 7 days" runs up to now, which nothing in the past can exceed,
-    // so the upper bound is left open. "In the next 7 days" needs both ends.
-    return direction === "past" ? { from: start } : { from: now, to: end };
+    // A bare duration leaves the side towards now open. Nothing in the past can
+    // be later than now, and a schedule whose time has just passed is still
+    // pending until it is actually published, so it stays in the window.
+    return direction === "past" ? { from: start } : { to: end };
   }
 
   const [left, right, ...rest] = value.split("..");
   if (rest.length > 0 || (!left.trim() && !right.trim())) {
     fail();
   }
-  const from = left.trim() ? point(left).start : undefined;
-  const to = right.trim() ? point(right).end : undefined;
+  const lower = left.trim() ? point(left) : undefined;
+  const upper = right.trim() ? point(right) : undefined;
+  // Two durations name one window whichever way round they are written, so
+  // `30d..7d` and `7d..30d` read the same under every flag.
+  if (lower && upper && DURATION.test(left.trim()) && DURATION.test(right.trim())) {
+    const [a, b] = lower.start <= upper.start ? [lower, upper] : [upper, lower];
+    return { from: a.start, to: b.end };
+  }
+  const from = lower?.start;
+  const to = upper?.end;
   if (from && to && from > to) {
     fail(
       `The range starts after it ends (${from.toISOString()} > ${to.toISOString()}), so nothing could match.`,
@@ -91,6 +114,10 @@ function parsePoint(text: string, now: Date, direction: DateDirection): Point | 
   const duration = DURATION.exec(text);
   if (duration) {
     const instant = shift(now, Number(duration[1]), duration[2], direction === "past" ? -1 : 1);
+    // Far enough out, the shift overflows what a `Date` can hold.
+    if (Number.isNaN(instant.getTime())) {
+      return undefined;
+    }
     return { start: instant, end: instant, relative: true };
   }
 
@@ -186,8 +213,8 @@ function shiftMonths(from: Date, months: number): Date {
 
 /**
  * Whether a story date falls in the range. A story with no such date (a draft
- * has no `published_at`, a folder is never published) never matches: asking
- * when something happened excludes what never happened.
+ * has no `published_at`) never matches: asking when something happened
+ * excludes what never happened.
  */
 export function isInDateRange(value: string | null | undefined, range: DateRange): boolean {
   if (!value) {

@@ -29,12 +29,21 @@ describe("parseDateRange", () => {
       expect(iso("1mo").from).toBe("2026-02-28T12:00:00.000Z");
     });
 
-    it("should read a duration forward, bounded by now, when the direction is future", () => {
-      expect(iso("7d", "future")).toEqual({
-        from: "2026-03-31T12:00:00.000Z",
-        to: "2026-04-07T12:00:00.000Z",
-      });
+    // A schedule whose time has just passed is still pending until it is published.
+    it("should read a duration forward, open towards the past, when the direction is future", () => {
+      expect(iso("7d", "future")).toEqual({ from: undefined, to: "2026-04-07T12:00:00.000Z" });
     });
+
+    // Past the range a `Date` can hold, every comparison would silently be false.
+    it.each([
+      ["99999999999d", "future"],
+      ["1000000y", "past"],
+    ] as const)(
+      "should reject %s, which overflows a date, when the direction is %s",
+      (raw, direction) => {
+        expect(() => parse(raw, direction)).toThrow(/reaches further from now than a date can/);
+      },
+    );
   });
 
   describe("a bare calendar date", () => {
@@ -47,9 +56,9 @@ describe("parseDateRange", () => {
     });
 
     it.each(["2024-02-30", "2024-13", "2024-00-10"])(
-      "should reject the impossible date %s",
+      "should reject the impossible date %s as one that does not exist",
       (raw) => {
-        expect(() => parse(raw)).toThrow(/--updated expects/);
+        expect(() => parse(raw)).toThrow(/is not a date or time that exists/);
       },
     );
   });
@@ -91,12 +100,19 @@ describe("parseDateRange", () => {
       expect(iso("..2024-06-30")).toEqual({ from: undefined, to: "2024-06-30T23:59:59.999Z" });
     });
 
-    it("should read durations on both sides relative to now", () => {
-      expect(iso("30d..7d")).toEqual({
-        from: "2026-03-01T12:00:00.000Z",
-        to: "2026-03-24T12:00:00.000Z",
-      });
-    });
+    it.each(["30d..7d", "7d..30d"])(
+      "should read the durations in %s as one window, whichever way round",
+      (raw) => {
+        expect(iso(raw)).toEqual({
+          from: "2026-03-01T12:00:00.000Z",
+          to: "2026-03-24T12:00:00.000Z",
+        });
+        expect(iso(raw, "future")).toEqual({
+          from: "2026-04-07T12:00:00.000Z",
+          to: "2026-04-30T12:00:00.000Z",
+        });
+      },
+    );
 
     it("should read 'now' as an instant", () => {
       expect(iso("now..2w", "future")).toEqual({
@@ -112,9 +128,19 @@ describe("parseDateRange", () => {
     // An inverted range matches nothing, which would read as a genuine answer.
     it("should reject a range that starts after it ends", () => {
       expect(() => parse("2024-06..2024-01")).toThrow(/starts after it ends/);
-      expect(() => parse("7d..30d")).toThrow(/starts after it ends/);
+      expect(() => parse("now..7d")).toThrow(/starts after it ends/);
     });
   });
+
+  it.each([
+    ["past", "'7d..now'"],
+    ["future", "'now..7d'"],
+  ] as const)(
+    "should suggest a range for a bare 'now' that suits the %s direction",
+    (direction, example) => {
+      expect(() => parse("now", direction)).toThrow(example);
+    },
+  );
 
   it.each(["", " ", "..", "a..b..c", "last week", "7", "7D", "1M", "2024/06/01", "now"])(
     "should reject %j as a usage error naming the flag",

@@ -299,9 +299,13 @@ describe("migrations undo command", () => {
   });
 
   it.each([
-    ["deleted", (space: ReturnType<typeof createRemoteSpace>) => space.deletesStory(2)],
-    ["moved to the trash", (space: ReturnType<typeof createRemoteSpace>) => space.trashesStory(2)],
-  ])("should undo the other stories when one was %s since the run", async (_, remove) => {
+    ["deleted", (space: ReturnType<typeof createRemoteSpace>) => space.deletesStory(2), "2"],
+    [
+      "moved to the trash",
+      (space: ReturnType<typeof createRemoteSpace>) => space.trashesStory(2),
+      "about",
+    ],
+  ])("should undo the other stories when one was %s since the run", async (_, remove, named) => {
     const warn = vi.spyOn(getUI(), "warn");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
@@ -312,7 +316,7 @@ describe("migrations undo command", () => {
 
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
     expect(warn).toHaveBeenCalledWith(
-      "1 story was deleted since the run, so there is nothing to undo there: 2",
+      `1 story was deleted since the run, so there is nothing to undo there: ${named}`,
     );
     expect(process.exitCode).toBeUndefined();
   });

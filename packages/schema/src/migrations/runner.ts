@@ -320,7 +320,7 @@ function walkBlocks(
     for (const item of content) walkBlocks(item, chain, into);
     return into;
   }
-  if (typeof content === "object" && content !== null) {
+  if (isRecord(content)) {
     const nextChain = isBlock(content) ? [...chain, content.component] : chain;
     if (isBlock(content)) into.push({ block: content, chain });
     for (const value of Object.values(content)) walkBlocks(value, nextChain, into);
@@ -445,13 +445,12 @@ function expandBlocks(
     return expanded ? out : items;
   }
 
-  if (typeof value === "object" && value !== null) {
-    const holder = value as Record<string, unknown>;
+  if (isRecord(value)) {
     const nextChain = isBlock(value) ? [...chain, value.component] : chain;
-    for (const key of Object.keys(holder)) {
-      holder[key] = expandBlocks(holder[key], ops, nextChain, report);
+    for (const key of Object.keys(value)) {
+      value[key] = expandBlocks(value[key], ops, nextChain, report);
     }
-    return holder;
+    return value;
   }
 
   return value;

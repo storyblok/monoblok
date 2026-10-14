@@ -93,13 +93,14 @@ undoCmd.action(async (_options: unknown, command: Command) => {
 
     const access = storyAccess(space);
     const stories: StoryForMigration[] = [];
-    const deleted: number[] = [];
+    /** By slug while the story is in the trash, by id once it is gone. */
+    const deleted: (string | number)[] = [];
     let failed = 0;
     for (const storyId of plan.stories) {
       try {
         const story = await access.read(storyId);
         if (story?.deleted_at) {
-          deleted.push(storyId);
+          deleted.push(toStoryForMigration(story).slug);
         } else if (story) {
           stories.push(toStoryForMigration(story));
         }

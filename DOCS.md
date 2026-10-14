@@ -36,9 +36,10 @@ file whose default export is the result of `defineMigration()` from
 
 ## Prerequisites
 
-- Content migration files in `.storyblok/migrations/<space-id>/`, named `<number>-<name>.ts`, where
-  `<name>` holds lowercase letters, digits, and hyphens, for example
-  `0001-rename-article-author.ts`. The command ignores files with other names.
+- Content migration files in `.storyblok/migrations/<space-id>/`, named `<number>-<name>.ts`,
+  `<number>-<name>.js`, or `<number>-<name>.mjs`, where `<name>` holds lowercase letters, digits,
+  and hyphens, for example `0001-rename-article-author.ts`. The command ignores files with other
+  names.
 
 ## Usage
 
@@ -81,9 +82,9 @@ a run that stops partway can still be undone. After the writes, it narrows the r
 that changed, and removes it when none did. The journal writes its own `.gitignore`, so run records
 stay local. A rerun of a migration that already applied changes nothing and records nothing.
 
-Write content migrations as `.ts` files. [`migrations run`](/docs/tooling/cli/migrations-run) also
-loads every `.js` file in the same directory and reports a `.js` content migration as an error that
-points to `migrations apply`.
+[`migrations run`](/docs/tooling/cli/migrations-run) loads every `.js` file in the same directory,
+so a space that uses both commands reports each `.js` content migration as an error that points to
+`migrations apply`. Use `.ts` or `.mjs` for content migrations in that case.
 
 ## Schema check
 

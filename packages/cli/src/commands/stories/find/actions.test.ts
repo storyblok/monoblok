@@ -343,9 +343,10 @@ describe("the server-side scope filters", () => {
 describe("--scheduled", () => {
   const NOW = new Date("2026-03-31T12:00:00.000Z");
 
-  it("should hand the range to the API, counting a bare duration forward", () => {
+  // A schedule whose time has passed stays pending until it is published.
+  it("should hand the range to the API, counting a bare duration forward with no lower bound", () => {
     const params = buildQueryParams(undefined, options({ scheduled: "7d" }), NOW);
-    expect(params.scheduled_at_gt).toBe("2026-03-31T12:00:00.000Z");
+    expect(params).not.toHaveProperty("scheduled_at_gt");
     expect(params.scheduled_at_lt).toBe("2026-04-07T12:00:00.000Z");
   });
 
@@ -395,6 +396,16 @@ describe("buildDateFilters", () => {
   it("should never match a story that was never published", () => {
     const [filter] = buildDateFilters(options({ published: "..now" }), NOW);
     expect(filter(dated({ published_at: null }))).toBe(false);
+  });
+
+  // The API lists a story once per language with a pending schedule in range.
+  it("should keep only the first listing of a story under --scheduled", () => {
+    const filters = buildDateFilters(options({ scheduled: "2w" }), NOW);
+    const match = (story: Story) => filters.every((filter) => filter(story));
+    expect([dated({ id: 1 }), dated({ id: 1 }), dated({ id: 2 })].filter(match)).toEqual([
+      dated({ id: 1 }),
+      dated({ id: 2 }),
+    ]);
   });
 
   it("should name the flag in a usage error", () => {

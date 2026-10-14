@@ -300,6 +300,35 @@ describe("stories find command", () => {
     expect(fetched).not.toContain(`/v1/spaces/12345/stories/${outOfRange.id}`);
   });
 
+  // The API matches each language's pending schedule, so a story with two lists twice.
+  it("should list a story scheduled in several languages once under --scheduled", async () => {
+    const [twice, once] = [makeMockStory(), makeMockStory()];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: [twice, twice, once] },
+          { headers: { Total: "3", "Per-Page": "100" } },
+        ),
+      ),
+    );
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "2w",
+      "--skip-content",
+      "--limit",
+      "2",
+    ]);
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual([twice.id, once.id]);
+  });
+
   it("should reject a malformed date range before any request", async () => {
     await storiesCommand.parseAsync([
       "node",

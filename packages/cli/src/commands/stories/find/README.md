@@ -201,11 +201,11 @@ listing alone, and works under [`--skip-content`](#--skip-content) as it is.
 
 ### `--publish-status`
 
-| Value       | Matches                                                         |
-| ----------- | --------------------------------------------------------------- |
-| `published` | Published, with no unpublished edits since                      |
-| `changed`   | Published, but with unpublished edits                           |
-| `draft`     | Never published. Folders are excluded: they cannot be published |
+| Value       | Matches                                    |
+| ----------- | ------------------------------------------ |
+| `published` | Published, with no unpublished edits since |
+| `changed`   | Published, but with unpublished edits      |
+| `draft`     | Never published. Folders are excluded      |
 
 ```bash
 storyblok stories find --space 12345 --publish-status published
@@ -243,7 +243,7 @@ A range is written in one of these forms:
 | `2024-06-01..2024-06-30` | Between two dates, both included                                  |
 | `2024-06-01..`           | On or after a date                                                |
 | `..2024-06-30`           | On or before a date, up to the end of that day                    |
-| `30d..7d`                | Between 30 and 7 days ago                                         |
+| `30d..7d`                | Between 30 and 7 days ago, in either order                        |
 | `2024-06-15T09:00+02:00` | That minute, as an ISO 8601 date and time with an optional offset |
 
 Each end of a range covers the whole period it names, so `2024-01..2024-03` runs from the start of
@@ -270,12 +270,14 @@ The story listing carries every one of these dates, so the CLI decides `--create
 `--published`, and `--first-published` before any content is fetched, like
 [`--publish-status`](#--publish-status). A story outside the range costs nothing beyond the page it
 was listed on, and the run summary counts it as `filtered out` on the listing row. A story without
-the date never matches: a story that was never published has no `published_at`, and folders are
-never published.
+the date never matches: a story that was never published has no `published_at`.
 
 `--scheduled` is the one date the API filters on. It matches only stories with a publish scheduled
 and still pending, and since those are always ahead, its durations count forward: `--scheduled 7d`
-means within the next seven days, and `--scheduled now..2w` within the next two weeks.
+means up to seven days from now, and `--scheduled 7d..14d` the week after that. A bare duration
+leaves the lower bound open, so a schedule whose time has passed but that has not been published yet
+still matches. A story matches when any of its languages has a pending schedule in the range, even
+when the default language has none, and is listed once.
 
 ```bash
 # Going live this week
@@ -413,11 +415,11 @@ targets outside the search scope are looked up as needed.
 
 Each problem falls into one of three types:
 
-| Type          | Description                                                                      |
-| ------------- | -------------------------------------------------------------------------------- |
-| `broken`      | The target UUID does not exist in the space.                                     |
-| `unpublished` | The target exists but is not published. Folders are exempt, being unpublishable. |
-| `stale_url`   | A link field's cached URL no longer matches the target's current path.           |
+| Type          | Description                                                            |
+| ------------- | ---------------------------------------------------------------------- |
+| `broken`      | The target UUID does not exist in the space.                           |
+| `unpublished` | The target exists but is not published. Folders are exempt.            |
+| `stale_url`   | A link field's cached URL no longer matches the target's current path. |
 
 Leading and trailing slashes are ignored when comparing paths, so `/about/team` and `about/team/`
 count as the same. A reference can be both `unpublished` and `stale_url`, and is reported as both,

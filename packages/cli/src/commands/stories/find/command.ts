@@ -76,7 +76,7 @@ const findCmd = storiesCommand
   .option("--updated <range>", "stories last updated in this date range, e.g. '7d' or '..90d'")
   .option(
     "--published <range>",
-    "stories last published in this date range, e.g. '2024-06'. Never-published stories never match",
+    "stories last published in this date range, e.g. '2024-06', including ones unpublished since; add --publish-status published for live ones only. Never-published stories never match",
   )
   .option(
     "--first-published <range>",
@@ -84,7 +84,7 @@ const findCmd = storiesCommand
   )
   .option(
     "--scheduled <range>",
-    "stories with a pending scheduled publish in this date range, where durations count forward, e.g. '7d' or 'now..2w'",
+    "stories with a pending scheduled publish, in any language, in this date range, where durations count forward, e.g. '7d' or '7d..14d'",
   )
   .option(
     "--sort <fields>",

@@ -289,7 +289,9 @@ export function buildQueryParams(
   }
 
   // The one story date the API filters on. It only lists stories with a
-  // pending schedule, and both bounds are inclusive, like every date flag.
+  // pending schedule, and both bounds are inclusive, like every date flag. It
+  // matches each language's schedule, so a story can be listed once per
+  // language; `buildDateFilters` drops the repeats.
   if (options.scheduled !== undefined) {
     const { from, to } = parseDateRange("--scheduled", options.scheduled, {
       now,
@@ -364,9 +366,13 @@ const DATE_FILTERS = [
  * like the client-side half of `--publish-status` they run as
  * `preContentFilters`: a story outside the range costs nothing beyond the page
  * it was listed on.
+ *
+ * `--scheduled` is filtered by the API, but matches per-language schedules, so
+ * a story with pending schedules in several languages is listed once for each.
+ * Only the first listing is kept, before `--limit` counts it.
  */
 export function buildDateFilters(options: FindOptions, now: Date = new Date()): ClientFilter[] {
-  return DATE_FILTERS.flatMap(({ flag, option, field }) => {
+  const filters = DATE_FILTERS.flatMap(({ flag, option, field }) => {
     const raw = options[option];
     if (raw === undefined) {
       return [];
@@ -374,6 +380,17 @@ export function buildDateFilters(options: FindOptions, now: Date = new Date()): 
     const range = parseDateRange(flag, raw, { now, direction: "past" });
     return [(story: Story) => isInDateRange(story[field], range)];
   });
+  if (options.scheduled !== undefined) {
+    const seen = new Set<Story["id"]>();
+    filters.push((story) => {
+      if (seen.has(story.id)) {
+        return false;
+      }
+      seen.add(story.id);
+      return true;
+    });
+  }
+  return filters;
 }
 
 /**

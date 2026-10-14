@@ -262,10 +262,17 @@ describe("migrations apply command", () => {
       "0002-rename-teaser-title: would change 1 story (1 block).",
     ]);
     expect(list).toHaveBeenCalledWith(["home: 1 block"]);
+    info.mockClear();
 
     await apply();
 
     expect(space.writes).toHaveLength(2);
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      expect.stringMatching(
+        /^0001-rename-card-to-teaser: changed 1 story \(1 block\), recorded as /,
+      ),
+      expect.stringMatching(/^0002-rename-teaser-title: changed 1 story \(1 block\), recorded as /),
+    ]);
   });
 
   it("should refuse a story that already contains repeated block ids and fail when nothing was written", async () => {
@@ -371,15 +378,22 @@ describe("migrations apply command", () => {
     expect(process.exitCode).toBe(2);
   });
 
-  it("should record nothing for a re-run that changes no story", async () => {
+  it("should record nothing for a re-run that changes no story, and say so on a dry run too", async () => {
+    const info = vi.spyOn(getUI(), "info");
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());
     space.canUpdateStories();
-
     await apply();
+    info.mockClear();
+
+    await apply("--dry-run");
     await apply();
 
     expect(journalEntries()).toHaveLength(1);
+    expect(info.mock.calls.map(([message]) => message)).toEqual([
+      "0001-rename-card-title: would change no stories.",
+      "0001-rename-card-title: changed no stories, so nothing was recorded.",
+    ]);
   });
 
   describe("--schema", () => {

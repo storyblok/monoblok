@@ -1,10 +1,12 @@
 import type { Command } from "commander";
 import chalk from "chalk";
+import { discoverMigrations } from "@storyblok/schema/migrations";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication } from "../../../utils";
+import { resolvePath } from "../../../utils/filesystem";
 import { session } from "../../../session";
 import type { MigrationsRunOptions } from "./constants";
 import { migrationsCommand } from "../command";
@@ -14,6 +16,21 @@ import { MigrationStream } from "./streams/migrations-transform";
 import { isLegacyMigrationFilename, migrationTargetsComponent } from "../migration-filename";
 import { UpdateStream } from "./streams/update-stream";
 import { pipeline } from "node:stream";
+
+/**
+ * `run` loads only `.js` files, so content migrations in other formats would be
+ * skipped without a word. A `.js` one is recognized by its export when loaded.
+ */
+async function pointToApplyForContentMigrations(space: string, path: string | undefined) {
+  const contentMigrations = await discoverMigrations(resolvePath(path, `migrations/${space}`))
+    .then((files) => files.filter(({ file }) => !file.endsWith(".js")))
+    .catch(() => []);
+  if (contentMigrations.length > 0) {
+    getUI().info(
+      `Content migrations are applied with "storyblok migrations apply", not run: ${contentMigrations.map(({ id }) => id).join(", ")}.`,
+    );
+  }
+}
 
 const runCmd = migrationsCommand
   .command("run [componentName]")
@@ -84,6 +101,7 @@ runCmd.action(
         path,
         filter,
       });
+      await pointToApplyForContentMigrations(fromSpace, path);
       const filteredMigrations = componentName
         ? migrationFiles.filter((file) => migrationTargetsComponent(file.name, componentName))
         : migrationFiles;

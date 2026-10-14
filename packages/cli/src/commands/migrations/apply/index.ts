@@ -404,7 +404,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
 
       // Recorded before the first write, so a run that stops partway can still
       // be undone. Undo skips stories whose content never changed.
-      await journal.record(outcome.run, outcome.inverse);
+      await journal.record({ ...outcome.run, interrupted: true }, outcome.inverse);
 
       const landed = new Set<number>();
       for (const write of outcome.writes) {
@@ -433,16 +433,13 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
         continue;
       }
 
-      let run = outcome.run;
-      if (landed.size < outcome.writes.length) {
-        const recorded = outcome.inverse.filter((item) => landed.has(item.story));
-        run = {
-          ...outcome.run,
-          stories: recorded.length,
-          blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
-        };
-        await journal.record(run, recorded);
-      }
+      const recorded = outcome.inverse.filter((item) => landed.has(item.story));
+      const run = {
+        ...outcome.run,
+        stories: recorded.length,
+        blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
+      };
+      await journal.record(run, recorded);
       ui.info(`${entry.id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
     }
 

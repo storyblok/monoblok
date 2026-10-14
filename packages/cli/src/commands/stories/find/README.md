@@ -921,6 +921,11 @@ This combination filters on story content without putting content in the output:
 gives `--where` a bulk source of content to decide against, and `--skip-content` keeps the lines
 themselves list metadata.
 
+A story the CDN returns no content for (a folder, a story it does not serve, or a story in a failed
+batch) has no Management API fetch to fall back on, so `--where` tests it on list metadata only and
+a content expression cannot match it. The run warns with the count of such stories. Drop
+`--skip-content` to test them on Management API content.
+
 ### `--capi-params`
 
 Adds extra query parameters to the Content Delivery API reads that `--capi-filter` makes, so

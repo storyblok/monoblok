@@ -5,7 +5,13 @@ import {
   isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
-import { findPhases, findSummary, processStageName, stoppedEarlyMessage } from "./phases";
+import {
+  findPhases,
+  findSummary,
+  processStageName,
+  stoppedEarlyMessage,
+  storiesCount,
+} from "./phases";
 import { STORY_COLUMNS } from "./columns";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
@@ -119,6 +125,20 @@ export async function runFind({
         ui.warn(
           `If the error above is "Not sortable by this column", --sort ${params.sort_by} names a column the API cannot sort by. ` +
             "Use a story column such as updated_at, created_at, published_at, name, slug or position, or a content field with the 'content.' prefix.",
+        ),
+      );
+    }
+
+    // The summary counts an undecided story as passed, which is only true when a
+    // MAPI fetch follows. Without one, a --where on content can never match it,
+    // so a real match drops out under a clean summary.
+    if (skipContent && capi && capiFilter.unresolved > 0) {
+      notes.push(() =>
+        ui.warn(
+          `${storiesCount(capiFilter.unresolved)} may be missing from the results. The CDN returned no content ` +
+            "to test --where on (folders, stories it does not serve, or a failed request), and --skip-content " +
+            "leaves only list metadata, which a --where on content cannot match. Drop --skip-content to test " +
+            "them on Management API content.",
         ),
       );
     }

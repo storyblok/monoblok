@@ -7,8 +7,23 @@ import { vol } from "memfs";
 import "../index";
 import { storiesCommand } from "../command";
 import { makeMockStory } from "../__tests__/helpers";
+import type { MockStory } from "../__tests__/helpers";
 
 const errorSpy = vi.spyOn(console, "error");
+const warnSpy = vi.spyOn(console, "warn");
+
+/** A content filter decided by CDN content, with no MAPI fetch to fall back on. */
+const findCdnHeroes = [
+  "node",
+  "test",
+  "find",
+  "--space",
+  "12345",
+  "--capi-filter",
+  "--skip-content",
+  "--where",
+  '$..[?(@.component == "hero")]',
+];
 
 const server = setupServer();
 
@@ -112,6 +127,43 @@ const preconditions = {
     }
 
     return { linking, plain, missingUuid };
+  },
+  /**
+   * Hero stories the CDN serves, plus `missingFromCdn` hero stories it holds no
+   * content for. The listing omits `content`, as the real one does, so a story
+   * the CDN does not serve has nothing left to match a content filter on.
+   */
+  canFilterOnCdnContent({
+    servedByCdn,
+    missingFromCdn,
+  }: {
+    servedByCdn: number;
+    missingFromCdn: number;
+  }) {
+    const hero = (): MockStory => makeMockStory({ content: { _uid: "a", component: "hero" } });
+    const served = Array.from({ length: servedByCdn }, hero);
+    const missing = Array.from({ length: missingFromCdn }, hero);
+    const stories = [...served, ...missing];
+
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345", () =>
+        HttpResponse.json({ space: { id: 12345, name: "Test", first_token: "preview-token" } }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: stories.map(({ content: _content, ...metadata }) => metadata) },
+          { headers: { Total: String(stories.length), "Per-Page": "100" } },
+        ),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const uuids = new URL(request.url).searchParams.get("by_uuids")?.split(",") ?? [];
+        return HttpResponse.json(
+          { stories: served.filter((story) => uuids.includes(story.uuid)) },
+          { headers: { Total: String(served.length), "Per-Page": "100" } },
+        );
+      }),
+    );
+    return { served, missing };
   },
   /**
    * stdout is a terminal. `isTTY` is a plain data property, absent entirely when
@@ -311,6 +363,30 @@ describe("stories find command", () => {
       "--capi-filter cannot evaluate --where on field-level translations",
     );
     expect(requests).toBe(0);
+  });
+
+  // Without a MAPI fetch, a story the CDN does not serve is tested on list
+  // metadata, so a content filter rejects it whatever its content holds.
+  it("should warn that stories the CDN does not serve may be missing under --capi-filter --skip-content", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 2, missingFromCdn: 1 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(written).toHaveLength(2);
+    const warnings = stripVTControlCharacters(warnSpy.mock.calls.flat().join("\n"));
+    expect(warnings).toContain("1 story may be missing from the results");
+    expect(warnings).toContain("Drop --skip-content");
+  });
+
+  it("should not warn about missing stories when the CDN serves every story", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 3, missingFromCdn: 0 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(written).toHaveLength(3);
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
   });
 
   // A person at a terminal is scanning for which stories matched, not reading

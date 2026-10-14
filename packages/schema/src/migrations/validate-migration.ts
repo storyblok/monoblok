@@ -113,8 +113,16 @@ export function validateMigration(
           `"${op.kind}" cannot be scoped with \`under\`: a block's schema is global, so a key op has to apply to every instance.`,
         );
       }
-      for (const name of typeof under === "string" ? [under] : under) {
-        if (!exists(name)) issue(`Unknown ancestor block "${name}" in \`under\`.`);
+      // The op type promises names, but a migration that skipped the type
+      // system can carry anything here.
+      const ancestors: readonly unknown[] | undefined =
+        typeof under === "string" ? [under] : Array.isArray(under) ? under : undefined;
+      if (ancestors === undefined || !ancestors.every((name) => typeof name === "string")) {
+        issue("`under` has to be a block name or a list of block names.");
+      } else {
+        for (const name of ancestors) {
+          if (!exists(name)) issue(`Unknown ancestor block "${name}" in \`under\`.`);
+        }
       }
     }
 

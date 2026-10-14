@@ -85,10 +85,16 @@ async function fetchReleases(space: string) {
  * that writes nothing. When the run may proceed anyway, a failed release check
  * is a warning rather than a reason to stop.
  */
+const RELEASE_CONSEQUENCES = {
+  apply: { subject: "This run doesn't change", object: "the stories it writes" },
+  undo: { subject: "This undo doesn't restore", object: "the stories it restores" },
+} as const;
+
 export async function guardPendingReleases(
   space: string,
-  options: { allow?: boolean; warnOnly?: boolean },
+  options: { command: keyof typeof RELEASE_CONSEQUENCES; allow?: boolean; warnOnly?: boolean },
 ): Promise<void> {
+  const { subject, object } = RELEASE_CONSEQUENCES[options.command];
   const proceedAnyway = options.allow || options.warnOnly;
   let releases: Awaited<ReturnType<typeof fetchReleases>>;
   try {
@@ -98,7 +104,7 @@ export async function guardPendingReleases(
       throw maybeError;
     }
     getUI().warn(
-      `Could not check for pending releases: ${toError(maybeError).message}. Deploying a pending release overwrites the stories this run writes.`,
+      `Could not check for pending releases: ${toError(maybeError).message}. Deploying a pending release overwrites ${object}.`,
     );
     return;
   }
@@ -110,7 +116,7 @@ export async function guardPendingReleases(
 
   const names = check.pending.map((release) => `  - ${release.name} (${release.id})`).join("\n");
   const one = check.pending.length === 1;
-  const consequence = `This run doesn't change release content, and deploying ${one ? "the release" : "a release"} overwrites the stories it writes`;
+  const consequence = `${subject} release content, and deploying ${one ? "the release" : "a release"} overwrites ${object}`;
   if (!check.proceed) {
     throw new CommandError(
       `Space ${space} has ${plural(check.pending.length, "pending release", "pending releases")}. ${consequence}:\n${names}\nDeploy or delete ${one ? "it" : "them"} first, or pass --allow-pending-releases to run anyway.`,

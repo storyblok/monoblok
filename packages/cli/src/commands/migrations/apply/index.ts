@@ -10,6 +10,7 @@ import {
 import type {
   ApplyMigrationOutcome,
   LoadedMigration,
+  MigrationRun,
   PublishMode,
   StoryForMigration,
 } from "@storyblok/schema/migrations";
@@ -80,6 +81,10 @@ async function findCandidateStories(space: string, targets: readonly string[]): 
   }
 
   return [...ids];
+}
+
+function changeSummary(run: MigrationRun): string {
+  return `${plural(run.stories, "story", "stories")} (${plural(run.blocks, "block", "blocks")})`;
 }
 
 /**
@@ -375,7 +380,9 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
           planned.set(write.story.id, { ...write.story, content: write.content });
         }
         ui.info(
-          `${entry.id}: would change ${plural(outcome.run.stories, "story", "stories")} (${plural(outcome.run.blocks, "block", "blocks")}).`,
+          outcome.writes.length === 0
+            ? `${entry.id}: would change no stories.`
+            : `${entry.id}: would change ${changeSummary(outcome.run)}.`,
         );
         ui.list(
           outcome.writes.map(
@@ -422,20 +429,17 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
         continue;
       }
 
+      let run = outcome.run;
       if (landed.size < outcome.writes.length) {
         const recorded = outcome.inverse.filter((item) => landed.has(item.story));
-        await journal.record(
-          {
-            ...outcome.run,
-            stories: recorded.length,
-            blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
-          },
-          recorded,
-        );
+        run = {
+          ...outcome.run,
+          stories: recorded.length,
+          blocks: recorded.reduce((total, item) => total + item.patches.length, 0),
+        };
+        await journal.record(run, recorded);
       }
-      ui.info(
-        `${entry.id}: changed ${plural(landed.size, "story", "stories")}, recorded as ${chalk.bold(outcome.run.id)}.`,
-      );
+      ui.info(`${entry.id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
     }
 
     const problems = [

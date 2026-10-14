@@ -84,7 +84,8 @@ stay local. A rerun of a migration that already applied changes nothing and reco
 
 [`migrations run`](/docs/tooling/cli/migrations-run) loads every `.js` file in the same directory,
 so a space that uses both commands reports each `.js` content migration as an error that points to
-`migrations apply`. Use `.ts` or `.mjs` for content migrations in that case.
+`migrations apply`. Use `.ts` or `.mjs` for content migrations in that case: `migrations run` skips
+them and names them with the same pointer.
 
 ## Schema check
 

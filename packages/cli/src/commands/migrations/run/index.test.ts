@@ -334,6 +334,22 @@ describe("migrations run command", () => {
     );
   });
 
+  it("should point to migrations apply for content migrations it does not run", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/0001-rename-hero-title.ts": "",
+      "./.storyblok/migrations/12345/0001-rename-hero-title.before.ts": "",
+      "./.storyblok/migrations/12345/0002-split-cta.mjs": "",
+    });
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(info).toHaveBeenCalledWith(
+      'Content migrations are applied with "storyblok migrations apply", not run: 0001-rename-hero-title, 0002-split-cta.',
+    );
+    expect(updateStory).not.toHaveBeenCalled();
+  });
+
   it("should run migrations successfully", async () => {
     preconditions.canMigrate();
 

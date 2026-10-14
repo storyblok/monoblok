@@ -31,16 +31,17 @@ import { loadSchemaEntry } from "../../../lib/validation/adapter";
 import { loadSchemaModule } from "../../../utils/schema/classify-exports";
 import { getMapiClient } from "../../../api";
 import { session } from "../../../session";
-import { fetchStory, updateStory } from "../../stories/actions";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
   guardPendingReleases,
   migrationsDirectory,
   plural,
+  storyAccess,
   toMigrationCommandError,
   toStoryForMigration,
 } from "../content-migrations";
+import type { StoryAccess } from "../content-migrations";
 
 const PER_PAGE = 100;
 const PUBLISH_MODES: readonly PublishMode[] = ["all", "published", "published-with-changes"];
@@ -92,7 +93,7 @@ async function readStories(
   space: string,
   candidates: number[],
   planned: Map<number, StoryForMigration>,
-  names: Map<number, string>,
+  access: StoryAccess,
 ): Promise<{ stories: StoryForMigration[]; unread: number }> {
   const stories = new Map(planned);
   let unread = 0;
@@ -101,9 +102,8 @@ async function readStories(
       continue;
     }
     try {
-      const story = await fetchStory(space, id);
+      const story = await access.read(id);
       if (story) {
-        names.set(id, story.name);
         stories.set(id, toStoryForMigration(story));
       }
     } catch (maybeError) {
@@ -340,15 +340,14 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
 
     const journal = contentJournal(path);
     const planned = new Map<number, StoryForMigration>();
-    /** Carried into the write, which would otherwise clear the story's name. */
-    const names = new Map<number, string>();
+    const access = storyAccess(space);
     const refusedEverything: string[] = [];
     let failed = 0;
 
     for (const entry of selected) {
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
       const candidates = await findCandidateStories(space, entry.migration.targets);
-      const { stories, unread } = await readStories(space, candidates, planned, names);
+      const { stories, unread } = await readStories(space, candidates, planned, access);
       failed += unread;
       spinner.succeed(
         `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
@@ -399,11 +398,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       const landed = new Set<number>();
       for (const write of outcome.writes) {
         try {
-          await updateStory(space, write.story.id, {
-            story: { content: write.content, name: names.get(write.story.id) },
-            force_update: "1",
-            ...(write.publish ? { publish: 1 } : {}),
-          });
+          await access.write(write.story.id, write.content, write.publish);
           landed.add(write.story.id);
           logger.info("Story migrated", { storyId: write.story.id, migration: entry.id, space });
         } catch (maybeError) {

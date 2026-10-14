@@ -79,8 +79,10 @@ when a migration skipped every story it matched, or when a story couldn’t be r
 
 The command records each run in `.storyblok/migrations/.journal/` before writing the first story, so
 a run that stops partway can still be undone. After the writes, it narrows the record to the stories
-that changed, and removes it when none did. The journal writes its own `.gitignore`, so run records
-stay local. A rerun of a migration that already applied changes nothing and records nothing.
+that changed, and removes it when none did. A run that stopped partway keeps the stories it planned
+to change, and [`migrations list`](/docs/tooling/cli/migrations-list) shows it as interrupted. The
+journal writes its own `.gitignore`, so run records stay local. A rerun of a migration that already
+applied changes nothing and records nothing.
 
 [`migrations run`](/docs/tooling/cli/migrations-run) loads every `.js` file in the same directory,
 so a space that uses both commands reports each `.js` content migration as an error that points to
@@ -154,8 +156,8 @@ description:
 Lists the content migration runs that [`migrations apply`](/docs/tooling/cli/migrations-apply)
 recorded for a Storyblok space, oldest first. Each line shows the run ID, the migration title (or
 file name), the number of stories and blocks the run changed, and when the run was undone, or partly
-undone when an undo restored some blocks and left others in place. The command reads local records
-only, so it doesn’t require a login.
+undone when an undo restored some blocks and left others in place. A run that stopped before it
+finished shows as interrupted. The command reads local records only, so it doesn’t require a login.
 
 ## Usage
 

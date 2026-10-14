@@ -14,12 +14,12 @@ import { APIError } from "../../../utils/error/api-error";
 import { getLogger } from "../../../lib/logger/logger";
 import { getUI } from "../../../lib/ui";
 import { session } from "../../../session";
-import { fetchStory, updateStory } from "../../stories/actions";
 import { migrationsCommand } from "../command";
 import {
   contentJournal,
   guardPendingReleases,
   plural,
+  storyAccess,
   toMigrationCommandError,
   toStoryForMigration,
 } from "../content-migrations";
@@ -91,18 +91,16 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     }
     await guardPendingReleases(space, { allow: allowPendingReleases });
 
-    /** Carried into the write, which would otherwise clear the story's name. */
-    const names = new Map<number, string>();
+    const access = storyAccess(space);
     const stories: StoryForMigration[] = [];
     const deleted: number[] = [];
     let failed = 0;
     for (const storyId of plan.stories) {
       try {
-        const story = await fetchStory(space, storyId);
+        const story = await access.read(storyId);
         if (story?.deleted_at) {
           deleted.push(storyId);
         } else if (story) {
-          names.set(storyId, story.name);
           stories.push(toStoryForMigration(story));
         }
       } catch (maybeError) {
@@ -148,11 +146,7 @@ undoCmd.action(async (_options: unknown, command: Command) => {
         continue;
       }
       try {
-        await updateStory(space, write.story.id, {
-          story: { content: write.content, name: names.get(write.story.id) },
-          force_update: "1",
-          ...(write.publish ? { publish: 1 } : {}),
-        });
+        await access.write(write.story.id, write.content, write.publish);
         restored.add(write.story.slug);
         logger.info("Story undone", { storyId: write.story.id, run: id, space });
       } catch (maybeError) {

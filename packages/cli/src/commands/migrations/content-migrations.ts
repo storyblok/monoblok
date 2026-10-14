@@ -11,6 +11,7 @@ import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { handleAPIError } from "../../utils/error/api-error";
 import { resolvePath } from "../../utils/filesystem";
+import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
@@ -31,6 +32,30 @@ export function toStoryForMigration(story: Story): StoryForMigration {
     unpublished_changes: story.unpublished_changes,
   };
 }
+
+/**
+ * Reads and writes the stories of one command run. A content write without the
+ * story's name clears it, so each write carries the name its read returned.
+ */
+export function storyAccess(space: string) {
+  const names = new Map<number, string>();
+  return {
+    async read(id: number): Promise<Story | undefined> {
+      const story = await fetchStory(space, id);
+      if (story) names.set(id, story.name);
+      return story;
+    },
+    async write(id: number, content: Record<string, unknown>, publish: boolean): Promise<void> {
+      await updateStory(space, id, {
+        story: { content, name: names.get(id) },
+        force_update: "1",
+        ...(publish ? { publish: 1 } : {}),
+      });
+    },
+  };
+}
+
+export type StoryAccess = ReturnType<typeof storyAccess>;
 
 /** The engine's errors are about the user's migrations or journal, not a CLI failure. */
 export function toMigrationCommandError(error: unknown): Error {

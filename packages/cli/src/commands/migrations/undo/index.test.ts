@@ -255,6 +255,28 @@ describe("migrations undo command", () => {
     expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
 
+  it("should list a run as partly undone while blocks are left in place, and as undone once they are restored", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard(), storyWithCard({ id: 2, slug: "about", full_slug: "about" }));
+    await run("apply");
+    space.editsStory(1, (content) => {
+      (content.body as Record<string, unknown>[])[0].headline = "Edited";
+    });
+
+    await run("undo");
+    info.mockClear();
+    await run("list");
+
+    expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/\(partly undone [^)]+\)$/));
+
+    await run("undo", "--force");
+    info.mockClear();
+    await run("list");
+
+    expect(info).toHaveBeenLastCalledWith(expect.stringMatching(/ {2}\(undone [^)]+\)$/));
+  });
+
   it("should fail, count the story as failed, and keep the run open when a write fails", async () => {
     const info = vi.spyOn(getUI(), "info");
     const warn = vi.spyOn(getUI(), "warn");

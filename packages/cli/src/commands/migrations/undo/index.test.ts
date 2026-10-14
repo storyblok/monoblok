@@ -292,6 +292,7 @@ describe("migrations undo command", () => {
       expect.stringMatching(/Undid 0 stories .*; 1 story failed\.$/),
     );
     expect(warn).not.toHaveBeenCalledWith(expect.stringContaining("for the first time"));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/^.*home.* could not be written: /));
     expect(journalEntries()).toEqual([
       expect.not.objectContaining({ undoneAt: expect.anything() }),
     ]);

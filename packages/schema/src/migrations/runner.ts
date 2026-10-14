@@ -194,7 +194,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       for (const key of [op.field, ...translationKeysFor(block, op.field)]) {
         if (!(key in block)) continue;
         const context: AlterFieldContext = { key, language: languageOfKey(key) };
-        block[key] = op.fn(block[key] as never, context);
+        const value = op.fn(block[key] as never, context);
+        if (value !== undefined) block[key] = value;
       }
       break;
     }

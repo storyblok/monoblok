@@ -390,6 +390,7 @@ export function reorderField<
 /**
  * Rewrites one field's value, translations included: the callback is invoked
  * once per key in the field's `__i18n__` family, with the language it belongs to.
+ * Returning `undefined` leaves that key as it is; `removeField` removes a field.
  */
 export function alterField<
   TAfter extends SchemaShape,
@@ -401,7 +402,7 @@ export function alterField<
   fn: (
     value: FieldValue<TBefore, TBlock, TField>,
     context: AlterFieldContext,
-  ) => WritableValue<TAfter, TBlock, TField>,
+  ) => WritableValue<TAfter, TBlock, TField> | undefined,
 ): AlterFieldOp<TAfter, TBefore> {
   return {
     kind: "alterField",

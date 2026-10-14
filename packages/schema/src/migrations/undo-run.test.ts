@@ -81,6 +81,64 @@ describe("planUndo", () => {
       /recorded for space 12345, not space 99999/,
     );
   });
+
+  describe("with later runs", () => {
+    const later = (id: string, overrides: Partial<MigrationRun> = {}): MigrationRun => ({
+      ...run,
+      id,
+      migration: `0002-${id}`,
+      ...overrides,
+    });
+
+    it("should refuse while a later run that changed the same block is applied, naming the newest first", async () => {
+      const journal = journalHolding([run, later("run-2"), later("run-3")], {
+        "run-1": [entry(1, [renameBack])],
+        "run-2": [entry(1, [restoreTitle("a")])],
+        "run-3": [entry(1, [restoreTitle("a")])],
+      });
+
+      await expect(planUndo({ journal, space: "12345", id: "run-1" })).rejects.toThrow(
+        "Undo them first, newest first:\n  - run-3\n  - run-2",
+      );
+    });
+
+    it("should refuse when a later run moved the block inside another one", async () => {
+      const wrapped: BlockPatch = {
+        uid: "r",
+        component: "page",
+        ops: [
+          {
+            kind: "listRemove",
+            key: "body",
+            uid: "w",
+            expect: { _uid: "w", component: "wrapper", items: [{ _uid: "a", component: "card" }] },
+          },
+        ],
+      };
+      const journal = journalHolding([run, later("run-2")], {
+        "run-1": [entry(1, [renameBack])],
+        "run-2": [entry(1, [wrapped])],
+      });
+
+      await expect(planUndo({ journal, space: "12345", id: "run-1" })).rejects.toThrow(/run-2/);
+    });
+
+    it("should allow it when later runs changed other blocks, other stories, or were undone", async () => {
+      const journal = journalHolding(
+        [run, later("run-2"), later("run-3"), later("run-4", { undoneAt: "2026-09-24" })],
+        {
+          "run-1": [entry(1, [renameBack])],
+          "run-2": [entry(1, [restoreTitle("b")])],
+          "run-3": [entry(2, [restoreTitle("a")])],
+          "run-4": [entry(1, [restoreTitle("a")])],
+        },
+      );
+
+      const plan = await planUndo({ journal, space: "12345", id: "run-1" });
+
+      expect(plan.stories).toEqual([1]);
+    });
+  });
 });
 
 describe("undoStories", () => {

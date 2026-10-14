@@ -220,6 +220,14 @@ on to the run before it. A run stays open while blocks are left in place, so
 `migrations undo --force` still reaches them. When a story can’t be read or written, the command
 exits with an error and the run stays open. Run the undo again to retry.
 
+## Undo order
+
+The command refuses to undo a run while a later run that isn’t undone changed any of the same
+blocks, and lists those runs. A later run can depend on content the earlier run wrote, even where it
+left that content as it was, so undoing the earlier run first could remove content the later run
+needs. Undo the listed runs first, newest first. Runs that changed other blocks can be undone in any
+order.
+
 ## Pending releases
 
 As with [`migrations apply`](/docs/tooling/cli/migrations-apply#pending-releases), the command

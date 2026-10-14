@@ -115,7 +115,8 @@ export function findSummary({
     stages.push({
       label: "CAPI filter",
       // A story the CDN could not decide is passed on like a match: the stage
-      // only ever prunes, and the next one decides it.
+      // only ever prunes, and the next one decides it. Under --skip-content
+      // that is on metadata alone, which the run warns about separately.
       result: `${capiFilter.candidates + capiFilter.unresolved} passed`,
       notes: [
         { count: capiFilter.pruned, text: "pruned" },

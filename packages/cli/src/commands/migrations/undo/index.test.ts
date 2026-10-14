@@ -26,6 +26,9 @@ const renameCardTitle = defineMigration([
   renameField({ block: "card", field: "title", to: "headline" }),
 ]);
 const renameCardToTeaser = defineMigration([renameBlock({ block: "card", to: "teaser" })]);
+const renameHeroSubtitle = defineMigration([
+  renameField({ block: "hero", field: "subtitle", to: "tagline" }),
+]);
 
 const cardOf = (story: RemoteStory | undefined) =>
   (story?.content.body as Record<string, unknown>[] | undefined)?.[0];
@@ -64,18 +67,61 @@ describe("migrations undo command", () => {
     );
   });
 
-  it("should undo the run named with --run", async () => {
+  it("should undo the run named with --run while a later run changed other blocks", async () => {
+    const story = storyWithCard();
+    story.content.body = [
+      { _uid: "card-1", component: "card", title: "Hi" },
+      { _uid: "hero-1", component: "hero", subtitle: "Welcome" },
+    ];
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-hero-subtitle", renameHeroSubtitle],
+    );
+    space.hasStories(story);
+    await run("apply");
+    const [first] = journalEntries();
+
+    await run("undo", "--run", String(first.id));
+
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", title: "Hi" },
+      { _uid: "hero-1", component: "hero", tagline: "Welcome" },
+    ]);
+  });
+
+  it("should refuse to undo a run while a later run that changed the same blocks is applied", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
     space.hasMigrations(
       ["0001-rename-card-title", renameCardTitle],
       ["0002-rename-card-to-teaser", renameCardToTeaser],
     );
     space.hasStories(storyWithCard());
     await run("apply");
-    const [first] = journalEntries();
+    const [first, second] = journalEntries();
+    space.writes.length = 0;
 
     await run("undo", "--run", String(first.id));
 
-    expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "teaser", title: "Hi" });
+    expect(space.writes).toEqual([]);
+    expect(process.exitCode).toBe(2);
+    expect(error.mock.calls.flat().join("\n")).toContain(
+      `Undo them first, newest first:\n  - ${second.id}`,
+    );
+  });
+
+  it("should undo an earlier run once the later run that changed the same blocks is undone", async () => {
+    space.hasMigrations(
+      ["0001-rename-card-title", renameCardTitle],
+      ["0002-rename-card-to-teaser", renameCardToTeaser],
+    );
+    space.hasStories(storyWithCard());
+    await run("apply");
+    const [first, second] = journalEntries();
+
+    await run("undo", "--run", String(second.id));
+    await run("undo", "--run", String(first.id));
+
+    expect(cardOf(space.story(1))).toEqual({ _uid: "card-1", component: "card", title: "Hi" });
   });
 
   it("should fail for a run that is not recorded", async () => {

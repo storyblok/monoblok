@@ -241,6 +241,23 @@ describe("migrations undo command", () => {
     expect(process.exitCode).toBe(2);
   });
 
+  it("should keep when a run was first undone when it is undone again", async () => {
+    space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
+    space.hasStories(storyWithCard());
+    await run("apply");
+    await run("undo");
+    const [undone] = journalEntries();
+    vi.useFakeTimers({ now: Date.now() + 60_000, toFake: ["Date"] });
+
+    try {
+      await run("undo", "--run", String(undone.id));
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(journalEntries()).toEqual([expect.objectContaining({ undoneAt: undone.undoneAt })]);
+  });
+
   it("should keep a run with blocks left in place open, so undo --force reaches them", async () => {
     space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
     space.hasStories(storyWithCard());

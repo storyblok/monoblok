@@ -380,6 +380,45 @@ describe("callback return typing", () => {
     ]);
   });
 
+  it("should accept an object literal whose discriminants are string literals", () => {
+    defineMigration<ProbeFieldTypesSchema>([
+      addField({ block: "probe_hero", field: "cta_link" }, () => ({
+        id: "",
+        url: "https://example.com",
+        linktype: "url",
+        fieldtype: "multilink",
+        cached_url: "https://example.com",
+      })),
+      alterField({ block: "probe_hero", field: "cta_link" }, () => ({
+        id: "",
+        url: "https://example.com",
+        linktype: "url",
+        fieldtype: "multilink",
+        cached_url: "https://example.com",
+      })),
+      mergeFields({ block: "probe_hero", fields: ["headline"], into: "cta_link" }, () => ({
+        id: "",
+        url: "https://example.com",
+        linktype: "url",
+        fieldtype: "multilink",
+        cached_url: "https://example.com",
+      })),
+    ]);
+    defineMigration<ProbeFieldTypesSchema>([
+      // @ts-expect-error a multilink has no "page" link type
+      addField({ block: "probe_hero", field: "cta_link" }, () => ({ linktype: "page" })),
+    ]);
+  });
+
+  it("should accept a mutable array for a bloks field", () => {
+    defineMigration<ProbeFieldTypesSchema>([
+      addField({ block: "probe_kitchen_sink", field: "bloks_field" }, () => []),
+      alterField({ block: "probe_kitchen_sink", field: "bloks_field" }, (value) => [
+        ...(value ?? []),
+      ]),
+    ]);
+  });
+
   it("should let addField leave a block untouched by returning undefined", () => {
     defineMigration<FixtureSchema>([addField({ block: "card", field: "slug" }, () => undefined)]);
   });

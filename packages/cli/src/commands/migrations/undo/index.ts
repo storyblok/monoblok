@@ -191,7 +191,7 @@ undoCmd.action(async (_options: unknown, command: Command) => {
     const complete = failed === 0 && (outcome.conflicts.length === 0 || force);
     const now = new Date().toISOString();
     if (complete) {
-      await journal.record({ ...plan.run, undoneAt: now }, plan.inverse);
+      await journal.record({ ...plan.run, undoneAt: plan.run.undoneAt ?? now }, plan.inverse);
     } else if (restored.size > 0) {
       await journal.record({ ...plan.run, partlyUndoneAt: now }, plan.inverse);
     }

@@ -2,6 +2,7 @@
  * Applies a compiled migration to one story's content and returns the patch it
  * produced plus the inverse patch an undo would replay.
  */
+import { isRecord } from "../utils/is-record";
 import type { CompiledMigration } from "./define-migration";
 import {
   type AlterFieldContext,
@@ -215,11 +216,8 @@ function applyOp(block: AnyBlock, op: MigrationOp): string | undefined {
       // The callback works on a copy, so a refused result leaves the block as it was.
       const draft = structuredClone(block);
       const returned = op.fn(draft as never);
-      const next =
-        typeof returned === "object" && returned !== null
-          ? (returned as Record<string, unknown>)
-          : draft;
-      if (next._uid !== block._uid || typeof next.component !== "string") {
+      const next = returned === undefined ? draft : returned;
+      if (!isRecord(next) || next._uid !== block._uid || typeof next.component !== "string") {
         return "`alterBlock` has to return the whole block with its `_uid` and `component`; spread the block it receives into the result.";
       }
       for (const key of Object.keys(block)) {

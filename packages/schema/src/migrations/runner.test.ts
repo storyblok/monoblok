@@ -4,7 +4,7 @@
  * whole-story snapshot restore does not.
  */
 import { describe, expect, it } from "vitest";
-import { applyPatches, indexBlocks } from "./patch";
+import { type AnyBlock, applyPatches, indexBlocks } from "./patch";
 import { runMigrationOnStory } from "./runner";
 import { defineMigration } from "./define-migration";
 import {
@@ -51,7 +51,7 @@ const schemaLike = { blocks: Object.values(fixtureSchema.blocks) };
 /** A bare schema shape: these tests exercise the runner, not schema inference. */
 type TestSchema = SchemaShape;
 
-function block(content: unknown, uid: string): Record<string, unknown> {
+function block(content: unknown, uid: string): AnyBlock {
   const found = indexBlocks(content).get(uid);
   if (!found) throw new Error(`no block ${uid}`);
   return found;
@@ -77,8 +77,9 @@ describe("rename", () => {
 
     // meta appears at depth 2 (page.body), 3 (section.meta) and 4 (card.meta).
     for (const uid of ["meta-top", "meta-a", "meta-a1", "meta-b1"]) {
-      expect(block(run.content, uid)).toHaveProperty("written_by");
-      expect(block(run.content, uid)).not.toHaveProperty("author");
+      const meta = block(run.content, uid);
+      expect(meta).toHaveProperty("written_by");
+      expect(meta).not.toHaveProperty("author");
     }
     expect(run.matched).toBe(4);
 
@@ -488,7 +489,7 @@ describe("reorder", () => {
   it("should roll the order back while preserving an edit to a reordered child", () => {
     const run = runMigrationOnStory(reorderItems, pageStoryContent());
     const live = structuredClone(run.content);
-    (block(live, "card-a1") as Record<string, unknown>).title = "Edited after the migration";
+    block(live, "card-a1").title = "Edited after the migration";
 
     const result = applyPatches(live, run.inverse);
 
@@ -501,7 +502,7 @@ describe("reorder", () => {
   it("should leave a list an editor already put back in its original order alone", () => {
     const run = runMigrationOnStory(reorderItems, pageStoryContent());
     const live = structuredClone(run.content);
-    const section = block(live, "section-a") as Record<string, unknown>;
+    const section = block(live, "section-a");
     section.items = (section.items as unknown[]).slice().reverse();
 
     const result = applyPatches(live, run.inverse);
@@ -513,7 +514,7 @@ describe("reorder", () => {
   it("should keep a block the patch does not know about in its live slot", () => {
     const run = runMigrationOnStory(reorderItems, pageStoryContent());
     const live = structuredClone(run.content);
-    const section = block(live, "section-a") as Record<string, unknown>;
+    const section = block(live, "section-a");
     (section.items as unknown[]).push({ _uid: "card-new", component: "card", title: "New" });
 
     const result = applyPatches(live, run.inverse);
@@ -610,7 +611,7 @@ describe("reorderField context", () => {
 describe("transport-only keys", () => {
   it("should ignore the delivery API's _editable when diffing", () => {
     const content = pageStoryContent();
-    const withEditable = structuredClone(content) as Record<string, unknown>;
+    const withEditable = structuredClone(content);
     for (const instance of indexBlocks(withEditable).values()) {
       instance._editable = `<!--#storyblok#{"uid": "${instance._uid}"}-->`;
     }
@@ -628,7 +629,7 @@ describe("conflict granularity", () => {
   it("should skip a renamed block whole rather than leave it holding both names", () => {
     const run = runMigrationOnStory(renameNestedField, pageStoryContent());
     const live = structuredClone(run.content);
-    (block(live, "meta-b1") as Record<string, unknown>).written_by = "Edited after the migration";
+    block(live, "meta-b1").written_by = "Edited after the migration";
 
     const result = applyPatches(live, run.inverse);
 

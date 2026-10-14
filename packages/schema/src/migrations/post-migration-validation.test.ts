@@ -6,7 +6,7 @@
  * damage.
  */
 import { describe, expect, it } from "vitest";
-import { validateStory } from "../index";
+import { type SchemaLike, validateStory } from "../index";
 import { fixtureSchema } from "./__fixtures__/schema";
 import {
   afterCoerceCardTypes,
@@ -23,11 +23,8 @@ import {
   renameNestedField,
 } from "./__fixtures__/migrations";
 
-const asSchemaLike = (schema: { blocks: Record<string, unknown> }) =>
-  ({ blocks: Object.values(schema.blocks) }) as never;
-
-const issuesFor = (content: unknown, schema: { blocks: Record<string, unknown> }) =>
-  validateStory({ content } as never, asSchemaLike(schema)).issues.map(
+const issuesFor = (content: unknown, schema: SchemaLike) =>
+  validateStory({ content }, schema).issues.map(
     (issue) => `${issue.severity}:${issue.path.join(".")}`,
   );
 

@@ -8,7 +8,6 @@ import {
   type AlterFieldContext,
   type AnyChild,
   type CoercionTarget,
-  type ExpandBlockOp,
   isKeyOp,
   type MigrationOp,
   type ReorderContext,
@@ -393,7 +392,7 @@ function comparableKeys(block: AnyBlock): Record<string, unknown> {
   return Object.fromEntries(Object.entries(block).filter(([key]) => key !== "_editable"));
 }
 
-type ScopedOp = { op: MigrationOp; index: number };
+type ScopedExpansion = { op: Extract<MigrationOp, { kind: "expandBlock" }>; index: number };
 
 /**
  * `expandBlock` is the one op that changes a block's siblings rather than the
@@ -409,7 +408,7 @@ type ScopedOp = { op: MigrationOp; index: number };
  */
 function expandBlocks(
   value: unknown,
-  ops: readonly ScopedOp[],
+  ops: readonly ScopedExpansion[],
   chain: readonly string[],
   report: PassReport,
 ): unknown {
@@ -432,7 +431,7 @@ function expandBlocks(
       report.matched.add(item._uid);
       let produced: unknown[];
       try {
-        produced = [...(match.op as ExpandBlockOp<never, never>).fn(item as never)];
+        produced = [...match.op.fn(item as never)];
       } catch (error) {
         report.refusedOps.push({ uid: item._uid, op: match.index, reason: thrown(error) });
         out.push(item);
@@ -521,9 +520,7 @@ function runPass(content: unknown, ops: readonly MigrationOp[]): PassReport {
     }
   });
 
-  const expansions = ops
-    .map((op, index) => ({ op, index }))
-    .filter(({ op }) => op.kind === "expandBlock");
+  const expansions = ops.flatMap((op, index) => (op.kind === "expandBlock" ? [{ op, index }] : []));
   if (expansions.length > 0) expandBlocks(content, expansions, [], report);
 
   return report;

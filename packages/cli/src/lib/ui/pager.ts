@@ -2,13 +2,13 @@ import { spawn } from "node:child_process";
 
 const PAGER = "less";
 /**
- * The flags `git` and `gh` give `less`: quit if the text fits one screen (F),
+ * The flags `git` defaults `LESS` to: quit if the text fits one screen (F),
  * pass colors through (R), and leave the text on screen after quitting (X).
  *
- * Passed as arguments rather than as `LESS` when it is unset, the way `git`
- * does it, because a common shell setup exports `LESS=-R`, which would drop
- * `-F` and hold even a three-row table in the pager. `less` reads `LESS` first
- * and the arguments after, so a reader's own options, `-S` included, still apply.
+ * Passed as arguments, where `git` only sets `LESS=FRX` when `LESS` is unset,
+ * because a common shell setup exports `LESS=-R`, which would drop `-F` and
+ * hold even a three-row table in the pager. `less` reads `LESS` first and the
+ * arguments after, so a reader's own options, `-S` included, still apply.
  */
 const PAGER_ARGS = ["-FRX"];
 
@@ -19,6 +19,28 @@ const writeStdout = (text: string): void => {
 };
 
 /**
+ * Whether a pager may run at all. `PAGER` empty or `cat` turns it off, the
+ * switch `git` and `gh` already taught; a harness that allocates a terminal
+ * nobody reads (`script`, `docker run -t`, an agent) would otherwise hang at
+ * the pager prompt. CI never has a person at the terminal either.
+ *
+ * Never on Windows: a bare command name resolves against the current
+ * directory before `PATH` there, so a repository that commits a `less.exe`
+ * would run it. Most Windows machines have no `less` in any case.
+ */
+function canPage(): boolean {
+  const { PAGER, TERM, CI } = process.env;
+  return (
+    process.stdout.isTTY === true &&
+    process.platform !== "win32" &&
+    TERM !== "dumb" &&
+    !CI &&
+    PAGER?.trim() !== "" &&
+    PAGER?.trim() !== "cat"
+  );
+}
+
+/**
  * Prints text to stdout, through a pager when stdout is a terminal.
  *
  * A pager rather than an interactive list: it gives scrolling and search for
@@ -26,12 +48,12 @@ const writeStdout = (text: string): void => {
  * nothing to maintain here. The pager decides whether the text fits the screen
  * (`-F`), because only it knows how many lines a long row wraps onto.
  *
- * Printed directly instead where no pager can run: a missing `less`, as on most
- * Windows machines, and a `dumb` terminal (Emacs `M-x shell`), where `less`
+ * Printed directly instead where no pager can run or should (`canPage`): a
+ * missing `less`, and a `dumb` terminal (Emacs `M-x shell`), where `less`
  * stops at a warning and quitting it never shows the text.
  */
 export async function page(text: string): Promise<void> {
-  if (process.stdout.isTTY !== true || process.env.TERM === "dumb") {
+  if (!canPage()) {
     writeStdout(text);
     return;
   }

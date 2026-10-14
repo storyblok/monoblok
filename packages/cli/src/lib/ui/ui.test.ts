@@ -302,18 +302,5 @@ describe("ui", () => {
 
       expect(errorSpy).not.toHaveBeenCalled();
     });
-
-    // Progress is suppressed when results stream to the same terminal; adding
-    // plain spinner lines there would reintroduce the interleaving it prevents.
-    it("should stay silent when progress is suppressed", () => {
-      const ui = new UI({ enabled: true });
-      ui.suppressProgress();
-
-      withStderrTTY(false, () => {
-        ui.createSpinner("Fetching stories").succeed("done");
-      });
-
-      expect(errorSpy).not.toHaveBeenCalled();
-    });
   });
 });

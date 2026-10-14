@@ -261,6 +261,11 @@ describe("formatDuration", () => {
   it("should read in seconds from a second on", () => {
     expect(formatDuration(12_340)).toBe("12.3s");
   });
+
+  // Otherwise the row above a "1.0s" row would read "1000ms".
+  it("should read a duration that rounds to a second in seconds", () => {
+    expect(formatDuration(999.5)).toBe("1.0s");
+  });
 });
 
 describe("toPhaseSummary", () => {

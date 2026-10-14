@@ -127,10 +127,23 @@ JSONL contract above; on a terminal, the progress stays up, each match is reduce
 one row (`id`, `name`, `full_slug`), and a table is printed once the run ends. Only the cells are
 held, so memory stays small whatever the result set. The table goes through `less -FRX`, which gives
 scrolling and search without the CLI owning any interactive UI, and `-F` decides whether the table
-fits the screen, since only the pager knows how many lines a wrapped row takes. The flags are
-arguments rather than a default for an unset `LESS`, as in `git`, because a common shell setup
-exports `LESS=-R`, which would drop `-F` and page even a three-row table. A `dumb` terminal, or one
-without `less`, gets the table printed directly.
+fits the screen, since only the pager knows how many lines a wrapped row takes.
+
+This departs from `git` and `gh` on purpose. `git` sets `LESS=FRX` only when `LESS` is unset, and
+`gh` pages only when a pager is configured. The CLI passes `-FRX` as arguments instead, because a
+common shell setup exports `LESS=-R`, which would drop `-F` and page even a three-row table; `less`
+applies the arguments after `LESS`, so a reader's own options still hold. It pages by default
+because a person at a terminal is the only reader the table has.
+
+The pager is skipped where it cannot run or nobody reads it: a `dumb` terminal, a missing `less`,
+Windows (a bare command name resolves against the current directory before `PATH` there, so a
+repository could ship its own `less.exe`), a set `CI`, and `PAGER` empty or `cat`. The last is the
+switch `git` and `gh` already taught, and it is what a harness that allocates a terminal nobody
+reads (`script`, `docker run -t`, an agent) needs to keep from hanging at the pager prompt.
+
+The table is for people and may change between releases. JSONL is the only output contract, and a
+script that needs the results reads it, by piping the output, even when it runs under a pseudo
+terminal.
 
 `output.ts` owns the choice (`createResultOutput`): both outputs share one sink, so `--limit` and an
 early stop behave the same in either. Interrupting the run with Ctrl+C is the exception: JSONL has
@@ -150,9 +163,9 @@ already written the matches found so far, while the table, printed only at the e
   (`| head -5`) would be unreachable.
 - **An interactive list on a terminal** (arrow keys, selection). Rejected: it is a TUI to build and
   maintain for what a pager already does, and selecting a story has no action to hand it to yet.
-- **A configurable pager** (`PAGER`, `STORYBLOK_PAGER`, or a config option). Not added: no other CLI
-  behavior is configured through the environment, and nothing yet asks for a pager other than
-  `less`. If one does, it belongs in the global `ui` config next to `ui.enabled`.
+- **A configurable pager** (`PAGER` naming the command, `STORYBLOK_PAGER`, or a config option). Not
+  added: nothing yet asks for a pager other than `less`, and `PAGER` is honored only as the off
+  switch. If another pager is needed, it belongs in the global `ui` config next to `ui.enabled`.
 - **A flag to choose the format** (`--format table|jsonl`). Not added: piping through `cat` already
   gets JSONL on a terminal, and the default follows the reader without one.
 - **Keeping the pipe code in `lib/ui`.** Rejected: none of it is about terminal presentation, and

@@ -30,6 +30,8 @@ const EMOJI = /\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F|\p{Regiona
 const WIDE =
   /^[\u1100-\u115F\u2E80-\u303E\u3041-\u33FF\u3400-\u4DBF\u4E00-\u9FFF\uA000-\uA4CF\uA960-\uA97F\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{1B000}-\u{1B2FF}\u{20000}-\u{3FFFD}]/u;
 
+const PRINTABLE_ASCII = /^[\x20-\x7e]*$/;
+
 /** How many terminal columns one grapheme takes: 0, 1, or 2. */
 function graphemeWidth(grapheme: string): number {
   if (ZERO_WIDTH.test(grapheme)) {
@@ -44,6 +46,11 @@ function graphemeWidth(grapheme: string): number {
  * code point count (an ideograph takes two columns).
  */
 function textWidth(text: string): number {
+  // Printable ASCII is one column per character, and it is nearly every cell:
+  // skipping segmentation for it is what keeps a large table fast to render.
+  if (PRINTABLE_ASCII.test(text)) {
+    return text.length;
+  }
   let width = 0;
   for (const { segment } of graphemes.segment(text)) {
     width += graphemeWidth(segment);
@@ -77,11 +84,14 @@ function truncate(text: string, width: number): string {
  * Makes a cell safe to print. Cells come from story data: a newline or tab
  * would break the layout, and a control character would reach the terminal as
  * a command (an escape sequence can recolor, move the cursor over another row,
- * or set the window title), so it is shown as `�` instead.
+ * or set the window title), so it is shown as `�` instead. So is a bidi
+ * control, which would reverse the rest of its row, slug and id included.
  */
 const sanitize = (cell: string): string =>
-  // oxlint-disable-next-line no-control-regex -- matching control characters is the point.
-  cell.replace(/\s+/g, " ").replace(/[\u0000-\u001f\u007f-\u009f]/g, "\uFFFD");
+  cell
+    .replace(/\s+/g, " ")
+    // oxlint-disable-next-line no-control-regex -- matching control characters is the point.
+    .replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, "\uFFFD");
 
 /**
  * Lays rows out as aligned columns, `gh issue list` style: an upper-case bold

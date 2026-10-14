@@ -55,6 +55,13 @@ describe("renderTable", () => {
     expect(table.split("\n")[1]).toBe("1   Evil\uFFFD]0;PWNED\uFFFD  \uFFFD[31mhome");
   });
 
+  // U+202E would reverse the rest of the row, slug included.
+  it("should show bidi controls instead of letting them reorder the row", () => {
+    const table = renderTable({ columns, rows: [["1", "Evil‮enil", "home⁦"]] });
+
+    expect(table.split("\n")[1]).toBe("1   Evil�enil  home�");
+  });
+
   it("should align wide characters by terminal columns", () => {
     const lines = render([
       ["1", "日本語", "ja"],

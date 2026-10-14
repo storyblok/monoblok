@@ -439,8 +439,13 @@ ID         NAME              FULL SLUG
 123456790  Trail shoes       en/products/trail-shoes
 ```
 
-A table taller than the terminal opens in `less`, so you can scroll and search it. Where `less` is
-not installed, the table is printed as is.
+A table taller than the terminal opens in `less`, so you can scroll and search it. The table is
+printed as is where `less` is not installed, on Windows, when `CI` is set, and when `PAGER` is empty
+or `cat`. Set `PAGER=cat` to turn the pager off, for example in a script that runs under a pseudo
+terminal.
+
+The table is for reading and may change between releases. Scripts should read JSONL, which is the
+only stable output format.
 
 To get JSONL in a terminal, pipe the output through another command, such as `| jq .` to read
 complete story objects or `| cat` to print them as they are.

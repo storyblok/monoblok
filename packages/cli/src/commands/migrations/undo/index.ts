@@ -185,15 +185,19 @@ undoCmd.action(async (_options: unknown, command: Command) => {
       `Undid ${plural(restored.size, "story", "stories")}${partly > 0 ? ` (${partly} partly)` : ""} of run ${chalk.bold(id)}${tally.map((part) => `; ${part}`).join("")}.`,
     );
 
+    // Blocks left in place keep the run open, so `undo --force` without --run
+    // still reaches them.
+    const complete = failed === 0 && (outcome.conflicts.length === 0 || force);
+    const now = new Date().toISOString();
+    if (complete) {
+      await journal.record({ ...plan.run, undoneAt: now }, plan.inverse);
+    } else if (restored.size > 0) {
+      await journal.record({ ...plan.run, partlyUndoneAt: now }, plan.inverse);
+    }
     if (failed > 0) {
       throw new CommandError(
         `${plural(failed, "story", "stories")} could not be undone. See the warnings above, then run the undo again with --run ${id}.`,
       );
-    }
-    // Blocks left in place keep the run open, so `undo --force` without --run
-    // still reaches them.
-    if (outcome.conflicts.length === 0 || force) {
-      await journal.record({ ...plan.run, undoneAt: new Date().toISOString() }, plan.inverse);
     }
   } catch (maybeError) {
     handleError(toMigrationCommandError(maybeError), verbose);

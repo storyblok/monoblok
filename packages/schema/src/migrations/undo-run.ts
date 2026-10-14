@@ -102,7 +102,7 @@ export type UndoWrite = {
 export type ConflictingBlock = {
   uid: string;
   component: string;
-  /** The fields edited since the run, by their names after the run. */
+  /** The fields changed since the run, by their names after the run. */
   fields: string[];
 };
 

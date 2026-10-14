@@ -64,8 +64,11 @@ export interface PhaseTracker {
 }
 
 /** Renders a duration for the run summary: milliseconds under a second, seconds above. */
-export const formatDuration = (ms: number): string =>
-  ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+export const formatDuration = (ms: number): string => {
+  // Rounded before the unit is picked, so 999.5ms reads as 1.0s, not 1000ms.
+  const rounded = Math.round(ms);
+  return rounded < 1000 ? `${rounded}ms` : `${(ms / 1000).toFixed(1)}s`;
+};
 
 /**
  * Projects a phase's counts into the shape the run report uses.

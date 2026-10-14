@@ -219,6 +219,11 @@ export async function runCheckReferences({
   } finally {
     tracker.stop();
     output.close();
+    // Taken before the flush, which on a terminal lasts as long as someone
+    // reads the table in the pager.
+    const elapsedMs = tracker.elapsedMs();
+    const timings = tracker.timings();
+    const resolveMs = resolveStartedAt === undefined ? 0 : performance.now() - resolveStartedAt;
     await output.flush();
 
     // Counted at the sink, so a story decided while an early stop tears the
@@ -231,7 +236,7 @@ export async function runCheckReferences({
     ui.br();
     for (const line of renderRunSummary({
       headline: `Found ${storiesCount(matched)} with reference issues`,
-      duration: formatDuration(tracker.elapsedMs()),
+      duration: formatDuration(elapsedMs),
       failed: list.failed > 0,
       qualifier: list.failed > 0 ? "incomplete, part of the space could not be listed" : undefined,
       stages: [
@@ -259,9 +264,7 @@ export async function runCheckReferences({
         {
           label: "Resolving targets",
           result: `${externalTargets} external`,
-          duration: formatDuration(
-            resolveStartedAt === undefined ? 0 : performance.now() - resolveStartedAt,
-          ),
+          duration: formatDuration(resolveMs),
         },
       ],
     })) {
@@ -287,8 +290,7 @@ export async function runCheckReferences({
       );
     }
 
-    const timings = tracker.timings();
-    reporter.addMeta("phaseTimingsMs", { ...timings, total: tracker.elapsedMs() });
+    reporter.addMeta("phaseTimingsMs", { ...timings, total: elapsedMs });
     logger.info("Reference check finished", {
       list,
       capiFilter,

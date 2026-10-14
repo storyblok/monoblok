@@ -81,6 +81,10 @@ export async function runFind({
   } finally {
     tracker.stop();
     output.close();
+    // Taken before the flush, which on a terminal lasts as long as someone
+    // reads the table in the pager.
+    const elapsedMs = tracker.elapsedMs();
+    const timings = tracker.timings();
     // On a terminal the results are a table printed once the bars are down,
     // ahead of the summary so the summary is the last thing on screen.
     await output.flush();
@@ -92,6 +96,7 @@ export async function runFind({
     ui.br();
     for (const line of findSummary({
       results: output.written,
+      elapsedMs,
       tracker,
       filters,
       skipContent,
@@ -150,7 +155,6 @@ export async function runFind({
       }
     }
 
-    const timings = tracker.timings();
     logger.info("Finding stories finished", {
       list,
       capiFilter,
@@ -160,7 +164,7 @@ export async function runFind({
       skipContent,
       capi: !!capi,
     });
-    reporter.addMeta("phaseTimingsMs", { ...timings, total: tracker.elapsedMs() });
+    reporter.addMeta("phaseTimingsMs", { ...timings, total: elapsedMs });
     reporter.addSummary("listStoriesResults", toPhaseSummary(list));
     if (capi) {
       // `succeeded` is what survived to a MAPI fetch, `skipped` what the

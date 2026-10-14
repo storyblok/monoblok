@@ -60,6 +60,48 @@ describe("page", () => {
     expect(childProcess.spawn).not.toHaveBeenCalled();
   });
 
+  // A terminal nobody reads (`script`, `docker run -t`, an agent) would
+  // otherwise hang at the pager prompt.
+  it.each([
+    ["PAGER is cat", { PAGER: "cat" }],
+    ["PAGER is empty", { PAGER: "" }],
+    ["CI is set", { CI: "true" }],
+  ])("should print directly when %s", async (_case, env) => {
+    restore = setStdout({ isTTY: true });
+    vi.stubEnv("TERM", "xterm-256color");
+    vi.stubEnv("CI", "");
+    vi.stubEnv("PAGER", "less");
+    for (const [key, value] of Object.entries(env)) {
+      vi.stubEnv(key, value);
+    }
+
+    await page(tallText);
+
+    expect(written).toEqual([`${tallText}\n`]);
+    expect(childProcess.spawn).not.toHaveBeenCalled();
+  });
+
+  // A bare `less` resolves against the current directory first on Windows.
+  it("should print directly on Windows", async () => {
+    restore = setStdout({ isTTY: true });
+    vi.stubEnv("TERM", "xterm-256color");
+    vi.stubEnv("CI", "");
+    vi.stubEnv("PAGER", "less");
+    const platform = Object.getOwnPropertyDescriptor(process, "platform");
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+
+    try {
+      await page(tallText);
+    } finally {
+      if (platform) {
+        Object.defineProperty(process, "platform", platform);
+      }
+    }
+
+    expect(written).toEqual([`${tallText}\n`]);
+    expect(childProcess.spawn).not.toHaveBeenCalled();
+  });
+
   it("should print directly when stdout is not a terminal", async () => {
     restore = setStdout({ isTTY: false });
 
@@ -72,6 +114,8 @@ describe("page", () => {
   it("should fall back to printing when the pager cannot be started", async () => {
     restore = setStdout({ isTTY: true });
     vi.stubEnv("TERM", "xterm-256color");
+    vi.stubEnv("CI", "");
+    vi.stubEnv("PAGER", "less");
     const { spawn } = await vi.importActual<typeof childProcess>("node:child_process");
     vi.mocked(childProcess.spawn).mockImplementationOnce((_command, args, options) =>
       spawn("storyblok-no-such-pager", args, options),

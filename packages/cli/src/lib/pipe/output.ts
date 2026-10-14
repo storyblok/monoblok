@@ -163,10 +163,8 @@ function createOutput<T>({
 /**
  * Creates a JSONL writer over stdout.
  *
- * Lines go out as they are produced. When stdout is a terminal the data lands on
- * the same screen as the progress bars, so the bars are dropped for the run; the
- * summary and warnings on stderr stay. A command that prints to a terminal
- * should prefer {@link createResultOutput}, which renders a table there instead.
+ * Lines go out as they are produced. A command whose stdout may be a terminal
+ * should use {@link createResultOutput}, which renders a table there instead.
  */
 export function createJsonlOutput({
   write,
@@ -196,10 +194,6 @@ export function createJsonlOutput({
           waitForDrain: async () => {},
         }
       : stdoutLineWriter(ui));
-
-  if (process.stdout.isTTY === true) {
-    ui.suppressProgress();
-  }
 
   return createOutput<unknown>({
     limit,

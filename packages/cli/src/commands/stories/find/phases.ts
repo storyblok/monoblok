@@ -94,6 +94,7 @@ export const storiesCount = (count: number): string =>
  */
 export function findSummary({
   results,
+  elapsedMs,
   tracker,
   filters,
   skipContent,
@@ -101,6 +102,8 @@ export function findSummary({
 }: {
   /** Lines actually written, which is what a reader of stdout received. */
   results: number;
+  /** The run's time, taken before the results were shown, so reading them is not counted. */
+  elapsedMs: number;
   tracker: PhaseTracker;
   filters: ClientFilter[];
   skipContent: boolean;
@@ -148,7 +151,7 @@ export function findSummary({
 
   return renderRunSummary({
     headline: `Found ${storiesCount(results)}`,
-    duration: formatDuration(tracker.elapsedMs()),
+    duration: formatDuration(elapsedMs),
     // A failed listing page means part of the scope was never seen.
     failed: list.failed > 0,
     qualifier:

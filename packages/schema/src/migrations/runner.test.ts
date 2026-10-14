@@ -971,6 +971,24 @@ describe("a rename onto an occupied target", () => {
   });
 });
 
+describe("under that is not block names", () => {
+  it.each([
+    ["a number", 42],
+    ["a list holding a non-string", ["card", 42]],
+  ])("should be reported by validateMigration when it is %s", (_, under) => {
+    const malformed = {
+      ops: [{ kind: "alterBlock", block: "meta", fn: () => undefined, under }],
+      targets: ["meta"],
+    } as unknown as Parameters<typeof validateMigration>[0];
+
+    const issues = validateMigration(malformed, schemaLike);
+
+    expect(issues.map((issue) => issue.message)).toEqual([
+      "`under` has to be a block name or a list of block names.",
+    ]);
+  });
+});
+
 describe("under smuggled onto a key op", () => {
   it("should be reported by validateMigration when it reached the op anyway", () => {
     // The type system rejects it, including through a spread or a hoisted spec.

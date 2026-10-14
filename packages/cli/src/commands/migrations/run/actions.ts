@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { importModule, resolvePath } from "../../../utils/filesystem";
 import { FileSystemError, toError } from "../../../utils/error";
+import { isRecord } from "../../../utils";
 import { join } from "pathe";
 import { ERROR_CODES, type MigrationFile, type ReadMigrationFilesOptions } from "./constants";
 import { migrationFilterMatches, migrationTargetsComponent } from "../migration-filename";
@@ -64,7 +65,13 @@ export async function getMigrationFunction(
       return migrationModule.default;
     }
 
-    getUI().error(`Migration file "${fileName}" does not export a default function.`);
+    const contentMigration =
+      isRecord(migrationModule.default) && Array.isArray(migrationModule.default.ops);
+    getUI().error(
+      contentMigration
+        ? `Migration file "${fileName}" is a content migration. Apply it with "storyblok migrations apply".`
+        : `Migration file "${fileName}" does not export a default function.`,
+    );
     getLogger().error("Migration file does not export a default function", {
       fileName,
       errorCode: ERROR_CODES.MIGRATION_FILE_NO_DEFAULT_EXPORT,

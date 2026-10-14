@@ -82,7 +82,8 @@ that changed, and removes it when none did. The journal writes its own `.gitigno
 stay local. A rerun of a migration that already applied changes nothing and records nothing.
 
 Write content migrations as `.ts` files. [`migrations run`](/docs/tooling/cli/migrations-run) also
-loads every `.js` file in the same directory and reports a `.js` content migration as an error.
+loads every `.js` file in the same directory and reports a `.js` content migration as an error that
+points to `migrations apply`.
 
 ## Schema check
 

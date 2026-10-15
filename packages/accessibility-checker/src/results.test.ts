@@ -28,7 +28,7 @@ afterEach(() => {
 
 describe("buildResult", () => {
   it("should map axe outcomes to buckets with one finding per element", () => {
-    const { result } = buildResult(
+    const result = buildResult(
       {
         violations: [
           rule("image-alt", ["cat.text-alternatives"], "critical", [
@@ -54,7 +54,7 @@ describe("buildResult", () => {
   });
 
   it("should order categories for display, drop empty ones, and fall back to other", () => {
-    const { result } = buildResult(
+    const result = buildResult(
       {
         violations: [
           rule("no-category", ["wcag2a"], "minor", [{ html: "<div>" }]),
@@ -72,7 +72,7 @@ describe("buildResult", () => {
   });
 
   it("should truncate html and omit severity for passed findings or a null impact", () => {
-    const { result } = buildResult(
+    const result = buildResult(
       {
         violations: [rule("long", ["cat.aria"], null, [{ html: `<p>${"a".repeat(300)}</p>` }])],
         incomplete: [],
@@ -97,7 +97,7 @@ describe("buildResult", () => {
     const inBlock = document.querySelector<HTMLElement>("#in-block") ?? undefined;
     const outside = document.querySelector<HTMLElement>("#outside") ?? undefined;
 
-    const { result, elements } = buildResult(
+    const result = buildResult(
       {
         violations: [
           rule("image-alt", ["cat.text-alternatives"], "critical", [
@@ -114,6 +114,5 @@ describe("buildResult", () => {
 
     expect(first?.element).toEqual({ html: "<img>", blockUid: "abc", componentName: "hero" });
     expect(second?.element).toEqual({ html: "<img>" });
-    expect(elements.get("violations-image-alt-0")).toBe(inBlock);
   });
 });

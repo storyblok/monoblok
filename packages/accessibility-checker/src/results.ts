@@ -68,12 +68,6 @@ function toFinding(
   };
 }
 
-export type CheckOutput = {
-  result: AccessibilityCheckResult;
-  /** Element of each finding, for highlight requests. */
-  elements: Map<string, Element>;
-};
-
 /**
  * Converts axe results into the result the A11y tab renders: one finding per
  * element, grouped by the rule's `cat.*` tag, in display order.
@@ -81,9 +75,8 @@ export type CheckOutput = {
 export function buildResult(
   results: Pick<AxeResults, "violations" | "incomplete" | "passes">,
   url: string,
-): CheckOutput {
+): AccessibilityCheckResult {
   const categories = new Map<AccessibilityCategoryId, AccessibilityCategory>();
-  const elements = new Map<string, Element>();
   const counts = { violations: 0, warnings: 0, passed: 0 };
 
   const collect = (rules: Result[], status: AccessibilityFindingStatus): void => {
@@ -100,9 +93,6 @@ export function buildResult(
         const finding = toFinding(rule, node, status, index);
         category.findings[status].push(finding);
         counts[status] += 1;
-        if (node.element) {
-          elements.set(finding.id, node.element);
-        }
       });
     }
   };
@@ -113,13 +103,10 @@ export function buildResult(
   collect(results.passes, "passed");
 
   return {
-    result: {
-      checkedAt: new Date().toISOString(),
-      url,
-      totalChecks: counts.violations + counts.warnings + counts.passed,
-      counts,
-      categories: CATEGORIES.flatMap((id) => categories.get(id) ?? []),
-    },
-    elements,
+    checkedAt: new Date().toISOString(),
+    url,
+    totalChecks: counts.violations + counts.warnings + counts.passed,
+    counts,
+    categories: CATEGORIES.flatMap((id) => categories.get(id) ?? []),
   };
 }

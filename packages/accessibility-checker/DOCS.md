@@ -49,18 +49,7 @@ else, including on the server, it does nothing. axe-core is bundled with your we
 chunk and loaded only when the Visual Editor requests the first check.
 
 `enable()` and `disable()` are safe to call repeatedly. Enabling a checker disables any other
-checker on the page. `disable()` removes the message listener and the highlight.
-
-In Nuxt, for example, enable the checker in a client-only plugin:
-
-```ts
-// plugins/accessibility-checker.client.ts
-import { createAccessibilityChecker } from "@storyblok/accessibility-checker";
-
-export default defineNuxtPlugin(() => {
-  createAccessibilityChecker({ ruleTags: ["wcag2a", "wcag2aa"] }).enable();
-});
-```
+checker on the page. `disable()` removes the message listener.
 
 <!-- target: src/content/docs/docs/libraries/js/accessibility-checker/index.mdx#options -->
 
@@ -91,15 +80,13 @@ result types.
 | editor → page | `accessibilityCheck`       | `requestId`                                                                         |
 | page → editor | `accessibilityCheckResult` | `requestId`, `protocolVersion`, `result`                                            |
 | page → editor | `accessibilityCheckError`  | `requestId`, `protocolVersion`, `error.code`: `check-failed` or `check-in-progress` |
-| editor → page | `accessibilityHighlight`   | `findingId`, or `null` to clear the highlight                                       |
 
 - `accessibilityReady` is sent on every `enable()`, when the parent origin can be determined and is
   allowed.
 - A request without a string `requestId` is ignored.
-- Only one check runs at a time. Starting a check clears the current highlight.
+- Only one check runs at a time.
 - A check that is still running when the checker is disabled never gets a reply, so the editor needs
   its own timeout.
-- A highlight request for an unknown finding or a removed element clears the current highlight.
 
 <!-- target: src/content/docs/docs/libraries/js/accessibility-checker/index.mdx#result -->
 

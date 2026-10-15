@@ -2,7 +2,6 @@ import { isBrowser, isInEditor } from "@storyblok/live-preview";
 import { isEditorOrigin } from "@storyblok/region-helper";
 
 import { version as pluginVersion } from "../package.json";
-import { clearHighlight, highlight } from "./highlight";
 import { buildResult } from "./results";
 import { accessibilityProtocolVersion } from "./types";
 
@@ -109,7 +108,6 @@ function startChecker({
       // `match` instead of `test`: it ignores a `g` or `y` flag's `lastIndex`.
       typeof allowed === "string" ? allowed === origin : origin.match(allowed)?.[0] === origin,
     );
-  let elements = new Map<string, Element>();
   let isDisabled = false;
 
   const onMessage = async (event: MessageEvent): Promise<void> => {
@@ -118,16 +116,6 @@ function startChecker({
       return;
     }
     const { data } = event;
-
-    if (isMessage(data, "accessibilityHighlight")) {
-      // Also for an unknown finding or a removed element, so nothing stale stays outlined.
-      clearHighlight();
-      const element = typeof data.findingId === "string" ? elements.get(data.findingId) : undefined;
-      if (element?.isConnected) {
-        highlight(element);
-      }
-      return;
-    }
 
     if (!isMessage(data, "accessibilityCheck") || typeof data.requestId !== "string") {
       return;
@@ -152,7 +140,6 @@ function startChecker({
     }
 
     shared.isChecking = true;
-    clearHighlight();
     try {
       // Lazy import: axe-core is large and must not load until a check is requested.
       const { default: axe } = await import("axe-core");
@@ -167,9 +154,10 @@ function startChecker({
       if (isDisabled) {
         return;
       }
-      const check = buildResult(results, window.location.href);
-      elements = check.elements;
-      reply({ action: "accessibilityCheckResult", result: check.result });
+      reply({
+        action: "accessibilityCheckResult",
+        result: buildResult(results, window.location.href),
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       reply({ action: "accessibilityCheckError", error: { code: "check-failed", message } });
@@ -193,14 +181,12 @@ function startChecker({
   }
 
   const stop = (): void => {
-    // Idempotent: a stale `stop` must not clear the highlight of a newer checker.
+    // Idempotent, so a stale `stop` cannot affect a newer checker.
     if (isDisabled) {
       return;
     }
     isDisabled = true;
     window.removeEventListener("message", onMessage);
-    clearHighlight();
-    elements = new Map();
     if (shared.stop === stop) {
       shared.stop = undefined;
     }
@@ -216,7 +202,7 @@ export type AccessibilityChecker = {
    * enabled. Replaces any other enabled checker on the page.
    */
   enable: () => void;
-  /** Stops listening and removes the highlight. Safe to call at any time. */
+  /** Stops listening. Safe to call at any time. */
   disable: () => void;
 };
 

@@ -23,9 +23,6 @@ const PAGE = `
   </main>
   <div id="storyblok__overlay"><img src="/bridge-icon.png"></div>`;
 
-const isHighlighted = (element: Element): boolean =>
-  element instanceof HTMLElement && element.style.getPropertyValue("outline") !== "";
-
 describe("createAccessibilityChecker", () => {
   it("should reject an empty list of rule tags", () => {
     expect(() => createAccessibilityChecker({ ruleTags: [] })).toThrow("ruleTags");
@@ -106,15 +103,6 @@ describe("inside the Visual Editor", () => {
     );
   });
 
-  const highlightFirstImage = async (requestId: string): Promise<Element> => {
-    document.body.innerHTML = PAGE;
-    const image = document.querySelector("main img")!;
-    send({ action: "accessibilityCheck", requestId });
-    await waitForReply(requestId);
-    send({ action: "accessibilityHighlight", findingId: "violations-image-alt-0" });
-    return image;
-  };
-
   const repliesTo = (requestId: string): unknown[] =>
     messages().filter(
       (message) =>
@@ -125,15 +113,11 @@ describe("inside the Visual Editor", () => {
     );
   const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 50));
 
-  it("should remove its listener and highlight when disabled, and enable again", async () => {
-    const image = await highlightFirstImage("before-disable");
-    expect(isHighlighted(image)).toBe(true);
-
+  it("should remove its listener when disabled, and enable again", async () => {
     checker.disable();
     send({ action: "accessibilityCheck", requestId: "after-disable" });
     await settle();
 
-    expect(isHighlighted(image)).toBe(false);
     expect(repliesTo("after-disable")).toEqual([]);
 
     checker.enable();
@@ -154,11 +138,13 @@ describe("inside the Visual Editor", () => {
     const older = checker;
     checker = createAccessibilityChecker();
     checker.enable();
-    const image = await highlightFirstImage("newer");
 
     older.disable();
+    send({ action: "accessibilityCheck", requestId: "newer" });
+    await waitForReply("newer");
+    await settle();
 
-    expect(isHighlighted(image)).toBe(true);
+    expect(repliesTo("newer")).toHaveLength(1);
   });
 
   it("should reject a check while a replaced checker's check is still running", async () => {
@@ -307,42 +293,5 @@ describe("inside the Visual Editor", () => {
     await settle();
 
     expect(repliesTo("regex-partial")).toEqual([]);
-  });
-
-  it("should highlight the element of a finding and clear it on null", async () => {
-    document.body.innerHTML = PAGE;
-    const image = document.querySelector("main img")!;
-    image.scrollIntoView = vi.fn();
-    send({ action: "accessibilityCheck", requestId: "r2" });
-    await waitForReply("r2");
-
-    send({ action: "accessibilityHighlight", findingId: "violations-image-alt-0" });
-    expect(isHighlighted(image)).toBe(true);
-    expect(image.scrollIntoView).toHaveBeenCalledWith({ block: "center", behavior: "smooth" });
-
-    send({ action: "accessibilityHighlight", findingId: null });
-    expect(isHighlighted(image)).toBe(false);
-  });
-
-  it("should clear the highlight when the requested finding is unknown", async () => {
-    const image = await highlightFirstImage("unknown-finding");
-    send({ action: "accessibilityHighlight", findingId: "violations-missing-0" });
-
-    expect(isHighlighted(image)).toBe(false);
-  });
-
-  it("should restore the element's own outline when the highlight is cleared", async () => {
-    document.body.innerHTML = PAGE;
-    const image = document.querySelector<HTMLElement>("main img")!;
-    image.style.outline = "1px dashed blue";
-    send({ action: "accessibilityCheck", requestId: "own-outline" });
-    await waitForReply("own-outline");
-
-    send({ action: "accessibilityHighlight", findingId: "violations-image-alt-0" });
-    expect(image.style.outline).toBe("3px solid #ff5630");
-    send({ action: "accessibilityHighlight", findingId: null });
-
-    expect(image.style.outline).toBe("1px dashed blue");
-    expect(image.style.outlineOffset).toBe("");
   });
 });

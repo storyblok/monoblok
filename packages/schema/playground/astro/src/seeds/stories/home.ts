@@ -22,7 +22,7 @@ export function createHomeStory(mediaAsset: Asset): StoryCreate<Blocks, FieldPlu
           headline: "Code-driven content, fully typed.",
           image: null,
           // Typed on write via the registered `storyblok-colorpicker` plugin.
-          accent_color: { plugin: "storyblok-colorpicker", color: "#818cf8" },
+          accent_color: { plugin: "official-colorpicker", color: "#818cf8" },
         },
         {
           component: introBlock.name,

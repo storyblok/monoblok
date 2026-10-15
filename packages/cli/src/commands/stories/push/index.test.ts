@@ -1786,7 +1786,7 @@ describe("stories push command", () => {
           name: "page",
           schema: {
             headline: { type: "text" },
-            color: { type: "custom", field_type: "official-colorpicker" },
+            color: { type: "custom", field_type: "storyblok-colorpicker" },
           },
         }),
       ]);
@@ -1824,8 +1824,8 @@ describe("stories push command", () => {
         makeMockComponent({
           name: "page",
           schema: {
-            color: { type: "custom", field_type: "official-colorpicker" },
-            secondary_color: { type: "custom", field_type: "official-colorpicker" },
+            color: { type: "custom", field_type: "storyblok-colorpicker" },
+            secondary_color: { type: "custom", field_type: "storyblok-colorpicker" },
           },
         }),
       ]);
@@ -1871,7 +1871,7 @@ describe("stories push command", () => {
         }),
         makeMockComponent({
           name: "hero",
-          schema: { bg_color: { type: "custom", field_type: "official-colorpicker" } },
+          schema: { bg_color: { type: "custom", field_type: "storyblok-colorpicker" } },
         }),
       ]);
       const remoteStories = preconditions.canCreateStories([storyA]);

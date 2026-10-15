@@ -2,7 +2,11 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { defineFieldPlugin } from "../helpers/define-field-plugin";
 import { isRecord } from "../utils/is-record";
 
-/** Value stored by Storyblok's official Colorpicker field plugin. */
+/**
+ * Value stored by Storyblok's official Colorpicker field plugin. The editor
+ * writes `plugin: "official-colorpicker"` (not the field type) and stores a
+ * cleared color as `""`.
+ */
 export interface StoryblokColorFieldValue {
   color: string;
 }

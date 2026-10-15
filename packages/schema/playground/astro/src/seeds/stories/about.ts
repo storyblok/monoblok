@@ -20,7 +20,7 @@ export function createAboutStory(mediaAsset: Asset): StoryCreate<Blocks, FieldPl
           headline: "A monorepo playground for Storyblok packages.",
           image: null,
           // Typed on write via the registered `storyblok-colorpicker` plugin.
-          accent_color: { plugin: "storyblok-colorpicker", color: "#34d399" },
+          accent_color: { plugin: "official-colorpicker", color: "#34d399" },
         },
         {
           component: mediaBlock.name,

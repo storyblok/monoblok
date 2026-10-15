@@ -161,7 +161,7 @@ describe("validateStory", () => {
           content: {
             component: "page",
             headline: "Hi",
-            accent: { plugin: "storyblok-colorpicker", _uid: "abc-123", color: "#fff" },
+            accent: { plugin: "official-colorpicker", _uid: "abc-123", color: "#fff" },
           },
         },
         pluginSchema,
@@ -176,7 +176,7 @@ describe("validateStory", () => {
           content: {
             component: "page",
             headline: "Hi",
-            accent: { plugin: "storyblok-colorpicker", _uid: "abc-123", color: 12345 },
+            accent: { plugin: "official-colorpicker", _uid: "abc-123", color: 12345 },
           },
         },
         pluginSchema,
@@ -229,7 +229,7 @@ describe("validateStory", () => {
           content: {
             component: "page",
             headline: "Hi",
-            accent: { plugin: "storyblok-colorpicker", _uid: "not-a-uuid", color: "#fff" },
+            accent: { plugin: "official-colorpicker", _uid: "not-a-uuid", color: "#fff" },
           },
         },
         pluginSchema,
@@ -244,7 +244,7 @@ describe("validateStory", () => {
           content: {
             component: "page",
             headline: "Hi",
-            accent: { plugin: "storyblok-colorpicker", _uid: "abc-123", color: 123 },
+            accent: { plugin: "official-colorpicker", _uid: "abc-123", color: 123 },
           },
         },
         { blocks: { page: pageWithPlugin }, fieldPlugins: { storyblokColorField } },
@@ -271,7 +271,7 @@ describe("validateStory", () => {
           content: {
             component: "page",
             headline: "Hi",
-            accent: { plugin: "storyblok-colorpicker", _uid: "abc-123", color: "x" },
+            accent: { plugin: "official-colorpicker", _uid: "abc-123", color: "x" },
           },
         },
         { blocks: { page: pageWithPlugin }, fieldPlugins: { asyncPlugin } },

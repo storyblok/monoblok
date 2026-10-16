@@ -137,7 +137,6 @@ schemaCommand
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
       const migrationTimestamp = new Date().toISOString();
 
-      /** Writes the migrations for `changes` and returns the files written. */
       const writeMigrations = async (changes: ComponentBreakingChanges[]): Promise<string[]> => {
         if (!options.typed) {
           const files: string[] = [];
@@ -198,7 +197,7 @@ schemaCommand
         );
         if (!pushed) {
           ui.warn(
-            `The push failed after these migration files were written:\n${listed(generated.files)}\nThe space could not be read to tell which blocks were pushed. Keep the ops for the blocks the space now holds, delete the others, then run schema push again.`,
+            `The push failed after these migration files were written:\n${listed(generated.files)}\nThe space could not be read to tell which blocks were pushed. Keep the ops for the blocks the push already updated, delete the rest, then run schema push again.`,
           );
           return;
         }

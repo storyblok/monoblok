@@ -1,0 +1,158 @@
+name: Sync blueprints
+
+# Pushes blueprints/<name>/ to storyblok/<name> after verifying it. See adr/0020.
+
+on:
+  workflow_dispatch:
+    inputs:
+      blueprints:
+        description: "Blueprints to sync: comma-separated folder names under blueprints/, or `all`"
+        required: true
+        default: all
+      repo-suffix:
+        description: "Appended to each target repo name, for example `-temp` for a dry run"
+        required: false
+        default: ""
+  # Lets publish.yaml call this after a successful publish. Not wired up yet.
+  workflow_call:
+    inputs:
+      blueprints:
+        type: string
+        required: false
+        default: all
+      repo-suffix:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  TARGET_OWNER: storyblok
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - id: matrix
+        env:
+          INPUT: ${{ inputs.blueprints }}
+          SUFFIX: ${{ inputs.repo-suffix }}
+        run: |
+          if [ -n "$SUFFIX" ] && ! [[ "$SUFFIX" =~ ^-[a-z0-9-]+$ ]]; then
+            echo "::error::Invalid repo suffix: $SUFFIX"
+            exit 1
+          fi
+          input="${INPUT// /}"
+          if [ "$input" = "all" ]; then
+            names=$(find blueprints -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          else
+            names=$(echo "$input" | tr ',' '\n' | sed '/^$/d' | sort -u)
+          fi
+          if [ -z "$names" ]; then
+            echo "::error::No blueprints selected"
+            exit 1
+          fi
+          for name in $names; do
+            if ! [[ "$name" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || [ ! -d "blueprints/$name" ]; then
+              echo "::error::Unknown blueprint: $name"
+              exit 1
+            fi
+          done
+          echo "matrix=$(echo "$names" | jq -R . | jq -sc '{blueprint: .}')" >> "$GITHUB_OUTPUT"
+
+  # Reviewers on the matrix job's environment would ask once per blueprint; this asks once per run.
+  approve:
+    needs: matrix
+    runs-on: ubuntu-latest
+    environment: blueprint-sync-approval
+    steps:
+      - run: echo "Approved"
+
+  sync:
+    needs: [matrix, approve]
+    runs-on: ubuntu-latest
+    name: sync (${{ matrix.blueprint }})
+    environment: blueprint-sync
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    concurrency:
+      group: sync-blueprint-${{ matrix.blueprint }}${{ inputs.repo-suffix }}
+    env:
+      BLUEPRINT: ${{ matrix.blueprint }}
+      TARGET_REPO: ${{ matrix.blueprint }}${{ inputs.repo-suffix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Scoped to this one target repo. GITHUB_TOKEN cannot reach other repos.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          client-id: ${{ vars.SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ env.TARGET_OWNER }}
+          repositories: ${{ env.TARGET_REPO }}
+          permission-contents: write
+
+      # Not persisted, so install and build scripts cannot read the token from target/.git/config.
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+          path: target
+
+      - uses: ./.github/actions/setup-node
+        with:
+          filter: "@storyblok/blueprint-sync"
+
+      - name: Stage blueprint
+        run: pnpm --filter @storyblok/blueprint-sync stage "$BLUEPRINT" "$GITHUB_WORKSPACE/target"
+
+      - name: Detect changes
+        id: changes
+        working-directory: target
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "**$BLUEPRINT**: $TARGET_OWNER/$TARGET_REPO is up to date, nothing to sync." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --cached --stat
+          fi
+
+      # The same command as a local run.
+      - name: Verify
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          STORYBLOK_DELIVERY_API_TOKEN: ${{ vars.STORYBLOK_DELIVERY_API_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
+        run: pnpm --filter @storyblok/blueprint-sync verify "$BLUEPRINT" "$RUNNER_TEMP/verify"
+
+      - name: Commit and push to main
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: target
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git commit -m "chore: sync (source: $GITHUB_SHA)"
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic $auth" push origin HEAD:main
+          echo "**$BLUEPRINT**: synced to $GITHUB_SERVER_URL/$TARGET_OWNER/$TARGET_REPO/commit/$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"

@@ -12,3 +12,5 @@ README.md
 RELEASING.md
 .gitignore
 nx.json
+# Synced to their own repos as plain npm projects, see adr/0020-sync-blueprints-from-the-monorepo.md.
+blueprints

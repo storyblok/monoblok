@@ -5,6 +5,10 @@ inputs:
     description: Restore/save pnpm and Nx caches
     required: false
     default: "true"
+  filter:
+    description: Install only this workspace project (pnpm `--filter`)
+    required: false
+    default: ""
 runs:
   using: "composite"
   steps:
@@ -31,4 +35,6 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: pnpm install --frozen-lockfile
+      env:
+        FILTER: ${{ inputs.filter }}
+      run: pnpm install --frozen-lockfile ${FILTER:+--filter "$FILTER"}

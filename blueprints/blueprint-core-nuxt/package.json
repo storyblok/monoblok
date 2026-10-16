@@ -1,0 +1,21 @@
+{
+	"name": "blueprint-core-nuxt",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"build": "nuxt build",
+		"dev": "nuxt dev",
+		"generate": "nuxt generate",
+		"preview": "nuxt preview",
+		"postinstall": "nuxt prepare"
+	},
+	"dependencies": {
+		"nuxt": "^4.2.2",
+		"vue": "^3.5.18",
+		"vue-router": "^4.5.1"
+	},
+	"devDependencies": {
+		"@storyblok/nuxt": "workspace:^",
+		"vite-plugin-mkcert": "^1.17.8"
+	}
+}

@@ -68,15 +68,30 @@ export type Before = InferSchema<typeof schema>;
 ```
 
 Keep the snapshot unchanged once the migration ships, so the names the migration reads stay typed
-after later schema changes. Typed against the current `Schema`, a later rename or removal of a field
-the migration writes is a type error in the migration. To freeze the names it writes too, save an
-`.after.ts` snapshot that exports `type After` and call `defineMigration<After, Before>`.
+after later schema changes. The names it writes are typed against the current `Schema`, so a later
+rename or removal of a field the migration writes is a type error in it. Once every space the
+migration targets has applied it, delete the migration and its snapshot, or exclude them from type
+checking.
 
 The Storyblok CLI commands
 [`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
 [`schema push`](/docs/tooling/cli/schema-push#breaking-changes-and-migrations) generate the
-migration with both snapshots: `.before.ts` from the space’s current blocks and `.after.ts` from
-your schema entry file.
+migration and its snapshot from the space’s current blocks.
+
+### Rerun migrations safely
+
+`migrations apply` runs every migration in the directory each time, and the journal that records
+runs stays on the machine that ran them. Write each op so that a second pass changes nothing:
+
+- A callback can meet values it already converted. `Before` types the value as it was before the
+  migration, so check its shape before converting it.
+- Return `undefined` from an `alterField` callback to leave the value unchanged.
+
+```ts
+alterField({ block: "intro", field: "body" }, (body) =>
+  typeof body === "string" ? markdownToRichtext(body) : undefined,
+);
+```
 
 The `@storyblok/schema/codegen` subpath exports the functions that generate these files as source
 strings, `generateSnapshot()` and `generateMigrationSource()`. It is experimental: the generated

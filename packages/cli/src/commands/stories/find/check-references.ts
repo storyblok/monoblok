@@ -237,7 +237,9 @@ export async function runCheckReferences({
     for (const line of renderRunSummary({
       headline: `Found ${storiesCount(matched)} with reference issues`,
       duration: formatDuration(elapsedMs),
-      failed: list.failed > 0,
+      // Whatever exits the run 1 turns the headline red, so it never reads as a
+      // success above a failure.
+      failed: list.failed > 0 || (capi ? capiFilter.failed : content.failed) > 0,
       qualifier: list.failed > 0 ? "incomplete, part of the space could not be listed" : undefined,
       stages: [
         listingSummary(tracker),
@@ -271,8 +273,11 @@ export async function runCheckReferences({
       ui.log(line);
     }
 
+    // A folder has no content anywhere, so checking it without any is no loss.
+    const uncheckedStories = capiFilter.unresolved - capiFilter.unresolvedFolders;
+
     // Printed under the summary, so they are not lost above it.
-    if (earlyExit || (capi && capiFilter.unresolved > 0)) {
+    if (earlyExit || (capi && uncheckedStories > 0)) {
       ui.br();
     }
     if (earlyExit) {
@@ -282,10 +287,10 @@ export async function runCheckReferences({
     // A story the CDN holds no content for is checked with nothing in hand, so
     // it can only ever report "no references". Saying how many keeps a clean
     // report from reading as a clean space.
-    if (capi && capiFilter.unresolved > 0) {
+    if (capi && uncheckedStories > 0) {
       ui.warn(
-        `${capiFilter.unresolved} stor${capiFilter.unresolved === 1 ? "y" : "ies"} had no CDN content ` +
-          "(folders, stories the CDN holds none for, or a failed batch) and were checked without content. " +
+        `${storiesCount(uncheckedStories)} had no CDN content ` +
+          "(stories the CDN holds none for, or a failed batch) and were checked without content. " +
           "Drop --capi-filter to read every story from MAPI instead.",
       );
     }

@@ -1,5 +1,7 @@
 import * as childProcess from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createDefaultResolvedConfig } from "../config/defaults";
+import { resetActiveConfig, setActiveConfig } from "../config/store";
 import { page } from "./pager";
 
 vi.mock("node:child_process", async (importOriginal) => {
@@ -36,6 +38,7 @@ describe("page", () => {
   let written: string[];
 
   beforeEach(() => {
+    vi.mocked(childProcess.spawn).mockClear();
     written = [];
     vi.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
       written.push(String(chunk));
@@ -47,7 +50,24 @@ describe("page", () => {
     restore();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
+    resetActiveConfig();
   });
+
+  /** A terminal the pager would run in, with nothing turning it off. */
+  function onPageableTerminal(): void {
+    restore = setStdout({ isTTY: true });
+    vi.stubEnv("TERM", "xterm-256color");
+    vi.stubEnv("CI", "");
+    vi.stubEnv("PAGER", "less");
+  }
+
+  /** Swaps `less` for another command, so a test controls how the pager exits. */
+  async function pagerRuns(command: string): Promise<void> {
+    const { spawn } = await vi.importActual<typeof childProcess>("node:child_process");
+    vi.mocked(childProcess.spawn).mockImplementationOnce((_command, _args, options) =>
+      spawn(command, [], options),
+    );
+  }
 
   // `less` stops at a warning there, and quitting it never shows the text.
   it("should print directly on a dumb terminal", async () => {
@@ -120,6 +140,40 @@ describe("page", () => {
     vi.mocked(childProcess.spawn).mockImplementationOnce((_command, args, options) =>
       spawn("storyblok-no-such-pager", args, options),
     );
+
+    await page(tallText);
+
+    expect(written).toEqual([`${tallText}\n`]);
+  });
+
+  // A run nobody watches would otherwise hang at the pager prompt.
+  it("should print directly when the UI is disabled", async () => {
+    onPageableTerminal();
+    const config = createDefaultResolvedConfig();
+    config.ui.enabled = false;
+    setActiveConfig(config);
+
+    await page(tallText);
+
+    expect(written).toEqual([`${tallText}\n`]);
+    expect(childProcess.spawn).not.toHaveBeenCalled();
+  });
+
+  it.each(["false", "0"])("should still page when CI is %s", async (value) => {
+    onPageableTerminal();
+    vi.stubEnv("CI", value);
+    await pagerRuns("true");
+
+    await page(tallText);
+
+    expect(childProcess.spawn).toHaveBeenCalled();
+    expect(written).toEqual([]);
+  });
+
+  // `LESS=--bogus-option`: the pager starts, complains, and shows nothing.
+  it("should fall back to printing when the pager exits with an error", async () => {
+    onPageableTerminal();
+    await pagerRuns("false");
 
     await page(tallText);
 

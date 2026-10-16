@@ -1,0 +1,99 @@
+---
+import type { StoryblokPreviewProps } from "../types";
+
+const { bridgeOptions, debounceMs, liveUpdate = false }: StoryblokPreviewProps = Astro.props;
+
+// Only `liveUpdate`'s morph needs an on-demand route (it POSTs back for a
+// fresh render); plain reload-on-save works fine on a prerendered route.
+if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
+  console.warn(
+    "[storyblok] <StoryblokPreview liveUpdate /> is rendered on a prerendered route " +
+      `(${Astro.url.pathname}). Its live-update morph needs an on-demand route to POST ` +
+      "re-renders to, which a prerendered route can't serve: remove " +
+      "`export const prerender = true` from this route, or set `output: 'server'`/use a " +
+      "hybrid output without prerendering it.",
+  );
+}
+---
+
+<storyblok-preview
+  data-bridge-options={bridgeOptions ? JSON.stringify(bridgeOptions) : undefined}
+  data-debounce-ms={debounceMs}
+  data-live-update={liveUpdate ? "" : undefined}></storyblok-preview>
+
+<script>
+  import { isInEditor, onStoryblokEditorEvent } from '@storyblok/live-preview';
+  import type { LivePreviewHandler, Story } from '@storyblok/live-preview';
+
+  /**
+   * A custom element instead of a one-shot script: Astro's `<ClientRouter />`
+   * swaps the whole `<body>` between navigations, which removes/re-adds this
+   * element and reliably fires `connectedCallback`/`disconnectedCallback` for
+   * it.
+   *
+   * Exactly one instance is allowed per page — a second one would create its
+   * own bridge subscription and, with `liveUpdate`, its own morph handler,
+   * doubling every POST and morph. Dev throws so the mistake is obvious;
+   * production silently ignores the second instance.
+   */
+  let hasActiveInstance = false;
+
+  class StoryblokPreviewElement extends HTMLElement {
+    #cleanup?: Promise<() => void>;
+    #previewHandler?: Promise<LivePreviewHandler<Story>>;
+    #isActiveInstance = false;
+
+    connectedCallback(): void {
+      if (hasActiveInstance) {
+        if (import.meta.env.DEV) {
+          throw new Error(
+            '[storyblok] More than one <StoryblokPreview /> is mounted on this page.',
+          );
+        }
+        return;
+      }
+      hasActiveInstance = true;
+      this.#isActiveInstance = true;
+
+      const liveUpdate = this.hasAttribute('data-live-update');
+      const debounceMs = this.dataset.debounceMs ? Number(this.dataset.debounceMs) : undefined;
+      const bridgeOptions = this.dataset.bridgeOptions
+        ? JSON.parse(this.dataset.bridgeOptions)
+        : undefined;
+
+      // Only loaded inside the Visual Editor — same `isInEditor` check
+      // `onStoryblokEditorEvent` uses internally — so a plain visitor never
+      // fetches the morph chunk (`morphdom` and friends).
+      this.#previewHandler =
+        liveUpdate && isInEditor(new URL(location.href))
+          ? import('../live-preview/preview-handler').then(({ createPreviewHandler }) =>
+              createPreviewHandler({ debounceMs }),
+            )
+          : undefined;
+
+      // `onStoryblokEditorEvent` only calls back for `input`; it reloads the
+      // page itself for `change`/`published` regardless of what this
+      // callback does.
+      this.#cleanup = onStoryblokEditorEvent((story) => {
+        this.#previewHandler?.then((previewHandler) =>
+          previewHandler.handle({ action: 'input', story }),
+        );
+      }, bridgeOptions).catch((error: unknown) => {
+        console.error('[storyblok] Failed to attach the Preview Bridge:', error);
+        return () => {};
+      });
+    }
+
+    disconnectedCallback(): void {
+      if (!this.#isActiveInstance) {
+        return;
+      }
+      this.#cleanup?.then((off) => off());
+      this.#previewHandler?.then((previewHandler) => previewHandler.dispose());
+      hasActiveInstance = false;
+      this.#isActiveInstance = false;
+    }
+  }
+
+  customElements.define('storyblok-preview', StoryblokPreviewElement);
+</script>

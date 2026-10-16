@@ -1,42 +1,52 @@
 ---
-import { getPayload, isEditorRequest, type ISbStoryData } from '@storyblok/astro';
-import { storyblokApi } from '@storyblok/astro/client';
-import BaseLayout from '@shared/components/BaseLayout.astro';
-import StoryblokComponent from '@storyblok/astro/StoryblokComponent.astro';
-import StoryblokServerData from '@storyblok/astro/StoryblokServerData.astro';
-import { getUsers, type User } from 'src/lib/getUsers';
-import Widget from '@shared/components/Widget.astro';
-import UserModal from '../components/UserModal';
+import {
+  getPayload,
+  isInEditor,
+  StoryblokPreview,
+  StoryblokServerData,
+  type StoryblokBlockData,
+} from "@storyblok/astro";
+import { client, StoryblokBlock } from "../storyblok";
+import BaseLayout from "../components/BaseLayout.astro";
+import { getUsers, type User } from "../lib/getUsers";
+import Widget from "../components/Widget.astro";
+import UserModal from "../components/UserModal";
 
 interface ServerData {
   users?: User[];
 }
-interface MyStory extends ISbStoryData {
-  content: { myField: string };
+interface MyStory {
+  content: StoryblokBlockData;
 }
 const { slug } = Astro.params;
 const payload = await getPayload<ServerData, MyStory>({ locals: Astro.locals });
 
 // Use live preview data or fetch fresh data
-const story =
-  payload?.story ??
-  (
-    await storyblokApi.get(`cdn/stories/${slug || 'home'}`, {
-      version: 'draft',
-      resolve_relations: ['featured-articles.posts'],
-    })
-  ).data.story;
+const response = payload?.story ? undefined : await client.stories.get(slug || "home", {
+  query: {
+    version: "draft",
+    resolve_relations: "featured-articles.posts",
+  },
+});
+
+const story = payload?.story ?? response?.data?.story;
+
+if (!story) {
+  throw new Error(`Story not found for slug "${slug}"`);
+}
 
 const users = payload?.serverData?.users ?? (await getUsers());
-const inEditor = isEditorRequest(Astro.url);
-const slugs = ['test', 'about-us', 'contact'];
-const disableLivePreview = slugs.includes(slug || '');
+const inEditor = isInEditor(Astro.url);
+// `test`/`contact` opt out of the preview bridge entirely: no live-morphing,
+// no reload-on-save. The "reload on save, no live morphing" scenario has its
+// own dedicated route: `src/pages/about-us.astro`.
+const disabledSlugs = ["test", "contact"];
+const disableLivePreview = disabledSlugs.includes(slug || "");
 ---
 
 <BaseLayout>
-  {disableLivePreview && <meta name="storyblok-live-preview" content="disabled" />}
   <p>{users?.length} users loaded.</p>
-  <StoryblokComponent blok={story.content} />
+  <StoryblokBlock block={story.content} />
   {
     inEditor && (
       <Widget disableLivePreview={disableLivePreview}>
@@ -44,5 +54,6 @@ const disableLivePreview = slugs.includes(slug || '');
       </Widget>
     )
   }
+  {!disableLivePreview && <StoryblokPreview liveUpdate />}
 </BaseLayout>
 <StoryblokServerData users={users} />

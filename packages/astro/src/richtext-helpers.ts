@@ -1,0 +1,71 @@
+import {
+  processAttrs,
+  type StoryblokRichTextElement,
+  type StoryblokRichTextImageOptions,
+  type StoryblokRichTextInput,
+  type StoryblokRichTextProps,
+  styleToString,
+} from "@storyblok/richtext";
+import type { AstroComponentFactory } from "./types";
+
+export type StoryblokAstroRichTextComponentMap = {
+  [K in StoryblokRichTextElement]?: AstroComponentFactory;
+};
+
+export interface StoryblokAstroRichTextRenderContext {
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
+  components?: StoryblokAstroRichTextComponentMap;
+  data?: unknown;
+}
+
+export type StoryblokAstroRichTextProps<T extends StoryblokRichTextElement> = Omit<
+  StoryblokRichTextProps<T>,
+  "context" | "children"
+> & {
+  context?: StoryblokAstroRichTextRenderContext;
+};
+
+/** Props accepted by the `StoryblokRichText` component. */
+export interface StoryblokRichTextComponentProps {
+  /** The Storyblok rich text field to render. */
+  document: StoryblokRichTextInput;
+  /** Resolves `StoryblokRichTextImageOptions` or enables defaults when `true`. */
+  optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
+  /** Overrides the default renderer for specific node/mark types. */
+  components?: StoryblokAstroRichTextComponentMap;
+  /** Arbitrary data forwarded to custom `components`. */
+  data?: unknown;
+}
+
+/**
+ * Checks whether `component` is a real Astro component factory, i.e. one
+ * produced by compiling an `.astro` file. Framework components (React, Vue,
+ * ...) are plain functions too, but only `.astro`-compiled factories set
+ * `isAstroComponentFactory`, the same flag Astro's own renderer checks.
+ */
+export function isValidAstroComponent(component: unknown): component is AstroComponentFactory {
+  return (
+    typeof component === "function" &&
+    "isAstroComponentFactory" in component &&
+    component.isAstroComponentFactory === true
+  );
+}
+
+export function buildAstroAttrs(
+  type: StoryblokRichTextElement,
+  attrs: Record<string, unknown>,
+): Record<string, unknown> {
+  const processedAttrs = processAttrs(type, attrs, {
+    colspan: "colspan",
+    rowspan: "rowspan",
+  });
+
+  const styleObj = processedAttrs?.style as Record<string, unknown> | undefined;
+  const finalAttrs: Record<string, unknown> = { ...processedAttrs };
+
+  if (styleObj) {
+    finalAttrs.style = styleToString(styleObj);
+  }
+
+  return finalAttrs;
+}

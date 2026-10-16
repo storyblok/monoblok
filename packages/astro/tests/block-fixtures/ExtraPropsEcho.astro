@@ -1,0 +1,5 @@
+---
+const { block, editable, ...rest } = Astro.props;
+---
+
+<div data-test="extra-props-echo">{JSON.stringify(rest)}</div>

@@ -1,0 +1,10 @@
+---
+import { storyblokEditable } from "@storyblok/astro";
+import Counter from "./react/Counter.jsx";
+
+const { block } = Astro.props;
+---
+
+<div {...storyblokEditable(block)}>
+  <Counter block={block} client:visible />
+</div>

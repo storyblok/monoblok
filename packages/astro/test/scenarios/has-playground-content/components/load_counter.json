@@ -1,0 +1,8 @@
+{
+  "name": "load_counter",
+  "display_name": "Load Counter (client:load)",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": { "headline": { "type": "text", "pos": 0 } }
+}

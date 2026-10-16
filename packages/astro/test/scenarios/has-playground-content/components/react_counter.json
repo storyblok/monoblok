@@ -1,0 +1,8 @@
+{
+  "name": "react_counter",
+  "display_name": "React Counter (client:visible)",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": { "headline": { "type": "text", "pos": 0 } }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.json",
+  // The build only type-checks `src` (`tsconfig.json`'s own scope), so
+  // `tests/**/*.test-d.ts` fall outside every tsconfig's `include` and
+  // Vitest's typecheck pass silently skips them instead of failing — Vitest
+  // resolves `typecheck.tsconfig` to build its program, and that program's
+  // `include` decides which files actually get checked. This config widens
+  // `include` to cover `tests` too, for `typecheck.tsconfig` in
+  // `vitest.config.ts` to point at.
+  "include": ["src", "tests"]
+}

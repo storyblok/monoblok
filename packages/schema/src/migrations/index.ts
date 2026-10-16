@@ -10,7 +10,6 @@ export {
   alterBlock,
   alterField,
   coerceField,
-  coercionBetween,
   expandBlock,
   mergeFields,
   moveField,

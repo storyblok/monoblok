@@ -55,6 +55,9 @@ export function createRemoteSpace(server: SetupServerApi) {
   const writes: StoryWrite[] = [];
   const migrations = new Map<string, CompiledMigration>();
 
+  // No components by default, so no op is checked against the space's schema.
+  server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components: [] })));
+
   vi.mocked(importUserModuleDefault).mockImplementation(async (file) => {
     const id =
       file
@@ -72,6 +75,15 @@ export function createRemoteSpace(server: SetupServerApi) {
         migrations.set(id, migration);
         vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.ts`]: "export default {};" });
       }
+    },
+    /** The space's blocks as their field names, which ops are checked against. */
+    hasBlocks(blocks: Record<string, string[]>) {
+      const components = Object.entries(blocks).map(([name, fields], id) => ({
+        id: id + 1,
+        name,
+        schema: Object.fromEntries(fields.map((field, pos) => [field, { type: "text", pos }])),
+      }));
+      server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
     },
     hasStories(...entries: RemoteStory[]) {
       for (const story of entries) stories.set(story.id, story);

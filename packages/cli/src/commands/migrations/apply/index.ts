@@ -43,6 +43,9 @@ import {
   toStoryForMigration,
 } from "../content-migrations";
 import type { StoryAccess } from "../content-migrations";
+import { fetchComponents } from "../../components";
+import { withoutStaleOps } from "./stale-ops";
+import type { LiveFields } from "./stale-ops";
 
 const PER_PAGE = 100;
 const PUBLISH_MODES: readonly PublishMode[] = ["all", "published", "published-with-changes"];
@@ -81,6 +84,13 @@ async function findCandidateStories(space: string, targets: readonly string[]): 
   }
 
   return [...ids];
+}
+
+async function liveFields(space: string): Promise<LiveFields> {
+  const components = (await fetchComponents(space)) ?? [];
+  return new Map(
+    components.map((component) => [component.name, new Set(Object.keys(component.schema ?? {}))]),
+  );
 }
 
 function changeSummary(run: MigrationRun): string {
@@ -355,6 +365,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       warnOnly: dryRun,
     });
 
+    const live = await liveFields(space);
     const journal = contentJournal(path);
     const planned = new Map<number, StoryForMigration>();
     const access = storyAccess(space);
@@ -362,16 +373,24 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
     let failed = 0;
 
     for (const entry of selected) {
+      const { migration, stale } = withoutStaleOps(entry.migration, live);
+      for (const { reason } of stale) {
+        ui.warn(`${entry.id}: ${reason}`);
+      }
+      if (migration.ops.length === 0) {
+        ui.info(`${entry.id}: later schema changes superseded every op, so nothing was applied.`);
+        continue;
+      }
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
-      const candidates = await findCandidateStories(space, entry.migration.targets);
+      const candidates = await findCandidateStories(space, migration.targets);
       const { stories, unread } = await readStories(space, candidates, planned, access);
       failed += unread;
       spinner.succeed(
-        `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
+        `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${migration.targets.join(", ")}`,
       );
 
       const outcome = applyMigration({
-        migration: entry.migration,
+        migration,
         id: entry.id,
         space,
         stories,

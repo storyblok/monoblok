@@ -4,7 +4,9 @@ import { setupServer } from "msw/node";
 import { vol } from "memfs";
 import { defineBlock, defineField } from "@storyblok/schema";
 import {
+  addField,
   defineMigration,
+  removeField,
   renameBlock,
   renameField,
   wrapChildren,
@@ -119,6 +121,61 @@ describe("migrations apply command", () => {
         }),
         publish: false,
       },
+    ]);
+  });
+
+  it("should skip ops on a field a later migration renamed when every migration reruns", async () => {
+    space.hasMigrations(
+      [
+        "0001-add-noindex",
+        defineMigration([addField({ block: "page", field: "noindex" }, () => false)]),
+      ],
+      [
+        "0002-rename-noindex",
+        defineMigration([renameField({ block: "page", field: "noindex", to: "hide" })]),
+      ],
+    );
+    space.hasBlocks({ page: ["body", "hide"] });
+    space.hasStories(
+      storyWithCard({ content: { _uid: "root", component: "page", body: [], hide: false } }),
+    );
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+    process.exitCode = undefined;
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'addField page.noindex skipped: the page block in the space has no field "noindex".',
+      ),
+    );
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should keep a field a later schema change added back", async () => {
+    space.hasMigrations([
+      "0001-remove-accent",
+      defineMigration([removeField({ block: "card", field: "accent" })]),
+    ]);
+    space.hasBlocks({ card: ["title", "accent"] });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", title: "Hi", accent: "green" }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.writes).toEqual([]);
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", title: "Hi", accent: "green" },
     ]);
   });
 

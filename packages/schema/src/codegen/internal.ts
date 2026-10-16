@@ -1,9 +1,11 @@
 /**
- * The `defineField` serializer and naming helpers the Storyblok CLI shares with
- * the snapshot generator.
+ * The `defineField` serializer, naming helpers, and coercion table the Storyblok
+ * CLI shares with the snapshot generator.
  *
- * @internal Not part of the public API; any release may change it.
+ * @internal Not meant for applications, but covered by semver: a published CLI
+ * imports it across a version range.
  */
+export { coercionBetween } from "../migrations/ops";
 export { formatValue, INDENT, quoteString, RawCode } from "./format";
 export {
   collectRestrictionFolderVars,

@@ -3,6 +3,6 @@ export interface SchemaPushOptions {
   delete: boolean;
   migrations: boolean;
   before: boolean;
-  legacy?: boolean;
+  typed?: boolean;
   writeComponents: boolean;
 }

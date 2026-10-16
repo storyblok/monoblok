@@ -1,3 +1,5 @@
+import { coercionBetween } from "@storyblok/schema/migrations";
+
 import type { DiffResult, RemoteSchemaData, SchemaData } from "../../types";
 import type { BreakingChange, ComponentBreakingChanges, RenameMatch } from "./types";
 
@@ -186,6 +188,12 @@ export function detectRenames(
   return { renames, unmatchedRemoved, unmatchedAdded };
 }
 
+/** Text, textarea, and markdown all store a string, so switching among them keeps content valid. */
+function storesSameValue(oldType: string, newType: string): boolean {
+  const coercion = coercionBetween(oldType, newType);
+  return coercion !== undefined && coercion.from === coercion.to;
+}
+
 /**
  * Analyzes all updated components for breaking field-level changes.
  * Only processes diffs with action `update` for entity type `component`.
@@ -237,6 +245,9 @@ export function analyzeBreakingChanges(
     }
 
     for (const tc of classification.typeChanged) {
+      if (storesSameValue(tc.oldType, tc.newType)) {
+        continue;
+      }
       changes.push({
         kind: "type_changed",
         field: tc.field,

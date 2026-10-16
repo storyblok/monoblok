@@ -20,8 +20,16 @@ import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions"
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
 import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
-import { writeContentMigration } from "../../migrations/content-migrations";
+import {
+  localSnapshotComponents,
+  writeContentMigration,
+} from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
+
+/** Quotes a path for pasting into a shell when it holds characters the shell would split or expand. */
+function shellQuote(path: string): string {
+  return /^[\w./:@\\-]+$/.test(path) ? path : `"${path.replace(/(["$`])/g, "\\$1")}"`;
+}
 
 schemaCommand
   .command("push <entry-file>")
@@ -32,9 +40,12 @@ schemaCommand
   .option("--delete", "Delete remote entities not present in local schema", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
-  .option("--no-before", "Skip the .before.ts schema snapshot next to the generated migration")
   .option(
-    "--js",
+    "--no-snapshots",
+    "Skip the .before.ts and .after.ts snapshots and type the generated migration against the entry file",
+  )
+  .option(
+    "--legacy",
     "Generate one .js migration per component for `migrations run` instead of a defineMigration file",
   )
   .option(
@@ -66,6 +77,7 @@ schemaCommand
     }
 
     const summary = { total: 0, succeeded: 0, failed: 0 };
+    const generatedMigrationFiles: string[] = [];
 
     try {
       // 1. Load local schema
@@ -127,13 +139,16 @@ schemaCommand
           ui.warn(
             `${totalChanges} breaking change(s) detected in ${breakingChanges.length} component(s).`,
           );
-          const runCommand = options.js ? "migrations run" : "migrations apply";
-          ui.info(
-            `Generated migrations are scaffolds. Review and adjust them before running \`storyblok ${runCommand}\`.`,
-          );
+          const runCommand = options.legacy ? "migrations run" : "migrations apply";
+          if (options.legacy && !options.snapshots) {
+            ui.warn("--no-snapshots has no effect with --legacy.");
+          }
 
           // Dry-run: show analysis only, no prompts, no file writes
           if (options.dryRun) {
+            ui.info(
+              "Without --dry-run, schema push offers to generate a migration for these changes.",
+            );
             for (const comp of breakingChanges) {
               for (const change of comp.changes) {
                 if (change.kind === "rename") {
@@ -202,7 +217,7 @@ schemaCommand
                   }
                 }
 
-                if (options.js) {
+                if (options.legacy) {
                   const code = renderMigrationCode(comp.changes);
                   const path = await writeMigrationFile({
                     spaceId: space,
@@ -217,26 +232,35 @@ schemaCommand
                     path: migrationPath,
                   });
                   ui.log(`  Generated: ${migrationPath}`);
+                  generatedMigrationFiles.push(migrationPath);
                 }
               }
 
-              if (!options.js) {
+              const ops = options.legacy
+                ? []
+                : breakingChanges.flatMap((comp) =>
+                    toMigrationOps(comp.componentName, comp.changes),
+                  );
+              if (!options.legacy && ops.length > 0) {
                 const componentNames = breakingChanges.map((comp) => comp.componentName);
                 const written = await writeContentMigration({
                   path: basePath,
                   space,
                   name: `update-${componentNames.join("-")}`,
                   schemaEntry: entryFile,
-                  ops: breakingChanges.flatMap((comp) =>
-                    toMigrationOps(comp.componentName, comp.changes),
-                  ),
-                  before: options.before
-                    ? { components: rawComponents, reads: componentNames }
+                  ops,
+                  snapshots: options.snapshots
+                    ? {
+                        before: rawComponents,
+                        after: localSnapshotComponents(local.components),
+                        blocks: componentNames,
+                      }
                     : undefined,
                 });
                 const generatedFiles = [
                   { message: "Migration generated", path: written.migrationPath },
                   { message: "Schema snapshot generated", path: written.beforePath },
+                  { message: "Schema snapshot generated", path: written.afterPath },
                 ];
                 for (const { message, path } of generatedFiles) {
                   if (path) {
@@ -245,15 +269,21 @@ schemaCommand
                       path: displayPath(path, basePath),
                     });
                     ui.log(`  Generated: ${displayPath(path, basePath)}`);
+                    generatedMigrationFiles.push(displayPath(path, basePath));
                   }
                 }
               }
 
-              ui.br();
-              const pathFlag = basePath ? ` --path ${basePath}` : "";
-              ui.info(
-                `Run migrations when ready: storyblok ${runCommand} --space ${space}${pathFlag}`,
-              );
+              if (generatedMigrationFiles.length > 0) {
+                ui.info(
+                  `Generated migrations are scaffolds. Review and adjust them before running \`storyblok ${runCommand}\`.`,
+                );
+                ui.br();
+                const pathFlag = basePath ? ` --path ${shellQuote(basePath)}` : "";
+                ui.info(
+                  `Run migrations when ready: storyblok ${runCommand} --space ${space}${pathFlag}`,
+                );
+              }
             }
           }
         }
@@ -353,6 +383,11 @@ schemaCommand
           });
         } catch (error) {
           pushSpinner.failed("Failed to push schema");
+          if (generatedMigrationFiles.length > 0) {
+            ui.warn(
+              `The push failed after these migration files were written:\n${generatedMigrationFiles.map((file) => `  - ${file}`).join("\n")}\nDelete them before you run schema push again, or it writes a second migration for the same changes.`,
+            );
+          }
           throw error;
         }
 

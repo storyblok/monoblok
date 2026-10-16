@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
@@ -130,6 +130,13 @@ const preconditions = {
     );
     return created;
   },
+  failsToUpdateComponents() {
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`, () =>
+        HttpResponse.json({ error: "Server error" }, { status: 500 }),
+      ),
+    );
+  },
   canUpdateComponents() {
     server.use(
       http.put(
@@ -209,14 +216,21 @@ function migrationFiles(): string[] {
 describe("schema push command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-16T09:05:03Z"));
+  });
+
   afterEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
     server.resetHandlers();
     const pushCmd = schemaCommand.commands.find((command) => command.name() === "push");
-    pushCmd?.setOptionValueWithSource("js", undefined, "default");
-    pushCmd?.setOptionValueWithSource("before", true, "default");
+    pushCmd?.setOptionValueWithSource("legacy", undefined, "default");
+    pushCmd?.setOptionValueWithSource("snapshots", true, "default");
+    pushCmd?.setOptionValueWithSource("path", undefined, "default");
+    vi.useRealTimers();
   });
 
   afterAll(() => server.close());
@@ -818,18 +832,23 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    const migration = writtenFile(`migrations/${DEFAULT_SPACE}/0001-update-hero.ts`);
-    expect(migration).toContain("import type { Schema } from '../../../schema';");
-    expect(migration).toContain("export default defineMigration<Schema, Before>([");
+    const migration = writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`);
+    expect(migration).toContain(
+      "import type { After } from './20261016090503-update-hero.after.js';",
+    );
+    expect(migration).toContain("export default defineMigration<After, Before>([");
     expect(migration).toContain(
       "renameField({ block: 'hero', field: 'author_name', to: 'author' })",
     );
-    expect(writtenFile(`migrations/${DEFAULT_SPACE}/0001-update-hero.before.ts`)).toContain(
-      "defineField('author_name'",
-    );
+    expect(
+      writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.before.ts`),
+    ).toContain("defineField('author_name'");
+    expect(
+      writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.after.ts`),
+    ).toContain("defineField('author'");
   });
 
-  it("should skip the snapshot with --no-before", async () => {
+  it("should type the migration against the entry file with --no-snapshots", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
@@ -853,11 +872,14 @@ describe("schema push command", () => {
       "--space",
       DEFAULT_SPACE,
       "--migrations",
-      "--no-before",
+      "--no-snapshots",
     ]);
 
-    expect(writtenFile("0001-update-hero.ts")).toContain("defineMigration<Schema>([");
+    const migration = writtenFile("20261016090503-update-hero.ts");
+    expect(migration).toContain("import type { Schema } from '../../../schema.js';");
+    expect(migration).toContain("defineMigration<Schema>([");
     expect(writtenFile(".before.ts")).toBeUndefined();
+    expect(writtenFile(".after.ts")).toBeUndefined();
   });
 
   it("should skip migration generation with --no-migrations", async () => {
@@ -963,8 +985,9 @@ describe("schema push command", () => {
 
     // Should generate without prompting
     expect(migrationFiles()).toEqual([
-      expect.stringMatching(/0001-update-hero\.before\.ts$/),
-      expect.stringMatching(/0001-update-hero\.ts$/),
+      expect.stringMatching(/20261016090503-update-hero\.after\.ts$/),
+      expect.stringMatching(/20261016090503-update-hero\.before\.ts$/),
+      expect.stringMatching(/20261016090503-update-hero\.ts$/),
     ]);
     // confirm should NOT have been called (auto-generate mode)
     expect(confirm).not.toHaveBeenCalled();
@@ -1041,12 +1064,113 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    expect(writtenFile("0001-update-hero.ts")).toContain(
+    expect(writtenFile("20261016090503-update-hero.ts")).toContain(
       "coerceField({ block: 'hero', field: 'rating', from: 'string', to: 'number' })",
     );
   });
 
-  it("should write legacy .js migrations with --js", async () => {
+  it("should not treat switching among text, textarea, and markdown as breaking", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "hero", schema: { body: { type: "markdown", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({ name: "hero", schema: { body: { type: "textarea", pos: 0 } } }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+    ]);
+
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("breaking change"));
+    expect(migrationFiles()).toEqual([]);
+  });
+
+  it("should quote a --path with spaces in the run hint", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({
+        name: "hero",
+        schema: { subtitle: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--path",
+      "my project",
+      "--migrations",
+    ]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `storyblok migrations apply --space ${DEFAULT_SPACE} --path "my project"`,
+      ),
+    );
+  });
+
+  it("should name the migration files it wrote when the push fails", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({
+        name: "hero",
+        schema: { subtitle: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.failsToUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+    ]);
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /The push failed after these migration files were written:[\s\S]*20261016090503-update-hero\.ts[\s\S]*Delete them/,
+      ),
+    );
+  });
+
+  it("should write legacy .js migrations with --legacy", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: {
@@ -1079,7 +1203,7 @@ describe("schema push command", () => {
       "--space",
       DEFAULT_SPACE,
       "--migrations",
-      "--js",
+      "--legacy",
     ]);
 
     const migrationFile = Object.entries(vol.toJSON()).find(

@@ -455,6 +455,24 @@ describe("migrations apply command", () => {
       );
     });
 
+    it("should read the name-only blocks of a snapshot passed as the schema", async () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+      space.hasMigrations([
+        "0001-rename-teaser-title",
+        defineMigration([renameField({ block: "teaser", field: "title", to: "headline" })]),
+      ]);
+      schemaModule = {
+        teaser: defineBlock({ name: "teaser", fields: [] }),
+        nameOnlyBlocks: ["teaser"],
+      };
+      server.resetHandlers();
+
+      await apply("--schema", "0001-rename-teaser-title.before.ts");
+
+      expect(space.writes).toEqual([]);
+      expect(error.mock.calls.flat().join("\n")).toContain('Block "teaser" is listed by name only');
+    });
+
     it("should apply a migration the schema defines", async () => {
       space.hasMigrations(["0001-rename-card-title", renameCardTitle]);
       space.hasStories(storyWithCard());

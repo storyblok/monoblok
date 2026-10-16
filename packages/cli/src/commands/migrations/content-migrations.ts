@@ -22,9 +22,19 @@ import { handleAPIError } from "../../utils/error/api-error";
 import { fileExists, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
+import type { Component } from "../../types";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
+}
+
+/**
+ * The path relative to the current directory, or absolute when it lies outside
+ * and the relative form would be a chain of `..` segments.
+ */
+export function displayPath(file: string): string {
+  const relativePath = relative(process.cwd(), file);
+  return relativePath.startsWith("..") ? file : relativePath;
 }
 
 export type WriteContentMigrationOptions = {
@@ -36,21 +46,72 @@ export type WriteContentMigrationOptions = {
   schemaEntry: string;
   ops: readonly MigrationOpSource[];
   title?: string;
-  /** The space's components before the migration; omit to skip the `.before.ts` snapshot. */
-  before?: { components: readonly WireComponent[]; reads: readonly string[] };
+  /**
+   * Freezes the schema the migration reads and writes in `.before.ts` and
+   * `.after.ts` snapshots. Without it, the migration is typed against the live
+   * schema entry file.
+   */
+  snapshots?: {
+    /** The space's components before the migration. */
+    before: readonly WireComponent[];
+    /** The components the migration leaves the space with. */
+    after: readonly WireComponent[];
+    /** The blocks whose fields the migration reads and writes. */
+    blocks: readonly string[];
+  };
 };
 
-export type WrittenContentMigration = { migrationPath: string; beforePath?: string };
+export type WrittenContentMigration = {
+  migrationPath: string;
+  beforePath?: string;
+  afterPath?: string;
+};
 
-/** The module specifier a file in `fromDirectory` imports `file` by. */
+const TS_TO_JS_EXTENSION: Record<string, string> = {
+  ".ts": ".js",
+  ".tsx": ".js",
+  ".mts": ".mjs",
+  ".cts": ".cjs",
+};
+
+/**
+ * The module specifier a file in `fromDirectory` imports `file` by. TypeScript
+ * resolves a `.js` specifier to its `.ts` source under every module resolution
+ * mode, including `nodenext`, which rejects one without an extension.
+ */
 function importSpecifier(fromDirectory: string, file: string): string {
-  const specifier = relative(fromDirectory, resolve(file)).replace(/\.(?:ts|tsx|js)$/, "");
+  const specifier = relative(fromDirectory, resolve(file)).replace(
+    /\.(?:tsx?|mts|cts)$/,
+    (extension) => TS_TO_JS_EXTENSION[extension] ?? extension,
+  );
   return specifier.startsWith("../") ? specifier : `./${specifier}`;
 }
 
 /**
- * Writes a `defineMigration` file numbered after the space's existing
- * migrations, plus its `.before.ts` snapshot. Refuses to overwrite either.
+ * A local schema's components in the shape the snapshot generator reads. A
+ * local block names its folder by slug path and its tags by name, and its
+ * restrictions do the same, so those stand in for the space's group uuids and
+ * tag ids.
+ */
+export function localSnapshotComponents(components: readonly Component[]): WireComponent[] {
+  return components.map((component) => {
+    const folder: unknown = Reflect.get(component, "folder");
+    const tags: unknown = Reflect.get(component, "tags");
+    return {
+      name: component.name,
+      schema: component.schema,
+      is_root: component.is_root,
+      is_nestable: component.is_nestable,
+      component_group_uuid: typeof folder === "string" ? folder : null,
+      internal_tag_ids: Array.isArray(tags) ? tags.map(String) : null,
+    };
+  });
+}
+
+/**
+ * Writes a `defineMigration` file named after its creation time, plus its
+ * snapshots. Refuses to overwrite a file of the same id, including a snapshot
+ * the migration would not write.
  */
 export async function writeContentMigration(
   options: WriteContentMigrationOptions,
@@ -62,26 +123,43 @@ export async function writeContentMigration(
     options.name,
   );
   const migrationPath = join(directory, `${id}.ts`);
-  const beforePath = options.before ? join(directory, `${id}.before.ts`) : undefined;
+  const snapshotPaths = {
+    before: join(directory, `${id}.before.ts`),
+    after: join(directory, `${id}.after.ts`),
+  };
 
-  for (const file of [migrationPath, beforePath]) {
-    if (file && (await fileExists(file))) {
-      throw new CommandError(`${file} already exists. Move or delete it, then run again.`);
+  for (const file of [migrationPath, snapshotPaths.before, snapshotPaths.after]) {
+    if (await fileExists(file)) {
+      throw new CommandError(
+        `${displayPath(file)} already exists. Move or delete it, then run again.`,
+      );
     }
   }
 
+  const { snapshots } = options;
   const source = generateMigrationSource({
-    schemaImport: importSpecifier(dirname(migrationPath), options.schemaEntry),
-    beforeImport: beforePath ? `./${id}.before` : undefined,
+    ...(snapshots
+      ? { afterImport: `./${id}.after.js`, beforeImport: `./${id}.before.js` }
+      : { schemaImport: importSpecifier(dirname(migrationPath), options.schemaEntry) }),
     title: options.title,
     ops: options.ops,
   });
-  if (options.before && beforePath) {
-    await saveToFile(beforePath, generateSnapshot({ ...options.before, migrationId: id }));
+  if (snapshots) {
+    const { before, after, blocks } = snapshots;
+    await saveToFile(
+      snapshotPaths.before,
+      generateSnapshot({ components: before, blocks, kind: "before", migrationId: id }),
+    );
+    await saveToFile(
+      snapshotPaths.after,
+      generateSnapshot({ components: after, blocks, kind: "after", migrationId: id }),
+    );
   }
   await saveToFile(migrationPath, source);
 
-  return { migrationPath, beforePath };
+  return snapshots
+    ? { migrationPath, beforePath: snapshotPaths.before, afterPath: snapshotPaths.after }
+    : { migrationPath };
 }
 
 /** The journal sits beside the space directories, so one journal serves every space. */

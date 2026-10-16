@@ -331,7 +331,15 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
         );
       }
       const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-      assertMatchesSchemas([{ entry: selected[0], schema }]);
+      // A snapshot passed as the entry file lists the blocks it holds by name only.
+      const { nameOnlyBlocks } = await loadSchemaModule(schemaEntry);
+      assertMatchesSchemas([
+        {
+          entry: selected[0],
+          schema,
+          nameOnlyBlocks: isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined,
+        },
+      ]);
     } else if (validate) {
       const unchecked = await assertMatchesSnapshots(selected);
       if (unchecked.length > 0) {

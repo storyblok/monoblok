@@ -21,15 +21,20 @@ import { pipeline } from "node:stream";
  * `run` loads only `.js` files, so content migrations in other formats would be
  * skipped without a word. A `.js` one is recognized by its export when loaded.
  */
-async function pointToApplyForContentMigrations(space: string, path: string | undefined) {
+async function pointToApplyForContentMigrations(
+  space: string,
+  path: string | undefined,
+): Promise<string[]> {
   const contentMigrations = await discoverMigrations(resolvePath(path, `migrations/${space}`))
     .then((files) => files.filter(({ file }) => !file.endsWith(".js")))
     .catch(() => []);
-  if (contentMigrations.length > 0) {
+  const ids = contentMigrations.map(({ id }) => id);
+  if (ids.length > 0) {
     getUI().info(
-      `Content migrations are applied with "storyblok migrations apply", not run: ${contentMigrations.map(({ id }) => id).join(", ")}.`,
+      `Content migrations are applied with "storyblok migrations apply", not run: ${ids.join(", ")}.`,
     );
   }
+  return ids;
 }
 
 const runCmd = migrationsCommand
@@ -101,7 +106,7 @@ runCmd.action(
         path,
         filter,
       });
-      await pointToApplyForContentMigrations(fromSpace, path);
+      const contentMigrationIds = await pointToApplyForContentMigrations(fromSpace, path);
       const filteredMigrations = componentName
         ? migrationFiles.filter((file) => migrationTargetsComponent(file.name, componentName))
         : migrationFiles;
@@ -112,6 +117,16 @@ runCmd.action(
         );
         logger.warn("No migration files found");
         logger.info("Migration finished");
+        // A script that chains `schema push` into `run` would otherwise succeed
+        // without migrating anything.
+        if (contentMigrationIds.length > 0) {
+          handleError(
+            new CommandError(
+              `Nothing to run: the migrations in space "${fromSpace}" are content migrations. Apply them with "storyblok migrations apply --space ${fromSpace}".`,
+            ),
+            verbose,
+          );
+        }
         return;
       }
 

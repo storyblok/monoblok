@@ -8,6 +8,7 @@ import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { getLogFileContents } from "../../__tests__/helpers";
 import { getProgram } from "../../../program";
 import type { Component } from "../../components";
+import { loadSchema } from "../../schema/load-schema";
 
 vi.mock("../../../commands/components", () => ({
   fetchComponent: vi.fn(),
@@ -17,7 +18,11 @@ vi.mock("../../../commands/components", () => ({
 // Spy, not stub: the printed path has to be the path the action really wrote.
 vi.mock("./actions", { spy: true });
 
+// loadSchema imports the TypeScript entry file with jiti, which memfs cannot serve.
+vi.mock("../../schema/load-schema", () => ({ loadSchema: vi.fn() }));
+
 vi.spyOn(console, "error");
+vi.spyOn(console, "warn");
 
 const LOG_PREFIX = "storyblok-migrations-generate-";
 const MIGRATIONS_DIRECTORY = ".storyblok/migrations/12345";
@@ -72,6 +77,25 @@ const preconditions = {
   },
   hasSchemaEntry() {
     vol.fromJSON({ "src/schema.ts": "export type Schema = {};" });
+    vi.mocked(loadSchema).mockResolvedValue({
+      folders: [],
+      datasources: [],
+      components: [
+        {
+          ...mockComponent,
+          schema: {
+            headline: { type: "text", pos: 0 },
+            body: {
+              type: "bloks",
+              pos: 1,
+              restrict_components: true,
+              component_whitelist: ["child"],
+            },
+          },
+        },
+        childComponent,
+      ],
+    });
   },
   hasMigrations(...filenames: string[]) {
     vol.fromJSON(
@@ -93,7 +117,7 @@ describe("migrations generate command", () => {
     vol.reset();
     getProgram().setOptionValueWithSource("path", undefined, "default");
     const generateCmd = migrationsCommand.commands.find((command) => command.name() === "generate");
-    Reflect.set(generateCmd as object, "_optionValues", { before: true });
+    Reflect.set(generateCmd as object, "_optionValues", { snapshots: true });
   });
 
   it("should generate a migration using default path", async () => {
@@ -250,59 +274,85 @@ describe("migrations generate command", () => {
   });
 
   describe("with a schema entry", () => {
-    it("should write a defineMigration file and its .before.ts snapshot", async () => {
+    const NOW = new Date("2026-10-16T09:05:03Z");
+    const ID = "20261016090503-component-name";
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(NOW);
+      return () => vi.useRealTimers();
+    });
+
+    it("should write a defineMigration file with its .before.ts and .after.ts snapshots", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
 
       await generate("component-name", "--schema", "src/schema.ts");
 
-      const migration = writtenFile("migrations/12345/0001-component-name.ts");
-      const snapshot = writtenFile("migrations/12345/0001-component-name.before.ts");
-      expect(migration).toContain("import type { Schema } from '../../../src/schema';");
-      expect(migration).toContain("import type { Before } from './0001-component-name.before';");
-      expect(migration).toContain("export default defineMigration<Schema, Before>([");
-      expect(snapshot).toContain("defineField('title'");
-      expect(snapshot).toContain("defineBlock({ name: 'child', fields: [] })");
-      expect(snapshot).not.toContain("name: 'unrelated'");
-      expect(snapshot).toMatch(/export const nameOnlyBlocks: string\[\] = \[[^\]]*'unrelated'/);
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "You can find the migration file in .storyblok/migrations/12345/0001-component-name.ts",
-        ),
-      );
+      const migration = writtenFile(`migrations/12345/${ID}.ts`);
+      const before = writtenFile(`migrations/12345/${ID}.before.ts`);
+      const after = writtenFile(`migrations/12345/${ID}.after.ts`);
+      expect(migration).toContain(`import type { Before } from './${ID}.before.js';`);
+      expect(migration).toContain(`import type { After } from './${ID}.after.js';`);
+      expect(migration).toContain("export default defineMigration<After, Before>([");
+      expect(migration).not.toContain("src/schema");
+      expect(before).toContain("defineField('title'");
+      expect(before).toContain("defineBlock({ name: 'child', fields: [] })");
+      expect(before).not.toContain("name: 'unrelated'");
+      expect(before).toMatch(/export const nameOnlyBlocks: string\[\] = \[[^\]]*'unrelated'/);
+      expect(after).toContain("defineField('headline'");
+      expect(after).toContain("export type After");
+      for (const file of [`${ID}.ts`, `${ID}.before.ts`, `${ID}.after.ts`]) {
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(`.storyblok/migrations/12345/${file}`),
+        );
+      }
     });
 
-    it("should number the migration after the existing ones", async () => {
+    it("should name the migration after its creation time and sort it after the existing ones", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
-      preconditions.hasMigrations("0001-a.ts", "0001-a.before.ts", "0002-b.ts", "legacy.js");
+      preconditions.hasMigrations("0001-a.ts", "20261016090503-b.ts", "legacy.js");
 
       await generate("component-name", "--schema", "src/schema.ts", "--suffix", "drop-title");
 
-      expect(writtenFile("0003-component-name-drop-title.ts")).toBeDefined();
-      expect(writtenFile("0003-component-name-drop-title.before.ts")).toBeDefined();
+      expect(writtenFile("20261016090504-component-name-drop-title.ts")).toBeDefined();
+      expect(writtenFile("20261016090504-component-name-drop-title.before.ts")).toBeDefined();
     });
 
-    it("should skip the snapshot with --no-before", async () => {
+    it("should type the migration against the schema entry with --no-snapshots", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
 
-      await generate("component-name", "--schema", "src/schema.ts", "--no-before");
+      await generate("component-name", "--schema", "src/schema.ts", "--no-snapshots");
 
-      expect(writtenFile("0001-component-name.ts")).toContain("defineMigration<Schema>([");
+      const migration = writtenFile(`${ID}.ts`);
+      expect(migration).toContain("import type { Schema } from '../../../src/schema.js';");
+      expect(migration).toContain("defineMigration<Schema>([");
       expect(writtenFile(".before.ts")).toBeUndefined();
+      expect(writtenFile(".after.ts")).toBeUndefined();
     });
 
-    it("should write a legacy migration with --js", async () => {
+    it("should write a legacy migration with --legacy", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
 
-      await generate("component-name", "--schema", "src/schema.ts", "--js");
+      await generate("component-name", "--schema", "src/schema.ts", "--legacy");
 
       expect(writtenFile("migrations/12345/component-name.js")).toContain(
         "export default function (block)",
       );
-      expect(writtenFile("0001-component-name.ts")).toBeUndefined();
+      expect(writtenFile(`${ID}.ts`)).toBeUndefined();
+    });
+
+    it("should name only the flags given when they need --schema", async () => {
+      preconditions.componentExists();
+
+      await generate("component-name", "--no-snapshots");
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("--no-snapshots only apply together with --schema."),
+      );
     });
 
     it("should refuse a schema entry that does not exist", async () => {
@@ -311,7 +361,7 @@ describe("migrations generate command", () => {
       await generate("component-name", "--schema", "src/missing.ts");
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Schema entry file not found: src/missing.ts"),
+        expect.stringContaining("Schema entry file not found or not a file: src/missing.ts"),
       );
       expect(Object.keys(vol.toJSON())).not.toContainEqual(
         expect.stringContaining("migrations/12345"),
@@ -325,19 +375,21 @@ describe("migrations generate command", () => {
       await generate("component-name", "--schema", "src");
 
       expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining("Schema entry file not found: src"),
+        expect.stringContaining("Schema entry file not found or not a file: src"),
       );
     });
 
-    it("should refuse to overwrite a leftover snapshot", async () => {
+    it("should refuse to write next to a leftover snapshot, even without snapshots of its own", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();
-      preconditions.hasMigrations("0001-component-name.before.ts");
+      preconditions.hasMigrations(`${ID}.before.ts`);
 
-      await generate("component-name", "--schema", "src/schema.ts");
+      await generate("component-name", "--schema", "src/schema.ts", "--no-snapshots");
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("already exists"));
-      expect(writtenFile("0001-component-name.ts")).toBeUndefined();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(`.storyblok/migrations/12345/${ID}.before.ts already exists`),
+      );
+      expect(writtenFile(`${ID}.ts`)).toBeUndefined();
     });
   });
 });

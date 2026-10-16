@@ -62,12 +62,9 @@ const findCmd = storiesCommand
     "--workflow-stage <ids>",
     "stories at any of these workflow stage IDs (numeric), comma-separated",
   )
-  .addOption(
-    new Option("--publish-status <status>", "filter by publish status").choices([
-      "published",
-      "changed",
-      "draft",
-    ]),
+  .option(
+    "--publish-status <statuses>",
+    "stories in any of these publish statuses, comma-separated: published, published-with-changes, draft",
   )
   .option(
     "--created <range>",
@@ -75,7 +72,7 @@ const findCmd = storiesCommand
   )
   .option("--updated <range>", "stories last updated in this date range, e.g. '7d' or '..90d'")
   .option(
-    "--published <range>",
+    "--last-published <range>",
     "stories last published in this date range, e.g. '2024-06', including ones unpublished since; add --publish-status published for live ones only. Never-published stories never match",
   )
   .option(
@@ -83,8 +80,8 @@ const findCmd = storiesCommand
     "stories first published in this date range, e.g. '2024-07..2024-09'",
   )
   .option(
-    "--scheduled <range>",
-    "stories with a pending scheduled publish, in any language, in this date range, where durations count forward, e.g. '7d' or '7d..14d'",
+    "--scheduled [range]",
+    "stories with a pending scheduled publish, in any language, optionally in this date range, where durations count forward, e.g. '7d' or '7d..14d'",
   )
   .option(
     "--sort <fields>",

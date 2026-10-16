@@ -20,7 +20,9 @@ type Point = { start: Date; end: Date; relative: boolean };
 const DURATION = /^(\d+)(mo|m|h|d|w|y)$/;
 const CALENDAR = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
 const DATETIME =
-  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:?\d{2})?$/i;
+  /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}(?::?\d{2})?)?$/i;
+/** Loose enough to catch a date written wrong, e.g. `2024-6` or `2024-06-15T09`. */
+const DATE_LIKE = /^\d{4}-\d/;
 
 const MINUTE = 60_000;
 const UNIT_MS: Record<string, number> = {
@@ -60,18 +62,29 @@ export function parseDateRange(
     if (parsed) {
       return parsed;
     }
-    if (DURATION.test(trimmed)) {
-      return fail(`'${trimmed}' reaches further from now than a date can.`);
+    const duration = DURATION.exec(trimmed);
+    if (duration) {
+      return fail(
+        Number(duration[1]) === 0
+          ? `'${trimmed}' is an empty window, so nothing could match.`
+          : `'${trimmed}' reaches further from now than a date can.`,
+      );
     }
     if (CALENDAR.test(trimmed) || DATETIME.test(trimmed)) {
       return fail(`'${trimmed}' is not a date or time that exists.`);
+    }
+    if (DATE_LIKE.test(trimmed)) {
+      return fail(
+        `'${trimmed}' is not a date. Write dates as '2024', '2024-06', '2024-06-15' or '2024-06-15T09:00'.`,
+      );
     }
     return fail();
   };
 
   if (!value.includes("..")) {
     if (value === "now") {
-      const example = direction === "past" ? "'7d..now'" : "'now..7d'";
+      // Not `now..7d` for a schedule: that would drop the ones just overdue.
+      const example = direction === "past" ? "'7d..now'" : "'..7d'";
       fail(`'now' is a single instant. Use it as one end of a range, e.g. ${example}.`);
     }
     const { start, end, relative } = point(value);
@@ -90,9 +103,9 @@ export function parseDateRange(
   }
   const lower = left.trim() ? point(left) : undefined;
   const upper = right.trim() ? point(right) : undefined;
-  // Two durations name one window whichever way round they are written, so
-  // `30d..7d` and `7d..30d` read the same under every flag.
-  if (lower && upper && DURATION.test(left.trim()) && DURATION.test(right.trim())) {
+  // Two durations, or a duration and `now`, name one window whichever way round
+  // they are written, so `30d..7d` and `7d..30d` read the same under every flag.
+  if (lower?.relative && upper?.relative) {
     const [a, b] = lower.start <= upper.start ? [lower, upper] : [upper, lower];
     return { from: a.start, to: b.end };
   }
@@ -113,6 +126,10 @@ function parsePoint(text: string, now: Date, direction: DateDirection): Point | 
 
   const duration = DURATION.exec(text);
   if (duration) {
+    // A zero length is an empty window, rejected rather than run to no results.
+    if (Number(duration[1]) === 0) {
+      return undefined;
+    }
     const instant = shift(now, Number(duration[1]), duration[2], direction === "past" ? -1 : 1);
     // Far enough out, the shift overflows what a `Date` can hold.
     if (Number.isNaN(instant.getTime())) {
@@ -175,7 +192,7 @@ function utcDate(year: number, month: number, day: number): Date | undefined {
   return valid ? date : undefined;
 }
 
-/** `Z`, `+02:00` or `-0530` as milliseconds east of UTC. No offset means UTC. */
+/** `Z`, `+02:00`, `-0530` or `+02` as milliseconds east of UTC. No offset means UTC. */
 function parseOffset(offset: string | undefined): number | undefined {
   if (offset === undefined || offset.toUpperCase() === "Z") {
     return 0;

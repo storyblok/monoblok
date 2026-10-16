@@ -1,6 +1,6 @@
 import type { CoercionTarget } from "../migrations/ops";
 import { isRecord } from "../utils/is-record";
-import { commentText, formatValue, INDENT, isIdentifier, quoteString } from "./format";
+import { commentText, formatValue, INDENT, quoteString } from "./format";
 
 type OpTarget = { block: string; field: string };
 
@@ -17,7 +17,10 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
   | (OpTarget & { kind: "alterField" })
   /** Backfills absent keys with `value`. */
   | (OpTarget & { kind: "addField"; value?: unknown })
-  /** Fills an absent or `null` field, and `""` with `fillEmptyString`, with `value`. */
+  /**
+   * Fills an absent or `null` field, and `""` with `fillEmptyString`, with
+   * `value`. Translations are left as they are.
+   */
   | (OpTarget & { kind: "fillField"; value?: unknown; fillEmptyString?: boolean })
 );
 
@@ -34,13 +37,13 @@ function target(op: OpTarget): string {
   return `{ block: ${quoteString(op.block)}, field: ${quoteString(op.field)}`;
 }
 
-/** The DSL import an op renders to. `fillField` is sugar over `alterBlock`. */
-function importOf(op: MigrationOpSource): string {
-  return op.kind === "fillField" ? "alterBlock" : op.kind;
-}
-
-function accessor(field: string): string {
-  return isIdentifier(field) ? `block.${field}` : `block[${quoteString(field)}]`;
+/**
+ * The DSL imports an op renders to. `fillField` renders to `addField` and
+ * `alterField`, not one `alterBlock`, so both name the field and `migrations
+ * apply` can skip them once a later schema change renames or removes it.
+ */
+function importsOf(op: MigrationOpSource): string[] {
+  return op.kind === "fillField" ? ["addField", "alterField"] : [op.kind];
 }
 
 function throwPlaceholder(op: OpTarget, depth: number): string {
@@ -70,17 +73,22 @@ function renderOp(op: MigrationOpSource, depth: number): string {
       return `addField(${target(op)} }, () => ${body})`;
     }
     case "fillField": {
-      const field = accessor(op.field);
-      const inner = INDENT.repeat(depth + 1);
-      const empty = [`${field} === undefined`, `${field} === null`];
-      if (op.fillEmptyString) {
-        empty.push(`${field} === ''`);
-      }
-      const body =
+      const fill =
         op.value === undefined
-          ? `if (${empty.join(" || ")}) ${throwPlaceholder(op, depth + 1)}`
-          : `if (${empty.join(" || ")}) {\n${INDENT.repeat(depth + 2)}${field} = ${formatValue(op.value, depth + 2)};\n${inner}}`;
-      return `alterBlock({ block: ${quoteString(op.block)} }, (block) => {\n${inner}${body}\n${INDENT.repeat(depth)}})`;
+          ? throwPlaceholder(op, depth + 1)
+          : `{\n${INDENT.repeat(depth + 2)}return ${formatValue(op.value, depth + 2)};\n${INDENT.repeat(depth + 1)}}`;
+      const empty = op.fillEmptyString ? "value === null || value === ''" : "value === null";
+      const add = renderOp(
+        { kind: "addField", block: op.block, field: op.field, value: op.value },
+        depth,
+      );
+      const alter = [
+        `alterField(${target(op)} }, (value, { language }) => {`,
+        `${INDENT.repeat(depth + 1)}if (language === undefined && (${empty})) ${fill}`,
+        `${INDENT.repeat(depth + 1)}return undefined;`,
+        `${INDENT.repeat(depth)}})`,
+      ].join("\n");
+      return `${add},\n${INDENT.repeat(depth)}${alter}`;
     }
     default: {
       const unknown: never = op;
@@ -95,7 +103,7 @@ function renderOp(op: MigrationOpSource, depth: number): string {
  */
 export function generateMigrationSource(options: GenerateMigrationSourceOptions): string {
   const { schemaImport, beforeImport, title, ops } = options;
-  const imports = [...new Set(["defineMigration", ...ops.map(importOf)])].sort();
+  const imports = [...new Set(["defineMigration", ...ops.flatMap(importsOf)])].sort();
   const typeArgs = beforeImport ? "Schema, Before" : "Schema";
 
   const lines: string[] = [

@@ -21,12 +21,9 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
   | (OpTarget & { kind: "fillField"; value?: unknown })
 );
 
-/** The schema the migration writes: a frozen `.after` snapshot, or the project's live schema. */
-type AfterSource =
-  | { afterImport: string; schemaImport?: never }
-  | { schemaImport: string; afterImport?: never };
-
-export type GenerateMigrationSourceOptions = AfterSource & {
+export type GenerateMigrationSourceOptions = {
+  /** Module specifier of the schema entry; it must export `type Schema`. */
+  schemaImport: string;
   /** Module specifier of the `.before` snapshot; it exports `type Before`. */
   beforeImport?: string;
   title?: string;
@@ -90,25 +87,22 @@ function renderOp(op: MigrationOpSource, depth: number): string {
 
 /**
  * Generates a migration module that default-exports a `defineMigration` call,
- * typed against the schema it writes and, when given, its `.before` snapshot.
+ * typed against the project's schema and, when given, its `.before` snapshot.
  */
 export function generateMigrationSource(options: GenerateMigrationSourceOptions): string {
-  const { beforeImport, title, ops } = options;
+  const { schemaImport, beforeImport, title, ops } = options;
   const imports = [...new Set(["defineMigration", ...ops.map(importOf)])].sort();
-  const after =
-    options.afterImport !== undefined
-      ? { type: "After", from: options.afterImport }
-      : { type: "Schema", from: options.schemaImport };
-  const typeArgs = beforeImport ? `${after.type}, Before` : after.type;
+  const typeArgs = beforeImport ? "Schema, Before" : "Schema";
 
   const lines: string[] = [
     `import { ${imports.join(", ")} } from '@storyblok/schema/migrations';`,
     "",
+    `import type { Schema } from ${quoteString(schemaImport)};`,
   ];
   if (beforeImport) {
     lines.push(`import type { Before } from ${quoteString(beforeImport)};`);
   }
-  lines.push(`import type { ${after.type} } from ${quoteString(after.from)};`, "");
+  lines.push("");
 
   const opLines: string[] = [];
   const depth = title === undefined ? 1 : 2;

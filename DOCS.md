@@ -326,36 +326,45 @@ In the introduction’s list of resource clients, add `releases` after `presets`
 ## Typed content migrations
 
 Pass `--schema` with your project’s schema entry file to generate a typed content migration for
-[`migrations apply`](/docs/tooling/cli/migrations-apply) instead. The command numbers the file after
-the existing content migrations in the directory and writes a schema snapshot next to it:
+[`migrations apply`](/docs/tooling/cli/migrations-apply) instead. The command names the file after
+the time it was created, so it runs after every existing content migration, and writes two schema
+snapshots next to it:
 
 ```text
 .storyblok/
 └── migrations/
     └── <space-id>/
-        ├── <number>-<component-name>[-<suffix>].ts
-        └── <number>-<component-name>[-<suffix>].before.ts
+        ├── <timestamp>-<component-name>[-<suffix>].ts
+        ├── <timestamp>-<component-name>[-<suffix>].before.ts
+        └── <timestamp>-<component-name>[-<suffix>].after.ts
 ```
 
 The migration file default-exports an empty `defineMigration()` call from
-[@storyblok/schema/migrations](/docs/libraries/js/schema/migrations), typed against the `Schema`
-type your schema entry file exports and the `Before` type the snapshot exports. The snapshot holds
-the block’s fields as they are in the space now, and a name-only definition for every block its
-fields allow, so the migration can name fields that no longer exist in your schema. Commit both
-files, and keep the snapshot unchanged once the migration ships. The command refuses to overwrite an
-existing migration or snapshot.
+[@storyblok/schema/migrations](/docs/libraries/js/schema/migrations), typed against the `Before` and
+`After` types the snapshots export:
 
-Pass `--no-before` to skip the snapshot. Pass `--js` to generate the `.js` template even when
+- `.before.ts` holds the block’s fields as they are in the space now, so the migration can name
+  fields your schema no longer has.
+- `.after.ts` holds the block’s fields as your schema entry file defines them, so later schema
+  changes don’t break the migration’s types.
+
+Both snapshots list the other blocks the migration can name, such as the blocks a field allows, by
+name only. To change fields of a nested block, generate a migration for that block too. Commit all
+three files, and keep the snapshots unchanged once the migration ships. The command refuses to
+overwrite an existing migration or snapshot.
+
+Pass `--no-snapshots` to type the migration against your schema entry file instead. Pass `--legacy`
+to generate the `.js` template for [`migrations run`](/docs/tooling/cli/migrations-run) even when
 `--schema` is set.
 ````
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx#flags (add the rows after `--suffix`) -->
 
-| Flag       | Type    | Description                                                                                                                          |
-| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `--schema` | string  | _Optional._ Path to the schema entry file. Generates a typed content migration and its schema snapshot instead of a `.js` migration. |
-| `--before` | boolean | _Optional._ Write a schema snapshot next to a typed content migration. Enabled by default. Pass `--no-before` to skip.               |
-| `--js`     | boolean | _Optional._ Generate a `.js` migration even when `--schema` is set.                                                                  |
+| Flag             | Type    | Description                                                                                                                           |
+| ---------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `--schema`       | string  | _Optional._ Path to the schema entry file. Generates a typed content migration and its schema snapshots instead of a `.js` migration. |
+| `--no-snapshots` | boolean | _Optional._ Skip the `.before.ts` and `.after.ts` snapshots and type the migration against the schema entry file.                     |
+| `--legacy`       | boolean | _Optional._ Generate a `.js` migration for `migrations run` even when `--schema` is set.                                              |
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx#examples (append to the code block) -->
 
@@ -369,22 +378,34 @@ storyblok migrations generate hero-section --schema src/schema.ts
 ```mdx
 When a push contains breaking changes (field removals, type changes, renames, or new required
 fields), the command analyzes them and, unless `--no-migrations` is set, writes one typed content
-migration for all changed blocks. The command confirms detected renames interactively.
+migration for all changed blocks. The command confirms detected renames interactively. Switching a
+field among text, textarea, and markdown isn’t a breaking change, because all three store a string.
 
-The migration is numbered after the existing content migrations in
-`.storyblok/migrations/<space-id>/`, next to a `.before.ts` schema snapshot of the blocks as they
-are in the space before the push. The migration renames and removes fields, converts values between
-text, textarea, markdown, and number fields and between text and boolean fields, and fills new
-required text, number, and boolean fields with an empty value. Comments starting with `TODO` mark
-the operations to complete, such as a conversion between other field types or a default value for a
-new required field of another type. Review the migration before running
-[`migrations apply`](/docs/tooling/cli/migrations-apply).
+The migration in `.storyblok/migrations/<space-id>/` is named after the time it was created. Next to
+it, a `.before.ts` snapshot holds the changed blocks as they are in the space before the push, and
+an `.after.ts` snapshot holds them as your schema entry file defines them. The migration:
+
+- renames and removes fields
+- converts values between text, textarea, markdown, and number fields, and between text and boolean
+  fields
+- fills text, number, and boolean fields that are new or newly required with an empty value where
+  the field is absent or `null`
+
+Comments starting with `TODO` mark the operations to complete, such as a conversion between other
+field types or a default value for a required field of another type. Until you replace it, such an
+operation throws, so [`migrations apply`](/docs/tooling/cli/migrations-apply) refuses to change the
+stories it applies to.
 
 `migrations apply` writes a story only when every operation in the migration succeeds on it. If an
-operation fails on one block, the story keeps its content, including the changes to other blocks.
+operation fails on one block, the story stays unchanged, including its other blocks.
 
-Pass `--no-before` to skip the snapshot. Pass `--js` to write one `.js` migration per component for
-[`migrations run`](/docs/tooling/cli/migrations-run) instead.
+Pass `--no-snapshots` to type the migration against your schema entry file instead. Pass `--legacy`
+to write one `.js` migration per block for [`migrations run`](/docs/tooling/cli/migrations-run)
+instead. `migrations run` exits with an error when the directory holds only content migrations, so a
+script that runs it after `schema push` fails instead of skipping the migration.
+
+If the push fails after the migration was written, delete the migration and its snapshots before you
+run `schema push` again. Otherwise it writes a second migration for the same changes.
 
 With `--dry-run`, the command prints the number of breaking changes and the detected renames, but
 doesn’t write migration files.
@@ -392,7 +413,7 @@ doesn’t write migration files.
 
 <!-- target: src/content/docs/docs/tooling/cli/schema-push.mdx#flags (add the rows after `--migrations`) -->
 
-| Flag       | Type    | Description                                                                                                                  |
-| ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `--before` | boolean | _Optional._ Write a schema snapshot next to the generated content migration. Enabled by default. Pass `--no-before` to skip. |
-| `--js`     | boolean | _Optional._ Generate one `.js` migration per block for `migrations run` instead.                                             |
+| Flag             | Type    | Description                                                                                                                 |
+| ---------------- | ------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `--no-snapshots` | boolean | _Optional._ Skip the `.before.ts` and `.after.ts` snapshots and type the generated migration against the schema entry file. |
+| `--legacy`       | boolean | _Optional._ Generate one `.js` migration per block for `migrations run` instead.                                            |

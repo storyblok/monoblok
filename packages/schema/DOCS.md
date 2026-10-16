@@ -67,14 +67,20 @@ export const schema = defineSchema({ blocks: { articleBlock } });
 export type Before = InferSchema<typeof schema>;
 ```
 
-Keep the snapshot unchanged once the migration ships. The fields the migration reads then stay typed
-after later schema changes. The fields it writes are typed against the current `Schema`, so a later
-rename or removal of one of them shows up as a type error in the migration.
+Keep the snapshot unchanged once the migration ships, so the names the migration reads stay typed
+after later schema changes. Typed against the current `Schema`, a later rename or removal of a field
+the migration writes is a type error in the migration. To freeze the names it writes too, save an
+`.after.ts` snapshot that exports `type After` and call `defineMigration<After, Before>`.
 
-The Storyblok CLI writes both files:
+The Storyblok CLI commands
 [`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
 [`schema push`](/docs/tooling/cli/schema-push#breaking-changes-and-migrations) generate the
-migration and its snapshot from the space’s current components.
+migration with both snapshots: `.before.ts` from the space’s current blocks and `.after.ts` from
+your schema entry file.
+
+The `@storyblok/schema/codegen` subpath exports the functions that generate these files as source
+strings, `generateSnapshot()` and `generateMigrationSource()`. It is experimental: the generated
+source can change in any release.
 
 ### Schema types
 

@@ -24,7 +24,7 @@ describe("formatValue", () => {
 
   it("should escape backslashes so regex values are not silently dropped", () => {
     // Emitted as '\\d+' — a single-quoted literal that parses back to the exact
-    // input `\d+`. The old serializer emitted '\d+', which parses to `d+`.
+    // input `\d+`. Unescaped, '\d+' would parse to `d+`.
     expect(formatValue(String.raw`\d+`, 0)).toBe(String.raw`'\\d+'`);
     expect(formatValue(String.raw`^\s*\b\w+(?:\s+\w+){0,3}\s*$`, 0)).toBe(
       String.raw`'^\\s*\\b\\w+(?:\\s+\\w+){0,3}\\s*$'`,

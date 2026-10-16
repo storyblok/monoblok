@@ -1,11 +1,12 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, onTestFinished, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import "../index";
 import { schemaCommand } from "../command";
 import type { SchemaData } from "../types";
-import { CommandError } from "../../../utils";
+import { CommandError, handleError } from "../../../utils";
+import * as configHelpers from "../../../lib/config/helpers";
 import { loadSchema } from "../load-schema";
 
 // loadSchema uses jiti to import TypeScript entry files at runtime, which cannot
@@ -386,5 +387,184 @@ describe("schema diff command", () => {
 
     expect(output()).toContain(`defineFolder: folder name "A/B" must not contain "/" (--to)`);
     expect(output()).not.toContain("dependencies are installed");
+  });
+
+  describe("--exit-code", () => {
+    const hero = () => comp("hero", { title: { type: "text", pos: 0 } });
+
+    it("should exit 0 when the schemas match", async () => {
+      spaceWith("111", [hero()]);
+      spaceWith("222", [hero()]);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "diff",
+        "--from",
+        "111",
+        "--to",
+        "222",
+        "--exit-code",
+      ]);
+
+      expect(diffOutput()).toContain("Summary: 1 unchanged");
+      expect(process.exitCode ?? 0).toBe(0);
+    });
+
+    it.each([
+      { change: "added", from: [], to: [hero()] },
+      {
+        change: "changed",
+        from: [hero()],
+        to: [comp("hero", { title: { type: "textarea", pos: 0 } })],
+      },
+      { change: "removed", from: [hero()], to: [] },
+    ])("should exit 1 when a block was $change", async ({ change, from, to }) => {
+      spaceWith("111", from);
+      spaceWith("222", to);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "diff",
+        "--from",
+        "111",
+        "--to",
+        "222",
+        "--exit-code",
+      ]);
+
+      expect(diffOutput()).toContain(`hero (${change})`);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should exit 0 when the schemas differ without the flag", async () => {
+      spaceWith("111", []);
+      spaceWith("222", [hero()]);
+
+      await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
+
+      expect(diffOutput()).toContain("hero (added)");
+      expect(process.exitCode ?? 0).toBe(0);
+    });
+
+    it("should exit 2 when a space cannot be fetched", async () => {
+      consoleError.mockImplementation(() => {});
+      spaceWith("111", []);
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/222/components", () =>
+          HttpResponse.json({ error: "Internal Server Error" }, { status: 500 }),
+        ),
+      );
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "diff",
+        "--from",
+        "111",
+        "--to",
+        "222",
+        "--exit-code",
+      ]);
+
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should exit 1 when a space cannot be fetched without the flag", async () => {
+      consoleError.mockImplementation(() => {});
+      spaceWith("111", []);
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/222/components", () =>
+          HttpResponse.json({ error: "Internal Server Error" }, { status: 500 }),
+        ),
+      );
+
+      await schemaCommand.parseAsync(["node", "test", "diff", "--from", "111", "--to", "222"]);
+
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should exit 2 when a schema entry file cannot be loaded", async () => {
+      consoleError.mockImplementation(() => {});
+      vi.mocked(loadSchema).mockRejectedValue(new Error("Cannot find module /abs/missing.ts"));
+      spaceWith("222", []);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "diff",
+        "--from",
+        "222",
+        "--to",
+        "./missing.ts",
+        "--exit-code",
+      ]);
+
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should exit 1 when a datasource was added", async () => {
+      spaceWith("111", []);
+      spaceWith("222", []);
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/222/datasources", () =>
+          HttpResponse.json({
+            datasources: [{ id: 1, name: "Colors", slug: "colors", dimensions: [] }],
+          }),
+        ),
+      );
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "diff",
+        "--from",
+        "111",
+        "--to",
+        "222",
+        "--exit-code",
+      ]);
+
+      expect(diffOutput()).toContain("(added)");
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("should exit 2 when the config file fails to load", async () => {
+      consoleError.mockImplementation(() => {});
+      const loadConfigLayers = vi
+        .spyOn(configHelpers, "loadConfigLayers")
+        .mockRejectedValue(new Error("broken config"));
+      onTestFinished(() => loadConfigLayers.mockRestore());
+
+      // The CLI entry point hands errors thrown before the action to `handleError`.
+      await schemaCommand
+        .parseAsync(["node", "test", "diff", "--from", "111", "--to", "222", "--exit-code"])
+        .catch(handleError);
+
+      expect(output()).toContain("broken config");
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("should exit 2 when writing the diff to stdout fails", async () => {
+      consoleError.mockImplementation(() => {});
+      spaceWith("111", [hero()]);
+      spaceWith("222", [hero()]);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "diff",
+        "--from",
+        "111",
+        "--to",
+        "222",
+        "--exit-code",
+      ]);
+      process.stdout.emit("error", Object.assign(new Error("no space left"), { code: "ENOSPC" }));
+
+      expect(output()).toContain("Failed to write to stdout");
+      expect(process.exitCode).toBe(2);
+    });
   });
 });

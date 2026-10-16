@@ -156,6 +156,15 @@ function defaultTodo(field: string, fieldType: string, value: unknown): string {
     : `TODO: replace the placeholder default for the required field '${field}'.`;
 }
 
+function renameHintTodo(field: string, newField: string, changes: BreakingChange[]): string {
+  const addsNewField = changes.some(
+    (change) => change.kind === "required_added" && change.field === newField,
+  );
+  return addsNewField
+    ? `TODO: if '${field}' was renamed to '${newField}', replace this removeField and the addField of '${newField}' with renameField, or the content of '${field}' is lost.`
+    : `TODO: if '${field}' was renamed to '${newField}', replace removeField with renameField.`;
+}
+
 export function toMigrationOps(block: string, changes: BreakingChange[]): MigrationOpSource[] {
   return changes.flatMap((change): MigrationOpSource[] => {
     switch (change.kind) {
@@ -168,9 +177,7 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
             block,
             field: change.field,
             todo: change.renameHint
-              ? [
-                  `TODO: if '${change.field}' was renamed to '${change.renameHint.newField}', replace removeField with renameField.`,
-                ]
+              ? [renameHintTodo(change.field, change.renameHint.newField, changes)]
               : undefined,
           },
         ];
@@ -186,7 +193,9 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
             kind: "alterField",
             block,
             field: change.field,
-            todo: [`TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}.`],
+            todo: [
+              `TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}. A rerun of the migration passes values it already converted.`,
+            ],
           },
         ];
       }

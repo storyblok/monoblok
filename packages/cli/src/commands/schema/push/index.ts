@@ -20,10 +20,7 @@ import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions"
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
 import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
-import {
-  localSnapshotComponents,
-  writeContentMigration,
-} from "../../migrations/content-migrations";
+import { writeContentMigration } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
 
 /** Quotes a path for pasting into a shell when it holds characters the shell would split or expand. */
@@ -40,10 +37,7 @@ schemaCommand
   .option("--delete", "Delete remote entities not present in local schema", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
-  .option(
-    "--no-snapshots",
-    "Skip the .before.ts and .after.ts snapshots and type the generated migration against the entry file",
-  )
+  .option("--no-before", "Skip the .before.ts schema snapshot next to the generated migration")
   .option(
     "--legacy",
     "Generate one .js migration per component for `migrations run` instead of a defineMigration file",
@@ -140,8 +134,8 @@ schemaCommand
             `${totalChanges} breaking change(s) detected in ${breakingChanges.length} component(s).`,
           );
           const runCommand = options.legacy ? "migrations run" : "migrations apply";
-          if (options.legacy && !options.snapshots) {
-            ui.warn("--no-snapshots has no effect with --legacy.");
+          if (options.legacy && !options.before) {
+            ui.warn("--no-before has no effect with --legacy.");
           }
 
           // Dry-run: show analysis only, no prompts, no file writes
@@ -249,18 +243,13 @@ schemaCommand
                   name: `update-${componentNames.join("-")}`,
                   schemaEntry: entryFile,
                   ops,
-                  snapshots: options.snapshots
-                    ? {
-                        before: rawComponents,
-                        after: localSnapshotComponents(local.components),
-                        blocks: componentNames,
-                      }
+                  before: options.before
+                    ? { components: rawComponents, blocks: componentNames }
                     : undefined,
                 });
                 const generatedFiles = [
                   { message: "Migration generated", path: written.migrationPath },
                   { message: "Schema snapshot generated", path: written.beforePath },
-                  { message: "Schema snapshot generated", path: written.afterPath },
                 ];
                 for (const { message, path } of generatedFiles) {
                   if (path) {

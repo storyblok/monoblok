@@ -228,7 +228,7 @@ describe("schema push command", () => {
     server.resetHandlers();
     const pushCmd = schemaCommand.commands.find((command) => command.name() === "push");
     pushCmd?.setOptionValueWithSource("legacy", undefined, "default");
-    pushCmd?.setOptionValueWithSource("snapshots", true, "default");
+    pushCmd?.setOptionValueWithSource("before", true, "default");
     pushCmd?.setOptionValueWithSource("path", undefined, "default");
     vi.useRealTimers();
   });
@@ -978,22 +978,17 @@ describe("schema push command", () => {
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
     const migration = writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`);
-    expect(migration).toContain(
-      "import type { After } from './20261016090503-update-hero.after.js';",
-    );
-    expect(migration).toContain("export default defineMigration<After, Before>([");
+    expect(migration).toContain("import type { Schema } from '../../../schema.js';");
+    expect(migration).toContain("export default defineMigration<Schema, Before>([");
     expect(migration).toContain(
       "renameField({ block: 'hero', field: 'author_name', to: 'author' })",
     );
     expect(
       writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.before.ts`),
     ).toContain("defineField('author_name'");
-    expect(
-      writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.after.ts`),
-    ).toContain("defineField('author'");
   });
 
-  it("should type the migration against the entry file with --no-snapshots", async () => {
+  it("should skip the snapshot with --no-before", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
@@ -1017,14 +1012,11 @@ describe("schema push command", () => {
       "--space",
       DEFAULT_SPACE,
       "--migrations",
-      "--no-snapshots",
+      "--no-before",
     ]);
 
-    const migration = writtenFile("20261016090503-update-hero.ts");
-    expect(migration).toContain("import type { Schema } from '../../../schema.js';");
-    expect(migration).toContain("defineMigration<Schema>([");
+    expect(writtenFile("20261016090503-update-hero.ts")).toContain("defineMigration<Schema>([");
     expect(writtenFile(".before.ts")).toBeUndefined();
-    expect(writtenFile(".after.ts")).toBeUndefined();
   });
 
   it("should skip migration generation with --no-migrations", async () => {
@@ -1130,7 +1122,6 @@ describe("schema push command", () => {
 
     // Should generate without prompting
     expect(migrationFiles()).toEqual([
-      expect.stringMatching(/20261016090503-update-hero\.after\.ts$/),
       expect.stringMatching(/20261016090503-update-hero\.before\.ts$/),
       expect.stringMatching(/20261016090503-update-hero\.ts$/),
     ]);
@@ -1211,6 +1202,39 @@ describe("schema push command", () => {
 
     expect(writtenFile("20261016090503-update-hero.ts")).toContain(
       "coerceField({ block: 'hero', field: 'rating', from: 'string', to: 'number' })",
+    );
+  });
+
+  it("should point out a possible rename when a removed field matches a new required field", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({
+          name: "teaser",
+          schema: { headline: { type: "text", pos: 0, required: true } },
+        }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({ name: "teaser", schema: { title: { type: "text", pos: 0 } } }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+    ]);
+
+    expect(writtenFile("20261016090503-update-teaser.ts")).toContain(
+      "// TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of 'headline' with renameField, or the content of 'title' is lost.\n  removeField({ block: 'teaser', field: 'title' }),",
     );
   });
 

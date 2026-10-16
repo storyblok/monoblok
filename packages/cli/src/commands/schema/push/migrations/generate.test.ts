@@ -219,7 +219,9 @@ describe("toMigrationOps", () => {
         kind: "alterField",
         block: "hero",
         field: "body",
-        todo: ["TODO: convert 'body' from richtext to markdown."],
+        todo: [
+          "TODO: convert 'body' from richtext to markdown. A rerun of the migration passes values it already converted.",
+        ],
       },
     ]);
   });

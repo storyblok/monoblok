@@ -80,9 +80,9 @@ migration and its snapshot from the space’s current blocks.
 
 ### Rerun migrations safely
 
-`migrations apply` runs every migration in the directory each time, and the journal that records
-runs stays on the machine that ran them. It skips ops that later schema changes superseded, such as
-an `addField` of a field a later migration renamed. Write each op so that a second pass changes
+`migrations apply` runs every migration in the directory each time and skips ops that later schema
+changes superseded, such as an `addField` of a field a later migration renamed. The journal that
+records runs stays on the machine that ran them. Write each op so that a second pass changes
 nothing:
 
 - A callback can meet values it already converted. `Before` types the value as it was before the

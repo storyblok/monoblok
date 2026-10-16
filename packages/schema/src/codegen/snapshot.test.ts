@@ -174,15 +174,6 @@ describe("generateSnapshot", () => {
     }
   });
 
-  it("should freeze the written schema as `After`, without the name-only list", () => {
-    const source = generateSnapshot({ components, blocks: ["card"], kind: "after" });
-
-    expect(source).toContain("export type After = Schema<typeof schema>;");
-    expect(source).not.toContain("nameOnlyBlocks");
-    // Only `under` names the blocks that contain `card`, and `under` is typed against `Before`.
-    expect(blockNames(source)).toEqual(["card", "badge"]);
-  });
-
   it("should compile when the space holds options the editor no longer writes", async () => {
     const legacy: WireComponent = {
       name: "legacy",

@@ -19,15 +19,10 @@ export type WireComponent = {
 };
 
 export type GenerateSnapshotOptions = {
-  /** Every component of the schema the snapshot freezes. */
+  /** Every component in the space, as it stands before the migration. */
   components: readonly WireComponent[];
-  /** The blocks emitted with their fields. Unknown names are skipped. */
+  /** The blocks the migration reads, emitted with their fields. Unknown names are skipped. */
   blocks: readonly string[];
-  /**
-   * `before` freezes the schema a migration reads (`type Before`), `after` the
-   * schema it writes (`type After`). Defaults to `before`.
-   */
-  kind?: "before" | "after";
   /** Named in the header comment. */
   migrationId?: string;
 };
@@ -180,31 +175,18 @@ function typingField(field: FieldRecord, allowed: string[] | undefined): Record<
   return typed;
 }
 
-const HEADER = {
-  before: {
-    subject: "The schema as it stood before",
-    blocks: "Blocks the migration reads list their fields",
-  },
-  after: {
-    subject: "The schema written by",
-    blocks: "Blocks the migration writes list their fields",
-  },
-} as const;
-
 /**
- * Generates a `.before.ts` or `.after.ts` module that freezes part of a schema
- * for one migration, exporting `type Before` or `type After` for
- * `defineMigration<After, Before>`.
+ * Generates a `.before.ts` module: the schema as it stood before a migration,
+ * exporting `type Before` for `defineMigration<Schema, Before>`.
  *
  * Only `blocks` are emitted with their fields. Name-only stubs cover the blocks
- * their fields allow, which keeps nested `bloks` fields typed, and, in a
- * `before` snapshot, every block that can contain one of them, so `under` can
- * name it. A `before` snapshot's `nameOnlyBlocks` names every block not emitted
- * with its fields, so a check against it can tell an existing block from a new
- * one.
+ * their fields allow, which keeps nested `bloks` fields typed, and every block
+ * that can contain one of them, so `under` can name it. `nameOnlyBlocks` names
+ * every block not emitted with its fields, so a check against the snapshot can
+ * tell an existing block from a new one.
  */
 export function generateSnapshot(options: GenerateSnapshotOptions): string {
-  const { components, migrationId, kind = "before" } = options;
+  const { components, migrationId } = options;
   const byName = new Map(components.map((c) => [c.name, c]));
   const blocks = [...new Set(options.blocks)].filter((name) => byName.has(name)).sort();
   const lookup = restrictionLookup(components);
@@ -219,27 +201,23 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
       }
     }
   }
-  if (kind === "before") {
-    for (const container of containersOf(blocks, components, lookup)) {
-      stubNames.add(container);
-    }
+  for (const container of containersOf(blocks, components, lookup)) {
+    stubNames.add(container);
   }
 
   const stubs = [...stubNames].filter((name) => !blocks.includes(name)).sort();
   const ordered = [...blocks, ...stubs];
   const varNames = resolveVarNames(ordered, componentVarName, SNAPSHOT_IMPORTS);
   const hasFields = blocks.some((name) => fieldsOf(byName.get(name)).length > 0);
-  const header = HEADER[kind];
-  const typeName = kind === "before" ? "Before" : "After";
 
   const lines: string[] = [
     "/**",
     migrationId
-      ? ` * ${header.subject} migration ${commentText(migrationId)}.`
-      : ` * ${header.subject} the migration beside it.`,
-    ` * Generated. ${header.blocks}; the blocks around them are name-only`,
-    " * stubs. Keep this file unchanged once the migration ships, so the migration",
-    " * stays typed after later schema changes.",
+      ? ` * The schema as it stood before migration ${commentText(migrationId)}.`
+      : " * The schema as it stood before the migration beside it.",
+    " * Generated. Blocks the migration reads list their fields; the blocks around",
+    " * them are name-only stubs. Keep this file unchanged once the migration ships,",
+    " * so the fields it reads stay typed after later schema changes.",
     " */",
   ];
   const valueImports = [
@@ -291,25 +269,23 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   }
   lines.push(`${INDENT}},`);
   lines.push("});", "");
-  lines.push(`export type ${typeName} = Schema<typeof schema>;`, "");
+  lines.push("export type Before = Schema<typeof schema>;", "");
 
-  if (kind === "before") {
-    const nameOnlyBlocks = components
-      .map((component) => component.name)
-      .filter((name) => !blocks.includes(name))
-      .sort();
-    lines.push(
-      "/** Blocks in the space whose fields are not part of this snapshot. */",
-      nameOnlyBlocks.length === 0
-        ? "export const nameOnlyBlocks: string[] = [];"
-        : [
-            "export const nameOnlyBlocks: string[] = [",
-            ...nameOnlyBlocks.map((name) => `${INDENT}${quoteString(name)},`),
-            "];",
-          ].join("\n"),
-      "",
-    );
-  }
+  const nameOnlyBlocks = components
+    .map((component) => component.name)
+    .filter((name) => !blocks.includes(name))
+    .sort();
+  lines.push(
+    "/** Blocks in the space whose fields are not part of this snapshot. */",
+    nameOnlyBlocks.length === 0
+      ? "export const nameOnlyBlocks: string[] = [];"
+      : [
+          "export const nameOnlyBlocks: string[] = [",
+          ...nameOnlyBlocks.map((name) => `${INDENT}${quoteString(name)},`),
+          "];",
+        ].join("\n"),
+    "",
+  );
 
   return lines.join("\n");
 }

@@ -3,8 +3,8 @@
  *
  * Identity is the filename, not anything inside the file, so the same
  * migration has the same id on every machine. The name pattern admits no dots,
- * so the `*.before.ts` and `*.after.ts` schema snapshots that sit beside
- * migrations, and anything else in the directory, are left alone.
+ * so the `*.before.ts` schema snapshots that sit beside migrations, and
+ * anything else in the directory, are left alone.
  */
 import type { CompiledMigration } from "./define-migration";
 import { MigrationError } from "./migration-error";

@@ -3,6 +3,7 @@
  * migrations and their journal live, writing a new one, the story fields the
  * engine reads, and the guard against pending releases.
  */
+import { rm } from "node:fs/promises";
 import { isDeepStrictEqual } from "node:util";
 import chalk from "chalk";
 import { dirname, join, relative, resolve } from "pathe";
@@ -109,7 +110,13 @@ export async function writeContentMigration(
   if (options.before) {
     await saveToFile(beforePath, generateSnapshot({ ...options.before, migrationId: id }));
   }
-  await saveToFile(migrationPath, source);
+  try {
+    await saveToFile(migrationPath, source);
+  } catch (error) {
+    // A snapshot left behind would block a retry within the same second.
+    await rm(beforePath, { force: true });
+    throw error;
+  }
 
   return options.before ? { migrationPath, beforePath } : { migrationPath };
 }

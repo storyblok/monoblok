@@ -2,8 +2,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
+import { dirname, join } from "pathe";
 
 import "../index";
+import { loadSchemaModule } from "../../../utils/schema/classify-exports";
 import { schemaCommand } from "../command";
 import { DEFAULT_SPACE, getID } from "../../__tests__/helpers";
 
@@ -65,6 +67,53 @@ function makeMockDatasource(overrides: Partial<MockDatasource> = {}): MockDataso
 }
 
 const server = setupServer();
+
+const fs = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+
+const CLI_NODE_MODULES = join(import.meta.dirname, "../../../../node_modules");
+
+/**
+ * Creates a real directory for files that must be loaded from disk. It lives in
+ * the CLI's `node_modules`, so generated `@storyblok/schema` imports resolve.
+ */
+async function makeDiskDir(): Promise<string> {
+  return fs.mkdtemp(join(CLI_NODE_MODULES, ".schema-init-test-"));
+}
+
+async function initToDisk(): Promise<string> {
+  const dir = await makeDiskDir();
+  await schemaCommand.parseAsync([
+    "node",
+    "test",
+    "init",
+    "--space",
+    DEFAULT_SPACE,
+    "--out-dir",
+    dir,
+  ]);
+  await copyToDisk(dir);
+  return dir;
+}
+
+/** Copies the files written to the mocked filesystem under `dir` onto disk. */
+async function copyToDisk(dir: string): Promise<void> {
+  // memfs strips Windows drive letters from its paths.
+  const memfsDir = dir.replace(/^[a-z]:/i, "");
+  for (const [path, content] of Object.entries(vol.toJSON())) {
+    if (path.startsWith(memfsDir) && typeof content === "string") {
+      const diskPath = join(dir, path.slice(memfsDir.length));
+      await fs.mkdir(dirname(diskPath), { recursive: true });
+      await fs.writeFile(diskPath, content);
+    }
+  }
+}
+
+function warnings(): string {
+  return vi
+    .mocked(console.warn)
+    .mock.calls.map((call) => String(call[0]))
+    .join("\n");
+}
 
 const preconditions = {
   hasRemoteComponents(components: MockComponent[]) {
@@ -507,5 +556,123 @@ describe("schema init command", () => {
 
     const files = Object.keys(vol.toJSON());
     expect(files.some((f) => f.includes(".storyblok/schema/blocks/hero.ts"))).toBe(true);
+  });
+
+  describe("custom field plugins", () => {
+    let diskDir: string | undefined;
+
+    afterEach(async () => {
+      if (diskDir) {
+        await fs.rm(diskDir, { recursive: true, force: true });
+        diskDir = undefined;
+      }
+      process.exitCode = undefined;
+    });
+
+    it("should register every custom field plugin so the initialized schema validates", async () => {
+      const comp = makeMockComponent({
+        name: "page",
+        is_root: true,
+        schema: {
+          color: { type: "custom", field_type: "my-color-picker", pos: 0 },
+          map: { type: "custom", field_type: "acme_map", pos: 1 },
+          accent: { type: "custom", field_type: "storyblok-colorpicker", pos: 2 },
+          icon: { type: "custom", field_type: "@acme/icon-picker", pos: 3 },
+          mapAlias: { type: "custom", field_type: "acme-map", pos: 4 },
+        },
+      });
+      preconditions.hasRemoteSchema({ components: [comp] });
+      diskDir = await initToDisk();
+
+      await schemaCommand.parseAsync(["node", "test", "validate", join(diskDir, "schema.ts")]);
+
+      expect(process.exitCode).toBe(0);
+      const output = vi
+        .mocked(console.error)
+        .mock.calls.map((call) => String(call[0]))
+        .join("\n");
+      expect(output).toContain("0 errors, 0 warnings");
+    });
+
+    it("should warn that generated field plugins need their value shapes defined", async () => {
+      const comp = makeMockComponent({
+        name: "page",
+        schema: {
+          color: { type: "custom", field_type: "my-color-picker", pos: 0 },
+          map: { type: "custom", field_type: "acme_map", pos: 1 },
+        },
+      });
+      preconditions.hasRemoteSchema({ components: [comp] });
+
+      await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
+
+      expect(warnings()).toContain("placeholder field plugins");
+      expect(warnings()).toContain("acme_map (.storyblok/schema/field-plugins/acme-map.ts)");
+      expect(warnings()).toContain(
+        "my-color-picker (.storyblok/schema/field-plugins/my-color-picker.ts)",
+      );
+    });
+
+    it("should use the official definition instead of a placeholder for an official field plugin", async () => {
+      const comp = makeMockComponent({
+        name: "page",
+        schema: { accent: { type: "custom", field_type: "storyblok-colorpicker", pos: 0 } },
+      });
+      preconditions.hasRemoteSchema({ components: [comp] });
+      diskDir = await initToDisk();
+
+      const { schema } = await loadSchemaModule(join(diskDir, "schema.ts"));
+      expect(schema).toMatchObject({
+        fieldPlugins: {
+          storyblokColorField: expect.objectContaining({ fieldType: "storyblok-colorpicker" }),
+        },
+      });
+      expect(Object.keys(vol.toJSON()).some((f) => f.includes("/field-plugins/"))).toBe(false);
+      expect(warnings()).not.toContain("placeholder field plugins");
+    });
+
+    it("should name colliding placeholder files the same way regardless of the system locale", async () => {
+      const comp = makeMockComponent({
+        name: "page",
+        schema: {
+          lower: { type: "custom", field_type: "acme", pos: 0 },
+          upper: { type: "custom", field_type: "Acme", pos: 1 },
+        },
+      });
+      preconditions.hasRemoteSchema({ components: [comp] });
+
+      await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
+
+      expect(warnings()).toContain("Acme (.storyblok/schema/field-plugins/acme.ts)");
+      expect(warnings()).toContain("acme (.storyblok/schema/field-plugins/acme-2.ts)");
+    });
+
+    it("should skip and report custom fields that name no field plugin", async () => {
+      const comp = makeMockComponent({
+        name: "page",
+        schema: {
+          empty: { type: "custom", field_type: "", pos: 0 },
+          missing: { type: "custom", pos: 1 },
+        },
+      });
+      preconditions.hasRemoteSchema({ components: [comp] });
+
+      await schemaCommand.parseAsync(["node", "test", "init", "--space", DEFAULT_SPACE]);
+
+      expect(warnings()).toContain("Skipped custom fields that name no field plugin");
+      expect(warnings()).toContain("page.empty");
+      expect(warnings()).toContain("page.missing");
+      expect(Object.keys(vol.toJSON()).some((f) => f.includes("/field-plugins/"))).toBe(false);
+    });
+
+    it("should not warn when the space uses no custom field plugins", async () => {
+      const comp = makeMockComponent({ name: "page" });
+      preconditions.hasRemoteSchema({ components: [comp] });
+      diskDir = await initToDisk();
+
+      const { schema } = await loadSchemaModule(join(diskDir, "schema.ts"));
+      expect(schema).not.toHaveProperty("fieldPlugins");
+      expect(warnings()).not.toContain("placeholder field plugins");
+    });
   });
 });

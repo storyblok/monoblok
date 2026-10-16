@@ -91,19 +91,41 @@ schemaCommand
       const writeSpinner = ui.createSpinner(
         `Generating TypeScript files to ${targetDisplayPath}...`,
       );
-      const writtenFiles = await writeSchemaFiles(
-        targetPath,
-        rawComponents,
-        rawComponentFolders,
-        rawDatasources,
-        rawInternalTags,
-      );
+      const { writtenFiles, placeholderFieldPlugins, fieldsWithoutFieldType } =
+        await writeSchemaFiles(
+          targetPath,
+          rawComponents,
+          rawComponentFolders,
+          rawDatasources,
+          rawInternalTags,
+        );
 
       summary.total = writtenFiles.length;
       summary.succeeded = writtenFiles.length;
 
       writeSpinner.succeed(`Generated ${writtenFiles.length} files`);
       ui.list(writtenFiles.map((file) => displayPath(file, options.outDir)));
+
+      if (placeholderFieldPlugins.length > 0) {
+        ui.warn(
+          [
+            "Generated placeholder field plugins that accept any value. Define the value each one stores:",
+            ...placeholderFieldPlugins.map(
+              ({ fieldType, filePath }) =>
+                `  - ${fieldType} (${displayPath(filePath, options.outDir)})`,
+            ),
+          ].join("\n"),
+        );
+      }
+
+      if (fieldsWithoutFieldType.length > 0) {
+        ui.warn(
+          [
+            "Skipped custom fields that name no field plugin:",
+            ...fieldsWithoutFieldType.map((field) => `  - ${field}`),
+          ].join("\n"),
+        );
+      }
 
       ui.ok(
         `Schema workspace initialized from space ${space} in ${chalk.hex(colorPalette.PRIMARY)(targetDisplayPath)}`,

@@ -1,7 +1,9 @@
 import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+import * as officialFieldPlugins from "@storyblok/schema/field-plugins";
 
 import type { Component, ComponentFolder, Datasource } from "../../../types";
 import { slugify } from "../../../utils/format";
+import { isFieldPlugin } from "../../../utils/schema/classify-exports";
 import { buildGroupPathByUuid } from "../folders";
 import {
   COMPONENT_DEFAULTS,
@@ -73,8 +75,9 @@ export function folderVarName(name: string): string {
 export function resolveVarNames(
   rawNames: string[],
   baseVarName: (name: string) => string,
+  reservedVarNames: Iterable<string> = [],
 ): string[] {
-  const used = new Set<string>();
+  const used = new Set<string>(reservedVarNames);
   return rawNames.map((raw) => {
     const base = baseVarName(raw);
     let candidate = base;
@@ -117,6 +120,18 @@ export function resolveFileNames(baseNames: string[], dirKeys?: string[]): strin
     used.add(candidate);
     return candidate;
   });
+}
+
+const FALLBACK_FIELD_PLUGIN_FILE_NAME = "field-plugin";
+
+/** Returns the file name (without extension) for a field plugin. e.g. `'@acme/MyPicker'` -> `'acme-my-picker'` */
+export function fieldPluginFileName(fieldType: string): string {
+  return toKebabCase(fieldType) || FALLBACK_FIELD_PLUGIN_FILE_NAME;
+}
+
+/** Returns the variable name for a field plugin file name. e.g. `'acme-my-picker'` -> `'acmeMyPickerFieldPlugin'` */
+export function fieldPluginVarName(fileName: string): string {
+  return `${toCamelCaseIdentifier(fileName)}FieldPlugin`;
 }
 
 /** Returns the file name (without extension) for a component. e.g. `'teaser_list'` -> `'teaser-list'` */
@@ -189,6 +204,100 @@ export function resolveDatasources(datasources: Datasource[]): ResolvedDatasourc
     varName: varNames[i],
     fileName: fileNames[i],
   }));
+}
+
+/**
+ * A custom field plugin referenced by the space's blocks. An `official` plugin
+ * ships with `@storyblok/schema/field-plugins` and is imported as `varName`; any
+ * other plugin gets a generated placeholder file, because only the plugin knows
+ * the shape of the value it stores.
+ */
+export type ResolvedFieldPlugin =
+  | { kind: "official"; fieldType: string; varName: string }
+  | PlaceholderFieldPlugin;
+
+export interface PlaceholderFieldPlugin {
+  kind: "placeholder";
+  fieldType: string;
+  varName: string;
+  fileName: string;
+}
+
+const OFFICIAL_FIELD_PLUGIN_VAR_BY_TYPE = new Map<string, string>(
+  Object.entries(officialFieldPlugins).flatMap(([varName, plugin]): [string, string][] =>
+    isFieldPlugin(plugin) && typeof plugin.fieldType === "string"
+      ? [[plugin.fieldType, varName]]
+      : [],
+  ),
+);
+
+export interface CustomFieldTypes {
+  /** Unique field types, in code-unit order so generated names don't depend on the locale. */
+  fieldTypes: string[];
+  /** `<block>.<field>` paths of custom fields that name no field plugin. */
+  fieldsWithoutFieldType: string[];
+}
+
+/** Collects the field plugins that the `custom` fields across `components` reference. */
+export function collectCustomFieldTypes(components: Component[]): CustomFieldTypes {
+  const fieldTypes = new Set<string>();
+  const fieldsWithoutFieldType: string[] = [];
+  for (const component of components) {
+    for (const [fieldName, field] of Object.entries(component.schema ?? {})) {
+      if (!isRecord(field) || field.type !== "custom") {
+        continue;
+      }
+      if (typeof field.field_type === "string" && field.field_type !== "") {
+        fieldTypes.add(field.field_type);
+      } else {
+        fieldsWithoutFieldType.push(`${component.name}.${fieldName}`);
+      }
+    }
+  }
+  return { fieldTypes: [...fieldTypes].sort(), fieldsWithoutFieldType };
+}
+
+/** Resolves each field type to an official plugin import or a uniquely named placeholder. */
+export function resolveFieldPlugins(fieldTypes: string[]): ResolvedFieldPlugin[] {
+  const placeholderTypes = fieldTypes.filter(
+    (fieldType) => !OFFICIAL_FIELD_PLUGIN_VAR_BY_TYPE.has(fieldType),
+  );
+  const fileNames = resolveFileNames(placeholderTypes.map(fieldPluginFileName));
+  const varNames = resolveVarNames(
+    fileNames,
+    fieldPluginVarName,
+    OFFICIAL_FIELD_PLUGIN_VAR_BY_TYPE.values(),
+  );
+  let placeholderIndex = 0;
+  return fieldTypes.map((fieldType) => {
+    const officialVarName = OFFICIAL_FIELD_PLUGIN_VAR_BY_TYPE.get(fieldType);
+    if (officialVarName) {
+      return { kind: "official", fieldType, varName: officialVarName };
+    }
+    const i = placeholderIndex++;
+    return { kind: "placeholder", fieldType, varName: varNames[i], fileName: fileNames[i] };
+  });
+}
+
+/** Generates a placeholder field plugin file whose validator accepts any value. */
+export function generateFieldPluginFile(fieldType: string, varName: string): string {
+  return [
+    "import { defineFieldPlugin } from '@storyblok/schema';",
+    "",
+    "// Placeholder: accepts any value. Replace `value` with a Standard Schema validator",
+    "// (Zod, Valibot, ArkType, or hand-written) for the value this plugin stores.",
+    `export const ${varName} = defineFieldPlugin({`,
+    `${INDENT}fieldType: ${quoteString(fieldType)},`,
+    `${INDENT}value: {`,
+    `${INDENT}${INDENT}'~standard': {`,
+    `${INDENT}${INDENT}${INDENT}version: 1,`,
+    `${INDENT}${INDENT}${INDENT}vendor: 'storyblok-placeholder',`,
+    `${INDENT}${INDENT}${INDENT}validate: (value: unknown) => ({ value }),`,
+    `${INDENT}${INDENT}},`,
+    `${INDENT}},`,
+    "});",
+    "",
+  ].join("\n");
 }
 
 /**
@@ -869,12 +978,14 @@ export function generateDatasourceFile(datasource: Datasource, varName?: string)
  * Generates a `schema.ts` file that combines the schema object, types, and Story
  * alias. Blocks are imported from their group subdirectory (via each resolved
  * component's `segments`); the schema object exports `{ blocks, datasources,
- * folders }` — folders are only included when the space has remote groups.
+ * folders, fieldPlugins }` — folders and field plugins are only included when
+ * the space has them.
  */
 export function generateSchemaFile(
   components: ResolvedComponent[],
   datasources: ResolvedDatasource[],
   folders: ResolvedFolder[] = [],
+  fieldPlugins: ResolvedFieldPlugin[] = [],
 ): string {
   const lines: string[] = [];
 
@@ -890,6 +1001,14 @@ export function generateSchemaFile(
       ? "import type { BlockContent, MapiStory as InferStoryMapi } from '@storyblok/schema';"
       : "import type { MapiStory as InferStoryMapi } from '@storyblok/schema';",
   );
+  const officialFieldPluginVars = fieldPlugins
+    .filter((plugin) => plugin.kind === "official")
+    .map((plugin) => plugin.varName);
+  if (officialFieldPluginVars.length > 0) {
+    lines.push(
+      `import { ${officialFieldPluginVars.join(", ")} } from '@storyblok/schema/field-plugins';`,
+    );
+  }
   lines.push("");
 
   // Import blocks from their (slugified) group subdirectory — local
@@ -907,6 +1026,12 @@ export function generateSchemaFile(
   // Import folders (only when the space has remote groups)
   if (folders.length > 0) {
     lines.push(`import { ${folders.map((f) => f.varName).join(", ")} } from './folders';`);
+  }
+
+  for (const plugin of fieldPlugins) {
+    if (plugin.kind === "placeholder") {
+      lines.push(`import { ${plugin.varName} } from './field-plugins/${plugin.fileName}';`);
+    }
   }
 
   lines.push("");
@@ -933,6 +1058,14 @@ export function generateSchemaFile(
   if (folders.length > 0) {
     lines.push("  folders: {");
     for (const { varName } of folders) {
+      lines.push(`    ${varName},`);
+    }
+    lines.push("  },");
+  }
+
+  if (fieldPlugins.length > 0) {
+    lines.push("  fieldPlugins: {");
+    for (const { varName } of fieldPlugins) {
       lines.push(`    ${varName},`);
     }
     lines.push("  },");

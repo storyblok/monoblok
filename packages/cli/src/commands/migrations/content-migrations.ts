@@ -8,11 +8,11 @@ import chalk from "chalk";
 import { dirname, join, relative, resolve } from "pathe";
 import { generateMigrationSource, generateSnapshot } from "@storyblok/schema/codegen";
 import type { MigrationOpSource, WireComponent } from "@storyblok/schema/codegen";
+import { nextMigrationId } from "@storyblok/schema/internal/codegen";
 import {
   checkPendingReleases,
   discoverMigrations,
   MigrationError,
-  nextMigrationId,
   resolveJournal,
 } from "@storyblok/schema/migrations";
 import type { Journal, StoryForMigration } from "@storyblok/schema/migrations";

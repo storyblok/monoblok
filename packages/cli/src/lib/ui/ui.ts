@@ -5,6 +5,7 @@ import { colorPalette } from "../../constants";
 import { DEFAULT_GLOBAL_CONFIG } from "../config/defaults";
 import { getActiveConfig } from "../config/store";
 import { capitalize } from "../../utils/format";
+import { getRuntimeErrorExitCode } from "../../utils/error/exit-code";
 
 interface InfoOptions {
   header?: boolean;
@@ -40,7 +41,7 @@ let stdoutEpipeGuarded = false;
  * run looks like a failure to CI. There is nothing left to write, so EPIPE is
  * swallowed.
  *
- * Any other stdout error is reported and exits 1. Rethrowing it here would land
+ * Any other stdout error is reported as a runtime error. Rethrowing it here would land
  * in the same trap the guard exists to avoid: a throw inside an `'error'`
  * listener is an uncaught exception, so the stack trace and clobbered exit code
  * come back for every `code` that is not EPIPE.
@@ -55,10 +56,10 @@ function guardStdoutEpipe(ui: UI): void {
       return;
     }
     ui.error(`Failed to write to stdout: ${error.message}`);
-    // A runtime failure, not a bad invocation, so 1 rather than 2. Set here
-    // because the write already failed: the document on stdout is truncated,
-    // and a consumer must not read the command's own exit code as success.
-    process.exitCode = 1;
+    // Set here because the write already failed: the document on stdout is
+    // truncated, and a consumer must not read the command's own exit code as
+    // success.
+    process.exitCode = getRuntimeErrorExitCode();
   });
 }
 

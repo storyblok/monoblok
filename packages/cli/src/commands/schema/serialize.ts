@@ -1,8 +1,9 @@
+import { formatValue } from "@storyblok/schema/internal/codegen";
+
 import {
   COMPONENT_STRIP_KEYS,
   DATASOURCE_DIMENSION_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
-  formatValue,
   RESTRICTION_LIST_KEYS,
   stripKeys,
 } from "./utils";

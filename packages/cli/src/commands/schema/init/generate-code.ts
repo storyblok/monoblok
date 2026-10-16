@@ -11,7 +11,7 @@ import {
   resolveVarNames,
   sortSchemaByPos,
   toCamelCaseIdentifier,
-} from "@storyblok/schema/codegen";
+} from "@storyblok/schema/internal/codegen";
 
 import type { Component, ComponentFolder, Datasource } from "../../../types";
 import { isFieldPlugin } from "../../../utils/schema/classify-exports";
@@ -24,7 +24,7 @@ import {
   stripKeys,
 } from "../utils";
 
-export { componentVarName, resolveVarNames } from "@storyblok/schema/codegen";
+export { componentVarName, resolveVarNames } from "@storyblok/schema/internal/codegen";
 
 /**
  * Converts a string to kebab-case, keeping only filesystem/shell-safe

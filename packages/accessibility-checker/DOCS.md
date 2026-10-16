@@ -94,8 +94,9 @@ result types.
 
 The result groups findings by category. It splits each category into `violations`, `warnings`
 (results axe cannot decide without a person), and `passed`. Each finding describes one element,
-including the block it belongs to. `totalChecks` counts findings (one per element and rule), not
-rules.
+including the block it belongs to. `ruleTags` lists the axe tags the check ran with, so the editor
+can show which guidelines were applied. `totalChecks` counts findings (one per element and rule),
+not rules.
 
 ```json
 {

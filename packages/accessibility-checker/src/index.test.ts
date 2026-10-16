@@ -213,6 +213,7 @@ describe("inside the Visual Editor", () => {
       expect.anything(),
       expect.objectContaining({ runOnly: { type: "tag", values: ["wcag2a", "wcag2aa"] } }),
     );
+    expect(result.ruleTags).toEqual(["wcag2a", "wcag2aa"]);
     expect(ruleIds.every((ruleId) => allowed.has(ruleId))).toBe(true);
     run.mockRestore();
   });

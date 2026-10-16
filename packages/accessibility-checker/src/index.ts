@@ -156,7 +156,7 @@ function startChecker({
       }
       reply({
         action: "accessibilityCheckResult",
-        result: buildResult(results, window.location.href),
+        result: buildResult(results, window.location.href, ruleTags),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

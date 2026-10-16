@@ -40,9 +40,11 @@ describe("buildResult", () => {
         passes: [rule("button-name", ["cat.name-role-value"], null, [{ html: "<button>" }])],
       },
       URL,
+      ["wcag2a", "best-practice"],
     );
 
     expect(result.url).toBe(URL);
+    expect(result.ruleTags).toEqual(["wcag2a", "best-practice"]);
     expect(result.counts).toEqual({ violations: 2, warnings: 1, passed: 1 });
     expect(result.totalChecks).toBe(4);
     const category = (id: string) => result.categories.find((category) => category.id === id);
@@ -66,6 +68,7 @@ describe("buildResult", () => {
         passes: [],
       },
       URL,
+      ["wcag2a", "best-practice"],
     );
 
     expect(result.categories.map(({ id }) => id)).toEqual(["aria", "tables", "other"]);
@@ -79,6 +82,7 @@ describe("buildResult", () => {
         passes: [rule("ok", ["cat.aria"], "critical", [{ html: "<p>" }])],
       },
       URL,
+      ["wcag2a", "best-practice"],
     );
     const [violation] = result.categories[0]?.findings.violations ?? [];
     const [passed] = result.categories[0]?.findings.passed ?? [];
@@ -109,6 +113,7 @@ describe("buildResult", () => {
         passes: [],
       },
       URL,
+      ["wcag2a", "best-practice"],
     );
     const [first, second] = result.categories[0]?.findings.violations ?? [];
 

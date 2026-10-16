@@ -70,6 +70,8 @@ export type AccessibilityCategory = {
 export type AccessibilityCheckResult = {
   checkedAt: string;
   url: string;
+  /** The axe tags of the rules that ran, as configured in the plugin. */
+  ruleTags: string[];
   totalChecks: number;
   counts: Record<AccessibilityFindingStatus, number>;
   categories: AccessibilityCategory[];

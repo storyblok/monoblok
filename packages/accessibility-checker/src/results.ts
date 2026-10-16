@@ -75,6 +75,7 @@ function toFinding(
 export function buildResult(
   results: Pick<AxeResults, "violations" | "incomplete" | "passes">,
   url: string,
+  ruleTags: string[],
 ): AccessibilityCheckResult {
   const categories = new Map<AccessibilityCategoryId, AccessibilityCategory>();
   const counts = { violations: 0, warnings: 0, passed: 0 };
@@ -105,6 +106,7 @@ export function buildResult(
   return {
     checkedAt: new Date().toISOString(),
     url,
+    ruleTags,
     totalChecks: counts.violations + counts.warnings + counts.passed,
     counts,
     categories: CATEGORIES.flatMap((id) => categories.get(id) ?? []),

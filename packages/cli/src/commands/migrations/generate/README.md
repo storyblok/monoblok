@@ -25,8 +25,8 @@ This will generate a migration file for the specified component:
 | `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                              | -                       |
 | `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators | -                       |
 | `-p, --path <path>`       | Custom path to store the migration file                                                                                   | `.storyblok/migrations` |
-| `--schema <entry-file>`   | Schema entry file. Generates a typed `defineMigration` file and its schema snapshots instead of a `.js` migration         | -                       |
-| `--no-snapshots`          | Skip the `.before.ts` and `.after.ts` snapshots and type the migration against the schema entry file                      | -                       |
+| `--schema <entry-file>`   | Schema entry file. Generates a typed `defineMigration` file and its `.before.ts` snapshot instead of a `.js` migration    | -                       |
+| `--no-before`             | Skip the `.before.ts` snapshot next to a typed migration                                                                  | -                       |
 | `--legacy`                | Generate a `.js` migration for `migrations run` even when `--schema` is set                                               | -                       |
 
 ## Examples
@@ -82,15 +82,14 @@ backup/
 storyblok migrations generate hero --space 12345 --schema src/schema.ts
 ```
 
-The command writes three files, named after the time they were created:
+The command writes two files, named after the time they were created:
 
 ```
 .storyblok/
 └── migrations/
     └── 12345/
-        ├── 20261016090503-hero.ts         # defineMigration file, typed against After and Before
-        ├── 20261016090503-hero.before.ts  # the hero block as the space holds it now
-        └── 20261016090503-hero.after.ts   # the hero block as the schema entry file defines it
+        ├── 20261016090503-hero.ts         # defineMigration file, typed against Schema and Before
+        └── 20261016090503-hero.before.ts  # the hero block as the space holds it now
 ```
 
 ## File Structure
@@ -111,8 +110,8 @@ Where:
 - `{componentName}` is the name of the component
 - `{suffix}` is the suffix in the file name if provided
 
-With `--schema`, the files are `{timestamp}-{componentName}[-{suffix}].ts` and its `.before.ts` and
-`.after.ts` snapshots, where `{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss`.
+With `--schema`, the files are `{timestamp}-{componentName}[-{suffix}].ts` and its `.before.ts`
+snapshot, where `{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss`.
 
 ### Component names that are not file names
 

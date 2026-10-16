@@ -8,8 +8,7 @@ import { session } from "../../../session";
 import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
 import { generateMigration } from "./actions";
-import { displayPath, localSnapshotComponents, writeContentMigration } from "../content-migrations";
-import { loadSchema } from "../../schema/load-schema";
+import { displayPath, writeContentMigration } from "../content-migrations";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { isFile, sanitizeFilename } from "../../../utils/filesystem";
@@ -24,12 +23,9 @@ const generateCmd = migrationsCommand
   .option("-s, --space <space>", "space ID")
   .option(
     "--schema <entry-file>",
-    "schema entry file; generates a typed defineMigration file and its .before.ts and .after.ts snapshots instead of a .js migration",
+    "schema entry file; generates a typed defineMigration file and its .before.ts snapshot instead of a .js migration",
   )
-  .option(
-    "--no-snapshots",
-    "skip the .before.ts and .after.ts snapshots and type the migration against the schema entry file",
-  )
+  .option("--no-before", "skip the .before.ts schema snapshot next to the migration")
   .option("--legacy", "generate a .js migration for `migrations run` even when --schema is set");
 
 generateCmd.action(
@@ -50,7 +46,7 @@ generateCmd.action(
     );
 
     const { space, path, verbose } = command.optsWithGlobals();
-    const { suffix, schema, legacy, snapshots } = options;
+    const { suffix, schema, legacy, before } = options;
     const schemaEntry = legacy ? undefined : schema;
 
     logger.info("Migration generation started", {
@@ -99,20 +95,16 @@ generateCmd.action(
       );
       return;
     }
-    const schemaOnlyFlags = [
-      ...(legacy ? ["--legacy"] : []),
-      ...(snapshots ? [] : ["--no-snapshots"]),
-    ];
+    const schemaOnlyFlags = [...(legacy ? ["--legacy"] : []), ...(before ? [] : ["--no-before"])];
     if (!schema && schemaOnlyFlags.length > 0) {
       ui.warn(`${schemaOnlyFlags.join(" and ")} only apply together with --schema.`);
-    } else if (legacy && !snapshots) {
-      ui.warn("--no-snapshots has no effect with --legacy.");
+    } else if (legacy && !before) {
+      ui.warn("--no-before has no effect with --legacy.");
     }
 
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);
     try {
-      const local = schemaEntry && snapshots ? await loadSchema(schemaEntry) : undefined;
-      const components = local ? await fetchComponents(space) : undefined;
+      const components = schemaEntry && before ? await fetchComponents(space) : undefined;
       const component = components
         ? components.find((candidate) => candidate.name === componentName)
         : await fetchComponent(space, componentName);
@@ -132,21 +124,10 @@ generateCmd.action(
             name: suffix ? `${component.name}-${suffix}` : component.name,
             schemaEntry,
             ops: [],
-            snapshots:
-              local && components
-                ? {
-                    before: components,
-                    after: localSnapshotComponents(local.components),
-                    blocks: [component.name],
-                  }
-                : undefined,
+            before: components ? { components, blocks: [component.name] } : undefined,
           })
         : { migrationPath: await generateMigration(space, path, component, suffix) };
-      const [migrationPath, ...snapshotPaths] = [
-        written.migrationPath,
-        written.beforePath,
-        written.afterPath,
-      ]
+      const [migrationPath, ...snapshotPaths] = [written.migrationPath, written.beforePath]
         .filter((file) => file !== undefined)
         .map(displayPath);
 

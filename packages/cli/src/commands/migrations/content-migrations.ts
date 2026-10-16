@@ -22,7 +22,6 @@ import { handleAPIError } from "../../utils/error/api-error";
 import { fileExists, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
-import type { Component } from "../../types";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
@@ -47,25 +46,13 @@ export type WriteContentMigrationOptions = {
   ops: readonly MigrationOpSource[];
   title?: string;
   /**
-   * Freezes the schema the migration reads and writes in `.before.ts` and
-   * `.after.ts` snapshots. Without it, the migration is typed against the live
-   * schema entry file.
+   * The space's components before the migration and the blocks it reads, for
+   * the `.before.ts` snapshot; omit to skip the snapshot.
    */
-  snapshots?: {
-    /** The space's components before the migration. */
-    before: readonly WireComponent[];
-    /** The components the migration leaves the space with. */
-    after: readonly WireComponent[];
-    /** The blocks whose fields the migration reads and writes. */
-    blocks: readonly string[];
-  };
+  before?: { components: readonly WireComponent[]; blocks: readonly string[] };
 };
 
-export type WrittenContentMigration = {
-  migrationPath: string;
-  beforePath?: string;
-  afterPath?: string;
-};
+export type WrittenContentMigration = { migrationPath: string; beforePath?: string };
 
 const TS_TO_JS_EXTENSION: Record<string, string> = {
   ".ts": ".js",
@@ -88,30 +75,9 @@ function importSpecifier(fromDirectory: string, file: string): string {
 }
 
 /**
- * A local schema's components in the shape the snapshot generator reads. A
- * local block names its folder by slug path and its tags by name, and its
- * restrictions do the same, so those stand in for the space's group uuids and
- * tag ids.
- */
-export function localSnapshotComponents(components: readonly Component[]): WireComponent[] {
-  return components.map((component) => {
-    const folder: unknown = Reflect.get(component, "folder");
-    const tags: unknown = Reflect.get(component, "tags");
-    return {
-      name: component.name,
-      schema: component.schema,
-      is_root: component.is_root,
-      is_nestable: component.is_nestable,
-      component_group_uuid: typeof folder === "string" ? folder : null,
-      internal_tag_ids: Array.isArray(tags) ? tags.map(String) : null,
-    };
-  });
-}
-
-/**
  * Writes a `defineMigration` file named after its creation time, plus its
- * snapshots. Refuses to overwrite a file of the same id, including a snapshot
- * the migration would not write.
+ * `.before.ts` snapshot. Refuses to overwrite either, including a snapshot the
+ * migration would not write.
  */
 export async function writeContentMigration(
   options: WriteContentMigrationOptions,
@@ -123,12 +89,9 @@ export async function writeContentMigration(
     options.name,
   );
   const migrationPath = join(directory, `${id}.ts`);
-  const snapshotPaths = {
-    before: join(directory, `${id}.before.ts`),
-    after: join(directory, `${id}.after.ts`),
-  };
+  const beforePath = join(directory, `${id}.before.ts`);
 
-  for (const file of [migrationPath, snapshotPaths.before, snapshotPaths.after]) {
+  for (const file of [migrationPath, beforePath]) {
     if (await fileExists(file)) {
       throw new CommandError(
         `${displayPath(file)} already exists. Move or delete it, then run again.`,
@@ -136,30 +99,18 @@ export async function writeContentMigration(
     }
   }
 
-  const { snapshots } = options;
   const source = generateMigrationSource({
-    ...(snapshots
-      ? { afterImport: `./${id}.after.js`, beforeImport: `./${id}.before.js` }
-      : { schemaImport: importSpecifier(dirname(migrationPath), options.schemaEntry) }),
+    schemaImport: importSpecifier(dirname(migrationPath), options.schemaEntry),
+    beforeImport: options.before ? `./${id}.before.js` : undefined,
     title: options.title,
     ops: options.ops,
   });
-  if (snapshots) {
-    const { before, after, blocks } = snapshots;
-    await saveToFile(
-      snapshotPaths.before,
-      generateSnapshot({ components: before, blocks, kind: "before", migrationId: id }),
-    );
-    await saveToFile(
-      snapshotPaths.after,
-      generateSnapshot({ components: after, blocks, kind: "after", migrationId: id }),
-    );
+  if (options.before) {
+    await saveToFile(beforePath, generateSnapshot({ ...options.before, migrationId: id }));
   }
   await saveToFile(migrationPath, source);
 
-  return snapshots
-    ? { migrationPath, beforePath: snapshotPaths.before, afterPath: snapshotPaths.after }
-    : { migrationPath };
+  return options.before ? { migrationPath, beforePath } : { migrationPath };
 }
 
 /** The journal sits beside the space directories, so one journal serves every space. */

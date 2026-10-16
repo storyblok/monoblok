@@ -241,7 +241,14 @@ export function analyzeBreakingChanges(
     }
 
     for (const removed of unmatchedRemoved) {
-      changes.push({ kind: "removed", field: removed.field });
+      // Rename detection skips required additions, so a renamed required field
+      // shows up as a removal plus an addition of the same type.
+      const sameType = classification.requiredAdded.filter((ra) => ra.type === removed.type);
+      changes.push({
+        kind: "removed",
+        field: removed.field,
+        ...(sameType.length === 1 && { renameHint: { newField: sameType[0].field } }),
+      });
     }
 
     for (const tc of classification.typeChanged) {

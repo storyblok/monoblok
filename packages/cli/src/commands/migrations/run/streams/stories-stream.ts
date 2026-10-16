@@ -2,20 +2,20 @@ import { pipeline, Readable, Transform } from "node:stream";
 import type { Sema } from "async-sema";
 import { fetchStories, fetchStory } from "../../../stories/actions";
 import type { StoriesQueryParams, Story } from "../../../stories/constants";
-import { parseFilterQuery } from "../../../stories/filter-query";
 import { handleAPIError, toError } from "../../../../utils/error";
 import { getLogger } from "../../../../lib/logger/logger";
 import { createPipelineBackpressureLock } from "../../../../utils/backpressure-lock";
 import { ERROR_CODES } from "../constants";
 
 /**
- * CLI-level migration filter params. Includes the ad-hoc inputs `componentName`
- * and `query` (a `filter_query` string), which are transformed into the API
- * query shape ({@link StoriesQueryParams}) before any request is made.
+ * CLI-level migration filter params. Includes the ad-hoc input `componentName`,
+ * which is transformed into the API query shape ({@link StoriesQueryParams})
+ * before any request is made. The scope flags (`--starts-with`, `--query`) are
+ * already in wire shape by then — the command builds them with
+ * `buildStoryScopeParams`.
  */
 export type MigrationStoriesParams = StoriesQueryParams & {
   componentName?: string;
-  query?: string;
 };
 
 /**
@@ -29,19 +29,13 @@ export async function* storiesIterator(
   try {
     let perPage = 500;
 
-    // Strip the CLI-only inputs and map them onto the API query shape.
-    const { componentName, query, ...rest } = params ?? {};
+    // Strip the CLI-only input and map it onto the API query shape.
+    const { componentName, ...rest } = params ?? {};
     const transformedParams: StoriesQueryParams = { ...rest };
 
     // Component filter -> `contain_component`.
     if (componentName) {
       transformedParams.contain_component = componentName;
-    }
-
-    // Legacy `filter_query` string -> structured object (the wire format MAPI
-    // requires; a raw string is rejected as a non-nested filter).
-    if (query) {
-      transformedParams.filter_query = parseFilterQuery(query);
     }
 
     // Fetch first page to get total pages

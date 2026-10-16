@@ -60,6 +60,7 @@ export const pushComponent = async (
       body: {
         component,
       },
+      throwOnError: true,
     });
 
     return data?.component;

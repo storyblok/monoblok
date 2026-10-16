@@ -1,4 +1,5 @@
 import "./command";
+import "./find";
 import "./pull";
 import "./push";
 import "./validate";

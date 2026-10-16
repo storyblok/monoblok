@@ -2,7 +2,6 @@ import type { StoriesQueryParams, Story } from "../constants";
 import type { UI } from "../../../lib/ui";
 import type { Logger } from "../../../lib/logger/logger";
 import type { Reporter } from "../../../lib/reporter/reporter";
-import type { PublishStatus } from "./filters";
 
 export type EntryType = "all" | "story" | "folder";
 
@@ -16,7 +15,15 @@ export interface FindOptions {
   where?: string[];
   tag?: string;
   workflowStage?: string;
-  publishStatus?: PublishStatus;
+  /** One publish status, or several separated by commas. */
+  publishStatus?: string;
+  /** Date ranges, as `parseDateRange` reads them. */
+  created?: string;
+  updated?: string;
+  lastPublished?: string;
+  firstPublished?: string;
+  /** `true` for the bare flag: any pending schedule, whenever it is. */
+  scheduled?: boolean | string;
   sort?: string;
   limit?: string;
   references?: string;

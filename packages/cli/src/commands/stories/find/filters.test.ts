@@ -11,15 +11,21 @@ const listed = (published?: boolean, unpublishedChanges?: boolean): Story =>
   ({ published, unpublished_changes: unpublishedChanges }) as unknown as Story;
 
 describe("publishStatusToQueryParams", () => {
-  // `published` and `changed` share a server filter and are told apart
-  // client-side; `draft` is settled entirely by the server.
-  it("should narrow to published stories for both published and changed", () => {
-    expect(publishStatusToQueryParams("published")).toEqual({ is_published: true });
-    expect(publishStatusToQueryParams("changed")).toEqual({ is_published: true });
+  // `published` and `published-with-changes` share a server filter and are told
+  // apart client-side.
+  it("should narrow to published stories for published and published-with-changes", () => {
+    expect(publishStatusToQueryParams(["published"])).toEqual({ is_published: true });
+    expect(publishStatusToQueryParams(["published", "published-with-changes"])).toEqual({
+      is_published: true,
+    });
   });
 
   it("should narrow to unpublished stories for draft", () => {
-    expect(publishStatusToQueryParams("draft")).toEqual({ is_published: false });
+    expect(publishStatusToQueryParams(["draft"])).toEqual({ is_published: false });
+  });
+
+  it("should not narrow when the statuses disagree on is_published", () => {
+    expect(publishStatusToQueryParams(["published-with-changes", "draft"])).toEqual({});
   });
 });
 
@@ -38,32 +44,36 @@ describe("matchesPublishStatus", () => {
     });
   });
 
-  describe("changed", () => {
+  describe("published-with-changes", () => {
     it("should match a published story carrying unpublished edits", () => {
-      expect(matchesPublishStatus(listed(true, true), "changed")).toBe(true);
+      expect(matchesPublishStatus(listed(true, true), "published-with-changes")).toBe(true);
     });
 
     it("should reject a story that is live and unedited", () => {
-      expect(matchesPublishStatus(listed(true, false), "changed")).toBe(false);
+      expect(matchesPublishStatus(listed(true, false), "published-with-changes")).toBe(false);
     });
 
     it("should reject an unpublished story, edited or not", () => {
-      expect(matchesPublishStatus(listed(false, true), "changed")).toBe(false);
+      expect(matchesPublishStatus(listed(false, true), "published-with-changes")).toBe(false);
     });
   });
 
   describe("draft", () => {
-    // The server already returned only unpublished stories, so this stage has
-    // nothing left to decide and must not drop any of them.
-    it("should pass every story through, since the server already narrowed", () => {
+    it("should match a story that is not live, edited or not", () => {
       expect(matchesPublishStatus(listed(false, false), "draft")).toBe(true);
-      expect(matchesPublishStatus(listed(true, true), "draft")).toBe(true);
+      expect(matchesPublishStatus(listed(false, true), "draft")).toBe(true);
     });
 
-    // A folder is never published, so the server's `is_published: false` keeps it.
-    it("should reject a folder, which cannot be published", () => {
+    // Combined with another status, the server cannot narrow, so this stage decides.
+    it("should reject a live story", () => {
+      expect(matchesPublishStatus(listed(true, false), "draft")).toBe(false);
+      expect(matchesPublishStatus(listed(true, true), "draft")).toBe(false);
+    });
+
+    // Publishing a folder publishes it too, so an unpublished one is a draft like any story.
+    it("should match an unpublished folder", () => {
       const folder = { ...listed(false, false), is_folder: true } as Story;
-      expect(matchesPublishStatus(folder, "draft")).toBe(false);
+      expect(matchesPublishStatus(folder, "draft")).toBe(true);
     });
   });
 
@@ -71,7 +81,7 @@ describe("matchesPublishStatus", () => {
   // is absent, so the status check has to coerce. Without that, a missing field
   // would make the filter return a non-boolean and quietly pass the story.
   describe("a listing missing the fields", () => {
-    it.each<PublishStatus>(["published", "changed"])(
+    it.each<PublishStatus>(["published", "published-with-changes", "draft"])(
       "should reject rather than pass a story with no publish metadata for %s",
       (status) => {
         expect(matchesPublishStatus(listed(undefined, undefined), status)).toBe(false);

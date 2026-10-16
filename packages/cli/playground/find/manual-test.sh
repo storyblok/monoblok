@@ -469,8 +469,8 @@ section_server-filters() {
   check "--entry-type story keeps no folder" \
     eval "code_is 0 && lines_is $((TOTAL - FOLDERS)) && no_lines '.is_folder == true'"
 
-  find_run --publish-status changed --skip-content
-  check "--publish-status changed keeps published stories with pending edits ($CHANGED)" \
+  find_run --publish-status published-with-changes --skip-content
+  check "--publish-status published-with-changes keeps published stories with pending edits ($CHANGED)" \
     eval "code_is 0 && lines_is $CHANGED && all_lines '.published == true and .unpublished_changes == true'"
   find_run --publish-status published --skip-content
   check "--publish-status published keeps live stories without pending edits" \

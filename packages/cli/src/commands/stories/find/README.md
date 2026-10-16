@@ -45,25 +45,30 @@ The `Runs` column states where a filter is resolved. `API` filters narrow the se
 is transferred. `client` filters are applied locally, and most of them require the story's content,
 which costs one request per story. See [Optimizations](#optimizations).
 
-| Flag                         | Runs         | Description                                                                                                                                           |
-| ---------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --space <space>`        | -            | **Required.** The space to search. Can also come from the environment or the config file.                                                             |
-| `--entry-type <type>`        | API          | Narrow to stories or folders only. Possible values: `all` (default), `story`, `folder`.                                                               |
-| `--starts-with <path>`       | API          | Limit the search to one subtree, for example `en/blog`. No leading slash.                                                                             |
-| `--container-block <name>`   | API          | Stories whose content type (root block) is this component. See [`--container-block` and `--includes-block`](#--container-block-and---includes-block). |
-| `--includes-block <names>`   | API          | Stories containing these blocks at any depth. Comma-separated, and **all** must be present.                                                           |
-| `-q, --query <query>`        | API          | Filter on root-level content fields. See [`--query`](#--query).                                                                                       |
-| `--tag <names>`              | API          | Stories carrying **any** of these tags. Comma-separated. See [`--tag`](#--tag).                                                                       |
-| `--workflow-stage <ids>`     | API          | Stories at **any** of these workflow stage IDs. Comma-separated. See [`--workflow-stage`](#--workflow-stage).                                         |
-| `--publish-status <status>`  | API + client | Publish state, decided from the story listing. Possible values: `published`, `changed`, `draft`. See [`--publish-status`](#--publish-status).         |
-| `--where <jsonpath>`         | client       | Anything `--query` cannot express. Repeatable, and expressions combine with AND. See [`--where`](#--where).                                           |
-| `--references <uuids>`       | API          | Stories whose content references **all** of these story UUIDs. Comma-separated. See [`--references`](#--references).                                  |
-| `--check-references [types]` | client       | Report broken references, unpublished targets, and outdated link URLs, optionally only some types. See [`--check-references`](#--check-references).   |
-| `--sort <fields>`            | API          | Order results server-side, for example `updated_at:desc`. See [`--sort`](#--sort).                                                                    |
-| `--limit <n>`                | -            | A positive integer. Stop once this many results are printed, leaving the rest of the scope unread. See [`--limit`](#--limit).                         |
-| `--skip-content`             | -            | Do not fetch story content, and emit list metadata only. See [`--skip-content`](#--skip-content).                                                     |
-| `--capi-filter`              | -            | Evaluate `--where` against bulk Content Delivery API content, and fetch only the matches. See [`--capi-filter`](#--capi-filter).                      |
-| `--capi-params <params>`     | -            | Extra Content Delivery API query parameters for `--capi-filter`. See [`--capi-params`](#--capi-params).                                               |
+| Flag                          | Runs         | Description                                                                                                                                                             |
+| ----------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-s, --space <space>`         | -            | **Required.** The space to search. Can also come from the environment or the config file.                                                                               |
+| `--entry-type <type>`         | API          | Narrow to stories or folders only. Possible values: `all` (default), `story`, `folder`.                                                                                 |
+| `--starts-with <path>`        | API          | Limit the search to one subtree, for example `en/blog`. No leading slash.                                                                                               |
+| `--container-block <name>`    | API          | Stories whose content type (root block) is this component. See [`--container-block` and `--includes-block`](#--container-block-and---includes-block).                   |
+| `--includes-block <names>`    | API          | Stories containing these blocks at any depth. Comma-separated, and **all** must be present.                                                                             |
+| `-q, --query <query>`         | API          | Filter on root-level content fields. See [`--query`](#--query).                                                                                                         |
+| `--tag <names>`               | API          | Stories carrying **any** of these tags. Comma-separated. See [`--tag`](#--tag).                                                                                         |
+| `--workflow-stage <ids>`      | API          | Stories at **any** of these workflow stage IDs. Comma-separated. See [`--workflow-stage`](#--workflow-stage).                                                           |
+| `--publish-status <statuses>` | API + client | Publish state, decided from the story listing. **Any** of `published`, `published-with-changes`, `draft`, comma-separated. See [`--publish-status`](#--publish-status). |
+| `--created <range>`           | client       | Stories created in a date range. See [Date filters](#date-filters).                                                                                                     |
+| `--updated <range>`           | client       | Stories last updated in a date range. See [Date filters](#date-filters).                                                                                                |
+| `--last-published <range>`    | client       | Stories last published in a date range. See [Date filters](#date-filters).                                                                                              |
+| `--first-published <range>`   | client       | Stories first published in a date range. See [Date filters](#date-filters).                                                                                             |
+| `--scheduled [range]`         | API          | Stories with a pending scheduled publish, optionally in a date range. See [Date filters](#date-filters).                                                                |
+| `--where <jsonpath>`          | client       | Anything `--query` cannot express. Repeatable, and expressions combine with AND. See [`--where`](#--where).                                                             |
+| `--references <uuids>`        | API          | Stories whose content references **all** of these story UUIDs. Comma-separated. See [`--references`](#--references).                                                    |
+| `--check-references [types]`  | client       | Report broken references, unpublished targets, and outdated link URLs, optionally only some types. See [`--check-references`](#--check-references).                     |
+| `--sort <fields>`             | API          | Order results server-side, for example `updated_at:desc`. See [`--sort`](#--sort).                                                                                      |
+| `--limit <n>`                 | -            | A positive integer. Stop once this many results are printed, leaving the rest of the scope unread. See [`--limit`](#--limit).                                           |
+| `--skip-content`              | -            | Do not fetch story content, and emit list metadata only. See [`--skip-content`](#--skip-content).                                                                       |
+| `--capi-filter`               | -            | Evaluate `--where` against bulk Content Delivery API content, and fetch only the matches. See [`--capi-filter`](#--capi-filter).                                        |
+| `--capi-params <params>`      | -            | Extra Content Delivery API query parameters for `--capi-filter`. See [`--capi-params`](#--capi-params).                                                                 |
 
 The global flags apply as usual. Three of them matter here: `--space`, `--verbose`, and
 `--api-rate-limit`, which paces Management API requests at six requests per second by default.
@@ -176,9 +181,6 @@ Function extensions are available: `match()` and `search()` for regular expressi
 # Stories with any asset with empty alt text
 storyblok stories find --space 12345 --where "$..[?(@.fieldtype == 'asset' && @.alt == '')]"
 
-# Stories updated after a date
-storyblok stories find --space 12345 --where "$[?($.updated_at > '2025-01-01')]"
-
 # Regular expression over a nested field
 storyblok stories find --space 12345 --where "$..[?match(@.sku, 'SB-[0-9]+')]"
 
@@ -199,23 +201,107 @@ listing alone, and works under [`--skip-content`](#--skip-content) as it is.
 
 ### `--publish-status`
 
-| Value       | Matches                                                         |
-| ----------- | --------------------------------------------------------------- |
-| `published` | Published, with no unpublished edits since                      |
-| `changed`   | Published, but with unpublished edits                           |
-| `draft`     | Never published. Folders are excluded: they cannot be published |
+| Value                    | Matches                                    |
+| ------------------------ | ------------------------------------------ |
+| `published`              | Published, with no unpublished edits since |
+| `published-with-changes` | Published, but with unpublished edits      |
+| `draft`                  | Not published: never, or unpublished since |
+
+Pass several, separated by commas, to match stories in any of them. Folders have a publish state
+too, so add `--entry-type story` to leave them out.
 
 ```bash
 storyblok stories find --space 12345 --publish-status published
-storyblok stories find --space 12345 --publish-status changed
+storyblok stories find --space 12345 --publish-status published-with-changes
 storyblok stories find --space 12345 --publish-status draft
+
+# Everything that is live, with or without pending edits
+storyblok stories find --space 12345 --publish-status published,published-with-changes
 ```
 
-The API narrows to published or unpublished stories, and the CLI then distinguishes `published` from
-`changed` using the [`unpublished_changes`](/docs/api/management/stories/the-story-object) flag that
-the listing already carries. This filter narrows a search before any content is fetched, which is
-the cheapest kind of narrowing available. The run summary reports the stories it ruled out as
-`skipped before fetch`.
+When every status passed is published, or every one is `draft`, the API narrows to published or
+unpublished stories. The CLI then distinguishes `published` from `published-with-changes` using the
+[`unpublished_changes`](/docs/api/management/stories/the-story-object) flag that the listing already
+carries. This filter narrows a search before any content is fetched, which is the cheapest kind of
+narrowing available. The run summary reports the stories it ruled out as `filtered out` on the
+listing row.
+
+### Date filters
+
+Five flags filter on story dates. Each one takes a range, and passing several combines them with
+AND.
+
+| Flag                        | Story field          | Runs   |
+| --------------------------- | -------------------- | ------ |
+| `--created <range>`         | `created_at`         | client |
+| `--updated <range>`         | `updated_at`         | client |
+| `--last-published <range>`  | `published_at`       | client |
+| `--first-published <range>` | `first_published_at` | client |
+| `--scheduled [range]`       | pending publish date | API    |
+
+A range is written in one of these forms:
+
+| Value                    | Matches                                                           |
+| ------------------------ | ----------------------------------------------------------------- |
+| `30m`, `12h`, `7d`, `2w` | Within the last 30 minutes, 12 hours, 7 days, or 2 weeks          |
+| `3mo`, `1y`              | Within the last three months, or the last year                    |
+| `2024`, `2024-06`        | That whole year, or that whole month                              |
+| `2024-06-15`             | That whole day                                                    |
+| `2024-06-01..2024-06-30` | Between two dates, both included                                  |
+| `2024-06-01..`           | On or after a date                                                |
+| `..2024-06-30`           | On or before a date, up to the end of that day                    |
+| `30d..7d`                | Between 30 and 7 days ago, in either order                        |
+| `7d..now`                | Between 7 days ago and now, in either order                       |
+| `2024-06-15T09:00+02:00` | That minute, as an ISO 8601 date and time with an optional offset |
+
+Each end of a range covers the whole period it names, so `2024-01..2024-03` runs from the start of
+January to the end of March. Durations count back from the moment the run starts, and `now` stands
+for that moment. A date or time without an offset is UTC, the time zone the API reports story dates
+in, so a range reads the same as the dates in the output on any machine. Units are lowercase: `m` is
+minutes, and `mo` is months.
+
+```bash
+# Touched in the last week
+storyblok stories find --space 12345 --updated 7d
+
+# Blog posts created in 2024
+storyblok stories find --space 12345 --starts-with en/blog --created 2024
+
+# Launched in the third quarter
+storyblok stories find --space 12345 --first-published 2024-07..2024-09
+
+# Unpublished edits that have been waiting for more than 90 days
+storyblok stories find --space 12345 --publish-status published-with-changes --updated ..90d
+```
+
+The story listing carries every one of these dates, so the CLI decides `--created`, `--updated`,
+`--last-published`, and `--first-published` before any content is fetched, like
+[`--publish-status`](#--publish-status). A story outside the range costs nothing beyond the page it
+was listed on, and the run summary counts it as `filtered out` on the listing row. A story without
+the date never matches: a story that was never published has no `published_at`. A story keeps its
+`published_at` when it is unpublished, so `--last-published` matches it too: add
+`--publish-status published,published-with-changes` for stories that are live.
+
+`--scheduled` is the one date the API filters on. It matches only stories with a publish scheduled
+and still pending, and since those are always ahead, its durations count forward: `--scheduled 7d`
+means up to seven days from now, and `--scheduled 7d..14d` the week after that. A bare duration
+leaves the lower bound open, so a schedule whose time has passed but that has not been published yet
+still matches. Without a range, `--scheduled` matches every pending schedule, whenever it is. A
+story matches when any of its languages has a pending schedule in the range, even when the default
+language has none, and is listed once.
+
+```bash
+# Going live this week
+storyblok stories find --space 12345 --scheduled 7d --skip-content
+
+# Live pages with a schedule pending, at any time
+storyblok stories find --space 12345 --scheduled --publish-status published,published-with-changes
+```
+
+Without a range, pass the search text before `--scheduled`, or it is read as the range.
+
+A malformed, empty, or inverted range, such as `0d` or `2024-06..2024-01`, stops the run before the
+first request, rather than returning a result set that nothing could match.
 
 ### `--tag`
 
@@ -345,11 +431,11 @@ targets outside the search scope are looked up as needed.
 
 Each problem falls into one of three types:
 
-| Type          | Description                                                                      |
-| ------------- | -------------------------------------------------------------------------------- |
-| `broken`      | The target UUID does not exist in the space.                                     |
-| `unpublished` | The target exists but is not published. Folders are exempt, being unpublishable. |
-| `stale_url`   | A link field's cached URL no longer matches the target's current path.           |
+| Type          | Description                                                            |
+| ------------- | ---------------------------------------------------------------------- |
+| `broken`      | The target UUID does not exist in the space.                           |
+| `unpublished` | The target exists but is not published. Folders are exempt.            |
+| `stale_url`   | A link field's cached URL no longer matches the target's current path. |
 
 Leading and trailing slashes are ignored when comparing paths, so `/about/team` and `about/team/`
 count as the same. A reference can be both `unpublished` and `stale_url`, and is reported as both,
@@ -579,7 +665,7 @@ flag is what makes reading all of it quick.
 
 ```bash
 # Published pages with unpublished edits sitting on them
-storyblok stories find --space 12345 --publish-status changed --skip-content \
+storyblok stories find --space 12345 --publish-status published-with-changes --skip-content \
   --sort updated_at:desc | jq -r '[.full_slug, .updated_at] | @tsv'
 
 # Drafts that never went live, oldest first
@@ -588,10 +674,13 @@ storyblok stories find --space 12345 --publish-status draft --skip-content \
 
 # Waiting on review, wherever the space's review stage is 42
 storyblok stories find --space 12345 --workflow-stage 42 --skip-content | jq -r '.full_slug'
+
+# Scheduled to go live in the next two weeks
+storyblok stories find --space 12345 --scheduled 2w --skip-content | jq -r '.full_slug'
 ```
 
-Publish state is on the listing, so all three answer from the page walk alone, without fetching a
-single story's content.
+Publish state and dates are on the listing, so all four answer from the page walk alone, without
+fetching a single story's content.
 
 ### Build a content inventory
 
@@ -947,9 +1036,9 @@ Three equivalent forms are accepted:
 
 The command enforces two rules:
 
-- **`version=published` requires `--publish-status published` or `changed`.** A story with no
-  published version cannot be decided from published Content Delivery API content, so it has to be
-  out of scope first.
+- **`version=published` requires `--publish-status published`, `published-with-changes`, or both.**
+  A story with no published version cannot be decided from published Content Delivery API content,
+  so it has to be out of scope first.
 - **`by_uuids`, `by_uuids_ordered`, `per_page`, and `page` are rejected**, since the command manages
   batching itself.
 
@@ -959,7 +1048,7 @@ parameter it rejects fails with its reason rather than quietly disabling the pru
 ```bash
 # What is actually live, including pages with pending edits
 storyblok stories find --space 12345 --capi-filter --skip-content \
-  --publish-status changed --capi-params "version=published" \
+  --publish-status published,published-with-changes --capi-params "version=published" \
   --where "$..[?(@.component == 'hero' && @.headline == '')]"
 ```
 

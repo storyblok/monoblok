@@ -8,6 +8,26 @@ import type { CapiContentFetcher, StoryContent } from "./capi";
 import type { ClientFilter } from "./types";
 
 /**
+ * Passes each story on once. A listing can return the same story more than
+ * once: `--scheduled` matches each language's schedule.
+ */
+export const uniqueStoriesStream = ({ onRepeat }: { onRepeat?: (story: Story) => void }) => {
+  const seen = new Set<Story["id"]>();
+  return new Transform({
+    objectMode: true,
+    transform(story: Story, _encoding, callback) {
+      if (seen.has(story.id)) {
+        onRepeat?.(story);
+      } else {
+        seen.add(story.id);
+        this.push(story);
+      }
+      callback();
+    },
+  });
+};
+
+/**
  * Drops stories before their content is fetched. The per-story fetch is the
  * expensive part of the pipeline, so any filter decidable from the list response
  * (such as `--publish-status`) belongs here rather than at the end.

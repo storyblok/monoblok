@@ -321,6 +321,134 @@ describe("stories find command", () => {
     expect(process.exitCode).toBeFalsy();
   });
 
+  // The listing carries every story date, so a story outside the range must
+  // never cost a content fetch.
+  it("should filter on a date flag before fetching any content", async () => {
+    const [inRange, outOfRange] = preconditions.canFindStories(2);
+    Object.assign(inRange, { updated_at: "2024-06-10T08:00:00.000Z" });
+    Object.assign(outOfRange, { updated_at: "2024-07-10T08:00:00.000Z" });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+    const fetched: string[] = [];
+    const recordFetch = ({ request }: { request: Request }): void => {
+      fetched.push(new URL(request.url).pathname);
+    };
+    server.events.on("request:start", recordFetch);
+
+    try {
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "find",
+        "--space",
+        "12345",
+        "--updated",
+        "2024-06",
+      ]);
+    } finally {
+      server.events.removeListener("request:start", recordFetch);
+    }
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual([inRange.id]);
+    expect(fetched).not.toContain(`/v1/spaces/12345/stories/${outOfRange.id}`);
+  });
+
+  // The API matches each language's pending schedule, so a story with two lists twice.
+  it("should list a story scheduled in several languages once under --scheduled", async () => {
+    const [twice, once] = [makeMockStory(), makeMockStory()];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: [twice, twice, once] },
+          { headers: { Total: "3", "Per-Page": "100" } },
+        ),
+      ),
+    );
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "2w",
+      "--skip-content",
+      "--limit",
+      "2",
+    ]);
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual([twice.id, once.id]);
+  });
+
+  // A repeat is neither a match nor a story a filter rejected.
+  it("should not count a story listed again for another language as filtered out", async () => {
+    const [twice, once] = [makeMockStory(), makeMockStory()];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: [twice, twice, once] },
+          { headers: { Total: "3", "Per-Page": "100" } },
+        ),
+      ),
+    );
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "--skip-content",
+    ]);
+
+    const stderr = stripVTControlCharacters(errorSpy.mock.calls.flat().join("\n"));
+    expect(stderr).toContain("2 listed");
+    expect(stderr).not.toContain("filtered out");
+  });
+
+  it("should ask for any pending schedule under a bare --scheduled", async () => {
+    let query: URLSearchParams | undefined;
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", ({ request }) => {
+        query = new URL(request.url).searchParams;
+        return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+      }),
+    );
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "--skip-content",
+    ]);
+
+    expect(query?.get("scheduled_by_status")).toBe("scheduled");
+    expect(query?.has("scheduled_at_gt")).toBe(false);
+    expect(query?.has("scheduled_at_lt")).toBe(false);
+  });
+
+  it("should reject a malformed date range before any request", async () => {
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--created",
+      "last week",
+    ]);
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain("--created expects");
+  });
+
   it("should reject an unknown --query operation before any request", async () => {
     await storiesCommand.parseAsync([
       "node",

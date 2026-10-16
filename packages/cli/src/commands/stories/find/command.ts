@@ -11,6 +11,7 @@ import { CommandError } from "../../../utils/error/command-error";
 import {
   assertSupportedOptions,
   buildPublishStatusFilters,
+  buildDateFilters,
   buildQueryParams,
   buildWhereFilters,
   parseIssueTypes,
@@ -61,12 +62,26 @@ const findCmd = storiesCommand
     "--workflow-stage <ids>",
     "stories at any of these workflow stage IDs (numeric), comma-separated",
   )
-  .addOption(
-    new Option("--publish-status <status>", "filter by publish status").choices([
-      "published",
-      "changed",
-      "draft",
-    ]),
+  .option(
+    "--publish-status <statuses>",
+    "stories in any of these publish statuses, comma-separated: published, published-with-changes, draft",
+  )
+  .option(
+    "--created <range>",
+    "stories created in this date range: a duration like '7d', a date like '2024-06', or a range like '2024-01-01..2024-06-30' (UTC unless an offset is given)",
+  )
+  .option("--updated <range>", "stories last updated in this date range, e.g. '7d' or '..90d'")
+  .option(
+    "--last-published <range>",
+    "stories last published in this date range, e.g. '2024-06', including ones unpublished since; add --publish-status published for live ones only. Never-published stories never match",
+  )
+  .option(
+    "--first-published <range>",
+    "stories first published in this date range, e.g. '2024-07..2024-09'",
+  )
+  .option(
+    "--scheduled [range]",
+    "stories with a pending scheduled publish, in any language, optionally in this date range, where durations count forward, e.g. '7d' or '7d..14d'",
   )
   .option(
     "--sort <fields>",
@@ -120,8 +135,14 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     // Validate and compile everything before the first request, so a bad flag or
     // a malformed JSONPath fails as a usage error instead of mid-stream.
     assertSupportedOptions(options);
-    const params = buildQueryParams(text, options);
-    const publishStatusFilters = buildPublishStatusFilters(options);
+    // One clock for every date flag, so `--created 7d --updated 7d` share a "now".
+    const now = new Date();
+    const params = buildQueryParams(text, options, now);
+    // Decidable from the listing alone, so they narrow before any content is fetched.
+    const preContentFilters = [
+      ...buildPublishStatusFilters(options),
+      ...buildDateFilters(options, now),
+    ];
     const whereFilters = buildWhereFilters(options.where);
     const limit = parseLimit(options.limit);
     const issueTypes = parseIssueTypes(options.checkReferences);
@@ -144,7 +165,7 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     if (issueTypes) {
       await runCheckReferences({
         ...context,
-        publishStatusFilters,
+        preContentFilters,
         whereFilters,
         issueTypes,
         limit,
@@ -153,7 +174,7 @@ findCmd.action(async (text: string | undefined, options: FindOptions, command) =
     } else {
       await runFind({
         ...context,
-        preContentFilters: publishStatusFilters,
+        preContentFilters,
         filters: whereFilters,
         skipContent: options.skipContent === true,
         limit,

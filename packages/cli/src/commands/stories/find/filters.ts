@@ -1,29 +1,34 @@
 import type { Story } from "../constants";
 import { isStoryPublishedWithoutChanges, isStoryWithUnpublishedChanges } from "../utils";
 
-export type PublishStatus = "published" | "changed" | "draft";
+/** Named like `migrations run --publish`, so the same state reads the same across commands. */
+export const PUBLISH_STATUSES = ["published", "published-with-changes", "draft"] as const;
+
+export type PublishStatus = (typeof PUBLISH_STATUSES)[number];
 
 /**
- * `published` and `changed` share `is_published` and are told apart by
- * `unpublished_changes`. `draft` excludes folders, which are never published.
+ * `published` and `published-with-changes` share `is_published` and are told
+ * apart by `unpublished_changes`. `draft` is anything not live, folders
+ * included: never published, or unpublished since.
  */
 export function matchesPublishStatus(story: Story, status: PublishStatus): boolean {
   switch (status) {
     case "published":
       return isStoryPublishedWithoutChanges(story) === true;
-    case "changed":
+    case "published-with-changes":
       return isStoryWithUnpublishedChanges(story) === true;
     case "draft":
-      return story.is_folder !== true;
+      return story.published === false;
   }
 }
 
-export function publishStatusToQueryParams(status: PublishStatus): { is_published?: boolean } {
-  switch (status) {
-    case "published":
-    case "changed":
-      return { is_published: true };
-    case "draft":
-      return { is_published: false };
-  }
+/**
+ * The server half of a set of statuses. It can only narrow to `is_published`,
+ * so it narrows only when every status asked for agrees on it.
+ */
+export function publishStatusToQueryParams(statuses: PublishStatus[]): {
+  is_published?: boolean;
+} {
+  const published = new Set(statuses.map((status) => status !== "draft"));
+  return published.size === 1 ? { is_published: [...published][0] } : {};
 }

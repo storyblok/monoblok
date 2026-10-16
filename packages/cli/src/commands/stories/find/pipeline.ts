@@ -6,7 +6,12 @@ import { isDownstreamClosed } from "../../../lib/pipe";
 import type { PhaseTracker } from "../../../lib/pipe";
 import { fetchStoriesStream, fetchStoryStream } from "../streams";
 import { handleError, logOnlyError } from "../../../utils/error/error";
-import { capiFilterStream, filterListedStoriesStream, filterStoriesStream } from "./streams";
+import {
+  capiFilterStream,
+  filterListedStoriesStream,
+  filterStoriesStream,
+  uniqueStoriesStream,
+} from "./streams";
 import { CAPI_BATCH_SIZE, createCapiContentFetcher, parseCapiParams } from "./capi";
 import type { CapiContentFetcher } from "./capi";
 import type { ClientFilter, FindContext } from "./types";
@@ -155,6 +160,17 @@ export async function runStoryPipeline({
         handleError(error, verbose, { page, total });
       },
     }),
+    // Only a schedule filter lists a story more than once, so only then is the
+    // set of seen ids worth holding.
+    ...(params.scheduled_by_status !== undefined
+      ? [
+          uniqueStoriesStream({
+            onRepeat: () => {
+              list.count("repeated");
+            },
+          }),
+        ]
+      : []),
     filterListedStoriesStream({
       filters: preContentFilters,
       onDropped: () => {

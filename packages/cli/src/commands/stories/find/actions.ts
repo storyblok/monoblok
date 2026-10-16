@@ -10,7 +10,8 @@ import { toError } from "../../../utils/error/error";
 import type { IssueType, TargetMeta } from "./references";
 import { ISSUE_TYPES, toTargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
-import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
+import { PUBLISH_STATUSES, matchesPublishStatus, publishStatusToQueryParams } from "./filters";
+import type { PublishStatus } from "./filters";
 import { parseCapiParams } from "./capi";
 import { isInDateRange, parseDateRange } from "./date-range";
 
@@ -121,16 +122,16 @@ export function assertSupportedOptions(options: FindOptions): void {
     // settled against MAPI's *draft* content, so a run that reads as "what is
     // live" reports stories that have never been published. What removes them
     // from the scope is a publish status that narrows to `is_published` on the
-    // server, which both `published` (live, no pending edits) and `changed`
-    // (live, with pending edits) do — a changed story is live, so its published
-    // content is exactly what the CDN can decide it on.
+    // server, which `published` (live, no pending edits) and
+    // `published-with-changes` (live, with pending edits) both do — such a story
+    // is live, so its published content is exactly what the CDN can decide it on.
     const narrowsToPublished =
       options.publishStatus !== undefined &&
-      publishStatusToQueryParams(options.publishStatus).is_published === true;
+      publishStatusToQueryParams(parsePublishStatuses(options.publishStatus)).is_published === true;
 
     if (capiParams.version !== undefined && capiParams.version !== "draft" && !narrowsToPublished) {
       throw new CommandError(
-        `--capi-params version=${String(capiParams.version)} needs --publish-status published or --publish-status changed: stories with no published content cannot be decided from CDN content, and would otherwise be matched against their draft instead.`,
+        `--capi-params version=${String(capiParams.version)} needs --publish-status published, published-with-changes, or both: stories with no published content cannot be decided from CDN content, and would otherwise be matched against their draft instead.`,
       );
     }
   }
@@ -284,24 +285,28 @@ export function buildQueryParams(
     params.in_workflow_stages = parseWorkflowStages(options.workflowStage);
   }
 
-  if (options.publishStatus) {
-    Object.assign(params, publishStatusToQueryParams(options.publishStatus));
+  if (options.publishStatus !== undefined) {
+    Object.assign(params, publishStatusToQueryParams(parsePublishStatuses(options.publishStatus)));
   }
 
   // The one story date the API filters on. It only lists stories with a
-  // pending schedule, and both bounds are inclusive, like every date flag. It
-  // matches each language's schedule, so a story can be listed once per
-  // language; `buildDateFilters` drops the repeats.
+  // pending schedule, and both bounds are inclusive, like every date flag. The
+  // bare flag sets no bounds: any pending schedule, whenever it is. It matches
+  // each language's schedule, so a story can be listed once per language; the
+  // pipeline drops the repeats.
   if (options.scheduled !== undefined) {
-    const { from, to } = parseDateRange("--scheduled", options.scheduled, {
-      now,
-      direction: "future",
-    });
-    if (from) {
-      params.scheduled_at_gt = from.toISOString();
-    }
-    if (to) {
-      params.scheduled_at_lt = to.toISOString();
+    params.scheduled_by_status = "scheduled";
+    if (typeof options.scheduled === "string") {
+      const { from, to } = parseDateRange("--scheduled", options.scheduled, {
+        now,
+        direction: "future",
+      });
+      if (from) {
+        params.scheduled_at_gt = from.toISOString();
+      }
+      if (to) {
+        params.scheduled_at_lt = to.toISOString();
+      }
     }
   }
 
@@ -335,44 +340,56 @@ export function buildQueryParams(
 }
 
 /**
+ * Reads `--publish-status` as one or more statuses, any of which a story may
+ * match. Validated here rather than by commander, which only knows single
+ * values.
+ */
+export function parsePublishStatuses(raw: string): PublishStatus[] {
+  const statuses = parseList("--publish-status", raw).split(",");
+  const unknown = statuses.filter((status) => !PUBLISH_STATUSES.some((known) => known === status));
+  if (unknown.length > 0) {
+    throw new CommandError(
+      `--publish-status expects ${PUBLISH_STATUSES.join(", ")}, or several separated by commas, and got: ${unknown.join(", ")}`,
+    );
+  }
+  return PUBLISH_STATUSES.filter((status) => statuses.includes(status));
+}
+
+/**
  * Client-side half of `--publish-status`.
  *
  * The server can only narrow to `is_published`; telling `published` from
- * `changed` needs `unpublished_changes`, which the list response already
+ * `published-with-changes` needs `unpublished_changes`, which the list response already
  * carries. That is what lets these run as `preContentFilters`, before the
  * content fetch and before the CAPI filter, so a non-matching story costs
  * nothing beyond the page it was listed on.
  */
 export function buildPublishStatusFilters(options: FindOptions): ClientFilter[] {
-  const status = options.publishStatus;
-  if (!status) {
+  if (options.publishStatus === undefined) {
     return [];
   }
-  return [(story) => matchesPublishStatus(story, status)];
+  const statuses = parsePublishStatuses(options.publishStatus);
+  return [(story) => statuses.some((status) => matchesPublishStatus(story, status))];
 }
 
 /** The date flags the API cannot filter on, and the story field each one reads. */
 const DATE_FILTERS = [
   { flag: "--created", option: "created", field: "created_at" },
   { flag: "--updated", option: "updated", field: "updated_at" },
-  { flag: "--published", option: "published", field: "published_at" },
+  { flag: "--last-published", option: "lastPublished", field: "published_at" },
   { flag: "--first-published", option: "firstPublished", field: "first_published_at" },
 ] as const;
 
 /**
- * `--created`, `--updated`, `--published` and `--first-published`.
+ * `--created`, `--updated`, `--last-published` and `--first-published`.
  *
  * The story listing filters on none of these dates, but carries all of them, so
  * like the client-side half of `--publish-status` they run as
  * `preContentFilters`: a story outside the range costs nothing beyond the page
  * it was listed on.
- *
- * `--scheduled` is filtered by the API, but matches per-language schedules, so
- * a story with pending schedules in several languages is listed once for each.
- * Only the first listing is kept, before `--limit` counts it.
  */
 export function buildDateFilters(options: FindOptions, now: Date = new Date()): ClientFilter[] {
-  const filters = DATE_FILTERS.flatMap(({ flag, option, field }) => {
+  return DATE_FILTERS.flatMap(({ flag, option, field }) => {
     const raw = options[option];
     if (raw === undefined) {
       return [];
@@ -380,17 +397,6 @@ export function buildDateFilters(options: FindOptions, now: Date = new Date()): 
     const range = parseDateRange(flag, raw, { now, direction: "past" });
     return [(story: Story) => isInDateRange(story[field], range)];
   });
-  if (options.scheduled !== undefined) {
-    const seen = new Set<Story["id"]>();
-    filters.push((story) => {
-      if (seen.has(story.id)) {
-        return false;
-      }
-      seen.add(story.id);
-      return true;
-    });
-  }
-  return filters;
 }
 
 /**

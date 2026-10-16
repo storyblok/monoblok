@@ -28,9 +28,11 @@ export function findPhases({
     {
       key: "list",
       label: "Fetching stories",
-      counters: ["succeeded", "skipped", "failed"],
+      // `repeated`: the same story listed again, once per language under
+      // `--scheduled`. Neither a match nor a story filtered out.
+      counters: ["succeeded", "repeated", "skipped", "failed"],
       // A story dropped from list metadata alone never reaches the stage below.
-      outflow: (counts) => counts.total - counts.skipped,
+      outflow: (counts) => counts.total - counts.repeated - counts.skipped,
     },
     {
       key: "capiFilter",
@@ -189,7 +191,7 @@ export function listingSummary(tracker: PhaseTracker): SummaryStage {
   const list = tracker.counts("list");
   return {
     label: "Listing stories",
-    result: `${list.succeeded} listed`,
+    result: `${list.succeeded - list.repeated} listed`,
     notes: [
       { count: list.skipped, text: "filtered out" },
       { count: list.failed, text: ["page failed", "pages failed"], failure: true },

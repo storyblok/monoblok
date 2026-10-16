@@ -433,8 +433,8 @@ scenarios() {
     --where "\$._ref_issues[?(@.type == 'stale_url')]"
 
   run "release review" \
-    "What is waiting to go live: pages that are published but carry unpublished edits, newest first. --publish-status changed is decided from the list response and --sort is applied by the server, so the whole answer comes out of the page walk with no content read. Expect 3,825 listed server-side and 46 kept." \
-    --publish-status changed --skip-content --sort updated_at:desc
+    "What is waiting to go live: pages that are published but carry unpublished edits, newest first. --publish-status published-with-changes is decided from the list response and --sort is applied by the server, so the whole answer comes out of the page walk with no content read. Expect 3,825 listed server-side and 46 kept." \
+    --publish-status published-with-changes --skip-content --sort updated_at:desc
 
   run "alt-text audit" \
     "The headline real-world case: every image with no alt text, across the whole space, at any depth. A content question over 3,951 stories answered without a single per-story fetch. Expect ~1,770 matched in under ten seconds, against roughly eleven minutes for the same query with no optimization flags." \

@@ -329,6 +329,59 @@ describe("stories find command", () => {
     expect(written.map((line) => JSON.parse(line).id)).toEqual([twice.id, once.id]);
   });
 
+  // A repeat is neither a match nor a story a filter rejected.
+  it("should not count a story listed again for another language as filtered out", async () => {
+    const [twice, once] = [makeMockStory(), makeMockStory()];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: [twice, twice, once] },
+          { headers: { Total: "3", "Per-Page": "100" } },
+        ),
+      ),
+    );
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "--skip-content",
+    ]);
+
+    const stderr = stripVTControlCharacters(errorSpy.mock.calls.flat().join("\n"));
+    expect(stderr).toContain("2 listed");
+    expect(stderr).not.toContain("filtered out");
+  });
+
+  it("should ask for any pending schedule under a bare --scheduled", async () => {
+    let query: URLSearchParams | undefined;
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", ({ request }) => {
+        query = new URL(request.url).searchParams;
+        return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+      }),
+    );
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "--skip-content",
+    ]);
+
+    expect(query?.get("scheduled_by_status")).toBe("scheduled");
+    expect(query?.has("scheduled_at_gt")).toBe(false);
+    expect(query?.has("scheduled_at_lt")).toBe(false);
+  });
+
   it("should reject a malformed date range before any request", async () => {
     await storiesCommand.parseAsync([
       "node",

@@ -27,6 +27,11 @@ export type GenerateSnapshotOptions = {
   migrationId?: string;
 };
 
+/**
+ * Snapshots are committed and loaded by later CLI releases, so `schema`,
+ * `Before`, and `nameOnlyBlocks` stay stable; a change to them bumps this.
+ */
+const SNAPSHOT_FORMAT = 1;
 const OPTION_FIELD_TYPES = new Set(["option", "options"]);
 const SNAPSHOT_IMPORTS = ["defineBlock", "defineField", "defineSchema", "Schema"];
 
@@ -53,19 +58,40 @@ type RestrictionLookup = {
   tagIds: Map<string, string>;
 };
 
+const GROUP_LIST_KEYS = ["component_group_whitelist", "component_group_denylist"];
+const TAG_LIST_KEYS = ["component_tag_whitelist", "component_tag_denylist"];
+
+function listEntries(field: FieldRecord, keys: readonly string[]): string[] {
+  return keys.flatMap((key) => {
+    const list = field[key];
+    return Array.isArray(list) ? list.map(String) : [];
+  });
+}
+
 /**
  * Identity maps make the shared resolver hand back the raw uuids and tag ids
- * instead of `defineFolder` refs and tag names.
+ * instead of `defineFolder` refs and tag names. They also hold the ids that only
+ * fields name, so a folder or tag no block belongs to resolves to no blocks
+ * rather than to no restriction.
  */
 function restrictionLookup(components: readonly WireComponent[]): RestrictionLookup {
   const groupUuids = new Map<string, string>();
   const tagIds = new Map<string, string>();
   for (const component of components) {
-    if (component.component_group_uuid) {
-      groupUuids.set(component.component_group_uuid, component.component_group_uuid);
+    const fields = fieldsOf(component).map(([, field]) => field);
+    const uuids = [
+      component.component_group_uuid ?? "",
+      ...fields.flatMap((field) => listEntries(field, GROUP_LIST_KEYS)),
+    ];
+    for (const uuid of uuids.filter(Boolean)) {
+      groupUuids.set(uuid, uuid);
     }
-    for (const id of component.internal_tag_ids ?? []) {
-      tagIds.set(String(id), String(id));
+    const ids = [
+      ...(component.internal_tag_ids ?? []).map(String),
+      ...fields.flatMap((field) => listEntries(field, TAG_LIST_KEYS)),
+    ];
+    for (const id of ids) {
+      tagIds.set(id, id);
     }
   }
   return { components, groupUuids, tagIds };
@@ -297,6 +323,9 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
     .filter((name) => !blocks.includes(name))
     .sort();
   lines.push(
+    "/** The version of the snapshot format, for the tools that read this file. */",
+    `export const snapshotFormat = ${SNAPSHOT_FORMAT};`,
+    "",
     "/** Blocks in the space whose fields are not part of this snapshot. */",
     nameOnlyBlocks.length === 0
       ? "export const nameOnlyBlocks: string[] = [];"

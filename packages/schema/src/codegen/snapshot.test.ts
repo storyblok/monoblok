@@ -157,6 +157,34 @@ describe("generateSnapshot", () => {
     }
   });
 
+  it("should not stub a block whose folder or tag restriction admits none of the blocks", () => {
+    const hero: WireComponent = {
+      name: "hero",
+      component_group_uuid: GROUP_SEO,
+      schema: { headline: { type: "text" } },
+    };
+    const bloks = { type: "bloks", restrict_components: true };
+    const emptyFolder: WireComponent = {
+      name: "empty_folder",
+      schema: { body: { ...bloks, component_group_whitelist: ["empty-uuid"] } },
+    };
+    const unusedTag: WireComponent = {
+      name: "unused_tag",
+      schema: { body: { ...bloks, restrict_type: "tags", component_tag_whitelist: [999] } },
+    };
+    const mixedFolders: WireComponent = {
+      name: "mixed_folders",
+      schema: { body: { ...bloks, component_group_whitelist: [GROUP_SEO, "empty-uuid"] } },
+    };
+
+    const source = generateSnapshot({
+      components: [hero, emptyFolder, unusedTag, mixedFolders],
+      blocks: ["hero"],
+    });
+
+    expect(blockNames(source)).toEqual(["hero", "mixed_folders"]);
+  });
+
   it("should not stub every block with an unrestricted richtext field as a container", () => {
     const hero: WireComponent = { name: "hero", schema: { headline: { type: "text" } } };
     const article: WireComponent = { name: "article", schema: { body: { type: "richtext" } } };
@@ -282,9 +310,10 @@ describe("generateSnapshot", () => {
     });
 
     try {
-      const { schema, nameOnlyBlocks } = await import(
+      const { schema, nameOnlyBlocks, snapshotFormat } = await import(
         path.join(modules.directory, "0001.before.ts")
       );
+      expect(snapshotFormat).toBe(1);
       const check = (migration: Parameters<typeof validateMigration>[0]) =>
         validateMigration(migration, schema, { nameOnlyBlocks });
 

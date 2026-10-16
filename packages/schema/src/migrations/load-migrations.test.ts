@@ -101,6 +101,8 @@ describe("nextMigrationId", () => {
   it("should sort after existing numbered and timestamped migrations", () => {
     expect(nextMigrationId(["0002-a", "0010-b"], "next", NOW)).toBe("20261016090503-next");
     expect(nextMigrationId(["20261016090503-a"], "next", NOW)).toBe("20261016090504-next");
+    expect(nextMigrationId(["20261016090559-a"], "next", NOW)).toBe("20261016090600-next");
+    expect(nextMigrationId(["20991231235959-a"], "next", NOW)).toBe("21000101000000-next");
     expect(nextMigrationId(["99999999999999999-a"], "next", NOW)).toBe("100000000000000000-next");
 
     const ids = ["0002-a", "20261016090503-a"];

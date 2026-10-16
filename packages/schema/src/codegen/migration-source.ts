@@ -17,8 +17,8 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
   | (OpTarget & { kind: "alterField" })
   /** Backfills absent keys with `value`. */
   | (OpTarget & { kind: "addField"; value?: unknown })
-  /** Fills an absent or `null` field with `value`. */
-  | (OpTarget & { kind: "fillField"; value?: unknown })
+  /** Fills an absent or `null` field, and `""` with `fillEmptyString`, with `value`. */
+  | (OpTarget & { kind: "fillField"; value?: unknown; fillEmptyString?: boolean })
 );
 
 export type GenerateMigrationSourceOptions = {
@@ -72,10 +72,14 @@ function renderOp(op: MigrationOpSource, depth: number): string {
     case "fillField": {
       const field = accessor(op.field);
       const inner = INDENT.repeat(depth + 1);
+      const empty = [`${field} === undefined`, `${field} === null`];
+      if (op.fillEmptyString) {
+        empty.push(`${field} === ''`);
+      }
       const body =
         op.value === undefined
-          ? `if (${field} === undefined || ${field} === null) ${throwPlaceholder(op, depth + 1)}`
-          : `${field} ??= ${formatValue(op.value, depth + 1)};`;
+          ? `if (${empty.join(" || ")}) ${throwPlaceholder(op, depth + 1)}`
+          : `if (${empty.join(" || ")}) {\n${INDENT.repeat(depth + 2)}${field} = ${formatValue(op.value, depth + 2)};\n${inner}}`;
       return `alterBlock({ block: ${quoteString(op.block)} }, (block) => {\n${inner}${body}\n${INDENT.repeat(depth)}})`;
     }
     default: {
@@ -110,7 +114,7 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   if (ops.length === 0) {
     opLines.push(
       `${opIndent}// Import each op from '@storyblok/schema/migrations', for example:`,
-      `${opIndent}// renameField({ block: 'article', field: 'author', to: 'byline' }),`,
+      `${opIndent}// renameField({ block: '<block>', field: '<field>', to: '<new field>' }),`,
     );
   }
   for (const op of ops) {

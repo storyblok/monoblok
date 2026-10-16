@@ -112,6 +112,49 @@ describe("generateMigrationSource", () => {
     expect(outcome.writes[0].content).toEqual({ _uid: "a", component: "hero", link });
   });
 
+  it("should fill an empty string when the field stores a string", async () => {
+    const { migration, typeErrors } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [
+        { kind: "fillField", block: "hero", field: "subtitle", value: "Hi", fillEmptyString: true },
+        { kind: "fillField", block: "hero", field: "count", value: "0", fillEmptyString: true },
+      ],
+    });
+
+    expect(typeErrors).toEqual([]);
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [
+        { id: 1, slug: "home", content: { _uid: "a", component: "hero", subtitle: "", count: "" } },
+        { id: 2, slug: "about", content: { _uid: "b", component: "hero", subtitle: "Kept" } },
+      ],
+    });
+
+    expect(outcome.writes.map((write) => write.content)).toEqual([
+      { _uid: "a", component: "hero", subtitle: "Hi", count: "0" },
+      { _uid: "b", component: "hero", subtitle: "Kept", count: "0" },
+    ]);
+  });
+
+  it("should refuse an empty string while the fill is a placeholder", async () => {
+    const { migration } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [{ kind: "fillField", block: "hero", field: "subtitle", fillEmptyString: true }],
+    });
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [{ id: 1, slug: "home", content: { _uid: "a", component: "hero", subtitle: "" } }],
+    });
+
+    expect(outcome.refusals[0].reason).toContain("hero.subtitle");
+  });
+
   it("should generate a placeholder migration when there are no ops", async () => {
     const { migration, typeErrors } = await loadGenerated({ schemaImport: "./schema", ops: [] });
 

@@ -4,6 +4,8 @@ export default defineConfig({
   pack: {
     entry: {
       index: "./src/index.ts",
+      "codegen/index": "./src/codegen/index.ts",
+      "internal/codegen": "./src/codegen/internal.ts",
       "field-plugins/index": "./src/field-plugins/index.ts",
       "migrations/index": "./src/migrations/index.ts",
     },

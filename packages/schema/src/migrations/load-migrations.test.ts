@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { loadMigrations, selectMigrationFiles } from "./load-migrations";
+import { loadMigrations, nextMigrationId, selectMigrationFiles } from "./load-migrations";
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "__fixtures__", "load");
 const spaceMigrations = path.join(fixtures, "space-migrations");
@@ -22,6 +22,12 @@ describe("loadMigrations", () => {
     const selected = selectMigrationFiles("m", ["10-b.ts", "20261007-d.ts", "9-a.ts", "010-c.ts"]);
 
     expect(selected.map((entry) => entry.id)).toEqual(["9-a", "010-c", "10-b", "20261007-d"]);
+  });
+
+  it("should leave the schema snapshots beside migrations alone", () => {
+    const selected = selectMigrationFiles("m", ["0001-x.ts", "0001-x.before.ts"]);
+
+    expect(selected.map((entry) => entry.id)).toEqual(["0001-x"]);
   });
 
   it("should refuse two files that would share an id", () => {
@@ -82,5 +88,38 @@ describe("loadMigrations", () => {
     expect(await loadMigrations(path.join(fixtures, "no-such-directory"), importDefault)).toEqual(
       [],
     );
+  });
+});
+
+describe("nextMigrationId", () => {
+  const NOW = new Date("2026-10-16T09:05:03.120Z");
+
+  it("should prefix the id with the UTC creation time", () => {
+    expect(nextMigrationId([], "rename card title", NOW)).toBe("20261016090503-rename-card-title");
+  });
+
+  it("should sort after existing numbered and timestamped migrations", () => {
+    expect(nextMigrationId(["0002-a", "0010-b"], "next", NOW)).toBe("20261016090503-next");
+    expect(nextMigrationId(["20261016090503-a"], "next", NOW)).toBe("20261016090504-next");
+    expect(nextMigrationId(["20261016090559-a"], "next", NOW)).toBe("20261016090600-next");
+    expect(nextMigrationId(["20991231235959-a"], "next", NOW)).toBe("21000101000000-next");
+    expect(nextMigrationId(["99999999999999999-a"], "next", NOW)).toBe("100000000000000000-next");
+
+    const ids = ["0002-a", "20261016090503-a"];
+    const next = nextMigrationId(ids, "next", NOW);
+    const ordered = selectMigrationFiles(
+      "m",
+      [...ids, next].map((id) => `${id}.ts`),
+    );
+
+    expect(ordered.at(-1)?.id).toBe(next);
+  });
+
+  it("should reduce the name to a slug the loader accepts", () => {
+    const id = nextMigrationId([], "Update heroBlock & card_v2!", NOW);
+
+    expect(id).toBe("20261016090503-update-hero-block-card-v2");
+    expect(selectMigrationFiles("m", [`${id}.ts`])).toHaveLength(1);
+    expect(nextMigrationId([], "Café Übersicht", NOW)).toBe("20261016090503-cafe-ubersicht");
   });
 });

@@ -1,12 +1,8 @@
+import { formatValue } from "@storyblok/schema/internal/codegen";
+
 import type { Component, Datasource } from "../../types";
 import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema } from "./types";
-import {
-  applyDefaults,
-  COMPONENT_DEFAULTS,
-  DATASOURCE_DEFAULTS,
-  formatValue,
-  isRecord,
-} from "./utils";
+import { applyDefaults, COMPONENT_DEFAULTS, DATASOURCE_DEFAULTS, isRecord } from "./utils";
 import { cleanComponent, cleanDatasource, FOLDER_UNGROUPED } from "./serialize";
 import { mapSchemaGroupLists } from "./folders";
 import { mapSchemaTagLists } from "./tags";

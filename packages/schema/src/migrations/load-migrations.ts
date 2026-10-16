@@ -69,6 +69,64 @@ export function selectMigrationFiles(directory: string, filenames: string[]): Mi
   return selected.map(({ id, filename }) => ({ id, file: joinPath(directory, filename) }));
 }
 
+const MAX_SLUG_LENGTH = 60;
+
+/** Reduces free text to a slug the migration filename pattern accepts. */
+function toMigrationSlug(name: string): string {
+  const slug = name
+    // Splits accented letters into base letter and mark, so `é` keeps its `e`.
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, MAX_SLUG_LENGTH)
+    .replace(/^-+|-+$/g, "");
+  return slug || "migration";
+}
+
+const TIMESTAMP_PREFIX = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/;
+
+/** `YYYYMMDDHHmmss` in UTC. */
+function timestampPrefix(date: Date): string {
+  return date.toISOString().replace(/\D/g, "").slice(0, 14);
+}
+
+/** The prefix that sorts right after `prefix`, one second later when it is a timestamp. */
+function prefixAfter(prefix: string): string {
+  const parts = TIMESTAMP_PREFIX.exec(prefix)?.slice(1).map(Number);
+  if (parts) {
+    const [year, month, day, hour, minute, second] = parts;
+    const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    if (timestampPrefix(date) === prefix) {
+      return timestampPrefix(new Date(date.getTime() + 1000));
+    }
+  }
+  return String(BigInt(prefix) + 1n).padStart(prefix.length, "0");
+}
+
+/**
+ * The id for a new migration: the UTC creation time as `YYYYMMDDHHmmss`, so
+ * migrations written on different branches do not claim the same prefix, with
+ * `name` reduced to a slug the loader accepts. When an existing id already
+ * sorts at or after that time, the prefix is one second past the highest
+ * existing one, so the new migration still runs last.
+ */
+export function nextMigrationId(
+  existingIds: readonly string[],
+  name: string,
+  now: Date = new Date(),
+): string {
+  let prefix = timestampPrefix(now);
+  for (const id of existingIds) {
+    const existing = /^(\d+)-/.exec(id)?.[1];
+    if (existing !== undefined && compareNumeric(existing, prefix) >= 0) {
+      prefix = prefixAfter(existing);
+    }
+  }
+  return `${prefix}-${toMigrationSlug(name)}`;
+}
+
 export async function discoverMigrations(directory: string): Promise<MigrationFile[]> {
   const { readdir } = await import("node:fs/promises");
   const filenames = await readdir(directory).catch((): string[] => []);

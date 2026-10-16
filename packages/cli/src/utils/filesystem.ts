@@ -7,6 +7,7 @@ import {
   mkdir,
   readdir,
   readFile as readFileImpl,
+  stat,
   writeFile,
 } from "node:fs/promises";
 import { handleFileSystemError } from "./error/filesystem-error";
@@ -254,6 +255,14 @@ export async function fileExists(path: string) {
   try {
     await access(path, constants.F_OK);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function isFile(path: string): Promise<boolean> {
+  try {
+    return (await stat(path)).isFile();
   } catch {
     return false;
   }

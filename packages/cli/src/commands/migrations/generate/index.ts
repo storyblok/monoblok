@@ -1,26 +1,31 @@
 import type { Command } from "commander";
 import chalk from "chalk";
-import { relative } from "pathe";
 
 import type { MigrationsGenerateOptions } from "./constants";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError, requireAuthentication } from "../../../utils";
 import { session } from "../../../session";
-import { fetchComponent } from "../../../commands/components";
+import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
 import { generateMigration } from "./actions";
+import { displayPath, writeContentMigration } from "../content-migrations";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
-import { sanitizeFilename } from "../../../utils/filesystem";
+import { isFile, sanitizeFilename } from "../../../utils/filesystem";
 
 const generateCmd = migrationsCommand
   .command("generate [componentName]")
   .description("Generate a migration file")
   .option(
     "--su, --suffix <suffix>",
-    "suffix to add to the file name (e.g. {component-name}.<suffix>.js)",
+    "suffix to add to the file name (e.g. {component-name}.<suffix>.js; with --schema, appended to the slug)",
   )
-  .option("-s, --space <space>", "space ID");
+  .option("-s, --space <space>", "space ID")
+  .option(
+    "--schema <entry-file>",
+    "schema entry file that exports `type Schema`; generates a typed defineMigration file instead of a .js migration",
+  )
+  .option("--no-before", "with --schema, skip the .before.ts schema snapshot");
 
 generateCmd.action(
   async (
@@ -40,7 +45,7 @@ generateCmd.action(
     );
 
     const { space, path, verbose } = command.optsWithGlobals();
-    const { suffix } = options;
+    const { suffix, schema: schemaEntry, before } = options;
 
     logger.info("Migration generation started", {
       componentName,
@@ -81,9 +86,23 @@ generateCmd.action(
       return;
     }
 
+    if (schemaEntry && !(await isFile(schemaEntry))) {
+      handleError(
+        new CommandError(`Schema entry file not found or not a file: ${schemaEntry}`),
+        verbose,
+      );
+      return;
+    }
+    if (!schemaEntry && !before) {
+      ui.warn("--no-before has no effect without --schema.");
+    }
+
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);
     try {
-      const component = await fetchComponent(space, componentName);
+      const components = schemaEntry && before ? await fetchComponents(space) : undefined;
+      const component = components
+        ? components.find((candidate) => candidate.name === componentName)
+        : await fetchComponent(space, componentName);
 
       if (!component) {
         spinner.failed(
@@ -93,23 +112,35 @@ generateCmd.action(
         return;
       }
 
-      const migrationPath = await generateMigration(space, path, component, suffix);
-      // A `--path` outside the current directory relativizes to an unreadable
-      // chain of `..` segments, so show the absolute path instead.
-      const relativePath = relative(process.cwd(), migrationPath);
-      const displayPath = relativePath.startsWith("..") ? migrationPath : relativePath;
+      const written = schemaEntry
+        ? await writeContentMigration({
+            path,
+            space,
+            name: suffix ? `${component.name}-${suffix}` : component.name,
+            schemaEntry,
+            ops: [],
+            before: components ? { components, blocks: [component.name] } : undefined,
+          })
+        : { migrationPath: await generateMigration(space, path, component, suffix) };
+      const [migrationPath, ...snapshotPaths] = [written.migrationPath, written.beforePath]
+        .filter((file) => file !== undefined)
+        .map(displayPath);
 
       spinner.succeed(
         `Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`,
       );
 
       ui.ok(
-        `You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(displayPath)}`,
+        `You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(migrationPath)}`,
       );
+      for (const snapshotPath of snapshotPaths) {
+        ui.ok(`Schema snapshot: ${chalk.hex(colorPalette.MIGRATIONS)(snapshotPath)}`);
+      }
 
       logger.info("Migration generation finished", {
         componentName: component.name,
-        migrationPath: displayPath,
+        migrationPath,
+        snapshotPaths,
         space,
         suffix,
       });

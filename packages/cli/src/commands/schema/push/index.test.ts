@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
@@ -130,6 +130,32 @@ const preconditions = {
     );
     return created;
   },
+  failsToUpdateComponents() {
+    server.use(
+      http.put(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`, () =>
+        HttpResponse.json({ error: "Server error" }, { status: 500 }),
+      ),
+    );
+  },
+  /** Updates `updated` and rejects every other component, as a partially failing push does. */
+  updatesOnlyComponent(updated: MockComponent, remote: MockComponent[]) {
+    let components = remote;
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`, () =>
+        HttpResponse.json({ components }),
+      ),
+      http.put(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`,
+        ({ params }) => {
+          if (Number(params.id) !== updated.id) {
+            return HttpResponse.json({ error: "Unprocessable" }, { status: 422 });
+          }
+          components = components.map((c) => (c.id === updated.id ? updated : c));
+          return HttpResponse.json({ component: updated });
+        },
+      ),
+    );
+  },
   canUpdateComponents() {
     server.use(
       http.put(
@@ -196,14 +222,34 @@ const preconditions = {
   },
 };
 
+function writtenFile(suffix: string): string | undefined {
+  return Object.entries(vol.toJSON()).find(([file]) => file.endsWith(suffix))?.[1] ?? undefined;
+}
+
+function migrationFiles(): string[] {
+  return Object.keys(vol.toJSON())
+    .filter((file) => file.includes(`migrations/${DEFAULT_SPACE}/`))
+    .sort();
+}
+
 describe("schema push command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-16T09:05:03Z"));
+  });
 
   afterEach(() => {
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
     server.resetHandlers();
+    const pushCmd = schemaCommand.commands.find((command) => command.name() === "push");
+    pushCmd?.setOptionValueWithSource("legacy", undefined, "default");
+    pushCmd?.setOptionValueWithSource("before", true, "default");
+    pushCmd?.setOptionValueWithSource("path", undefined, "default");
+    vi.useRealTimers();
   });
 
   afterAll(() => server.close());
@@ -803,15 +849,57 @@ describe("schema push command", () => {
     preconditions.canUpdateComponents();
     preconditions.confirmsMigrations();
 
-    await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+    ]);
 
-    const migrationFile = Object.entries(vol.toJSON()).find(
-      ([filename]) =>
-        filename.includes("migrations/") && filename.includes("hero.") && filename.endsWith(".js"),
+    const migration = writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`);
+    expect(migration).toContain("import type { Schema } from '../../../schema.js';");
+    expect(migration).toContain("export default defineMigration<Schema, Before>([");
+    expect(migration).toContain(
+      "renameField({ block: 'hero', field: 'author_name', to: 'author' })",
     );
-    expect(migrationFile).toBeDefined();
-    expect(migrationFile![1]).toContain("block.author = block.author_name");
-    expect(migrationFile![1]).toContain("delete block.author_name");
+    expect(
+      writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.before.ts`),
+    ).toContain("defineField('author_name'");
+  });
+
+  it("should skip the snapshot with --no-before", async () => {
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: { author_name: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    const localComp = makeMockComponent({
+      name: "hero",
+      schema: { author: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    preconditions.hasLocalSchema({ components: [localComp] as any, datasources: [] });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+      "--no-before",
+    ]);
+
+    expect(writtenFile("20261016090503-update-hero.ts")).toContain("defineMigration<Schema>([");
+    expect(writtenFile(".before.ts")).toBeUndefined();
   });
 
   it("should skip migration generation with --no-migrations", async () => {
@@ -847,10 +935,7 @@ describe("schema push command", () => {
       "--no-migrations",
     ]);
 
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
   });
 
@@ -881,10 +966,7 @@ describe("schema push command", () => {
 
     await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
 
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
   });
 
   it("should auto-generate migrations without prompting when --migrations is explicit", async () => {
@@ -918,14 +1000,15 @@ describe("schema push command", () => {
       "schema.ts",
       "--space",
       DEFAULT_SPACE,
+      "--typed",
       "--migrations",
     ]);
 
     // Should generate without prompting
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(1);
+    expect(migrationFiles()).toEqual([
+      expect.stringMatching(/20261016090503-update-hero\.before\.ts$/),
+      expect.stringMatching(/20261016090503-update-hero\.ts$/),
+    ]);
     // confirm should NOT have been called (auto-generate mode)
     expect(confirm).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(
@@ -999,17 +1082,203 @@ describe("schema push command", () => {
     preconditions.canUpdateComponents();
     preconditions.confirmsMigrations();
 
-    await schemaCommand.parseAsync(["node", "test", "push", "schema.ts", "--space", DEFAULT_SPACE]);
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+    ]);
 
-    const migrationFile = Object.entries(vol.toJSON()).find(
-      ([filename]) =>
-        filename.includes("migrations/") && filename.includes("hero.") && filename.endsWith(".js"),
+    expect(writtenFile("20261016090503-update-hero.ts")).toContain(
+      "coerceField({ block: 'hero', field: 'rating', from: 'string', to: 'number' })",
     );
-    expect(migrationFile).toBeDefined();
-    expect(migrationFile![1]).toContain("Number(block.rating)");
   });
 
-  it("should include review guidance in generated migration files", async () => {
+  it("should point out a possible rename when a removed field matches a new required field", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({
+          name: "teaser",
+          schema: { headline: { type: "text", pos: 0, required: true } },
+        }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({ name: "teaser", schema: { title: { type: "text", pos: 0 } } }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+    ]);
+
+    expect(writtenFile("20261016090503-update-teaser.ts")).toContain(
+      "// TODO: if 'title' was renamed to 'headline', replace this removeField and the addField of the new field with renameField, or the content of 'title' is lost.\n  removeField({ block: 'teaser', field: 'title' }),",
+    );
+  });
+
+  it("should not treat switching among text, textarea, and markdown as breaking", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "hero", schema: { body: { type: "markdown", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({ name: "hero", schema: { body: { type: "textarea", pos: 0 } } }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+    ]);
+
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("breaking change"));
+    expect(migrationFiles()).toEqual([]);
+  });
+
+  it("should quote a --path with spaces in the run hint", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({
+        name: "hero",
+        schema: { subtitle: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--path",
+      "my project",
+      "--migrations",
+    ]);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `storyblok migrations apply --space ${DEFAULT_SPACE} --path 'my project'`,
+      ),
+    );
+  });
+
+  it("should remove the migration when the push fails before any block is updated", async () => {
+    preconditions.hasLocalSchema({
+      components: [
+        makeMockComponent({ name: "hero", schema: { title: { type: "text", pos: 0 } } }),
+      ] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteComponents([
+      makeMockComponent({
+        name: "hero",
+        schema: { subtitle: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+      }),
+    ]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.failsToUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+      "--typed",
+    ]);
+
+    expect(migrationFiles()).toEqual([]);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("before any block with breaking changes was updated"),
+    );
+  });
+
+  it("should keep the migration for the blocks a failed push updated", async () => {
+    const remoteArticle = makeMockComponent({
+      name: "article",
+      schema: { slug_override: { type: "text", pos: 0 } },
+    });
+    const remoteTeaser = makeMockComponent({
+      name: "teaser",
+      schema: { link: { type: "text", pos: 0 }, title: { type: "text", pos: 1 } },
+    });
+    const localArticle = { ...remoteArticle, schema: { slug_custom: { type: "text", pos: 0 } } };
+    const localTeaser = { ...remoteTeaser, schema: { title: { type: "text", pos: 0 } } };
+    preconditions.hasLocalSchema({
+      components: [localArticle, localTeaser] as any,
+      datasources: [],
+    });
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.updatesOnlyComponent(localArticle, [remoteArticle, remoteTeaser]);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--migrations",
+      "--typed",
+    ]);
+
+    expect(migrationFiles()).toEqual([
+      expect.stringMatching(/20261016090503-update-article\.before\.ts$/),
+      expect.stringMatching(/20261016090503-update-article\.ts$/),
+    ]);
+    const migration = writtenFile("20261016090503-update-article.ts");
+    expect(migration).toContain(
+      "renameField({ block: 'article', field: 'slug_override', to: 'slug_custom' })",
+    );
+    expect(migration).not.toContain("teaser");
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining("The push failed, but it updated article."),
+    );
+  });
+
+  it("should write one .js migration per block by default", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",
       schema: {
@@ -1091,10 +1360,7 @@ describe("schema push command", () => {
       "--migrations",
     ]);
 
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
     expect(confirm).not.toHaveBeenCalled();
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
   });
@@ -1134,10 +1400,7 @@ describe("schema push command", () => {
 
     // Must not prompt — dry-run is non-interactive
     expect(confirm).not.toHaveBeenCalled();
-    const migrationFiles = Object.keys(vol.toJSON()).filter(
-      (f) => f.includes("migrations/") && f.endsWith(".js"),
-    );
-    expect(migrationFiles).toHaveLength(0);
+    expect(migrationFiles()).toHaveLength(0);
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Dry run"));
   });
 });

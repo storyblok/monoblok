@@ -27,6 +27,37 @@ export type AnyChild = Record<string, unknown> & { _uid: string; component: stri
 
 export type CoercionTarget = "string" | "number" | "boolean";
 
+const COERCION_TARGET_BY_FIELD_TYPE: ReadonlyMap<string, CoercionTarget> = new Map([
+  ["text", "string"],
+  ["textarea", "string"],
+  ["markdown", "string"],
+  ["number", "number"],
+  ["boolean", "boolean"],
+]);
+
+/**
+ * `coerceField` refuses a boolean's `true`/`false` as a number and every number
+ * but 0 and 1 as a boolean, so these need a hand-written conversion.
+ */
+const UNFAITHFUL_COERCIONS = new Set(["boolean:number", "number:boolean"]);
+
+/**
+ * How `coerceField` converts content when a field changes from `fromType` to
+ * `toType`, or `undefined` when it cannot. Equal targets mean both types store
+ * the same value, so the content needs no conversion.
+ */
+export function coercionBetween(
+  fromType: string,
+  toType: string,
+): { from: CoercionTarget; to: CoercionTarget } | undefined {
+  const from = COERCION_TARGET_BY_FIELD_TYPE.get(fromType);
+  const to = COERCION_TARGET_BY_FIELD_TYPE.get(toType);
+  if (!from || !to || UNFAITHFUL_COERCIONS.has(`${from}:${to}`)) {
+    return undefined;
+  }
+  return { from, to };
+}
+
 /**
  * An ancestor constraint: one block name matched anywhere above the selection,
  * or an outermost-first chain in which each name must appear above the next.

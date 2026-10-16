@@ -67,8 +67,38 @@ export const schema = defineSchema({ blocks: { articleBlock } });
 export type Before = InferSchema<typeof schema>;
 ```
 
-Keep the snapshot unchanged once the migration ships. Later schema changes then can’t break the
-migration’s types.
+Keep the snapshot unchanged once the migration ships, so the names the migration reads stay typed
+after later schema changes. The names it writes are typed against the current `Schema`, so a later
+rename or removal of a field the migration writes is a type error in it. Once every space the
+migration targets has applied it, delete the migration and its snapshot, or exclude them from type
+checking.
+
+The Storyblok CLI commands
+[`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
+[`schema push --typed`](/docs/tooling/cli/schema-push#typed-content-migrations) generate the
+migration and its snapshot from the space’s current blocks.
+
+### Rerun migrations safely
+
+`migrations apply` runs every migration in the directory each time and skips ops that later schema
+changes superseded, such as an `addField` of a field a later migration renamed. The journal that
+records runs stays on the machine that ran them. Write each op so that a second pass changes
+nothing:
+
+- A callback can meet values it already converted. `Before` types the value as it was before the
+  migration, so check its shape before converting it.
+- Return `undefined` from an `alterField` callback to leave the value unchanged.
+
+```ts
+// `markdownToRichtext` stands for your own converter.
+alterField({ block: "intro", field: "body" }, (body) =>
+  typeof body === "string" ? markdownToRichtext(body) : undefined,
+);
+```
+
+The experimental `@storyblok/schema/codegen` subpath exports `generateSnapshot()` and
+`generateMigrationSource()`, which return these files as source strings. Their output can change in
+any release.
 
 ### Schema types
 

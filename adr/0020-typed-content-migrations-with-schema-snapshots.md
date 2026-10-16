@@ -21,9 +21,9 @@ against the live schema checks nothing.
   as `defineMigration<Schema, Before>`: writes against the project's live `Schema`, reads against a
   generated `.before.ts` snapshot of the space's components that is never edited.
 - The snapshot holds the blocks the migration reads with their fields, plus name-only stubs for the
-  blocks those fields allow and for every block that can contain a read block, so `under` can name
-  it. `nameOnlyBlocks` lists every other block of the space, so `migrations apply` can tell an
-  existing block from a new one.
+  blocks those fields allow and for every block that can contain a read block through a `bloks`
+  field or an allow list, so `under` can name it. `nameOnlyBlocks` lists every other block of the
+  space, so `migrations apply` can tell an existing block from a new one.
 - `--no-before` skips the snapshot. `--legacy` keeps the ADR-0009 `.js` output for `migrations run`.
 - Migration ids start with the UTC creation time (`YYYYMMDDHHmmss`), not a sequence number, so
   migrations written on separate branches don't claim the same prefix.
@@ -61,3 +61,7 @@ against the live schema checks nothing.
   scripts fail instead of passing silently.
 - Ops on blocks nested inside a read block need a migration generated for that block, because a stub
   types its fields as empty.
+- An unrestricted `richtext` field doesn't make its block a container. Most blocks of a space have
+  one, and counting them grew the median snapshot of a 177-block space from 128 to 407 lines. An
+  `under` naming a block that holds the read block only through richtext is a type error, though
+  `migrations apply` accepts it.

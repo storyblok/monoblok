@@ -37,6 +37,18 @@ async function admittedImmediately(limiter: RateLimiter, ctx: RateLimitContext, 
   return admitted;
 }
 
+/** Spaced admissions start one at a time, so a rate is measured over a second. */
+async function admittedWithinASecond(limiter: RateLimiter, ctx: RateLimitContext, count: number) {
+  let admitted = 0;
+  for (let i = 0; i < count; i++) {
+    void limiter.acquire(ctx).then(() => {
+      admitted++;
+    });
+  }
+  await vi.advanceTimersByTimeAsync(999);
+  return admitted;
+}
+
 /** Lets every pending window drain so the next measurement starts clean. */
 async function settle(ms = 10_000) {
   await vi.advanceTimersByTimeAsync(ms);
@@ -404,6 +416,60 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     }
   }
 
+  it("should climb towards a raised ceiling no steeper than towards eight times its limit", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    // Once the window is full, each quiet second adds 80 / 25 ≈ 3, not 200 / 25 = 8.
+    await reportOverTime(limiter, ctx, cached, 60);
+
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(10 + 11 * 3);
+  });
+
+  it("should start origin-bound requests evenly spaced instead of all at once", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await limiter.recordResponse?.(ctx, fromOrigin());
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(1);
+    await settle();
+    expect(await admittedWithinASecond(limiter, ctx, 20)).toBe(10);
+  });
+
+  it("should release a full window at once while the cache serves the traffic", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await limiter.recordResponse?.(ctx, cached());
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(10);
+  });
+
+  it("should space every bucket once any of them reaches the origin", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+
+    await limiter.recordResponse?.(context({ bucket: "listing", limit: 10 }), fromOrigin());
+
+    expect(await admittedImmediately(limiter, context({ bucket: "single", limit: 10 }), 20)).toBe(
+      1,
+    );
+  });
+
+  it("should release the window at once when the runtime cannot read the cache status", async () => {
+    vi.useFakeTimers();
+    const limiter = createDefaultRateLimiter({ cacheAware });
+    const ctx = context({ limit: 10 });
+
+    await limiter.recordResponse?.(ctx, unknownOrigin());
+
+    expect(await admittedImmediately(limiter, ctx, 20)).toBe(10);
+  });
+
   it("should keep the bucket at its limit while responses come from the origin", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ cacheAware });
@@ -411,7 +477,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
 
     await reportOverTime(limiter, ctx, fromOrigin, 80);
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+    expect(await admittedWithinASecond(limiter, ctx, 200)).toBe(10);
   });
 
   it("should keep the bucket at its limit when responses carry no cache status", async () => {
@@ -441,19 +507,19 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
 
     await reportOverTime(limiter, ctx, cached, 120);
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(200);
   });
 
-  it("should not climb more than eight times its limit however cached it looks", async () => {
+  it("should not climb more than twenty times its limit however cached it looks", async () => {
     vi.useFakeTimers();
     const limiter = createDefaultRateLimiter({ cacheAware });
     const ctx = context({ limit: 4 });
 
-    await reportOverTime(limiter, ctx, cached, 120);
+    await reportOverTime(limiter, ctx, cached, 200);
 
     // Well short of the 1000/s the cache itself would serve. What has to be
     // bounded is the requests already in flight when a working set goes cold.
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(32);
+    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
   });
 
   it("should stop the climb at the rate the cache serves", async () => {
@@ -478,7 +544,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     let n = 0;
     await reportOverTime(limiter, ctx, () => (n++ % 2 === 0 ? cached() : fromOrigin()), 120);
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(20);
+    expect(await admittedWithinASecond(limiter, ctx, 200)).toBe(20);
   });
 
   it("should drop to its limit on a run of origin-served responses", async () => {
@@ -487,7 +553,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     const ctx = context({ limit: 10 });
 
     await reportOverTime(limiter, ctx, cached, 120);
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(200);
     await settle();
 
     // A fifth of the window, reported back to back. Waiting for the average to
@@ -496,7 +562,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
       await limiter.recordResponse?.(ctx, fromOrigin());
     }
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+    expect(await admittedWithinASecond(limiter, ctx, 200)).toBe(10);
   });
 
   it("should climb again once the cache serves the bucket a hit", async () => {
@@ -508,7 +574,7 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     for (let i = 0; i < 10; i++) {
       await limiter.recordResponse?.(ctx, fromOrigin());
     }
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+    expect(await admittedWithinASecond(limiter, ctx, 200)).toBe(10);
     await settle();
 
     // The run is broken and the window it measured is still there, so a brief
@@ -524,14 +590,14 @@ describe("createDefaultRateLimiter({ cacheAware })", () => {
     const ctx = context({ limit: 10 });
 
     await reportOverTime(limiter, ctx, cached, 120);
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(80);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(200);
     await settle();
 
     for (let i = 0; i < 50; i++) {
       await limiter.recordResponse?.(ctx, fromOrigin());
     }
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(10);
+    expect(await admittedWithinASecond(limiter, ctx, 200)).toBe(10);
   });
 
   it("should still halve the rate when a cached workload is throttled", async () => {
@@ -624,7 +690,7 @@ describe("createDefaultRateLimiter({ cacheAware }) — bounds and decay", () => 
     const ctx = context({ limit: 6 });
 
     await reportOverTime(limiter, ctx, cached, 120);
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(48);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(120);
 
     await vi.advanceTimersByTimeAsync(60 * 60 * 1000);
 
@@ -644,7 +710,7 @@ describe("createDefaultRateLimiter({ cacheAware }) — bounds and decay", () => 
     await reportOverTime(limiter, ctx, cached, 120);
     await vi.advanceTimersByTimeAsync(5000);
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBe(48);
+    expect(await admittedImmediately(limiter, ctx, 500)).toBe(120);
   });
 
   it("should drop a fully cached bucket on a run of misses far shorter than the window", async () => {
@@ -684,7 +750,7 @@ describe("createDefaultRateLimiter({ cacheAware }) — bounds and decay", () => 
       await limiter.recordResponse?.(ctx, fromOrigin());
     }
 
-    expect(await admittedImmediately(limiter, ctx, 200)).toBeGreaterThan(10);
+    expect(await admittedWithinASecond(limiter, ctx, 200)).toBeGreaterThan(10);
   });
 });
 
@@ -735,7 +801,7 @@ describe("createDefaultRateLimiter({ onRateLimitChange })", () => {
       await vi.advanceTimersByTimeAsync(1000);
     }
 
-    expect(latest(reported)).toMatchObject({ ceiling: 48, cacheHitShare: 1, configuredLimit: 6 });
+    expect(latest(reported)).toMatchObject({ ceiling: 120, cacheHitShare: 1, configuredLimit: 6 });
   });
 
   it("should not open the ceiling up before the measurement covers a full window", async () => {
@@ -757,7 +823,7 @@ describe("createDefaultRateLimiter({ onRateLimitChange })", () => {
 
     await limiter.recordResponse?.(ctx, cached());
 
-    expect(latest(reported)?.ceiling).toBe(48);
+    expect(latest(reported)?.ceiling).toBe(120);
   });
 
   it("should keep serving requests when the observer throws", async () => {

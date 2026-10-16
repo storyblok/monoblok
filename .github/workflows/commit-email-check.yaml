@@ -1,0 +1,96 @@
+name: Commit Email Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  main:
+    name: Validate commit emails
+    # Only branches pushed to this repository are checked. Pull requests from
+    # forks (external contributors) are skipped.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # Full commit history is needed to list every commit in the PR; file
+      # contents are not, so blobs are skipped to keep the clone small.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Check commit author emails
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Bots that author commits on pull requests in this repository.
+          allowed_bots=(
+            "49699333+dependabot[bot]@users.noreply.github.com"
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          )
+
+          # Prints why a commit's author must use a @storyblok.com email, or nothing
+          # if they don't. Authors with push access to this repository are org members.
+          # Commits by external contributors (e.g. pushed by a maintainer on their
+          # behalf) are allowed. An email that isn't linked to any GitHub account
+          # can't be attributed, so it fails too.
+          check_author() {
+            local login permission
+            if ! login=$(gh api "repos/$GITHUB_REPOSITORY/commits/$1" --jq '.author.login // empty'); then
+              echo "could not look up the commit author"
+              return
+            fi
+            if [[ -z "$login" ]]; then
+              echo "email not linked to a GitHub account"
+              return
+            fi
+            if ! permission=$(gh api "repos/$GITHUB_REPOSITORY/collaborators/$login/permission" --jq '.permission'); then
+              echo "could not look up @$login's access"
+              return
+            fi
+            case "$permission" in
+              admin|maintain|write) echo "@$login has $permission access" ;;
+              *) echo "external contributor @$login, skipped" >&2 ;;
+            esac
+          }
+
+          offending=()
+          # %aE resolves the author email through .mailmap, if one exists.
+          while read -r sha author; do
+            author_lc=$(printf '%s' "$author" | tr '[:upper:]' '[:lower:]')
+            [[ "$author_lc" == *@storyblok.com ]] && continue
+            for bot in "${allowed_bots[@]}"; do
+              [[ "$author_lc" == "$bot" ]] && continue 2
+            done
+            reason=$(check_author "$sha")
+            [[ -n "$reason" ]] && offending+=("$sha $author ($reason)")
+          done < <(git log --format='%H %aE' "$BASE_SHA..$HEAD_SHA")
+
+          if [[ ${#offending[@]} -eq 0 ]]; then
+            echo "All commits use a @storyblok.com email or are from allowed bots or external contributors."
+            exit 0
+          fi
+
+          echo "::error::Commits by org members must use a @storyblok.com author email."
+          echo
+          echo "Offending commits:"
+          printf '  %s\n' "${offending[@]}"
+          echo
+          echo "To fix, set your email for this repository and rewrite the commits in this PR:"
+          echo
+          echo "  git config user.email \"you@storyblok.com\""
+          echo "  git rebase -i $BASE_SHA --exec 'git commit --amend --no-edit --reset-author'"
+          echo "  git push --force-with-lease"
+          echo
+          echo "Only the commits in this PR need fixing, not the existing history."
+          echo "If the PR includes commits by an external contributor, only amend your own commits."
+          exit 1

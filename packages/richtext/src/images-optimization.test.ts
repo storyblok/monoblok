@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { optimizeImage } from "./images-optimization";
-import type { StoryblokRichTextImageOptions } from "./types";
+import type { StoryblokRichTextImageOptions } from "./core";
 
 describe("images-optimization", () => {
   it("should return the original src if no options are passed", async () => {

@@ -300,7 +300,7 @@ describe("stories/actions", () => {
       expect(result.byId.get(7)).toEqual({ id: 7, uuid: "uuid-7", is_folder: false });
     });
 
-    it("stores folder + startpage that share a full_slug as separate entries", async () => {
+    it("fetches a folder and its start page and indexes both under the folder slug", async () => {
       const folder = buildRemoteStory({
         id: 10,
         uuid: "uuid-folder",
@@ -310,20 +310,27 @@ describe("stories/actions", () => {
       const startpage = buildRemoteStory({
         id: 11,
         uuid: "uuid-startpage",
-        full_slug: "about",
+        full_slug: "about/",
         is_folder: false,
       });
 
       server.use(
-        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", () =>
-          HttpResponse.json(
-            { stories: [folder, startpage] },
-            { headers: { Total: "2", "Per-Page": "100" } },
-          ),
-        ),
+        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
+          // MAPI matches `full_slug` exactly, so the start page (`about/`) is
+          // only returned when queried with its trailing slash.
+          const slugs = new URL(request.url).searchParams.get("by_slugs")?.split(",") ?? [];
+          const stories = [folder, startpage].filter((s) => slugs.includes(s.full_slug));
+          return HttpResponse.json(
+            { stories },
+            { headers: { Total: String(stories.length), "Per-Page": "100" } },
+          );
+        }),
       );
 
-      const result = await prefetchTargetStoriesByKeys(space, { slugs: ["about"], ids: [] });
+      const result = await prefetchTargetStoriesByKeys(space, {
+        slugs: ["about", "about/"],
+        ids: [],
+      });
 
       const entries = result.bySlug.get("about");
       expect(entries).toHaveLength(2);
@@ -418,6 +425,53 @@ describe("stories/actions", () => {
       expect(result.bySlug.get("s1")).toHaveLength(2);
       expect(result.bySlug.get("s2")).toHaveLength(2);
       expect(result.bySlug.get("s3")).toHaveLength(1);
+    });
+
+    it("should keep request URLs within CDN limits when slugs are long", async () => {
+      const CDN_MAX_URL_LENGTH = 8192;
+      // Many short folder levels: every `/` triples in length once URL-encoded.
+      const slugs = Array.from({ length: 100 }, (_, i) => `${"a/".repeat(30)}page-${i}`);
+      const urlLengths: number[] = [];
+      const queriedSlugs: string[] = [];
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
+          urlLengths.push(request.url.length);
+          queriedSlugs.push(
+            ...(new URL(request.url).searchParams.get("by_slugs")?.split(",") ?? []),
+          );
+          return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+        }),
+      );
+
+      await prefetchTargetStoriesByKeys(space, { slugs, ids: [] });
+
+      expect(Math.max(...urlLengths)).toBeLessThan(CDN_MAX_URL_LENGTH);
+      expect(queriedSlugs.toSorted()).toEqual(slugs.toSorted());
+    });
+
+    it("should reject slugs too long to look up without sending any request", async () => {
+      const requestUrls: string[] = [];
+      server.use(
+        http.get("https://mapi.storyblok.com/v1/spaces/:spaceId/stories", ({ request }) => {
+          requestUrls.push(request.url);
+          return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+        }),
+      );
+
+      const tooLongSlugs = [`${"a/".repeat(3000)}first`, `${"b/".repeat(3000)}second`];
+
+      const error: unknown = await prefetchTargetStoriesByKeys(space, {
+        slugs: ["home", ...tooLongSlugs],
+        ids: [],
+      }).catch((error: unknown) => error);
+
+      expect(error).toBeInstanceOf(Error);
+      const message = error instanceof Error ? error.message : "";
+      expect(message).toContain("Affected stories (2)");
+      expect(message).toMatch(/a\/first \(\d+ characters\)/);
+      expect(message).toMatch(/b\/second \(\d+ characters\)/);
+      expect(message).not.toContain("home");
+      expect(requestUrls).toEqual([]);
     });
 
     it("deduplicates a story returned by both slug and id queries", async () => {

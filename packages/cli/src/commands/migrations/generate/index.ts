@@ -1,5 +1,6 @@
 import type { Command } from "commander";
 import chalk from "chalk";
+import { relative } from "pathe";
 
 import type { MigrationsGenerateOptions } from "./constants";
 import { colorPalette, commands } from "../../../constants";
@@ -10,6 +11,7 @@ import { migrationsCommand } from "../command";
 import { generateMigration } from "./actions";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
+import { sanitizeFilename } from "../../../utils/filesystem";
 
 const generateCmd = migrationsCommand
   .command("generate [componentName]")
@@ -56,6 +58,16 @@ generateCmd.action(
       return;
     }
 
+    if (suffix && sanitizeFilename(suffix) !== suffix) {
+      handleError(
+        new CommandError(
+          `Invalid suffix "${suffix}". The suffix becomes part of the file name, so it cannot contain path separators or characters that are not allowed in file names.`,
+        ),
+        verbose,
+      );
+      return;
+    }
+
     const { state } = session();
 
     if (!requireAuthentication(state, verbose)) {
@@ -81,23 +93,23 @@ generateCmd.action(
         return;
       }
 
-      await generateMigration(space, path, component, suffix);
+      const migrationPath = await generateMigration(space, path, component, suffix);
+      // A `--path` outside the current directory relativizes to an unreadable
+      // chain of `..` segments, so show the absolute path instead.
+      const relativePath = relative(process.cwd(), migrationPath);
+      const displayPath = relativePath.startsWith("..") ? migrationPath : relativePath;
 
       spinner.succeed(
         `Migration generated for component ${chalk.hex(colorPalette.MIGRATIONS)(componentName)} - Completed in ${spinner.elapsedTime.toFixed(2)}ms`,
       );
 
-      const fileName = suffix ? `${component.name}.${suffix}.js` : `${component.name}.js`;
-      const migrationPath = path
-        ? `${path}/migrations/${space}/${fileName}`
-        : `.storyblok/migrations/${space}/${fileName}`;
       ui.ok(
-        `You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(migrationPath)}`,
+        `You can find the migration file in ${chalk.hex(colorPalette.MIGRATIONS)(displayPath)}`,
       );
 
       logger.info("Migration generation finished", {
         componentName: component.name,
-        migrationPath,
+        migrationPath: displayPath,
         space,
         suffix,
       });

@@ -1,0 +1,217 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import ts from "typescript";
+import path from "pathe";
+import { fileURLToPath } from "node:url";
+import { formatGeneratedFile } from "./lib/format-generated-file";
+
+const CONTENT_PROP = "content";
+const MARKS_PROP = "marks";
+
+interface NodeEntry {
+  typeValue: string;
+  ifaceName: string;
+  hasAttrs: boolean;
+  attrsOptional: boolean;
+  hasContent: boolean;
+  contentOptional: boolean;
+  hasMarks: boolean;
+  marksOptional: boolean;
+  extraProps: Array<{ name: string; optional: boolean; typeText: string }>;
+}
+
+/**
+ * Object declarations the generator understands. `@hey-api/openapi-ts` has no
+ * option to control whether it emits `export interface X { … }` or
+ * `export type X = { … }`, and it has switched between the two across releases.
+ * Both are the same shape for our purposes, so match either instead of pinning
+ * ourselves to the style of whichever version is currently installed.
+ */
+function readObjectDeclaration(
+  stmt: ts.Statement,
+): { name: string; members: ts.NodeArray<ts.TypeElement> } | undefined {
+  const isExported = ts.canHaveModifiers(stmt)
+    ? (ts.getModifiers(stmt)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false)
+    : false;
+  if (!isExported) {
+    return undefined;
+  }
+
+  if (ts.isInterfaceDeclaration(stmt)) {
+    return { name: stmt.name.text, members: stmt.members };
+  }
+  if (ts.isTypeAliasDeclaration(stmt) && ts.isTypeLiteralNode(stmt.type)) {
+    return { name: stmt.name.text, members: stmt.type.members };
+  }
+  return undefined;
+}
+
+function parseNodes(source: string): NodeEntry[] {
+  const sf = ts.createSourceFile("types.gen.ts", source, ts.ScriptTarget.Latest, true);
+  const printer = ts.createPrinter({ newLine: ts.NewLineKind.LineFeed });
+
+  const entries: NodeEntry[] = [];
+
+  for (const stmt of sf.statements) {
+    const declaration = readObjectDeclaration(stmt);
+    if (!declaration) {
+      continue;
+    }
+    // Hey API has changed how it names these declarations across releases:
+    // prefixed with the union name (`RichTextFieldValueParagraphNode`) in
+    // older releases, bare (`ParagraphNode`) in newer ones. Match either so
+    // regenerating with a new generator version doesn't silently drop every
+    // node/mark down to just the `RichTextFieldValue*` root declaration.
+    if (
+      !declaration.name.startsWith("RichTextFieldValue") &&
+      !declaration.name.endsWith("Node") &&
+      !declaration.name.endsWith("Mark")
+    ) {
+      continue;
+    }
+
+    // Find type: 'literal'
+    let typeValue: string | undefined;
+    for (const m of declaration.members) {
+      if (
+        ts.isPropertySignature(m) &&
+        m.name &&
+        ts.isIdentifier(m.name) &&
+        m.name.text === "type" &&
+        m.type &&
+        ts.isLiteralTypeNode(m.type) &&
+        ts.isStringLiteral(m.type.literal)
+      ) {
+        typeValue = m.type.literal.text;
+        break;
+      }
+    }
+    if (!typeValue) {
+      continue;
+    }
+
+    let hasAttrs = false;
+    let attrsOptional = false;
+    let hasContent = false;
+    let contentOptional = false;
+    let hasMarks = false;
+    let marksOptional = false;
+    const extraProps: NodeEntry["extraProps"] = [];
+
+    for (const m of declaration.members) {
+      if (!ts.isPropertySignature(m) || !m.name || !ts.isIdentifier(m.name)) {
+        continue;
+      }
+      const prop = m.name.text;
+      const optional = !!m.questionToken;
+
+      if (prop === "type") {
+        continue;
+      }
+
+      if (prop === "attrs") {
+        hasAttrs = true;
+        attrsOptional = optional;
+      } else if (prop === CONTENT_PROP) {
+        hasContent = true;
+        contentOptional = optional;
+      } else if (prop === MARKS_PROP) {
+        hasMarks = true;
+        marksOptional = optional;
+      } else if (m.type) {
+        extraProps.push({
+          name: prop,
+          optional,
+          typeText: printer.printNode(ts.EmitHint.Unspecified, m.type, sf),
+        });
+      }
+    }
+
+    entries.push({
+      typeValue,
+      ifaceName: declaration.name,
+      hasAttrs,
+      attrsOptional,
+      hasContent,
+      contentOptional,
+      hasMarks,
+      marksOptional,
+      extraProps,
+    });
+  }
+
+  return entries;
+}
+
+export function generateElementTypes(inputPath: string): string {
+  return generateElementTypesFromSource(readFileSync(inputPath, "utf-8"), inputPath);
+}
+
+export function generateElementTypesFromSource(
+  source: string,
+  sourceName = "types.gen.ts",
+): string {
+  const nodes = parseNodes(source);
+
+  // Without this the generator writes an empty `StoryblokRichTextElementByType`
+  // and exits successfully, which only surfaces much later as a type error in a
+  // consumer package.
+  if (nodes.length === 0) {
+    throw new Error(
+      `No exported RichTextFieldValue* object declarations found in ${sourceName}. The generated element types would be empty.`,
+    );
+  }
+
+  // Import only the interfaces that have attrs (we reference their ['attrs'] type)
+  const ifaceImports = nodes
+    .filter((n) => n.hasAttrs)
+    .map((n) => n.ifaceName)
+    .sort();
+
+  const lines: string[] = [
+    "// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.",
+    "",
+    `import type { RichTextMark, RichTextNode, ${ifaceImports.join(", ")} } from './overlay/types.gen';`,
+    "",
+  ];
+
+  // ── SbRichTextElementByType ───────────────────────────────────────────────
+  lines.push("export interface StoryblokRichTextElementByType<TContext = unknown> {");
+  for (const n of nodes) {
+    lines.push(`  ${n.typeValue}: {`);
+    lines.push(`    type: '${n.typeValue}';`);
+
+    if (n.hasAttrs) {
+      const opt = n.attrsOptional ? "?" : "";
+      lines.push(`    attrs${opt}: ${n.ifaceName}['attrs'];`);
+    }
+
+    for (const p of n.extraProps) {
+      lines.push(`    ${p.name}${p.optional ? "?" : ""}: ${p.typeText};`);
+    }
+
+    if (n.hasContent) {
+      lines.push(`    content${n.contentOptional ? "?" : ""}: RichTextNode[];`);
+    }
+    if (n.hasMarks) {
+      lines.push(`    marks${n.marksOptional ? "?" : ""}: RichTextMark[];`);
+    }
+
+    lines.push("    _key?: string;");
+    lines.push("    context?: TContext;");
+    lines.push("  };");
+  }
+  lines.push("}", "");
+
+  return lines.join("\n");
+}
+
+// Only write + format when run directly (`tsx scripts/generate-element-types.ts`),
+// never as a side effect of importing `generateElementTypesFromSource` for tests.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const TYPES_GEN_PATH = path.join(__dirname, "../src/generated/overlay/types.gen.ts");
+  const OUT_PATH = path.join(__dirname, "../src/generated/richtext-element-types.generated.ts");
+
+  writeFileSync(OUT_PATH, generateElementTypes(TYPES_GEN_PATH), "utf-8");
+  formatGeneratedFile(OUT_PATH);
+}

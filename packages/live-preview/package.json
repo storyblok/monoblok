@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/live-preview",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": false,
   "description": "Official Live Preview integration for the Storyblok Headless CMS",
   "keywords": [
@@ -50,7 +50,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/preview-bridge": "^2.3.1"
+    "@storyblok/preview-bridge": "^2.5.0"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",

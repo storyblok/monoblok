@@ -1,0 +1,16 @@
+{
+  "name": "featured-articles",
+  "display_name": "Featured Articles",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": {
+    "title": { "type": "text", "pos": 0 },
+    "articles": {
+      "type": "options",
+      "source": "internal_stories",
+      "use_uuid": true,
+      "pos": 1
+    }
+  }
+}

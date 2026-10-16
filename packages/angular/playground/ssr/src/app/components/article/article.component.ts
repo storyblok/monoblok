@@ -1,9 +1,10 @@
 import { Component, ChangeDetectionStrategy, input } from "@angular/core";
-import { SbRichTextComponent, type SbRichTextDoc } from "@storyblok/angular";
+import { SbRichTextComponent, type Story, type StoryblokRichTextDoc } from "@storyblok/angular";
 
 export interface ArticleBlok {
   title?: string;
-  content?: SbRichTextDoc;
+  author?: Story[];
+  content?: StoryblokRichTextDoc;
 }
 
 @Component({
@@ -13,6 +14,9 @@ export interface ArticleBlok {
   template: `
     <div class="page">
       <h2>{{ blok().title }}</h2>
+      @for (author of blok().author ?? []; track author.uuid) {
+        <p>Author: {{ author.name }}</p>
+      }
 
       @if (blok().content) {
         <div class="rich-text">

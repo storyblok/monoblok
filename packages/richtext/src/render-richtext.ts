@@ -1,4 +1,3 @@
-import { escapeHtml } from "./utils";
 import { optimizeImage } from "./images-optimization";
 import {
   areLinkMarksEqual,
@@ -11,14 +10,23 @@ import {
   processAttrs,
   resolveTag,
   styleToString,
-} from "./static";
+} from "./core";
 import type {
   StoryblokRichTextElement,
   StoryblokRichTextInput,
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
-} from "./static";
+} from "./core";
 import type { RichTextMark, RichTextNode } from "./generated/overlay/types.gen";
+
+function escapeHtml(unsafeText: string): string {
+  return unsafeText
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 /**
  * Renders a Storyblok RichText JSON document to an HTML string.

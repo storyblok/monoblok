@@ -155,6 +155,68 @@ describe("generateMigrationSource", () => {
     expect(outcome.refusals[0].reason).toContain("hero.subtitle");
   });
 
+  it("should leave translations as they are when filling a field", async () => {
+    const { migration } = await loadGenerated({
+      schemaImport: "./schema",
+      ops: [
+        { kind: "fillField", block: "hero", field: "subtitle", value: "Hi", fillEmptyString: true },
+      ],
+    });
+
+    const outcome = applyMigration({
+      migration,
+      id: "0001-update-hero",
+      space: "1",
+      stories: [
+        {
+          id: 1,
+          slug: "home",
+          content: { _uid: "a", component: "hero", subtitle: "", subtitle__i18n__de: "" },
+        },
+      ],
+    });
+
+    expect(outcome.writes.map((write) => write.content)).toEqual([
+      { _uid: "a", component: "hero", subtitle: "Hi", subtitle__i18n__de: "" },
+    ]);
+  });
+
+  it("should fill a field that changed type and became required in a migration that typechecks", async () => {
+    const schema = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema as InferSchema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('featured', { type: 'boolean', required: true }),",
+      "] });",
+      "const schema = defineSchema({ blocks: { hero } });",
+      "export type Schema = InferSchema<typeof schema>;",
+    ].join("\n");
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('featured', { type: 'number' }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { hero } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": schema,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [{ kind: "fillField", block: "hero", field: "featured", value: false }],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
   it("should generate a placeholder migration when there are no ops", async () => {
     const { migration, typeErrors } = await loadGenerated({ schemaImport: "./schema", ops: [] });
 

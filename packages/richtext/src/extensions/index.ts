@@ -18,7 +18,7 @@ import {
   Document,
   Text,
 } from "./nodes";
-import type { ExtensionKey, ExtensionOptions } from "./richtext-attrs";
+import type { ExtensionKey, ExtensionOptions } from "./extension-types";
 import {
   Bold,
   buildAnchorExtension,

@@ -54,6 +54,8 @@ const server = setupServer(
   ),
 );
 
+const CDN_MAX_URL_LENGTH = 8192;
+
 const preconditions = {
   canLoadComponents(components: MockComponent[], space = DEFAULT_SPACE, basePath?: string) {
     const componentsDir = resolveCommandPath(directories.components, space, basePath);
@@ -159,15 +161,18 @@ const preconditions = {
     // fall back to returning everything for any unfiltered callers.
     server.use(
       http.get(`https://mapi.storyblok.com/v1/spaces/${space}/stories`, ({ request }) => {
+        if (request.url.length > CDN_MAX_URL_LENGTH) {
+          return new HttpResponse("414 ERROR", { status: 414 });
+        }
         const url = new URL(request.url);
         const bySlugs = url.searchParams.get("by_slugs");
         const byIds = url.searchParams.get("by_ids");
         let matched: MockStory[] = stories;
         if (bySlugs !== null) {
-          const slugSet = new Set(bySlugs.split(",").map((s) => s.replace(/\/$/, "")));
-          matched = stories.filter((s) =>
-            slugSet.has(String(s.full_slug ?? s.slug).replace(/\/$/, "")),
-          );
+          // MAPI matches `full_slug` exactly: `articles` returns only the
+          // folder, `articles/` only its start page.
+          const slugSet = new Set(bySlugs.split(","));
+          matched = stories.filter((s) => slugSet.has(String(s.full_slug ?? s.slug)));
         } else if (byIds !== null) {
           const idSet = new Set(byIds.split(",").map((n) => Number(n)));
           matched = stories.filter((s) => idSet.has(Number(s.id)));
@@ -928,6 +933,38 @@ describe("stories push command", () => {
       );
     });
 
+    it("should match many existing stories with long slugs", async () => {
+      const fromSpace = "54321";
+      const makeStories = () =>
+        Array.from({ length: 100 }, (_, i) => {
+          const slug = `page-with-a-long-descriptive-slug-from-a-legacy-system-${i}`;
+          return makeMockStory({
+            slug,
+            full_slug: `legacy-content-migration/deeply/nested/section/${slug}`,
+          });
+        });
+      const localStories = makeStories();
+      const targetStories = makeStories();
+      preconditions.canLoadStories(localStories, fromSpace);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })], fromSpace);
+      preconditions.canListStories(targetStories);
+      preconditions.canUpdateStories(targetStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--from",
+        fromSpace,
+      ]);
+
+      expect(getReport()?.status).toBe("SUCCESS");
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).toHaveBeenCalledTimes(targetStories.length);
+    });
+
     it("should match existing stories by full_slug in a duplicated space", async () => {
       const sourceSpace = "99999";
       const targetSpace = DEFAULT_SPACE;
@@ -1025,6 +1062,58 @@ describe("stories push command", () => {
           },
         }),
       );
+    });
+
+    it("should update an existing folder start page instead of creating it", async () => {
+      const sourceSpace = "99999";
+      const targetSpace = DEFAULT_SPACE;
+      const makeFolderWithStartpage = () => {
+        const folder = makeMockStory({ slug: "articles", full_slug: "articles", is_folder: true });
+        const startpage = makeMockStory({
+          slug: "articles",
+          full_slug: "articles/",
+          parent_id: folder.id,
+          is_startpage: true,
+        });
+        return [folder, startpage] as const;
+      };
+      const [localFolder, localStartpage] = makeFolderWithStartpage();
+      const [targetFolder, targetStartpage] = makeFolderWithStartpage();
+
+      preconditions.canLoadStories([localFolder, localStartpage], sourceSpace);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page" })], sourceSpace);
+      preconditions.canListStories([targetFolder, targetStartpage], targetSpace);
+      preconditions.canUpdateStories([targetFolder, targetStartpage], targetSpace);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        targetSpace,
+        "--from",
+        sourceSpace,
+      ]);
+
+      expect(actions.createStory).not.toHaveBeenCalled();
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        targetSpace,
+        targetStartpage.id,
+        expect.objectContaining({
+          story: expect.objectContaining({ parent_id: targetFolder.id }),
+        }),
+      );
+      const manifestEntries = await parseManifest(sourceSpace);
+      expect(manifestEntries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ old_id: localFolder.id, new_id: targetFolder.id }),
+          expect.objectContaining({ old_id: localStartpage.id, new_id: targetStartpage.id }),
+        ]),
+      );
+      expect(getReport(targetSpace)?.summary).toMatchObject({
+        creationResults: { total: 2, succeeded: 0, skipped: 2, failed: 0 },
+        updateResults: { total: 2, succeeded: 2, failed: 0 },
+      });
     });
   });
 

@@ -8,7 +8,7 @@ import type {
 } from "./constants";
 import { normalizeFullSlug } from "./constants";
 import { getMapiClient } from "../../api";
-import { chunk } from "../../utils/array";
+import { chunk, chunkByWeight } from "../../utils/array";
 import { handleAPIError } from "../../utils/error/api-error";
 
 /**
@@ -148,11 +148,15 @@ export const updateStory = async (
   }
 };
 
-// 100 keys per chunk: matches MAPI's `per_page=100` so id queries fill a page
-// exactly (1 result per id) and slug queries paginate when folder + startpage
-// pairs push the result count above one page. At ~30 char slugs, 100 entries
-// ≈ 3 KB — well below typical URL length limits.
+// Up to 100 keys per chunk: matches MAPI's `per_page=100` so id queries fill a
+// page exactly (1 result per id) and slug queries paginate when folder +
+// startpage pairs push the result count above one page.
 const PREFETCH_CHUNK_SIZE = 100;
+// The MAPI CDN rejects URLs above ~8 KB with a 414. Long slugs hit that before
+// 100 entries; the ~2 KB left over covers the path and other query params.
+const PREFETCH_MAX_ENCODED_SLUGS_LENGTH = 6000;
+const ENCODED_SEPARATOR_LENGTH = encodeURIComponent(",").length;
+const MAX_REPORTED_SLUG_LENGTH = 100;
 const PREFETCH_PER_PAGE = 100;
 
 const addRef = (result: ExistingTargetStories, story: Story): void => {
@@ -205,6 +209,8 @@ const fetchChunkAllPages = async (
  *
  * Slug and id batches are dispatched concurrently through the MAPI client's
  * existing throttle (default 6 requests per second, auto-retries 429).
+ *
+ * Throws before any request if a slug is too long to fit into a lookup URL.
  */
 export const prefetchTargetStoriesByKeys = async (
   spaceId: string,
@@ -219,10 +225,13 @@ export const prefetchTargetStoriesByKeys = async (
     byId: new Map(),
   };
 
+  // `by_slugs` matches `full_slug` exactly, and a folder (`articles`) and its
+  // start page (`articles/`) differ only by the trailing slash, so query with
+  // unmodified slugs. Results are still keyed by the normalized slug.
   const slugSet = new Set<string>();
   for (const slug of keys.slugs) {
     if (slug) {
-      slugSet.add(normalizeFullSlug(slug));
+      slugSet.add(slug);
     }
   }
   const idSet = new Set<number>();
@@ -234,11 +243,35 @@ export const prefetchTargetStoriesByKeys = async (
 
   options?.onTotal?.(slugSet.size + idSet.size);
 
+  const encodedSlugLength = (slug: string) =>
+    encodeURIComponent(slug).length + ENCODED_SEPARATOR_LENGTH;
+  const unmatchableSlugs = [...slugSet].filter(
+    (slug) => encodedSlugLength(slug) > PREFETCH_MAX_ENCODED_SLUGS_LENGTH,
+  );
+  if (unmatchableSlugs.length > 0) {
+    // Deep slugs share their leading folders, so the end identifies the story.
+    const reportedSlugs = unmatchableSlugs.map((slug) => {
+      const reportedSlug =
+        slug.length > MAX_REPORTED_SLUG_LENGTH ? `…${slug.slice(-MAX_REPORTED_SLUG_LENGTH)}` : slug;
+      return `  ${reportedSlug} (${encodedSlugLength(slug)} characters)`;
+    });
+    throw new Error(
+      [
+        `Full slugs longer than ${PREFETCH_MAX_ENCODED_SLUGS_LENGTH} URL-encoded characters can't be matched with existing stories in the target space. Shorten the slugs or nest the stories in fewer folders. Affected stories (${unmatchableSlugs.length}):`,
+        ...reportedSlugs,
+      ].join("\n"),
+    );
+  }
+
   if (slugSet.size === 0 && idSet.size === 0) {
     return result;
   }
 
-  const slugChunks = chunk(slugSet, PREFETCH_CHUNK_SIZE);
+  const slugChunks = chunkByWeight(slugSet, {
+    maxSize: PREFETCH_CHUNK_SIZE,
+    maxWeight: PREFETCH_MAX_ENCODED_SLUGS_LENGTH,
+    weightOf: encodedSlugLength,
+  });
   const idChunks = chunk(idSet, PREFETCH_CHUNK_SIZE);
 
   const requests: Array<Promise<void>> = [];

@@ -26,6 +26,7 @@ export const homepageExperiment: Experiment = {
   name: "homepage_hero",
   display_name: "Homepage Hero",
   story_ids: [1, 2],
+  stories: [{ id: 1, full_slug: "home" }],
   variants: [
     {
       name: "control",
@@ -65,6 +66,7 @@ export const pricingExperiment: Experiment = {
   name: "pricing_table",
   display_name: "Pricing Table",
   story_ids: [3, 4],
+  stories: [{ id: 3, full_slug: "pricing" }],
   variants: [
     {
       name: "control",
@@ -93,6 +95,40 @@ export const pricingExperiment: Experiment = {
           original_slug: "pricing",
           variant_story_id: 4,
           variant_slug: "pricing-compact",
+        },
+      ],
+    },
+  ],
+};
+
+/**
+ * A homepage experiment on a story nested in folders, shaped as the API returns
+ * it: `original_slug` is the story's own slug, and `stories` carries its full
+ * slug.
+ */
+export const nestedHomepageExperiment: Experiment = {
+  ...homepageExperiment,
+  stories: [{ id: 1, full_slug: "campaigns/summer/home" }],
+  variants: [
+    {
+      ...homepageExperiment.variants[0],
+      story_mappings: [
+        {
+          original_story_id: 1,
+          original_slug: "home",
+          variant_story_id: 1,
+          variant_slug: "campaigns/summer/home",
+        },
+      ],
+    },
+    {
+      ...homepageExperiment.variants[1],
+      story_mappings: [
+        {
+          original_story_id: 1,
+          original_slug: "home",
+          variant_story_id: 2,
+          variant_slug: "campaigns/summer/home-b",
         },
       ],
     },

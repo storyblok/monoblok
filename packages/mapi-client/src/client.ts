@@ -17,13 +17,18 @@ import { createDatasourceEntriesResource } from "./resources/datasource-entries"
 import { createDatasourcesResource } from "./resources/datasources";
 import { createExperimentsResource } from "./resources/experiments";
 import { createInternalTagsResource } from "./resources/internal-tags";
+import { createOrgsResource } from "./resources/orgs";
 import { createPresetsResource } from "./resources/presets";
 import { createSharedAssetFoldersResource } from "./resources/shared-asset-folders";
 import { createSharedAssetsResource } from "./resources/shared-assets";
 import { createSharedInternalTagsResource } from "./resources/shared-internal-tags";
+import { createSpaceRolesResource } from "./resources/space-roles";
 import { createSpacesResource } from "./resources/spaces";
 import { createStoriesResource } from "./resources/stories";
 import { createUsersResource } from "./resources/users";
+import { createWebhooksResource } from "./resources/webhooks";
+import { createWorkflowStagesResource } from "./resources/workflow-stages";
+import { createWorkflowsResource } from "./resources/workflows";
 
 // ---------------------------------------------------------------------------
 // Client types (co-located with runtime)
@@ -400,14 +405,19 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
       ResolvedRequestOptions
     >,
     internalTags: createInternalTagsResource(deps),
+    orgs: createOrgsResource<DefaultThrowOnError>({ client, wrapRequest: deps.wrapRequest }),
     post: httpPost,
     presets: createPresetsResource(deps),
     put: httpPut,
     sharedAssetFolders: createSharedAssetFoldersResource(deps),
     sharedAssets: createSharedAssetsResource(deps),
     sharedInternalTags: createSharedInternalTagsResource(deps),
+    spaceRoles: createSpaceRolesResource(deps),
     spaces: createSpacesResource(deps),
     users: createUsersResource<DefaultThrowOnError>({ client, wrapRequest: deps.wrapRequest }),
+    webhooks: createWebhooksResource(deps),
+    workflowStages: createWorkflowStagesResource(deps),
+    workflows: createWorkflowsResource(deps),
   };
 }
 

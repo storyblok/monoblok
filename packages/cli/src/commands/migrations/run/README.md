@@ -47,7 +47,7 @@ This will run migrations for the specified component:
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
 | `-s, --space <space>`     | (Required) The ID of the space to run migrations on                                                                                                                                             | -                       |
 | `-f, --from <from>`       | Source space ID to read migration files from (useful for multi-space workflows where migrations are created in one space and applied to others)                                                 | Same as `--space`       |
-| `--fi, --filter <filter>` | Glob pattern to filter migration filenames (e.g., "hero*" will match all migration files starting with "hero")                                                                                  | -                       |
+| `--fi, --filter <filter>` | Glob pattern to filter migrations by file name or component name (e.g., "hero*" will match all migrations for components starting with "hero")                                                  | -                       |
 | `-d, --dry-run`           | Preview changes without applying them to Storyblok                                                                                                                                              | `false`                 |
 | `-q, --query <query>`     | Filter stories by content attributes using Storyblok filter query syntax (e.g., `--query="[highlighted][in]=true"`)                                                                             | -                       |
 | `--starts-with <path>`    | Filter stories by path (e.g., `--starts-with="/en/blog/"`)                                                                                                                                      | -                       |
@@ -141,6 +141,14 @@ Where:
 - `{path}` is the base path (default: `.storyblok`)
 - `{spaceId}` is your Storyblok space ID
 - `{componentName}` is the name of the component
+
+A component whose name is not a valid, unambiguous file name is stored under a rewritten name with a
+short digest appended, for example `hero:v2` as `hero_v2-c07e5b.js`. See the `migrations generate`
+README for the mapping. Both the component argument and `--filter` accept the component name, so
+`--filter "hero:v2*"` selects that file without you having to know its generated name.
+
+Files generated before component names were mapped to file names carry the component name verbatim.
+They are still applied, and the command names them so you can regenerate them.
 
 ## Notes
 

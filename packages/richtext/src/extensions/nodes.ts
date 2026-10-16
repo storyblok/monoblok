@@ -1,5 +1,5 @@
 import Emoji from "@tiptap/extension-emoji";
-import type { ExtensionAttrs, ExtensionOptions } from "./richtext-attrs";
+import type { ExtensionAttrs, ExtensionOptions } from "./extension-types";
 import { Node } from "@tiptap/core";
 import { BulletList, ListItem, OrderedList } from "@tiptap/extension-list";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
@@ -12,7 +12,7 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Image from "@tiptap/extension-image";
 import Paragraph from "@tiptap/extension-paragraph";
 import Text from "@tiptap/extension-text";
-import { mapToAttribute } from "./utils";
+import { mapToAttribute } from "./attribute-parsers";
 
 export { Document, Text };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderRichText } from "./render-richtext";
-import type { StoryblokRichTextDoc, StoryblokRichTextRenderContext } from "./static";
+import type { StoryblokRichTextDoc, StoryblokRichTextRenderContext } from "./core";
 import {
   customRendererFixture,
   integrationFixtures,
@@ -11,7 +11,7 @@ import {
   tableFixtures,
   text,
 } from "./test-utils";
-import { attrsToHtmlString, splitTableRows } from "./static";
+import { attrsToHtmlString, splitTableRows } from "./core";
 
 describe("renderRichText", () => {
   describe("input handling", () => {

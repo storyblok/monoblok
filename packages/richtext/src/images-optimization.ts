@@ -1,4 +1,4 @@
-import type { StoryblokRichTextImageOptions } from "./types";
+import type { StoryblokRichTextImageOptions } from "./core";
 
 /**
  * Builds a Storyblok image object with optimized URL and attributes.

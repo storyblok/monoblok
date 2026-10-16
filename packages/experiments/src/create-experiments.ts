@@ -51,7 +51,7 @@ export interface FactoryResolveOptions {
 }
 
 export interface FactoryResolvedExperiment {
-  /** The slug to render: `original_slug` for control, `variant_slug` otherwise. */
+  /** The full slug to render: the requested slug for control, `variant_slug` otherwise. */
   slug: string;
   /** The assigned variant, when an experiment applied. */
   variant?: ExperimentVariant;

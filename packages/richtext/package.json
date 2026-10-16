@@ -73,7 +73,7 @@
     "playground:all": "pnpm -r --parallel --filter='./playground/*' run dev",
     "release": "release-it",
     "release:dry": "release-it --dry-run",
-    "generate": "tsx src/static/generate/index.ts",
+    "generate": "tsx scripts/generate-render-map.ts && tsx scripts/generate-element-types.ts",
     "generate:openapi": "tsx scripts/generate.ts",
     "dev": "vp pack --watch",
     "test:watch": "vp test",
@@ -152,8 +152,8 @@
           "^build"
         ],
         "outputs": [
-          "{projectRoot}/src/static/render-map.generated.ts",
-          "{projectRoot}/src/static/richtext-element-types.generated.ts"
+          "{projectRoot}/src/generated/render-map.generated.ts",
+          "{projectRoot}/src/generated/richtext-element-types.generated.ts"
         ]
       },
       "generate:openapi": {

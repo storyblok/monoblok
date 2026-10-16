@@ -76,8 +76,8 @@ export interface RateLimitConfig {
    * is paced by a limit that does not apply to most of them. With this on, the
    * client measures the share of its responses the cache served and raises the
    * tier by `1 / (1 - hitShare)` — twice the tier at a half-cached workload,
-   * eight times it at seven-eighths, which is where the bound stops it. The
-   * requests that do reach the origin stay within the tier either way.
+   * twenty times it at 95%, which is where the bound stops it. The requests
+   * that do reach the origin stay within the tier either way.
    *
    * The cost is paid when a warm workload goes cold all at once, which is what
    * following a new content version does: the requests already in flight

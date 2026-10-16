@@ -1,5 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, computed } from "@angular/core";
-import { type SbAngularRichTextProps, SbRichTextComponent } from "@storyblok/angular";
+import { type StoryblokAngularRichTextProps, SbRichTextComponent } from "@storyblok/angular";
 import { splitTableRows } from "@storyblok/richtext";
 
 /**
@@ -27,7 +27,7 @@ import { splitTableRows } from "@storyblok/richtext";
   imports: [SbRichTextComponent],
 })
 export class TableComponent {
-  readonly data = input.required<SbAngularRichTextProps<"table">>();
+  readonly data = input.required<StoryblokAngularRichTextProps<"table">>();
 
   /** Split rows into header (thead) and body (tbody) sections */
   readonly tableRows = computed(() => splitTableRows(this.data().content));

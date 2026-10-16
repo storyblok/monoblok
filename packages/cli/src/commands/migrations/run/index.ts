@@ -118,8 +118,13 @@ runCmd.action(
         logger.warn("No migration files found");
         logger.info("Migration finished");
         // A script that chains `schema push` into `run` would otherwise succeed
-        // without migrating anything.
-        if (contentMigrationIds.length > 0) {
+        // without migrating anything. A filter that excludes `.js` migrations is
+        // not that case.
+        const hasRunnableMigrations =
+          migrationFiles.length > 0 ||
+          (filter !== undefined &&
+            (await readMigrationFiles({ space: fromSpace, path })).length > 0);
+        if (contentMigrationIds.length > 0 && !hasRunnableMigrations) {
           handleError(
             new CommandError(
               `Nothing to run: the migrations in space "${fromSpace}" are content migrations. Apply them with "storyblok migrations apply --space ${fromSpace}".`,

@@ -303,25 +303,13 @@ describe("migrations generate command", () => {
       expect(writtenFile(".before.ts")).toBeUndefined();
     });
 
-    it("should write a legacy migration with --legacy", async () => {
-      preconditions.componentExists();
-      preconditions.hasSchemaEntry();
-
-      await generate("component-name", "--schema", "src/schema.ts", "--legacy");
-
-      expect(writtenFile("migrations/12345/component-name.js")).toContain(
-        "export default function (block)",
-      );
-      expect(writtenFile(`${ID}.ts`)).toBeUndefined();
-    });
-
-    it("should name only the flags given when they need --schema", async () => {
+    it("should warn that --no-before needs --schema", async () => {
       preconditions.componentExists();
 
       await generate("component-name", "--no-before");
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("--no-before only apply together with --schema."),
+        expect.stringContaining("--no-before has no effect without --schema."),
       );
     });
 

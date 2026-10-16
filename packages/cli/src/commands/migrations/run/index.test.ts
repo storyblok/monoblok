@@ -366,6 +366,28 @@ describe("migrations run command", () => {
     process.exitCode = undefined;
   });
 
+  it("should not fail when a block name or filter excludes every .js migration", async () => {
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/hero.js": "",
+      "./.storyblok/migrations/12345/20261016090503-update-hero.ts": "",
+    });
+    process.exitCode = undefined;
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "teaser", "--space", "12345"]);
+    await migrationsCommand.parseAsync([
+      "node",
+      "test",
+      "run",
+      "--space",
+      "12345",
+      "--filter",
+      "nomatch",
+    ]);
+
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Nothing to run"));
+    expect(process.exitCode).toBeUndefined();
+  });
+
   it("should run migrations successfully", async () => {
     preconditions.canMigrate();
 

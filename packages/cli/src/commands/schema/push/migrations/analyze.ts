@@ -1,4 +1,4 @@
-import { coercionBetween } from "@storyblok/schema/migrations";
+import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
 import type { DiffResult, RemoteSchemaData, SchemaData } from "../../types";
 import type { BreakingChange, ComponentBreakingChanges, RenameMatch } from "./types";
@@ -231,7 +231,7 @@ export function analyzeBreakingChanges(
 
     // Detect renames from removed+added pairs (non-required only — required
     // additions signal developer intent for a new field, not a rename)
-    const { renames, unmatchedRemoved } = detectRenames(
+    const { renames, unmatchedRemoved, unmatchedAdded } = detectRenames(
       classification.removed,
       classification.added,
     );
@@ -240,14 +240,17 @@ export function analyzeBreakingChanges(
       changes.push({ kind: "rename", field: rename.newField, oldField: rename.oldField });
     }
 
+    // A rename the detection could not pair, or one onto a required field it
+    // skips, shows up as a removal plus an addition of the same type.
+    const unpairedAdded = [...unmatchedAdded, ...classification.requiredAdded];
     for (const removed of unmatchedRemoved) {
-      // Rename detection skips required additions, so a renamed required field
-      // shows up as a removal plus an addition of the same type.
-      const sameType = classification.requiredAdded.filter((ra) => ra.type === removed.type);
+      const newFields = unpairedAdded
+        .filter((added) => added.type === removed.type)
+        .map((added) => added.field);
       changes.push({
         kind: "removed",
         field: removed.field,
-        ...(sameType.length === 1 && { renameHint: { newField: sameType[0].field } }),
+        ...(newFields.length > 0 && { renameHint: { newFields } }),
       });
     }
 

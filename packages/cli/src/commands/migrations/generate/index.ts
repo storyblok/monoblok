@@ -18,15 +18,14 @@ const generateCmd = migrationsCommand
   .description("Generate a migration file")
   .option(
     "--su, --suffix <suffix>",
-    "suffix to add to the file name (e.g. {component-name}.<suffix>.js, or <timestamp>-{component-name}-<suffix>.ts with --schema)",
+    "suffix to add to the file name (e.g. {component-name}.<suffix>.js, or <timestamp>-<slug>.ts with --schema, where the slug is the lowercased, hyphenated component name and suffix)",
   )
   .option("-s, --space <space>", "space ID")
   .option(
     "--schema <entry-file>",
-    "schema entry file; generates a typed defineMigration file and its .before.ts snapshot instead of a .js migration",
+    "schema entry file that exports `type Schema`; generates a typed defineMigration file and its .before.ts snapshot instead of a .js migration",
   )
-  .option("--no-before", "skip the .before.ts schema snapshot next to the migration")
-  .option("--legacy", "generate a .js migration for `migrations run` even when --schema is set");
+  .option("--no-before", "with --schema, skip the .before.ts schema snapshot");
 
 generateCmd.action(
   async (
@@ -46,8 +45,7 @@ generateCmd.action(
     );
 
     const { space, path, verbose } = command.optsWithGlobals();
-    const { suffix, schema, legacy, before } = options;
-    const schemaEntry = legacy ? undefined : schema;
+    const { suffix, schema: schemaEntry, before } = options;
 
     logger.info("Migration generation started", {
       componentName,
@@ -95,11 +93,8 @@ generateCmd.action(
       );
       return;
     }
-    const schemaOnlyFlags = [...(legacy ? ["--legacy"] : []), ...(before ? [] : ["--no-before"])];
-    if (!schema && schemaOnlyFlags.length > 0) {
-      ui.warn(`${schemaOnlyFlags.join(" and ")} only apply together with --schema.`);
-    } else if (legacy && !before) {
-      ui.warn("--no-before has no effect with --legacy.");
+    if (!schemaEntry && !before) {
+      ui.warn("--no-before has no effect without --schema.");
     }
 
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);

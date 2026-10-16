@@ -21,7 +21,7 @@ export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
 
 /**
  * Helper type for the props of a React component registered with
- * {@link defineStoryblokBlocks} and rendered via `StoryblokBlock`/`StoryblokBlocks`.
+ * {@link defineStoryblokBlocks} and rendered via `StoryblokBlock`.
  *
  * `TExtraProps` mirrors the type argument passed to
  * {@link defineStoryblokBlocks}, and is always optional here (`Partial`):
@@ -48,7 +48,7 @@ export type StoryblokBlockComponentProps<
   TExtraProps extends object = {},
 > = {
   block: BlockContent & T;
-  /** Editable attributes injected by `StoryblokBlock`/`StoryblokBlocks`. Spread onto the root element. */
+  /** Editable attributes injected by `StoryblokBlock`. Spread onto the root element. */
   editable?: StoryblokEditableProps;
 } & Partial<TExtraProps>;
 
@@ -58,7 +58,7 @@ export type { BlockContent, BlockContentInput, Story };
  * The loosely-typed shape of a block's content: only `_uid`, `component`, and
  * `_editable` are known, plus an index signature for every other field.
  *
- * This is the type the `StoryblokBlock`/`StoryblokBlocks` registry itself
+ * This is the type the `StoryblokBlock` registry itself
  * works with — it has to accept any block, so it can't know a block's
  * specific fields ahead of time. Contrast with {@link BlockContent}, the
  * fully-typed shape generated from a component's schema (via `@storyblok/schema`

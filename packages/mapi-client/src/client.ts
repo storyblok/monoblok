@@ -19,6 +19,7 @@ import { createExperimentsResource } from "./resources/experiments";
 import { createInternalTagsResource } from "./resources/internal-tags";
 import { createOrgsResource } from "./resources/orgs";
 import { createPresetsResource } from "./resources/presets";
+import { createReleasesResource } from "./resources/releases";
 import { createSharedAssetFoldersResource } from "./resources/shared-asset-folders";
 import { createSharedAssetsResource } from "./resources/shared-assets";
 import { createSharedInternalTagsResource } from "./resources/shared-internal-tags";
@@ -408,6 +409,7 @@ function buildResources<DefaultThrowOnError extends boolean = false>(
     orgs: createOrgsResource<DefaultThrowOnError>({ client, wrapRequest: deps.wrapRequest }),
     post: httpPost,
     presets: createPresetsResource(deps),
+    releases: createReleasesResource(deps),
     put: httpPut,
     sharedAssetFolders: createSharedAssetFoldersResource(deps),
     sharedAssets: createSharedAssetsResource(deps),

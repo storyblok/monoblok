@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolve } from "pathe";
+import { defineMigration, renameField } from "@storyblok/schema/migrations";
 import { vol } from "memfs";
 // Import the main module first to ensure proper initialization
 import "../index";
@@ -8,6 +9,7 @@ import { migrationsCommand } from "../command";
 import { fetchStories, fetchStory, updateStory } from "../../stories/actions";
 import type { Story } from "../../stories/constants";
 import * as filesystem from "../../../utils/filesystem";
+import { getUI } from "../../../lib/ui";
 import { resetLogger } from "../../../lib/logger/logger";
 import { resetReporter } from "../../../lib/reporter/reporter";
 import { getLogFileContents } from "../../__tests__/helpers";
@@ -307,6 +309,45 @@ describe("migrations run command", () => {
         }),
       }),
     );
+  });
+
+  it("should not write anything for a content migration in the same directory, and point to migrations apply", async () => {
+    const error = vi.spyOn(getUI(), "error");
+    preconditions.canFetchStories();
+    preconditions.canFetchStory();
+    preconditions.canUpdateStory();
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/0001-rename-migration-component.js":
+        "only the filename matters!",
+    });
+    vi.spyOn(filesystem, "importModule").mockResolvedValue({
+      default: defineMigration([
+        renameField({ block: "migration-component", field: "unchanged", to: "renamed" }),
+      ]),
+    });
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(updateStory).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(
+      'Migration file "0001-rename-migration-component.js" is a content migration. Apply it with "storyblok migrations apply".',
+    );
+  });
+
+  it("should point to migrations apply for content migrations it does not run", async () => {
+    const info = vi.spyOn(getUI(), "info");
+    vol.fromJSON({
+      "./.storyblok/migrations/12345/0001-rename-hero-title.ts": "",
+      "./.storyblok/migrations/12345/0001-rename-hero-title.before.ts": "",
+      "./.storyblok/migrations/12345/0002-split-cta.mjs": "",
+    });
+
+    await migrationsCommand.parseAsync(["node", "test", "run", "--space", "12345"]);
+
+    expect(info).toHaveBeenCalledWith(
+      'Content migrations are applied with "storyblok migrations apply", not run: 0001-rename-hero-title, 0002-split-cta.',
+    );
+    expect(updateStory).not.toHaveBeenCalled();
   });
 
   it("should run migrations successfully", async () => {

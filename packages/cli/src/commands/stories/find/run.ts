@@ -136,12 +136,14 @@ export async function runFind({
 
     // The summary counts an undecided story as passed, which is only true when a
     // MAPI fetch follows. Without one, a --where on content can never match it,
-    // so a real match drops out under a clean summary.
-    if (skipContent && capi && capiFilter.unresolved > 0) {
+    // so a real match drops out under a clean summary. Folders are left out: no
+    // API has content for one, so a MAPI fetch would not decide it either.
+    const missing = capiFilter.unresolved - capiFilter.unresolvedFolders;
+    if (skipContent && capi && missing > 0) {
       notes.push(() =>
         ui.warn(
-          `${storiesCount(capiFilter.unresolved)} may be missing from the results. The CDN returned no content ` +
-            "to test --where on (folders, stories it does not serve, or a failed request), and --skip-content " +
+          `${storiesCount(missing)} may be missing from the results. The CDN returned no content ` +
+            "to test --where on (stories it does not serve, or a failed request), and --skip-content " +
             "leaves only list metadata, which a --where on content cannot match. Drop --skip-content to test " +
             "them on Management API content.",
         ),

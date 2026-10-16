@@ -36,7 +36,9 @@ export function findPhases({
       key: "capiFilter",
       label: capiLabel,
       enabled: capi,
-      counters: ["candidates", "pruned", "unresolved", "failed"],
+      // `unresolvedFolders` is the part of `unresolved` that is a folder: the CDN
+      // never has content for one, so it is no sign of a missed match.
+      counters: ["candidates", "pruned", "unresolved", "unresolvedFolders", "failed"],
       // What the CAPI filter prunes never costs a MAPI fetch.
       outflow: (counts) => counts.total - counts.pruned,
     },
@@ -111,6 +113,7 @@ export function findSummary({
 }): string[] {
   const list = tracker.counts("list");
   const capiFilter = tracker.counts("capiFilter");
+  const content = tracker.counts("content");
   const filtered = tracker.counts("process");
 
   const stages = [listingSummary(tracker)];
@@ -152,8 +155,14 @@ export function findSummary({
   return renderRunSummary({
     headline: `Found ${storiesCount(results)}`,
     duration: formatDuration(elapsedMs),
-    // A failed listing page means part of the scope was never seen.
-    failed: list.failed > 0,
+    // Whatever exits the run 1 turns the headline red, so it never reads as a
+    // success above a failure. A failed listing page also means part of the
+    // scope was never seen, which the qualifier says.
+    failed:
+      list.failed > 0 ||
+      content.failed > 0 ||
+      (skipContent && capiFilter.failed > 0) ||
+      filtered.failed > 0,
     qualifier:
       list.failed > 0
         ? "incomplete, part of the space could not be listed"
@@ -173,7 +182,7 @@ export function stoppedEarlyMessage(limit: number | undefined): string {
     (limit !== undefined
       ? `Stopped early on purpose: --limit ${limit} was reached, so the rest of the scope was left unread. `
       : "Stopped early on purpose: the command reading this output took what it needed and closed the pipe. ") +
-    "This is not an error — the run exits 0. The counts below cover only the part of the scope that ran."
+    "This is not an error — the run exits 0. The counts cover only the part of the scope that ran."
   );
 }
 

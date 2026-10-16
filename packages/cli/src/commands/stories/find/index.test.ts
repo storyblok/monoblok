@@ -128,22 +128,33 @@ const preconditions = {
 
     return { linking, plain, missingUuid };
   },
+  failsToFetchContentOf(story: MockStory) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
+        HttpResponse.json({ error: "Not found" }, { status: 404 }),
+      ),
+    );
+  },
   /**
    * Hero stories the CDN serves, plus `missingFromCdn` hero stories it holds no
-   * content for. The listing omits `content`, as the real one does, so a story
-   * the CDN does not serve has nothing left to match a content filter on.
+   * content for, plus `folders`, which it never has content for. The listing
+   * omits `content`, as the real one does, so a story the CDN does not serve has
+   * nothing left to match a content filter on.
    */
   canFilterOnCdnContent({
     servedByCdn,
     missingFromCdn,
+    folders = 0,
   }: {
     servedByCdn: number;
     missingFromCdn: number;
+    folders?: number;
   }) {
     const hero = (): MockStory => makeMockStory({ content: { _uid: "a", component: "hero" } });
     const served = Array.from({ length: servedByCdn }, hero);
     const missing = Array.from({ length: missingFromCdn }, hero);
-    const stories = [...served, ...missing];
+    const folderStories = Array.from({ length: folders }, () => makeMockStory({ is_folder: true }));
+    const stories = [...served, ...missing, ...folderStories];
 
     server.use(
       http.get("https://mapi.storyblok.com/v1/spaces/12345", () =>
@@ -387,6 +398,29 @@ describe("stories find command", () => {
 
     expect(written).toHaveLength(3);
     expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
+  });
+
+  // No API has content for a folder, so dropping --skip-content would not
+  // decide it either.
+  it("should not count folders as stories that may be missing", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 3, missingFromCdn: 0, folders: 2 });
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
+  });
+
+  // The run exits 1, so a green headline above it would read as a success.
+  it("should mark the summary as failed when a story's content cannot be fetched", async () => {
+    const [story] = preconditions.canFindStories(3);
+    preconditions.failsToFetchContentOf(story);
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy.mock.calls.flat().join("\n")).toMatch(/✖ Found 2 stories in/);
   });
 
   // A person at a terminal is scanning for which stories matched, not reading

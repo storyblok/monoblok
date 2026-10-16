@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 
+import { getActiveConfig } from "../config/store";
+
 const PAGER = "less";
 /**
  * The flags `git` defaults `LESS` to: quit if the text fits one screen (F),
@@ -22,7 +24,8 @@ const writeStdout = (text: string): void => {
  * Whether a pager may run at all. `PAGER` empty or `cat` turns it off, the
  * switch `git` and `gh` already taught; a harness that allocates a terminal
  * nobody reads (`script`, `docker run -t`, an agent) would otherwise hang at
- * the pager prompt. CI never has a person at the terminal either.
+ * the pager prompt. CI never has a person at the terminal either, and
+ * `--no-ui-enabled` is how a run says nobody is watching it.
  *
  * Never on Windows: a bare command name resolves against the current
  * directory before `PATH` there, so a repository that commits a `less.exe`
@@ -30,11 +33,14 @@ const writeStdout = (text: string): void => {
  */
 function canPage(): boolean {
   const { PAGER, TERM, CI } = process.env;
+  // `CI=false` and `CI=0` are set to say the opposite.
+  const inCI = Boolean(CI) && CI !== "false" && CI !== "0";
   return (
+    getActiveConfig().ui.enabled &&
     process.stdout.isTTY === true &&
     process.platform !== "win32" &&
     TERM !== "dumb" &&
-    !CI &&
+    !inCI &&
     PAGER?.trim() !== "" &&
     PAGER?.trim() !== "cat"
   );
@@ -71,10 +77,12 @@ export async function page(text: string): Promise<void> {
       failedToStart = true;
     });
     // Fires after `'error'` too, so a pager that never started ends up here.
-    child.on("close", () => {
+    child.on("close", (code, signal) => {
       process.off("SIGINT", ignoreInterrupt);
-      // Nothing has been shown yet, so the text still has to go out.
-      if (failedToStart) {
+      // Nothing has been shown yet, so the text still has to go out. A pager
+      // that started and exited non-zero on its own (`LESS=--bogus-option`)
+      // showed nothing either; one killed by a signal was quit by the reader.
+      if (failedToStart || (signal === null && code !== 0)) {
         writeStdout(text);
       }
       resolve();

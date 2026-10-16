@@ -104,7 +104,7 @@ The pipe is a module, not a feature of `find`:
 
 | File          | Owns                                                                                   |
 | ------------- | -------------------------------------------------------------------------------------- |
-| `output.ts`   | JSONL out, the backpressured sink, and the closed-pipe signal                          |
+| `output.ts`   | JSONL or table out, the backpressured sink they share, and the closed-pipe signal      |
 | `input.ts`    | _planned:_ `-`, the `fstat` probe, and the JSONL reader with its malformed-line policy |
 | `contract.ts` | the line contract above: required fields and sidecar keys                              |
 | `phases.ts`   | progress bars, counters, busy-time timings, and derived totals for a staged run        |
@@ -137,9 +137,12 @@ because a person at a terminal is the only reader the table has.
 
 The pager is skipped where it cannot run or nobody reads it: a `dumb` terminal, a missing `less`,
 Windows (a bare command name resolves against the current directory before `PATH` there, so a
-repository could ship its own `less.exe`), a set `CI`, and `PAGER` empty or `cat`. The last is the
-switch `git` and `gh` already taught, and it is what a harness that allocates a terminal nobody
-reads (`script`, `docker run -t`, an agent) needs to keep from hanging at the pager prompt.
+repository could ship its own `less.exe`), a set `CI` (other than `false` or `0`),
+`--no-ui-enabled`, and `PAGER` empty or `cat`. The last is the switch `git` and `gh` already taught,
+and it is what a harness that allocates a terminal nobody reads (`script`, `docker run -t`, an
+agent) needs to keep from hanging at the pager prompt. `--no-ui-enabled` is the CLI's own way of
+saying nobody is watching, so it turns the pager off too. A pager that fails to start, or exits with
+an error before showing anything (`LESS=--bogus-option`), falls back to printing the table directly.
 
 The table is for people and may change between releases. JSONL is the only output contract, and a
 script that needs the results reads it, by piping the output, even when it runs under a pseudo
@@ -168,8 +171,10 @@ already written the matches found so far, while the table, printed only at the e
   switch. If another pager is needed, it belongs in the global `ui` config next to `ui.enabled`.
 - **A flag to choose the format** (`--format table|jsonl`). Not added: piping through `cat` already
   gets JSONL on a terminal, and the default follows the reader without one.
-- **Keeping the pipe code in `lib/ui`.** Rejected: none of it is about terminal presentation, and
-  the input half has no place there at all.
+- **Keeping the pipe code in `lib/ui`.** Rejected: the input half has no place there at all, and the
+  output half is about where stdout goes, not how it looks. The table output is the one piece of
+  presentation in `output.ts`, and it only decides _when_ a table is written; drawing it
+  (`renderTable`) and paging it (`page`) stay in `lib/ui`.
 
 ## Consequences
 

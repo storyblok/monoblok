@@ -174,8 +174,11 @@ export async function runStoryPipeline({
             onPruned: () => {
               capiFilter.count("pruned");
             },
-            onUnresolved: () => {
+            onUnresolved: (story) => {
               capiFilter.count("unresolved");
+              if (story.is_folder) {
+                capiFilter.count("unresolvedFolders");
+              }
             },
             onBatchStart: () => {
               capiFilter.start();

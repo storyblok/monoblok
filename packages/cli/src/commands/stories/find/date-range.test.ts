@@ -46,6 +46,11 @@ describe("parseDateRange", () => {
     );
   });
 
+  // An empty window would run and report nothing, which reads as an answer.
+  it.each(["0d", "0m", "0d..7d"])("should reject the zero-length duration in %s", (raw) => {
+    expect(() => parse(raw)).toThrow(/is an empty window/);
+  });
+
   describe("a bare calendar date", () => {
     it.each([
       ["2024", "2024-01-01T00:00:00.000Z", "2024-12-31T23:59:59.999Z"],
@@ -61,6 +66,11 @@ describe("parseDateRange", () => {
         expect(() => parse(raw)).toThrow(/is not a date or time that exists/);
       },
     );
+
+    // The duration hint would point away from the actual mistake.
+    it.each(["2024-6", "2024-06-15T09"])("should say %s is not a date", (raw) => {
+      expect(() => parse(raw)).toThrow(/is not a date\. Write dates as/);
+    });
   });
 
   describe("a datetime", () => {
@@ -69,6 +79,10 @@ describe("parseDateRange", () => {
         from: "2024-06-15T09:30:00.000Z",
         to: "2024-06-15T09:30:59.999Z",
       });
+    });
+
+    it("should accept an hours-only offset", () => {
+      expect(iso("2024-06-15T09:00+02").from).toBe("2024-06-15T07:00:00.000Z");
     });
 
     it("should apply an explicit offset", () => {
@@ -114,6 +128,16 @@ describe("parseDateRange", () => {
       },
     );
 
+    it.each(["now..7d", "7d..now"])(
+      "should read a duration and 'now' in %s as one window, whichever way round",
+      (raw) => {
+        expect(iso(raw)).toEqual({
+          from: "2026-03-24T12:00:00.000Z",
+          to: "2026-03-31T12:00:00.000Z",
+        });
+      },
+    );
+
     it("should read 'now' as an instant", () => {
       expect(iso("now..2w", "future")).toEqual({
         from: "2026-03-31T12:00:00.000Z",
@@ -128,13 +152,13 @@ describe("parseDateRange", () => {
     // An inverted range matches nothing, which would read as a genuine answer.
     it("should reject a range that starts after it ends", () => {
       expect(() => parse("2024-06..2024-01")).toThrow(/starts after it ends/);
-      expect(() => parse("now..7d")).toThrow(/starts after it ends/);
+      expect(() => parse("now..2024-01")).toThrow(/starts after it ends/);
     });
   });
 
   it.each([
     ["past", "'7d..now'"],
-    ["future", "'now..7d'"],
+    ["future", "'..7d'"],
   ] as const)(
     "should suggest a range for a bare 'now' that suits the %s direction",
     (direction, example) => {

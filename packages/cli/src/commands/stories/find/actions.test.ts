@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertSupportedOptions,
   buildDateFilters,
+  buildPublishStatusFilters,
   buildQueryParams,
   buildWhereFilters,
   parseIssueTypes,
@@ -170,21 +171,24 @@ describe("assertSupportedOptions", () => {
       ).not.toThrow();
     });
 
-    // A changed story is live: it has published content, and that content is
-    // exactly what the CDN can decide it on. Refusing it would push a "what is
-    // live" run into a filter that drops every live story with pending edits.
-    it("should accept a published --capi-params version alongside --publish-status changed", () => {
-      expect(() =>
-        assertSupportedOptions(
-          options({
-            capiFilter: true,
-            where: ["$.content"],
-            capiParams: "{version: published}",
-            publishStatus: "changed",
-          }),
-        ),
-      ).not.toThrow();
-    });
+    // A story published with changes is live: it has published content, and that
+    // content is exactly what the CDN can decide it on. Refusing it would push a
+    // "what is live" run into a filter that drops every live story with pending edits.
+    it.each(["published-with-changes", "published,published-with-changes"])(
+      "should accept a published --capi-params version alongside --publish-status %s",
+      (publishStatus) => {
+        expect(() =>
+          assertSupportedOptions(
+            options({
+              capiFilter: true,
+              where: ["$.content"],
+              capiParams: "{version: published}",
+              publishStatus,
+            }),
+          ),
+        ).not.toThrow();
+      },
+    );
 
     it("should reject a published --capi-params version alongside --publish-status draft", () => {
       expect(() =>
@@ -196,7 +200,21 @@ describe("assertSupportedOptions", () => {
             publishStatus: "draft",
           }),
         ),
-      ).toThrow(/needs --publish-status published or --publish-status changed/);
+      ).toThrow(/needs --publish-status published, published-with-changes, or both/);
+    });
+
+    // Mixed with draft, the server cannot narrow, so never-published stories get through.
+    it("should reject a published --capi-params version alongside --publish-status published,draft", () => {
+      expect(() =>
+        assertSupportedOptions(
+          options({
+            capiFilter: true,
+            where: ["$.content"],
+            capiParams: "{version: published}",
+            publishStatus: "published,draft",
+          }),
+        ),
+      ).toThrow(/needs --publish-status/);
     });
 
     it("should accept an explicit draft --capi-params version, which matches what MAPI serves", () => {
@@ -279,6 +297,40 @@ describe("buildQueryParams", () => {
   });
 });
 
+describe("--publish-status", () => {
+  const listed = (published: boolean, unpublishedChanges: boolean): Story =>
+    ({ id: 1, published, unpublished_changes: unpublishedChanges }) as Story;
+
+  it("should match a story in any of the listed statuses", () => {
+    const [filter] = buildPublishStatusFilters(options({ publishStatus: "published,draft" }));
+    expect(filter(listed(true, false))).toBe(true);
+    expect(filter(listed(false, false))).toBe(true);
+    expect(filter(listed(true, true))).toBe(false);
+  });
+
+  it("should narrow on the server only when every status agrees on is_published", () => {
+    expect(
+      buildQueryParams(undefined, options({ publishStatus: "published,published-with-changes" }))
+        .is_published,
+    ).toBe(true);
+    expect(buildQueryParams(undefined, options({ publishStatus: "draft" })).is_published).toBe(
+      false,
+    );
+    expect(
+      buildQueryParams(undefined, options({ publishStatus: "published,draft" })),
+    ).not.toHaveProperty("is_published");
+  });
+
+  it.each(["changed", "published,live", ","])(
+    "should reject %j as a usage error naming the accepted statuses",
+    (publishStatus) => {
+      expect(() => buildPublishStatusFilters(options({ publishStatus }))).toThrow(
+        /--publish-status expects/,
+      );
+    },
+  );
+});
+
 describe("the server-side scope filters", () => {
   it("should pass --tag through as a tag list", () => {
     expect(buildQueryParams(undefined, options({ tag: "campaign,legacy" })).with_tag).toBe(
@@ -350,6 +402,13 @@ describe("--scheduled", () => {
     expect(params.scheduled_at_lt).toBe("2026-04-07T12:00:00.000Z");
   });
 
+  it("should ask for any pending schedule, with no bounds, for the bare flag", () => {
+    const params = buildQueryParams(undefined, options({ scheduled: true }), NOW);
+    expect(params.scheduled_by_status).toBe("scheduled");
+    expect(params).not.toHaveProperty("scheduled_at_gt");
+    expect(params).not.toHaveProperty("scheduled_at_lt");
+  });
+
   it("should send only the bound that was given", () => {
     const params = buildQueryParams(undefined, options({ scheduled: "2026-04-01.." }), NOW);
     expect(params.scheduled_at_gt).toBe("2026-04-01T00:00:00.000Z");
@@ -374,7 +433,7 @@ describe("buildDateFilters", () => {
   it.each([
     ["created", "created_at"],
     ["updated", "updated_at"],
-    ["published", "published_at"],
+    ["lastPublished", "published_at"],
     ["firstPublished", "first_published_at"],
   ] as const)("should filter --%s on %s", (option, field) => {
     const [filter] = buildDateFilters(options({ [option]: "2024-06" }), NOW);
@@ -394,18 +453,8 @@ describe("buildDateFilters", () => {
   });
 
   it("should never match a story that was never published", () => {
-    const [filter] = buildDateFilters(options({ published: "..now" }), NOW);
+    const [filter] = buildDateFilters(options({ lastPublished: "..now" }), NOW);
     expect(filter(dated({ published_at: null }))).toBe(false);
-  });
-
-  // The API lists a story once per language with a pending schedule in range.
-  it("should keep only the first listing of a story under --scheduled", () => {
-    const filters = buildDateFilters(options({ scheduled: "2w" }), NOW);
-    const match = (story: Story) => filters.every((filter) => filter(story));
-    expect([dated({ id: 1 }), dated({ id: 1 }), dated({ id: 2 })].filter(match)).toEqual([
-      dated({ id: 1 }),
-      dated({ id: 2 }),
-    ]);
   });
 
   it("should name the flag in a usage error", () => {

@@ -87,13 +87,21 @@ applied changes nothing and records nothing.
 
 Every run applies every migration in the directory again, so the command first compares each op with
 the space’s current blocks. It skips and reports an op that writes a field the block no longer has,
-or that removes a field the block has again. Without this, a migration that added a field a later
-migration renamed would add it back on every run. Push the schema before you apply a migration that
-writes new fields, or the command skips those ops. Ops on blocks the space doesn’t hold aren’t
-checked.
+removes a field the block has again, or converts a field to a type it no longer has. Without this, a
+migration that added a field a later migration renamed would add it back on every run. Ops on blocks
+the space doesn’t hold aren’t checked.
+
+Because of this check, apply each migration before you push the next schema change:
+
+- Push the schema before you apply a migration that writes new fields, or the command skips those
+  ops.
+- An op on a field that a later push renamed or removed is skipped, even in stories that still hold
+  the field.
+- A `renameField` is skipped while the block still has the field it renames, so in a migration that
+  adds the new field first and removes the old one later, content moves only after the removal.
 
 Delete a migration once every space it targets has applied it, or exclude it from type checking. A
-later rename or removal of a field it writes is a type error in that migration.
+later rename, removal, or type change of a field it writes is a type error in that migration.
 
 [`migrations run`](/docs/tooling/cli/migrations-run) loads every `.js` file in the same directory,
 so a space that uses both commands reports each `.js` content migration as an error that points to
@@ -401,14 +409,15 @@ changes:
 - Renames and removes fields.
 - Converts values between text, textarea, markdown, and number fields, and between those string
   fields and boolean fields.
-- Fills new or newly required boolean fields with `false` where the field is absent or `null`.
+- Fills new required boolean fields with `false` where the field is absent, and newly required
+  boolean fields where it is absent or `null`. For a newly required text, textarea, markdown, or
+  number field, an empty string also counts as missing.
 
 Comments starting with `TODO` mark the ops to complete, such as a conversion between other field
 types or a default value for a required field of another type. Such an op throws until you replace
-it, so `migrations apply` refuses to change the stories it applies to. A newly required text,
-textarea, markdown, or number field also counts an empty string as missing. A `TODO` also marks a
-removed field that may have been renamed to a new field of the same type that rename detection
-didn’t pair with it. Without the rename, the removal deletes the field’s content.
+it, so `migrations apply` refuses to change the stories it applies to. A `TODO` also marks a removed
+field that may have been renamed to a new field of the same type that rename detection didn’t pair
+with it. Without the rename, the removal deletes the field’s content.
 
 `migrations apply` writes a story only when every op in the migration succeeds on it. If an op fails
 on one block, the story stays unchanged, including its other blocks.
@@ -416,9 +425,10 @@ on one block, the story stays unchanged, including its other blocks.
 Pass `--no-before` with `--typed` to skip the snapshot.
 
 To move from `.js` migrations to typed content migrations, finish running the `.js` migrations with
-`migrations run`, then push with `--typed` and use `migrations apply` from then on. `migrations run`
-exits with an error when the directory holds only content migrations, so a script that still runs it
-after `schema push --typed` fails instead of skipping the migration.
+`migrations run`, delete or move the `.js` files, then push with `--typed` and use
+`migrations apply` from then on. `migrations run` exits with an error when the directory holds only
+content migrations, so a script that still runs it after `schema push --typed` fails instead of
+skipping the migration.
 
 ### Failed pushes
 

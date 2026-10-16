@@ -38,15 +38,19 @@ ran it, so no run can tell which migrations a space has already received.
 - An op the generator cannot write gets a callback that throws, so `migrations apply` refuses it
   until the author replaces it, instead of applying a no-op. That includes the default of a newly
   required field other than a boolean, since only `false` is a value every required field of its
-  type accepts. A fill of a newly required string or number field also counts `""` as missing.
+  type accepts. A fill of a newly required string or number field also counts `""` as missing. Fills
+  are an `addField` and an `alterField`, not an `alterBlock`, so the apply check sees the field they
+  write.
 - A removed field gets a TODO naming every unpaired added field of the same type as a possible
   rename target, whether or not the addition is required.
 - `schema push` writes the migration before it pushes. When the push fails, it reads the space
   again, keeps the ops for the blocks that were updated, and removes the rest.
 - The generators live in `@storyblok/schema/codegen` next to the DSL whose source they emit. The
   public surface is `generateSnapshot()` and `generateMigrationSource()`, experimental, with the
-  generated text outside semver. The `defineField` serializer and the coercion table the CLI shares
-  sit behind `@storyblok/schema/internal/codegen`, which is undocumented but covered by semver.
+  generated text outside semver. The `defineField` serializer, the coercion table, and
+  `nextMigrationId()` the CLI shares sit behind `@storyblok/schema/internal/codegen`, which is
+  undocumented but covered by semver. That includes `formatValue()`'s output, because the CLI's
+  schema diff compares values by it.
 
 ## Rationale
 
@@ -106,8 +110,11 @@ ran it, so no run can tell which migrations a space has already received.
 - A migration applied before its schema is pushed has its ops on new fields skipped.
 - Ops must still be idempotent. `Before` describes content before the first run; a callback checks a
   value's shape before converting it. Typing reads as "before or after" is a possible follow-up.
-- `alterBlock` callbacks, including the generated fills, aren't checked for staleness, because the
-  fields they touch aren't declared.
+- `alterBlock` callbacks aren't checked for staleness, because the fields they touch aren't
+  declared.
+- An op on a field a later push renamed or removed is skipped, even in stories that still hold the
+  field, so each migration is applied before the next schema change is pushed.
+- Snapshots carry a `snapshotFormat`, and `migrations apply` refuses a format newer than it reads.
 - `migrations run` exits with an error when the directory holds only content migrations, so a script
   that runs it after `schema push --typed` fails instead of passing silently.
 - Ops on blocks nested inside a read block need a migration generated for that block, because a stub
@@ -116,4 +123,5 @@ ran it, so no run can tell which migrations a space has already received.
   one, and counting them grew the median snapshot of a 177-block space from 128 to 407 lines. An
   `under` naming a block that holds the read block only through a `richtext` field is a type error,
   though `migrations apply` accepts it.
-- Changing `internal/codegen` incompatibly needs a major release of `@storyblok/schema`.
+- Changing `internal/codegen` incompatibly is a breaking change of `@storyblok/schema`: a minor
+  release while it is on 0.x, since the CLI's caret range then admits only patches.

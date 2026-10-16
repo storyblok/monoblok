@@ -96,13 +96,13 @@ export interface TagRef {
  * `restrict_type` and the group lists).
  *
  * A space can store those keys on any field type — the Management API takes a
- * component schema as an opaque blob and stores a stray `restrict_components: true`
- * on an `asset` field verbatim — but the editor only
- * reads them on these two, and `defineField` rejects an option the field type does
- * not own. Emitting such a stray key would generate code that does not compile, so
- * the restriction keys are only ever emitted for these types.
+ * component schema as an opaque blob and stores a stray `restrict_components:
+ * true` on an `asset` field verbatim — but the editor only reads them on these
+ * two, and `defineField` rejects an option the field type does not own. Emitting
+ * such a stray key would generate code that does not compile, so the restriction
+ * keys are only ever emitted for these types.
  */
-const RESTRICTABLE_FIELD_TYPES = new Set(["bloks", "richtext"]);
+export const RESTRICTABLE_FIELD_TYPES: ReadonlySet<string> = new Set(["bloks", "richtext"]);
 
 /**
  * Classifies a field's wire restriction keys. The block-name and folder
@@ -157,10 +157,6 @@ export function resolveFieldRestriction(
   if (field.restrict_components === false) {
     return { kind: "disabled" };
   }
-  // A denylist is only in force where the editor reads one: on a field type that
-  // has one at all, and only while the matching allow list is empty. Emitting an
-  // out-of-force list as `deny` would generate code `defineField` rejects, so the
-  // push that follows `schema init` could not even load the schema.
   const denyIsReadable = DENIABLE_FIELD_TYPES.includes(String(field.type));
   if (
     field.restrict_type === "tags" &&
@@ -287,9 +283,7 @@ function toDslField(
   } = field;
   const out: Record<string, unknown> = { ...rest };
   const restriction = resolveFieldRestriction(field, folderVarByUuid, tagNameById);
-  // Stray restriction keys on a field type that does not own them are junk the
-  // editor never wrote and never reads; emitting them would not compile.
-  const restrictable = RESTRICTABLE_FIELD_TYPES.has(field.type as string);
+  const restrictable = RESTRICTABLE_FIELD_TYPES.has(String(field.type));
 
   // A tag list the DSL could not name passes through verbatim whenever the field
   // type owns it, whichever dimension is actually in force. A resolved one is
@@ -435,9 +429,9 @@ export function collectRestrictionFolderVars(
 }
 
 /** Sorts schema fields by `pos` for stable ordering. */
-export function sortSchemaByPos(
-  schema: Record<string, Record<string, unknown>>,
-): [string, Record<string, unknown>][] {
+export function sortSchemaByPos<TField extends Record<string, unknown>>(
+  schema: Record<string, TField>,
+): [string, TField][] {
   return Object.entries(schema)
     .filter(([key]) => key !== "_uid" && key !== "component")
     .sort(([, a], [, b]) => {

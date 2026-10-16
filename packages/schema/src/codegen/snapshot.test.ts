@@ -67,7 +67,7 @@ describe("generateSnapshot", () => {
     expect(source).toContain("defineField('author', {\n      type: 'text',\n    })");
     expect(source).toContain("defineBlock({ name: 'card', fields: [] })");
     expect(source).toContain(
-      "export const nameOnlyBlocks: string[] = [\n  'badge',\n  'card',\n  'footer',\n  'seo',\n];",
+      "export const nameOnlyBlocks: string[] = [\n  'badge', 'card', 'footer', 'seo',\n];",
     );
   });
 
@@ -155,6 +155,30 @@ describe("generateSnapshot", () => {
     } finally {
       await modules.cleanup();
     }
+  });
+
+  it("should not stub every block with an unrestricted richtext field as a container", () => {
+    const hero: WireComponent = { name: "hero", schema: { headline: { type: "text" } } };
+    const article: WireComponent = { name: "article", schema: { body: { type: "richtext" } } };
+    const page: WireComponent = { name: "page", schema: { body: { type: "bloks" } } };
+
+    const source = generateSnapshot({ components: [hero, article, page], blocks: ["hero"] });
+
+    expect(source).toContain("defineBlock({ name: 'page', fields: [] })");
+    expect(source).not.toContain("defineBlock({ name: 'article', fields: [] })");
+  });
+
+  it("should wrap a long name-only list", () => {
+    const names = Array.from({ length: 30 }, (_, i) => `block_${i}`);
+    const source = generateSnapshot({
+      components: names.map((name) => ({ name, schema: {} })),
+      blocks: ["block_0"],
+    });
+    const list = source.slice(source.indexOf("export const nameOnlyBlocks"));
+
+    expect(list.split("\n").every((line) => line.length <= 80)).toBe(true);
+    expect(list.split("\n").length).toBeLessThan(10);
+    expect(list).toContain("'block_29',");
   });
 
   it("should skip field entries that are not field records", async () => {

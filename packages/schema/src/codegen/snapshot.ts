@@ -117,7 +117,9 @@ function nestingFieldsOf(
 
 /**
  * Blocks that can hold one of `blocks` at any depth, so `under` can name them.
- * A nesting field without an allow list can hold every block.
+ * A `bloks` field without an allow list can hold every block. A `richtext`
+ * field without one is left out: most blocks of a space have one, so counting
+ * them would stub nearly the whole space into every snapshot.
  */
 function containersOf(
   blocks: readonly string[],
@@ -132,8 +134,8 @@ function containersOf(
     grew = false;
     for (const [name, fields] of nesting) {
       if (containers.has(name)) continue;
-      const holds = fields.some(
-        ({ allowed }) => !allowed || allowed.some((child) => contained.has(child)),
+      const holds = fields.some(({ field, allowed }) =>
+        allowed ? allowed.some((child) => contained.has(child)) : field.type === "bloks",
       );
       if (holds) {
         containers.add(name);
@@ -173,6 +175,25 @@ function typingField(field: FieldRecord, allowed: string[] | undefined): Record<
     typed.component_whitelist = allowed;
   }
   return typed;
+}
+
+const MAX_LINE_LENGTH = 80;
+
+/** Packs list items onto as few lines as fit, each line indented and every item comma-terminated. */
+function wrapList(items: readonly string[], indent: string): string[] {
+  const lines: string[] = [];
+  let line = "";
+  for (const item of items) {
+    const next = line ? `${line} ${item},` : `${indent}${item},`;
+    if (line && next.length > MAX_LINE_LENGTH) {
+      lines.push(line);
+      line = `${indent}${item},`;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
 }
 
 /**
@@ -281,7 +302,7 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
       ? "export const nameOnlyBlocks: string[] = [];"
       : [
           "export const nameOnlyBlocks: string[] = [",
-          ...nameOnlyBlocks.map((name) => `${INDENT}${quoteString(name)},`),
+          ...wrapList(nameOnlyBlocks.map(quoteString), INDENT),
           "];",
         ].join("\n"),
     "",

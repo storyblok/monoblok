@@ -5,14 +5,24 @@ import { dirname, join } from "pathe";
 import type { Component, ComponentFolder, Datasource, InternalTag } from "../../../types";
 import { buildGroupPathByUuid } from "../folders";
 import {
+  collectCustomFieldTypes,
   generateComponentFile,
   generateDatasourceFile,
+  generateFieldPluginFile,
   generateFoldersFile,
   generateSchemaFile,
   resolveComponents,
   resolveDatasources,
+  resolveFieldPlugins,
   resolveFolders,
 } from "./generate-code";
+
+export interface WriteSchemaFilesResult {
+  writtenFiles: string[];
+  placeholderFieldPlugins: { fieldType: string; filePath: string }[];
+  /** `<block>.<field>` paths of custom fields that were skipped because they name no field plugin. */
+  fieldsWithoutFieldType: string[];
+}
 
 /** Writes a file, creating parent directories as needed. */
 async function writeFileWithDirs(filePath: string, content: string): Promise<void> {
@@ -30,6 +40,9 @@ async function writeFileWithDirs(filePath: string, content: string): Promise<voi
  * The directory layout is local organization only — `schema push` does not read
  * it back as groups, the `folder` ref is what's authoritative. Ungrouped blocks
  * are written at the blocks root with no folder ref.
+ *
+ * Field plugins without an official definition get a placeholder file in
+ * `field-plugins/`, returned as `placeholderFieldPlugins`.
  */
 export async function writeSchemaFiles(
   targetPath: string,
@@ -37,7 +50,7 @@ export async function writeSchemaFiles(
   componentFolders: ComponentFolder[],
   datasources: Datasource[],
   internalTags: InternalTag[] = [],
-): Promise<string[]> {
+): Promise<WriteSchemaFilesResult> {
   const writtenFiles: string[] = [];
   const groupPathByUuid = buildGroupPathByUuid(componentFolders);
 
@@ -53,6 +66,8 @@ export async function writeSchemaFiles(
   const resolvedComponents = resolveComponents(components, componentSegments);
   const resolvedDatasources = resolveDatasources(datasources);
   const resolvedFolders = resolveFolders(componentFolders);
+  const { fieldTypes, fieldsWithoutFieldType } = collectCustomFieldTypes(components);
+  const resolvedFieldPlugins = resolveFieldPlugins(fieldTypes);
   const folderByUuid = new Map(resolvedFolders.map((r) => [r.folder.uuid, r]));
   // uuid → folders.ts var name, so a field's group whitelist can be re-encoded
   // as `allow: [<folderVar>]` instead of raw uuids.
@@ -87,6 +102,17 @@ export async function writeSchemaFiles(
     writtenFiles.push(filePath);
   }
 
+  const placeholderFieldPlugins: WriteSchemaFilesResult["placeholderFieldPlugins"] = [];
+  for (const plugin of resolvedFieldPlugins) {
+    if (plugin.kind !== "placeholder") {
+      continue;
+    }
+    const filePath = join(targetPath, "field-plugins", `${plugin.fileName}.ts`);
+    await writeFileWithDirs(filePath, generateFieldPluginFile(plugin.fieldType, plugin.varName));
+    writtenFiles.push(filePath);
+    placeholderFieldPlugins.push({ fieldType: plugin.fieldType, filePath });
+  }
+
   // Write folders.ts (only when the space has remote groups)
   if (resolvedFolders.length > 0) {
     const foldersPath = join(targetPath, "folders.ts");
@@ -98,9 +124,14 @@ export async function writeSchemaFiles(
   const schemaPath = join(targetPath, "schema.ts");
   await writeFileWithDirs(
     schemaPath,
-    generateSchemaFile(resolvedComponents, resolvedDatasources, resolvedFolders),
+    generateSchemaFile(
+      resolvedComponents,
+      resolvedDatasources,
+      resolvedFolders,
+      resolvedFieldPlugins,
+    ),
   );
   writtenFiles.push(schemaPath);
 
-  return writtenFiles;
+  return { writtenFiles, placeholderFieldPlugins, fieldsWithoutFieldType };
 }

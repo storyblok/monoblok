@@ -126,5 +126,3 @@ export {
   type StoryblokAstroRichTextRenderContext,
   type StoryblokRichTextComponentProps,
 } from "./richtext-helpers";
-
-export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";

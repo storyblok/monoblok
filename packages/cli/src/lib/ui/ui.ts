@@ -105,7 +105,6 @@ export class UI {
   private console: Pick<typeof console, "log" | "info" | "warn" | "error"> | null;
   private enabled: boolean;
   private multiBar: MultiBar | null;
-  private progressSuppressed = false;
 
   constructor({ enabled }: { enabled: boolean }) {
     this.enabled = enabled;
@@ -289,22 +288,8 @@ export class UI {
     };
   }
 
-  /**
-   * Drops in-place progress rendering for the rest of the run, leaving the text
-   * output alone.
-   *
-   * For a command whose results go to stdout while the bars redraw on stderr and
-   * both land on the same terminal: the two overwrite each other, and the
-   * results are the part worth keeping. Titles, warnings and the closing summary
-   * still print — they scroll rather than redraw, so they cost nothing.
-   */
-  suppressProgress() {
-    this.progressSuppressed = true;
-    this.multiBar?.stop();
-  }
-
   createProgressBar(options: { title: string }): ProgressBar {
-    if (this.progressSuppressed || !this.canRedraw) {
+    if (!this.canRedraw) {
       return noopProgressBar;
     }
     const bar = this.multiBar?.create(0, 0, options);
@@ -315,10 +300,11 @@ export class UI {
     // passed alongside the update. Keep forwarding the original options on every call.
     return {
       increment: (count = 1) => bar.increment(count, options),
-      // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
-      // Floor at 1 so an empty phase stays a clean 0/1 instead.
+      // A total of 0 draws as a finished `0/0` bar: a phase with nothing to do
+      // is done, not stuck at 0%. Only the payload is updated here: a value
+      // update at total 0 is what makes cli-progress render the ETA as "LLs".
       setTotal: (total) => {
-        bar.setTotal(Math.max(total, 1));
+        bar.setTotal(total);
         bar.update(options);
       },
       stop: () => bar.stop(),
@@ -330,7 +316,7 @@ export class UI {
   }
 
   createSpinner(title: string): CLISpinner {
-    if (!this.enabled || this.progressSuppressed) {
+    if (!this.enabled) {
       return noopSpinner;
     }
     if (!this.canRedraw) {

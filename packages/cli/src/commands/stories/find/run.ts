@@ -1,18 +1,18 @@
 import {
-  createJsonlOutput,
   createPhaseTracker,
+  createResultOutput,
   isDeliberateStop,
   isLimitReached,
   toPhaseSummary,
 } from "../../../lib/pipe";
 import {
-  contentSummary,
   findPhases,
-  listingSummary,
+  findSummary,
   processStageName,
-  resultsHeadline,
   stoppedEarlyMessage,
+  storiesCount,
 } from "./phases";
+import { STORY_COLUMNS } from "./columns";
 import { runStoryPipeline } from "./pipeline";
 import type { CapiFilter } from "./pipeline";
 import type { ClientFilter, FindContext } from "./types";
@@ -37,7 +37,7 @@ export async function runFind({
   limit?: number;
   capi?: CapiFilter;
 }): Promise<void> {
-  const output = createJsonlOutput({ limit });
+  const output = createResultOutput({ columns: STORY_COLUMNS, limit });
   // What the last stage still decides depends on the stages before it: with no
   // content fetch and no filter it only writes, and under the CAPI filter it
   // tests just the stories the CDN could not settle.
@@ -81,69 +81,82 @@ export async function runFind({
   } finally {
     tracker.stop();
     output.close();
+    // Taken before the flush, which on a terminal lasts as long as someone
+    // reads the table in the pager.
+    const elapsedMs = tracker.elapsedMs();
+    const timings = tracker.timings();
+    // On a terminal the results are a table printed once the bars are down,
+    // ahead of the summary so the summary is the last thing on screen.
+    await output.flush();
 
     const list = tracker.counts("list");
     const capiFilter = tracker.counts("capiFilter");
     const content = tracker.counts("content");
     const filtered = tracker.counts("process");
     ui.br();
-    ui.info(
-      resultsHeadline({
-        results: output.written,
-        tracker,
-        filters,
-        skipContent,
-        capi: capi !== undefined,
-      }),
-    );
+    for (const line of findSummary({
+      results: output.written,
+      elapsedMs,
+      tracker,
+      filters,
+      skipContent,
+      capi: capi !== undefined,
+    })) {
+      ui.log(line);
+    }
 
+    // Printed under the summary, so they are not lost above it.
+    const notes: Array<() => void> = [];
     if (earlyExit) {
-      ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined));
+      notes.push(() => ui.ok(stoppedEarlyMessage(stoppedByLimit ? limit : undefined)));
     }
 
     // Zero matches here means the filters matched nothing, or were written
     // against content that was never fetched. Only the user can tell which.
     if (skipContent && !capi && filters.length > 0 && filtered.succeeded === 0) {
-      ui.warn(
-        "--where sees list metadata only while --skip-content is set (full_slug, updated_at, content_type, " +
-          "tag_list, published, …), never story content. If the expression reads content, drop " +
-          "--skip-content, and add --capi-filter to keep the run fast.",
+      notes.push(() =>
+        ui.warn(
+          "--where sees list metadata only while --skip-content is set (full_slug, updated_at, content_type, " +
+            "tag_list, published, …), never story content. If the expression reads content, drop " +
+            "--skip-content, and add --capi-filter to keep the run fast.",
+        ),
       );
     }
 
     // The API rejects an unknown sort column on the first page, and the error
     // alone does not name the flag.
     if (list.failed > 0 && params.sort_by) {
-      ui.warn(
-        `If the error above is "Not sortable by this column", --sort ${params.sort_by} names a column the API cannot sort by. ` +
-          "Use a story column such as updated_at, created_at, published_at, name, slug or position, or a content field with the 'content.' prefix.",
+      notes.push(() =>
+        ui.warn(
+          `If the error above is "Not sortable by this column", --sort ${params.sort_by} names a column the API cannot sort by. ` +
+            "Use a story column such as updated_at, created_at, published_at, name, slug or position, or a content field with the 'content.' prefix.",
+        ),
       );
     }
 
-    // With no MAPI fetch left, an undecided story is tested on metadata alone.
-    if (skipContent && capi && capiFilter.unresolved > 0) {
-      ui.warn(
-        `${capiFilter.unresolved} stor${capiFilter.unresolved === 1 ? "y" : "ies"} could not be decided from CDN content ` +
-          "(folders, stories the CDN holds no content for, or a failed batch) and were tested on list metadata only. " +
-          "Drop --skip-content to fetch and test those from MAPI instead.",
+    // The summary counts an undecided story as passed, which is only true when a
+    // MAPI fetch follows. Without one, a --where on content can never match it,
+    // so a real match drops out under a clean summary. Folders are left out: no
+    // API has content for one, so a MAPI fetch would not decide it either.
+    const missing = capiFilter.unresolved - capiFilter.unresolvedFolders;
+    if (skipContent && capi && missing > 0) {
+      notes.push(() =>
+        ui.warn(
+          `${storiesCount(missing)} may be missing from the results. The CDN returned no content ` +
+            "to test --where on (stories it does not serve, or a failed request), and --skip-content " +
+            "leaves only list metadata, which a --where on content cannot match. Drop --skip-content to test " +
+            "them on Management API content.",
+        ),
       );
     }
 
-    const lines = [listingSummary(tracker)];
-    if (capi) {
-      lines.push(
-        `Filtering via CAPI: ${capiFilter.candidates}/${capiFilter.total} candidates, ${capiFilter.pruned} pruned before fetch, ${capiFilter.unresolved} undecided, ${capiFilter.failed} batch(es) failed. (${tracker.phase("capiFilter").mark()})`,
-      );
+    if (notes.length > 0) {
+      ui.br();
+      for (const note of notes) {
+        note();
+      }
     }
-    if (!skipContent) {
-      lines.push(contentSummary(tracker));
-    }
-    lines.push(
-      `${processName}: ${filtered.succeeded}/${filtered.total} matched, ${filtered.skipped} skipped, ${filtered.failed} failed. (${tracker.phase("process").mark()})`,
-    );
-    ui.list(lines);
 
-    const timings = tracker.timings();
     logger.info("Finding stories finished", {
       list,
       capiFilter,
@@ -153,7 +166,7 @@ export async function runFind({
       skipContent,
       capi: !!capi,
     });
-    reporter.addMeta("phaseTimingsMs", { ...timings, total: tracker.elapsedMs() });
+    reporter.addMeta("phaseTimingsMs", { ...timings, total: elapsedMs });
     reporter.addSummary("listStoriesResults", toPhaseSummary(list));
     if (capi) {
       // `succeeded` is what survived to a MAPI fetch, `skipped` what the

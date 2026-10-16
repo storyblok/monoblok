@@ -36,30 +36,11 @@ afterEach(() => {
   }
 });
 
-/**
- * `process.stdout.isTTY` is a plain data property, absent entirely when stdout
- * is not a terminal, so it is set and restored rather than spied on.
- */
-function withStdoutTTY(value: boolean, run: () => void) {
-  const original = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
-  Object.defineProperty(process.stdout, "isTTY", { value, configurable: true });
-  try {
-    run();
-  } finally {
-    if (original) {
-      Object.defineProperty(process.stdout, "isTTY", original);
-    } else {
-      delete (process.stdout as { isTTY?: boolean }).isTTY;
-    }
-  }
-}
-
-/** Only the two members `createJsonlOutput` reaches for. */
+/** Only the member `createJsonlOutput` reaches for. */
 const fakeUI = () =>
   ({
     // The real one reports whether stdout has room, and a sink waits on `false`.
     writeMachineOutput: vi.fn(() => true),
-    suppressProgress: vi.fn(),
   }) as unknown as UI & { writeMachineOutput: ReturnType<typeof vi.fn> };
 
 /** Writes one value through the sink and waits for it to be taken. */
@@ -107,26 +88,6 @@ describe("createJsonlOutput", () => {
     await writeLine(createJsonlOutput({ ui }), { id: 1 });
 
     expect(ui.writeMachineOutput).toHaveBeenCalledWith('{"id":1}');
-  });
-
-  // Data on stdout and bars on stderr reaching one terminal overwrite each
-  // other, and unlike the piped case this one is detectable rather than guessed.
-  it("should drop progress rendering when stdout is a terminal", async () => {
-    const { createJsonlOutput } = await freshModule();
-    const ui = fakeUI();
-
-    withStdoutTTY(true, () => createJsonlOutput({ write: () => {}, ui }));
-
-    expect(ui.suppressProgress).toHaveBeenCalled();
-  });
-
-  it("should keep progress rendering when stdout is redirected", async () => {
-    const { createJsonlOutput } = await freshModule();
-    const ui = fakeUI();
-
-    withStdoutTTY(false, () => createJsonlOutput({ write: () => {}, ui }));
-
-    expect(ui.suppressProgress).not.toHaveBeenCalled();
   });
 
   // A reader that has exited stops the run instead of letting it walk the whole scope.
@@ -285,5 +246,69 @@ describe("createCollectingSink", () => {
         }),
       ),
     ).rejects.toThrow("no");
+  });
+});
+
+describe("createTableOutput", () => {
+  const columns = [
+    { header: "id", value: (story: { id: number; slug: string }) => String(story.id) },
+    { header: "slug", value: (story: { id: number; slug: string }) => story.slug },
+  ];
+
+  // The table needs every row's width before the first line, so nothing goes
+  // out while the run is still working.
+  it("should print nothing until flushed, then the whole table", async () => {
+    const { createTableOutput } = await freshModule();
+    const printed: string[] = [];
+    const output = createTableOutput({
+      columns,
+      write: async (text) => {
+        printed.push(text);
+      },
+    });
+
+    await pipeline(
+      Readable.from([
+        { id: 1, slug: "home" },
+        { id: 2, slug: "about" },
+      ]),
+      output.sink,
+    );
+    expect(printed).toEqual([]);
+    expect(output.written).toBe(2);
+
+    await output.flush();
+    expect(printed).toHaveLength(1);
+    expect(printed[0]).toContain("1   home");
+    expect(printed[0]).toContain("2   about");
+  });
+
+  it("should stop the run at the limit", async () => {
+    const { createTableOutput, isLimitReached } = await freshModule();
+    const output = createTableOutput({ columns, limit: 1, write: async () => {} });
+
+    await expect(
+      pipeline(
+        Readable.from([
+          { id: 1, slug: "home" },
+          { id: 2, slug: "about" },
+        ]),
+        output.sink,
+        { signal: output.signal },
+      ),
+    ).rejects.toSatisfy(isLimitReached);
+
+    expect(output.written).toBe(1);
+  });
+
+  it("should print nothing for an empty result", async () => {
+    const { createTableOutput } = await freshModule();
+    const write = vi.fn(async () => {});
+    const output = createTableOutput({ columns, write });
+
+    await pipeline(Readable.from([]), output.sink);
+    await output.flush();
+
+    expect(write).not.toHaveBeenCalled();
   });
 });

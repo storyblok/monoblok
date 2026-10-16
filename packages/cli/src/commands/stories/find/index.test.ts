@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { delay, http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
@@ -6,10 +7,28 @@ import { vol } from "memfs";
 import "../index";
 import { storiesCommand } from "../command";
 import { makeMockStory } from "../__tests__/helpers";
+import type { MockStory } from "../__tests__/helpers";
 
 const errorSpy = vi.spyOn(console, "error");
+const warnSpy = vi.spyOn(console, "warn");
+
+/** A content filter decided by CDN content, with no MAPI fetch to fall back on. */
+const findCdnHeroes = [
+  "node",
+  "test",
+  "find",
+  "--space",
+  "12345",
+  "--capi-filter",
+  "--skip-content",
+  "--where",
+  '$..[?(@.component == "hero")]',
+];
 
 const server = setupServer();
+
+/** Undoes what a precondition changed outside of the mocks, after each test. */
+const cleanups: (() => void)[] = [];
 
 const preconditions = {
   /**
@@ -109,6 +128,71 @@ const preconditions = {
 
     return { linking, plain, missingUuid };
   },
+  failsToFetchContentOf(story: MockStory) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
+        HttpResponse.json({ error: "Not found" }, { status: 404 }),
+      ),
+    );
+  },
+  /**
+   * Hero stories the CDN serves, plus `missingFromCdn` hero stories it holds no
+   * content for, plus `folders`, which it never has content for. The listing
+   * omits `content`, as the real one does, so a story the CDN does not serve has
+   * nothing left to match a content filter on.
+   */
+  canFilterOnCdnContent({
+    servedByCdn,
+    missingFromCdn,
+    folders = 0,
+  }: {
+    servedByCdn: number;
+    missingFromCdn: number;
+    folders?: number;
+  }) {
+    const hero = (): MockStory => makeMockStory({ content: { _uid: "a", component: "hero" } });
+    const served = Array.from({ length: servedByCdn }, hero);
+    const missing = Array.from({ length: missingFromCdn }, hero);
+    const folderStories = Array.from({ length: folders }, () => makeMockStory({ is_folder: true }));
+    const stories = [...served, ...missing, ...folderStories];
+
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345", () =>
+        HttpResponse.json({ space: { id: 12345, name: "Test", first_token: "preview-token" } }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: stories.map(({ content: _content, ...metadata }) => metadata) },
+          { headers: { Total: String(stories.length), "Per-Page": "100" } },
+        ),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const uuids = new URL(request.url).searchParams.get("by_uuids")?.split(",") ?? [];
+        return HttpResponse.json(
+          { stories: served.filter((story) => uuids.includes(story.uuid)) },
+          { headers: { Total: String(served.length), "Per-Page": "100" } },
+        );
+      }),
+    );
+    return { served, missing };
+  },
+  /**
+   * stdout is a terminal. `isTTY` is a plain data property, absent entirely when
+   * stdout is not one, so it is set and restored rather than spied on. `TERM`
+   * is `dumb`, a terminal no pager runs on, so the table is printed directly.
+   */
+  stdoutIsATerminal() {
+    vi.stubEnv("TERM", "dumb");
+    const original = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    cleanups.push(() => {
+      if (original) {
+        Object.defineProperty(process.stdout, "isTTY", original);
+      } else {
+        delete (process.stdout as { isTTY?: boolean }).isTTY;
+      }
+    });
+  },
   /**
    * The reader on the other end of stdout exits after `afterLines`.
    *
@@ -135,8 +219,12 @@ describe("stories find command", () => {
     process.exitCode = undefined;
   });
   afterEach(() => {
+    for (const cleanup of cleanups.splice(0)) {
+      cleanup();
+    }
     vi.resetAllMocks();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
     vol.reset();
     server.resetHandlers();
     process.exitCode = undefined;
@@ -221,7 +309,7 @@ describe("stories find command", () => {
 
     expect(written).toHaveLength(1);
     expect(process.exitCode).toBeFalsy();
-    expect(stderr).toContain("Results: 1 stories with reference issues");
+    expect(stderr).toContain("Found 1 story with reference issues");
     expect(stderr).not.toContain("aborted");
   });
 
@@ -288,6 +376,93 @@ describe("stories find command", () => {
     expect(requests).toBe(0);
   });
 
+  // Without a MAPI fetch, a story the CDN does not serve is tested on list
+  // metadata, so a content filter rejects it whatever its content holds.
+  it("should warn that stories the CDN does not serve may be missing under --capi-filter --skip-content", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 2, missingFromCdn: 1 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(written).toHaveLength(2);
+    const warnings = stripVTControlCharacters(warnSpy.mock.calls.flat().join("\n"));
+    expect(warnings).toContain("1 story may be missing from the results");
+    expect(warnings).toContain("Drop --skip-content");
+  });
+
+  it("should not warn about missing stories when the CDN serves every story", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 3, missingFromCdn: 0 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(written).toHaveLength(3);
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
+  });
+
+  // No API has content for a folder, so dropping --skip-content would not
+  // decide it either.
+  it("should not count folders as stories that may be missing", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 3, missingFromCdn: 0, folders: 2 });
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
+  });
+
+  // The run exits 1, so a green headline above it would read as a success.
+  it("should mark the summary as failed when a story's content cannot be fetched", async () => {
+    const [story] = preconditions.canFindStories(3);
+    preconditions.failsToFetchContentOf(story);
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy.mock.calls.flat().join("\n")).toMatch(/✖ Found 2 stories in/);
+  });
+
+  // A person at a terminal is scanning for which stories matched, not reading
+  // story JSON, so the results become a table printed once the run is done.
+  it("should print a table of the results when stdout is a terminal", async () => {
+    const stories = preconditions.canFindStories(3);
+    preconditions.stdoutIsATerminal();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(written).toHaveLength(1);
+    const lines = stripVTControlCharacters(written[0]).trimEnd().split("\n");
+    // A blank line sets the table off from the progress bars above it.
+    expect(lines[0]).toBe("");
+    expect(lines[1]).toMatch(/^ID\s+NAME\s+FULL SLUG$/);
+    expect(lines.slice(2)).toEqual(
+      stories.map((story) =>
+        expect.stringMatching(new RegExp(`^${story.id}\\s.*\\s${story.full_slug}$`)),
+      ),
+    );
+  });
+
+  it("should add an issues column to a reference check on a terminal", async () => {
+    preconditions.canCheckReferences();
+    preconditions.stdoutIsATerminal();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+    ]);
+
+    const lines = stripVTControlCharacters(written.join("")).trim().split("\n");
+    expect(lines[0]).toMatch(/ISSUES$/);
+    expect(lines[1]).toMatch(/1 broken$/);
+  });
+
   // Placed before the closed-pipe test on purpose: that one leaves stdout closed
   // for the life of the process, and a run after it would stop before any stage
   // had work in flight.
@@ -339,7 +514,8 @@ describe("stories find command", () => {
     // Nothing that reads as a failure: no error line, and the teardown of the
     // listing that was still in flight is not counted against it.
     expect(stderr).not.toMatch(/operation was aborted/i);
-    expect(stderr).toMatch(/0 page\(s\) failed/);
+    expect(stderr).toMatch(/✔ Found \d+ stor(y|ies) in/);
+    expect(stderr).not.toMatch(/pages? failed/);
     // ...an explicit statement that it was on purpose...
     expect(stderr).toMatch(/Stopped early on purpose/);
     // ...and an exit code a script can trust.

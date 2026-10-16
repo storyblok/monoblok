@@ -8,7 +8,7 @@ import { createPipelineBackpressureLock } from "../../../utils/backpressure-lock
 import { CommandError } from "../../../utils/error/command-error";
 import { toError } from "../../../utils/error/error";
 import type { IssueType, TargetMeta } from "./references";
-import { toTargetMeta } from "./references";
+import { ISSUE_TYPES, toTargetMeta } from "./references";
 import type { ClientFilter, FindOptions } from "./types";
 import { matchesPublishStatus, publishStatusToQueryParams } from "./filters";
 import { parseCapiParams } from "./capi";
@@ -210,8 +210,6 @@ export function parseWorkflowStages(raw: string | undefined): string | undefined
   }
   return ids.join(",");
 }
-
-const ISSUE_TYPES: readonly IssueType[] = ["broken", "unpublished", "stale_url"];
 
 const isIssueType = (value: string): value is IssueType =>
   ISSUE_TYPES.some((type) => type === value);

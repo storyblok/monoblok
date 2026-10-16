@@ -9,7 +9,8 @@ import { Aside, Badge, LinkCard } from "@astrojs/starlight/components";
 
 The `stories find` command searches a space for stories matching a set of filters and prints them to
 stdout as JSONL, one story per line, ready to pipe into `jq`, save to a file, or pass to another
-command. It only reads, and never writes.
+command. Run in a terminal, it prints a table of the matches instead. It only reads, and never
+writes.
 
 _Introduced in_ <Badge text="4.24.0" variant="success" />
 
@@ -421,6 +422,33 @@ Whatever flags produced a line, two things hold. Every line carries `id`, `uuid`
 where `id` addresses the story for a write, `uuid` addresses it across spaces, and `full_slug`
 identifies it in a report. And `content` is on the line unless `--skip-content` was passed, in which
 case the line is list metadata only.
+
+### Output in a terminal
+
+When stdout is a terminal rather than a pipe or a file, the command shows its progress while it
+works and prints a table once it finishes: each story's ID, name and full slug, with an issues
+column added under `--check-references`. A folder's full slug ends in `/`.
+
+```bash
+storyblok stories find --space 12345 --container-block product
+```
+
+```text
+ID         NAME              FULL SLUG
+123456789  Running shoes     en/products/running-shoes
+123456790  Trail shoes       en/products/trail-shoes
+```
+
+A table taller than the terminal opens in `less`, so you can scroll and search it. The table is
+printed as is where `less` is not installed, on Windows, when `CI` is set, and when `PAGER` is empty
+or `cat`. Set `PAGER=cat` to turn the pager off, for example in a script that runs under a pseudo
+terminal.
+
+The table is for reading and may change between releases. Scripts should read JSONL, which is the
+only stable output format.
+
+To get JSONL in a terminal, pipe the output through another command, such as `| jq .` to read
+complete story objects or `| cat` to print them as they are.
 
 ### Pipe results into other commands
 
@@ -898,6 +926,11 @@ This combination filters on story content without putting content in the output:
 gives `--where` a bulk source of content to decide against, and `--skip-content` keeps the lines
 themselves list metadata.
 
+A story the CDN returns no content for (a folder, a story it does not serve, or a story in a failed
+batch) has no Management API fetch to fall back on, so `--where` tests it on list metadata only and
+a content expression cannot match it. The run warns with the count of such stories. Drop
+`--skip-content` to test them on Management API content.
+
 ### `--capi-params`
 
 Adds extra query parameters to the Content Delivery API reads that `--capi-filter` makes, so
@@ -1022,8 +1055,8 @@ can move between the read and the write.
 ### Exclude folders under `--capi-filter`
 
 The Content Delivery API holds no content for folders, so every folder in scope passes through the
-bulk stage undecided and costs an individual Management API request in any case. Adding
-`--entry-type story` excludes them, and usually removes the "could not be decided" warning as well.
+bulk stage and costs an individual Management API request in any case. Adding `--entry-type story`
+excludes them.
 
 ### Sort with `--sort` rather than in the output
 

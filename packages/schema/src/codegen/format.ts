@@ -1,4 +1,3 @@
-/** Indentation string (two spaces). */
 export const INDENT = "  ";
 
 /**
@@ -17,17 +16,8 @@ export class RawCode {
  * values like regexes are silently dropped and raw newlines break the parse.
  */
 export function quoteString(value: string): string {
-  const escaped = JSON.stringify(value)
-    .slice(1, -1) // strip the surrounding double quotes
-    .replace(/\\"/g, '"') // JSON-escaped `\"` → `"` (no need to escape " inside '...')
-    .replace(/'/g, "\\'"); // escape single quotes for the '...' delimiter
+  const escaped = JSON.stringify(value).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'");
   return `'${escaped}'`;
-}
-
-const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
-
-function formatKey(key: string): string {
-  return IDENTIFIER.test(key) ? key : quoteString(key);
 }
 
 // A line break ends a line comment and a star-slash ends a block comment;
@@ -37,6 +27,17 @@ const COMMENT_TERMINATORS = /[\r\n\u2028\u2029]+|\*\//g;
 /** Makes arbitrary text safe to place inside a line or block comment. */
 export function commentText(text: string): string {
   return text.replace(COMMENT_TERMINATORS, (match) => (match === "*/" ? "* /" : " "));
+}
+
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+export function isIdentifier(name: string): boolean {
+  return IDENTIFIER.test(name);
+}
+
+/** An object key as written in a literal, quoted unless it is a valid identifier. */
+export function propertyKey(key: string): string {
+  return isIdentifier(key) ? key : quoteString(key);
 }
 
 /**
@@ -75,7 +76,7 @@ export function formatValue(value: unknown, depth: number): string {
       return "{}";
     }
     const props = entries.map(
-      ([key, val]) => `${innerIndent}${formatKey(key)}: ${formatValue(val, depth + 1)},`,
+      ([key, val]) => `${innerIndent}${propertyKey(key)}: ${formatValue(val, depth + 1)},`,
     );
     return `{\n${props.join("\n")}\n${indent}}`;
   }

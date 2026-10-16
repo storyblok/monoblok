@@ -7,6 +7,7 @@ export default defineConfig({
     entry: {
       index: "./src/index.ts",
       "codegen/index": "./src/codegen/index.ts",
+      "internal/codegen": "./src/codegen/internal.ts",
       "field-plugins/index": "./src/field-plugins/index.ts",
     },
     format: ["esm", "cjs"],

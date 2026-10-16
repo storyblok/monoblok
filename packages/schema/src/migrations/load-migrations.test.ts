@@ -92,20 +92,32 @@ describe("loadMigrations", () => {
 });
 
 describe("nextMigrationId", () => {
-  it("should start at 0001 in an empty directory", () => {
-    expect(nextMigrationId([], "rename card title")).toBe("0001-rename-card-title");
+  const NOW = new Date("2026-10-16T09:05:03.120Z");
+
+  it("should prefix the id with the UTC creation time", () => {
+    expect(nextMigrationId([], "rename card title", NOW)).toBe("20261016090503-rename-card-title");
   });
 
-  it("should follow the highest existing prefix, keeping its width", () => {
-    expect(nextMigrationId(["0002-a", "0010-b", "0009-c"], "next")).toBe("0011-next");
-    expect(nextMigrationId(["00007-a"], "next")).toBe("00008-next");
+  it("should sort after existing numbered and timestamped migrations", () => {
+    expect(nextMigrationId(["0002-a", "0010-b"], "next", NOW)).toBe("20261016090503-next");
+    expect(nextMigrationId(["20261016090503-a"], "next", NOW)).toBe("20261016090504-next");
+    expect(nextMigrationId(["99999999999999999-a"], "next", NOW)).toBe("100000000000000000-next");
+
+    const ids = ["0002-a", "20261016090503-a"];
+    const next = nextMigrationId(ids, "next", NOW);
+    const ordered = selectMigrationFiles(
+      "m",
+      [...ids, next].map((id) => `${id}.ts`),
+    );
+
+    expect(ordered.at(-1)?.id).toBe(next);
   });
 
   it("should reduce the name to a slug the loader accepts", () => {
-    const id = nextMigrationId([], "Update heroBlock & card_v2!");
+    const id = nextMigrationId([], "Update heroBlock & card_v2!", NOW);
 
-    expect(id).toBe("0001-update-hero-block-card-v2");
+    expect(id).toBe("20261016090503-update-hero-block-card-v2");
     expect(selectMigrationFiles("m", [`${id}.ts`])).toHaveLength(1);
-    expect(nextMigrationId([], "Café Übersicht")).toBe("0001-cafe-ubersicht");
+    expect(nextMigrationId([], "Café Übersicht", NOW)).toBe("20261016090503-cafe-ubersicht");
   });
 });

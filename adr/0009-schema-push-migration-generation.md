@@ -1,7 +1,7 @@
 # ADR-0009: Migration Generation Integrated into Schema Push
 
-**Status:** Accepted; the migration file format is superseded by
-[ADR-0020](0020-typed-content-migrations-with-schema-snapshots.md) **Date:** 2026-04-10
+**Status:** Accepted; `schema push --typed` writes the file format of
+[ADR-0020](0020-typed-content-migrations-with-schema-snapshots.md) instead **Date:** 2026-04-10
 
 ## Context
 

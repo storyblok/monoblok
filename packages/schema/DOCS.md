@@ -75,27 +75,30 @@ checking.
 
 The Storyblok CLI commands
 [`migrations generate --schema`](/docs/tooling/cli/migrations-generate#typed-content-migrations) and
-[`schema push`](/docs/tooling/cli/schema-push#breaking-changes-and-migrations) generate the
+[`schema push --typed`](/docs/tooling/cli/schema-push#typed-content-migrations) generate the
 migration and its snapshot from the space’s current blocks.
 
 ### Rerun migrations safely
 
 `migrations apply` runs every migration in the directory each time, and the journal that records
-runs stays on the machine that ran them. Write each op so that a second pass changes nothing:
+runs stays on the machine that ran them. It skips ops that later schema changes superseded, such as
+an `addField` of a field a later migration renamed. Write each op so that a second pass changes
+nothing:
 
 - A callback can meet values it already converted. `Before` types the value as it was before the
   migration, so check its shape before converting it.
 - Return `undefined` from an `alterField` callback to leave the value unchanged.
 
 ```ts
+// `markdownToRichtext` stands for your own converter.
 alterField({ block: "intro", field: "body" }, (body) =>
   typeof body === "string" ? markdownToRichtext(body) : undefined,
 );
 ```
 
-The `@storyblok/schema/codegen` subpath exports the functions that generate these files as source
-strings, `generateSnapshot()` and `generateMigrationSource()`. It is experimental: the generated
-source can change in any release.
+The experimental `@storyblok/schema/codegen` subpath exports `generateSnapshot()` and
+`generateMigrationSource()`, which return these files as source strings. Their output can change in
+any release.
 
 ### Schema types
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { isBrowser } from "./isBrowser";
+import { isBrowser } from "./is-browser";
 
 let originalWindow: typeof globalThis.window | undefined;
 

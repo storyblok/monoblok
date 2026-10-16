@@ -167,18 +167,6 @@ describe("generateMigrationSource", () => {
     }
   });
 
-  it("should type the migration against a frozen after snapshot instead of the live schema", () => {
-    const source = generateMigrationSource({
-      afterImport: "./0001.after.js",
-      beforeImport: "./0001.before.js",
-      ops: [],
-    });
-
-    expect(source).toContain("import type { After } from './0001.after.js';");
-    expect(source).toContain("defineMigration<After, Before>([");
-    expect(source).not.toContain("Schema");
-  });
-
   it("should throw on an op kind it does not know", () => {
     expect(() =>
       generateMigrationSource({

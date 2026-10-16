@@ -76,13 +76,20 @@ export function createRemoteSpace(server: SetupServerApi) {
         vol.fromJSON({ [`${MIGRATIONS_DIRECTORY}/${id}.ts`]: "export default {};" });
       }
     },
-    /** The space's blocks as their field names, which ops are checked against. */
-    hasBlocks(blocks: Record<string, string[]>) {
-      const components = Object.entries(blocks).map(([name, fields], id) => ({
-        id: id + 1,
-        name,
-        schema: Object.fromEntries(fields.map((field, pos) => [field, { type: "text", pos }])),
-      }));
+    /** The space's blocks, which ops are checked against. A field given by name only is a text field. */
+    hasBlocks(blocks: Record<string, string[] | Record<string, string>>) {
+      const components = Object.entries(blocks).map(([name, fields], id) => {
+        const types = Array.isArray(fields)
+          ? Object.fromEntries(fields.map((field) => [field, "text"]))
+          : fields;
+        return {
+          id: id + 1,
+          name,
+          schema: Object.fromEntries(
+            Object.entries(types).map(([field, type], pos) => [field, { type, pos }]),
+          ),
+        };
+      });
       server.use(http.get(`${MAPI}/components`, () => HttpResponse.json({ components })));
     },
     hasStories(...entries: RemoteStory[]) {

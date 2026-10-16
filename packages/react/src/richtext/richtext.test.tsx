@@ -20,7 +20,7 @@ import CustomBoldWithRichText from "./fixtures/custom-bold-with-rich-text";
 import { defineStoryblokBlocks } from "../define-storyblok-blocks";
 import { createStoryblokRichText } from "./create-storyblok-richtext";
 
-const { StoryblokRichText } = defineStoryblokBlocks({ components: {} });
+const { StoryblokRichText } = defineStoryblokBlocks(() => ({ components: {} }));
 // Standalone renderer with no embedded block support — the replacement for
 // the removed module-level `StoryblokRichText` export from "./index".
 const RootStoryblokRichText = createStoryblokRichText();

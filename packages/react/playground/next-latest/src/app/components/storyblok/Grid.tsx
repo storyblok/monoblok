@@ -1,4 +1,4 @@
-import { StoryblokBlocks } from "@/lib/storyblok";
+import { StoryblokBlock } from "@/lib/storyblok";
 import type { BlockContent, StoryblokBlockComponentProps } from "@storyblok/react";
 
 type GridProps = StoryblokBlockComponentProps<{ columns: BlockContent[] }>;
@@ -11,7 +11,9 @@ const Grid = ({ block, editable }: GridProps) => {
   return (
     <section>
       <div data-test="grid" className="grid grid-cols-3 gap-6" {...editable}>
-        <StoryblokBlocks blocks={block.columns} />
+        {block.columns.map((column) => (
+          <StoryblokBlock key={column._uid} block={column} />
+        ))}
       </div>
     </section>
   );

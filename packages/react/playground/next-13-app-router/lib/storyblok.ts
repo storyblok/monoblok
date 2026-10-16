@@ -9,6 +9,6 @@ export const apiClient = createApiClient({
   accessToken: process.env.STORYBLOK_ACCESS_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
 });
 
-export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks({
+export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
   components: { teaser: Teaser, page: Page, grid: Grid, feature: Feature },
-});
+}));

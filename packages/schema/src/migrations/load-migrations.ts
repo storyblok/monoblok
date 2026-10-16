@@ -3,8 +3,8 @@
  *
  * Identity is the filename, not anything inside the file, so the same
  * migration has the same id on every machine. The name pattern admits no dots,
- * so the `*.before.ts` schema snapshots that sit beside migrations, and
- * anything else in the directory, are left alone.
+ * so the `*.before.ts` and `*.after.ts` schema snapshots that sit beside
+ * migrations, and anything else in the directory, are left alone.
  */
 import type { CompiledMigration } from "./define-migration";
 import { MigrationError } from "./migration-error";
@@ -69,7 +69,6 @@ export function selectMigrationFiles(directory: string, filenames: string[]): Mi
   return selected.map(({ id, filename }) => ({ id, file: joinPath(directory, filename) }));
 }
 
-const MIN_PREFIX_WIDTH = 4;
 const MAX_SLUG_LENGTH = 60;
 
 /** Reduces free text to a slug the migration filename pattern accepts. */
@@ -86,21 +85,31 @@ function toMigrationSlug(name: string): string {
   return slug || "migration";
 }
 
+/** `YYYYMMDDHHmmss` in UTC. */
+function timestampPrefix(date: Date): string {
+  return date.toISOString().replace(/\D/g, "").slice(0, 14);
+}
+
 /**
- * The id for a new migration: one past the highest numeric prefix among the
- * existing ids, zero-padded to the width they use (at least four digits), with
- * `name` reduced to a slug the loader accepts.
+ * The id for a new migration: the UTC creation time as `YYYYMMDDHHmmss`, so
+ * migrations written on different branches do not claim the same prefix, with
+ * `name` reduced to a slug the loader accepts. When an existing id already
+ * sorts at or after that time, the prefix is one past the highest existing one,
+ * so the new migration still runs last.
  */
-export function nextMigrationId(existingIds: readonly string[], name: string): string {
-  let highest = 0;
-  let width = MIN_PREFIX_WIDTH;
+export function nextMigrationId(
+  existingIds: readonly string[],
+  name: string,
+  now: Date = new Date(),
+): string {
+  let prefix = timestampPrefix(now);
   for (const id of existingIds) {
-    const prefix = /^(\d+)-/.exec(id)?.[1];
-    if (prefix === undefined) continue;
-    highest = Math.max(highest, Number(prefix));
-    width = Math.max(width, prefix.length);
+    const existing = /^(\d+)-/.exec(id)?.[1];
+    if (existing !== undefined && compareNumeric(existing, prefix) >= 0) {
+      prefix = String(BigInt(existing) + 1n).padStart(existing.length, "0");
+    }
   }
-  return `${String(highest + 1).padStart(width, "0")}-${toMigrationSlug(name)}`;
+  return `${prefix}-${toMigrationSlug(name)}`;
 }
 
 export async function discoverMigrations(directory: string): Promise<MigrationFile[]> {

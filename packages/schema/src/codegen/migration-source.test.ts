@@ -119,6 +119,76 @@ describe("generateMigrationSource", () => {
     expect(migration.ops).toEqual([]);
   });
 
+  it("should generate a placeholder for a conversion it cannot write that compiles and refuses the op", async () => {
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('title', { type: 'text' }),",
+      "  defineField('count', { type: 'boolean' }),",
+      "  defineField('subtitle', { type: 'text' }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { hero } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": SCHEMA,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [
+          { kind: "alterField", block: "hero", field: "count" },
+          { kind: "addField", block: "hero", field: "link" },
+          { kind: "fillField", block: "hero", field: "subtitle" },
+        ],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+      const { default: migration } = await import(path.join(modules.directory, "0001.ts"));
+      const outcome = applyMigration({
+        migration,
+        id: "0001",
+        space: "1",
+        stories: [{ id: 1, slug: "home", content: { _uid: "a", component: "hero", count: true } }],
+      });
+
+      expect(outcome.writes).toEqual([]);
+      expect(outcome.refusals).toHaveLength(1);
+      expect(outcome.refusals[0].reason).toContain(
+        "Replace this placeholder for hero.count before applying the migration.",
+      );
+      expect(outcome.refusals[0].reason).toContain("hero.link");
+      expect(outcome.refusals[0].reason).toContain("hero.subtitle");
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should type the migration against a frozen after snapshot instead of the live schema", () => {
+    const source = generateMigrationSource({
+      afterImport: "./0001.after.js",
+      beforeImport: "./0001.before.js",
+      ops: [],
+    });
+
+    expect(source).toContain("import type { After } from './0001.after.js';");
+    expect(source).toContain("defineMigration<After, Before>([");
+    expect(source).not.toContain("Schema");
+  });
+
+  it("should throw on an op kind it does not know", () => {
+    expect(() =>
+      generateMigrationSource({
+        schemaImport: "./schema",
+        // A JavaScript caller is not held to the op union.
+        ops: [JSON.parse('{ "kind": "bogus", "block": "hero", "field": "a" }')],
+      }),
+    ).toThrow(/Unknown migration op kind/);
+  });
+
   it("should keep a todo with line breaks inside its comment", async () => {
     const { migration } = await loadGenerated({
       schemaImport: "./schema",

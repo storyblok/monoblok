@@ -1,5 +1,10 @@
 import { isRecord } from "../utils/is-record";
-import { generateFieldCode, resolveFieldRestriction, sortSchemaByPos } from "./field";
+import {
+  generateFieldCode,
+  RESTRICTABLE_FIELD_TYPES,
+  resolveFieldRestriction,
+  sortSchemaByPos,
+} from "./field";
 import { commentText, INDENT, quoteString } from "./format";
 import { componentVarName, resolveVarNames } from "./names";
 
@@ -14,25 +19,37 @@ export type WireComponent = {
 };
 
 export type GenerateSnapshotOptions = {
-  /** Every component in the space, as it stands before the migration. */
+  /** Every component of the schema the snapshot freezes. */
   components: readonly WireComponent[];
-  /** The blocks the migration reads into. Unknown names are skipped. */
-  reads: readonly string[];
+  /** The blocks emitted with their fields. Unknown names are skipped. */
+  blocks: readonly string[];
+  /**
+   * `before` freezes the schema a migration reads (`type Before`), `after` the
+   * schema it writes (`type After`). Defaults to `before`.
+   */
+  kind?: "before" | "after";
   /** Named in the header comment. */
   migrationId?: string;
 };
 
-/** Field types whose restriction lists name the blocks that may nest in them. */
-const NESTING_FIELD_TYPES = new Set(["bloks", "richtext"]);
 const OPTION_FIELD_TYPES = new Set(["option", "options"]);
 const SNAPSHOT_IMPORTS = ["defineBlock", "defineField", "defineSchema", "Schema"];
 
-type FieldRecord = Record<string, unknown>;
+type FieldRecord = Record<string, unknown> & { type: string };
 
-function fieldsOf(component: WireComponent): [string, FieldRecord][] {
-  return isRecord(component.schema)
-    ? sortSchemaByPos(component.schema as Record<string, FieldRecord>)
-    : [];
+function isFieldRecord(value: unknown): value is FieldRecord {
+  return isRecord(value) && typeof value.type === "string";
+}
+
+/** The component's fields in editor order, skipping entries that are not field records. */
+function fieldsOf(component: WireComponent | undefined): [string, FieldRecord][] {
+  if (!component || !isRecord(component.schema)) {
+    return [];
+  }
+  const fields = Object.entries(component.schema).filter((entry): entry is [string, FieldRecord] =>
+    isFieldRecord(entry[1]),
+  );
+  return sortSchemaByPos(Object.fromEntries(fields));
 }
 
 type RestrictionLookup = {
@@ -63,13 +80,9 @@ function restrictionLookup(components: readonly WireComponent[]): RestrictionLoo
  * The block names a nesting field's allow list resolves to, or `undefined` when
  * no allow list is in force. Folder and tag restrictions are resolved to the
  * blocks currently in that folder or carrying that tag. A denylist resolves to
- * `undefined` too: it admits every block it does not name, and following it
- * would drag the whole space into the snapshot.
+ * `undefined` too: it admits every block it does not name.
  */
 function allowedBlockNames(field: FieldRecord, lookup: RestrictionLookup): string[] | undefined {
-  if (!NESTING_FIELD_TYPES.has(String(field.type))) {
-    return undefined;
-  }
   const { components, groupUuids, tagIds } = lookup;
   const restriction = resolveFieldRestriction(field, groupUuids, tagIds);
   switch (restriction.kind) {
@@ -96,18 +109,59 @@ function allowedBlockNames(field: FieldRecord, lookup: RestrictionLookup): strin
   }
 }
 
+type NestingField = { field: FieldRecord; allowed: string[] | undefined };
+
+function nestingFieldsOf(
+  component: WireComponent | undefined,
+  lookup: RestrictionLookup,
+): NestingField[] {
+  return fieldsOf(component)
+    .filter(([, field]) => RESTRICTABLE_FIELD_TYPES.has(field.type))
+    .map(([, field]) => ({ field, allowed: allowedBlockNames(field, lookup) }));
+}
+
+/**
+ * Blocks that can hold one of `blocks` at any depth, so `under` can name them.
+ * A nesting field without an allow list can hold every block.
+ */
+function containersOf(
+  blocks: readonly string[],
+  components: readonly WireComponent[],
+  lookup: RestrictionLookup,
+): Set<string> {
+  const nesting = new Map(components.map((c) => [c.name, nestingFieldsOf(c, lookup)]));
+  const contained = new Set(blocks);
+  const containers = new Set<string>();
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const [name, fields] of nesting) {
+      if (containers.has(name)) continue;
+      const holds = fields.some(
+        ({ allowed }) => !allowed || allowed.some((child) => contained.has(child)),
+      );
+      if (holds) {
+        containers.add(name);
+        contained.add(name);
+        grew = true;
+      }
+    }
+  }
+  return containers;
+}
+
 /**
  * Keeps only the keys that shape a field's content type. A space holds options
  * the editor no longer writes, in shapes `defineField` rejects; the snapshot
  * types content, so it drops them rather than failing to compile. Restrictions
  * become a plain block-name allow list.
  */
-function typingField(field: FieldRecord, allowed: string[] | undefined): FieldRecord {
-  const typed: FieldRecord = { type: field.type };
+function typingField(field: FieldRecord, allowed: string[] | undefined): Record<string, unknown> {
+  const typed: Record<string, unknown> = { type: field.type };
   if (field.required === true) {
     typed.required = true;
   }
-  const isOptionField = OPTION_FIELD_TYPES.has(String(field.type));
+  const isOptionField = OPTION_FIELD_TYPES.has(field.type);
   if (isOptionField && typeof field.source === "string" && field.source !== "") {
     typed.source = field.source;
   }
@@ -126,72 +180,91 @@ function typingField(field: FieldRecord, allowed: string[] | undefined): FieldRe
   return typed;
 }
 
+const HEADER = {
+  before: {
+    subject: "The schema as it stood before",
+    blocks: "Blocks the migration reads list their fields",
+  },
+  after: {
+    subject: "The schema written by",
+    blocks: "Blocks the migration writes list their fields",
+  },
+} as const;
+
 /**
- * Generates a `.before.ts` module: the schema as it stood before a migration,
- * exporting `type Before` for `defineMigration<After, Before>`.
+ * Generates a `.before.ts` or `.after.ts` module that freezes part of a schema
+ * for one migration, exporting `type Before` or `type After` for
+ * `defineMigration<After, Before>`.
  *
- * Only the blocks the migration reads into are emitted with their fields.
- * Every other block reachable from them through an allow list, transitively, is
- * a name-only stub: enough to keep nested `bloks` fields typed, while keeping
- * the file small on a space where one section whitelists most of the schema.
- * `nameOnlyBlocks` names every block not emitted with its fields, so a check
- * against the snapshot can tell an existing block from a new one.
+ * Only `blocks` are emitted with their fields. Name-only stubs cover the blocks
+ * their fields allow, which keeps nested `bloks` fields typed, and, in a
+ * `before` snapshot, every block that can contain one of them, so `under` can
+ * name it. A `before` snapshot's `nameOnlyBlocks` names every block not emitted
+ * with its fields, so a check against it can tell an existing block from a new
+ * one.
  */
 export function generateSnapshot(options: GenerateSnapshotOptions): string {
-  const { components, migrationId } = options;
+  const { components, migrationId, kind = "before" } = options;
   const byName = new Map(components.map((c) => [c.name, c]));
-  const reads = [...new Set(options.reads)].filter((name) => byName.has(name)).sort();
-  const allowedByField = new Map<FieldRecord, string[] | undefined>();
-
+  const blocks = [...new Set(options.blocks)].filter((name) => byName.has(name)).sort();
   const lookup = restrictionLookup(components);
 
-  const reached = new Set(reads);
-  const queue = [...reads];
-  for (let next = 0; next < queue.length; next++) {
-    const component = byName.get(queue[next]) as WireComponent;
-    for (const [, field] of fieldsOf(component)) {
-      const allowed = allowedBlockNames(field, lookup);
+  const allowedByField = new Map<FieldRecord, string[] | undefined>();
+  const stubNames = new Set<string>();
+  for (const name of blocks) {
+    for (const { field, allowed } of nestingFieldsOf(byName.get(name), lookup)) {
       allowedByField.set(field, allowed);
-      for (const name of allowed ?? []) {
-        if (byName.has(name) && !reached.has(name)) {
-          reached.add(name);
-          queue.push(name);
-        }
+      for (const child of allowed ?? []) {
+        if (byName.has(child)) stubNames.add(child);
       }
     }
   }
+  if (kind === "before") {
+    for (const container of containersOf(blocks, components, lookup)) {
+      stubNames.add(container);
+    }
+  }
 
-  const stubs = [...reached].filter((name) => !reads.includes(name)).sort();
-  const ordered = [...reads, ...stubs];
+  const stubs = [...stubNames].filter((name) => !blocks.includes(name)).sort();
+  const ordered = [...blocks, ...stubs];
   const varNames = resolveVarNames(ordered, componentVarName, SNAPSHOT_IMPORTS);
-  const hasFields = reads.some((name) => fieldsOf(byName.get(name) as WireComponent).length > 0);
+  const hasFields = blocks.some((name) => fieldsOf(byName.get(name)).length > 0);
+  const header = HEADER[kind];
+  const typeName = kind === "before" ? "Before" : "After";
 
   const lines: string[] = [
     "/**",
     migrationId
-      ? ` * The schema as it stood before migration ${commentText(migrationId)}.`
-      : " * The schema as it stood before the migration beside it.",
-    " * Generated. Blocks the migration reads carry their fields; blocks they allow",
-    " * are name-only stubs. Keep this file unchanged once the migration ships, so",
-    " * the fields it reads stay typed after the schema moves on.",
+      ? ` * ${header.subject} migration ${commentText(migrationId)}.`
+      : ` * ${header.subject} the migration beside it.`,
+    ` * Generated. ${header.blocks}; the blocks around them are name-only`,
+    " * stubs. Keep this file unchanged once the migration ships, so the migration",
+    " * stays typed after later schema changes.",
     " */",
-    `import { defineBlock, ${hasFields ? "defineField, " : ""}defineSchema } from '@storyblok/schema';`,
+  ];
+  const valueImports = [
+    ...(ordered.length > 0 ? ["defineBlock"] : []),
+    ...(hasFields ? ["defineField"] : []),
+    "defineSchema",
+  ];
+  lines.push(
+    `import { ${valueImports.join(", ")} } from '@storyblok/schema';`,
     "import type { Schema } from '@storyblok/schema';",
     "",
-  ];
+  );
 
   ordered.forEach((name, i) => {
-    if (!reads.includes(name)) {
+    if (!blocks.includes(name)) {
       lines.push(`const ${varNames[i]} = defineBlock({ name: ${quoteString(name)}, fields: [] });`);
       return;
     }
-    const component = byName.get(name) as WireComponent;
+    const component = byName.get(name);
     lines.push(`const ${varNames[i]} = defineBlock({`);
     lines.push(`${INDENT}name: ${quoteString(name)},`);
-    if (typeof component.is_root === "boolean") {
+    if (typeof component?.is_root === "boolean") {
       lines.push(`${INDENT}is_root: ${component.is_root},`);
     }
-    if (typeof component.is_nestable === "boolean") {
+    if (typeof component?.is_nestable === "boolean") {
       lines.push(`${INDENT}is_nestable: ${component.is_nestable},`);
     }
     const fields = fieldsOf(component);
@@ -218,23 +291,25 @@ export function generateSnapshot(options: GenerateSnapshotOptions): string {
   }
   lines.push(`${INDENT}},`);
   lines.push("});", "");
-  lines.push("export type Before = Schema<typeof schema>;", "");
+  lines.push(`export type ${typeName} = Schema<typeof schema>;`, "");
 
-  const nameOnlyBlocks = components
-    .map((component) => component.name)
-    .filter((name) => !reads.includes(name))
-    .sort();
-  lines.push(
-    "/** Blocks in the space whose fields are not part of this snapshot. */",
-    nameOnlyBlocks.length === 0
-      ? "export const nameOnlyBlocks: string[] = [];"
-      : [
-          "export const nameOnlyBlocks: string[] = [",
-          ...nameOnlyBlocks.map((name) => `${INDENT}${quoteString(name)},`),
-          "];",
-        ].join("\n"),
-    "",
-  );
+  if (kind === "before") {
+    const nameOnlyBlocks = components
+      .map((component) => component.name)
+      .filter((name) => !blocks.includes(name))
+      .sort();
+    lines.push(
+      "/** Blocks in the space whose fields are not part of this snapshot. */",
+      nameOnlyBlocks.length === 0
+        ? "export const nameOnlyBlocks: string[] = [];"
+        : [
+            "export const nameOnlyBlocks: string[] = [",
+            ...nameOnlyBlocks.map((name) => `${INDENT}${quoteString(name)},`),
+            "];",
+          ].join("\n"),
+      "",
+    );
+  }
 
   return lines.join("\n");
 }

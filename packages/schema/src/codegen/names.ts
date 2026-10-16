@@ -8,12 +8,7 @@ function slugify(text: string): string {
     .replace(/-+$/, "");
 }
 
-/**
- * Converts an arbitrary name into a valid camelCase JS identifier.
- * `slugify` reduces the input to `[a-z0-9_-]` (symbols stripped, spaces → `-`),
- * then `_`/`-` runs are camel-cased and an empty or leading-digit result is
- * guarded, so the output is always usable as an identifier.
- */
+/** Converts an arbitrary name into a valid camelCase JS identifier. */
 export function toCamelCaseIdentifier(str: string): string {
   const camel = slugify(str)
     .replace(/^[_-]+/, "")

@@ -1,7 +1,8 @@
 import type { CompiledMigration, MigrationOp } from "@storyblok/schema/migrations";
+import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
-/** The field names of each block the space holds now. */
-export type LiveFields = ReadonlyMap<string, ReadonlySet<string>>;
+/** The fields of each block the space holds now, mapped to their field types. */
+export type LiveFields = ReadonlyMap<string, ReadonlyMap<string, string | undefined>>;
 
 export type StaleOp = { op: MigrationOp; reason: string };
 
@@ -19,12 +20,30 @@ function fieldEffects(op: MigrationOp): { writes: readonly string[]; removes: re
     case "reorderField":
       return { writes: [op.field], removes: [] };
     case "splitField":
-      return { writes: op.into, removes: [] };
+      return { writes: op.into, removes: op.into.includes(op.field) ? [] : [op.field] };
     case "mergeFields":
-      return { writes: [op.into], removes: [] };
+      return { writes: [op.into], removes: op.fields.filter((field) => field !== op.into) };
     default:
       return { writes: [], removes: [] };
   }
+}
+
+/**
+ * A `coerceField` whose target no longer matches the field's type in the space,
+ * such as a text → number conversion after the field was changed back to text.
+ */
+function retypedField(
+  op: MigrationOp,
+  fields: ReadonlyMap<string, string | undefined>,
+): { field: string; type: string } | undefined {
+  if (op.kind !== "coerceField") {
+    return undefined;
+  }
+  const type = fields.get(op.field);
+  if (type === undefined || coercionBetween(type, type)?.to === op.to) {
+    return undefined;
+  }
+  return { field: op.field, type };
 }
 
 function describeOp(op: MigrationOp): string {
@@ -33,10 +52,10 @@ function describeOp(op: MigrationOp): string {
 
 /**
  * Splits off the ops a later schema change superseded: one that writes a field
- * the block no longer has, or removes a field the block has again. Every
- * migration reruns, so without this an old op would undo the later change,
- * such as adding back a field that was since renamed. Blocks the space does not
- * hold are not checked.
+ * the block no longer has, removes a field the block has again, or coerces a
+ * field to a type it no longer has. Every migration reruns, so without this an
+ * old op would undo the later change, such as adding back a field that was
+ * since renamed. Blocks the space does not hold are not checked.
  */
 export function withoutStaleOps(
   migration: CompiledMigration,
@@ -51,16 +70,17 @@ export function withoutStaleOps(
     const { writes, removes } = fieldEffects(op);
     const missing = writes.find((field) => !fields.has(field));
     const restored = removes.find((field) => fields.has(field));
-    if (missing === undefined && restored === undefined) {
+    const retyped = retypedField(op, fields);
+    const prefix = `${describeOp(op)} skipped: the ${op.block} block in the space`;
+    if (missing !== undefined) {
+      stale.push({ op, reason: `${prefix} has no field "${missing}".` });
+    } else if (restored !== undefined) {
+      stale.push({ op, reason: `${prefix} has the field "${restored}" again.` });
+    } else if (retyped !== undefined) {
+      stale.push({ op, reason: `${prefix} has "${retyped.field}" as a ${retyped.type} field.` });
+    } else {
       return true;
     }
-    stale.push({
-      op,
-      reason:
-        missing === undefined
-          ? `${describeOp(op)} skipped: the ${op.block} block in the space has the field "${restored}" again.`
-          : `${describeOp(op)} skipped: the ${op.block} block in the space has no field "${missing}".`,
-    });
     return false;
   });
   return {

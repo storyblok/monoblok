@@ -59,10 +59,11 @@ function blockNames(source: string): string[] {
 }
 
 describe("generateSnapshot", () => {
-  it("should emit the read block with its fields and every block it reaches as a stub", () => {
-    const source = generateSnapshot({ components, reads: ["article"] });
+  it("should emit the block with its fields and the blocks its fields allow as stubs", () => {
+    const source = generateSnapshot({ components, blocks: ["article"] });
 
-    expect(blockNames(source)).toEqual(["article", "badge", "card", "seo"]);
+    // `badge` is allowed only by the `card` stub, whose fields are not emitted.
+    expect(blockNames(source)).toEqual(["article", "card", "seo"]);
     expect(source).toContain("defineField('author', {\n      type: 'text',\n    })");
     expect(source).toContain("defineBlock({ name: 'card', fields: [] })");
     expect(source).toContain(
@@ -71,7 +72,7 @@ describe("generateSnapshot", () => {
   });
 
   it("should flatten folder and name restrictions to block-name allow lists", () => {
-    const source = generateSnapshot({ components, reads: ["article"] });
+    const source = generateSnapshot({ components, blocks: ["article"] });
 
     expect(source).toContain("allow: [\n        'card',\n      ]");
     expect(source).toContain("allow: [\n        'seo',\n      ]");
@@ -92,7 +93,7 @@ describe("generateSnapshot", () => {
       },
     };
 
-    const source = generateSnapshot({ components: [page, promo, footer], reads: ["page"] });
+    const source = generateSnapshot({ components: [page, promo, footer], blocks: ["page"] });
 
     expect(blockNames(source)).toEqual(["page", "promo"]);
   });
@@ -105,7 +106,7 @@ describe("generateSnapshot", () => {
       },
     };
 
-    const source = generateSnapshot({ components: [page, ...components], reads: ["page"] });
+    const source = generateSnapshot({ components: [page, ...components], blocks: ["page"] });
 
     expect(blockNames(source)).toEqual(["page"]);
   });
@@ -120,10 +121,66 @@ describe("generateSnapshot", () => {
       schema: { kids: { type: "bloks", restrict_components: true, component_whitelist: ["a"] } },
     };
 
-    expect(blockNames(generateSnapshot({ components: [a, b], reads: ["a", "b"] }))).toEqual([
+    expect(blockNames(generateSnapshot({ components: [a, b], blocks: ["a", "b"] }))).toEqual([
       "a",
       "b",
     ]);
+  });
+
+  it("should stub every block that can contain the block, so `under` can name it", async () => {
+    const hero: WireComponent = { name: "hero", schema: { headline: { type: "text" } } };
+    const section: WireComponent = {
+      name: "section",
+      schema: {
+        items: { type: "bloks", restrict_components: true, component_whitelist: ["hero"] },
+      },
+    };
+    const page: WireComponent = { name: "page", schema: { body: { type: "bloks" } } };
+    const modules = await writeModules({
+      "0001.before.ts": generateSnapshot({
+        components: [hero, section, page],
+        blocks: ["hero"],
+      }),
+      "0001.ts": [
+        "import { alterField, defineMigration } from '@storyblok/schema/migrations';",
+        "import type { Before } from './0001.before';",
+        "export default defineMigration<Before, Before>([",
+        "  alterField({ block: 'hero', field: 'headline', under: ['page', 'section'] }, (v) => v),",
+        "]);",
+      ].join("\n"),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should skip field entries that are not field records", async () => {
+    const broken: WireComponent = {
+      name: "broken",
+      schema: { title: { type: "text" }, gone: null, flat: "text", untyped: { pos: 1 } },
+    };
+    const page: WireComponent = { name: "page", schema: { body: null, items: { type: "bloks" } } };
+    const source = generateSnapshot({ components: [broken, page], blocks: ["broken"] });
+    const modules = await writeModules({ "broken.before.ts": source });
+
+    try {
+      expect(source).not.toMatch(/'gone'|'flat'|'untyped'/);
+      expect(modules.typeErrors()).toEqual([]);
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
+  it("should freeze the written schema as `After`, without the name-only list", () => {
+    const source = generateSnapshot({ components, blocks: ["card"], kind: "after" });
+
+    expect(source).toContain("export type After = Schema<typeof schema>;");
+    expect(source).not.toContain("nameOnlyBlocks");
+    // Only `under` names the blocks that contain `card`, and `under` is typed against `Before`.
+    expect(blockNames(source)).toEqual(["card", "badge"]);
   });
 
   it("should compile when the space holds options the editor no longer writes", async () => {
@@ -137,7 +194,7 @@ describe("generateSnapshot", () => {
       },
     };
     const modules = await writeModules({
-      "legacy.before.ts": generateSnapshot({ components: [legacy], reads: ["legacy"] }),
+      "legacy.before.ts": generateSnapshot({ components: [legacy], blocks: ["legacy"] }),
     });
 
     try {
@@ -157,7 +214,7 @@ describe("generateSnapshot", () => {
     const modules = await writeModules({
       "define.before.ts": generateSnapshot({
         components: [define],
-        reads: ["define"],
+        blocks: ["define"],
         migrationId: "0001-x */ broken",
       }),
     });
@@ -181,7 +238,7 @@ describe("generateSnapshot", () => {
         "const schema = defineSchema({ blocks: { article } });",
         "export type Schema = InferSchema<typeof schema>;",
       ].join("\n"),
-      "0001-rename-author.before.ts": generateSnapshot({ components, reads: ["article"] }),
+      "0001-rename-author.before.ts": generateSnapshot({ components, blocks: ["article"] }),
       "0001-rename-author.ts": generateMigrationSource({
         schemaImport: "./schema",
         beforeImport: "./0001-rename-author.before",
@@ -206,7 +263,7 @@ describe("generateSnapshot", () => {
 
   it("should export the schema a migration is validated against", async () => {
     const modules = await writeModules({
-      "0001.before.ts": generateSnapshot({ components, reads: ["article"] }),
+      "0001.before.ts": generateSnapshot({ components, blocks: ["article"] }),
     });
 
     try {

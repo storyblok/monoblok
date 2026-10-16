@@ -25,8 +25,14 @@
       "field-plugins": [
         "./dist/field-plugins/index.d.cts"
       ],
+      "migrations": [
+        "./dist/migrations/index.d.cts"
+      ],
       "codegen": [
         "./dist/codegen/index.d.cts"
+      ],
+      "internal/codegen": [
+        "./dist/internal/codegen.d.cts"
       ]
     }
   },
@@ -42,6 +48,14 @@
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",
       "require": "./dist/field-plugins/index.cjs"
+    },
+    "./internal/codegen": {
+      "import": "./dist/internal/codegen.mjs",
+      "require": "./dist/internal/codegen.cjs"
+    },
+    "./migrations": {
+      "import": "./dist/migrations/index.mjs",
+      "require": "./dist/migrations/index.cjs"
     },
     "./package.json": "./package.json"
   },

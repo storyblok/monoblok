@@ -5,7 +5,6 @@ import type { Component } from "../../types";
 // Re-exported so the schema command tree keeps a single util import; the shared
 // definition lives in `src/utils/object.ts`.
 export { isRecord } from "../../utils/object";
-export { formatValue, INDENT, quoteString, RawCode } from "@storyblok/schema/codegen";
 
 /** Fields to strip from Component before serialization (read-only / API-assigned). */
 export const COMPONENT_STRIP_KEYS = new Set([

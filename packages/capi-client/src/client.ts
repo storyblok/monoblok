@@ -13,6 +13,7 @@ import { applyCvToQuery, extractCv, extractSpaceVersion, isCvPinned } from "./ut
 import { querySerializer } from "./utils/query-serializer";
 import { createCacheKey, isSpacesMeRequest, shouldUseCache } from "./utils/request";
 import { createTokenId } from "./utils/token-id";
+import { resolveKy } from "./utils/resolve-ky";
 import {
   haveVersionsChanged,
   mergeVersions,
@@ -24,6 +25,7 @@ import {
 import { getRegionBaseUrl, type Region } from "@storyblok/region-helper";
 import type { Block as Component } from "./generated/types/block";
 import type { RetryOptions } from "ky";
+import kyDefault from "ky";
 import type { Client, RequestOptions, ResolvedRequestOptions } from "./generated/capi/client";
 import { createStoriesResource } from "./resources/stories";
 import { createLinksResource } from "./resources/links";
@@ -32,6 +34,9 @@ import { createDatasourcesResource } from "./resources/datasources";
 import { createDatasourceEntriesResource } from "./resources/datasource-entries";
 import { createSpacesResource } from "./resources/spaces";
 import { createExperimentsResource } from "./resources/experiments";
+
+// ky is ESM-only: in the CJS build its default import is the module namespace, so unwrap it (see utils/resolve-ky).
+const kyFn = resolveKy<typeof kyDefault>(kyDefault);
 
 // ---------------------------------------------------------------------------
 // Client types (co-located with runtime)
@@ -343,6 +348,7 @@ export const createApiClientBase = <
       auth: accessToken,
       baseUrl: baseUrl || getRegionBaseUrl(region),
       headers,
+      ky: kyFn,
       // Default serializer throws on nested objects; CAPI needs `filter_query`
       // serialized as a nested hash (`filter_query[field][op]=value`).
       querySerializer,

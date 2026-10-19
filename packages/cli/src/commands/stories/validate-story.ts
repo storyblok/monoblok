@@ -1,7 +1,7 @@
 import { pipeline } from "node:stream/promises";
 import { Writable } from "node:stream";
 import type { Component } from "../components/constants";
-import type { Story } from "./constants";
+import type { PushValidateMode, Story } from "./constants";
 import type { ComponentSchemas } from "./ref-mapper";
 import { walkRichtextBloks } from "./richtext";
 import { readLocalStoriesStream } from "./streams";
@@ -176,14 +176,22 @@ const formatStoryList = (stories: Set<string>): string => {
 };
 
 /**
- * Builds the multi-line error message shown to the user when
- * `collectSchemaIssues` finds at least one problem. Splits the two kinds of
- * issues into separate sections with tailored remedies: the fix for a missing
- * component schema is different from the fix for an undeclared field, and
- * running `storyblok components pull` is not always the right answer.
+ * Builds the multi-line message shown to the user when `collectSchemaIssues`
+ * finds at least one problem. Splits the two kinds of issues into separate
+ * sections with tailored remedies: the fix for a missing component schema is
+ * different from the fix for an undeclared field, and running
+ * `storyblok components pull` is not always the right answer. The headline
+ * depends on whether the push aborts (`strict`) or continues (`warn`).
  */
-export const formatSchemaIssues = (issues: AggregatedSchemaIssues): string => {
-  const lines: string[] = ["Schema validation failed. Push aborted."];
+export const formatSchemaIssues = (
+  issues: AggregatedSchemaIssues,
+  mode: Exclude<PushValidateMode, "ignore">,
+): string => {
+  const lines: string[] = [
+    mode === "strict"
+      ? "Schema validation failed. Push aborted."
+      : "Schema validation found issues. Pushing anyway.",
+  ];
 
   if (issues.missingSchemas.size > 0) {
     lines.push("");
@@ -201,6 +209,11 @@ export const formatSchemaIssues = (issues: AggregatedSchemaIssues): string => {
     lines.push(
       "Otherwise, create them in Storyblok first, or remove the references from the affected stories.",
     );
+    if (mode === "warn") {
+      lines.push(
+        "References inside these components are pushed as they are, without mapping them to the target space.",
+      );
+    }
   }
 
   if (issues.driftByComponent.size > 0) {
@@ -216,11 +229,21 @@ export const formatSchemaIssues = (issues: AggregatedSchemaIssues): string => {
       }
     }
     lines.push("");
-    lines.push("These fields will be lost when the stories are pushed. To fix, either:");
+    if (mode === "warn") {
+      lines.push(
+        "These fields are pushed as they are, without mapping their references to the target space.",
+      );
+    }
+    lines.push("To fix, either:");
     lines.push(
       "  - Add the field to the component in Storyblok, then run `storyblok components pull`",
     );
     lines.push("  - Or remove the field from the affected story JSON files");
+  }
+
+  if (mode === "strict") {
+    lines.push("");
+    lines.push("To push anyway, run the command with `--validate=warn`.");
   }
 
   return lines.join("\n");

@@ -1,6 +1,7 @@
 import { pipeline } from "node:stream/promises";
+import { Option } from "commander";
 import { join } from "pathe";
-import type { Story } from "../constants";
+import { PUSH_VALIDATE_MODES, type Story } from "../constants";
 import { colorPalette, commands, directories } from "../../../constants";
 import {
   CommandError,
@@ -41,6 +42,14 @@ const pushCmd = storiesCommand
   .option(
     "--cleanup",
     "delete local stories after a successful push (note: does not cleanup manifests)",
+  )
+  .addOption(
+    new Option(
+      "--validate <mode>",
+      "how to handle stories that do not match the local component schemas: strict (abort) | warn (report and push) | ignore (skip the check)",
+    )
+      .choices(PUSH_VALIDATE_MODES)
+      .default("strict"),
   )
   .description(`Push local stories to a Storyblok space.`);
 
@@ -108,30 +117,40 @@ pushCmd.action(async (options, command) => {
 
     const storiesDirectoryPath = resolveCommandPath(directories.stories, fromSpace, basePath);
 
-    // Pre-flight schema validation. Aborts before any API call if a story's
-    // content references a missing component, or has fields that the local
-    // schema does not declare (schema drift).
-    const schemaIssues = await collectSchemaIssues({
-      directoryPath: storiesDirectoryPath,
-      schemas,
-    });
-    if (hasSchemaIssues(schemaIssues)) {
-      const message = formatSchemaIssues(schemaIssues);
-      ui.error(message);
-      logger.error(message);
-      // Surface the failure in the run summary so the report status is
-      // FAILURE rather than a trivial zero-counts SUCCESS.
-      const total = Math.max(schemaIssues.total, 1);
-      summary.creationResults.total = total;
-      summary.creationResults.failed = total;
-      return;
+    // Pre-flight schema validation: finds stories whose content references a
+    // missing component, or has fields that the local schema does not declare
+    // (schema drift). `strict` aborts before any API call, `warn` reports and
+    // continues, `ignore` skips the check.
+    const validateMode = options.validate;
+    if (validateMode === "ignore") {
+      logger.info("Schema validation skipped");
+    } else {
+      const schemaIssues = await collectSchemaIssues({
+        directoryPath: storiesDirectoryPath,
+        schemas,
+      });
+      if (hasSchemaIssues(schemaIssues)) {
+        const message = formatSchemaIssues(schemaIssues, validateMode);
+        if (validateMode === "strict") {
+          ui.error(message);
+          logger.error(message);
+          // Surface the failure in the run summary so the report status is
+          // FAILURE rather than a trivial zero-counts SUCCESS.
+          const total = Math.max(schemaIssues.total, 1);
+          summary.creationResults.total = total;
+          summary.creationResults.failed = total;
+          return;
+        }
+        ui.warn(message);
+        ui.br();
+        logger.warn(message);
+      }
     }
 
     // Warn when story content includes custom plugin payloads. References
     // embedded inside a plugin's opaque JSON can't be auto-remapped, so the
     // user may need to update them manually. Emitted once per plugin name
-    // per story during Pass 2, after schema validation has confirmed the
-    // content shape is trustworthy.
+    // per story during Pass 2.
     const warnAboutCustomPlugins = (story: Story) => {
       const warned = new Set<string>();
       const visit = (node: unknown): void => {

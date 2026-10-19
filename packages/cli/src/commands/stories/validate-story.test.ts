@@ -573,15 +573,21 @@ describe("formatSchemaIssues in warn mode", () => {
       "warn",
     );
 
-    expect(message).toContain("Schema validation found issues. Pushing anyway.");
+    expect(message).toContain(
+      "Schema validation found issues. Continuing the push in warn mode (`--validate=warn`).",
+    );
     expect(message).not.toContain("Push aborted");
+    expect(message).not.toContain("To push anyway");
     expect(message).toContain(
-      "References inside these components are pushed as they are, without mapping them to the target space.",
+      "These components are pushed as they are. References inside them are not mapped to the target space.",
     );
     expect(message).toContain(
-      "These fields are pushed as they are, without mapping their references to the target space.",
+      "These fields are pushed as they are. References inside them are not mapped to the target space.",
     );
-    expect(message).not.toContain("--validate=warn");
+    // Remedies are phrased as optional, since the push continues
+    expect(message).toContain("To resolve: if these components exist in Storyblok");
+    expect(message).toContain("To resolve, either:");
+    expect(message).not.toContain("To fix");
   });
 });
 

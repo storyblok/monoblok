@@ -15,6 +15,15 @@ const packageScopes = readdirSync(packagesDir, { withFileTypes: true })
 // NOT packages, so such commits bump no package version.
 const metaScopes = ["release", "repo", "deps", "ci", "docs", "tools", "agents"];
 
+// Package folders from the PR head, set by the PR title check, which runs
+// against `main` and would otherwise reject the scope of a package the PR adds.
+// Names outside the folder-name pattern are dropped, since they come from the PR.
+const prScopes = (process.env.COMMITLINT_PR_SCOPES ?? "")
+  .split(",")
+  .filter((scope) => /^[a-z0-9][a-z0-9-]*$/.test(scope));
+
+const scopes = [...new Set([...packageScopes, ...prScopes, ...metaScopes])];
+
 export default {
   extends: ["@commitlint/config-conventional"],
   rules: {
@@ -25,6 +34,6 @@ export default {
     // scope prevents that accidental workspace-wide fan-out.
     "scope-empty": [2, "never"],
     // Comma-separated scopes are allowed, e.g. `feat(cli,mapi-client): ...`.
-    "scope-enum": [2, "always", [...packageScopes, ...metaScopes]],
+    "scope-enum": [2, "always", scopes],
   },
 };

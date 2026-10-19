@@ -5,6 +5,7 @@ import { PUSH_VALIDATE_MODES, type Story } from "../constants";
 import { colorPalette, commands, directories } from "../../../constants";
 import {
   CommandError,
+  EXIT_CODE_RUNTIME_ERROR,
   handleError,
   logOnlyError,
   requireAuthentication,
@@ -46,7 +47,7 @@ const pushCmd = storiesCommand
   .addOption(
     new Option(
       "--validate <mode>",
-      "how to handle stories that do not match the local component schemas: strict (abort) | warn (report and push) | ignore (skip the check)",
+      "how to handle stories that do not match the local component schemas",
     )
       .choices(PUSH_VALIDATE_MODES)
       .default("strict"),
@@ -139,6 +140,8 @@ pushCmd.action(async (options, command) => {
           const total = Math.max(schemaIssues.total, 1);
           summary.creationResults.total = total;
           summary.creationResults.failed = total;
+          // Fail the process so CI does not report a green job with nothing pushed.
+          process.exitCode = EXIT_CODE_RUNTIME_ERROR;
           return;
         }
         ui.warn(message);

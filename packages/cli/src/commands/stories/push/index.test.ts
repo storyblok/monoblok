@@ -1766,6 +1766,127 @@ describe("stories push command", () => {
       );
     });
 
+    it("should warn about drift fields and push them as they are with --validate=warn", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "page", stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page", schema: {} })]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--validate=warn",
+      ]);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Schema validation found issues. Pushing anyway."),
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("- page.stray (in stories: story-a)"),
+      );
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        DEFAULT_SPACE,
+        remoteStories[0].id,
+        expect.objectContaining({
+          story: expect.objectContaining({
+            content: expect.objectContaining({ stray: 1 }),
+          }),
+        }),
+      );
+      expect(getReport()?.status).toBe("SUCCESS");
+      expect(getLogFileContents(LOG_PREFIX)).toContain("Schema validation found issues");
+    });
+
+    it("should warn about missing component schemas and push the content as it is with --validate=warn", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "unknown_component", title: "Hi" },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page", schema: {} })]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--validate=warn",
+      ]);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("- unknown_component (in stories: story-a)"),
+      );
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        DEFAULT_SPACE,
+        remoteStories[0].id,
+        expect.objectContaining({
+          story: expect.objectContaining({
+            content: expect.objectContaining({ component: "unknown_component", title: "Hi" }),
+          }),
+        }),
+      );
+      expect(getReport()?.status).toBe("SUCCESS");
+    });
+
+    it("should skip schema validation with --validate=ignore", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "page", stray: 1 },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([makeMockComponent({ name: "page", schema: {} })]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        DEFAULT_SPACE,
+        "--validate=ignore",
+      ]);
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("Schema validation"));
+      expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("Schema validation"));
+      expect(actions.updateStory).toHaveBeenCalledWith(
+        DEFAULT_SPACE,
+        remoteStories[0].id,
+        expect.objectContaining({
+          story: expect.objectContaining({
+            content: expect.objectContaining({ stray: 1 }),
+          }),
+        }),
+      );
+      expect(getReport()?.status).toBe("SUCCESS");
+    });
+
+    it("should reject an invalid --validate value", async () => {
+      const push = storiesCommand.commands.find((command) => command.name() === "push")!;
+      push.exitOverride();
+
+      await expect(
+        storiesCommand.parseAsync([
+          "node",
+          "test",
+          "push",
+          "--space",
+          DEFAULT_SPACE,
+          "--validate=loose",
+        ]),
+      ).rejects.toThrow(/Allowed choices/i);
+    });
+
     it("should proceed with the push when every content field is declared in its schema", async () => {
       const storyA = makeMockStory({
         slug: "story-a",

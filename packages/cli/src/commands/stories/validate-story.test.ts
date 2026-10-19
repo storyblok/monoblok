@@ -477,11 +477,14 @@ describe("formatSchemaIssues", () => {
       ["aa_missing", new Set(["home/about"])],
     ]);
 
-    const message = formatSchemaIssues({
-      driftByComponent,
-      missingSchemas,
-      total: 5,
-    });
+    const message = formatSchemaIssues(
+      {
+        driftByComponent,
+        missingSchemas,
+        total: 5,
+      },
+      "strict",
+    );
 
     expect(message).toContain("Schema validation failed. Push aborted.");
     expect(message).toContain("Missing component schemas:");
@@ -499,9 +502,9 @@ describe("formatSchemaIssues", () => {
     expect(message).toContain(
       "Otherwise, create them in Storyblok first, or remove the references from the affected stories.",
     );
-    expect(message).toContain(
-      "These fields will be lost when the stories are pushed. To fix, either:",
-    );
+    expect(message).toContain("To fix, either:");
+    expect(message).toContain("To push anyway, run the command with `--validate=warn`.");
+    expect(message).not.toContain("pushed as they are");
     expect(message).toContain(
       "Add the field to the component in Storyblok, then run `storyblok components pull`",
     );
@@ -516,23 +519,29 @@ describe("formatSchemaIssues", () => {
   });
 
   it("should omit the drift section when no fields drifted", () => {
-    const message = formatSchemaIssues({
-      driftByComponent: new Map(),
-      missingSchemas: new Map([["foo", new Set(["home"])]]),
-      total: 1,
-    });
+    const message = formatSchemaIssues(
+      {
+        driftByComponent: new Map(),
+        missingSchemas: new Map([["foo", new Set(["home"])]]),
+        total: 1,
+      },
+      "strict",
+    );
 
     expect(message).toContain("- foo (in stories: home)");
     expect(message).not.toContain("Fields not declared");
-    expect(message).not.toContain("These fields will be lost");
+    expect(message).not.toContain("To fix, either:");
   });
 
   it("should omit the missing section when no components are missing", () => {
-    const message = formatSchemaIssues({
-      driftByComponent: new Map([["page", new Map([["color", new Set(["home"])]])]]),
-      missingSchemas: new Map(),
-      total: 1,
-    });
+    const message = formatSchemaIssues(
+      {
+        driftByComponent: new Map([["page", new Map([["color", new Set(["home"])]])]]),
+        missingSchemas: new Map(),
+        total: 1,
+      },
+      "strict",
+    );
 
     expect(message).not.toContain("Missing component schemas");
     expect(message).toContain("- page.color (in stories: home)");
@@ -540,13 +549,39 @@ describe("formatSchemaIssues", () => {
 
   it("should truncate long story lists with a summary count", () => {
     const stories = new Set(["a", "b", "c", "d", "e", "f", "g"]);
-    const message = formatSchemaIssues({
-      driftByComponent: new Map([["page", new Map([["color", stories]])]]),
-      missingSchemas: new Map(),
-      total: 7,
-    });
+    const message = formatSchemaIssues(
+      {
+        driftByComponent: new Map([["page", new Map([["color", stories]])]]),
+        missingSchemas: new Map(),
+        total: 7,
+      },
+      "strict",
+    );
 
     expect(message).toContain("(in stories: a, b, c, d, e, and 2 more)");
+  });
+});
+
+describe("formatSchemaIssues in warn mode", () => {
+  it("should report that the push continues and that references are not mapped", () => {
+    const message = formatSchemaIssues(
+      {
+        driftByComponent: new Map([["page", new Map([["color", new Set(["home"])]])]]),
+        missingSchemas: new Map([["foo", new Set(["home"])]]),
+        total: 1,
+      },
+      "warn",
+    );
+
+    expect(message).toContain("Schema validation found issues. Pushing anyway.");
+    expect(message).not.toContain("Push aborted");
+    expect(message).toContain(
+      "References inside these components are pushed as they are, without mapping them to the target space.",
+    );
+    expect(message).toContain(
+      "These fields are pushed as they are, without mapping their references to the target space.",
+    );
+    expect(message).not.toContain("--validate=warn");
   });
 });
 

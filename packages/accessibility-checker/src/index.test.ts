@@ -103,6 +103,43 @@ describe("inside the Visual Editor", () => {
     );
   });
 
+  it("should answer a ping with ready, on the origin of the ping", () => {
+    postMessage.mockClear();
+    send({ action: "accessibilityPing" }, { origin: "http://localhost:3000" });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { action: "accessibilityReady", protocolVersion: 1, pluginVersion: expect.any(String) },
+      "http://localhost:3000",
+    );
+  });
+
+  it("should answer a ping even when the parent origin was unknown on start", () => {
+    checker.disable();
+    postMessage.mockClear();
+    // Without `ancestorOrigins` (Firefox), the parent origin comes from the referrer, which a
+    // navigation inside the iframe replaces with the site's own URL.
+    const referrer = vi.spyOn(document, "referrer", "get");
+    referrer.mockReturnValue("https://site.example/previous-page");
+    checker.enable();
+    referrer.mockReturnValue(`${EDITOR_ORIGIN}/`);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    send({ action: "accessibilityPing" });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "accessibilityReady" }),
+      EDITOR_ORIGIN,
+    );
+  });
+
+  it("should ignore a ping from another origin or window", () => {
+    postMessage.mockClear();
+    send({ action: "accessibilityPing" }, { origin: "https://evil-storyblok.io" });
+    send({ action: "accessibilityPing" }, { source: window });
+
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
   const repliesTo = (requestId: string): unknown[] =>
     messages().filter(
       (message) =>

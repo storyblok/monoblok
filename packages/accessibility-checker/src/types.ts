@@ -7,6 +7,11 @@ export type AccessibilityCheckRequest = {
   requestId: string;
 };
 
+/** Asks the plugin to answer with `accessibilityReady`. */
+export type AccessibilityPingRequest = {
+  action: "accessibilityPing";
+};
+
 export type AccessibilityReadyMessage = {
   action: "accessibilityReady";
   protocolVersion: number;

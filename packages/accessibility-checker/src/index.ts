@@ -110,12 +110,29 @@ function startChecker({
     );
   let isDisabled = false;
 
+  const sendReady = (origin: string): void => {
+    window.parent.postMessage(
+      {
+        action: "accessibilityReady",
+        protocolVersion: accessibilityProtocolVersion,
+        pluginVersion,
+      },
+      origin,
+    );
+  };
+
   const onMessage = async (event: MessageEvent): Promise<void> => {
     // Only the Visual Editor that embeds this page may talk to the checker.
     if (event.source !== window.parent || !isAllowedOrigin(event.origin)) {
       return;
     }
     const { data } = event;
+
+    // Lets the editor ask whether a checker is there, whenever it starts listening.
+    if (isMessage(data, "accessibilityPing")) {
+      sendReady(event.origin);
+      return;
+    }
 
     if (!isMessage(data, "accessibilityCheck") || typeof data.requestId !== "string") {
       return;
@@ -168,16 +185,11 @@ function startChecker({
 
   window.addEventListener("message", onMessage);
 
+  // Best effort: the parent origin is not always known here (see `getEditorOrigin`),
+  // and the editor may not listen yet. `accessibilityPing` covers both.
   const editorOrigin = getEditorOrigin(isAllowedOrigin);
   if (editorOrigin) {
-    window.parent.postMessage(
-      {
-        action: "accessibilityReady",
-        protocolVersion: accessibilityProtocolVersion,
-        pluginVersion,
-      },
-      editorOrigin,
-    );
+    sendReady(editorOrigin);
   }
 
   const stop = (): void => {

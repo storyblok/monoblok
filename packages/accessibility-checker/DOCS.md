@@ -77,12 +77,17 @@ result types.
 | Direction     | `action`                   | Payload                                                                             |
 | ------------- | -------------------------- | ----------------------------------------------------------------------------------- |
 | page → editor | `accessibilityReady`       | `protocolVersion`, `pluginVersion`                                                  |
+| editor → page | `accessibilityPing`        | none, the plugin answers with `accessibilityReady`                                  |
 | editor → page | `accessibilityCheck`       | `requestId`                                                                         |
 | page → editor | `accessibilityCheckResult` | `requestId`, `protocolVersion`, `result`                                            |
 | page → editor | `accessibilityCheckError`  | `requestId`, `protocolVersion`, `error.code`: `check-failed` or `check-in-progress` |
 
-- `accessibilityReady` is sent on every `enable()`, when the parent origin can be determined and is
-  allowed.
+- `accessibilityReady` is sent on every `enable()` when the parent origin can be determined and is
+  allowed, and in reply to every `accessibilityPing`, to the origin of the ping. Send a ping
+  whenever the editor starts listening (for example when the A11y tab opens or reconnects), because
+  the editor can miss the first `accessibilityReady`, and the plugin cannot always determine the
+  parent origin on its own (for example after a navigation inside the iframe in browsers without
+  `location.ancestorOrigins`).
 - A request without a string `requestId` is ignored.
 - Only one check runs at a time.
 - A check that is still running when the checker is disabled never gets a reply, so the editor needs

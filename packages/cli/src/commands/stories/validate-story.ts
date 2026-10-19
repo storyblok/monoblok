@@ -190,7 +190,7 @@ export const formatSchemaIssues = (
   const lines: string[] = [
     mode === "strict"
       ? "Schema validation failed. Push aborted."
-      : "Schema validation found issues. Pushing anyway.",
+      : "Schema validation found issues. Continuing the push in warn mode (`--validate=warn`).",
   ];
 
   if (issues.missingSchemas.size > 0) {
@@ -203,17 +203,17 @@ export const formatSchemaIssues = (
       lines.push(`  - ${component} (in stories: ${formatStoryList(stories)})`);
     }
     lines.push("");
+    if (mode === "warn") {
+      lines.push(
+        "These components are pushed as they are. References inside them are not mapped to the target space.",
+      );
+    }
     lines.push(
-      "If these components exist in Storyblok, run `storyblok components pull` to sync them locally.",
+      `${mode === "strict" ? "If" : "To resolve: if"} these components exist in Storyblok, run \`storyblok components pull\` to sync them locally.`,
     );
     lines.push(
       "Otherwise, create them in Storyblok first, or remove the references from the affected stories.",
     );
-    if (mode === "warn") {
-      lines.push(
-        "References inside these components are pushed as they are, without mapping them to the target space.",
-      );
-    }
   }
 
   if (issues.driftByComponent.size > 0) {
@@ -231,10 +231,10 @@ export const formatSchemaIssues = (
     lines.push("");
     if (mode === "warn") {
       lines.push(
-        "These fields are pushed as they are, without mapping their references to the target space.",
+        "These fields are pushed as they are. References inside them are not mapped to the target space.",
       );
     }
-    lines.push("To fix, either:");
+    lines.push(`${mode === "strict" ? "To fix" : "To resolve"}, either:`);
     lines.push(
       "  - Add the field to the component in Storyblok, then run `storyblok components pull`",
     );

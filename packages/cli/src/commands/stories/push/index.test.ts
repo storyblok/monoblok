@@ -1786,7 +1786,7 @@ describe("stories push command", () => {
       ]);
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Schema validation found issues. Pushing anyway."),
+        expect.stringContaining("Schema validation found issues. Continuing the push in warn mode"),
       );
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining("- page.stray (in stories: story-a)"),

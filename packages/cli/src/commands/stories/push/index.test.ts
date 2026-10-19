@@ -189,6 +189,7 @@ const preconditions = {
 describe("stories push command", () => {
   beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
   afterEach(() => {
+    process.exitCode = undefined;
     vi.resetAllMocks();
     vi.clearAllMocks();
     vol.reset();
@@ -1713,6 +1714,7 @@ describe("stories push command", () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining("- page.stray (in stories: story-a)"),
       );
+      expect(process.exitCode).toBe(1);
     });
 
     it("should not delete local stories when validation fails even if --cleanup is passed", async () => {
@@ -1801,6 +1803,7 @@ describe("stories push command", () => {
         }),
       );
       expect(getReport()?.status).toBe("SUCCESS");
+      expect(process.exitCode ?? 0).toBe(0);
       expect(getLogFileContents(LOG_PREFIX)).toContain("Schema validation found issues");
     });
 

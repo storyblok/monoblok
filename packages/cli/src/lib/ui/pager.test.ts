@@ -31,6 +31,17 @@ function setStdout(properties: { isTTY?: boolean }): () => void {
   };
 }
 
+/** `platform` is a read-only data property, so it is redefined and restored. */
+function setPlatform(platform: NodeJS.Platform): () => void {
+  const original = Object.getOwnPropertyDescriptor(process, "platform");
+  Object.defineProperty(process, "platform", { value: platform, configurable: true });
+  return () => {
+    if (original) {
+      Object.defineProperty(process, "platform", original);
+    }
+  };
+}
+
 const tallText = Array.from({ length: 50 }, (_, index) => `line ${index}`).join("\n");
 
 describe("page", () => {
@@ -53,19 +64,31 @@ describe("page", () => {
     resetActiveConfig();
   });
 
-  /** A terminal the pager would run in, with nothing turning it off. */
+  /**
+   * A terminal the pager would run in, with nothing turning it off. The
+   * platform is pinned too, since paging is off on Windows, where CI also runs.
+   */
   function onPageableTerminal(): void {
-    restore = setStdout({ isTTY: true });
+    const restoreStdout = setStdout({ isTTY: true });
+    const restorePlatform = setPlatform("linux");
+    restore = () => {
+      restoreStdout();
+      restorePlatform();
+    };
     vi.stubEnv("TERM", "xterm-256color");
     vi.stubEnv("CI", "");
     vi.stubEnv("PAGER", "less");
   }
 
-  /** Swaps `less` for another command, so a test controls how the pager exits. */
-  async function pagerRuns(command: string): Promise<void> {
+  /**
+   * Swaps `less` for a Node process exiting with `exitCode`, so a test controls
+   * how the pager exits on every platform: `true` and `false` are not on
+   * Windows.
+   */
+  async function pagerExits(exitCode: number): Promise<void> {
     const { spawn } = await vi.importActual<typeof childProcess>("node:child_process");
     vi.mocked(childProcess.spawn).mockImplementationOnce((_command, _args, options) =>
-      spawn(command, [], options),
+      spawn(process.execPath, ["-e", `process.exit(${exitCode})`], options),
     );
   }
 
@@ -103,20 +126,10 @@ describe("page", () => {
 
   // A bare `less` resolves against the current directory first on Windows.
   it("should print directly on Windows", async () => {
-    restore = setStdout({ isTTY: true });
-    vi.stubEnv("TERM", "xterm-256color");
-    vi.stubEnv("CI", "");
-    vi.stubEnv("PAGER", "less");
-    const platform = Object.getOwnPropertyDescriptor(process, "platform");
-    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    onPageableTerminal();
+    setPlatform("win32");
 
-    try {
-      await page(tallText);
-    } finally {
-      if (platform) {
-        Object.defineProperty(process, "platform", platform);
-      }
-    }
+    await page(tallText);
 
     expect(written).toEqual([`${tallText}\n`]);
     expect(childProcess.spawn).not.toHaveBeenCalled();
@@ -132,10 +145,7 @@ describe("page", () => {
 
   // Most Windows machines have no `less`: the results must still be shown.
   it("should fall back to printing when the pager cannot be started", async () => {
-    restore = setStdout({ isTTY: true });
-    vi.stubEnv("TERM", "xterm-256color");
-    vi.stubEnv("CI", "");
-    vi.stubEnv("PAGER", "less");
+    onPageableTerminal();
     const { spawn } = await vi.importActual<typeof childProcess>("node:child_process");
     vi.mocked(childProcess.spawn).mockImplementationOnce((_command, args, options) =>
       spawn("storyblok-no-such-pager", args, options),
@@ -143,6 +153,7 @@ describe("page", () => {
 
     await page(tallText);
 
+    expect(childProcess.spawn).toHaveBeenCalled();
     expect(written).toEqual([`${tallText}\n`]);
   });
 
@@ -162,7 +173,7 @@ describe("page", () => {
   it.each(["false", "0"])("should still page when CI is %s", async (value) => {
     onPageableTerminal();
     vi.stubEnv("CI", value);
-    await pagerRuns("true");
+    await pagerExits(0);
 
     await page(tallText);
 
@@ -173,10 +184,11 @@ describe("page", () => {
   // `LESS=--bogus-option`: the pager starts, complains, and shows nothing.
   it("should fall back to printing when the pager exits with an error", async () => {
     onPageableTerminal();
-    await pagerRuns("false");
+    await pagerExits(1);
 
     await page(tallText);
 
+    expect(childProcess.spawn).toHaveBeenCalled();
     expect(written).toEqual([`${tallText}\n`]);
   });
 });

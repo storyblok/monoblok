@@ -95,6 +95,50 @@ The `license` commands help manage license compliance across the monorepo.
 pnpm monoblok license check @storyblok/js
 ```
 
+### Bundle size
+
+The `size` commands guard the size of what each package ships. CI runs `size check` after building
+every package.
+
+A package opts in with a `bundle-size.json` next to its `package.json`. Each entry maps a glob
+pattern, relative to the package, to its baseline: the summed gzipped size, in bytes, of the
+matching files. Type declarations and source maps are skipped.
+
+```json
+{
+  "warn": 5,
+  "error": 10,
+  "entries": {
+    "dist/**/*.mjs": 11873,
+    "dist/index.umd.js": 11518
+  }
+}
+```
+
+| Field     | Description                                                               |
+| --------- | ------------------------------------------------------------------------- |
+| `entries` | Glob pattern mapped to its baseline gzipped size in bytes                 |
+| `warn`    | Growth over the baseline, in percent, that emits a warning (default `5`)  |
+| `error`   | Growth over the baseline, in percent, that fails the check (default `10`) |
+
+An entry that shrinks by more than `warn` percent is reported so its baseline can be lowered, and a
+pattern that matches no files fails the check. Packages where size does not matter to consumers,
+such as the CLI, have no `bundle-size.json`.
+
+```bash
+# Build first: both commands measure the existing build output
+pnpm nx run-many -t build
+
+# Compare every package with its baseline
+pnpm monoblok size check
+
+# Compare specific packages
+pnpm monoblok size check @storyblok/react @storyblok/vue
+
+# Accept the current sizes as the new baselines, then commit the bundle-size.json diff
+pnpm monoblok size update @storyblok/react
+```
+
 ## Post-migration checklist
 
 After migrating a package into the monorepo:

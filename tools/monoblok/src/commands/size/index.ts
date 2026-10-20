@@ -1,3 +1,4 @@
+import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { Command } from "commander";
@@ -9,6 +10,7 @@ import {
   describe,
   formatBytes,
   formatChange,
+  loadBaseEntries,
   loadProjects,
   toMarkdown,
   updateBaselines,
@@ -40,10 +42,26 @@ export function sizeCommand(program: Command): void {
     .command("check")
     .description("Compare the gzipped build output with the baseline (build the packages first)")
     .argument("[packages...]", "Package names to check (default: all)")
-    .action((packages: string[]) => {
+    .option("--base <ref>", "Git ref whose baselines the report compares sizes with")
+    .option("--markdown <file>", "Write the report as Markdown, for a PR comment")
+    .action((packages: string[], options: { base?: string; markdown?: string }) => {
       try {
         const root = utils.getMonorepoRoot();
-        const results = loadProjects(root, packages).map((project) => checkProject(root, project));
+        const { base } = options;
+        if (base) {
+          try {
+            execFileSync("git", ["rev-parse", "--verify", "--quiet", `${base}^{commit}`], {
+              cwd: root,
+              stdio: "ignore",
+            });
+          } catch {
+            throw new Error(`Unknown git ref "${base}". Fetch it before comparing with it.`);
+          }
+        }
+        const results = loadProjects(root, packages).map((project) =>
+          checkProject(root, project, base ? loadBaseEntries(root, project.dir, base) : undefined),
+        );
+        const markdown = toMarkdown(results, base?.replace(/^origin\//, ""));
         const github = process.env.GITHUB_ACTIONS === "true";
 
         for (const result of results) {
@@ -65,7 +83,10 @@ export function sizeCommand(program: Command): void {
         }
 
         if (github && process.env.GITHUB_STEP_SUMMARY) {
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, toMarkdown(results));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
+        }
+        if (options.markdown) {
+          fs.writeFileSync(options.markdown, markdown);
         }
 
         const failed = results.some((result) =>

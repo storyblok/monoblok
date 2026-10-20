@@ -1,3 +1,4 @@
+import { execFileSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -7,6 +8,8 @@ import {
   checkProject,
   evaluate,
   formatChange,
+  formatDelta,
+  loadBaseEntries,
   loadProjects,
   parseConfig,
   resolveThresholds,
@@ -165,6 +168,20 @@ describe("checkProject", () => {
     expect(checkProject(root, project).entries[0].status).toBe("error");
   });
 
+  it("should gate on the package's own baseline while reporting the base branch's", () => {
+    writePackage(
+      "a",
+      "@storyblok/a",
+      { entries: { "dist/*.mjs": gzipSize(ENTRY) } },
+      { "dist/index.mjs": ENTRY },
+    );
+    const [project] = loadProjects(root);
+
+    const [entry] = checkProject(root, project, { "dist/*.mjs": 10 }).entries;
+
+    expect(entry).toMatchObject({ base: 10, baseline: gzipSize(ENTRY), status: "ok" });
+  });
+
   it("should report a pattern that matches no files as missing", () => {
     writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 100 } });
     const [project] = loadProjects(root);
@@ -198,29 +215,87 @@ describe("updateBaselines", () => {
   });
 });
 
-describe("toMarkdown", () => {
-  it("should render one row per entry", () => {
-    const markdown = toMarkdown([
-      {
-        name: "@storyblok/a",
-        dir: "packages/a",
-        thresholds: { warn: 5, error: 10 },
-        entries: [
-          {
-            pattern: "dist/*.mjs",
-            files: [],
-            size: 2048,
-            baseline: 1000,
-            change: 104.8,
-            status: "error",
-          },
-        ],
-      },
-    ]);
+describe("loadBaseEntries", () => {
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "ignore" });
 
-    expect(markdown).toContain(
-      "| `@storyblok/a` | `dist/*.mjs` | 1000 B | 2.00 kB | +104.8% | ❌ error |",
+  beforeEach(() => {
+    git("init", "-q");
+    git("config", "user.email", "ci@example.com");
+    git("config", "user.name", "CI");
+  });
+
+  it("should read the baselines a package has on the ref", () => {
+    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 100 } });
+    git("add", ".");
+    git("commit", "-qm", "base");
+    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 200 } });
+
+    expect(loadBaseEntries(root, "packages/a", "HEAD")).toEqual({ "dist/*.mjs": 100 });
+  });
+
+  it("should return no baselines for a package the ref does not track", () => {
+    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 100 } });
+    git("add", ".");
+    git("commit", "-qm", "base");
+
+    expect(loadBaseEntries(root, "packages/b", "HEAD")).toEqual({});
+  });
+});
+
+describe("toMarkdown", () => {
+  const result = (entries: Array<{ pattern: string; size: number; base: number | undefined }>) => ({
+    name: "@storyblok/a",
+    dir: "packages/a",
+    thresholds: { warn: 5, error: 10 },
+    entries: entries.map((entry) => ({
+      ...entry,
+      files: [],
+      baseline: entry.base ?? entry.size,
+      change: 0,
+      status: "ok" as const,
+    })),
+  });
+
+  it("should list the entries that changed against the base above the full table", () => {
+    const markdown = toMarkdown(
+      [
+        result([
+          { pattern: "dist/*.mjs", size: 1100, base: 1000 },
+          { pattern: "dist/*.umd.js", size: 500, base: 500 },
+        ]),
+      ],
+      "main",
     );
+    const [changed, all] = markdown.split("<details>");
+
+    expect(markdown.startsWith("<!-- monoblok-bundle-size -->")).toBe(true);
+    expect(changed).toContain("1 of 2 entries changed size compared with `main`");
+    expect(changed).toContain(
+      "| `@storyblok/a` | `dist/*.mjs` | 1000 B | 1.07 kB | +100 B (+10.0%) | ✅ ok |",
+    );
+    expect(changed).not.toContain("dist/*.umd.js");
+    expect(all).toContain("| `@storyblok/a` | `dist/*.umd.js` | 500 B | 500 B | 0 B | ✅ ok |");
+  });
+
+  it("should say so when no package changed size", () => {
+    const markdown = toMarkdown(
+      [result([{ pattern: "dist/*.mjs", size: 500, base: 500 }])],
+      "main",
+    );
+
+    expect(markdown).toContain("No package changed size compared with `main`.");
+  });
+
+  it("should mark an entry the base does not have as new", () => {
+    const markdown = toMarkdown([result([{ pattern: "dist/*.mjs", size: 500, base: undefined }])]);
+
+    expect(markdown).toContain("| `@storyblok/a` | `dist/*.mjs` | – | 500 B | new | ✅ ok |");
+  });
+});
+
+describe("formatDelta", () => {
+  it("should show a shrink in bytes and percent", () => {
+    expect(formatDelta(900, 1000)).toBe("-100 B (-10.0%)");
   });
 });
 

@@ -1,8 +1,12 @@
+import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
 
 export const CONFIG_FILE = "bundle-size.json";
+
+/** Marks the bundle size PR comment, so CI updates it instead of adding another. */
+export const COMMENT_MARKER = "<!-- monoblok-bundle-size -->";
 
 export const DEFAULT_THRESHOLDS: Thresholds = { warn: 5, error: 10 };
 
@@ -29,6 +33,8 @@ export type EntryResult = {
   files: string[];
   size: number;
   baseline: number;
+  /** Baseline on the base branch, or `undefined` when the entry is new. */
+  base: number | undefined;
   /** Change over the baseline, in percent. */
   change: number;
   status: SizeStatus;
@@ -147,14 +153,38 @@ export function evaluate(
   return { change, status: "ok" };
 }
 
-export function checkProject(root: string, project: ProjectConfig): PackageResult {
+/**
+ * Baselines a package has on `ref`, or none when it had no `bundle-size.json` there. Measured
+ * sizes are compared with these in the PR comment, so a PR that also updates its baselines still
+ * shows how much it grew.
+ */
+export function loadBaseEntries(root: string, dir: string, ref: string): Record<string, number> {
+  let content: string;
+  try {
+    content = execFileSync("git", ["show", `${ref}:${dir}/${CONFIG_FILE}`], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return {};
+  }
+  return parseConfig(JSON.parse(content), `${ref}:${dir}/${CONFIG_FILE}`).entries;
+}
+
+export function checkProject(
+  root: string,
+  project: ProjectConfig,
+  baseEntries: Record<string, number> = project.config.entries,
+): PackageResult {
   const thresholds = resolveThresholds(project.config);
   const entries = Object.entries(project.config.entries).map(([pattern, baseline]) => {
+    const base = baseEntries[pattern];
     const { files, size } = measure(path.join(root, project.dir), pattern);
     if (files.length === 0) {
-      return { pattern, files, size, baseline, change: -100, status: "missing" as const };
+      return { pattern, files, size, baseline, base, change: -100, status: "missing" as const };
     }
-    return { pattern, files, size, baseline, ...evaluate(size, baseline, thresholds) };
+    return { pattern, files, size, baseline, base, ...evaluate(size, baseline, thresholds) };
   });
   return { name: project.name, dir: project.dir, thresholds, entries };
 }
@@ -202,6 +232,17 @@ export function describe(result: PackageResult, entry: EntryResult): string {
   }
 }
 
+export function formatDelta(size: number, base: number | undefined): string {
+  if (base === undefined) {
+    return "new";
+  }
+  if (size === base) {
+    return "0 B";
+  }
+  const bytes = `${size > base ? "+" : "-"}${formatBytes(Math.abs(size - base))}`;
+  return base === 0 ? bytes : `${bytes} (${formatChange(((size - base) / base) * 100)})`;
+}
+
 const STATUS_LABEL: Record<SizeStatus, string> = {
   ok: "✅ ok",
   warn: "⚠️ warn",
@@ -210,22 +251,50 @@ const STATUS_LABEL: Record<SizeStatus, string> = {
   missing: "❌ missing",
 };
 
-/** Markdown table for the GitHub Actions job summary. */
-export function toMarkdown(results: PackageResult[]): string {
-  const rows = results.flatMap((result) =>
-    result.entries.map(
-      (entry) =>
-        `| \`${result.name}\` | \`${entry.pattern}\` | ${formatBytes(entry.baseline)} | ${formatBytes(entry.size)} | ${formatChange(entry.change)} | ${STATUS_LABEL[entry.status]} |`,
-    ),
-  );
+function toTable(rows: Array<[PackageResult, EntryResult]>, baseLabel: string): string[] {
   return [
-    "## Bundle size",
-    "",
-    "Gzipped size of each package's build output, compared with the baseline in its `bundle-size.json`.",
-    "",
-    "| Package | Files | Baseline | Current | Change | Status |",
+    `| Package | Files | ${baseLabel} | This branch | Change | Status |`,
     "| --- | --- | ---: | ---: | ---: | --- |",
-    ...rows,
+    ...rows.map(
+      ([result, entry]) =>
+        `| \`${result.name}\` | \`${entry.pattern}\` | ${entry.base === undefined ? "–" : formatBytes(entry.base)} | ${formatBytes(entry.size)} | ${formatDelta(entry.size, entry.base)} | ${STATUS_LABEL[entry.status]} |`,
+    ),
+  ];
+}
+
+/**
+ * Markdown report for the PR comment and the job summary: the entries whose size differs from
+ * `baseLabel` up front, every entry in a collapsed table below.
+ */
+export function toMarkdown(results: PackageResult[], baseLabel = "Baseline"): string {
+  const rows = results.flatMap((result) =>
+    result.entries.map((entry): [PackageResult, EntryResult] => [result, entry]),
+  );
+  const changed = rows.filter(([, entry]) => entry.size !== entry.base);
+  const failed = rows.some(([, entry]) => entry.status === "error" || entry.status === "missing");
+
+  return [
+    COMMENT_MARKER,
+    "## 📦 Bundle size",
+    "",
+    changed.length === 0
+      ? `No package changed size compared with \`${baseLabel}\`.`
+      : `${changed.length} of ${rows.length} entries changed size compared with \`${baseLabel}\`. Sizes are gzipped build output.`,
+    "",
+    ...(changed.length > 0 ? [...toTable(changed, baseLabel), ""] : []),
+    ...(failed
+      ? [
+          "> [!CAUTION]",
+          "> An entry is past its error threshold or matches no files. If the growth is intended, run `pnpm monoblok size update <package>` and commit the new baseline.",
+          "",
+        ]
+      : []),
+    "<details>",
+    "<summary>All packages</summary>",
+    "",
+    ...toTable(rows, baseLabel),
+    "",
+    "</details>",
     "",
   ].join("\n");
 }

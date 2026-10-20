@@ -602,5 +602,35 @@ describe("push components actions", () => {
 
       await upsertComponent("12345", { ...mockComponent1, preview_tmpl }, 1);
     });
+
+    it("should send image when creating a component", async () => {
+      const image = "https://a.storyblok.com/f/12345/400x300/abc123/author.png";
+      let requestBody: unknown;
+      server.use(
+        http.post("https://mapi.storyblok.com/v1/spaces/12345/components", async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ component: mockComponent1 }, { status: 201 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, image });
+
+      expect(requestBody).toEqual({ component: expect.objectContaining({ image }) });
+    });
+
+    it("should send image when updating a component", async () => {
+      const image = "https://a.storyblok.com/f/12345/400x300/def456/author-updated.png";
+      let requestBody: unknown;
+      server.use(
+        http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ component: mockComponent1 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, image }, 1);
+
+      expect(requestBody).toEqual({ component: expect.objectContaining({ image }) });
+    });
   });
 });

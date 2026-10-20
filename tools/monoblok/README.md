@@ -98,7 +98,9 @@ pnpm monoblok license check @storyblok/js
 ### Bundle size
 
 The `size` commands guard the size of what each package ships. CI runs `size check` after building
-every package.
+every package. On a PR, it also comments a table of the packages whose size changed compared with
+the base branch's baselines, and updates that comment on every push. PRs from forks get the table in
+the job summary only, since their token can't comment.
 
 A package opts in with a `bundle-size.json` next to its `package.json`. Each entry maps a glob
 pattern, relative to the package, to its baseline: the summed gzipped size, in bytes, of the
@@ -134,6 +136,9 @@ pnpm monoblok size check
 
 # Compare specific packages
 pnpm monoblok size check @storyblok/react @storyblok/vue
+
+# Write the PR comment report, comparing with the baselines on main
+pnpm monoblok size check --base origin/main --markdown bundle-size.md
 
 # Accept the current sizes as the new baselines, then commit the bundle-size.json diff
 pnpm monoblok size update @storyblok/react

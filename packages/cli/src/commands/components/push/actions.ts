@@ -107,6 +107,7 @@ export const upsertComponent = async (
   const {
     name,
     display_name,
+    description,
     schema,
     is_root,
     is_nestable,
@@ -120,6 +121,7 @@ export const upsertComponent = async (
   const payload = {
     name,
     display_name: display_name ?? undefined,
+    description: description ?? undefined,
     schema: toWritableSchema(schema),
     is_root,
     is_nestable,

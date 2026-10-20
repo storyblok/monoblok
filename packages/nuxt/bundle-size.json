@@ -1,0 +1,6 @@
+{
+  "entries": {
+    "dist/module.mjs": 1008,
+    "dist/runtime/**/*.js": 1513
+  }
+}

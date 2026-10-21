@@ -415,14 +415,11 @@ export interface ISbLinksParams {
 }
 
 export interface ISbStrataSearchParams {
-  /** Search term. */
   q?: string;
   version?: StoryblokContentVersionKeys;
   /** Maximum number of results, from 1 to 100. Defaults to 25. */
   limit?: number;
-  /** Only search stories whose full slug starts with this value, e.g. `docs/`. */
   starts_with?: string;
-  /** Only search stories whose root component is this content type. */
   content_type?: string;
   token?: string;
   cv?: number;

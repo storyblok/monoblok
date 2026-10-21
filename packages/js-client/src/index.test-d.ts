@@ -41,8 +41,12 @@ describe("strata search", () => {
     // @ts-expect-error `resolve_relations` is a stories param
     void client.get("cdn/strata/search", { q: "pricing", resolve_relations: "a.b" });
   });
+});
 
-  it("keeps other slugs on the stories params", () => {
+describe("stories fetch", () => {
+  const client = new StoryblokClient({ accessToken: "token" });
+
+  it("rejects params the stories endpoint does not take", () => {
     // @ts-expect-error `q` is not a stories param
     void client.get("cdn/stories", { q: "pricing" });
   });

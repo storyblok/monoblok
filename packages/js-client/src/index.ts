@@ -42,6 +42,8 @@ import type {
   ISbStory,
   ISbStoryData,
   ISbStoryParams,
+  ISbStrataSearchParams,
+  ISbStrataSearchResult,
   ExcludableStoryField,
 } from "./interfaces";
 
@@ -336,6 +338,12 @@ export class Storyblok {
   ): Promise<ISbLinksResult>;
 
   public get(
+    slug: "cdn/strata/search",
+    params?: ISbStrataSearchParams,
+    fetchOptions?: ISbCustomFetch,
+  ): Promise<ISbStrataSearchResult>;
+
+  public get(
     slug: string,
     params?: ISbStoriesParams,
     fetchOptions?: ISbCustomFetch,
@@ -343,9 +351,9 @@ export class Storyblok {
 
   public get(
     slug: string,
-    params: ISbStoriesParams | ISbLinksParams = {},
+    params: ISbStoriesParams | ISbLinksParams | ISbStrataSearchParams = {},
     fetchOptions?: ISbCustomFetch,
-  ): Promise<ISbResult | ISbLinksResult> {
+  ): Promise<ISbResult | ISbLinksResult | ISbStrataSearchResult> {
     // Copied so request state (version, token, cv) never leaks into a reused params object.
     const requestParams: ISbStoriesParams = { ...params };
     const url = toPath(slug);

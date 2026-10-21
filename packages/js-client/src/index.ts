@@ -155,6 +155,8 @@ export class Storyblok {
   private resolveCounter: number;
   public relations: RelationsType;
   public links: LinksType;
+  /** Per resolve, the JSON of each relation before nested resolving expands it. */
+  private stringifiedRelations: Record<string, Record<string, string>>;
   public version: StoryblokContentVersionKeys | undefined;
   private rateLimitConfig: RateLimitConfig;
   private cvMode: "auto" | "manual";
@@ -164,7 +166,6 @@ export class Storyblok {
    */
   public richTextResolver: unknown;
   public resolveNestedRelations: boolean;
-  private stringifiedStoriesCache: Record<string, string>;
   private inlineAssets: boolean;
   /** See {@link cacheKeyspaces}. */
   private cacheKeyspace: object;
@@ -226,6 +227,7 @@ export class Storyblok {
     this.accessToken = config.accessToken || "";
     this.relations = {} as RelationsType;
     this.links = {} as LinksType;
+    this.stringifiedRelations = {};
     this.cache = config.cache || { clear: "manual" };
     // Mirrors the provider selection in `cacheProvider()`.
     this.cacheKeyspace =
@@ -236,8 +238,7 @@ export class Storyblok {
           : NO_CACHE_KEYSPACE;
     this.cvMode = config.cache?.cv ?? "auto";
     this.resolveCounter = 0;
-    this.resolveNestedRelations = config.resolveNestedRelations || true;
-    this.stringifiedStoriesCache = {} as Record<string, string>;
+    this.resolveNestedRelations = config.resolveNestedRelations ?? true;
     this.version = config.version || StoryblokContentVersion.PUBLISHED; // the default version is published as per API documentation
     this.inlineAssets = config.inlineAssets || false;
 
@@ -548,10 +549,9 @@ export class Storyblok {
    * @returns string | object
    */
   private getStoryReference(resolveId: string, uuid: string): string | JSON {
+    const stringified = this.stringifiedRelations[resolveId];
     const result = this.relations[resolveId][uuid]
-      ? JSON.parse(
-          this.stringifiedStoriesCache[uuid] || JSON.stringify(this.relations[resolveId][uuid]),
-        )
+      ? JSON.parse((stringified[uuid] ??= JSON.stringify(this.relations[resolveId][uuid])))
       : uuid;
     return result;
   }
@@ -561,6 +561,7 @@ export class Storyblok {
    * @param jtree - The JSON tree object containing the field to resolve
    * @param treeItem - The key of the field to resolve
    * @param resolveId - The unique identifier for the current resolution context
+   * @param beforeWrite - Called before the field is replaced, if it references a relation
    *
    * This method handles both single string UUIDs and arrays of UUIDs:
    * - For single strings: directly replaces the UUID with the story reference
@@ -570,8 +571,13 @@ export class Storyblok {
     jtree: ISbStoriesParams,
     treeItem: keyof ISbStoriesParams,
     resolveId: string,
+    beforeWrite?: () => void,
   ): void {
     const item = jtree[treeItem];
+    const uuids: unknown[] = typeof item === "string" ? [item] : Array.isArray(item) ? item : [];
+    if (uuids.some((uuid) => typeof uuid === "string" && this.relations[resolveId][uuid])) {
+      beforeWrite?.();
+    }
     if (typeof item === "string") {
       jtree[treeItem] = this.getStoryReference(resolveId, item);
     } else if (Array.isArray(item)) {
@@ -585,6 +591,7 @@ export class Storyblok {
    * @param treeItem - The current field being processed
    * @param fields - The relation patterns to resolve (string or array of strings)
    * @param resolveId - The unique identifier for the current resolution context
+   * @param beforeWrite - Called before a relation is written into the tree
    *
    * This method handles two types of relation patterns:
    * 1. Nested relations: matches fields that end with the current field name
@@ -601,6 +608,7 @@ export class Storyblok {
     treeItem: keyof ISbStoriesParams,
     fields: string | string[],
     resolveId: string,
+    beforeWrite?: () => void,
   ): void {
     // Check for nested relations (e.g., "*.event_type" or "spots.event_type")
     const fieldPattern = Array.isArray(fields)
@@ -609,7 +617,7 @@ export class Storyblok {
 
     if (fieldPattern) {
       // If we found a matching pattern, resolve this field
-      this._resolveField(jtree, treeItem, resolveId);
+      this._resolveField(jtree, treeItem, resolveId, beforeWrite);
       return;
     }
 
@@ -618,7 +626,7 @@ export class Storyblok {
     const fieldPath = jtree.component ? `${jtree.component}.${treeItem}` : treeItem;
     // Check if this exact pattern exists in the fields to resolve
     if (Array.isArray(fields) ? fields.includes(fieldPath) : fields === fieldPath) {
-      this._resolveField(jtree, treeItem, resolveId);
+      this._resolveField(jtree, treeItem, resolveId, beforeWrite);
     }
   }
 
@@ -627,41 +635,48 @@ export class Storyblok {
    * @param story - The story object containing the content to process
    * @param fields - The relation patterns to resolve
    * @param resolveId - The unique identifier for the current resolution context
+   * @param options.resolveLinks - Whether to resolve links, `true` by default
+   * @param options.beforeWrite - Called before a relation is written into the tree
    */
   private iterateTree(
     story: ISbStoryData,
     fields: string | Array<string>,
     resolveId: string,
+    { resolveLinks = true, beforeWrite }: { resolveLinks?: boolean; beforeWrite?: () => void } = {},
   ): void {
     // Internal recursive function to process each node in the tree
-    const enrich = (jtree: ISbStoriesParams | any, path = "") => {
+    const enrich = (jtree: ISbStoriesParams | any) => {
       // Skip processing if node is null/undefined or marked to stop resolving
       if (!jtree || jtree._stopResolving) {
         return;
       }
 
       // Handle arrays by recursively processing each element
-      // Maintains path context by adding array indices
       if (Array.isArray(jtree)) {
-        jtree.forEach((item, index) => enrich(item, `${path}[${index}]`));
+        jtree.forEach((item) => enrich(item));
       }
       // Handle object nodes
       else if (typeof jtree === "object") {
         // Process each property in the object
         for (const key in jtree) {
-          // Build the current path for the context
-          const newPath = path ? `${path}.${key}` : key;
-
           // If this is a component (has component and _uid) or a link,
           // attempt to resolve its relations and links
           if ((jtree.component && jtree._uid) || jtree.type === "link") {
-            this._insertRelations(jtree, key as keyof ISbStoriesParams, fields, resolveId);
-            this._insertLinks(jtree, key as keyof ISbStoriesParams, resolveId);
+            this._insertRelations(
+              jtree,
+              key as keyof ISbStoriesParams,
+              fields,
+              resolveId,
+              beforeWrite,
+            );
+            if (resolveLinks) {
+              this._insertLinks(jtree, key as keyof ISbStoriesParams, resolveId);
+            }
           }
 
           // Continue traversing deeper into the tree
           // This ensures we process nested components and their relations
-          enrich(jtree[key], newPath);
+          enrich(jtree[key]);
         }
       }
     };
@@ -783,6 +798,7 @@ export class Storyblok {
 
     this.links[resolveId] = {};
     this.relations[resolveId] = {};
+    this.stringifiedRelations[resolveId] = {};
 
     if (typeof params.resolve_relations !== "undefined" && params.resolve_relations.length > 0) {
       if (typeof params.resolve_relations === "string") {
@@ -800,9 +816,28 @@ export class Storyblok {
     }
 
     if (this.resolveNestedRelations) {
-      for (const relUuid in this.relations[resolveId]) {
-        this.iterateTree(this.relations[resolveId][relUuid], relationParams, resolveId);
+      const relations = this.relations[resolveId];
+      const stringified = this.stringifiedRelations[resolveId];
+      // Resolve links first, so every copy of a relation includes its resolved links
+      if (Object.keys(this.links[resolveId]).length > 0) {
+        for (const relUuid in relations) {
+          this.iterateTree(relations[relUuid], [], resolveId);
+        }
       }
+      // Relations are expanded in place, so every nested reference must copy a relation as it
+      // was before expansion. Otherwise stories that reference each other nest without limit.
+      // A relation is stringified on its first reference or right before its first write,
+      // whichever comes first, so a relation that nothing is written into costs nothing extra.
+      for (const relUuid in relations) {
+        this.iterateTree(relations[relUuid], relationParams, resolveId, {
+          resolveLinks: false,
+          beforeWrite: () => {
+            stringified[relUuid] ??= JSON.stringify(relations[relUuid]);
+          },
+        });
+      }
+      // The main pass copies the expanded relations
+      this.stringifiedRelations[resolveId] = {};
     }
 
     if (responseData.story) {
@@ -813,10 +848,9 @@ export class Storyblok {
       });
     }
 
-    this.stringifiedStoriesCache = {};
-
     delete this.links[resolveId];
     delete this.relations[resolveId];
+    delete this.stringifiedRelations[resolveId];
   }
 
   private async cacheResponse(

@@ -310,6 +310,24 @@ export interface ISbLinksResult extends ISbResult {
   data: ISbLinks;
 }
 
+export interface ISbStrataSearchHit {
+  /** The matching snippet of story content. */
+  excerpt: string;
+  /** How closely this result matches the search term. Higher means a closer match. */
+  score: number;
+  /** The story this result comes from. */
+  story: {
+    id: number;
+    slug: string;
+    name: string;
+  };
+}
+
+export interface ISbStrataSearchResult extends ISbResult {
+  /** Ranked results, best match first. A story can appear more than once. */
+  data: { results: ISbStrataSearchHit[] };
+}
+
 export interface ISbResponse {
   data: any;
   status: number;
@@ -394,6 +412,20 @@ export interface ISbLinksParams {
   sort_by?: string;
   include_dates?: 0 | 1;
   with_parent?: number;
+}
+
+export interface ISbStrataSearchParams {
+  /** Search term. */
+  q?: string;
+  version?: StoryblokContentVersionKeys;
+  /** Maximum number of results, from 1 to 100. Defaults to 25. */
+  limit?: number;
+  /** Only search stories whose full slug starts with this value, e.g. `docs/`. */
+  starts_with?: string;
+  /** Only search stories whose root component is this content type. */
+  content_type?: string;
+  token?: string;
+  cv?: number;
 }
 
 export interface ISbLinks {

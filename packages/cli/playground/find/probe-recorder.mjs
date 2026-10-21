@@ -16,7 +16,7 @@ const records = [];
 /** Distinguishes the very different things that reach one method. */
 const tagFor = (group, method, args) => {
   if (group === "capi") {
-    return args?.[0]?.by_uuids ? "by_uuids" : "";
+    return args?.[0]?.query?.by_uuids ? "by_uuids" : "";
   }
   if (group === "stories" && method === "list" && args?.[0]?.query?.by_uuids) {
     return "by_uuids";
@@ -58,29 +58,45 @@ function timeCall(group, method, args, invoke) {
 }
 
 /**
- * Wraps `createManagementApiClient` so every `client.<resource>.<method>()` is
- * timed. Resources are proxied lazily rather than copied, so a client shape this
- * harness has never heard of still works.
+ * Times every `client.<resource>.<method>()` through `time`. Resources are
+ * proxied lazily rather than copied, so a client shape this harness has never
+ * heard of still works.
  */
+function timeResources(client, time) {
+  return new Proxy(client, {
+    get(target, resourceName) {
+      const resource = target[resourceName];
+      if (typeof resourceName !== "string" || resource === null || typeof resource !== "object") {
+        return resource;
+      }
+      return new Proxy(resource, {
+        get(methods, method) {
+          const value = methods[method];
+          if (typeof method !== "string" || typeof value !== "function") {
+            return value;
+          }
+          return (...args) => time(resourceName, method, args, () => value.apply(methods, args));
+        },
+      });
+    },
+  });
+}
+
+/** Wraps `createManagementApiClient`, recording each call under its resource. */
 export function wrapClientFactory(factory) {
+  return (config) => timeResources(factory(config), timeCall);
+}
+
+/**
+ * Wraps the CDN client's `createApiClient`. Records land under the `capi` group,
+ * keyed by resource, which is what tells the CDN batches apart from the MAPI
+ * requests in the same run.
+ */
+export function wrapCapiClientFactory(factory) {
   return (config) =>
-    new Proxy(factory(config), {
-      get(client, group) {
-        const resource = client[group];
-        if (typeof group !== "string" || resource === null || typeof resource !== "object") {
-          return resource;
-        }
-        return new Proxy(resource, {
-          get(target, method) {
-            const value = target[method];
-            if (typeof method !== "string" || typeof value !== "function") {
-              return value;
-            }
-            return (...args) => timeCall(group, method, args, () => value.apply(target, args));
-          },
-        });
-      },
-    });
+    timeResources(factory(config), (resourceName, _method, args, invoke) =>
+      timeCall("capi", resourceName, args, invoke),
+    );
 }
 
 /**
@@ -110,26 +126,3 @@ process.on("exit", () => {
   }
   writeFileSync(output, records.map((record) => JSON.stringify(record)).join("\n"));
 });
-
-/**
- * Wraps the CDN client class so every `client.get(slug, params)` is timed.
- *
- * A construct trap rather than a subclass, so the wrapper stays indifferent to
- * the constructor's shape. Records land under the `capi` group, which is what
- * tells the CDN batches apart from the MAPI requests in the same run.
- */
-export function wrapCapiClientClass(RealClass) {
-  return new Proxy(RealClass, {
-    construct(target, args, newTarget) {
-      const client = Reflect.construct(target, args, newTarget);
-      const realGet = client.get.bind(client);
-
-      client.get = (slug, params, fetchOptions) =>
-        timeCall("capi", String(slug).split("/").pop(), [params], () =>
-          realGet(slug, params, fetchOptions),
-        );
-
-      return client;
-    },
-  });
-}

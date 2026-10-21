@@ -370,7 +370,7 @@ run() {
 # ── Scenarios ─────────────────────────────────────────────────────────────────
 # Every entry is a real invocation against the reference space. The first five
 # are the optimization matrix — the same question asked four ways plus the trap
-# — and the rest are the use cases from the README, each with the counts a
+# — and the rest are the use cases from the reference docs, each with the counts a
 # correct run produces. Add, reorder or edit freely; the shape is
 # `run <name> <description> <args…>`.
 #

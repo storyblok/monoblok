@@ -186,7 +186,7 @@ already written the matches found so far, while the table, printed only at the e
 - **`find --check-references` does not stream.** An issue is only decidable once the whole scope has
   been listed, because deciding one needs the _target's_ current slug and publish state. It buffers
   matches and writes them through the same sink afterwards, so it is the one mode where a reader
-  does not see a first line early. This is documented in the command's README.
+  does not see a first line early. This is documented in the command's reference docs.
 - **`stories validate` and `schema validate` still emit a single JSON blob** behind `--format json`,
   bypassing this module. They predate it, and converging them is follow-up work rather than a
   blocker.

@@ -39,6 +39,19 @@ describe("assertSupportedOptions", () => {
       ).not.toThrow();
     });
 
+    it("should accept spaces around the commas", () => {
+      expect(() =>
+        assertSupportedOptions(options({ references: `${UUID} , ${OTHER}` })),
+      ).not.toThrow();
+    });
+
+    // Only commas split the list, so the pair would reach the API as one value.
+    it("should reject UUIDs separated by spaces only", () => {
+      expect(() => assertSupportedOptions(options({ references: `${UUID} ${OTHER}` }))).toThrow(
+        CommandError,
+      );
+    });
+
     // The API would take this as a substring scan of raw story content: slow,
     // and a different question than the one the flag asks.
     it("should reject a value that is not a UUID", () => {

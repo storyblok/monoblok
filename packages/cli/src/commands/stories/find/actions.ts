@@ -25,8 +25,15 @@ import { isInDateRange, parseDateRange } from "./date-range";
  */
 const UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[134578][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
 
-/** One UUID, or several separated by commas. Mirrors the API's own list form. */
-const REFERENCE_UUIDS = new RegExp(`^\\s*(?:${UUID_PATTERN}\\s*,?\\s*)+$`, "i");
+/**
+ * One UUID, or several separated by commas. Mirrors the API's own list form.
+ * The comma is required between UUIDs: `splitList` splits on commas only, so a
+ * space-separated pair would reach the API as one value.
+ */
+const REFERENCE_UUIDS = new RegExp(
+  `^\\s*${UUID_PATTERN}(?:\\s*,\\s*${UUID_PATTERN})*\\s*,?\\s*$`,
+  "i",
+);
 
 /** Splits a comma-separated flag value. The API reads list params verbatim, so `"hero, cta"` would match nothing. */
 export function splitList(raw: string): string[] {

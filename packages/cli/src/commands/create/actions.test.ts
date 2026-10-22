@@ -61,12 +61,37 @@ describe("create actions", () => {
 
       expect(mockedSpawn).toHaveBeenCalledWith(
         "npx",
-        ["degit", "storyblok/blueprint-core-react", "/test/path/my-project"],
+        ["degit", "storyblok/blueprint-core-react", "my-project"],
         {
+          cwd: "/test/path",
           stdio: "inherit",
           shell: true,
         },
       );
+    });
+
+    it("should not pass a target path containing spaces through the shell", async () => {
+      const mockProcess = {
+        on: vi.fn((event: string, callback: (code: number) => void) => {
+          if (event === "close") {
+            setTimeout(() => callback(0), 0);
+          }
+        }),
+      };
+      mockedSpawn.mockReturnValue(mockProcess as any);
+
+      await generateProject("nuxt", "control", "/Users/me/My Projects");
+
+      expect(mockedSpawn).toHaveBeenCalledWith(
+        "npx",
+        ["degit", "storyblok/blueprint-core-nuxt", "control"],
+        {
+          cwd: "/Users/me/My Projects",
+          stdio: "inherit",
+          shell: true,
+        },
+      );
+      expect(vol.existsSync("/Users/me/My Projects")).toBe(true);
     });
 
     it("should throw FileSystemError when directory already exists", async () => {
@@ -133,8 +158,9 @@ describe("create actions", () => {
 
       expect(mockedSpawn).toHaveBeenCalledWith(
         "npx",
-        ["degit", "storyblok/blueprint-core-react", "/current/dir/my-project"],
+        ["degit", "storyblok/blueprint-core-react", "my-project"],
         {
+          cwd: "/current/dir",
           stdio: "inherit",
           shell: true,
         },

@@ -1,0 +1,32 @@
+{
+  "name": "@storyblok/blueprint-sync",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Internal: stages blueprints and verifies them in Chrome for .github/workflows/sync-blueprints.yaml. Source-only, not built, not published.",
+  "type": "module",
+  "scripts": {
+    "stage": "node src/cli.ts stage",
+    "verify": "node --env-file-if-exists=.env src/cli.ts verify",
+    "check": "node --env-file-if-exists=.env src/cli.ts check",
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test": "vp test run",
+    "test:types": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@playwright/test": "catalog:",
+    "pathe": "catalog:"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "tags": [
+      "type:tool"
+    ]
+  }
+}

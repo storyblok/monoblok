@@ -7,7 +7,7 @@
     "react": "catalog:react19",
     "react-dom": "catalog:react19",
     "svelte": "^5.55.7",
-    "vue": "^3.5.42"
+    "vue": "catalog:"
   },
   "devDependencies": {
     "@types/react": "catalog:react19",

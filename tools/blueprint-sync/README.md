@@ -39,13 +39,29 @@ demo texts in the HTML the server sends. `stage` only writes into a directory th
 not exist, and never one inside this repository (compared by real path). Both commands stop with an
 error when the token is not set.
 
+`verify` simulates `storyblok create` and does not run it. Angular has no `.env`: its config copies
+the CLI's replacement of the environment files, and the token stays in the build environment.
+
+Per-framework quirks live in `configs/`:
+
+- Astro is served with `astro dev`, because its Vercel adapter has no `preview`.
+- Nuxt's preview takes the host as `HOST`: the workspace lockfile pins a Nuxt CLI that reads
+  `--host` as the project folder.
+- Only Nuxt, Svelte and Next.js wait for hydration (`ready`). Angular's `serverRendered` is off:
+  `ng build` prerenders no routes.
+- Angular rewrites its own sources during the build. `writes` lists those files, and `check`
+  snapshots and restores them on every exit path, so the token never stays in a tracked file. A copy
+  would not work: pnpm's `node_modules` links do not resolve from another folder.
+- The check retries once in CI.
+
 The token is the read-only delivery token of the shared blueprint demo space, the
 `BLUEPRINTS_DELIVERY_API_TOKEN` repository variable. The token in `.env.qa-engineer-manual` belongs
 to your own QA space, which lacks the demo content.
 
 `stage <blueprint> <dir>` writes only what the sync pushes (`workspace:^` becomes `^` plus the
 version `npm view` reports as `latest`, so it needs network), plus a `package-lock.json` resolved
-with `npm install --package-lock-only --ignore-scripts`. It installs and checks nothing.
+with `npm install --package-lock-only --ignore-scripts --allow-remote=all` (npm 12 defaults
+`allow-remote` to `none`). It installs and checks nothing.
 
 `stage` and `verify` need npm 11 or newer (Node 24). npm 10.9.x crashes resolving
 `blueprint-core-angular` and `blueprint-core-nuxt` without a lockfile

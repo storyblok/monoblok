@@ -91,3 +91,14 @@ jobs:
             echo "No packages to publish"
           fi
         shell: bash
+
+  # Syncs the blueprints to their template repos once the packages are on npm, so the sync resolves
+  # `latest` to what was just published. Every publish on main asks for it, including one that had
+  # nothing new to publish: the approval is where a run is rejected. See blueprints/README.md.
+  sync-blueprints:
+    name: Sync blueprints
+    needs: publish
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sync-blueprints.yaml

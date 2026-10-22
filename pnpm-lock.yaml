@@ -2081,6 +2081,31 @@ importers:
         specifier: 'catalog:'
         version: 3.3.10(typescript@6.0.3)
 
+  tools/blueprint-sync:
+    dependencies:
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.62.1
+      pathe:
+        specifier: 'catalog:'
+        version: 2.0.3
+    devDependencies:
+      '@storyblok/lint-config':
+        specifier: workspace:*
+        version: file:packages/lint-config(oxlint@1.76.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.8(@arethetypeswrong/core@0.18.2)(@opentelemetry/api@1.9.1)(@types/node@24.11.0)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(esbuild@0.28.1)(happy-dom@20.14.6)(jiti@2.7.0)(jsdom@28.1.0)(less@4.6.4)(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(publint@0.3.22)(sass@1.99.0)(svelte@5.57.0(@typescript-eslint/types@8.71.2))(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.28(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(synckit@0.11.12))(vite@8.3.4(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))(vue-tsc@3.3.10(typescript@6.0.3))(yaml@2.9.1)))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.11.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.76.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.2.8(@arethetypeswrong/core@0.18.2)(@opentelemetry/api@1.9.1)(@types/node@24.11.0)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(esbuild@0.28.1)(happy-dom@20.14.6)(jiti@2.7.0)(jsdom@28.1.0)(less@4.6.4)(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(publint@0.3.22)(sass@1.99.0)(svelte@5.57.0(@typescript-eslint/types@8.71.2))(terser@5.46.0)(tsx@4.21.0)(typescript@6.0.3)(unrun@0.2.28(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(synckit@0.11.12))(vite@8.3.4(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))(vue-tsc@3.3.10(typescript@6.0.3))(yaml@2.9.1))
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.11.0)(@vitest/browser-preview@4.1.10)(@vitest/coverage-v8@4.1.10(@vitest/browser@4.1.10)(vitest@4.1.10))(@vitest/ui@4.1.10(vitest@4.1.10))(happy-dom@20.14.6)(jsdom@28.1.0)(msw@2.12.10(@types/node@24.11.0)(typescript@6.0.3))(vite@8.3.4(@types/node@24.11.0)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.4)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.1))
+
   tools/monoblok:
     dependencies:
       '@types/license-checker':

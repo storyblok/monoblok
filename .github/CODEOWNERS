@@ -1,4 +1,7 @@
 .github/workflows/ @storyblok/dx
 .github/actions/ @storyblok/dx
+# `push` holds the App key and runs the scripts here on what `stage` builds from the blueprints.
+tools/blueprint-sync/ @storyblok/dx
+blueprints/ @storyblok/dx
 
 packages/region-helper @storyblok/plugins

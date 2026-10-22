@@ -17,6 +17,8 @@ dist-ts
 .env
 .env.*
 !.env*.template
+# Blueprints ship an example env file to users.
+!blueprints/*/.env.example
 .next
 
 npm-debug.log*

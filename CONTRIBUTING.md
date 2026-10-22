@@ -38,8 +38,8 @@ pnpm --filter monoblok-cli build
 ### Development Commands
 
 ```bash
-# Build all packages
-pnpm nx run-many --target=build
+# Build all packages (the blueprints are left out, CI builds the affected ones)
+pnpm build
 
 # Build a specific package
 pnpm nx build @storyblok/react

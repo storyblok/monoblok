@@ -1,6 +1,6 @@
 {
   "name": "@storyblok/accessibility-checker",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": false,
   "description": "Accessibility checks for the Storyblok Visual Editor",
   "keywords": [

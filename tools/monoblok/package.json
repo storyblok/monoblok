@@ -14,7 +14,9 @@
     "dev": "vp pack --watch",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
-    "test:types": "tsc --noEmit --skipLibCheck"
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test": "vp test run",
+    "test:watch": "vp test"
   },
   "dependencies": {
     "@types/license-checker": "^25.0.6",
@@ -30,6 +32,7 @@
     "@types/inquirer": "^9.0.8",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

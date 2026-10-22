@@ -15,7 +15,7 @@ import {
 } from "./actions";
 import { getUser } from "../user/actions";
 import { templates } from "./constants";
-import { regionCodes } from "../../constants";
+import { regions } from "../../constants";
 import type { SessionState } from "../../session";
 import { session } from "../../session";
 import { loggedInSessionState, loggedOutSessionState } from "../../../test/setup";
@@ -1814,7 +1814,7 @@ describe("createCommand", () => {
     });
 
     it("should accept valid regions: eu, us, cn, ca, ap", async () => {
-      const validRegions = regionCodes;
+      const validRegions = Object.values(regions);
 
       for (const region of validRegions) {
         vi.clearAllMocks();

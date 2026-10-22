@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { buildSvelteAttrs } from '../richtext-helpers';
-  import { isSelfClosing, type RenderSpec, type StoryblokRichTextElement } from '@storyblok/richtext';
+  import { buildRenderAttrs, isSelfClosing, type RenderSpec, type StoryblokRichTextElement } from '@storyblok/richtext';
   import type { Snippet } from 'svelte';
   // eslint-disable-next-line import/no-self-import
   import RenderStaticStructure from './RenderStaticStructure.svelte';
@@ -19,7 +18,7 @@
   {@const { tag, children, attrs: specAttrs } = spec}
   {@const Tag = tag}
   {@const mergedAttrs = { ...specAttrs, ...parentAttrs }}
-  {@const processedAttrs = buildSvelteAttrs(type, mergedAttrs)}
+  {@const processedAttrs = buildRenderAttrs(type, mergedAttrs)}
 
   {#if isSelfClosing(Tag)}
     <svelte:element this={Tag} {...processedAttrs} />

@@ -2,7 +2,7 @@ import type { StoryblokRichTextElementByType } from "../generated/richtext-eleme
 import type { StoryblokRichTextMark, StoryblokRichTextNode } from "./types";
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-export { processAttrs } from "./attribute";
+export { buildRenderAttrs, processAttrs } from "./attribute";
 export {
   areLinkMarksEqual,
   getInnerMarks,
@@ -56,6 +56,7 @@ export type SbRichTextElementByType<TContext = unknown> = StoryblokRichTextEleme
 
 export {
   attrsToHtmlString,
+  excludeComponentFromContext,
   getStaticChildren,
   hasContent,
   isSelfClosing,

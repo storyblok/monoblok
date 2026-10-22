@@ -21,6 +21,27 @@ name by `.github/workflows/sync-blueprints.yaml` (see `adr/0022-sync-blueprints-
 Pull requests that touch `blueprints/**` or an SDK build and smoke-check the affected blueprints
 against the workspace SDK source (the `blueprints` job in `ci.yaml`, ADR-0022).
 
+## How nx sees blueprints
+
+- Projects are inferred from each `package.json`, so `workspace:^` becomes a project dependency and
+  `build` runs `^build` first. `nx.includedScripts: ["build"]` keeps nx from inferring `lint`, `test`,
+  `dev` or `start`, because `project.json` cannot remove an inferred target. `stage` drops that key.
+- `project.json` sets what `build` gets wrong: the `blueprint` tag, `outputs` per framework, `inputs`
+  that skip `node_modules` and include the token, and an implicit dependency on
+  `@storyblok/blueprint-sync`, so a change to the smoke check selects all seven. The `smoke` target
+  is a default in `nx.json`, which each `project.json` opts into with `"smoke": {}`.
+- The `blueprint` named input lists `blueprints/.pnpmfile.cjs` and `pnpm-workspace.yaml`, so a change
+  to either selects all seven. `nx.json` is in `.nxignore`: editing the smoke default or the named
+  input selects nothing, so run `pnpm nx smoke <blueprint>` by hand.
+- There are two build targets. `build` is cached and token-free, with `STORYBLOK_DELIVERY_API_TOKEN`
+  as a hash input, so a build made with a token never serves one made without. `smoke` is never
+  cached: it builds with the token, which is baked into the output, and runs the check. Smoke tasks
+  run one at a time (`parallelism: false`) because the blueprints share ports 3000 and 4173.
+- The `blueprints` job passes `--skip-nx-cache`. With `injectWorkspacePackages`, each blueprint holds
+  a hard-linked copy of the SDK that pnpm refreshes only when the SDK's `build` script runs. After
+  switching branches or restoring a build from the cache, `nx smoke` can check another branch's SDK
+  build: run `pnpm install`, or the SDK build with `--skip-nx-cache`.
+
 ## Syncing
 
 Run the **Sync blueprints** workflow with comma-separated folder names, or `all`. Verify locally first
@@ -31,7 +52,7 @@ pushes it only if its checksum still matches (`push`). One red `verify` leg stop
 run: sync the others by name.
 
 A run for an older commit is refused by `push`: when the target's last commit is a sync commit, it
-fails if that sync came from a newer commit. A commit made directly in a target, on top of the
+fails unless the commit being synced is ahead of that sync or identical to it. A commit made directly in a target, on top of the
 last sync, switches that check off. Re-running an old run does not work either, and its tarballs
 expire after a day: start a new run. A blueprint that needs an SDK change that is not on npm yet
 fails the sync until the release: sync the others by name.
@@ -61,7 +82,9 @@ key is never reachable from a job that runs under `production`.
   is installed on the seven template repos only, with `contents: write` and no `workflows`.
 - The demo token is the repository variable `BLUEPRINTS_DELIVERY_API_TOKEN`: read-only, and in every
   template's build, so not a secret. `verify` and the PR `blueprints` job both read it.
-  `verify` runs untrusted install scripts, so give it nothing else.
+  `verify` runs untrusted install scripts, so give it nothing else. The PR job runs in
+  `environment: test`, so a variable of that name on the environment overrides the repository one.
+  When it is empty, the smoke step is skipped with a notice and the build still runs.
 - `tools/blueprint-sync/` and `blueprints/` are owned by `@storyblok/dx` in CODEOWNERS, because
   `push` runs the scripts there with the App key. Ownership only requests the review. To make it
   block the merge, turn on "Require review from Code Owners" in the ruleset for `main`.

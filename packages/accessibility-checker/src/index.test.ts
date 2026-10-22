@@ -98,7 +98,7 @@ describe("inside the Visual Editor", () => {
 
   it("should announce itself to the editor on start", () => {
     expect(postMessage).toHaveBeenCalledWith(
-      { action: "accessibilityReady", protocolVersion: 1, pluginVersion: expect.any(String) },
+      { action: "accessibilityReady", protocolVersion: 1, packageVersion: expect.any(String) },
       EDITOR_ORIGIN,
     );
   });
@@ -108,7 +108,7 @@ describe("inside the Visual Editor", () => {
     send({ action: "accessibilityPing" }, { origin: "http://localhost:3000" });
 
     expect(postMessage).toHaveBeenCalledWith(
-      { action: "accessibilityReady", protocolVersion: 1, pluginVersion: expect.any(String) },
+      { action: "accessibilityReady", protocolVersion: 1, packageVersion: expect.any(String) },
       "http://localhost:3000",
     );
   });

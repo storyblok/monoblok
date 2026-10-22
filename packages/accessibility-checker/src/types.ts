@@ -15,7 +15,7 @@ export type AccessibilityPingRequest = {
 export type AccessibilityReadyMessage = {
   action: "accessibilityReady";
   protocolVersion: number;
-  pluginVersion: string;
+  packageVersion: string;
 };
 
 export type AccessibilityCheckResultMessage = {

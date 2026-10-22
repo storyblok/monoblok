@@ -1,7 +1,7 @@
 import { isBrowser, isInEditor } from "@storyblok/live-preview";
 import { isEditorOrigin } from "@storyblok/region-helper";
 
-import { version as pluginVersion } from "../package.json";
+import { version as packageVersion } from "../package.json";
 import { buildResult } from "./results";
 import { accessibilityProtocolVersion } from "./types";
 
@@ -115,7 +115,7 @@ function startChecker({
       {
         action: "accessibilityReady",
         protocolVersion: accessibilityProtocolVersion,
-        pluginVersion,
+        packageVersion,
       },
       origin,
     );

@@ -1,0 +1,161 @@
+/**
+ * Applies one content migration across a set of stories and reports what should
+ * be written.
+ */
+import type { CompiledMigration } from "./define-migration";
+import { type MigrationRun, type PublishState, runId, type StoryInverse } from "./journal";
+import { runMigrationOnStory } from "./runner";
+import { isRecord } from "../utils/is-record";
+
+export type StoryForMigration = {
+  id: number;
+  slug: string;
+  content: unknown;
+  published?: boolean | null;
+  unpublished_changes?: boolean | null;
+};
+
+/**
+ * Which written stories are also published:
+ * - `all`: every one, including stories that were never published.
+ * - `published`: only published stories whose live version matched the draft,
+ *   so publishing ships only the migration.
+ * - `published-with-changes`: only published stories whose draft was already
+ *   ahead of the live version, so publishing also ships an editor's pending
+ *   changes.
+ */
+export type PublishMode = "all" | "published" | "published-with-changes";
+
+export type ApplyMigrationInput = {
+  migration: CompiledMigration;
+  /** Filename-derived migration id, so a repeat run against a space is visible. */
+  id: string;
+  space: string;
+  stories: StoryForMigration[];
+  /** Omitted: write drafts only. */
+  publish?: PublishMode;
+  appliedAt?: Date;
+};
+
+export type MigrationWrite = {
+  story: StoryForMigration;
+  content: Record<string, unknown>;
+  publish: boolean;
+};
+
+export type ApplyMigrationOutcome = {
+  /** The journal entry to record once the writes succeeded. */
+  run: MigrationRun;
+  inverse: StoryInverse[];
+  writes: MigrationWrite[];
+  refusals: { slug: string; reason: string }[];
+  /**
+   * Written stories that are published but whose write is not. Their live
+   * version keeps the old shape until anyone publishes them, at which point the
+   * migration goes live with no further action.
+   */
+  publishedDraftOnly: number;
+};
+
+function publishStateOf(story: StoryForMigration): PublishState {
+  return {
+    published: story.published === true,
+    unpublishedChanges: story.unpublished_changes === true,
+  };
+}
+
+function shouldPublish(state: PublishState, mode: PublishMode | undefined): boolean {
+  switch (mode) {
+    case "all":
+      return true;
+    case "published":
+      return state.published && !state.unpublishedChanges;
+    case "published-with-changes":
+      return state.published && state.unpublishedChanges;
+    default:
+      return false;
+  }
+}
+
+function refusalReason(
+  migration: CompiledMigration,
+  result: ReturnType<typeof runMigrationOnStory>,
+): string | undefined {
+  const opLabel = (entry: { uid: string; op: number }) =>
+    `op ${entry.op} (${migration.ops[entry.op]?.kind}) on block ${entry.uid}`;
+
+  // Both instabilities are refused, but they have different culprits: content
+  // that arrived with repeated ids sends the author to the story, not to the
+  // migration. Only a story the migration reaches is refused for them; one it
+  // does not touch is not its concern.
+  if (result.matched > 0 && result.unstableUids.preExisting.length > 0) {
+    return `This story already contains repeated block ids (${result.unstableUids.preExisting.join(", ")}); they would be renumbered on write, stranding the record needed to undo the run.`;
+  }
+  if (result.unstableUids.duplicate.length > 0 || result.unstableUids.missing > 0) {
+    const detail =
+      result.unstableUids.duplicate.length > 0
+        ? `repeated ids ${result.unstableUids.duplicate.join(", ")}`
+        : `${result.unstableUids.missing} block(s) without an id`;
+    return `The migration left this story with ${detail}; they would be renumbered on write, stranding the record needed to undo the run.`;
+  }
+  if (result.translatedReshapes.length > 0) {
+    const fields = [...new Set(result.translatedReshapes.map((entry) => entry.field))];
+    return `Field ${fields.join(", ")} is translated, and splitting or merging a translated field would strand its translations, which are then dropped. Reshape it with \`alterBlock\`, where the translated keys can be handled explicitly.`;
+  }
+  if (result.refusedOps.length > 0) {
+    return result.refusedOps
+      .map((entry) => `${opLabel(entry)} was refused: ${entry.reason}`)
+      .join(" ");
+  }
+  if (result.nonIdempotent.length > 0) {
+    return `Running the migration again would keep changing this story: ${result.nonIdempotent.map(opLabel).join(", ")} changed it again on a second pass.`;
+  }
+  return undefined;
+}
+
+export function applyMigration(input: ApplyMigrationInput): ApplyMigrationOutcome {
+  const appliedAt = input.appliedAt ?? new Date();
+  const writes: MigrationWrite[] = [];
+  const refusals: ApplyMigrationOutcome["refusals"] = [];
+  const inverse: StoryInverse[] = [];
+
+  for (const story of input.stories) {
+    const result = runMigrationOnStory(input.migration, story.content);
+    const reason = refusalReason(input.migration, result);
+    if (reason) {
+      refusals.push({ slug: story.slug, reason });
+      continue;
+    }
+    if (!result.changed) {
+      continue;
+    }
+
+    // The runner returns a clone of the content it was given, so a story whose
+    // content is not a block has nothing writable to offer.
+    if (!isRecord(result.content)) {
+      continue;
+    }
+
+    const before = publishStateOf(story);
+    const publish = shouldPublish(before, input.publish);
+    inverse.push({ story: story.id, patches: result.inverse, before, publishedByRun: publish });
+    writes.push({ story, content: result.content, publish });
+  }
+
+  return {
+    run: {
+      id: runId(input.id, appliedAt),
+      space: input.space,
+      migration: input.id,
+      title: input.migration.title,
+      appliedAt: appliedAt.toISOString(),
+      stories: inverse.length,
+      blocks: inverse.reduce((total, entry) => total + entry.patches.length, 0),
+    },
+    inverse,
+    writes,
+    refusals,
+    publishedDraftOnly: writes.filter((write) => write.story.published === true && !write.publish)
+      .length,
+  };
+}

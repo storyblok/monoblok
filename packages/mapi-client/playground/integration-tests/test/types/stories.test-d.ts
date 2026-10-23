@@ -305,16 +305,40 @@ describe("createManagementApiClient with .withTypes() — field plugins", () => 
   });
   type Schema = InferSchema<typeof _schema>;
 
-  it("resolves a registered custom field to the validator output merged with the plugin envelope", async () => {
+  it("should resolve registered object values with optional plugin metadata", async () => {
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<Schema>();
     const result = await client.stories.get(123);
     if (result.data?.story && result.data.story.content.component === "themed") {
       expectTypeOf<NonNullable<typeof result.data.story.content.bg>>().toEqualTypeOf<{
         color: string;
-        plugin: string;
+        plugin?: string;
         _uid?: string;
       }>();
     }
+  });
+
+  it("should preserve primitive plugin values in read and write types", async () => {
+    const _textBlock = defineBlock({
+      name: "text",
+      is_root: true,
+      fields: [defineField("value", { type: "custom", field_type: "text-plugin" })],
+    });
+    const client = createManagementApiClient(CLIENT_CONFIG).withTypes<{
+      blocks: typeof _textBlock;
+      fieldPlugins: { "text-plugin": string };
+    }>();
+    const result = await client.stories.get(123);
+    if (result.data?.story) {
+      expectTypeOf(result.data.story.content.value).toEqualTypeOf<string | null | undefined>();
+    }
+
+    type CreateBody = Parameters<typeof client.stories.create>[0]["body"];
+    type CreateContent = NonNullable<CreateBody["story"]["content"]>;
+    expectTypeOf<CreateContent["value"]>().toEqualTypeOf<string | null | undefined>();
+
+    type UpdateBody = Parameters<typeof client.stories.update>[1]["body"];
+    type UpdateContent = NonNullable<UpdateBody["story"]["content"]>;
+    expectTypeOf<UpdateContent["value"]>().toEqualTypeOf<string | null | undefined>();
   });
 
   it("leaves an unregistered custom field as PluginFieldValue", async () => {

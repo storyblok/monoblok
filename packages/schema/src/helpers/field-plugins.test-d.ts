@@ -16,9 +16,35 @@ const colorPicker = defineFieldPlugin({
 interface ColorEnvelope {
   color: string;
   alpha: number;
-  plugin: string;
+  plugin?: string;
   _uid?: string;
 }
+
+const fieldPlugins = {
+  colorPicker,
+  text: defineFieldPlugin({ fieldType: "text-plugin", value: z.string() }),
+  number: defineFieldPlugin({ fieldType: "number-plugin", value: z.number() }),
+  boolean: defineFieldPlugin({ fieldType: "boolean-plugin", value: z.boolean() }),
+  array: defineFieldPlugin({ fieldType: "array-plugin", value: z.array(z.string()) }),
+  tuple: defineFieldPlugin({
+    fieldType: "tuple-plugin",
+    value: z.tuple([z.string(), z.number()]).readonly(),
+  }),
+  union: defineFieldPlugin({
+    fieldType: "union-plugin",
+    value: z.union([z.string(), z.strictObject({ color: z.string(), alpha: z.number() })]),
+  }),
+  placeholder: defineFieldPlugin({
+    fieldType: "placeholder-plugin",
+    value: {
+      "~standard": {
+        version: 1,
+        vendor: "storyblok-placeholder",
+        validate: (value: unknown) => ({ value }),
+      },
+    },
+  }),
+};
 
 describe("custom field plugin resolution (read + write share one type)", () => {
   const heroBlock = defineBlock({
@@ -27,14 +53,22 @@ describe("custom field plugin resolution (read + write share one type)", () => {
     fields: [
       defineField("bg", { type: "custom", field_type: "my-color" }),
       defineField("legacy", { type: "custom", field_type: "unregistered-plugin" }),
+      defineField("text", { type: "custom", field_type: "text-plugin" }),
+      defineField("number", { type: "custom", field_type: "number-plugin" }),
+      defineField("boolean", { type: "custom", field_type: "boolean-plugin" }),
+      defineField("array", { type: "custom", field_type: "array-plugin" }),
+      defineField("tuple", { type: "custom", field_type: "tuple-plugin" }),
+      defineField("union", { type: "custom", field_type: "union-plugin" }),
+      defineField("placeholder", { type: "custom", field_type: "placeholder-plugin" }),
     ],
   });
 
-  const _schema = defineSchema({ blocks: { heroBlock }, fieldPlugins: { colorPicker } });
+  const _schema = defineSchema({ blocks: { heroBlock }, fieldPlugins });
   type S = Schema<typeof _schema>;
   type HeroStory = Story<S["blocks"], S["fieldPlugins"]>;
+  type HeroInput = BlockContentInput<typeof heroBlock, false, S["fieldPlugins"]>;
 
-  it("resolves a registered custom field to the validator output merged with the plugin envelope", () => {
+  it("should resolve registered object values with optional plugin metadata", () => {
     expectTypeOf<NonNullable<HeroStory["content"]["bg"]>>().toEqualTypeOf<ColorEnvelope>();
   });
 
@@ -42,9 +76,39 @@ describe("custom field plugin resolution (read + write share one type)", () => {
     expectTypeOf<NonNullable<HeroStory["content"]["legacy"]>>().toEqualTypeOf<PluginFieldValue>();
   });
 
-  it("resolves to the same envelope on the write (input) side", () => {
-    type HeroInput = BlockContentInput<typeof heroBlock, false, S["fieldPlugins"]>;
+  it("should resolve the same optional metadata on the write (input) side", () => {
     expectTypeOf<NonNullable<HeroInput["bg"]>>().toEqualTypeOf<ColorEnvelope>();
+  });
+
+  it("should preserve primitive plugin values on read and write", () => {
+    expectTypeOf<NonNullable<HeroStory["content"]["text"]>>().toEqualTypeOf<string>();
+    expectTypeOf<NonNullable<HeroInput["text"]>>().toEqualTypeOf<string>();
+    expectTypeOf<NonNullable<HeroStory["content"]["number"]>>().toEqualTypeOf<number>();
+    expectTypeOf<NonNullable<HeroInput["number"]>>().toEqualTypeOf<number>();
+    expectTypeOf<NonNullable<HeroStory["content"]["boolean"]>>().toEqualTypeOf<boolean>();
+    expectTypeOf<NonNullable<HeroInput["boolean"]>>().toEqualTypeOf<boolean>();
+  });
+
+  it("should preserve arrays and readonly tuples on read and write", () => {
+    expectTypeOf<NonNullable<HeroStory["content"]["array"]>>().toEqualTypeOf<string[]>();
+    expectTypeOf<NonNullable<HeroInput["array"]>>().toEqualTypeOf<string[]>();
+    expectTypeOf<NonNullable<HeroStory["content"]["tuple"]>>().toEqualTypeOf<
+      readonly [string, number]
+    >();
+    expectTypeOf<NonNullable<HeroInput["tuple"]>>().toEqualTypeOf<readonly [string, number]>();
+  });
+
+  it("should distribute optional metadata only over object members of a union", () => {
+    expectTypeOf<NonNullable<HeroStory["content"]["union"]>>().toEqualTypeOf<
+      string | ColorEnvelope
+    >();
+    expectTypeOf<NonNullable<HeroInput["union"]>>().toEqualTypeOf<string | ColorEnvelope>();
+  });
+
+  it("should allow primitive, array and object values for an unrestricted placeholder", () => {
+    type Values = string | number | boolean | string[] | { color: string } | null | undefined;
+    expectTypeOf<Values>().toExtend<HeroStory["content"]["placeholder"]>();
+    expectTypeOf<Values>().toExtend<HeroInput["placeholder"]>();
   });
 
   it("falls back to PluginFieldValue for every custom field when no plugins are registered", () => {

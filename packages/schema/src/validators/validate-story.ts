@@ -49,6 +49,7 @@ const EXPECTED_SHAPE = {
  * regenerate cannot revert it.
  */
 const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
+const zRegisteredPluginMetadata = zPluginEnvelope.partial();
 
 /**
  * Whether a content value counts as "no value". Mirrors the backend's required
@@ -270,14 +271,18 @@ function validateFieldValue(
       validateRichtextBloks(value, field, blocksByName, fieldPluginsByType, path, entity, issues);
       break;
     case "custom": {
-      checkValue(zPluginEnvelope, value, path, entity, issues, EXPECTED_SHAPE.plugin);
       const validator = field.field_type ? fieldPluginsByType.get(field.field_type) : undefined;
-      if (validator && isRecord(value)) {
-        // Envelope keys sit alongside the plugin's own keys; strip them so the
+      if (!validator) {
+        checkValue(zPluginEnvelope, value, path, entity, issues, EXPECTED_SHAPE.plugin);
+      } else if (isRecord(value)) {
+        checkValue(zRegisteredPluginMetadata, value, path, entity, issues);
+        // Reserved metadata sits alongside the plugin's own keys; strip it so the
         // plugin validator sees only its value. Sibling keys keep issue paths
         // accurate (an issue at ['color'] maps to [...path, 'color']).
         const { plugin: _plugin, _uid, ...pluginValue } = value;
         checkValue(validator, pluginValue, path, entity, issues);
+      } else {
+        checkValue(validator, value, path, entity, issues);
       }
       break;
     }

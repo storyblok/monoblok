@@ -155,6 +155,140 @@ describe("validateStory", () => {
     });
     const pluginSchema = { blocks: { page: pageWithPlugin }, fieldPlugins: { colorPlugin } };
 
+    const validatePluginValue = (value: unknown, validator: StandardSchemaV1) =>
+      validateStory(
+        { content: { component: "page", headline: "Hi", accent: value } },
+        {
+          blocks: { page: pageWithPlugin },
+          fieldPlugins: {
+            plugin: defineFieldPlugin({ fieldType: "storyblok-colorpicker", value: validator }),
+          },
+        },
+      );
+
+    it.each([
+      { name: "string", validator: z.string(), value: "hello" },
+      { name: "number", validator: z.number(), value: 0 },
+      { name: "boolean", validator: z.boolean(), value: false },
+      { name: "array", validator: z.array(z.string()), value: ["one", "two"] },
+      { name: "empty array", validator: z.array(z.string()), value: [] },
+      {
+        name: "object",
+        validator: z.strictObject({ color: z.string() }),
+        value: { color: "#fff" },
+      },
+      {
+        name: "object with only _uid metadata",
+        validator: z.strictObject({ color: z.string() }),
+        value: { _uid: "legacy-id", color: "#fff" },
+      },
+      {
+        name: "object with plugin metadata",
+        validator: z.strictObject({ color: z.string() }),
+        value: { plugin: "official-colorpicker", _uid: "legacy-id", color: "#fff" },
+      },
+      {
+        name: "union string",
+        validator: z.union([z.string(), z.strictObject({ color: z.string() })]),
+        value: "hello",
+      },
+      {
+        name: "union object",
+        validator: z.union([z.string(), z.strictObject({ color: z.string() })]),
+        value: { color: "#fff" },
+      },
+    ])("should accept a registered $name value", ({ validator, value }) => {
+      expect(validatePluginValue(value, validator)).toEqual({ ok: true, issues: [] });
+    });
+
+    it.each([
+      { name: "string", validator: z.string(), value: 42, path: [] },
+      {
+        name: "wrapped string",
+        validator: z.string(),
+        value: { plugin: "text", value: "hello" },
+        path: [],
+      },
+      { name: "array item", validator: z.array(z.string()), value: [42], path: [0] },
+      {
+        name: "object payload",
+        validator: z.strictObject({ color: z.string() }),
+        value: { color: 42 },
+        path: ["color"],
+      },
+      {
+        name: "extra object key",
+        validator: z.strictObject({ color: z.string() }),
+        value: { color: "#fff", extra: true },
+        path: [],
+      },
+      {
+        name: "plugin metadata",
+        validator: z.strictObject({ color: z.string() }),
+        value: { plugin: 42, color: "#fff" },
+        path: ["plugin"],
+      },
+      {
+        name: "_uid metadata",
+        validator: z.strictObject({ color: z.string() }),
+        value: { _uid: 42, color: "#fff" },
+        path: ["_uid"],
+      },
+    ])("should reject invalid registered $name", ({ validator, value, path }) => {
+      const result = validatePluginValue(value, validator);
+      expect(result.ok).toBe(false);
+      expect(result.issues).toEqual([
+        expect.objectContaining({ code: "invalid_value", path: ["content", "accent", ...path] }),
+      ]);
+    });
+
+    it.each([
+      { value: "hello" },
+      { value: 0 },
+      { value: false },
+      { value: ["one"] },
+      { value: { color: "#fff" } },
+    ])("should accept $value with an unrestricted Standard Schema placeholder", ({ value }) => {
+      const placeholder: StandardSchemaV1 = {
+        "~standard": {
+          version: 1,
+          vendor: "storyblok-placeholder",
+          validate: (value) => ({ value }),
+        },
+      };
+      expect(validatePluginValue(value, placeholder)).toEqual({ ok: true, issues: [] });
+    });
+
+    it.each([undefined, null, ""])(
+      "should preserve an optional unset plugin value: %j",
+      (value) => {
+        expect(validatePluginValue(value, z.string())).toEqual({ ok: true, issues: [] });
+      },
+    );
+
+    it.each([undefined, null, ""])("should reject a required unset plugin value: %j", (value) => {
+      const requiredPage = defineBlock({
+        name: "page",
+        is_root: true,
+        fields: [
+          defineField("text", { type: "custom", field_type: "text-plugin", required: true }),
+        ],
+      });
+      const result = validateStory(
+        { content: { component: "page", text: value } },
+        {
+          blocks: { requiredPage },
+          fieldPlugins: {
+            text: defineFieldPlugin({ fieldType: "text-plugin", value: z.string() }),
+          },
+        },
+      );
+      expect(result.ok).toBe(false);
+      expect(result.issues).toEqual([
+        expect.objectContaining({ code: "missing_required_field", path: ["content", "text"] }),
+      ]);
+    });
+
     it("accepts a registered plugin value that matches its validator", () => {
       const result = validateStory(
         {
@@ -208,20 +342,23 @@ describe("validateStory", () => {
       expect(result.ok).toBe(true);
     });
 
-    it("errors when the envelope plugin key is missing", () => {
-      const result = validateStory(
-        {
-          content: {
-            component: "page",
-            headline: "Hi",
-            accent: { color: "#fff" },
+    it.each([{ accent: "hello" }, { accent: ["one"] }, { accent: { color: "#fff" } }])(
+      "should still require an envelope for an unregistered plugin: $accent",
+      ({ accent }) => {
+        const result = validateStory(
+          {
+            content: {
+              component: "page",
+              headline: "Hi",
+              accent,
+            },
           },
-        },
-        pluginSchema,
-      );
-      expect(result.ok).toBe(false);
-      expect(codesFor(result)).toContain("invalid_value");
-    });
+          { blocks: { page: pageWithPlugin } },
+        );
+        expect(result.ok).toBe(false);
+        expect(codesFor(result)).toContain("invalid_value");
+      },
+    );
 
     it("accepts a non-UUID _uid string (envelope relaxation)", () => {
       const result = validateStory(
@@ -254,7 +391,11 @@ describe("validateStory", () => {
       expect(colorIssue?.path).toEqual(["content", "accent", "color"]);
     });
 
-    it("errors instead of silently passing when a plugin ships an async validator", () => {
+    it.each([
+      { accent: "hello" },
+      { accent: ["one"] },
+      { accent: { plugin: "official-colorpicker", _uid: "abc-123", color: "x" } },
+    ])("should reject an async plugin validator for $accent", ({ accent }) => {
       const asyncValue: StandardSchemaV1<{ color: string }> = {
         "~standard": {
           version: 1,
@@ -271,7 +412,7 @@ describe("validateStory", () => {
           content: {
             component: "page",
             headline: "Hi",
-            accent: { plugin: "official-colorpicker", _uid: "abc-123", color: "x" },
+            accent,
           },
         },
         { blocks: { page: pageWithPlugin }, fieldPlugins: { asyncPlugin } },

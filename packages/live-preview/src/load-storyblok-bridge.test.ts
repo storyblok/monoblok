@@ -44,7 +44,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("creates a bridge instance with the supplied config", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     const config: BridgeParams = { resolveRelations: ["foo.bar"] };
 
@@ -56,7 +56,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("creates a new instance on every call", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     const first = await loadStoryblokBridge();
     const second = await loadStoryblokBridge();
@@ -66,7 +66,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("accepts different configs on subsequent calls without throwing", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     const configA: BridgeParams = { resolveRelations: ["foo.bar"] };
     const configB: BridgeParams = { resolveRelations: ["bar.foo"] };
@@ -78,7 +78,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("sets window.StoryblokBridge to the bridge class", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     expect((window as any).StoryblokBridge).toBeUndefined();
 
@@ -89,7 +89,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("window.StoryblokBridge emits a deprecation warning on access", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
     void (window as any).StoryblokBridge;
@@ -103,7 +103,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("window.StoryblokBridge setter accepts a plain assignment without throwing", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
 
@@ -115,7 +115,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("reading window.StoryblokBridge after a setter write returns the written value without a deprecation warning", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
     await loadStoryblokBridge();
 
     const FakeBridge = vi.fn();
@@ -132,14 +132,14 @@ describe("loadStoryblokBridge", () => {
     const ExistingBridge = vi.fn();
     (window as any).StoryblokBridge = ExistingBridge;
 
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
     await loadStoryblokBridge();
 
     expect((window as any).StoryblokBridge).toBe(ExistingBridge);
   });
 
   it("sets window.storyblokRegisterEvent", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
 
@@ -147,7 +147,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("window.storyblokRegisterEvent emits a deprecation warning on access", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
     void window.storyblokRegisterEvent;
@@ -161,7 +161,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("window.storyblokRegisterEvent returns a stable function reference on every access", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
 
@@ -171,7 +171,7 @@ describe("loadStoryblokBridge", () => {
   });
 
   it("window.storyblokRegisterEvent setter accepts a plain assignment without throwing", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
 
@@ -186,14 +186,14 @@ describe("loadStoryblokBridge", () => {
     const existingShim = vi.fn();
     (window as any).storyblokRegisterEvent = existingShim;
 
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
     await loadStoryblokBridge();
 
     expect(window.storyblokRegisterEvent).toBe(existingShim);
   });
 
   it("storyblokRegisterEvent calls cb immediately when in editor", async () => {
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
 
@@ -209,7 +209,7 @@ describe("loadStoryblokBridge", () => {
       writable: true,
     });
 
-    const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
 
     await loadStoryblokBridge();
 
@@ -232,7 +232,7 @@ describe("loadStoryblokBridge", () => {
     });
 
     try {
-      const { loadStoryblokBridge } = await import("./loadStoryblokBridge");
+      const { loadStoryblokBridge } = await import("./load-storyblok-bridge");
       await expect(loadStoryblokBridge()).rejects.toThrow(
         "Cannot load Storyblok bridge: window is undefined",
       );
@@ -248,7 +248,7 @@ describe("loadStoryblokBridge", () => {
       throw new Error("import failed");
     });
 
-    const { loadStoryblokBridge: failingLoader } = await import("./loadStoryblokBridge");
+    const { loadStoryblokBridge: failingLoader } = await import("./load-storyblok-bridge");
 
     await expect(failingLoader()).rejects.toThrow();
   });

@@ -1,8 +1,8 @@
 import type StoryblokBridge from "@storyblok/preview-bridge";
 import type { BridgeParams } from "@storyblok/preview-bridge";
 
-import { isBrowser } from "./utils/isBrowser";
-import { isInEditor } from "./utils/isInEditor";
+import { isBrowser } from "./utils/is-browser";
+import { isInEditor } from "./utils/is-in-editor";
 
 declare global {
   interface Window {

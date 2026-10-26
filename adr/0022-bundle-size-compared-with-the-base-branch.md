@@ -1,4 +1,4 @@
-# ADR-0020: Bundle Size Compared With the Base Branch
+# ADR-0022: Bundle Size Compared With the Base Branch
 
 **Status:** Accepted  
 **Date:** 2026-10-26

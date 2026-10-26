@@ -17,6 +17,7 @@ export { default as StoryblokRichText } from "./StoryblokRichText.svelte";
 export * from "./types";
 
 export { apiPlugin, useStoryblokBridge } from "@storyblok/js";
+export { editableField } from "@storyblok/js";
 
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 

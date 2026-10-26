@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   compare,
   entryPoints,
+  firstError,
   hasFailed,
   isPublished,
   loadProjects,
@@ -249,6 +250,23 @@ describe("measure", () => {
     ]);
   });
 
+  it("should ignore a tsconfig that extends a file only the build generates", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "tsconfig.json": JSON.stringify({ extends: "./.generated/tsconfig.json" }),
+        "dist/index.mjs": `export { local } from "./local";\n`,
+        "dist/local.js": code("local"),
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBeUndefined();
+    expect(pkg.entries["."].size).toBeGreaterThan(200);
+  });
+
   it("should report a package that is not built", async () => {
     writePackage("pkg", { name: "@storyblok/pkg" });
 
@@ -267,6 +285,16 @@ describe("measure", () => {
     const pkg = (await measure(root)).packages["@storyblok/pkg"];
 
     expect(pkg.error).toBe("`./ssr` points to dist/ssr.mjs, which the build did not emit.");
+  });
+});
+
+describe("firstError", () => {
+  it("should keep the first error of a build failure, without colors", () => {
+    const message =
+      "Build failed with 2 errors:\n\n\x1b[31m[RESOLVE_ERROR]\x1b[0m Could not resolve 'a'\n\n[RESOLVE_ERROR] Could not resolve 'b'";
+
+    expect(firstError(message)).toBe("[RESOLVE_ERROR] Could not resolve 'a'");
+    expect(firstError("Something else")).toBe("Something else");
   });
 });
 

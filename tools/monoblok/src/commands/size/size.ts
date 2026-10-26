@@ -310,6 +310,9 @@ export async function bundleEntry(
     write: false,
     platform: "browser",
     logLevel: "silent",
+    // A consumer's bundler never reads the package's tsconfig, which may also extend a file only
+    // its build generates.
+    tsconfig: false,
     plugins: [svelteCompiler(packageDir)],
     external: (id, importer) => {
       if (id.startsWith("node:") || BUILTINS.has(id)) {
@@ -354,6 +357,13 @@ export async function bundleEntry(
     size: [...loaded].reduce((total, chunk) => total + gzipSize(chunk.code), 0),
     dependencies: [...dependencies].sort(),
   };
+}
+
+/** Rolldown's message lists every error under a count: keep the first error, without colors. */
+export function firstError(message: string): string {
+  // oxlint-disable-next-line no-control-regex
+  const lines = message.replace(/\x1b\[[0-9;]*m/g, "").split("\n");
+  return lines.find((line) => /^\[[A-Z_]+\]/.test(line)) ?? lines[0];
 }
 
 export async function measurePackage(
@@ -406,7 +416,7 @@ export async function measurePackage(
             }
           : { format, ...(await bundleEntry(packageDir, file)) };
     } catch (error) {
-      const message = error instanceof Error ? error.message.split("\n")[0] : String(error);
+      const message = error instanceof Error ? firstError(error.message) : String(error);
       return { ...result, error: `Could not bundle \`${subpath}\` (${file}): ${message}` };
     }
   }

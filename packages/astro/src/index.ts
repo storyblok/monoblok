@@ -24,6 +24,7 @@ export {
 export { toCamelCase } from "./utils/toCamelCase";
 export { storyblokIntegration as storyblok };
 export { apiPlugin, loadStoryblokBridge, storyblokEditable, storyblokInit } from "@storyblok/js";
+export { editableField } from "@storyblok/js";
 
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 

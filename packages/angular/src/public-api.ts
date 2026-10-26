@@ -15,6 +15,7 @@ export {
 } from "./lib/livepreview/livepreview.service";
 export { withLivePreview } from "./lib/livepreview/livepreview.feature";
 export { type BridgeParams } from "@storyblok/live-preview";
+export { editableField } from "@storyblok/live-preview";
 
 // Storyblok Component
 export { StoryblokComponent } from "./lib/blok/sb-component.component";

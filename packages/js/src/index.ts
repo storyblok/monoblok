@@ -132,6 +132,7 @@ export { default as storyblokEditable } from "./editable";
 export * from "./types";
 
 export type { BridgeParams } from "@storyblok/preview-bridge";
+export { editableField } from "@storyblok/preview-bridge";
 
 // Re-exporting same exports from @storyblok/richtext
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";

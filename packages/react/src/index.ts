@@ -56,3 +56,4 @@ export { useStoryblokRichText };
 export * from "./core/richtext";
 export { StoryblokRichText } from "./storyblok-rich-text";
 export * from "./utils";
+export { editableField } from "@storyblok/js";

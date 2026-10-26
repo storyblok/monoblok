@@ -22,9 +22,8 @@ nothing is committed.
 Every package under `packages/` is measured unless it never reaches a browser. Each export is
 bundled the way a consumer's bundler would: with its dependencies and theirs, minified and gzipped,
 leaving out peer dependencies the app provides and chunks that load lazily. Every published file is
-also measured on its own. Growth fails when it is past both a percentage and a byte floor, so small
-files don't fail on a few bytes. The `bundle-size-accepted` label turns failing growth into a
-warning.
+also measured on its own. Growth of more than 5% fails. The `bundle-size-accepted` label turns
+failing growth into a warning.
 
 ## Consequences
 

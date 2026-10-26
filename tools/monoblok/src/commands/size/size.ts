@@ -18,6 +18,7 @@ export const IGNORED_PACKAGES: readonly string[] = [
  */
 export const IGNORED_EXPORTS: Readonly<Record<string, readonly string[]>> = {
   "@storyblok/nuxt": ["."],
+  "@storyblok/richtext": ["./html-parser", "./markdown-parser"],
 };
 
 /** Browser entry points that `exports` does not list, such as a plugin a framework module injects. */
@@ -36,18 +37,8 @@ export type Format = "esm" | "umd" | "css";
 
 export type Kind = "entry" | "file";
 
-export type Threshold = {
-  /** Growth over the base, in percent. */
-  percent: number;
-  /** Growth over the base, in bytes. Keeps a small file from failing on a few bytes. */
-  bytes: number;
-};
-
-/** Growth fails the check only when it is past both the percent and the bytes. */
-export const THRESHOLDS: Record<Kind, Threshold> = {
-  entry: { percent: 5, bytes: 200 },
-  file: { percent: 5, bytes: 500 },
-};
+/** Growth over the base, in percent, past which an entry or a file fails the check. */
+export const THRESHOLD_PERCENT = 5;
 
 export type Measured = {
   format: Format;
@@ -161,6 +152,12 @@ export function entryPoints(pkg: PackageJson): Array<{ subpath: string; file: st
     }
   };
 
+  const name = String(pkg.name);
+  // Listed first, so a package without a `.` export shows its extra entry as its main one.
+  for (const [subpath, file] of Object.entries(EXTRA_ENTRIES[name] ?? {})) {
+    points.push({ subpath, file });
+  }
+
   const { exports } = pkg;
   if (isRecord(exports) && Object.keys(exports).some((key) => key.startsWith("."))) {
     for (const [subpath, target] of Object.entries(exports)) {
@@ -176,11 +173,7 @@ export function entryPoints(pkg: PackageJson): Array<{ subpath: string; file: st
     collect(".", pkg[field]);
   }
 
-  const name = String(pkg.name);
   const ignored = IGNORED_EXPORTS[name] ?? [];
-  for (const [subpath, file] of Object.entries(EXTRA_ENTRIES[name] ?? {})) {
-    points.push({ subpath, file });
-  }
   return points.filter(
     ({ subpath, file }) =>
       file.startsWith("dist/") && isMeasured(file) && !ignored.includes(subpath),
@@ -405,7 +398,11 @@ export async function measurePackage(
       };
     }
 
-    const key = format === "esm" ? subpath : `${subpath} (${format})`;
+    // A UMD build usually shares its subpath with the ESM one.
+    let key = format === "umd" ? `${subpath} (umd)` : subpath;
+    if (result.entries[key]) {
+      key = `${subpath} (${format})`;
+    }
     try {
       result.entries[key] =
         format === "css"
@@ -474,10 +471,9 @@ const KIND_ITEMS: Array<[Kind, "entries" | "files"]> = [
   ["file", "files"],
 ];
 
-export function isOver(size: number, base: number, threshold: Threshold): boolean {
+export function isOver(size: number, base: number, percent = THRESHOLD_PERCENT): boolean {
   const growth = size - base;
-  const percent = base === 0 ? Infinity : (growth / base) * 100;
-  return growth > threshold.bytes && percent > threshold.percent;
+  return growth > 0 && (base === 0 || (growth / base) * 100 > percent);
 }
 
 export function compare(head: Measurement, base: Measurement | undefined): Comparison {
@@ -500,7 +496,7 @@ export function compare(head: Measurement, base: Measurement | undefined): Compa
           status = "no-base";
         } else if (baseSize === undefined) {
           status = "new";
-        } else if (isOver(item.size, baseSize, THRESHOLDS[kind])) {
+        } else if (isOver(item.size, baseSize)) {
           status = "over";
         }
         comparison.changes.push({
@@ -571,8 +567,7 @@ export function formatDelta(size: number | undefined, base: number | undefined):
 }
 
 export function describe(change: Change): string {
-  const threshold = THRESHOLDS[change.kind];
-  return `${change.package} ${change.name} grew ${formatDelta(change.size, change.base)} to ${formatBytes(change.size ?? 0)} gzip, past the ${threshold.percent}% and ${formatBytes(threshold.bytes)} threshold.`;
+  return `${change.package} ${change.name} grew ${formatDelta(change.size, change.base)} to ${formatBytes(change.size ?? 0)} gzip, past the ${THRESHOLD_PERCENT}% threshold.`;
 }
 
 function changeCell(change: Change): string {
@@ -594,9 +589,37 @@ function toTable(changes: Change[], baseLabel: string, nameHeader: string): stri
   ];
 }
 
+function sizeCell(change: Change): string {
+  return change.size === undefined ? "–" : formatBytes(change.size);
+}
+
+/** One row per export, grouped by package with its `.` export first, naming each package once. */
+function toPackageTable(entries: Change[]): string[] {
+  const byPackage = new Map<string, Change[]>();
+  for (const change of entries) {
+    let list = byPackage.get(change.package);
+    if (!list) {
+      list = [];
+      byPackage.set(change.package, list);
+    }
+    list.push(change);
+  }
+
+  const rows = [...byPackage].flatMap(([name, list]) =>
+    list
+      .slice()
+      .sort((a, b) => Number(b.name === ".") - Number(a.name === "."))
+      .map(
+        (change, index) =>
+          `| ${index === 0 ? name : ""} | \`${change.name}\` | ${sizeCell(change)} | ${changeCell(change)} |`,
+      ),
+  );
+  return ["| Package | Export | Size | Change |", "| --- | --- | ---: | ---: |", ...rows];
+}
+
 /**
  * Markdown report for the PR comment and the job summary: the entries that changed up front, files
- * past the threshold below them, and every entry in a collapsed table.
+ * past the threshold below them, and every package in a collapsed table.
  */
 export function toMarkdown(comparison: Comparison, baseLabel = "Base", accepted = false): string {
   const { changes, errors } = comparison;
@@ -605,7 +628,6 @@ export function toMarkdown(comparison: Comparison, baseLabel = "Base", accepted 
   const files = changes.filter((change) => change.kind === "file" && change.status === "over");
   const over = changes.some((change) => change.status === "over");
   const hasBase = changes.some((change) => change.status !== "no-base");
-  const { entry, file } = THRESHOLDS;
 
   let intro: string;
   if (!hasBase) {
@@ -648,12 +670,12 @@ export function toMarkdown(comparison: Comparison, baseLabel = "Base", accepted 
           "",
         ]
       : []),
-    `<sub>An entry is what a browser downloads for an export: bundled with its dependencies, minified, and gzipped, without peer dependencies or lazily imported chunks. Files are the package's own published files, gzipped. An entry fails when it grows more than ${entry.percent}% and ${formatBytes(entry.bytes)}, a file more than ${file.percent}% and ${formatBytes(file.bytes)}.</sub>`,
+    `<sub>Each export minified and gzipped with its dependencies, without peers. Fails past ${THRESHOLD_PERCENT}% growth.</sub>`,
     "",
     "<details>",
-    "<summary>All entries</summary>",
+    "<summary>All packages</summary>",
     "",
-    ...toTable(entries, baseLabel, "Entry"),
+    ...toPackageTable(entries),
     "",
     "</details>",
     "",

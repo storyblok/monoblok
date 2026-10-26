@@ -124,8 +124,8 @@ describe("entryPoints", () => {
     });
 
     expect(points).toEqual([
-      { subpath: "./server", file: "dist/runtime/server/index.js" },
       { subpath: "runtime/plugin", file: "dist/runtime/plugin.js" },
+      { subpath: "./server", file: "dist/runtime/server/index.js" },
     ]);
   });
 });
@@ -242,7 +242,7 @@ describe("measure", () => {
 
     const pkg = (await measure(root)).packages["@storyblok/pkg"];
 
-    expect(Object.keys(pkg.entries)).toEqual([".", "./style.css (css)", ". (umd)"]);
+    expect(Object.keys(pkg.entries)).toEqual([".", "./style.css", ". (umd)"]);
     expect(Object.keys(pkg.files)).toEqual([
       "dist/index.mjs",
       "dist/index.umd.js",
@@ -299,15 +299,15 @@ describe("firstError", () => {
 });
 
 describe("compare", () => {
-  it("should fail growth past both the percent and the bytes threshold", () => {
-    const comparison = compare(single(withEntry(1300)), single(withEntry(1000)));
+  it("should fail growth past 5%, however few bytes it is", () => {
+    const comparison = compare(single(withEntry(106)), single(withEntry(100)));
 
     expect(comparison.changes[0]).toMatchObject({ name: ".", status: "over" });
     expect(hasFailed(comparison)).toBe(true);
   });
 
-  it("should pass growth past the percent but within the bytes threshold", () => {
-    const comparison = compare(single(withEntry(1150)), single(withEntry(1000)));
+  it("should pass growth within 5%", () => {
+    const comparison = compare(single(withEntry(1050)), single(withEntry(1000)));
 
     expect(comparison.changes[0]).toMatchObject({ status: "ok" });
     expect(hasFailed(comparison)).toBe(false);
@@ -365,6 +365,26 @@ describe("toMarkdown", () => {
     expect(markdown).toContain("add the `bundle-size-accepted` label");
     expect(toMarkdown(comparison, "main", true)).toContain(
       "accepted with the `bundle-size-accepted` label",
+    );
+  });
+
+  it("should group exports by package, naming each package once", () => {
+    const pkg = (size: number) =>
+      measured({
+        entries: {
+          "./ssr": { format: "esm", size, dependencies: [] },
+          ".": { format: "esm", size: 1000, dependencies: [] },
+        },
+      });
+    const markdown = toMarkdown(compare(single(pkg(1300)), single(pkg(1000))), "main");
+
+    expect(markdown).toContain(
+      [
+        "| Package | Export | Size | Change |",
+        "| --- | --- | ---: | ---: |",
+        "| @storyblok/pkg | `.` | 1000 B | 0 B |",
+        "|  | `./ssr` | 1.27 kB | +300 B (+30.0%) ❌ |",
+      ].join("\n"),
     );
   });
 

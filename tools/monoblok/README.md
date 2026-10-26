@@ -113,14 +113,13 @@ helpers). A new package is measured without any setup. Each package gets:
 | Entries     | What a browser downloads for each export (`exports`, `module`, `unpkg`, …): the export bundled with its dependencies and theirs, minified and gzipped. A dependency that the package importing it declares as a peer is left out, since the app provides it, and so are chunks that load lazily. A change in one package therefore shows up in every package that depends on it. CommonJS exports are left out: browsers and bundlers load the `import` side. |
 | Files       | Every published file in `dist` on its own, gzipped, matched across builds by its path. Chunk file names must not carry a content hash, or they never match.                                                                                                                                                                                                                                                                                                   |
 
-`IGNORED_EXPORTS` skips exports that only run at build time, such as the Nuxt module, and
-`EXTRA_ENTRIES` adds browser entries that `exports` does not list, such as the Nuxt runtime plugin.
-Svelte components are compiled with the package's own Svelte; Astro components are skipped, since
-Astro compiles them.
+`IGNORED_EXPORTS` skips exports that never reach a browser, such as the Nuxt module or the richtext
+HTML and Markdown parsers, and `EXTRA_ENTRIES` adds browser entries that `exports` does not list,
+such as the Nuxt runtime plugin. Svelte components are compiled with the package's own Svelte; Astro
+components are skipped, since Astro compiles them.
 
-An entry fails the check when it grows more than 5% **and** 200 B, a file more than 5% **and** 500
-B, so a small file can't fail on a few bytes. A package that is not built, or whose export cannot be
-bundled, always fails.
+An entry or a file fails the check when it grows by more than 5%. A package that is not built, or
+whose export cannot be bundled, always fails.
 
 If the growth is intended, add the `bundle-size-accepted` label to the PR and re-run the failed
 `compare` job. Growth is then reported as a warning.

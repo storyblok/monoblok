@@ -8,4 +8,4 @@ export type { LivePreviewStory } from "./onStoryblokEditorEvent";
 export { isBrowser } from "./utils/isBrowser";
 export { isInEditor } from "./utils/isInEditor";
 export type { BridgeParams } from "@storyblok/preview-bridge";
-export { editableField } from "@storyblok/preview-bridge";
+export { default as editableField } from "./editableField";

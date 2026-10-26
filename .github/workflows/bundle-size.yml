@@ -95,7 +95,8 @@ jobs:
         continue-on-error: true
         with:
           name: dist-base
-          path: ${{ runner.temp }}/base
+          # upload-artifact drops the common `packages/` prefix, so restore it.
+          path: ${{ runner.temp }}/base/packages
 
       - name: Measure base
         continue-on-error: true

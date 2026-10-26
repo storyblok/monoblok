@@ -103,6 +103,9 @@ export function loadProjects(root: string, filter: string[] = []): ProjectConfig
     .sort()
     .map((dir) => ({ name: String(readPackageJson(root, dir).name), dir }))
     .filter((project) => !IGNORED_PACKAGES.includes(project.name));
+  if (projects.length === 0) {
+    throw new Error(`No packages found in ${path.join(root, "packages")}`);
+  }
 
   const unknown = filter.filter((name) => !projects.some((project) => project.name === name));
   if (unknown.length > 0) {

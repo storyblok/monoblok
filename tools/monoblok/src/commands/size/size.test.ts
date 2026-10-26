@@ -67,7 +67,12 @@ describe("loadProjects", () => {
     expect(loadProjects(root).map((project) => project.name)).toEqual(["@storyblok/vue"]);
   });
 
+  it("should fail when the root has no packages to measure", () => {
+    expect(() => loadProjects(root)).toThrow(/No packages found/);
+  });
+
   it("should reject a package name that is not measured", () => {
+    writePackage("vue", { name: "@storyblok/vue" });
     writePackage("cli", { name: "storyblok" });
 
     expect(() => loadProjects(root, ["storyblok"])).toThrow(/Not a measured package: storyblok/);

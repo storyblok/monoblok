@@ -11,7 +11,6 @@ import {
   formatDelta,
   hasFailed,
   isChanged,
-  label,
   measure,
   readMeasurement,
   toMarkdown,
@@ -29,10 +28,12 @@ export function sizeCommand(program: Command): void {
 
   size
     .command("measure")
-    .description("Measure the gzipped build output of every package (build the packages first)")
+    .description(
+      "Measure what a browser downloads for each package export (build the packages first)",
+    )
     .argument("[packages...]", "Package names to measure (default: all)")
     .requiredOption("--out <file>", "Write the measurement as JSON")
-    .option("--root <dir>", "Repo root, or a copy of its `packages/*/{package.json,dist}`")
+    .option("--root <dir>", "Root of an installed and built checkout of the repo")
     .action(async (packages: string[], options: { out: string; root?: string }) => {
       try {
         const root = path.resolve(options.root ?? utils.getMonorepoRoot());
@@ -43,10 +44,13 @@ export function sizeCommand(program: Command): void {
             console.log(`${chalk.bold(name)}  ${chalk.red(measured.error)}`);
             continue;
           }
-          const totals = Object.values(measured.totals)
-            .map((total) => `${total.format} ${formatBytes(total.size)}`)
-            .join(", ");
-          console.log(`${chalk.bold(name)}  ${totals}`);
+          console.log(chalk.bold(name));
+          for (const [entry, measuredEntry] of Object.entries(measured.entries)) {
+            const dependencies = measuredEntry.dependencies.join(", ");
+            console.log(
+              `  ${entry.padEnd(28)} ${formatBytes(measuredEntry.size).padStart(10)}${dependencies ? chalk.dim(`  ${dependencies}`) : ""}`,
+            );
+          }
         }
         console.log(chalk.green(`\nWrote ${options.out}`));
       } catch (error) {
@@ -87,7 +91,7 @@ export function sizeCommand(program: Command): void {
             }
           }
           for (const change of comparison.changes) {
-            if (change.blocking) {
+            if (change.status === "over") {
               const message = describe(change);
               console.log(accepted ? chalk.yellow(message) : chalk.red(message));
               if (github) {
@@ -96,7 +100,7 @@ export function sizeCommand(program: Command): void {
               }
             } else if (change.kind !== "file" && isChanged(change)) {
               console.log(
-                `${change.package} ${label(change)}: ${formatDelta(change.size, change.base)}`,
+                `${change.package} ${change.name}: ${formatDelta(change.size, change.base)}`,
               );
             }
           }
@@ -110,7 +114,7 @@ export function sizeCommand(program: Command): void {
           }
 
           if (hasFailed(comparison, accepted)) {
-            const grew = !accepted && comparison.changes.some((change) => change.blocking);
+            const grew = !accepted && comparison.changes.some((change) => change.status === "over");
             console.error(
               chalk.red(
                 `\nBundle size check failed.${grew ? ` If the growth is intended, add the \`${ACCEPT_LABEL}\` label to the PR and re-run the failed bundle size job.` : ""}`,

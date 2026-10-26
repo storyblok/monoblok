@@ -22,11 +22,11 @@
     "@types/license-checker": "^25.0.6",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
-    "es-module-lexer": "^3.0.4",
     "execa": "^5.1.1",
     "inquirer": "^8.2.5",
     "license-checker": "^25.0.1",
-    "ora": "^5.4.1"
+    "ora": "^5.4.1",
+    "rolldown": "1.2.8"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",

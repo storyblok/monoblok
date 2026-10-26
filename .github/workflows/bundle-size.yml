@@ -91,16 +91,29 @@ jobs:
         with:
           name: size-head
 
+      # Entries are bundled with their dependencies, so the base build needs
+      # the base branch's own `node_modules` next to its `dist`.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+          path: base
+          persist-credentials: false
+
+      - name: Install base
+        continue-on-error: true
+        working-directory: base
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: dist-base
           # upload-artifact drops the common `packages/` prefix, so restore it.
-          path: ${{ runner.temp }}/base/packages
+          path: base/packages
 
       - name: Measure base
         continue-on-error: true
-        run: pnpm monoblok size measure --root "$RUNNER_TEMP/base" --out size-base.json
+        run: pnpm monoblok size measure --root base --out size-base.json
 
       # Labels are read when the job runs, not from the event, so adding the
       # label and re-running this job accepts the growth.

@@ -19,11 +19,11 @@ On every PR, CI builds the PR and its base branch in parallel and measures both 
 `monoblok size measure`, so both builds are measured the same way. The base branch is the baseline:
 nothing is committed.
 
-Every package under `packages/` is measured unless it is listed as never reaching a browser. Each
-gets three gzipped measurements of its published `dist` files: each `exports` target plus the files
-it statically imports from the package, the total per format, and every file on its own. Growth
-fails when it is past both a percentage and a byte floor, so small files don't fail on a few bytes.
-CommonJS is reported but never fails. The `bundle-size-accepted` label turns failing growth into a
+Every package under `packages/` is measured unless it never reaches a browser. Each export is
+bundled the way a consumer's bundler would: with its dependencies and theirs, minified and gzipped,
+leaving out peer dependencies the app provides and chunks that load lazily. Every published file is
+also measured on its own. Growth fails when it is past both a percentage and a byte floor, so small
+files don't fail on a few bytes. The `bundle-size-accepted` label turns failing growth into a
 warning.
 
 ## Consequences
@@ -33,6 +33,7 @@ warning.
   CI uses more runner minutes.
 - Growth below the thresholds is never flagged, so a package can creep up across many PRs. The PR
   comment shows every change, which keeps it visible.
-- Sizes exclude dependencies, so each package's change shows up under that package, not under every
-  package that depends on it.
+- Sizes include dependencies, so a change in one package shows up in every package that depends on
+  it, as it does for their users. Measuring a build needs that build's own `node_modules`, so the
+  compare job installs the base branch as well.
 - Files are matched across builds by path, so chunk file names must not carry a content hash.

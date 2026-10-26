@@ -1,6 +1,0 @@
-{
-  "entries": {
-    "dist/**/*.mjs": 20557,
-    "dist/*.umd.js": 23148
-  }
-}

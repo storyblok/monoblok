@@ -97,51 +97,42 @@ pnpm monoblok license check @storyblok/js
 
 ### Bundle size
 
-The `size` commands guard the size of what each package ships. CI runs `size check` after building
-every package. On a PR, it also comments a table of the packages whose size changed compared with
-the base branch's baselines, and updates that comment on every push. PRs from forks get the table in
-the job summary only, since their token can't comment.
+The `size` commands guard the size of what each package ships. On every PR, the `Bundle size`
+workflow builds the PR and its base branch in parallel, measures both builds with the PR's
+`size measure`, and compares them with `size compare`. Nothing is committed as a baseline: the base
+branch is the baseline. The report is posted as a PR comment, updated on every push, and only PRs
+that change a size get one. PRs from forks get the report in the job summary only, since their token
+can't comment.
 
-A package opts in with a `bundle-size.json` next to its `package.json`. Each entry maps a glob
-pattern, relative to the package, to its baseline: the summed gzipped size, in bytes, of the
-matching files. Type declarations and source maps are skipped.
+Every package under `packages/` is measured, except the ones in `IGNORED_PACKAGES` in
+`src/commands/size/size.ts`, which never reach a browser (the CLI, the lint config). A new package
+is measured without any setup. Only files that `files` in `package.json` publishes from `dist` are
+measured, gzipped, without type declarations, source maps, or tests. Each package gets:
 
-```json
-{
-  "warn": 5,
-  "error": 10,
-  "entries": {
-    "dist/**/*.mjs": 11873,
-    "dist/index.umd.js": 11518
-  }
-}
-```
+| Measurement | What it covers                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entries     | Each file `exports` (or `main`, `module`, `unpkg`, …) points to, plus the files it statically imports from the package: what a consumer loads for that import. Dynamic imports load lazily and are left out, and so are dependencies. |
+| Totals      | Every file, summed per format (`esm`, `cjs`, `umd`, `css`).                                                                                                                                                                           |
+| Files       | Every file on its own, matched across builds by its path. Chunk file names must not carry a content hash, or they never match.                                                                                                        |
 
-| Field     | Description                                                               |
-| --------- | ------------------------------------------------------------------------- |
-| `entries` | Glob pattern mapped to its baseline gzipped size in bytes                 |
-| `warn`    | Growth over the baseline, in percent, that emits a warning (default `5`)  |
-| `error`   | Growth over the baseline, in percent, that fails the check (default `10`) |
+An entry or total fails the check when it grows more than 5% **and** 200 B, a file more than 5%
+**and** 500 B, so a small file can't fail on a few bytes. CommonJS growth is reported but never
+fails, since it is not what a browser receives. A package that is not built, or whose export points
+to a file the build did not emit, always fails.
 
-An entry that shrinks by more than `warn` percent is reported so its baseline can be lowered, and a
-pattern that matches no files fails the check. Packages where size does not matter to consumers,
-such as the CLI, have no `bundle-size.json`.
+If the growth is intended, add the `bundle-size-accepted` label to the PR and re-run the failed
+`compare` job. Growth is then reported as a warning.
 
 ```bash
-# Build first: both commands measure the existing build output
-pnpm nx run-many -t build
+# Measure the current build output (build first)
+pnpm nx run-many -t build --exclude=storyblok
+pnpm monoblok size measure --out size-head.json
 
-# Compare every package with its baseline
-pnpm monoblok size check
+# Measure another build, e.g. a copy of `packages/*/{package.json,dist}` from main
+pnpm monoblok size measure --root ../main-build --out size-base.json
 
-# Compare specific packages
-pnpm monoblok size check @storyblok/react @storyblok/vue
-
-# Write the PR comment report, comparing with the baselines on main
-pnpm monoblok size check --base origin/main --markdown bundle-size.md
-
-# Accept the current sizes as the new baselines, then commit the bundle-size.json diff
-pnpm monoblok size update @storyblok/react
+# Compare, and write the PR comment report
+pnpm monoblok size compare size-head.json size-base.json --base-label main --markdown bundle-size.md
 ```
 
 ## Post-migration checklist

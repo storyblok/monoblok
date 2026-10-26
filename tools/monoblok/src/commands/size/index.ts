@@ -1,125 +1,126 @@
-import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { Command } from "commander";
+import type { Command } from "commander";
 import chalk from "chalk";
 import * as utils from "../../utils";
 import {
-  CONFIG_FILE,
-  checkProject,
+  ACCEPT_LABEL,
+  compare,
   describe,
   formatBytes,
-  formatChange,
-  loadBaseEntries,
-  loadProjects,
+  formatDelta,
+  hasFailed,
+  isChanged,
+  label,
+  measure,
+  readMeasurement,
   toMarkdown,
-  updateBaselines,
-  type SizeStatus,
 } from "./size";
 
-const STATUS_COLOR: Record<SizeStatus, (text: string) => string> = {
-  ok: chalk.green,
-  warn: chalk.yellow,
-  error: chalk.red,
-  shrunk: chalk.cyan,
-  missing: chalk.red,
-};
-
-// GitHub Actions turns these workflow commands into annotations on the PR.
-const ANNOTATION: Partial<Record<SizeStatus, string>> = {
-  warn: "warning",
-  error: "error",
-  shrunk: "notice",
-  missing: "error",
-};
+function fail(error: unknown): void {
+  console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+  process.exitCode = 1;
+}
 
 export function sizeCommand(program: Command): void {
   const size = program
     .command("size")
-    .description(`Check package bundle sizes against the baselines in each ${CONFIG_FILE}`);
+    .description("Measure package bundle sizes and compare them with another build");
 
   size
-    .command("check")
-    .description("Compare the gzipped build output with the baseline (build the packages first)")
-    .argument("[packages...]", "Package names to check (default: all)")
-    .option("--base <ref>", "Git ref whose baselines the report compares sizes with")
+    .command("measure")
+    .description("Measure the gzipped build output of every package (build the packages first)")
+    .argument("[packages...]", "Package names to measure (default: all)")
+    .requiredOption("--out <file>", "Write the measurement as JSON")
+    .option("--root <dir>", "Repo root, or a copy of its `packages/*/{package.json,dist}`")
+    .action(async (packages: string[], options: { out: string; root?: string }) => {
+      try {
+        const root = path.resolve(options.root ?? utils.getMonorepoRoot());
+        const measurement = await measure(root, packages);
+        fs.writeFileSync(options.out, `${JSON.stringify(measurement, null, 2)}\n`);
+        for (const [name, measured] of Object.entries(measurement.packages)) {
+          if (measured.error) {
+            console.log(`${chalk.bold(name)}  ${chalk.red(measured.error)}`);
+            continue;
+          }
+          const totals = Object.values(measured.totals)
+            .map((total) => `${total.format} ${formatBytes(total.size)}`)
+            .join(", ");
+          console.log(`${chalk.bold(name)}  ${totals}`);
+        }
+        console.log(chalk.green(`\nWrote ${options.out}`));
+      } catch (error) {
+        fail(error);
+      }
+    });
+
+  size
+    .command("compare")
+    .description(
+      "Compare a measurement with one of the base build, and fail on growth past the thresholds",
+    )
+    .argument("<head>", "Measurement of this branch")
+    .argument("[base]", "Measurement of the base build; a missing file compares with nothing")
+    .option("--base-label <label>", "Name of the base in the report", "base")
     .option("--markdown <file>", "Write the report as Markdown, for a PR comment")
-    .action((packages: string[], options: { base?: string; markdown?: string }) => {
-      try {
-        const root = utils.getMonorepoRoot();
-        const { base } = options;
-        if (base) {
-          try {
-            execFileSync("git", ["rev-parse", "--verify", "--quiet", `${base}^{commit}`], {
-              cwd: root,
-              stdio: "ignore",
-            });
-          } catch {
-            throw new Error(`Unknown git ref "${base}". Fetch it before comparing with it.`);
-          }
-        }
-        const results = loadProjects(root, packages).map((project) =>
-          checkProject(root, project, base ? loadBaseEntries(root, project.dir, base) : undefined),
-        );
-        const markdown = toMarkdown(results, base?.replace(/^origin\//, ""));
-        const github = process.env.GITHUB_ACTIONS === "true";
+    .option(
+      "--accept",
+      `Report growth past the thresholds without failing (the \`${ACCEPT_LABEL}\` label)`,
+    )
+    .action(
+      (
+        headFile: string,
+        baseFile: string | undefined,
+        options: { baseLabel: string; markdown?: string; accept?: boolean },
+      ) => {
+        try {
+          const head = readMeasurement(headFile);
+          const base = baseFile && fs.existsSync(baseFile) ? readMeasurement(baseFile) : undefined;
+          const comparison = compare(head, base);
+          const accepted = options.accept ?? false;
+          const github = process.env.GITHUB_ACTIONS === "true";
 
-        for (const result of results) {
-          console.log(chalk.bold(result.name));
-          for (const entry of result.entries) {
-            const color = STATUS_COLOR[entry.status];
-            console.log(
-              `  ${entry.pattern.padEnd(32)} ${formatBytes(entry.size).padStart(10)}  ${formatChange(entry.change).padStart(7)}  ${color(entry.status)}`,
+          for (const error of comparison.errors) {
+            console.log(chalk.red(`${error.package}: ${error.message}`));
+            if (github) {
+              console.log(`::error::${error.package}: ${error.message}`);
+            }
+          }
+          for (const change of comparison.changes) {
+            if (change.blocking) {
+              const message = describe(change);
+              console.log(accepted ? chalk.yellow(message) : chalk.red(message));
+              if (github) {
+                // GitHub Actions turns workflow commands into annotations on the PR.
+                console.log(`::${accepted ? "warning" : "error"}::${message}`);
+              }
+            } else if (change.kind !== "file" && isChanged(change)) {
+              console.log(
+                `${change.package} ${label(change)}: ${formatDelta(change.size, change.base)}`,
+              );
+            }
+          }
+
+          const markdown = toMarkdown(comparison, options.baseLabel, accepted);
+          if (github && process.env.GITHUB_STEP_SUMMARY) {
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
+          }
+          if (options.markdown) {
+            fs.writeFileSync(options.markdown, markdown);
+          }
+
+          if (hasFailed(comparison, accepted)) {
+            const grew = !accepted && comparison.changes.some((change) => change.blocking);
+            console.error(
+              chalk.red(
+                `\nBundle size check failed.${grew ? ` If the growth is intended, add the \`${ACCEPT_LABEL}\` label to the PR and re-run the failed bundle size job.` : ""}`,
+              ),
             );
-            if (entry.status !== "ok") {
-              console.log(color(`    ${describe(result, entry)}`));
-            }
-            const annotation = ANNOTATION[entry.status];
-            if (github && annotation) {
-              const file = path.join(result.dir, CONFIG_FILE);
-              console.log(`::${annotation} file=${file}::${describe(result, entry)}`);
-            }
+            process.exitCode = 1;
           }
+        } catch (error) {
+          fail(error);
         }
-
-        if (github && process.env.GITHUB_STEP_SUMMARY) {
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown);
-        }
-        if (options.markdown) {
-          fs.writeFileSync(options.markdown, markdown);
-        }
-
-        const failed = results.some((result) =>
-          result.entries.some((entry) => entry.status === "error" || entry.status === "missing"),
-        );
-        if (failed) {
-          console.error(chalk.red("\nBundle size check failed."));
-          process.exitCode = 1;
-        }
-      } catch (error) {
-        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-        process.exitCode = 1;
-      }
-    });
-
-  size
-    .command("update")
-    .description(`Write the current gzipped sizes to ${CONFIG_FILE} as the new baselines`)
-    .argument("[packages...]", "Package names to update (default: all)")
-    .action((packages: string[]) => {
-      try {
-        const root = utils.getMonorepoRoot();
-        for (const project of loadProjects(root, packages)) {
-          const config = updateBaselines(root, project);
-          fs.writeFileSync(
-            path.join(root, project.dir, CONFIG_FILE),
-            `${JSON.stringify(config, null, 2)}\n`,
-          );
-          console.log(chalk.green(`Updated ${path.join(project.dir, CONFIG_FILE)}`));
-        }
-      } catch (error) {
-        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-        process.exitCode = 1;
-      }
-    });
+      },
+    );
 }

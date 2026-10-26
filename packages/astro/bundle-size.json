@@ -1,5 +1,0 @@
-{
-  "entries": {
-    "dist/**/*.{mjs,ts,astro}": 28400
-  }
-}

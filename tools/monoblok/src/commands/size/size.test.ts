@@ -1,42 +1,54 @@
-import { execFileSync } from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import zlib from "zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  checkProject,
-  evaluate,
-  formatChange,
-  formatDelta,
-  loadBaseEntries,
+  compare,
+  entryPoints,
+  hasFailed,
+  isPublished,
   loadProjects,
-  parseConfig,
-  resolveThresholds,
+  measure,
   toMarkdown,
-  updateBaselines,
+  type Measurement,
+  type PackageMeasurement,
 } from "./size";
 
-const ENTRY = "export const greeting = 'hello world';\n".repeat(20);
+const CODE = "export const greeting = 'hello world';\n".repeat(20);
 const gzipSize = (content: string) => zlib.gzipSync(content, { level: 9 }).length;
 
 let root: string;
 
 function writePackage(
   dir: string,
-  name: string,
-  config: unknown,
+  pkg: Record<string, unknown>,
   files: Record<string, string> = {},
 ): void {
   const packageDir = path.join(root, "packages", dir);
   fs.mkdirSync(packageDir, { recursive: true });
-  fs.writeFileSync(path.join(packageDir, "package.json"), JSON.stringify({ name }));
-  fs.writeFileSync(path.join(packageDir, "bundle-size.json"), JSON.stringify(config));
+  fs.writeFileSync(path.join(packageDir, "package.json"), JSON.stringify(pkg));
   for (const [file, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(packageDir, file)), { recursive: true });
     fs.writeFileSync(path.join(packageDir, file), content);
   }
 }
+
+function measured(overrides: Partial<PackageMeasurement> = {}): PackageMeasurement {
+  return {
+    dir: "packages/pkg",
+    entries: { ". (esm)": { format: "esm", size: 1000, files: ["dist/index.mjs"] } },
+    totals: { esm: { format: "esm", size: 1000 } },
+    files: { "dist/index.mjs": { format: "esm", size: 1000 } },
+    ...overrides,
+  };
+}
+
+function withEntry(format: "esm" | "cjs", size: number): PackageMeasurement {
+  return measured({ entries: { [`. (${format})`]: { format, size, files: [] } } });
+}
+
+const single = (pkg: PackageMeasurement): Measurement => ({ packages: { "@storyblok/pkg": pkg } });
 
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "monoblok-size-"));
@@ -46,261 +58,218 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-describe("evaluate", () => {
-  const thresholds = { warn: 5, error: 10 };
-
-  it("should pass growth within the warning threshold", () => {
-    expect(evaluate(1050, 1000, thresholds)).toEqual({ change: 5, status: "ok" });
-  });
-
-  it("should warn on growth past the warning threshold", () => {
-    expect(evaluate(1051, 1000, thresholds).status).toBe("warn");
-  });
-
-  it("should fail on growth past the error threshold", () => {
-    expect(evaluate(1101, 1000, thresholds).status).toBe("error");
-  });
-
-  it("should flag a size well below the baseline as shrunk", () => {
-    expect(evaluate(900, 1000, thresholds).status).toBe("shrunk");
-  });
-
-  it("should fail when an empty baseline grows", () => {
-    expect(evaluate(10, 0, thresholds)).toEqual({ change: Infinity, status: "error" });
-  });
-});
-
-describe("parseConfig", () => {
-  it("should reject a config without entries", () => {
-    expect(() => parseConfig({ entries: {} }, "bundle-size.json")).toThrow(/"entries"/);
-  });
-
-  it("should reject a non-numeric baseline", () => {
-    expect(() => parseConfig({ entries: { "dist/*.mjs": "1kB" } }, "bundle-size.json")).toThrow(
-      /baseline for "dist\/\*\.mjs"/,
-    );
-  });
-
-  it("should reject a negative threshold", () => {
-    expect(() =>
-      parseConfig({ warn: -1, entries: { "dist/*.mjs": 1 } }, "bundle-size.json"),
-    ).toThrow(/"warn"/);
-  });
-});
-
-describe("resolveThresholds", () => {
-  it("should fall back to the default thresholds", () => {
-    expect(resolveThresholds({ entries: {} })).toEqual({ warn: 5, error: 10 });
-  });
-
-  it("should let a package override its thresholds", () => {
-    expect(resolveThresholds({ warn: 20, error: 50, entries: {} })).toEqual({
-      warn: 20,
-      error: 50,
-    });
-  });
-
-  it("should reject a warning threshold above the error threshold", () => {
-    expect(() => resolveThresholds({ warn: 20, entries: {} })).toThrow(/must not exceed/);
-  });
-});
-
 describe("loadProjects", () => {
-  it("should load every package with a bundle-size.json", () => {
-    writePackage("b", "@storyblok/b", { entries: { "dist/*.mjs": 1 } });
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 1 } });
-    fs.mkdirSync(path.join(root, "packages", "no-config"));
+  it("should measure every package except the ignored ones", () => {
+    writePackage("vue", { name: "@storyblok/vue" });
+    writePackage("cli", { name: "storyblok" });
+    writePackage("lint-config", { name: "@storyblok/lint-config" });
 
-    expect(loadProjects(root).map((project) => project.name)).toEqual([
-      "@storyblok/a",
-      "@storyblok/b",
-    ]);
+    expect(loadProjects(root).map((project) => project.name)).toEqual(["@storyblok/vue"]);
   });
 
-  it("should filter packages by name", () => {
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 1 } });
-    writePackage("b", "@storyblok/b", { entries: { "dist/*.mjs": 1 } });
+  it("should reject a package name that is not measured", () => {
+    writePackage("cli", { name: "storyblok" });
 
-    expect(loadProjects(root, ["@storyblok/b"]).map((project) => project.name)).toEqual([
-      "@storyblok/b",
-    ]);
-  });
-
-  it("should fail for a package without a bundle-size.json", () => {
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 1 } });
-
-    expect(() => loadProjects(root, ["@storyblok/missing"])).toThrow(/@storyblok\/missing/);
+    expect(() => loadProjects(root, ["storyblok"])).toThrow(/Not a measured package: storyblok/);
   });
 });
 
-describe("checkProject", () => {
-  it("should sum the gzipped size of matching files, skipping types and source maps", () => {
+describe("entryPoints", () => {
+  it("should collect every runtime target of every subpath", () => {
+    const points = entryPoints({
+      exports: {
+        ".": {
+          import: { types: "./dist/index.d.mts", default: "./dist/index.mjs" },
+          require: { types: "./dist/index.d.cts", default: "./dist/index.cjs" },
+        },
+        "./style.css": "./dist/style.css",
+        "./package.json": "./package.json",
+        "./icons/*": "./dist/icons/*.mjs",
+      },
+      unpkg: "./dist/index.umd.js",
+    });
+
+    expect(points).toEqual([
+      { subpath: ".", file: "dist/index.mjs" },
+      { subpath: ".", file: "dist/index.cjs" },
+      { subpath: "./style.css", file: "dist/style.css" },
+      { subpath: ".", file: "dist/index.umd.js" },
+    ]);
+  });
+
+  it("should treat a conditions-only `exports` as the root subpath", () => {
+    expect(entryPoints({ exports: { import: "./dist/index.mjs" } })).toEqual([
+      { subpath: ".", file: "dist/index.mjs" },
+    ]);
+  });
+});
+
+describe("isPublished", () => {
+  it("should honor directories, globs, and negations in `files`", () => {
+    const pkg = { files: ["dist/fesm2022", "dist", "!dist/**/*.spec.*"] };
+
+    expect(isPublished("dist/fesm2022/index.mjs", { files: ["dist/fesm2022"] })).toBe(true);
+    expect(isPublished("dist/integration-tests/main.js", { files: ["dist/fesm2022"] })).toBe(false);
+    expect(isPublished("dist/index.spec.js", pkg)).toBe(false);
+    expect(isPublished("dist/anything.js", {})).toBe(true);
+  });
+});
+
+describe("measure", () => {
+  it("should size an entry with the files it statically imports from the package", async () => {
     writePackage(
-      "a",
-      "@storyblok/a",
-      { entries: { "dist/**/*.mjs": 2 * gzipSize(ENTRY) } },
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
       {
-        "dist/index.mjs": ENTRY,
-        "dist/nested/chunk.mjs": ENTRY,
-        "dist/index.d.mts": ENTRY,
-        "dist/index.mjs.map": ENTRY,
-        "dist/index.cjs": ENTRY,
+        "dist/index.mjs": `import { a } from "./a.mjs";\nimport type { T } from "./types.mjs";\nimport dep from "dependency";\nconst lazy = () => import("./lazy.mjs");\n${CODE}`,
+        "dist/a.mjs": `export * from "./b.mjs";\n${CODE}`,
+        "dist/b.mjs": CODE,
+        "dist/types.mjs": CODE,
+        "dist/lazy.mjs": CODE,
+        "dist/index.d.mts": CODE,
       },
     );
-    const [project] = loadProjects(root);
 
-    const [entry] = checkProject(root, project).entries;
+    const { packages } = await measure(root);
+    const pkg = packages["@storyblok/pkg"];
 
-    expect(entry.files).toEqual(["dist/index.mjs", "dist/nested/chunk.mjs"]);
-    expect(entry.size).toBe(2 * gzipSize(ENTRY));
-    expect(entry.status).toBe("ok");
-  });
-
-  it("should fail past the package's own error threshold", () => {
-    writePackage(
-      "a",
-      "@storyblok/a",
-      { warn: 1, error: 2, entries: { "dist/*.mjs": Math.floor(gzipSize(ENTRY) * 0.95) } },
-      { "dist/index.mjs": ENTRY },
+    expect(pkg.entries[". (esm)"].files).toEqual(["dist/a.mjs", "dist/b.mjs", "dist/index.mjs"]);
+    expect(Object.keys(pkg.files)).toEqual([
+      "dist/a.mjs",
+      "dist/b.mjs",
+      "dist/index.mjs",
+      "dist/lazy.mjs",
+      "dist/types.mjs",
+    ]);
+    expect(pkg.totals.esm.size).toBe(
+      Object.values(pkg.files).reduce((total, file) => total + file.size, 0),
     );
-    const [project] = loadProjects(root);
-
-    expect(checkProject(root, project).entries[0].status).toBe("error");
   });
 
-  it("should gate on the package's own baseline while reporting the base branch's", () => {
+  it("should follow `require` in CommonJS and split totals by format", async () => {
     writePackage(
-      "a",
-      "@storyblok/a",
-      { entries: { "dist/*.mjs": gzipSize(ENTRY) } },
-      { "dist/index.mjs": ENTRY },
+      "pkg",
+      {
+        name: "@storyblok/pkg",
+        exports: { ".": { import: "./dist/index.mjs", require: "./dist/index.cjs" } },
+        unpkg: "./dist/index.umd.js",
+      },
+      {
+        "dist/index.mjs": CODE,
+        "dist/index.cjs": `const a = require("./a.cjs");\n${CODE}`,
+        "dist/a.cjs": CODE,
+        "dist/index.umd.js": CODE,
+        "dist/style.css": ".a { color: red; }",
+      },
     );
-    const [project] = loadProjects(root);
 
-    const [entry] = checkProject(root, project, { "dist/*.mjs": 10 }).entries;
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
 
-    expect(entry).toMatchObject({ base: 10, baseline: gzipSize(ENTRY), status: "ok" });
+    expect(Object.keys(pkg.entries)).toEqual([". (esm)", ". (cjs)", ". (umd)"]);
+    expect(pkg.entries[". (cjs)"].files).toEqual(["dist/a.cjs", "dist/index.cjs"]);
+    expect(pkg.entries[". (esm)"].size).toBe(gzipSize(CODE));
+    expect(Object.keys(pkg.totals).sort()).toEqual(["cjs", "css", "esm", "umd"]);
   });
 
-  it("should report a pattern that matches no files as missing", () => {
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 100 } });
-    const [project] = loadProjects(root);
+  it("should report a package that is not built", async () => {
+    writePackage("pkg", { name: "@storyblok/pkg" });
 
-    expect(checkProject(root, project).entries[0].status).toBe("missing");
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toMatch(/Build the package first/);
+  });
+
+  it("should report an export that points to a file the build did not emit", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", exports: { "./ssr": "./dist/ssr.mjs" } },
+      { "dist/index.mjs": CODE },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBe("`./ssr` points to dist/ssr.mjs, which the build did not emit.");
   });
 });
 
-describe("updateBaselines", () => {
-  it("should set every baseline to the current size and keep the thresholds", () => {
-    writePackage(
-      "a",
-      "@storyblok/a",
-      { warn: 3, error: 6, entries: { "dist/*.mjs": 1 } },
-      { "dist/index.mjs": ENTRY },
+describe("compare", () => {
+  it("should fail growth past both the percent and the bytes threshold", () => {
+    const { changes } = compare(single(withEntry("esm", 1300)), single(withEntry("esm", 1000)));
+
+    expect(changes[0]).toMatchObject({ name: ". (esm)", status: "over", blocking: true });
+  });
+
+  it("should pass growth past the percent but within the bytes threshold", () => {
+    const { changes } = compare(single(withEntry("esm", 1150)), single(withEntry("esm", 1000)));
+
+    expect(changes[0]).toMatchObject({ status: "ok", blocking: false });
+  });
+
+  it("should report CommonJS growth without failing", () => {
+    const comparison = compare(single(withEntry("cjs", 2000)), single(withEntry("cjs", 1000)));
+
+    expect(comparison.changes[0]).toMatchObject({ status: "over", blocking: false });
+    expect(hasFailed(comparison)).toBe(false);
+  });
+
+  it("should mark entries only one build has as new or removed", () => {
+    const head = single(
+      measured({ entries: { "./ssr (esm)": { format: "esm", size: 10, files: [] } } }),
     );
-    const [project] = loadProjects(root);
+    const { changes } = compare(head, single(measured()));
 
-    expect(updateBaselines(root, project)).toEqual({
-      warn: 3,
-      error: 6,
-      entries: { "dist/*.mjs": gzipSize(ENTRY) },
-    });
+    expect(changes.filter((change) => change.kind === "entry")).toMatchObject([
+      { name: "./ssr (esm)", status: "new", blocking: false },
+      { name: ". (esm)", status: "removed", blocking: false },
+    ]);
   });
 
-  it("should refuse to update a pattern that matches no files", () => {
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 1 } });
-    const [project] = loadProjects(root);
+  it("should compare nothing for a package without a base measurement", () => {
+    const base = single(measured({ error: "not built" }));
+    const comparison = compare(single(withEntry("esm", 5000)), base);
 
-    expect(() => updateBaselines(root, project)).toThrow(/Build the package/);
-  });
-});
-
-describe("loadBaseEntries", () => {
-  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, stdio: "ignore" });
-
-  beforeEach(() => {
-    git("init", "-q");
-    git("config", "user.email", "ci@example.com");
-    git("config", "user.name", "CI");
+    expect(comparison.changes.every((change) => change.status === "no-base")).toBe(true);
+    expect(hasFailed(comparison)).toBe(false);
   });
 
-  it("should read the baselines a package has on the ref", () => {
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 100 } });
-    git("add", ".");
-    git("commit", "-qm", "base");
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 200 } });
+  it("should fail on a package this branch could not measure, even when growth is accepted", () => {
+    const comparison = compare(single(measured({ error: "not built" })), undefined);
 
-    expect(loadBaseEntries(root, "packages/a", "HEAD")).toEqual({ "dist/*.mjs": 100 });
+    expect(comparison.errors).toEqual([{ package: "@storyblok/pkg", message: "not built" }]);
+    expect(hasFailed(comparison, true)).toBe(true);
   });
 
-  it("should return no baselines for a package the ref does not track", () => {
-    writePackage("a", "@storyblok/a", { entries: { "dist/*.mjs": 100 } });
-    git("add", ".");
-    git("commit", "-qm", "base");
+  it("should pass accepted growth", () => {
+    const comparison = compare(single(withEntry("esm", 2000)), single(withEntry("esm", 1000)));
 
-    expect(loadBaseEntries(root, "packages/b", "HEAD")).toEqual({});
+    expect(hasFailed(comparison)).toBe(true);
+    expect(hasFailed(comparison, true)).toBe(false);
   });
 });
 
 describe("toMarkdown", () => {
-  const result = (entries: Array<{ pattern: string; size: number; base: number | undefined }>) => ({
-    name: "@storyblok/a",
-    dir: "packages/a",
-    thresholds: { warn: 5, error: 10 },
-    entries: entries.map((entry) => ({
-      ...entry,
-      files: [],
-      baseline: entry.base ?? entry.size,
-      change: 0,
-      status: "ok" as const,
-    })),
-  });
-
-  it("should list the entries that changed against the base above the full table", () => {
-    const markdown = toMarkdown(
-      [
-        result([
-          { pattern: "dist/*.mjs", size: 1100, base: 1000 },
-          { pattern: "dist/*.umd.js", size: 500, base: 500 },
-        ]),
-      ],
-      "main",
-    );
-    const [changed, all] = markdown.split("<details>");
-
-    expect(markdown.startsWith("<!-- monoblok-bundle-size -->")).toBe(true);
-    expect(changed).toContain("1 of 2 entries changed size compared with `main`");
-    expect(changed).toContain(
-      "| `@storyblok/a` | `dist/*.mjs` | 1000 B | 1.07 kB | +100 B (+10.0%) | ✅ ok |",
-    );
-    expect(changed).not.toContain("dist/*.umd.js");
-    expect(all).toContain("| `@storyblok/a` | `dist/*.umd.js` | 500 B | 500 B | 0 B | ✅ ok |");
-  });
-
-  it("should say so when no package changed size", () => {
-    const markdown = toMarkdown(
-      [result([{ pattern: "dist/*.mjs", size: 500, base: 500 }])],
-      "main",
-    );
+  it("should say when no package changed size", () => {
+    const markdown = toMarkdown(compare(single(measured()), single(measured())), "main");
 
     expect(markdown).toContain("No package changed size compared with `main`.");
   });
 
-  it("should mark an entry the base does not have as new", () => {
-    const markdown = toMarkdown([result([{ pattern: "dist/*.mjs", size: 500, base: undefined }])]);
+  it("should list growth past the threshold and how to accept it", () => {
+    const comparison = compare(single(withEntry("esm", 2000)), single(withEntry("esm", 1000)));
+    const markdown = toMarkdown(comparison, "main");
 
-    expect(markdown).toContain("| `@storyblok/a` | `dist/*.mjs` | – | 500 B | new | ✅ ok |");
+    expect(markdown).toContain(
+      "| `@storyblok/pkg` | `. (esm)` | 1000 B | 1.95 kB | +1000 B (+100.0%) | ❌ over |",
+    );
+    expect(markdown).toContain("add the `bundle-size-accepted` label");
+    expect(toMarkdown(comparison, "main", true)).toContain(
+      "accepted with the `bundle-size-accepted` label",
+    );
   });
-});
 
-describe("formatDelta", () => {
-  it("should show a shrink in bytes and percent", () => {
-    expect(formatDelta(900, 1000)).toBe("-100 B (-10.0%)");
-  });
-});
+  it("should list only this branch's sizes without a base", () => {
+    const markdown = toMarkdown(compare(single(measured()), undefined), "main");
 
-describe("formatChange", () => {
-  it("should label a change from an empty baseline as new", () => {
-    expect(formatChange(Infinity)).toBe("new");
+    expect(markdown).toContain("No measurement of `main` to compare with");
   });
 });

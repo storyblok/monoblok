@@ -30,7 +30,7 @@ failing growth into a warning.
 - New packages and entry points are covered without setup, and there is no baseline to maintain.
 - Every PR builds twice. The base build runs in parallel with the PR's, so PRs take no longer, but
   CI uses more runner minutes.
-- Growth below the thresholds is never flagged, so a package can creep up across many PRs. The PR
+- Growth below the threshold is never flagged, so a package can creep up across many PRs. The PR
   comment shows every change, which keeps it visible.
 - Sizes include dependencies, so a change in one package shows up in every package that depends on
   it, as it does for their users. Measuring a build needs that build's own `node_modules`, so the

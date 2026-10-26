@@ -1,7 +1,7 @@
 name: Bundle size
 
 # Builds the PR and its base branch in parallel, measures both with the PR's
-# `monoblok size`, and fails on growth past the thresholds. Nothing is
+# `monoblok size`, and fails on more than 5% growth. Nothing is
 # committed as a baseline: the base branch is the baseline.
 on:
   pull_request:

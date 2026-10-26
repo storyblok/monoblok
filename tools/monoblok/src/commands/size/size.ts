@@ -29,7 +29,7 @@ export const EXTRA_ENTRIES: Readonly<Record<string, Readonly<Record<string, stri
 /** Marks the bundle size PR comment, so CI updates it instead of adding another. */
 export const COMMENT_MARKER = "<!-- monoblok-bundle-size -->";
 
-/** PR label that turns growth past the thresholds into a warning. */
+/** PR label that turns growth past the threshold into a warning. */
 export const ACCEPT_LABEL = "bundle-size-accepted";
 
 /** CommonJS is left out: browsers and bundlers load the `import` side of a package. */

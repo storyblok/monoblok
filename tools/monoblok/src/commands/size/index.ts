@@ -61,7 +61,7 @@ export function sizeCommand(program: Command): void {
   size
     .command("compare")
     .description(
-      "Compare a measurement with one of the base build, and fail on growth past the thresholds",
+      "Compare a measurement with one of the base build, and fail on more than 5% growth",
     )
     .argument("<head>", "Measurement of this branch")
     .argument("[base]", "Measurement of the base build; a missing file compares with nothing")
@@ -69,7 +69,7 @@ export function sizeCommand(program: Command): void {
     .option("--markdown <file>", "Write the report as Markdown, for a PR comment")
     .option(
       "--accept",
-      `Report growth past the thresholds without failing (the \`${ACCEPT_LABEL}\` label)`,
+      `Report growth past the threshold without failing (the \`${ACCEPT_LABEL}\` label)`,
     )
     .action(
       (

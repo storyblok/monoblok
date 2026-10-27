@@ -12,6 +12,7 @@ import { assignVariant } from "./assign-variant";
 import { createConversion } from "./create-conversion";
 import { findExperimentBySlug } from "./find-experiment-by-slug";
 import { resolveExperiment } from "./resolve-experiment";
+import { resolveRelations, type ResolvedRelations } from "./resolve-relations";
 
 export interface CreateExperimentsOptions {
   experiments: Experiment[];
@@ -67,6 +68,28 @@ export interface FactoryResolvedExperiment {
   delivered: Promise<void>;
 }
 
+export interface FactoryResolveRelationsOptions {
+  /**
+   * UUIDs of the stories related to the page, such as `rels.map((rel) => rel.uuid)`
+   * plus any `rel_uuids`.
+   */
+  uuids: readonly string[];
+  visitorId: string;
+  /**
+   * Set to `false` to get the exposures back without delivering them, as with
+   * `resolveExperiment`. Defaults to `true`.
+   */
+  exposure?: boolean;
+}
+
+export interface FactoryResolvedRelations extends ResolvedRelations {
+  /**
+   * Resolves once the exposure deliveries have settled. Never rejects; failures
+   * go to `onError`. Already resolved when nothing was delivered.
+   */
+  delivered: Promise<void>;
+}
+
 export interface TrackOptions {
   /** Arbitrary event properties forwarded to the sink. */
   props?: Record<string, unknown>;
@@ -85,6 +108,13 @@ export interface Experiments {
    * visitor is legitimately exposed again.
    */
   resolveExperiment: (options: FactoryResolveOptions) => FactoryResolvedExperiment;
+  /**
+   * Resolves the experiments on a page's related stories (`resolve_relations`)
+   * and, unless `exposure: false`, delivers one exposure per experiment that
+   * applies. Fetch the stories in `variants` and pass them to
+   * `applyRelationVariants`. Like `resolveExperiment`, it does not deduplicate.
+   */
+  resolveRelations: (options: FactoryResolveRelationsOptions) => FactoryResolvedRelations;
   /**
    * Delivers a conversion event for every experiment `visitorId` is bucketed
    * into. Resolves once delivery has settled; never rejects.
@@ -330,6 +360,12 @@ export function createExperiments({
         exposure: resolved.exposure,
         delivered,
       };
+    },
+
+    resolveRelations({ uuids, visitorId, exposure: fireExposure = true }) {
+      const resolved = resolveRelations({ experiments, uuids, visitorId });
+      const delivered = fireExposure ? sendAll(resolved.exposures) : Promise.resolve();
+      return { ...resolved, delivered };
     },
 
     track,

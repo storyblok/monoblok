@@ -1,10 +1,11 @@
 import type { Experiment, ExperimentEvent } from "./types";
 import { describe, expect, it, vi } from "vitest";
 import { assignVariant } from "./assign-variant";
+import { applyRelationVariants } from "./apply-relation-variants";
 import { createConversion } from "./create-conversion";
 import { createExperiments } from "./create-experiments";
 import { defineGoal } from "./define-goal";
-import { homepageExperiment, pricingExperiment } from "./fixtures";
+import { ctaExperiment, homepageExperiment, pricingExperiment } from "./fixtures";
 
 /**
  * Scenario coverage for the topologies the package has to support. Each block
@@ -658,5 +659,146 @@ describe("scenario: a visitorId that went missing", () => {
     await expect(experiments.track("signup")).resolves.toBeUndefined();
 
     expect(sink.ofType("conversion")).toHaveLength(1);
+  });
+});
+
+describe("scenario: experiments on resolved relations", () => {
+  /** A visitor bucketed into the variant with `publicId`. */
+  function visitorOn(experiment: Experiment, publicId: string): string {
+    for (let index = 1; index < 200; index++) {
+      const visitorId = `visitor-${index}`;
+      if (variantOf(experiment, visitorId) === publicId) {
+        return visitorId;
+      }
+    }
+    throw new Error(`no visitor buckets into ${publicId}`);
+  }
+
+  const page = {
+    story: { uuid: "uuid-page", content: { component: "page", cta: "uuid-cta" } },
+    rels: [{ uuid: "uuid-cta", name: "CTA", content: { component: "cta", label: "Sign up" } }],
+  };
+  const variantStories = [
+    { uuid: "uuid-cta-urgent", content: { component: "cta", label: "Sign up today" } },
+  ];
+
+  it("renders the variant content of a related story under the original's identity", () => {
+    const sink = createSink();
+    const experiments = createExperiments({
+      experiments: [ctaExperiment],
+      adapters: [sink.adapter],
+    });
+    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
+
+    const resolution = experiments.resolveRelations({
+      uuids: page.rels.map((rel) => rel.uuid),
+      visitorId,
+    });
+    const rels = applyRelationVariants(page.rels, variantStories, resolution);
+
+    expect([...resolution.variants.values()]).toEqual(["uuid-cta-urgent"]);
+    expect(rels).toEqual([
+      { uuid: "uuid-cta", name: "CTA", content: { component: "cta", label: "Sign up today" } },
+    ]);
+    expect(sink.ofType("exposure")).toEqual([
+      {
+        type: "exposure",
+        experiment: { id: 789, name: "cta_copy" },
+        variant: { name: "urgent", public_id: "var_cta_urgent" },
+        visitorId,
+      },
+    ]);
+  });
+
+  it("leaves the cached response untouched so other visitors keep the original", () => {
+    const experiments = createExperiments({ experiments: [ctaExperiment] });
+    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
+
+    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
+    applyRelationVariants(page, variantStories, resolution);
+
+    expect(page.rels[0].content.label).toBe("Sign up");
+  });
+
+  it("needs no variant stories for a control visitor, but still exposes them", () => {
+    const sink = createSink();
+    const experiments = createExperiments({
+      experiments: [ctaExperiment],
+      adapters: [sink.adapter],
+    });
+    const visitorId = visitorOn(ctaExperiment, "var_cta_control");
+
+    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
+
+    expect(resolution.variants.size).toBe(0);
+    expect(resolution.param).toBe("");
+    expect(applyRelationVariants(page.rels, [], resolution)).toEqual(page.rels);
+    expect(sink.ofType("exposure")).toHaveLength(1);
+    expect(sink.ofType("exposure")[0].variant.public_id).toBe("var_cta_control");
+  });
+
+  it("swaps relations already inlined into the story content", () => {
+    const inlined = {
+      uuid: "uuid-page",
+      content: { component: "page", cta: page.rels[0], body: [{ cta: page.rels[0] }] },
+    };
+    const experiments = createExperiments({ experiments: [ctaExperiment] });
+    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
+
+    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
+    const story = applyRelationVariants(inlined, variantStories, resolution);
+
+    expect(story.content.cta.content.label).toBe("Sign up today");
+    expect(story.content.body[0].cta.content.label).toBe("Sign up today");
+  });
+
+  it("keeps the original content when the variant story could not be fetched", () => {
+    const experiments = createExperiments({ experiments: [ctaExperiment] });
+    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
+
+    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
+
+    expect(applyRelationVariants(page.rels, [], resolution)).toEqual(page.rels);
+  });
+
+  it("builds the resolve_experiment_variants value from the same resolution", () => {
+    const experiments = createExperiments({ experiments: [ctaExperiment] });
+    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
+
+    const resolution = experiments.resolveRelations({ uuids: ["uuid-cta"], visitorId });
+
+    expect(resolution.param).toBe("uuid-cta:uuid-cta-urgent");
+  });
+
+  it("returns the exposures without firing them when exposure is false", async () => {
+    const sink = createSink();
+    const config = { experiments: [ctaExperiment], adapters: [sink.adapter] };
+    const visitorId = visitorOn(ctaExperiment, "var_cta_urgent");
+
+    const { exposures } = createExperiments(config).resolveRelations({
+      uuids: ["uuid-cta"],
+      visitorId,
+      exposure: false,
+    });
+    expect(sink.events).toHaveLength(0);
+
+    await createExperiments(config).send(exposures[0]);
+    expect(sink.ofType("exposure")).toHaveLength(1);
+  });
+
+  it("ignores experiments on stories that are not related to the page", () => {
+    const sink = createSink();
+    const experiments = createExperiments({
+      experiments: [homepageExperiment, ctaExperiment],
+      adapters: [sink.adapter],
+    });
+
+    const resolution = experiments.resolveRelations({
+      uuids: ["uuid-cta"],
+      visitorId: "visitor-7",
+    });
+
+    expect(resolution.exposures.map((exposure) => exposure.experiment.id)).toEqual([789]);
+    expect(sink.ofType("exposure")).toHaveLength(1);
   });
 });

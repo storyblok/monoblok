@@ -110,16 +110,16 @@ flowchart LR
 
 - **The folder name is the repo name**, so repo names are searchable here.
 - **The target mirrors the folder**, dotfiles included, minus what its `.gitignore` ignores, minus
-  `project.json` and the `nx` key of `package.json`. A test over the real blueprints fails if either
-  reaches a target. Nothing is added: no `.github` (the targets have no CI, and the App cannot push
-  workflow files), no releases, no tags. Three files are generated:
+  `project.json`, `AGENTS.template.md` and the `nx` key of `package.json`. A test over the real
+  blueprints fails if any reaches a target. Nothing is added: no `.github` (the targets have no CI,
+  and the App cannot push workflow files), no releases, no tags. Three files are generated:
   - `package.json`, with `workspace:^` resolved to `^<latest on npm>` (ADR-0014), not to the
     workspace version. That can be ahead of npm between a release merge and its publish, and then
     resolves to nothing (`ETARGET`). With npm's `latest`, a sync in that window ships the previous
     release.
-  - `AGENTS.md`: the blueprint's framework part, then `blueprints/AGENTS.storyblok.md`. A block a
-    framework maintains itself (Next.js) stays unchanged at the top. The sync fails when it mentions
-    an npm script `package.json` lacks.
+  - `AGENTS.md`, composed from `AGENTS.template.md`: the blueprint's framework part, then
+    `blueprints/AGENTS.storyblok.md`. A block a framework maintains itself (Next.js) stays unchanged
+    at the top. The sync fails when it mentions an npm script `package.json` lacks.
   - `package-lock.json`, resolved by `stage` before any blueprint code runs. npm 10 crashes on the
     Angular and Nuxt blueprints without one. `verify` tests that file, so the lockfile tested is the
     lockfile shipped. No lockfile is committed here: it could not be validated against `workspace:^`
@@ -223,7 +223,7 @@ flowchart LR
   `--min-release-age=1 --min-release-age-exclude=@storyblok/*`. Until then the smoke test is the
   only gate on third-party releases.
 - **Gaps in the PR job.** A PR that only changes Markdown skips the `blueprints` job, so an
-  `AGENTS.md` that names a missing npm script fails at the sync. A change that only touches
+  `AGENTS.template.md` that names a missing npm script fails at the sync. A change that only touches
   `pnpm-lock.yaml` selects no blueprint. `nx.json` is in `.nxignore`, so editing the smoke default
   or the named input selects nothing: run `pnpm nx smoke <blueprint>` by hand. "Passed" for the
   affected base means the whole CI workflow run, so an unrelated red job keeps the base at an older

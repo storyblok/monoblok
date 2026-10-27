@@ -57,7 +57,7 @@ describe("stage", () => {
     targetDir = mkdtempSync(join(tmpdir(), "blueprint-sync-target-"));
     write("blueprints/AGENTS.storyblok.md", "Rules.\n");
     write("blueprints/app/package.json", '{ "name": "app", "scripts": { "dev": "vite" } }\n');
-    write("blueprints/app/AGENTS.md", "Run `npm run dev`.\n");
+    write("blueprints/app/AGENTS.template.md", "Run `npm run dev`.\n");
     write("blueprints/app/.gitignore", ".env\ndist/\n");
     write("blueprints/app/.env.example", "STORYBLOK_DELIVERY_API_TOKEN=\n");
     write("blueprints/app/src/main.js", "");
@@ -78,6 +78,7 @@ describe("stage", () => {
     expect(existsSync(join(targetDir, ".env.example"))).toBe(true);
     expect(existsSync(join(targetDir, "src/new.js"))).toBe(true);
     expect(readFileSync(join(targetDir, "AGENTS.md"), "utf8")).toContain("## Storyblok");
+    expect(existsSync(join(targetDir, "AGENTS.template.md"))).toBe(false);
   });
 
   it("should leave out files the blueprint's .gitignore ignores", () => {
@@ -107,8 +108,8 @@ describe("stage", () => {
     expect(manifest.scripts).toEqual({ dev: "vite" });
   });
 
-  it("should fail when AGENTS.md mentions a script package.json lacks", () => {
-    write("blueprints/app/AGENTS.md", "Run `npm run nope`.\n");
+  it("should fail when AGENTS.template.md mentions a script package.json lacks", () => {
+    write("blueprints/app/AGENTS.template.md", "Run `npm run nope`.\n");
 
     expect(() => stage(repoRoot, "app", targetDir, [])).toThrow(/nope/);
   });
@@ -160,6 +161,18 @@ describe("stage", () => {
     },
   );
 
+  it.each(["AGENTS.md", "CLAUDE.md"])("should refuse a blueprint that contains %s", (name) => {
+    write(`blueprints/app/${name}`, "Stale.\n");
+
+    expect(() => stage(repoRoot, "app", targetDir, [])).toThrow(/AGENTS\.template\.md/);
+  });
+
+  it("should refuse a blueprint without AGENTS.template.md", () => {
+    rmSync(join(repoRoot, "blueprints/app/AGENTS.template.md"));
+
+    expect(() => stage(repoRoot, "app", targetDir, [])).toThrow(/no AGENTS\.template\.md/);
+  });
+
   it("should refuse a blueprint that ships .github", () => {
     write("blueprints/app/.github/workflows/ci.yaml", "");
 
@@ -167,7 +180,7 @@ describe("stage", () => {
   });
 
   it("should write nothing when a check fails", () => {
-    write("blueprints/app/AGENTS.md", "Run `npm run nope`.\n");
+    write("blueprints/app/AGENTS.template.md", "Run `npm run nope`.\n");
 
     expect(() => stage(repoRoot, "app", targetDir, [])).toThrow(/nope/);
     expect(readdirSync(targetDir)).toEqual([]);
@@ -195,12 +208,14 @@ describe("stage of the real blueprints", () => {
     .toSorted();
   const workspace = listWorkspacePackages(repoRoot);
 
-  it.each(blueprints)("should leave no project.json or nx key in %s", (blueprint) => {
+  it.each(blueprints)("should leave no nx config or agents template in %s", (blueprint) => {
     const targetDir = mkdtempSync(join(tmpdir(), "blueprint-sync-real-"));
     try {
       stage(repoRoot, blueprint, targetDir, workspace);
 
       expect(existsSync(join(targetDir, "project.json"))).toBe(false);
+      expect(existsSync(join(targetDir, "AGENTS.template.md"))).toBe(false);
+      expect(readFileSync(join(targetDir, "AGENTS.md"), "utf8")).toContain("## Storyblok");
       expect(JSON.parse(readFileSync(join(targetDir, "package.json"), "utf8"))).not.toHaveProperty(
         "nx",
       );

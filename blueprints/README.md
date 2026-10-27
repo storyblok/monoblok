@@ -2,13 +2,14 @@
 
 Source of the template repos `storyblok create` uses. Each folder is synced to the repo of the same
 name by `.github/workflows/sync-blueprints.yaml` (see `adr/0022-sync-blueprints-from-the-monorepo.md`).
-`AGENTS.storyblok.md` is appended to every blueprint's `AGENTS.md`.
+`stage` composes each blueprint's `AGENTS.template.md` with `AGENTS.storyblok.md` into the target's
+`AGENTS.md`. The template has another name so that agents working in this repo do not load it.
 
 ## Adding a blueprint
 
 1. Create `blueprints/<repo-name>/` as a plain npm project: no lockfile (the sync resolves one), no `.github`, `workspace:^`
    for `@storyblok/*` packages from this repo.
-2. Add an `AGENTS.md` with what the app is, the framework docs, and what the project's files don't
+2. Add an `AGENTS.template.md` with what the app is, the framework docs, and what the project's files don't
    say.
 3. Add `tools/blueprint-sync/configs/<repo-name>.ts` and a `project.json` (copy a sibling's: the
    `blueprint` tag, `outputs`, `inputs`, the implicit dependency and `"smoke": {}`). Copy the `nx`

@@ -16,6 +16,9 @@ import {
   type WorkspacePackage,
 } from "./resolve.ts";
 
+// Named so that agents working in the monorepo do not load it as the folder's instructions.
+const AGENTS_TEMPLATE = "AGENTS.template.md";
+
 /** `AGENTS.md` in the target: the blueprint's framework part, then the shared Storyblok part. */
 export function composeAgents(frameworkPart: string, storyblokPart: string): string {
   return `${frameworkPart.trimEnd()}\n\n## Storyblok\n\n<!-- synced from storyblok/monoblok; edit in the monorepo -->\n\n${storyblokPart.trimEnd()}\n`;
@@ -60,15 +63,29 @@ function blueprintFiles(source: string): string[] {
     { cwd: source, encoding: "utf8" },
   );
   // `--cached` still lists files deleted from the working tree but not yet from the index.
-  // `project.json` is nx config for the workspace (ADR-0022), not part of the template.
+  // `project.json` is nx config for the workspace (ADR-0022), not part of the template, and the
+  // agents template is composed into `AGENTS.md` instead of shipped as it is.
   const files = output
     .split("\0")
-    .filter((file) => file !== "" && file !== "project.json" && existsSync(join(source, file)));
+    .filter(
+      (file) =>
+        file !== "" &&
+        file !== "project.json" &&
+        file !== AGENTS_TEMPLATE &&
+        existsSync(join(source, file)),
+    );
   // The targets have no CI of their own (ADR-0022), and the App cannot push workflow files.
   const github = files.filter((file) => file === ".github" || file.startsWith(".github/"));
   if (github.length > 0) {
     throw new Error(
       `A blueprint must not ship .github, the targets have none: ${github.join(", ")}`,
+    );
+  }
+  // `next dev` writes both when an agent runs it. They would ship, or be overwritten silently.
+  const strays = files.filter((file) => file === "AGENTS.md" || file === "CLAUDE.md");
+  if (strays.length > 0) {
+    throw new Error(
+      `A blueprint must not contain ${strays.join(", ")}: edit ${AGENTS_TEMPLATE}, \`stage\` writes AGENTS.md`,
     );
   }
   return files;
@@ -104,7 +121,7 @@ function assertWritable(repoRoot: string, targetDir: string): void {
 
 /**
  * Makes `targetDir` exactly what the target repo gets: a mirror of `blueprints/<blueprint>/`,
- * dotfiles included (but not the workspace's nx `project.json`), plus `package.json` with
+ * dotfiles included (but not the workspace's nx `project.json` or `AGENTS.template.md`), plus `package.json` with
  * `workspace:^` resolved (to npm's `latest` when `latestVersion` is given) and the composed
  * `AGENTS.md`. `targetDir` must be empty or missing, and nothing is written when a check fails.
  */
@@ -120,13 +137,16 @@ export function stage(
     throw new Error(`Unknown blueprint "${blueprint}": no blueprints/${blueprint}/package.json`);
   }
 
+  if (!existsSync(join(source, AGENTS_TEMPLATE))) {
+    throw new Error(`blueprints/${blueprint} has no ${AGENTS_TEMPLATE}`);
+  }
   const packageJson = resolveWorkspaceDependencies(
     readFileSync(join(source, "package.json"), "utf8"),
     workspace,
     latestVersion,
   );
   const agentsMd = composeAgents(
-    readFileSync(join(source, "AGENTS.md"), "utf8"),
+    readFileSync(join(source, AGENTS_TEMPLATE), "utf8"),
     readFileSync(join(repoRoot, "blueprints", "AGENTS.storyblok.md"), "utf8"),
   );
   if (packageJson.includes('"workspace:')) {
@@ -134,7 +154,9 @@ export function stage(
   }
   const missing = missingScripts(agentsMd, packageJson);
   if (missing.length > 0) {
-    throw new Error(`AGENTS.md mentions npm scripts package.json lacks: ${missing.join(", ")}`);
+    throw new Error(
+      `blueprints/${blueprint}/${AGENTS_TEMPLATE} or blueprints/AGENTS.storyblok.md mentions npm scripts package.json lacks: ${missing.join(", ")}`,
+    );
   }
 
   // Every check before the first write, so a failure leaves nothing behind.

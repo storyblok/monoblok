@@ -102,36 +102,24 @@ export const upsertComponent = async (
   component: Component | ComponentCreate,
   existingId?: number,
 ): Promise<Component | undefined> => {
-  // Extract only the fields relevant for create/update, dropping read-only
-  // properties (`id`, `created_at`, `updated_at`, etc.) that exist on
-  // `Component` but not on `ComponentCreate`/`ComponentUpdate`.
-  const {
-    name,
-    display_name,
-    description,
-    schema,
-    is_root,
-    is_nestable,
-    component_group_uuid,
-    color,
-    icon,
-    preview_field,
-    preview_tmpl,
-    internal_tag_ids,
-  } = component;
+  // Read-only properties (`id`, `created_at`, …) are sent along and ignored by
+  // MAPI, so every writable property reaches the API without being listed here.
+  // Nullable properties are listed only because the request types reject `null`.
   const payload = {
-    name,
-    display_name: display_name ?? undefined,
-    description: description ?? undefined,
-    schema: toWritableSchema(schema),
-    is_root,
-    is_nestable,
-    component_group_uuid: component_group_uuid ?? undefined,
-    color: color ?? undefined,
-    icon: icon ?? undefined,
-    preview_field: preview_field ?? undefined,
-    preview_tmpl: preview_tmpl ?? undefined,
-    internal_tag_ids: toRequestTagIds(internal_tag_ids),
+    ...component,
+    display_name: component.display_name ?? undefined,
+    description: component.description ?? undefined,
+    image: component.image ?? undefined,
+    preview_field: component.preview_field ?? undefined,
+    preview_tmpl: component.preview_tmpl ?? undefined,
+    preset_id: component.preset_id ?? undefined,
+    component_group_uuid: component.component_group_uuid ?? undefined,
+    color: component.color ?? undefined,
+    icon: component.icon ?? undefined,
+    content_type_asset_preview: component.content_type_asset_preview ?? undefined,
+    metadata: component.metadata ?? undefined,
+    schema: toWritableSchema(component.schema),
+    internal_tag_ids: toRequestTagIds(component.internal_tag_ids),
   };
 
   if (existingId) {

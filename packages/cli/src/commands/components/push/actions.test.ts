@@ -575,36 +575,17 @@ describe("push components actions", () => {
   });
 
   describe("upsertComponent", () => {
-    it("should send preview_tmpl when creating a component", async () => {
-      const preview_tmpl = "<div>Component preview</div>";
-      server.use(
-        http.post("https://mapi.storyblok.com/v1/spaces/12345/components", async ({ request }) => {
-          expect(await request.json()).toEqual({
-            component: expect.objectContaining({ preview_tmpl }),
-          });
-          return HttpResponse.json({ component: mockComponent1 }, { status: 201 });
-        }),
-      );
+    const writableProperties = {
+      description: "An author component",
+      image: "https://a.storyblok.com/f/12345/author-screenshot.png",
+      preview_tmpl: "<div>Component preview</div>",
+      preview_field: "name",
+      preset_id: 7,
+      content_type_asset_preview: "image",
+      metadata: { owner: "content-team" },
+    };
 
-      await upsertComponent("12345", { ...mockComponent1, preview_tmpl });
-    });
-
-    it("should send preview_tmpl when updating a component", async () => {
-      const preview_tmpl = "<div>Updated component preview</div>";
-      server.use(
-        http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
-          expect(await request.json()).toEqual({
-            component: expect.objectContaining({ preview_tmpl }),
-          });
-          return HttpResponse.json({ component: mockComponent1 });
-        }),
-      );
-
-      await upsertComponent("12345", { ...mockComponent1, preview_tmpl }, 1);
-    });
-
-    it("should send description when creating a component", async () => {
-      const description = "An author component";
+    it("should send every writable property when creating a component", async () => {
       let requestBody: unknown;
       server.use(
         http.post("https://mapi.storyblok.com/v1/spaces/12345/components", async ({ request }) => {
@@ -613,13 +594,12 @@ describe("push components actions", () => {
         }),
       );
 
-      await upsertComponent("12345", { ...mockComponent1, description });
+      await upsertComponent("12345", { ...mockComponent1, ...writableProperties });
 
-      expect(requestBody).toEqual({ component: expect.objectContaining({ description }) });
+      expect(requestBody).toEqual({ component: expect.objectContaining(writableProperties) });
     });
 
-    it("should send description when updating a component", async () => {
-      const description = "An updated author component";
+    it("should send every writable property when updating a component", async () => {
       let requestBody: unknown;
       server.use(
         http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
@@ -628,9 +608,25 @@ describe("push components actions", () => {
         }),
       );
 
-      await upsertComponent("12345", { ...mockComponent1, description }, 1);
+      await upsertComponent("12345", { ...mockComponent1, ...writableProperties }, 1);
 
-      expect(requestBody).toEqual({ component: expect.objectContaining({ description }) });
+      expect(requestBody).toEqual({ component: expect.objectContaining(writableProperties) });
+    });
+
+    it("should send internal tag ids as numbers", async () => {
+      let requestBody: unknown;
+      server.use(
+        http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ component: mockComponent1 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, internal_tag_ids: ["3", "5"] }, 1);
+
+      expect(requestBody).toEqual({
+        component: expect.objectContaining({ internal_tag_ids: [3, 5] }),
+      });
     });
   });
 });

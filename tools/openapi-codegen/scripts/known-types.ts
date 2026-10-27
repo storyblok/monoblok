@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "pathe";
 import { parse as parseYaml } from "yaml";
 import { ALIASES, type SpecSource } from "../src/aliases.ts";
+import { SPEC_INPUT_PATCHES } from "../src/patches.ts";
 import { TEMPLATES } from "../src/templates.ts";
 import { CACHE_DIR, TOOL_ROOT } from "../src/lock.ts";
 
@@ -44,11 +45,13 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 /**
- * Parses an OpenAPI YAML and narrows it to the slice this script reads. Anything
- * malformed or missing collapses to empty records, so callers can index freely.
+ * Parses a cached OpenAPI YAML, applies the same input patches the generator
+ * applies, and narrows it to the slice this script reads. Anything malformed or
+ * missing collapses to empty records, so callers can index freely.
  */
-function loadSpec(yamlPath: string): OpenApiDoc {
-  const root = asRecord(parseYaml(readFileSync(yamlPath, "utf8"))) ?? {};
+function loadSpec(source: SpecSource): OpenApiDoc {
+  const root = asRecord(parseYaml(readFileSync(SPEC_PATHS[source], "utf8"))) ?? {};
+  SPEC_INPUT_PATCHES[source]?.(root);
   const components = asRecord(root.components);
   return {
     components: { schemas: asRecord(components?.schemas) },
@@ -60,10 +63,10 @@ function loadSpec(yamlPath: string): OpenApiDoc {
 /**
  * Extracts top-level schema names from `components.schemas` in an OpenAPI spec.
  */
-export function listSchemaNames(yamlPath: string): string[] {
-  const { schemas } = loadSpec(yamlPath).components;
+export function listSchemaNames(source: SpecSource): string[] {
+  const { schemas } = loadSpec(source).components;
   if (!schemas) {
-    throw new Error(`Could not locate \`components.schemas\` block in ${yamlPath}`);
+    throw new Error(`Could not locate \`components.schemas\` block in ${SPEC_PATHS[source]}`);
   }
   return Object.keys(schemas).sort();
 }
@@ -77,8 +80,8 @@ function toPascalCase(input: string): string {
  * `operationId` (e.g. `createAssetFolder` → `CreateAssetFolderData`). Aliases
  * may target these in addition to `components.schemas` entries.
  */
-export function listOperationDataNames(yamlPath: string): string[] {
-  const { paths, webhooks } = loadSpec(yamlPath);
+export function listOperationDataNames(source: SpecSource): string[] {
+  const { paths, webhooks } = loadSpec(source);
 
   const names = new Set<string>();
   for (const pathItem of [...Object.values(paths), ...Object.values(webhooks)]) {
@@ -152,15 +155,15 @@ export const UPSTREAM_SCHEMAS = {
 
 export function generateKnownTypes(): void {
   const schemasBySpec: Record<SpecSource, readonly string[]> = {
-    capi: listSchemaNames(SPEC_PATHS.capi),
-    mapi: listSchemaNames(SPEC_PATHS.mapi),
-    overlay: listSchemaNames(SPEC_PATHS.overlay),
+    capi: listSchemaNames("capi"),
+    mapi: listSchemaNames("mapi"),
+    overlay: listSchemaNames("overlay"),
   };
 
   const validSourcesBySpec: Record<SpecSource, ReadonlySet<string>> = {
-    capi: new Set([...schemasBySpec.capi, ...listOperationDataNames(SPEC_PATHS.capi)]),
-    mapi: new Set([...schemasBySpec.mapi, ...listOperationDataNames(SPEC_PATHS.mapi)]),
-    overlay: new Set([...schemasBySpec.overlay, ...listOperationDataNames(SPEC_PATHS.overlay)]),
+    capi: new Set([...schemasBySpec.capi, ...listOperationDataNames("capi")]),
+    mapi: new Set([...schemasBySpec.mapi, ...listOperationDataNames("mapi")]),
+    overlay: new Set([...schemasBySpec.overlay, ...listOperationDataNames("overlay")]),
   };
 
   validate(validSourcesBySpec);

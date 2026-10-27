@@ -20,21 +20,35 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Widen a component write request's `component_group_uuid` to nullable.
- *
- * The MAPI accepts `component_group_uuid: null` on component create/update to
- * clear a block's group. The read `Component` schema already models this
- * (`type: ['string', 'null']`), but the `ComponentCreateRequest` /
- * `ComponentUpdateRequest` bodies declare a bare `type: 'string'`. Match them to
- * the read shape so the generated create/update types allow `null` for callers
- * that intentionally clear a group.
- *
- * The property lives at `.properties.component.properties.component_group_uuid`
- * (both request bodies wrap the component in a `component` envelope). Typed as
- * `unknown` because hey-api's `SchemaObject` union is not ergonomic to navigate;
- * the runtime guards make the walk safe.
+ * Component write properties the MAPI clears when sent `null`. `metadata` is
+ * absent on purpose: the API ignores `metadata: null` and only `{}` clears it.
  */
-function widenComponentGroupUuid(schema: unknown): void {
+const NULLABLE_COMPONENT_WRITE_PROPERTIES = [
+  "display_name",
+  "description",
+  "image",
+  "preview_field",
+  "preview_tmpl",
+  "preset_id",
+  "component_group_uuid",
+  "color",
+  "icon",
+  "content_type_asset_preview",
+];
+
+/**
+ * Widen a component write request's clearable properties to nullable.
+ *
+ * The read `Component` schema models them as nullable, but the
+ * `ComponentCreateRequest` / `ComponentUpdateRequest` bodies declare bare
+ * types, so callers could not clear a value.
+ *
+ * The properties live at `.properties.component.properties` (both request bodies
+ * wrap the component in a `component` envelope). Typed as `unknown` because
+ * hey-api's `SchemaObject` union is not ergonomic to navigate; the runtime
+ * guards make the walk safe.
+ */
+function widenNullableComponentProperties(schema: unknown): void {
   if (!isRecord(schema) || !isRecord(schema.properties)) {
     return;
   }
@@ -42,9 +56,11 @@ function widenComponentGroupUuid(schema: unknown): void {
   if (!isRecord(component) || !isRecord(component.properties)) {
     return;
   }
-  const group = component.properties.component_group_uuid;
-  if (isRecord(group) && group.type === "string") {
-    group.type = ["string", "null"];
+  for (const name of NULLABLE_COMPONENT_WRITE_PROPERTIES) {
+    const property = component.properties[name];
+    if (isRecord(property) && typeof property.type === "string") {
+      property.type = [property.type, "null"];
+    }
   }
 }
 
@@ -159,8 +175,8 @@ const MAPI_PARSER: Parser = {
   patch: {
     input: patchMapiInput,
     schemas: {
-      ComponentCreateRequest: widenComponentGroupUuid,
-      ComponentUpdateRequest: widenComponentGroupUuid,
+      ComponentCreateRequest: widenNullableComponentProperties,
+      ComponentUpdateRequest: widenNullableComponentProperties,
       CreateWorkflowStageRequest: requireWorkflowStageCreateFields,
     },
   },

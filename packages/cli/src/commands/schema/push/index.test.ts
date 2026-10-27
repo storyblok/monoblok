@@ -557,6 +557,30 @@ describe("schema push command", () => {
       expect(componentBody).toMatchObject({ image: null, metadata: {} });
       expect(componentBody).not.toHaveProperty("preview_tmpl");
     });
+
+    it("should report nothing to push once optional properties a block sets to null are cleared", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasLocalSchema({
+        components: [{ ...comp, image: null, metadata: null }] as any,
+        datasources: [],
+      });
+      const cleared = { image: null, metadata: {} };
+      preconditions.hasRemoteComponents([{ ...comp, ...cleared }]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
+    });
   });
 
   describe("block tags", () => {

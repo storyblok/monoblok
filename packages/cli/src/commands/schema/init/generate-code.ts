@@ -12,6 +12,7 @@ import {
   formatValue,
   INDENT,
   isRecord,
+  omitEmptyMetadata,
   quoteString,
   RawCode,
   stripKeys,
@@ -856,19 +857,16 @@ export function generateComponentFile(
   const resolvedVarName = varName ?? componentVarName(component.name);
   lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
-  const clean = omitResetMetadata(
-    omitEmptyArrays(
-      stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
+  const clean = omitEmptyMetadata(
+    omitResetMetadata(
+      omitEmptyArrays(
+        stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
+      ),
     ),
   );
 
   // The group is encoded by the directory layout / folder ref, never emitted on the block.
   delete clean.component_group_uuid;
-
-  // The API returns `metadata: {}` for a block without metadata.
-  if (isRecord(clean.metadata) && Object.keys(clean.metadata).length === 0) {
-    delete clean.metadata;
-  }
 
   // Block tags are emitted by name, the identity push resolves against the
   // target space. An id with no known tag keeps the raw list: it is still valid
@@ -904,7 +902,9 @@ export function generateComponentFile(
   }
 
   orderedKeys.forEach((key, i) => {
-    lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1)},`);
+    // A `null` inside `metadata` is user data, not an unset option.
+    const keepNullEntries = key === "metadata";
+    lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1, { keepNullEntries })},`);
     // The folder ref is emitted right after the fixed name/display_name/is_root/
     // is_nestable block, regardless of which of those keys are actually present.
     if (folderRef && i === prefixKeyCount - 1) {

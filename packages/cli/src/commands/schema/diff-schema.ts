@@ -402,13 +402,17 @@ function toPathSpace(
 }
 
 /**
- * Drops the {@link COMPONENT_OPTIONAL_KEYS} the target does not set, so a value
- * the target leaves unmanaged never shows as a diff.
+ * An optional key either side omits is unmanaged, so it must never show as a
+ * diff. A block held by one side only keeps them all: that side's values are
+ * what creating or deleting the block sets or discards.
  */
-function omitUnmanagedOptionalKeys(comp: Component, target: Component | undefined): Component {
+function omitUnmanagedOptionalKeys(comp: Component, other: Component | undefined): Component {
+  if (!other) {
+    return comp;
+  }
   const copy = { ...comp };
   for (const key of COMPONENT_OPTIONAL_KEYS) {
-    if (target?.[key] === undefined) {
+    if (comp[key] === undefined || other[key] === undefined) {
       delete copy[key];
     }
   }
@@ -453,7 +457,11 @@ function diffComponent(
   const toClean = toComp
     ? cleanComponent(
         applyDefaults(
-          toPathSpace(toTagSpace(toComp, toTag, byTagName), uuidToPath, manageFolder),
+          toPathSpace(
+            toTagSpace(omitUnmanagedOptionalKeys(toComp, fromComp), toTag, byTagName),
+            uuidToPath,
+            manageFolder,
+          ),
           COMPONENT_DEFAULTS,
         ),
         { includeGroupUuid },

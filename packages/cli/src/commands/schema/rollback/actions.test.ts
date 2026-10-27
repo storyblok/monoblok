@@ -7,7 +7,7 @@ import type { ChangesetData, RemoteSchemaData } from "../types";
 import type { Component, ComponentFolder } from "../../../types";
 import { getMapiClient } from "../../../api";
 
-import { buildRollbackOps, executeRollback, listChangesets } from "./actions";
+import { buildRollbackOps, executeRollback, formatRollbackOutput, listChangesets } from "./actions";
 import type { RollbackOp } from "./actions";
 
 describe("listChangesets", () => {
@@ -76,6 +76,39 @@ describe("buildRollbackOps", () => {
 
     expect(ops).toHaveLength(1);
     expect(ops[0]).toEqual({ type: "component", name: "hero", action: "update", payload: before });
+  });
+
+  describe("optional block properties", () => {
+    const update: ChangesetData["changes"][number] = {
+      type: "component",
+      name: "hero",
+      action: "update",
+      before: {
+        name: "hero",
+        display_name: "Old Hero",
+        image: "https://a.storyblok.com/f/1/old.png",
+        preview_tmpl: "<div>{{ it.title }}</div>",
+        metadata: { owner: "content-team" },
+        schema: {},
+      },
+      after: { name: "hero", display_name: "New Hero", image: null, schema: {} },
+    };
+
+    it("should restore only the optional properties the pushed block set", () => {
+      const ops = buildRollbackOps({ ...baseChangeset, changes: [update] });
+
+      expect(ops[0]?.payload).toMatchObject({ image: "https://a.storyblok.com/f/1/old.png" });
+      expect(ops[0]?.payload).not.toHaveProperty("preview_tmpl");
+      expect(ops[0]?.payload).not.toHaveProperty("metadata");
+    });
+
+    it("should not preview optional properties the pushed block left untouched", () => {
+      const output = formatRollbackOutput([update]);
+
+      expect(output).toContain("old.png");
+      expect(output).not.toContain("preview_tmpl");
+      expect(output).not.toContain("content-team");
+    });
   });
 
   it("should invert delete to create with before as payload", () => {

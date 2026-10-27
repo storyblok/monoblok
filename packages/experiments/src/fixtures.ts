@@ -151,3 +151,42 @@ export const nestedHomepageExperiment: Experiment = {
     },
   ],
 };
+
+/**
+ * An experiment on a call-to-action story that pages pull in through
+ * `resolve_relations` rather than render by slug.
+ */
+export const ctaExperiment: Experiment = {
+  id: 789,
+  name: "cta_copy",
+  display_name: "CTA Copy",
+  story_ids: [5, 6],
+  stories: [{ id: 5, uuid: "uuid-cta", full_slug: "blocks/cta" }],
+  variants: [
+    {
+      name: "control",
+      display_name: "Control",
+      public_id: "var_cta_control",
+      weight: 50,
+      is_control: true,
+      story_mappings: [],
+    },
+    {
+      name: "urgent",
+      display_name: "Urgent",
+      public_id: "var_cta_urgent",
+      weight: 50,
+      is_control: false,
+      story_mappings: [
+        {
+          original_story_id: 5,
+          original_uuid: "uuid-cta",
+          original_slug: "cta",
+          variant_story_id: 6,
+          variant_uuid: "uuid-cta-urgent",
+          variant_slug: "blocks/cta-cta_copy-urgent",
+        },
+      ],
+    },
+  ],
+};

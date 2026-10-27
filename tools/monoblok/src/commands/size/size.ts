@@ -32,16 +32,12 @@ export const COMMENT_MARKER = "<!-- monoblok-bundle-size -->";
 /** PR label that turns growth past the threshold into a warning. */
 export const ACCEPT_LABEL = "bundle-size-accepted";
 
-/** CommonJS is left out: browsers and bundlers load the `import` side of a package. */
-export type Format = "esm" | "umd" | "css";
-
 export type Kind = "entry" | "file";
 
 /** Growth over the base, in percent, past which an entry or a file fails the check. */
 export const THRESHOLD_PERCENT = 5;
 
 export type Measured = {
-  format: Format;
   /** Gzipped size in bytes. */
   size: number;
 };
@@ -56,8 +52,7 @@ export type PackageMeasurement = {
   dir: string;
   /**
    * What a consumer's browser downloads for each export: the export bundled with its dependencies,
-   * minified, without peer dependencies or lazily imported chunks. Keyed by subpath, with the format
-   * when it is not ESM, e.g. `./ssr` or `. (umd)`.
+   * minified, without peer dependencies or lazily imported chunks. Keyed by subpath, e.g. `./ssr`.
    */
   entries: Record<string, EntryMeasurement>;
   /** Every published file in `dist` on its own, keyed by its path relative to the package. */
@@ -76,10 +71,11 @@ export type ProjectConfig = {
   dir: string;
 };
 
-// Type declarations, source maps, and tests never reach a consumer's bundle.
-const MEASURED_FILE = /\.(m?js|cjs|css|ts|vue|svelte)$/;
+// Only ESM is measured: what apps bundle. Type declarations, source maps, and tests never reach
+// a consumer's bundle.
+const MEASURED_FILE = /\.(m?js|ts|vue|svelte)$/;
 const IGNORED_FILE = /\.d\.[cm]?ts$|\.(spec|test)\./;
-const ENTRY_FIELDS = ["main", "module", "browser", "unpkg", "jsdelivr"] as const;
+const ENTRY_FIELDS = ["main", "module", "browser"] as const;
 const BUILTINS = new Set(builtinModules);
 
 type PackageJson = Record<string, unknown> & { name?: unknown; type?: unknown; exports?: unknown };
@@ -119,18 +115,12 @@ export function loadProjects(root: string, filter: string[] = []): ProjectConfig
   return filter.length > 0 ? projects.filter((project) => filter.includes(project.name)) : projects;
 }
 
-/** The format a browser would load the file as, or `undefined` for CommonJS. */
-export function formatOf(file: string, pkg: PackageJson): Format | undefined {
-  if (file.endsWith(".css")) {
-    return "css";
-  }
+/** Whether the file is an ES module: not CommonJS, nor a UMD or IIFE build. */
+export function isEsm(file: string, pkg: PackageJson): boolean {
   if (/\.(umd|iife)\.js$/.test(file)) {
-    return "umd";
+    return false;
   }
-  if (file.endsWith(".cjs") || (file.endsWith(".js") && pkg.type !== "module")) {
-    return undefined;
-  }
-  return "esm";
+  return !(file.endsWith(".cjs") || (file.endsWith(".js") && pkg.type !== "module"));
 }
 
 /** Each subpath with a file it points to, from `exports`, the legacy entry fields, and `EXTRA_ENTRIES`. */
@@ -378,16 +368,14 @@ export async function measurePackage(
     )
     .sort();
   for (const file of files) {
-    const format = formatOf(file, pkg);
-    if (format) {
-      result.files[file] = { format, size: gzipSize(fs.readFileSync(path.join(packageDir, file))) };
+    if (isEsm(file, pkg)) {
+      result.files[file] = { size: gzipSize(fs.readFileSync(path.join(packageDir, file))) };
     }
   }
 
   const seen = new Set<string>();
   for (const { subpath, file } of entryPoints(pkg)) {
-    const format = formatOf(file, pkg);
-    if (!format || seen.has(file)) {
+    if (!isEsm(file, pkg) || seen.has(file)) {
       continue;
     }
     seen.add(file);
@@ -398,20 +386,10 @@ export async function measurePackage(
       };
     }
 
-    // A UMD build usually shares its subpath with the ESM one.
-    let key = format === "umd" ? `${subpath} (umd)` : subpath;
-    if (result.entries[key]) {
-      key = `${subpath} (${format})`;
-    }
+    // `main` and `module` can point to different ES modules for the same subpath.
+    const key = result.entries[subpath] ? `${subpath} (${file})` : subpath;
     try {
-      result.entries[key] =
-        format === "css"
-          ? {
-              format,
-              size: gzipSize(fs.readFileSync(path.join(packageDir, file))),
-              dependencies: [],
-            }
-          : { format, ...(await bundleEntry(packageDir, file)) };
+      result.entries[key] = await bundleEntry(packageDir, file);
     } catch (error) {
       const message = error instanceof Error ? firstError(error.message) : String(error);
       return { ...result, error: `Could not bundle \`${subpath}\` (${file}): ${message}` };
@@ -452,7 +430,6 @@ export type Change = {
   package: string;
   kind: Kind;
   name: string;
-  format: Format;
   /** Size on this branch, `undefined` when removed. */
   size: number | undefined;
   /** Size on the base, `undefined` when new or without a base. */
@@ -503,7 +480,6 @@ export function compare(head: Measurement, base: Measurement | undefined): Compa
           package: name,
           kind,
           name: itemName,
-          format: item.format,
           size: item.size,
           base: baseSize,
           status,
@@ -515,7 +491,6 @@ export function compare(head: Measurement, base: Measurement | undefined): Compa
             package: name,
             kind,
             name: itemName,
-            format: item.format,
             size: undefined,
             base: item.size,
             status: "removed",

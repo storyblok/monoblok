@@ -55,14 +55,13 @@ function dependency(
 function measured(overrides: Partial<PackageMeasurement> = {}): PackageMeasurement {
   return {
     dir: "packages/pkg",
-    entries: { ".": { format: "esm", size: 1000, dependencies: [] } },
-    files: { "dist/index.mjs": { format: "esm", size: 1000 } },
+    entries: { ".": { size: 1000, dependencies: [] } },
+    files: { "dist/index.mjs": { size: 1000 } },
     ...overrides,
   };
 }
 
-const withEntry = (size: number) =>
-  measured({ entries: { ".": { format: "esm", size, dependencies: [] } } });
+const withEntry = (size: number) => measured({ entries: { ".": { size, dependencies: [] } } });
 
 const single = (pkg: PackageMeasurement): Measurement => ({ packages: { "@storyblok/pkg": pkg } });
 
@@ -96,7 +95,7 @@ describe("loadProjects", () => {
 });
 
 describe("entryPoints", () => {
-  it("should collect the browser targets of every subpath, without CommonJS", () => {
+  it("should collect the ES module of every subpath", () => {
     const points = entryPoints({
       exports: {
         ".": {
@@ -110,11 +109,7 @@ describe("entryPoints", () => {
       unpkg: "./dist/index.umd.js",
     });
 
-    expect(points).toEqual([
-      { subpath: ".", file: "dist/index.mjs" },
-      { subpath: "./style.css", file: "dist/style.css" },
-      { subpath: ".", file: "dist/index.umd.js" },
-    ]);
+    expect(points).toEqual([{ subpath: ".", file: "dist/index.mjs" }]);
   });
 
   it("should skip ignored exports and add extra entries", () => {
@@ -220,7 +215,7 @@ describe("measure", () => {
     expect(pkg.entries["."].size).toBeLessThan(200);
   });
 
-  it("should measure UMD and CSS entries, and skip CommonJS", async () => {
+  it("should measure only ES modules, skipping CommonJS, UMD, and CSS", async () => {
     writePackage(
       "pkg",
       {
@@ -242,12 +237,8 @@ describe("measure", () => {
 
     const pkg = (await measure(root)).packages["@storyblok/pkg"];
 
-    expect(Object.keys(pkg.entries)).toEqual([".", "./style.css", ". (umd)"]);
-    expect(Object.keys(pkg.files)).toEqual([
-      "dist/index.mjs",
-      "dist/index.umd.js",
-      "dist/style.css",
-    ]);
+    expect(Object.keys(pkg.entries)).toEqual(["."]);
+    expect(Object.keys(pkg.files)).toEqual(["dist/index.mjs"]);
   });
 
   it("should ignore a tsconfig that extends a file only the build generates", async () => {
@@ -314,9 +305,7 @@ describe("compare", () => {
   });
 
   it("should mark entries only one build has as new or removed", () => {
-    const head = single(
-      measured({ entries: { "./ssr": { format: "esm", size: 10, dependencies: [] } } }),
-    );
+    const head = single(measured({ entries: { "./ssr": { size: 10, dependencies: [] } } }));
     const { changes } = compare(head, single(measured()));
 
     expect(changes.filter((change) => change.kind === "entry")).toMatchObject([
@@ -372,8 +361,8 @@ describe("toMarkdown", () => {
     const pkg = (size: number) =>
       measured({
         entries: {
-          "./ssr": { format: "esm", size, dependencies: [] },
-          ".": { format: "esm", size: 1000, dependencies: [] },
+          "./ssr": { size, dependencies: [] },
+          ".": { size: 1000, dependencies: [] },
         },
       });
     const markdown = toMarkdown(compare(single(pkg(1300)), single(pkg(1000))), "main");

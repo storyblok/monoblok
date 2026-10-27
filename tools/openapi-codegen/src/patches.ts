@@ -20,8 +20,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Component write properties the MAPI clears when sent `null`. `metadata` is
- * absent on purpose: the API ignores `metadata: null` and only `{}` clears it.
+ * Component write properties the MAPI clears when sent `null`. Excludes
+ * `metadata`, which the MAPI clears only with `{}`.
  */
 const NULLABLE_COMPONENT_WRITE_PROPERTIES = [
   "display_name",
@@ -37,11 +37,8 @@ const NULLABLE_COMPONENT_WRITE_PROPERTIES = [
 ];
 
 /**
- * Widen a component write request's clearable properties to nullable.
- *
- * The read `Component` schema models them as nullable, but the
- * `ComponentCreateRequest` / `ComponentUpdateRequest` bodies declare bare
- * types, so callers could not clear a value.
+ * Widen a component write request's clearable properties to nullable, matching
+ * the read `Component` schema.
  *
  * The properties live at `.properties.component.properties` (both request bodies
  * wrap the component in a `component` envelope). Typed as `unknown` because

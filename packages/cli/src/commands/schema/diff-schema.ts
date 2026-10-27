@@ -3,6 +3,7 @@ import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema
 import {
   applyDefaults,
   COMPONENT_DEFAULTS,
+  COMPONENT_OPTIONAL_KEYS,
   DATASOURCE_DEFAULTS,
   formatValue,
   isRecord,
@@ -400,6 +401,20 @@ function toPathSpace(
   return copy;
 }
 
+/**
+ * Drops the {@link COMPONENT_OPTIONAL_KEYS} the target does not set, so a value
+ * the target leaves unmanaged never shows as a diff.
+ */
+function omitUnmanagedOptionalKeys(comp: Component, target: Component | undefined): Component {
+  const copy = { ...comp };
+  for (const key of COMPONENT_OPTIONAL_KEYS) {
+    if (target?.[key] === undefined) {
+      delete copy[key];
+    }
+  }
+  return copy;
+}
+
 function diffComponent(
   name: string,
   fromComp: Component | undefined,
@@ -425,7 +440,11 @@ function diffComponent(
   const fromClean = fromComp
     ? cleanComponent(
         applyDefaults(
-          toPathSpace(toTagSpace(fromComp, fromTag, byTagName), uuidToPath, manageFolder),
+          toPathSpace(
+            toTagSpace(omitUnmanagedOptionalKeys(fromComp, toComp), fromTag, byTagName),
+            uuidToPath,
+            manageFolder,
+          ),
           COMPONENT_DEFAULTS,
         ),
         { includeGroupUuid },

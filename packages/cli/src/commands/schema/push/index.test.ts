@@ -469,6 +469,96 @@ describe("schema push command", () => {
     expect(componentBody?.component_group_uuid).toBeUndefined();
   });
 
+  describe("optional block properties", () => {
+    const optionalProperties = {
+      image: "https://a.storyblok.com/f/12345/hero.png",
+      preview_tmpl: "<div>{{ it.title }}</div>",
+      content_type_asset_preview: "title",
+      metadata: { owner: "content-team" },
+    };
+
+    it("should send the optional properties a block sets", async () => {
+      const comp = { ...makeMockComponent({ name: "hero" }), ...optionalProperties };
+      preconditions.hasLocalSchema({ components: [comp] as any, datasources: [] });
+      preconditions.hasEmptyRemote();
+      let componentBody: unknown;
+      server.use(
+        http.post(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`,
+          async ({ request }) => {
+            componentBody = ((await request.json()) as { component: unknown }).component;
+            return HttpResponse.json({ component: { ...comp, id: getID() } });
+          },
+        ),
+      );
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(componentBody).toMatchObject(optionalProperties);
+    });
+
+    it("should leave optional properties a block omits untouched", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasLocalSchema({ components: [comp] as any, datasources: [] });
+      preconditions.hasRemoteComponents([{ ...comp, ...optionalProperties }]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("nothing to push"));
+    });
+
+    it("should clear optional properties a block sets to null", async () => {
+      const comp = makeMockComponent({ name: "hero" });
+      preconditions.hasLocalSchema({
+        components: [{ ...comp, image: null, metadata: null }] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([{ ...comp, ...optionalProperties }]);
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+      let componentBody: unknown;
+      server.use(
+        http.put(
+          `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components/:id`,
+          async ({ request }) => {
+            componentBody = ((await request.json()) as { component: unknown }).component;
+            return HttpResponse.json({ component: comp });
+          },
+        ),
+      );
+
+      await schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+      ]);
+
+      expect(componentBody).toMatchObject({ image: null, metadata: {} });
+      expect(componentBody).not.toHaveProperty("preview_tmpl");
+    });
+  });
+
   describe("block tags", () => {
     function capturesComponentCreate(comp: MockComponent) {
       const bodies: { name: string; internal_tag_ids?: number[]; schema?: any }[] = [];

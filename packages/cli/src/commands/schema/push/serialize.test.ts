@@ -82,8 +82,7 @@ describe("serializeComponent", () => {
     expect(result).toContain("name: 'hero',");
     // internal_tag_ids is user-settable (in ComponentCreate/Update), so it's preserved
     expect(result).toContain("internal_tag_ids");
-    // metadata is not in API types, stripped defensively
-    expect(result).not.toContain("metadata");
+    expect(result).toContain("metadata");
     // Field-level id should be stripped
     expect(result).not.toContain("abc-123");
     expect(result).not.toContain("def-456");

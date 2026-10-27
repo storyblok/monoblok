@@ -10,15 +10,22 @@ export const COMPONENT_STRIP_KEYS = new Set([
   "created_at",
   "updated_at",
   "real_name", // API-computed display/technical name, read-only
-  "preset_id", // Instance-level preset selection, not part of schema definition
+  "preset_id", // Space-specific preset ID; presets are not managed by schema push
   "all_presets", // Computed list of presets, managed via /presets API
   "internal_tags_list", // Read-only expanded form of internal_tag_ids ({id, name} objects)
-  "content_type_asset_preview", // Read-only, not in ComponentCreate/ComponentUpdate
-  "image", // Read-only preview image URL
-  "preview_tmpl", // Read-only preview template
-  "metadata", // Not in current API types, stripped defensively
   "component_group_uuid", // UI grouping; stripped by default — kept for diffing only when a block opts into the group escape hatch
 ]);
+
+/**
+ * Optional component properties a block manages only when it sets them: an
+ * absent key leaves the remote value untouched, an explicit `null` clears it.
+ */
+export const COMPONENT_OPTIONAL_KEYS = [
+  "image",
+  "preview_tmpl",
+  "content_type_asset_preview",
+  "metadata",
+] as const;
 
 /**
  * Every wire field key holding a restriction list. An empty list means what an
@@ -64,6 +71,7 @@ export const DATASOURCE_DIMENSION_STRIP_KEYS = new Set([
  * - `component_group_uuid`: stripped before diffing (see COMPONENT_STRIP_KEYS)
  *   unless a block opts into the group escape hatch by setting it explicitly;
  *   diffing then keeps it on both sides so a changed group is pushed
+ * - {@link COMPONENT_OPTIONAL_KEYS}: left untouched when a block omits them
  */
 /**
  * Default values for optional datasource fields.

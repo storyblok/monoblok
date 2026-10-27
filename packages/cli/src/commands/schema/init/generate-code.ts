@@ -865,6 +865,11 @@ export function generateComponentFile(
   // The group is encoded by the directory layout / folder ref, never emitted on the block.
   delete clean.component_group_uuid;
 
+  // The API returns `metadata: {}` for a block without metadata.
+  if (isRecord(clean.metadata) && Object.keys(clean.metadata).length === 0) {
+    delete clean.metadata;
+  }
+
   // Block tags are emitted by name, the identity push resolves against the
   // target space. An id with no known tag keeps the raw list: it is still valid
   // in the space it was read from, and inventing a name would be worse.

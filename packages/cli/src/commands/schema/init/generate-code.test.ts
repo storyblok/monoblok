@@ -909,7 +909,7 @@ describe("generateComponentFile", () => {
     const result = generateComponentFile(component as any);
 
     expect(result).toContain("internal_tag_ids");
-    expect(result).not.toContain("metadata");
+    expect(result).toContain("metadata");
     expect(result).toContain("name: 'hero',");
   });
 

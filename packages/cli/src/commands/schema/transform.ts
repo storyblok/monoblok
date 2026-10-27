@@ -55,7 +55,25 @@ function buildComponentPayload(input: unknown) {
       (typeof input.component_group_uuid === "string" || input.component_group_uuid === null) && {
         component_group_uuid: input.component_group_uuid,
       }),
+    // Optional properties: an absent key (`undefined`) leaves the remote value
+    // untouched, an explicit `null` clears it.
+    image: toOptionalString(input.image),
+    preview_tmpl: toOptionalString(input.preview_tmpl),
+    content_type_asset_preview: toOptionalString(input.content_type_asset_preview),
+    metadata: toOptionalMetadata(input.metadata),
   };
+}
+
+function toOptionalString(value: unknown): string | null | undefined {
+  return typeof value === "string" || value === null ? value : undefined;
+}
+
+/** MAPI ignores `metadata: null`; only an empty object clears it. */
+function toOptionalMetadata(value: unknown): Record<string, unknown> | undefined {
+  if (value === null) {
+    return {};
+  }
+  return isRecord(value) ? value : undefined;
 }
 
 // `component_group_uuid: null` (clearing a block's group) is modeled directly by

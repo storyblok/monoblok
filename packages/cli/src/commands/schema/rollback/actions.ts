@@ -24,7 +24,6 @@ const API_ASSIGNED_FIELDS = [
   "updated_at",
   "real_name",
   "all_presets",
-  "image",
   "uuid",
 ] as const;
 

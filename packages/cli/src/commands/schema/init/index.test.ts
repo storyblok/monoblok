@@ -510,7 +510,7 @@ describe("schema init command", () => {
     const content = vol.readFileSync(componentFile!, "utf-8") as string;
     // internal_tag_ids is user-settable (in ComponentCreate/Update), so it's preserved
     expect(content).toContain("internal_tag_ids");
-    expect(content).not.toContain("metadata");
+    expect(content).toContain("metadata");
     expect(content).not.toContain("api-field-id");
   });
 

@@ -45,6 +45,12 @@ function toRequestTagIds(tagIds: ReadonlyArray<string | number> | undefined): nu
   return tagIds.map((id) => Number(id));
 }
 
+/**
+ * Requires every request property to be listed, so a property added to the API
+ * fails type-checking until it is mapped.
+ */
+type ExhaustiveComponentRequest = ComponentCreate & Record<keyof ComponentCreate, unknown>;
+
 // Component actions
 export const pushComponent = async (
   space: string,
@@ -102,25 +108,25 @@ export const upsertComponent = async (
   component: Component | ComponentCreate,
   existingId?: number,
 ): Promise<Component | undefined> => {
-  // Read-only properties (`id`, `created_at`, …) are sent along and ignored by
-  // MAPI, so every writable property reaches the API without being listed here.
-  // Nullable properties are listed only because the request types reject `null`.
   const payload = {
-    ...component,
-    display_name: component.display_name ?? undefined,
-    description: component.description ?? undefined,
-    image: component.image ?? undefined,
-    preview_field: component.preview_field ?? undefined,
-    preview_tmpl: component.preview_tmpl ?? undefined,
-    preset_id: component.preset_id ?? undefined,
-    component_group_uuid: component.component_group_uuid ?? undefined,
-    color: component.color ?? undefined,
-    icon: component.icon ?? undefined,
-    content_type_asset_preview: component.content_type_asset_preview ?? undefined,
-    metadata: component.metadata ?? undefined,
-    schema: toWritableSchema(component.schema),
+    name: component.name,
+    display_name: component.display_name,
+    description: component.description,
+    preview_tmpl: component.preview_tmpl,
+    image: component.image,
+    preview_field: component.preview_field,
+    is_root: component.is_root,
+    is_nestable: component.is_nestable,
+    preset_id: component.preset_id,
+    component_group_uuid: component.component_group_uuid,
+    color: component.color,
+    icon: component.icon,
+    content_type_asset_preview: component.content_type_asset_preview,
     internal_tag_ids: toRequestTagIds(component.internal_tag_ids),
-  };
+    schema: toWritableSchema(component.schema),
+    // MAPI ignores `metadata: null`; only an empty object clears it.
+    metadata: component.metadata === null ? {} : component.metadata,
+  } satisfies ExhaustiveComponentRequest;
 
   if (existingId) {
     return await updateComponent(space, existingId, payload);

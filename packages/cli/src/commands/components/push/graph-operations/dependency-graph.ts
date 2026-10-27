@@ -10,6 +10,7 @@ import type {
   UnifiedNode,
 } from "./types";
 import {
+  updateComponent,
   upsertComponent,
   upsertComponentGroup,
   upsertComponentInternalTag,
@@ -150,15 +151,9 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
       addDependency(componentId, groupId);
     }
 
-    // Add dependencies on preset_id (component preset reference)
-    if (component.preset_id) {
-      // Find the preset by ID and create dependency
-      const preset = spaceState.local.presets.find((p) => p.id === component.preset_id);
-      if (preset) {
-        const presetId = `preset:${preset.id}`;
-        addDependency(componentId, presetId);
-      }
-    }
+    // No dependency on the default preset (`preset_id`): it is one of the
+    // component's own presets, so it is linked once both exist (see
+    // `ComponentNode.linkPendingPreset`).
 
     if (component.schema) {
       const dependencies = collectWhitelistDependencies(component.schema);
@@ -663,8 +658,30 @@ export class GroupNode extends GraphNode<ComponentFolder> {
 }
 
 export class ComponentNode extends GraphNode<Component> {
+  /** Default preset that did not exist in the target when references were resolved. */
+  private pendingPresetNodeId?: string;
+
   constructor(id: string, data: Component, targetComponent?: Component) {
     super(id, "component", data.name, data, targetComponent);
+  }
+
+  /** Sets the pending default preset once both the component and the preset exist in the target. */
+  async linkPendingPreset(space: string, graph: DependencyGraph): Promise<void> {
+    if (!this.pendingPresetNodeId) {
+      return;
+    }
+    const presetId = graph.nodes.get(this.pendingPresetNodeId)?.targetData?.id;
+    const componentId = this.targetData?.id;
+    if (typeof presetId !== "number" || typeof componentId !== "number") {
+      return;
+    }
+    const result = await updateComponent(space, componentId, {
+      name: this.name,
+      preset_id: presetId,
+    });
+    if (!result) {
+      throw new Error(`Failed to set the default preset of component ${this.name}`);
+    }
   }
 
   resolveReferences(graph: DependencyGraph): void {
@@ -710,6 +727,9 @@ export class ComponentNode extends GraphNode<Component> {
 
         if (presetNode?.targetData) {
           updatedData.preset_id = presetNode.targetData.id as number;
+        } else {
+          updatedData.preset_id = undefined;
+          this.pendingPresetNodeId = presetNodeId;
         }
       }
     }

@@ -5,7 +5,7 @@ import type {
   ProcessingLevel,
   PushResults,
 } from "./types";
-import { determineProcessingOrder } from "./dependency-graph";
+import { ComponentNode, determineProcessingOrder } from "./dependency-graph";
 import { pushComponent } from "../actions";
 import type { ComponentCreate } from "../../../../types";
 import { getActiveConfig } from "../../../../lib/config";
@@ -79,11 +79,37 @@ export async function processAllResources(
         mergeResults(results, levelResults);
       }
     }
+    mergeResults(results, await linkPendingPresets(graph, space));
   } finally {
     for (const bar of bars.values()) {
       bar.stop();
     }
     ui.stopAllProgressBars();
+  }
+
+  return results;
+}
+
+/**
+ * Sets default presets that did not exist in the target yet when their
+ * components were upserted.
+ */
+async function linkPendingPresets(graph: DependencyGraph, space: string): Promise<PushResults> {
+  const logger = getLogger();
+  const results: PushResults = { successful: [], failed: [] };
+
+  for (const node of graph.nodes.values()) {
+    if (!(node instanceof ComponentNode)) {
+      continue;
+    }
+    try {
+      await node.linkPendingPreset(space, graph);
+    } catch (error) {
+      logger.error(`Failed to set the default preset of component ${node.getName()}`, {
+        error: error as Error,
+      });
+      results.failed.push({ name: node.getName(), error });
+    }
   }
 
   return results;

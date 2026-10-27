@@ -13,7 +13,13 @@ import {
   fetchComponentPresets,
   fetchComponents,
 } from "../actions";
-import { deleteComponentPreset, upsertComponent, upsertComponentGroup } from "./actions";
+import {
+  deleteComponentPreset,
+  updateComponent,
+  upsertComponent,
+  upsertComponentGroup,
+  upsertComponentPreset,
+} from "./actions";
 import { getUI } from "../../../lib/ui";
 
 vi.mock("./actions", async () => {
@@ -298,6 +304,54 @@ describe("push", () => {
 
       // Should not delete presets for components not being pushed
       expect(vi.mocked(deleteComponentPreset)).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("default preset", () => {
+    it("should set the default preset once it exists in a new target space", async () => {
+      const localPreset = {
+        id: 10,
+        name: "default",
+        component_id: 1,
+        preset: {},
+        created_at: "2021-08-09T12:00:00Z",
+        updated_at: "2021-08-09T12:00:00Z",
+        space_id: 12345,
+      };
+      vol.fromJSON({
+        ".storyblok/components/source-space/components.json": JSON.stringify([
+          { ...mockComponent, preset_id: 10 },
+        ]),
+        ".storyblok/components/source-space/presets.json": JSON.stringify([localPreset]),
+      });
+      const createdComponent = { ...mockComponent, id: 100 };
+      vi.mocked(upsertComponent).mockResolvedValue(createdComponent);
+      vi.mocked(upsertComponentPreset).mockResolvedValue({
+        ...localPreset,
+        id: 900,
+        component_id: 100,
+      });
+      vi.mocked(updateComponent).mockResolvedValue({ ...createdComponent, preset_id: 900 });
+
+      await componentsCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "--space",
+        "target-space",
+        "--from",
+        "source-space",
+      ]);
+
+      expect(vi.mocked(upsertComponent)).toHaveBeenCalledWith(
+        "target-space",
+        expect.objectContaining({ preset_id: undefined }),
+        undefined,
+      );
+      expect(vi.mocked(updateComponent)).toHaveBeenCalledWith("target-space", 100, {
+        name: "test-component",
+        preset_id: 900,
+      });
     });
   });
 

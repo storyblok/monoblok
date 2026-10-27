@@ -36,9 +36,15 @@ function toWritableSchema(
 /**
  * Converts component `internal_tag_ids` from the response shape (`string[]`) to
  * the create/update request shape (`number[]`) — a known upstream inconsistency
- * where the component serializer returns tag IDs as strings.
+ * where the component serializer returns tag IDs as strings. `null` maps to
+ * `[]`, which clears the tags.
  */
-function toRequestTagIds(tagIds: ReadonlyArray<string | number> | undefined): number[] | undefined {
+function toRequestTagIds(
+  tagIds: ReadonlyArray<string | number> | null | undefined,
+): number[] | undefined {
+  if (tagIds === null) {
+    return [];
+  }
   if (!tagIds) {
     return undefined;
   }
@@ -47,9 +53,11 @@ function toRequestTagIds(tagIds: ReadonlyArray<string | number> | undefined): nu
 
 /**
  * Requires every request property to be listed, so a property added to the API
- * fails type-checking until it is mapped.
+ * fails type-checking until it is mapped. A property that references another
+ * resource by ID also needs translating in `ComponentNode.resolveReferences`.
  */
-type ExhaustiveComponentRequest = ComponentCreate & Record<keyof ComponentCreate, unknown>;
+type ExhaustiveComponentRequest = ComponentCreate &
+  Record<keyof ComponentCreate | keyof ComponentUpdate, unknown>;
 
 // Component actions
 export const pushComponent = async (
@@ -79,6 +87,7 @@ export const updateComponent = async (
   space: string,
   componentId: number,
   component: ComponentUpdate,
+  errorMessage = `Failed to update component ${component.name}`,
 ): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
@@ -95,11 +104,7 @@ export const updateComponent = async (
 
     return data?.component;
   } catch (error) {
-    handleAPIError(
-      "update_component",
-      error as Error,
-      `Failed to update component ${component.name}`,
-    );
+    handleAPIError("update_component", error as Error, errorMessage);
   }
 };
 

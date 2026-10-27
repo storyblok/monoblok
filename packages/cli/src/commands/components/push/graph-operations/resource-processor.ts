@@ -79,7 +79,10 @@ export async function processAllResources(
         mergeResults(results, levelResults);
       }
     }
-    mergeResults(results, await linkPendingPresets(graph, space));
+    const linkResults = await linkPendingPresets(graph, space);
+    const unlinkedNames = new Set(linkResults.failed.map(({ name }) => name));
+    results.successful = results.successful.filter((name) => !unlinkedNames.has(name));
+    mergeResults(results, linkResults);
   } finally {
     for (const bar of bars.values()) {
       bar.stop();
@@ -90,10 +93,6 @@ export async function processAllResources(
   return results;
 }
 
-/**
- * Sets default presets that did not exist in the target yet when their
- * components were upserted.
- */
 async function linkPendingPresets(graph: DependencyGraph, space: string): Promise<PushResults> {
   const logger = getLogger();
   const results: PushResults = { successful: [], failed: [] };
@@ -105,7 +104,7 @@ async function linkPendingPresets(graph: DependencyGraph, space: string): Promis
     try {
       await node.linkPendingPreset(space, graph);
     } catch (error) {
-      logger.error(`Failed to set the default preset of component ${node.getName()}`, {
+      logger.error(`Failed to link default preset: ${node.getName()}`, {
         error: error as Error,
       });
       results.failed.push({ name: node.getName(), error });

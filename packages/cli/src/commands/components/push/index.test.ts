@@ -308,32 +308,52 @@ describe("push", () => {
   });
 
   describe("default preset", () => {
-    it("should set the default preset once it exists in a new target space", async () => {
-      const localPreset = {
-        id: 10,
-        name: "default",
-        component_id: 1,
-        preset: {},
-        created_at: "2021-08-09T12:00:00Z",
-        updated_at: "2021-08-09T12:00:00Z",
-        space_id: 12345,
-      };
-      vol.fromJSON({
-        ".storyblok/components/source-space/components.json": JSON.stringify([
-          { ...mockComponent, preset_id: 10 },
-        ]),
-        ".storyblok/components/source-space/presets.json": JSON.stringify([localPreset]),
-      });
-      const createdComponent = { ...mockComponent, id: 100 };
-      vi.mocked(upsertComponent).mockResolvedValue(createdComponent);
-      vi.mocked(upsertComponentPreset).mockResolvedValue({
-        ...localPreset,
-        id: 900,
-        component_id: 100,
-      });
-      vi.mocked(updateComponent).mockResolvedValue({ ...createdComponent, preset_id: 900 });
+    const localPreset = {
+      id: 10,
+      name: "default",
+      component_id: 1,
+      preset: {},
+      created_at: "2021-08-09T12:00:00Z",
+      updated_at: "2021-08-09T12:00:00Z",
+      space_id: 12345,
+    };
+    const createdPreset = { ...localPreset, id: 900, component_id: 100 };
+    const targetComponent = { ...mockComponent, id: 100 };
 
-      await componentsCommand.parseAsync([
+    const preconditions = {
+      hasLocalComponentWithDefaultPreset(presetId: number, presets = [localPreset]) {
+        vol.fromJSON({
+          ".storyblok/components/source-space/components.json": JSON.stringify([
+            { ...mockComponent, preset_id: presetId },
+          ]),
+          ".storyblok/components/source-space/presets.json": JSON.stringify(presets),
+        });
+      },
+      hasTargetComponentWithStalePreset() {
+        vi.mocked(fetchComponents).mockResolvedValue([targetComponent]);
+        vi.mocked(fetchComponentPresets).mockResolvedValue([
+          { ...localPreset, id: 500, name: "stale-preset", component_id: 100 },
+        ]);
+      },
+      canUpsertComponent() {
+        vi.mocked(upsertComponent).mockResolvedValue(targetComponent);
+      },
+      failsToUpsertComponent() {
+        vi.mocked(upsertComponent).mockRejectedValue(new Error("Upsert failed"));
+      },
+      canUpsertPreset() {
+        vi.mocked(upsertComponentPreset).mockResolvedValue(createdPreset);
+      },
+      canSetDefaultPreset() {
+        vi.mocked(updateComponent).mockResolvedValue({ ...targetComponent, preset_id: 900 });
+      },
+      failsToSetDefaultPreset() {
+        vi.mocked(updateComponent).mockRejectedValue(new Error("Update failed"));
+      },
+    };
+
+    const push = () =>
+      componentsCommand.parseAsync([
         "node",
         "test",
         "push",
@@ -343,15 +363,64 @@ describe("push", () => {
         "source-space",
       ]);
 
+    it("should set the default preset once it exists in a new target space", async () => {
+      preconditions.hasLocalComponentWithDefaultPreset(10);
+      preconditions.canUpsertComponent();
+      preconditions.canUpsertPreset();
+      preconditions.canSetDefaultPreset();
+
+      await push();
+
       expect(vi.mocked(upsertComponent)).toHaveBeenCalledWith(
         "target-space",
         expect.objectContaining({ preset_id: undefined }),
         undefined,
       );
-      expect(vi.mocked(updateComponent)).toHaveBeenCalledWith("target-space", 100, {
-        name: "test-component",
-        preset_id: 900,
-      });
+      expect(vi.mocked(updateComponent)).toHaveBeenCalledWith(
+        "target-space",
+        100,
+        { name: "test-component", preset_id: 900 },
+        "Failed to set the default preset of component test-component",
+      );
+    });
+
+    it("should keep the target's default preset when the local one is not among the component's presets", async () => {
+      const otherComponentPreset = { ...localPreset, id: 20, component_id: 2 };
+      preconditions.hasLocalComponentWithDefaultPreset(20, [localPreset, otherComponentPreset]);
+      preconditions.canUpsertComponent();
+      preconditions.canUpsertPreset();
+
+      await push();
+
+      expect(vi.mocked(upsertComponent)).toHaveBeenCalledWith(
+        "target-space",
+        expect.objectContaining({ preset_id: undefined }),
+        undefined,
+      );
+      expect(vi.mocked(updateComponent)).not.toHaveBeenCalled();
+    });
+
+    it("should not set the default preset of a component that failed to push", async () => {
+      preconditions.hasLocalComponentWithDefaultPreset(10);
+      preconditions.hasTargetComponentWithStalePreset();
+      preconditions.failsToUpsertComponent();
+      preconditions.canUpsertPreset();
+
+      await push();
+
+      expect(vi.mocked(updateComponent)).not.toHaveBeenCalled();
+    });
+
+    it("should keep the target's presets of a component whose default preset failed to set", async () => {
+      preconditions.hasLocalComponentWithDefaultPreset(10);
+      preconditions.hasTargetComponentWithStalePreset();
+      preconditions.canUpsertComponent();
+      preconditions.canUpsertPreset();
+      preconditions.failsToSetDefaultPreset();
+
+      await push();
+
+      expect(vi.mocked(deleteComponentPreset)).not.toHaveBeenCalled();
     });
   });
 

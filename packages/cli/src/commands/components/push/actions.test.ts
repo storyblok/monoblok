@@ -633,6 +633,24 @@ describe("push components actions", () => {
       });
     });
 
+    it("should clear internal tags set to null", async () => {
+      let requestBody: unknown;
+      server.use(
+        http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ component: mockComponent1 });
+        }),
+      );
+
+      // Local files can hold `null` although the response type omits it.
+      const internal_tag_ids: string[] = JSON.parse("null");
+      await upsertComponent("12345", { ...mockComponent1, internal_tag_ids }, 1);
+
+      expect(requestBody).toEqual({
+        component: expect.objectContaining({ internal_tag_ids: [] }),
+      });
+    });
+
     it("should not send read-only properties", async () => {
       let requestBody: unknown;
       server.use(

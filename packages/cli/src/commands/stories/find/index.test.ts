@@ -1,0 +1,652 @@
+import { stripVTControlCharacters } from "node:util";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { delay, http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import { vol } from "memfs";
+// Import the parent module first so the subcommand registers on it.
+import "../index";
+import { storiesCommand } from "../command";
+import { makeMockStory } from "../__tests__/helpers";
+import type { MockStory } from "../__tests__/helpers";
+
+const errorSpy = vi.spyOn(console, "error");
+const warnSpy = vi.spyOn(console, "warn");
+
+/** A content filter decided by CDN content, with no MAPI fetch to fall back on. */
+const findCdnHeroes = [
+  "node",
+  "test",
+  "find",
+  "--space",
+  "12345",
+  "--capi-filter",
+  "--skip-content",
+  "--where",
+  '$..[?(@.component == "hero")]',
+];
+
+const server = setupServer();
+
+/** Undoes what a precondition changed outside of the mocks, after each test. */
+const cleanups: (() => void)[] = [];
+
+const preconditions = {
+  /**
+   * `count` stories over 100-per-page listings, each answering its own content
+   * fetch.
+   *
+   * `slow` puts a delay on every request, which is what makes the listing still
+   * be in flight when the reader hangs up: the teardown only reaches a stage
+   * that has work outstanding, and a listing that already finished has none.
+   * Reproducing the real shape of the run is the whole point — a single instant
+   * page hides the bug entirely.
+   */
+  canFindStories(
+    count: number,
+    { slow = false, jitter = false }: { slow?: boolean; jitter?: boolean } = {},
+  ) {
+    const stories = Array.from({ length: count }, () => makeMockStory());
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", async ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page") ?? 1);
+        if (slow) {
+          await delay(40);
+        }
+        return HttpResponse.json(
+          { stories: stories.slice((page - 1) * 100, page * 100) },
+          { headers: { Total: String(count), "Per-Page": "100" } },
+        );
+      }),
+    );
+    for (const story of stories) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, async () => {
+          if (slow) {
+            await delay(20);
+          }
+          if (jitter) {
+            // Later stories answer first, so completion order is the reverse of listing order.
+            await delay((count - stories.indexOf(story)) * 3);
+          }
+          return HttpResponse.json({ story });
+        }),
+      );
+    }
+    return stories;
+  },
+  /**
+   * A space whose `hero` block has a relation field, one story linking to a
+   * story that is not there, and one story linking to nothing at all.
+   *
+   * The listing answers `by_uuids` too, which is how the scan resolves a target
+   * outside the searched scope: an unknown uuid has to come back empty, or every
+   * broken reference would resolve to whatever the handler felt like returning.
+   */
+  canCheckReferences({ linkingStories = 1 }: { linkingStories?: number } = {}) {
+    const missingUuid = "11111111-2222-3333-4444-555555555555";
+    const linkingAll = Array.from({ length: linkingStories }, (_, index) =>
+      makeMockStory({
+        slug: `linking-${index}`,
+        content: {
+          _uid: "a",
+          component: "hero",
+          link: { fieldtype: "multilink", linktype: "story", id: missingUuid, cached_url: "gone" },
+        },
+      }),
+    );
+    const [linking] = linkingAll;
+    const plain = makeMockStory({ slug: "plain" });
+    const stories = [...linkingAll, plain];
+
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/components", () =>
+        HttpResponse.json({
+          components: [
+            { name: "hero", schema: { link: { type: "multilink" } } },
+            { name: "page", schema: {} },
+          ],
+        }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", ({ request }) => {
+        const byUuids = new URL(request.url).searchParams.get("by_uuids");
+        const matching = byUuids
+          ? stories.filter((story) => byUuids.split(",").includes(story.uuid))
+          : stories;
+        return HttpResponse.json(
+          { stories: matching },
+          { headers: { Total: String(matching.length), "Per-Page": "100" } },
+        );
+      }),
+    );
+    for (const story of stories) {
+      server.use(
+        http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
+          HttpResponse.json({ story }),
+        ),
+      );
+    }
+
+    return { linking, plain, missingUuid };
+  },
+  failsToFetchContentOf(story: MockStory) {
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/12345/stories/${story.id}`, () =>
+        HttpResponse.json({ error: "Not found" }, { status: 404 }),
+      ),
+    );
+  },
+  /**
+   * Hero stories the CDN serves, plus `missingFromCdn` hero stories it holds no
+   * content for, plus `folders`, which it never has content for. The listing
+   * omits `content`, as the real one does, so a story the CDN does not serve has
+   * nothing left to match a content filter on.
+   */
+  canFilterOnCdnContent({
+    servedByCdn,
+    missingFromCdn,
+    folders = 0,
+  }: {
+    servedByCdn: number;
+    missingFromCdn: number;
+    folders?: number;
+  }) {
+    const hero = (): MockStory => makeMockStory({ content: { _uid: "a", component: "hero" } });
+    const served = Array.from({ length: servedByCdn }, hero);
+    const missing = Array.from({ length: missingFromCdn }, hero);
+    const folderStories = Array.from({ length: folders }, () => makeMockStory({ is_folder: true }));
+    const stories = [...served, ...missing, ...folderStories];
+
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345", () =>
+        HttpResponse.json({ space: { id: 12345, name: "Test", first_token: "preview-token" } }),
+      ),
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: stories.map(({ content: _content, ...metadata }) => metadata) },
+          { headers: { Total: String(stories.length), "Per-Page": "100" } },
+        ),
+      ),
+      http.get("https://api.storyblok.com/v2/cdn/stories", ({ request }) => {
+        const uuids = new URL(request.url).searchParams.get("by_uuids")?.split(",") ?? [];
+        return HttpResponse.json(
+          { stories: served.filter((story) => uuids.includes(story.uuid)) },
+          { headers: { Total: String(served.length), "Per-Page": "100" } },
+        );
+      }),
+    );
+    return { served, missing };
+  },
+  /**
+   * stdout is a terminal. `isTTY` is a plain data property, absent entirely when
+   * stdout is not one, so it is set and restored rather than spied on. `TERM`
+   * is `dumb`, a terminal no pager runs on, so the table is printed directly.
+   */
+  stdoutIsATerminal() {
+    vi.stubEnv("TERM", "dumb");
+    const original = Object.getOwnPropertyDescriptor(process.stdout, "isTTY");
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    cleanups.push(() => {
+      if (original) {
+        Object.defineProperty(process.stdout, "isTTY", original);
+      } else {
+        delete (process.stdout as { isTTY?: boolean }).isTTY;
+      }
+    });
+  },
+  /**
+   * The reader on the other end of stdout exits after `afterLines`.
+   *
+   * Node surfaces a closed pipe as an asynchronous `'error'` event carrying
+   * `EPIPE`, which is the only signal the command ever gets, so that is what is
+   * reproduced here rather than a mocked-out abort.
+   */
+  readerClosesThePipeAfter(afterLines: number) {
+    const written: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation((chunk: unknown) => {
+      written.push(String(chunk));
+      if (written.length === afterLines) {
+        process.stdout.emit("error", Object.assign(new Error("write EPIPE"), { code: "EPIPE" }));
+      }
+      return true;
+    });
+    return written;
+  },
+};
+
+describe("stories find command", () => {
+  beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+  beforeEach(() => {
+    process.exitCode = undefined;
+  });
+  afterEach(() => {
+    for (const cleanup of cleanups.splice(0)) {
+      cleanup();
+    }
+    vi.resetAllMocks();
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    vol.reset();
+    server.resetHandlers();
+    process.exitCode = undefined;
+  });
+  afterAll(() => server.close());
+
+  it("should emit one JSON document per line on stdout", async () => {
+    const stories = preconditions.canFindStories(3);
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(written).toHaveLength(stories.length);
+    for (const line of written) {
+      expect(line.endsWith("\n")).toBe(true);
+      expect(() => JSON.parse(line)).not.toThrow();
+    }
+  });
+
+  // The one mode that cannot stream: an issue is only decidable once the whole
+  // scope has been listed, so matches are buffered and then written through the
+  // same sink a streaming run uses.
+  it("should emit only the stories with reference issues, annotated", async () => {
+    const { linking, missingUuid } = preconditions.canCheckReferences();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+    ]);
+
+    expect(written).toHaveLength(1);
+    const emitted = JSON.parse(written[0]);
+    expect(emitted.uuid).toBe(linking.uuid);
+    expect(emitted._ref_issues).toEqual([
+      {
+        type: "broken",
+        ref_type: "multilink",
+        target_uuid: missingUuid,
+        cached_url: "gone",
+        field_path: "content.link",
+      },
+    ]);
+  });
+
+  it("should emit stories in listing order however their fetches complete", async () => {
+    const stories = preconditions.canFindStories(8, { jitter: true });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--sort",
+      "slug:asc",
+    ]);
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual(stories.map((story) => story.id));
+  });
+
+  it("should end a limited reference check at exit 0, counting only what was written", async () => {
+    preconditions.canCheckReferences({ linkingStories: 3 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+      "--limit",
+      "1",
+    ]);
+    const stderr = errorSpy.mock.calls.flat().join("\n");
+
+    expect(written).toHaveLength(1);
+    expect(process.exitCode).toBeFalsy();
+    expect(stderr).toContain("Found 1 story with reference issues");
+    expect(stderr).not.toContain("aborted");
+  });
+
+  it("should report only the issue types passed to --check-references", async () => {
+    preconditions.canCheckReferences();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+      "unpublished,stale_url",
+    ]);
+
+    // The only issue in the space is a broken link.
+    expect(written).toHaveLength(0);
+    expect(process.exitCode).toBeFalsy();
+  });
+
+  // The listing carries every story date, so a story outside the range must
+  // never cost a content fetch.
+  it("should filter on a date flag before fetching any content", async () => {
+    const [inRange, outOfRange] = preconditions.canFindStories(2);
+    Object.assign(inRange, { updated_at: "2024-06-10T08:00:00.000Z" });
+    Object.assign(outOfRange, { updated_at: "2024-07-10T08:00:00.000Z" });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+    const fetched: string[] = [];
+    const recordFetch = ({ request }: { request: Request }): void => {
+      fetched.push(new URL(request.url).pathname);
+    };
+    server.events.on("request:start", recordFetch);
+
+    try {
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "find",
+        "--space",
+        "12345",
+        "--updated",
+        "2024-06",
+      ]);
+    } finally {
+      server.events.removeListener("request:start", recordFetch);
+    }
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual([inRange.id]);
+    expect(fetched).not.toContain(`/v1/spaces/12345/stories/${outOfRange.id}`);
+  });
+
+  // The API matches each language's pending schedule, so a story with two lists twice.
+  it("should list a story scheduled in several languages once under --scheduled", async () => {
+    const [twice, once] = [makeMockStory(), makeMockStory()];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: [twice, twice, once] },
+          { headers: { Total: "3", "Per-Page": "100" } },
+        ),
+      ),
+    );
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "2w",
+      "--skip-content",
+      "--limit",
+      "2",
+    ]);
+
+    expect(written.map((line) => JSON.parse(line).id)).toEqual([twice.id, once.id]);
+  });
+
+  // A repeat is neither a match nor a story a filter rejected.
+  it("should not count a story listed again for another language as filtered out", async () => {
+    const [twice, once] = [makeMockStory(), makeMockStory()];
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", () =>
+        HttpResponse.json(
+          { stories: [twice, twice, once] },
+          { headers: { Total: "3", "Per-Page": "100" } },
+        ),
+      ),
+    );
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "--skip-content",
+    ]);
+
+    const stderr = stripVTControlCharacters(errorSpy.mock.calls.flat().join("\n"));
+    expect(stderr).toContain("2 listed");
+    expect(stderr).not.toContain("filtered out");
+  });
+
+  it("should ask for any pending schedule under a bare --scheduled", async () => {
+    let query: URLSearchParams | undefined;
+    server.use(
+      http.get("https://mapi.storyblok.com/v1/spaces/12345/stories", ({ request }) => {
+        query = new URL(request.url).searchParams;
+        return HttpResponse.json({ stories: [] }, { headers: { Total: "0", "Per-Page": "100" } });
+      }),
+    );
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--scheduled",
+      "--skip-content",
+    ]);
+
+    expect(query?.get("scheduled_by_status")).toBe("scheduled");
+    expect(query?.has("scheduled_at_gt")).toBe(false);
+    expect(query?.has("scheduled_at_lt")).toBe(false);
+  });
+
+  it("should reject a malformed date range before any request", async () => {
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--created",
+      "last week",
+    ]);
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain("--created expects");
+  });
+
+  it("should reject an unknown --query operation before any request", async () => {
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--query",
+      "[category][eq]=technology",
+    ]);
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain("Unknown --query operation");
+  });
+
+  it("should refuse a --where on a field-level translation under --capi-filter, before any request", async () => {
+    let requests = 0;
+    const countRequest = (): void => {
+      requests += 1;
+    };
+    server.events.on("request:start", countRequest);
+
+    try {
+      await storiesCommand.parseAsync([
+        "node",
+        "test",
+        "find",
+        "--space",
+        "12345",
+        "--capi-filter",
+        "--where",
+        "$[?($.content.title__i18n__de)]",
+      ]);
+    } finally {
+      server.events.removeListener("request:start", countRequest);
+    }
+
+    expect(process.exitCode).toBe(2);
+    expect(errorSpy.mock.calls.flat().join("\n")).toContain(
+      "--capi-filter cannot evaluate --where on field-level translations",
+    );
+    expect(requests).toBe(0);
+  });
+
+  // Without a MAPI fetch, a story the CDN does not serve is tested on list
+  // metadata, so a content filter rejects it whatever its content holds.
+  it("should warn that stories the CDN does not serve may be missing under --capi-filter --skip-content", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 2, missingFromCdn: 1 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(written).toHaveLength(2);
+    const warnings = stripVTControlCharacters(warnSpy.mock.calls.flat().join("\n"));
+    expect(warnings).toContain("1 story may be missing from the results");
+    expect(warnings).toContain("Drop --skip-content");
+  });
+
+  it("should not warn about missing stories when the CDN serves every story", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 3, missingFromCdn: 0 });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(written).toHaveLength(3);
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
+  });
+
+  // No API has content for a folder, so dropping --skip-content would not
+  // decide it either.
+  it("should not count folders as stories that may be missing", async () => {
+    preconditions.canFilterOnCdnContent({ servedByCdn: 3, missingFromCdn: 0, folders: 2 });
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(findCdnHeroes);
+
+    expect(warnSpy.mock.calls.flat().join("\n")).not.toContain("may be missing");
+  });
+
+  // The run exits 1, so a green headline above it would read as a success.
+  it("should mark the summary as failed when a story's content cannot be fetched", async () => {
+    const [story] = preconditions.canFindStories(3);
+    preconditions.failsToFetchContentOf(story);
+    preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(process.exitCode).toBe(1);
+    expect(errorSpy.mock.calls.flat().join("\n")).toMatch(/✖ Found 2 stories in/);
+  });
+
+  // A person at a terminal is scanning for which stories matched, not reading
+  // story JSON, so the results become a table printed once the run is done.
+  it("should print a table of the results when stdout is a terminal", async () => {
+    const stories = preconditions.canFindStories(3);
+    preconditions.stdoutIsATerminal();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+
+    expect(written).toHaveLength(1);
+    const lines = stripVTControlCharacters(written[0]).trimEnd().split("\n");
+    // A blank line sets the table off from the progress bars above it.
+    expect(lines[0]).toBe("");
+    expect(lines[1]).toMatch(/^ID\s+NAME\s+FULL SLUG$/);
+    expect(lines.slice(2)).toEqual(
+      stories.map((story) =>
+        expect.stringMatching(new RegExp(`^${story.id}\\s.*\\s${story.full_slug}$`)),
+      ),
+    );
+  });
+
+  it("should add an issues column to a reference check on a terminal", async () => {
+    preconditions.canCheckReferences();
+    preconditions.stdoutIsATerminal();
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    await storiesCommand.parseAsync([
+      "node",
+      "test",
+      "find",
+      "--space",
+      "12345",
+      "--check-references",
+    ]);
+
+    const lines = stripVTControlCharacters(written.join("")).trim().split("\n");
+    expect(lines[0]).toMatch(/ISSUES$/);
+    expect(lines[1]).toMatch(/1 broken$/);
+  });
+
+  // Placed before the closed-pipe test on purpose: that one leaves stdout closed
+  // for the life of the process, and a run after it would stop before any stage
+  // had work in flight.
+  it("should stop at --limit with exactly that many results, and leave the rest unread", async () => {
+    const total = 300;
+    preconditions.canFindStories(total, { slow: true });
+    const written = preconditions.readerClosesThePipeAfter(Number.POSITIVE_INFINITY);
+
+    let contentFetches = 0;
+    const countContentFetch = ({ request }: { request: Request }): void => {
+      if (/\/stories\/\d+$/.test(new URL(request.url).pathname)) {
+        contentFetches += 1;
+      }
+    };
+    server.events.on("request:start", countContentFetch);
+
+    try {
+      await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345", "--limit", "5"]);
+    } finally {
+      server.events.removeListener("request:start", countContentFetch);
+    }
+
+    // Exactly what was asked for: never one short, never one over.
+    expect(written).toHaveLength(5);
+    // The point of the flag: the rest of the scope is never read.
+    expect(contentFetches).toBeLessThan(total);
+    const stderr = errorSpy.mock.calls.flat().join("\n");
+    expect(stderr).toMatch(/--limit 5 was reached/);
+    expect(stderr).not.toMatch(/operation was aborted/i);
+    // A limit that was reached is a successful run, so a script can trust this.
+    expect(process.exitCode).toBeFalsy();
+  });
+
+  // A reader closing the pipe is a deliberate stop: the run exits 0 and reports
+  // no failed stage.
+  //
+  // One test rather than four, because "the reader hung up" is module state that
+  // survives for the life of the process: a second run in the same file starts
+  // with stdout already closed and aborts before any stage has work in flight,
+  // so it exercises none of this. All four consequences of the one run are
+  // asserted together instead.
+  it("should report a reader closing the pipe as a deliberate stop, not a failure", async () => {
+    preconditions.canFindStories(300, { slow: true });
+    preconditions.readerClosesThePipeAfter(2);
+
+    await storiesCommand.parseAsync(["node", "test", "find", "--space", "12345"]);
+    const stderr = errorSpy.mock.calls.flat().join("\n");
+
+    // Nothing that reads as a failure: no error line, and the teardown of the
+    // listing that was still in flight is not counted against it.
+    expect(stderr).not.toMatch(/operation was aborted/i);
+    expect(stderr).toMatch(/✔ Found \d+ stor(y|ies) in/);
+    expect(stderr).not.toMatch(/pages? failed/);
+    // ...an explicit statement that it was on purpose...
+    expect(stderr).toMatch(/Stopped early on purpose/);
+    // ...and an exit code a script can trust.
+    expect(process.exitCode).toBeFalsy();
+  });
+});

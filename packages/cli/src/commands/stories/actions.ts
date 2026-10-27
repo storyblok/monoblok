@@ -47,6 +47,7 @@ export const fetchStories = async (
 export const fetchStory = async (
   spaceId: string,
   storyId: string | number,
+  { signal }: { signal?: AbortSignal } = {},
 ): Promise<Story | undefined> => {
   try {
     const client = getMapiClient();
@@ -55,6 +56,7 @@ export const fetchStory = async (
       path: {
         space_id: Number(spaceId),
       },
+      signal,
       throwOnError: true,
     });
 

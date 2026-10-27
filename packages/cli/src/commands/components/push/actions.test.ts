@@ -602,5 +602,35 @@ describe("push components actions", () => {
 
       await upsertComponent("12345", { ...mockComponent1, preview_tmpl }, 1);
     });
+
+    it("should send description when creating a component", async () => {
+      const description = "An author component";
+      let requestBody: unknown;
+      server.use(
+        http.post("https://mapi.storyblok.com/v1/spaces/12345/components", async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ component: mockComponent1 }, { status: 201 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, description });
+
+      expect(requestBody).toEqual({ component: expect.objectContaining({ description }) });
+    });
+
+    it("should send description when updating a component", async () => {
+      const description = "An updated author component";
+      let requestBody: unknown;
+      server.use(
+        http.put("https://mapi.storyblok.com/v1/spaces/12345/components/1", async ({ request }) => {
+          requestBody = await request.json();
+          return HttpResponse.json({ component: mockComponent1 });
+        }),
+      );
+
+      await upsertComponent("12345", { ...mockComponent1, description }, 1);
+
+      expect(requestBody).toEqual({ component: expect.objectContaining({ description }) });
+    });
   });
 });

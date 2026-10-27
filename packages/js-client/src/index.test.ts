@@ -65,7 +65,6 @@ describe("storyblokClient", () => {
 
       expect(client.resolveCounter).toBe(0);
       expect(client.resolveNestedRelations).toBeTruthy();
-      expect(client.stringifiedStoriesCache).toEqual({});
       expect(client.version).toBe("published");
     });
 
@@ -137,8 +136,7 @@ describe("storyblokClient", () => {
 
       expect(client.retriesDelay).toBe(0);
     });
-    // TODO: seems like implmentation is missing
-    it.skip("should desactivate resolveNestedRelations", () => {
+    it("should deactivate resolveNestedRelations", () => {
       client = new StoryblokClient({
         resolveNestedRelations: false,
       });
@@ -2919,6 +2917,209 @@ describe("storyblokClient", () => {
         "excluding_story_fields",
         "translated_slugs,alternates",
       );
+    });
+
+    describe("with related stories that reference each other", () => {
+      // Every related story references all the others, like stories in a slider that link to
+      // their siblings.
+      const createMutualRelationsResponse = (uuids: string[]) => ({
+        data: {
+          story: {
+            uuid: "page-uuid",
+            content: { _uid: "page-uid", component: "page", items: uuids },
+          },
+          rels: uuids.map((uuid) => ({
+            uuid,
+            name: `Story ${uuid}`,
+            content: {
+              _uid: `${uuid}-uid`,
+              component: "item",
+              related: uuids.filter((other) => other !== uuid),
+            },
+          })),
+        },
+        headers: {},
+        status: 200,
+        statusText: "OK",
+      });
+
+      const countResolvedStories = (value: unknown): number => {
+        if (Array.isArray(value)) {
+          return value.reduce((sum: number, item) => sum + countResolvedStories(item), 0);
+        }
+        if (value && typeof value === "object") {
+          const own = "_stopResolving" in value ? 1 : 0;
+          return (
+            own +
+            Object.values(value).reduce((sum: number, item) => sum + countResolvedStories(item), 0)
+          );
+        }
+        return 0;
+      };
+
+      it("should resolve relations of related stories two levels deep and keep the third level as uuids", async () => {
+        const uuids = ["a", "b", "c"];
+        client.client = {
+          get: vi.fn().mockResolvedValue(createMutualRelationsResponse(uuids)),
+          post: vi.fn(),
+          setFetchOptions: vi.fn(),
+        };
+
+        const result = await client.get("cdn/stories/page", {
+          resolve_relations: ["page.items", "item.related"],
+        });
+
+        const items = result.data.story.content.items;
+        expect(items.map((item: ISbStoryData) => item.uuid)).toEqual(uuids);
+        for (const item of items) {
+          for (const nested of item.content.related) {
+            expect(typeof nested).toBe("object");
+            expect(nested.content.related.every((uuid: unknown) => typeof uuid === "string")).toBe(
+              true,
+            );
+          }
+        }
+      });
+
+      it("should keep the resolved payload proportional to the number of references", async () => {
+        const uuids = Array.from({ length: 8 }, (_, i) => `story-${i}`);
+        client.client = {
+          get: vi.fn().mockResolvedValue(createMutualRelationsResponse(uuids)),
+          post: vi.fn(),
+          setFetchOptions: vi.fn(),
+        };
+
+        const result = await client.get("cdn/stories/page", {
+          resolve_relations: ["page.items", "item.related"],
+        });
+
+        // Each of the 8 related stories, plus the 7 stories each of them references.
+        expect(countResolvedStories(result.data.story)).toBe(8 + 8 * 7);
+      });
+
+      it("should resolve only the first level when resolveNestedRelations is false", async () => {
+        const uuids = ["a", "b", "c"];
+        client = new StoryblokClient({ accessToken: "test-token", resolveNestedRelations: false });
+        client.client = {
+          get: vi.fn().mockResolvedValue(createMutualRelationsResponse(uuids)),
+          post: vi.fn(),
+          setFetchOptions: vi.fn(),
+        };
+
+        const result = await client.get("cdn/stories/page", {
+          resolve_relations: ["page.items", "item.related"],
+        });
+
+        const items = result.data.story.content.items;
+        expect(items.map((item: ISbStoryData) => item.uuid)).toEqual(uuids);
+        expect(items[0].content.related).toEqual(["b", "c"]);
+      });
+
+      it("should resolve the relations of each story in rels one level deep", async () => {
+        client.client = {
+          get: vi.fn().mockResolvedValue(createMutualRelationsResponse(["a", "b", "c"])),
+          post: vi.fn(),
+          setFetchOptions: vi.fn(),
+        };
+
+        const result = await client.get("cdn/stories/page", {
+          resolve_relations: ["page.items", "item.related"],
+        });
+
+        for (const rel of result.data.rels) {
+          for (const nested of rel.content.related) {
+            expect(typeof nested).toBe("object");
+            expect(nested.content.related.every((uuid: unknown) => typeof uuid === "string")).toBe(
+              true,
+            );
+          }
+        }
+      });
+    });
+
+    it("should resolve a chain of relations two levels deep regardless of the order of rels", async () => {
+      // page → a → b → c → d, with rels in reverse order
+      const chain = ["a", "b", "c", "d"];
+      client.client = {
+        get: vi.fn().mockResolvedValue({
+          data: {
+            story: {
+              uuid: "page-uuid",
+              content: { _uid: "page-uid", component: "page", items: ["a"] },
+            },
+            rels: chain
+              .map((uuid, i) => ({
+                uuid,
+                name: `Story ${uuid}`,
+                content: {
+                  _uid: `${uuid}-uid`,
+                  component: "item",
+                  related: chain.slice(i + 1, i + 2),
+                },
+              }))
+              .reverse(),
+          },
+          headers: {},
+          status: 200,
+          statusText: "OK",
+        }),
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+      };
+
+      const result = await client.get("cdn/stories/page", {
+        resolve_relations: ["page.items", "item.related"],
+      });
+
+      const [a] = result.data.story.content.items;
+      expect(a.uuid).toBe("a");
+      expect(a.content.related[0].uuid).toBe("b");
+      expect(a.content.related[0].content.related).toEqual(["c"]);
+    });
+
+    it("should resolve links in the related stories of related stories", async () => {
+      // page → a → b, where b links to linked-story. a comes first in rels.
+      client.client = {
+        get: vi.fn().mockResolvedValue({
+          data: {
+            story: {
+              uuid: "page-uuid",
+              content: { _uid: "page-uid", component: "page", items: ["a"] },
+            },
+            rels: [
+              {
+                uuid: "a",
+                name: "Story a",
+                content: { _uid: "a-uid", component: "item", related: ["b"] },
+              },
+              {
+                uuid: "b",
+                name: "Story b",
+                content: {
+                  _uid: "b-uid",
+                  component: "item",
+                  related: [],
+                  cta: { id: "linked-story", linktype: "story", fieldtype: "multilink" },
+                },
+              },
+            ],
+            links: [{ uuid: "linked-story", name: "Linked story", full_slug: "linked-story" }],
+          },
+          headers: {},
+          status: 200,
+          statusText: "OK",
+        }),
+        post: vi.fn(),
+        setFetchOptions: vi.fn(),
+      };
+
+      const result = await client.get("cdn/stories/page", {
+        resolve_relations: ["page.items", "item.related"],
+        resolve_links: "story",
+      });
+
+      const [a] = result.data.story.content.items;
+      expect(a.content.related[0].content.cta.story.full_slug).toBe("linked-story");
     });
   });
 

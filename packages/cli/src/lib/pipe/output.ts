@@ -1,0 +1,355 @@
+import { Writable } from "node:stream";
+import { toError } from "../../utils/error/error";
+import { getStdoutTarget, getUI, onStdoutClosed, page, renderTable, type UI } from "../ui";
+import type { TableColumn } from "../ui";
+
+/**
+ * Where a command's results go: one JSON document per line on stdout when
+ * piped or redirected, or a table once the run ends when stdout is a terminal.
+ *
+ * Every piece of it is about the pipe, not about what is being piped: when the
+ * data goes out, how fast the reader can take it, and when the reader on the
+ * other end has gone away. A second command that streams results reuses this
+ * rather than growing its own copy.
+ */
+export interface MachineOutput {
+  /**
+   * The output as a `Writable`, for use as the terminal stage of a
+   * `stream.pipeline()`.
+   *
+   * This is the form to prefer: holding the stream callback back until stdout
+   * drains is what pushes a slow reader's pace all the way up the pipeline, so a
+   * run costs the memory of what is in flight rather than of the whole result
+   * set.
+   */
+  readonly sink: Writable;
+  /** Releases the pipe watcher. */
+  close: () => void;
+  /**
+   * Writes whatever was held back until the run ended. A no-op for JSONL,
+   * which writes as it goes; the table, which has to know every row's width
+   * before printing the first, is printed here.
+   */
+  flush: () => Promise<void>;
+  /** Lines written so far: the run's result count, even after an early stop. */
+  readonly written: number;
+  /**
+   * Aborts as soon as the downstream reader closes the pipe, so a producer can
+   * pass it to `stream.pipeline()` and stop mid-run instead of fetching a whole
+   * scope nobody is reading.
+   */
+  readonly signal: AbortSignal;
+  /** Whether the downstream reader has already gone away. */
+  readonly closed: boolean;
+}
+
+/**
+ * Writes one line at a time and says whether the destination wants more.
+ *
+ * Split out from the writer itself so the backpressure path is reachable in a
+ * test without a real pipe on the other end of stdout.
+ */
+export interface LineWriter {
+  /** Writes one line. `false` means the destination's buffer is full. */
+  write: (line: string) => boolean;
+  /** Resolves when the destination can take more, or when the reader has left. */
+  waitForDrain: (signal: AbortSignal) => Promise<void>;
+}
+
+const stdoutLineWriter = (ui: UI): LineWriter => ({
+  write: (line) => ui.writeMachineOutput(line),
+  waitForDrain: (signal) =>
+    new Promise<void>((resolve) => {
+      if (signal.aborted) {
+        resolve();
+        return;
+      }
+      // Racing the abort matters: once the reader is gone, stdout never drains,
+      // and waiting on `'drain'` alone would hang the run instead of ending it.
+      const done = (): void => {
+        process.stdout.off("drain", done);
+        signal.removeEventListener("abort", done);
+        resolve();
+      };
+      process.stdout.once("drain", done);
+      signal.addEventListener("abort", done, { once: true });
+    }),
+});
+
+/**
+ * Takes one value off the sink. Returns a promise only when the destination
+ * needs time before it can take the next one.
+ */
+type Emit<T> = (value: T, signal: AbortSignal) => void | Promise<void>;
+
+/**
+ * The part every output shares: the sink, the `--limit` count, and the abort
+ * that ends the run when either the limit is met or the reader leaves.
+ */
+function createOutput<T>({
+  limit,
+  emit,
+  flush = async () => {},
+}: {
+  limit?: number;
+  emit: Emit<T>;
+  flush?: () => Promise<void>;
+}): MachineOutput {
+  const controller = new AbortController();
+  const stopWatching = onStdoutClosed(() => {
+    controller.abort(new DownstreamClosedError());
+  });
+
+  let written = 0;
+  /** Called once a line is out, so a limited run ends with exactly `limit` lines. */
+  const countLine = (): void => {
+    written += 1;
+    if (limit !== undefined && written >= limit) {
+      controller.abort(new LimitReachedError(limit));
+    }
+  };
+
+  const sink = new Writable({
+    objectMode: true,
+    write(value: T, _encoding, callback) {
+      if (controller.signal.aborted) {
+        // Not a failure of this stage: the pipeline above is being torn down for
+        // the same reason, and it owns how the run ends.
+        callback();
+        return;
+      }
+
+      let pending: void | Promise<void>;
+      try {
+        pending = emit(value, controller.signal);
+      } catch (maybeError) {
+        callback(toError(maybeError));
+        return;
+      }
+
+      // The line is out either way; a pending promise only says the destination
+      // is full, so the count belongs here rather than behind the branch below.
+      countLine();
+      if (!pending) {
+        callback();
+        return;
+      }
+      // The reader is slower than this run is. Not calling back yet is what
+      // makes the whole pipeline wait for it.
+      pending.then(() => callback(), callback);
+    },
+  });
+
+  return {
+    get sink() {
+      return sink;
+    },
+    close() {
+      stopWatching();
+    },
+    flush,
+    get signal() {
+      return controller.signal;
+    },
+    get closed() {
+      return controller.signal.aborted;
+    },
+    get written() {
+      return written;
+    },
+  };
+}
+
+/**
+ * Creates a JSONL writer over stdout.
+ *
+ * Lines go out as they are produced. A command whose stdout may be a terminal
+ * should use {@link createResultOutput}, which renders a table there instead.
+ */
+export function createJsonlOutput({
+  write,
+  writer,
+  limit,
+  ui = getUI(),
+}: {
+  /** Convenience form for a caller that cannot be backpressured anyway. */
+  write?: (line: string) => void;
+  /** Full form, including the backpressure signal. Takes precedence. */
+  writer?: LineWriter;
+  /**
+   * Stop the run once this many lines have gone out. Counted here, the only
+   * place that knows a line was written, so a queued result is never cut off.
+   */
+  limit?: number;
+  ui?: UI;
+} = {}): MachineOutput {
+  const lineWriter: LineWriter =
+    writer ??
+    (write
+      ? {
+          write: (line) => {
+            write(line);
+            return true;
+          },
+          waitForDrain: async () => {},
+        }
+      : stdoutLineWriter(ui));
+
+  return createOutput<unknown>({
+    limit,
+    emit: (value, signal) => {
+      // Serialized before anything is written, so a value that cannot be
+      // serialized fails the stage without being counted.
+      const line = JSON.stringify(value);
+      // `false` only says the destination's buffer is full: the line is written.
+      if (lineWriter.write(line)) {
+        return;
+      }
+      return lineWriter.waitForDrain(signal);
+    },
+  });
+}
+
+/**
+ * Creates an output that renders a table on stdout once the run ends.
+ *
+ * Only each row's cells are held, not the record they came from, so a large
+ * result set costs a few strings per match rather than every story's content.
+ * The progress bars stay up while the run works, since nothing else is drawing
+ * to the terminal until the table is printed.
+ */
+export function createTableOutput<T>({
+  columns,
+  limit,
+  write = page,
+}: {
+  columns: TableColumn<T>[];
+  limit?: number;
+  /** Where the rendered table goes. Defaults to stdout, paged when it overflows the screen. */
+  write?: (text: string) => Promise<void>;
+}): MachineOutput {
+  const rows: string[][] = [];
+  return createOutput<T>({
+    limit,
+    emit: (value) => {
+      rows.push(columns.map((column) => column.value(value)));
+    },
+    flush: async () => {
+      if (rows.length === 0) {
+        return;
+      }
+      // A blank line sets the table off from the progress bars above it, the
+      // same gap the summary below leaves after it.
+      await write(`\n${renderTable({ columns, rows, width: process.stdout.columns })}`);
+    },
+  });
+}
+
+/**
+ * Picks the output for where stdout actually goes: a table for a person at a
+ * terminal, JSONL for anything that reads it as data.
+ *
+ * The same split `gh` makes: the format a reader gets depends on whether the
+ * reader is a person, and nobody has to pass a flag to say so. `… | cat` gets
+ * JSONL on a terminal.
+ */
+export function createResultOutput<T>({
+  columns,
+  limit,
+}: {
+  columns: TableColumn<T>[];
+  limit?: number;
+}): MachineOutput {
+  return getStdoutTarget() === "terminal"
+    ? createTableOutput({ columns, limit })
+    : createJsonlOutput({ limit });
+}
+
+/**
+ * The in-process counterpart of {@link MachineOutput.sink}: a terminal stage for
+ * a producer whose results are consumed here rather than written out.
+ *
+ * `--check-references` is the case it exists for — it has to hold every match
+ * until the whole scope has been listed — and it keeps such a run on the same
+ * shape as a streaming one, so the pipeline always ends in a sink.
+ */
+export function createCollectingSink<T>(consume: (value: T) => void): Writable {
+  return new Writable({
+    objectMode: true,
+    write(value: T, _encoding, callback) {
+      try {
+        consume(value);
+        callback();
+      } catch (maybeError) {
+        callback(toError(maybeError));
+      }
+    },
+  });
+}
+
+/**
+ * Raised as the abort reason when the reader on the other end of stdout exits
+ * first (`… | head -5`).
+ *
+ * A distinct type so the command can tell "nobody is listening any more, stop
+ * and exit 0" apart from a genuine pipeline failure. Losing that distinction
+ * would report a successful early exit as a failed run.
+ */
+export class DownstreamClosedError extends Error {
+  constructor() {
+    super("The command downstream of this one closed its end of the pipe.");
+    this.name = "DownstreamClosedError";
+  }
+}
+
+/**
+ * Raised as the abort reason when `--limit` has been satisfied.
+ *
+ * A sibling of {@link DownstreamClosedError} rather than the same type: both end
+ * the run at 0, but only one of them means somebody else stopped listening, and
+ * the summary has to say which happened.
+ */
+export class LimitReachedError extends Error {
+  constructor(public readonly limit: number) {
+    super(`The run produced the ${limit} result(s) it was limited to.`);
+    this.name = "LimitReachedError";
+  }
+}
+
+/**
+ * Whether `error` is, or was caused by, an error of the given type.
+ *
+ * `stream.pipeline()` does not reject with the reason it was aborted for: it
+ * raises its own `AbortError` and moves that reason onto `cause`. Walking the
+ * chain rather than checking a single level keeps this working however many
+ * wrappers sit in between — one pipeline nested in another already makes two —
+ * while still not mistaking an unrelated abort for one of these.
+ */
+function hasCauseOfType(error: unknown, type: new (...args: never[]) => Error): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current instanceof Error && !seen.has(current)) {
+    // Read before the check: matching `type` narrows `current` to `never`, and
+    // the next link would then be unreachable to the type checker.
+    const cause: unknown = current.cause;
+    if (current instanceof type) {
+      return true;
+    }
+    seen.add(current);
+    current = cause;
+  }
+  return false;
+}
+
+export function isDownstreamClosed(error: unknown): boolean {
+  return hasCauseOfType(error, DownstreamClosedError);
+}
+
+export function isLimitReached(error: unknown): boolean {
+  return hasCauseOfType(error, LimitReachedError);
+}
+
+/** Either way of stopping a run on purpose. Both are successful outcomes. */
+export function isDeliberateStop(error: unknown): boolean {
+  return isDownstreamClosed(error) || isLimitReached(error);
+}

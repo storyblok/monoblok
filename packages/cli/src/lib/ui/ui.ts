@@ -6,6 +6,7 @@ import { DEFAULT_GLOBAL_CONFIG } from "../config/defaults";
 import { getActiveConfig } from "../config/store";
 import { capitalize } from "../../utils/format";
 import { getRuntimeErrorExitCode } from "../../utils/error/exit-code";
+import { getStderrTarget } from "./stream-target";
 
 interface InfoOptions {
   header?: boolean;
@@ -30,6 +31,25 @@ export interface ProgressBar {
 }
 
 let stdoutEpipeGuarded = false;
+const stdoutClosedListeners = new Set<() => void>();
+let stdoutClosed = false;
+
+/**
+ * Subscribes to "the reader on the other end of stdout has gone away".
+ *
+ * Arms the `EPIPE` guard eagerly rather than waiting for the first write, so a
+ * producer that wants to stop early is listening before it has anything to
+ * emit. Returns an unsubscribe function; fires at most once.
+ */
+export function onStdoutClosed(listener: () => void): () => void {
+  guardStdoutEpipe();
+  if (stdoutClosed) {
+    listener();
+    return () => {};
+  }
+  stdoutClosedListeners.add(listener);
+  return () => stdoutClosedListeners.delete(listener);
+}
 
 /**
  * Installs a one-time `EPIPE` guard on stdout.
@@ -46,16 +66,23 @@ let stdoutEpipeGuarded = false;
  * listener is an uncaught exception, so the stack trace and clobbered exit code
  * come back for every `code` that is not EPIPE.
  */
-function guardStdoutEpipe(ui: UI): void {
+function guardStdoutEpipe(ui?: UI): void {
   if (stdoutEpipeGuarded) {
     return;
   }
   stdoutEpipeGuarded = true;
   process.stdout.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code === "EPIPE") {
+      // Nothing left to write, but a producer still mid-run needs telling: it
+      // would otherwise keep fetching a whole scope for a reader that has left.
+      stdoutClosed = true;
+      for (const listener of stdoutClosedListeners) {
+        listener();
+      }
+      stdoutClosedListeners.clear();
       return;
     }
-    ui.error(`Failed to write to stdout: ${error.message}`);
+    (ui ?? getUI()).error(`Failed to write to stdout: ${error.message}`);
     // Set here because the write already failed: the document on stdout is
     // truncated, and a consumer must not read the command's own exit code as
     // success.
@@ -201,10 +228,18 @@ export class UI {
    * Writes machine-readable output straight to stdout, bypassing the UI enable
    * gate. Decorative output is suppressed alongside it (see `--format json`), so
    * stdout stays a single pipeable document even with `--no-ui-enabled`.
+   *
+   * Returns whether stdout wants more, so a streaming producer can pace itself
+   * against a slow reader instead of letting the unread lines pile up in
+   * stdout's buffer. `true` once the reader has gone away: there is nothing left
+   * to wait for there, and the run is ending anyway.
    */
-  writeMachineOutput(payload: string) {
+  writeMachineOutput(payload: string): boolean {
     guardStdoutEpipe(this);
-    process.stdout.write(`${payload}\n`);
+    if (stdoutClosed) {
+      return true;
+    }
+    return process.stdout.write(`${payload}\n`);
   }
 
   list(items: string[]) {
@@ -213,7 +248,51 @@ export class UI {
     }
   }
 
+  /**
+   * Whether stderr can host UI that redraws itself.
+   *
+   * A spinner or a progress bar animates by emitting ANSI cursor escapes to move
+   * back over what it just wrote. That only means anything to a terminal: sent to
+   * a file or a pipe the escapes are just bytes, so `sb stories find 2> run.log`
+   * collects every frame it ever drew plus its control codes instead of one line
+   * that updates in place.
+   *
+   * `cli-progress` already refuses to render on a non-terminal stream, but
+   * `@topcli/spinner` has no such check and writes escapes unconditionally. The
+   * guard lives here so the rule holds whichever library backs a given widget.
+   */
+  private get canRedraw(): boolean {
+    return getStderrTarget() === "terminal";
+  }
+
+  /**
+   * Stand-in for a spinner on a stream that cannot animate: CI logs, `2> run.log`.
+   *
+   * Prints the title once and the outcome once. A plain noop would be simpler but
+   * strictly worse: the spinner's text is the only trace a long fetch leaves, so
+   * dropping it turns a CI log silent for the whole of a slow command.
+   */
+  private plainSpinner(title: string): CLISpinner {
+    const startedAt = Date.now();
+    this.console?.error(title);
+
+    const finish = (symbol: string, text?: string) => {
+      this.console?.error(`${symbol} ${text ?? title}`);
+    };
+
+    return {
+      succeed: (text?: string) => finish(chalk.green("✔"), text),
+      failed: (text?: string) => finish(chalk.red("✖"), text),
+      get elapsedTime() {
+        return Date.now() - startedAt;
+      },
+    };
+  }
+
   createProgressBar(options: { title: string }): ProgressBar {
+    if (!this.canRedraw) {
+      return noopProgressBar;
+    }
     const bar = this.multiBar?.create(0, 0, options);
     if (!bar) {
       return noopProgressBar;
@@ -222,10 +301,11 @@ export class UI {
     // passed alongside the update. Keep forwarding the original options on every call.
     return {
       increment: (count = 1) => bar.increment(count, options),
-      // cli-progress renders `{eta_formatted}` as "LLs" when total is 0.
-      // Floor at 1 so an empty phase stays a clean 0/1 instead.
+      // A total of 0 draws as a finished `0/0` bar: a phase with nothing to do
+      // is done, not stuck at 0%. Only the payload is updated here: a value
+      // update at total 0 is what makes cli-progress render the ETA as "LLs".
       setTotal: (total) => {
-        bar.setTotal(Math.max(total, 1));
+        bar.setTotal(total);
         bar.update(options);
       },
       stop: () => bar.stop(),
@@ -239,6 +319,9 @@ export class UI {
   createSpinner(title: string): CLISpinner {
     if (!this.enabled) {
       return noopSpinner;
+    }
+    if (!this.canRedraw) {
+      return this.plainSpinner(title);
     }
     const spinner = new Spinner({ verbose: getActiveConfig().verbose });
     spinner.stream = process.stderr;

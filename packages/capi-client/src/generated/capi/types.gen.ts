@@ -80,6 +80,10 @@ export type CdnExperimentVariant = {
          */
         original_story_id: number;
         /**
+         * UUID of the original story
+         */
+        original_uuid: string | null;
+        /**
          * Slug of the original story
          */
         original_slug: string | null;
@@ -87,6 +91,10 @@ export type CdnExperimentVariant = {
          * ID of the variant story copy
          */
         variant_story_id: number | null;
+        /**
+         * UUID of the variant story copy
+         */
+        variant_uuid: string | null;
         /**
          * Slug of the variant story copy
          */
@@ -104,6 +112,11 @@ export type ErrorResponse = {
      */
     error_code?: string;
 };
+
+/**
+ * Array of message strings. Returned for an unknown path.
+ */
+export type LegacyArrayErrorResponse = Array<string>;
 
 export type Link = {
     /**
@@ -180,7 +193,37 @@ export type RateLimitError = {
 };
 
 /**
- * Error shape used by the management Strata endpoints and the CDN v2 Strata search endpoint. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ * Linked story returned in the `links` array when `resolve_links=url` is used
+ */
+export type ResolvedLinkUrl = {
+    /**
+     * ID
+     */
+    id: number;
+    /**
+     * Unique UUID identifier for the discussion.
+     */
+    uuid: string;
+    /**
+     * The complete name of the story
+     */
+    name: string;
+    /**
+     * URL-friendly identifier for the app category.
+     */
+    slug: string;
+    /**
+     * Full slug including path and optional language prefix
+     */
+    full_slug: string;
+    /**
+     * URL of the linked story: the real path defined in the story's entry configuration if set, otherwise the `full_slug`
+     */
+    url: string;
+};
+
+/**
+ * Error shape used by every Strata endpoint: management, CDN v1 and CDN v2. Check `code` to detect the error type. Do not match on `message`: its wording can change.
  */
 export type StrataErrorResponse = {
     error: {
@@ -189,9 +232,9 @@ export type StrataErrorResponse = {
          */
         message: string;
         /**
-         * A fixed error code for this failure.
+         * A fixed error code for this failure. `credits_exceeded` is reserved and no v1 endpoint returns it. `strata_space_limit_reached` means the organization is at its maximum number of Strata-enabled spaces. `writes_disabled` means writes are off for maintenance. `api_limit_exceeded` means the space is over its monthly API request limit. `org_inactive` means the organization is disabled. `insufficient_scope` means the token lacks a required scope. `invalid_json` means the request body is not valid JSON. `invalid_request` means the database rejected the query.
          */
-        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
+        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'strata_space_limit_reached' | 'already_running' | 'not_running' | 'rate_limited' | 'bad_request' | 'error' | 'unauthorized' | 'writes_disabled' | 'api_limit_exceeded' | 'org_inactive' | 'insufficient_scope' | 'invalid_json' | 'invalid_request';
         /**
          * Extra structured data about the error.
          */
@@ -650,6 +693,10 @@ export type CdnExperimentWithStories = CdnExperiment & {
          * Full slug of the story in the default language
          */
         full_slug: string;
+        /**
+         * UUID of the story
+         */
+        uuid: string | null;
     }>;
 };
 
@@ -1071,6 +1118,10 @@ export type GetStoryByIdData = {
          */
         resolve_links_level?: 1 | 2;
         /**
+         * Set to `1` to also resolve the links inside stories loaded with `resolve_relations`. Works only together with `resolve_relations` and `resolve_links`. Any other value is ignored.
+         */
+        resolve_links_in_relations?: 1;
+        /**
          * To resolve relations to other stories established via a multi-option/single-option field.
          */
         resolve_relations?: string;
@@ -1091,6 +1142,10 @@ export type GetStoryByIdData = {
          */
         excluding_fields?: string;
         /**
+         * Keep only these top-level content fields (comma-separated list). _uid, component and _editable are always kept. Takes precedence over excluding_fields. Not applied to rels and links
+         */
+        including_fields?: string;
+        /**
          * Exclude top-level story response fields (comma-separated list), e.g. alternates, translated_slugs
          */
         excluding_story_fields?: string;
@@ -1110,6 +1165,10 @@ export type GetStoryByIdData = {
          * Force second-level relation resolution when first level exceeds limit.
          */
         resolve_level?: 2;
+        /**
+         * Comma-separated `original_uuid:variant_uuid` pairs. When `resolve_relations` resolves an original story, the rel gets the content of the chosen variant story. The rel keeps the original id, uuid and slug. A pair is used only if it is a story mapping of a running experiment and the variant story exists in the requested version; otherwise the original content is returned.
+         */
+        resolve_experiment_variants?: string;
         /**
          * Include each story's assigned taxonomy terms. Every term also carries its immediate `parent` and its root `taxonomy` as nested objects, each with id, name and display_name. An archived term is left out of the story's own assignments, but an archived ancestor is still returned, and unmarked, so a breadcrumb never loses a level.
          */
@@ -1165,7 +1224,7 @@ export type GetStoryByIdResponses = {
          * Rels
          */
         rels?: Array<Story>;
-        links?: Array<LinkWithFullSlug | Link | Story>;
+        links?: Array<LinkWithFullSlug | ResolvedLinkUrl | Link | Story>;
         /**
          * Array of story UUIDs returned instead of `rels` when relation resolution exceeds the space resolve limit
          */
@@ -1346,6 +1405,10 @@ export type ListStoriesData = {
          */
         resolve_links_level?: 1 | 2;
         /**
+         * Set to `1` to also resolve the links inside stories loaded with `resolve_relations`. Works only together with `resolve_relations` and `resolve_links`. Any other value is ignored.
+         */
+        resolve_links_in_relations?: 1;
+        /**
          * To access a story version associated with a specific release by providing the release ID.
          */
         from_release?: string;
@@ -1380,6 +1443,10 @@ export type ListStoriesData = {
                 lt_int?: number;
                 gt_float?: number;
                 lt_float?: number;
+                gte_int?: number;
+                lte_int?: number;
+                gte_float?: number;
+                lte_float?: number;
                 is?: 'empty' | 'not_empty' | 'empty_array' | 'not_empty_array' | 'null' | 'not_null' | 'true' | 'false';
             } | Array<{
                 [key: string]: {
@@ -1391,6 +1458,10 @@ export type ListStoriesData = {
          * Exclude specific fields from the response (comma-separated list).
          */
         excluding_fields?: string;
+        /**
+         * Keep only these top-level content fields (comma-separated list). _uid, component and _editable are always kept. Takes precedence over excluding_fields. Not applied to rels and links
+         */
+        including_fields?: string;
         /**
          * Exclude top-level story response fields (comma-separated list), e.g. alternates, translated_slugs
          */
@@ -1486,7 +1557,7 @@ export type ListStoriesResponses = {
          * Related stories (resolved relations)
          */
         rels?: Array<Story>;
-        links?: Array<LinkWithFullSlug | Link | Story>;
+        links?: Array<LinkWithFullSlug | ResolvedLinkUrl | Link | Story>;
         /**
          * Array of story UUIDs returned instead of `rels` when relation resolution exceeds the space resolve limit
          */
@@ -1499,6 +1570,80 @@ export type ListStoriesResponses = {
 };
 
 export type ListStoriesResponse = ListStoriesResponses[keyof ListStoriesResponses];
+
+export type SearchCdnV2StrataIndexData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Search term. Must be a string of at most 2000 characters (interim cap).
+         */
+        q?: string;
+        /**
+         * Filter by publication status:
+         * - `draft` – Retrieves draft stories
+         * - `published` – Retrieves published stories
+         */
+        version?: 'draft' | 'published';
+        /**
+         * Maximum number of results to return, a whole number from 1 to 100. With starts_with or content_type set, at most 50. Any other value returns 400.
+         */
+        limit?: number;
+        /**
+         * Filter entries whose full slug starts with the given value. For example, `starts_with=de/beitraege`, `starts_with=en/posts`.
+         */
+        starts_with?: string;
+        /**
+         * Retrieve stories of a specific content type.
+         */
+        content_type?: string;
+    };
+    url: '/v2/cdn/strata/search';
+};
+
+export type SearchCdnV2StrataIndexErrors = {
+    /**
+     * Bad Request
+     */
+    400: StrataErrorResponse;
+    /**
+     * Unauthorized
+     */
+    401: StrataErrorResponse;
+    /**
+     * Forbidden
+     */
+    403: StrataErrorResponse;
+    /**
+     * Invalid token or no custom complexity.
+     */
+    404: StrataErrorResponse | LegacyArrayErrorResponse;
+    /**
+     * Unable to remove space - user is not a space admin.
+     */
+    422: StrataErrorResponse;
+    /**
+     * Rate limit reached
+     */
+    429: StrataErrorResponse;
+    /**
+     * Search backend temporarily unavailable
+     */
+    503: StrataErrorResponse;
+};
+
+export type SearchCdnV2StrataIndexError = SearchCdnV2StrataIndexErrors[keyof SearchCdnV2StrataIndexErrors];
+
+export type SearchCdnV2StrataIndexResponses = {
+    /**
+     * Search results
+     */
+    200: {
+        results: StrataSearchResults;
+    };
+};
+
+export type SearchCdnV2StrataIndexResponse = SearchCdnV2StrataIndexResponses[keyof SearchCdnV2StrataIndexResponses];
 
 export type ListTagsData = {
     body?: never;
@@ -1523,6 +1668,14 @@ export type ListTagsData = {
                 not_in?: string;
                 like?: string;
                 not_like?: string;
+                gt_int?: number;
+                lt_int?: number;
+                gt_float?: number;
+                lt_float?: number;
+                gte_int?: number;
+                lte_int?: number;
+                gte_float?: number;
+                lte_float?: number;
             };
         };
     };
@@ -1566,12 +1719,6 @@ export type ListTaxonomiesErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Forbidden
-     */
-    403: {
-        error: string;
-    };
-    /**
      * Rate limit reached
      */
     429: RateLimitError;
@@ -1608,12 +1755,6 @@ export type GetTaxonomyErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
-    /**
-     * Forbidden
-     */
-    403: {
-        error: string;
-    };
     /**
      * Invalid token or no custom complexity.
      */
@@ -1655,12 +1796,6 @@ export type GetTaxonomyTermErrors = {
      * Unauthorized
      */
     401: UnauthorizedError;
-    /**
-     * Forbidden
-     */
-    403: {
-        error: string;
-    };
     /**
      * Invalid token or no custom complexity.
      */

@@ -171,7 +171,7 @@ jobs:
           SMOKE_RESULTS_DIR: ${{ runner.temp }}/smoke-results
         run: pnpm --filter @storyblok/blueprint-sync verify "$BLUEPRINT" --from "$RUNNER_TEMP/verify"
 
-      # Playwright traces of a failed check. Only the browser's results: no blueprint files.
+      # Playwright traces of a failed smoke test. Only the browser's results: no blueprint files.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -118,9 +118,9 @@ jobs:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}
 
-  # Builds and smoke-checks the blueprints nx marks affected against the workspace SDK source, so a
+  # Builds and smoke-tests the blueprints nx marks affected against the workspace SDK source, so a
   # PR that breaks an SDK for a blueprint fails here and not in the post-release sync (ADR-0022).
-  # It checks "does the SDK change break the blueprint"; the sync workflow checks "does the template
+  # It tests "does the SDK change break the blueprint"; the sync workflow checks "does the template
   # install and run as shipped".
   blueprints:
     needs: changes
@@ -167,22 +167,22 @@ jobs:
         run: pnpm nx run-many --target=build --projects="$PROJECTS" --parallel=3 --skip-nx-cache
 
       # The demo delivery token is a read-only demo token, kept in a variable and not a secret. The
-      # smoke check is skipped when the variable is empty; the build above runs either way.
+      # smoke test is skipped when the variable is empty; the build above runs either way.
       #
       # `--excludeTaskDependencies`: the smoke target depends on `^build` for local use. The build
       # step above already ran those SDK builds and refreshed the pnpm-injected SDK copies in this
       # workspace, so running them again only costs time.
-      - name: Smoke-check affected blueprints
+      - name: Smoke-test affected blueprints
         if: steps.affected.outputs.projects != '' && vars.BLUEPRINTS_DELIVERY_API_TOKEN != ''
         run: pnpm nx run-many --target=smoke --projects="$PROJECTS" --skip-nx-cache --excludeTaskDependencies
         env:
           PROJECTS: ${{ steps.affected.outputs.projects }}
           STORYBLOK_DELIVERY_API_TOKEN: ${{ vars.BLUEPRINTS_DELIVERY_API_TOKEN }}
           NEXT_TELEMETRY_DISABLED: 1
-          # Not hidden, so upload-artifact keeps it. `check` writes into one folder per blueprint.
+          # Not hidden, so upload-artifact keeps it. `smoke` writes into one folder per blueprint.
           SMOKE_RESULTS_DIR: ${{ runner.temp }}/smoke-results
 
-      # Playwright traces of a failed check. Only the browser's results: no blueprint files.
+      # Playwright traces of a failed smoke test. Only the browser's results: no blueprint files.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -191,9 +191,9 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Note the skipped smoke check
+      - name: Note the skipped smoke test
         if: vars.BLUEPRINTS_DELIVERY_API_TOKEN == ''
-        run: echo "::notice::BLUEPRINTS_DELIVERY_API_TOKEN is not available, so the blueprint smoke check was skipped."
+        run: echo "::notice::BLUEPRINTS_DELIVERY_API_TOKEN is not available, so the blueprint smoke test was skipped."
 
   licenses:
     needs: changes

@@ -22,7 +22,7 @@ function withoutWorkspaceBins(path: string): string {
 }
 
 // What `.env` is supposed to provide: if the blueprint only works with these in the process env,
-// the check has to fail.
+// the smoke test has to fail.
 export function withoutBlueprintEnv(env: Record<string, string>): Record<string, string> {
   return Object.fromEntries(
     Object.entries(env).filter(

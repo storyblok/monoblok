@@ -13,6 +13,10 @@ export type Experiment = CdnExperiment & {
          * Full slug of the story in the default language
          */
         full_slug: string;
+        /**
+         * UUID of the story
+         */
+        uuid: string | null;
     }>;
 };
 
@@ -46,6 +50,10 @@ export type ExperimentVariant = {
          */
         original_story_id: number;
         /**
+         * UUID of the original story
+         */
+        original_uuid: string | null;
+        /**
          * Slug of the original story
          */
         original_slug: string | null;
@@ -53,6 +61,10 @@ export type ExperimentVariant = {
          * ID of the variant story copy
          */
         variant_story_id: number | null;
+        /**
+         * UUID of the variant story copy
+         */
+        variant_uuid: string | null;
         /**
          * Slug of the variant story copy
          */

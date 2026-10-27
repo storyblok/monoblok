@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { describe, expectTypeOf, it } from "vitest";
+import { storyblokColorField } from "../field-plugins/storyblok-color-field";
 import type { BlockContentInput, PluginFieldValue } from "../generated/types/field";
 import type { Story } from "../generated/types/story";
 import { defineBlock } from "./define-block";
@@ -16,12 +17,20 @@ const colorPicker = defineFieldPlugin({
 interface ColorEnvelope {
   color: string;
   alpha: number;
-  plugin?: string;
   _uid?: string;
 }
 
 const fieldPlugins = {
   colorPicker,
+  storyblokColorField,
+  declared: defineFieldPlugin({
+    fieldType: "declared-plugin",
+    value: z.strictObject({ plugin: z.literal("p"), v: z.string() }),
+  }),
+  numeric: defineFieldPlugin({
+    fieldType: "numeric-plugin",
+    value: z.strictObject({ plugin: z.number(), v: z.string() }),
+  }),
   text: defineFieldPlugin({ fieldType: "text-plugin", value: z.string() }),
   number: defineFieldPlugin({ fieldType: "number-plugin", value: z.number() }),
   boolean: defineFieldPlugin({ fieldType: "boolean-plugin", value: z.boolean() }),
@@ -60,6 +69,13 @@ describe("custom field plugin resolution (read + write share one type)", () => {
       defineField("tuple", { type: "custom", field_type: "tuple-plugin" }),
       defineField("union", { type: "custom", field_type: "union-plugin" }),
       defineField("placeholder", { type: "custom", field_type: "placeholder-plugin" }),
+      defineField("official", {
+        type: "custom",
+        field_type: "storyblok-colorpicker",
+        required: true,
+      }),
+      defineField("declared", { type: "custom", field_type: "declared-plugin", required: true }),
+      defineField("numeric", { type: "custom", field_type: "numeric-plugin", required: true }),
     ],
   });
 
@@ -68,7 +84,7 @@ describe("custom field plugin resolution (read + write share one type)", () => {
   type HeroStory = Story<S["blocks"], S["fieldPlugins"]>;
   type HeroInput = BlockContentInput<typeof heroBlock, false, S["fieldPlugins"]>;
 
-  it("should resolve registered object values with optional plugin metadata", () => {
+  it("should resolve registered object values with only optional _uid metadata", () => {
     expectTypeOf<NonNullable<HeroStory["content"]["bg"]>>().toEqualTypeOf<ColorEnvelope>();
   });
 
@@ -78,6 +94,22 @@ describe("custom field plugin resolution (read + write share one type)", () => {
 
   it("should resolve the same optional metadata on the write (input) side", () => {
     expectTypeOf<NonNullable<HeroInput["bg"]>>().toEqualTypeOf<ColorEnvelope>();
+  });
+
+  it("should preserve the official color field's required plugin literal on read and write", () => {
+    expectTypeOf<
+      HeroStory["content"]["official"]["plugin"]
+    >().toEqualTypeOf<"official-colorpicker">();
+    expectTypeOf<HeroInput["official"]["plugin"]>().toEqualTypeOf<"official-colorpicker">();
+  });
+
+  it("should preserve declared plugin properties on read and write", () => {
+    type Value = { plugin: "p"; v: string; _uid?: string };
+    expectTypeOf<HeroStory["content"]["declared"]>().toEqualTypeOf<Value>();
+    expectTypeOf<HeroInput["declared"]>().toEqualTypeOf<Value>();
+    type NumericValue = { plugin: number; v: string; _uid?: string };
+    expectTypeOf<HeroStory["content"]["numeric"]>().toEqualTypeOf<NumericValue>();
+    expectTypeOf<HeroInput["numeric"]>().toEqualTypeOf<NumericValue>();
   });
 
   it("should preserve primitive plugin values on read and write", () => {

@@ -183,9 +183,14 @@ describe("validateStory", () => {
         value: { _uid: "legacy-id", color: "#fff" },
       },
       {
-        name: "object with plugin metadata",
-        validator: z.strictObject({ color: z.string() }),
-        value: { plugin: "official-colorpicker", _uid: "legacy-id", color: "#fff" },
+        name: "object with a declared plugin property",
+        validator: z.strictObject({ plugin: z.literal("p"), v: z.string() }),
+        value: { plugin: "p", _uid: "legacy-id", v: "x" },
+      },
+      {
+        name: "object with a numeric plugin property",
+        validator: z.strictObject({ plugin: z.number(), color: z.string() }),
+        value: { plugin: 42, color: "#fff" },
       },
       {
         name: "union string",
@@ -223,9 +228,21 @@ describe("validateStory", () => {
         path: [],
       },
       {
-        name: "plugin metadata",
+        name: "undeclared plugin property",
         validator: z.strictObject({ color: z.string() }),
-        value: { plugin: 42, color: "#fff" },
+        value: { plugin: "p", color: "#fff" },
+        path: [],
+      },
+      {
+        name: "declared plugin property",
+        validator: z.strictObject({ plugin: z.literal("p"), v: z.string() }),
+        value: { plugin: "wrong", v: "x" },
+        path: ["plugin"],
+      },
+      {
+        name: "missing plugin property",
+        validator: z.strictObject({ plugin: z.literal("p"), v: z.string() }),
+        value: { v: "x" },
         path: ["plugin"],
       },
       {
@@ -248,6 +265,7 @@ describe("validateStory", () => {
       { value: false },
       { value: ["one"] },
       { value: { color: "#fff" } },
+      { value: { plugin: 42, color: "#fff" } },
     ])("should accept $value with an unrestricted Standard Schema placeholder", ({ value }) => {
       const placeholder: StandardSchemaV1 = {
         "~standard": {
@@ -374,6 +392,26 @@ describe("validateStory", () => {
       expect(result.ok).toBe(true);
       expect(result.issues).toEqual([]);
     });
+
+    it.each(["#fff", ""])("should accept the official color field value with color %j", (color) => {
+      expect(
+        validatePluginValue(
+          { plugin: "official-colorpicker", _uid: "legacy-id", color },
+          storyblokColorField.value,
+        ),
+      ).toEqual({ ok: true, issues: [] });
+    });
+
+    it.each([undefined, null, "storyblok-colorpicker", 42])(
+      "should reject an invalid official color field plugin discriminator: %j",
+      (plugin) => {
+        const result = validatePluginValue({ plugin, color: "#fff" }, storyblokColorField.value);
+        expect(result.ok).toBe(false);
+        expect(result.issues).toEqual([
+          expect.objectContaining({ code: "invalid_value", path: ["content", "accent", "plugin"] }),
+        ]);
+      },
+    );
 
     it("reports the `color` sub-path for the shipped storyblokColorField plugin", () => {
       const result = validateStory(

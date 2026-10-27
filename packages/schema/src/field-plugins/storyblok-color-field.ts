@@ -9,6 +9,7 @@ import { isRecord } from "../utils/is-record";
  */
 export interface StoryblokColorFieldValue {
   color: string;
+  plugin: "official-colorpicker";
 }
 
 /**
@@ -21,10 +22,17 @@ const storyblokColorFieldValue: StandardSchemaV1<StoryblokColorFieldValue> = {
     version: 1,
     vendor: "storyblok-schema",
     validate(value) {
-      if (isRecord(value) && typeof value.color === "string") {
-        return { value: { color: value.color } };
+      if (!isRecord(value) || typeof value.color !== "string") {
+        return { issues: [{ message: "Expected a string `color` property.", path: ["color"] }] };
       }
-      return { issues: [{ message: "Expected a string `color` property.", path: ["color"] }] };
+      if (value.plugin !== "official-colorpicker") {
+        return {
+          issues: [
+            { message: 'Expected `plugin` to be "official-colorpicker".', path: ["plugin"] },
+          ],
+        };
+      }
+      return { value: { color: value.color, plugin: value.plugin } };
     },
   },
 };

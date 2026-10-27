@@ -332,13 +332,13 @@ export type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TF
 type WithPluginMetadata<TValue> = TValue extends readonly unknown[]
   ? TValue
   : TValue extends object
-    ? Prettify<TValue & { plugin?: string; _uid?: string }>
+    ? Prettify<TValue & { _uid?: string }>
     : TValue;
 
 /**
  * Resolves a `custom` field to its registered plugin value. When the field's
  * `field_type` is registered, primitives and arrays keep the validator's output
- * type; object payloads may also carry reserved `plugin`/`_uid` metadata.
+ * type; object payloads may also carry optional `_uid` metadata.
  * Unregistered fields retain {@link PluginFieldValue}. Same shape for read and write.
  */
 type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F extends string }

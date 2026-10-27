@@ -49,7 +49,7 @@ const EXPECTED_SHAPE = {
  * regenerate cannot revert it.
  */
 const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
-const zRegisteredPluginMetadata = zPluginEnvelope.partial();
+const zRegisteredPluginMetadata = zPluginEnvelope.pick({ _uid: true });
 
 /**
  * Whether a content value counts as "no value". Mirrors the backend's required
@@ -279,7 +279,7 @@ function validateFieldValue(
         // Reserved metadata sits alongside the plugin's own keys; strip it so the
         // plugin validator sees only its value. Sibling keys keep issue paths
         // accurate (an issue at ['color'] maps to [...path, 'color']).
-        const { plugin: _plugin, _uid, ...pluginValue } = value;
+        const { _uid, ...pluginValue } = value;
         checkValue(validator, pluginValue, path, entity, issues);
       } else {
         checkValue(validator, value, path, entity, issues);

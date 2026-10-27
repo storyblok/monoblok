@@ -7,7 +7,7 @@
   "scripts": {
     "stage": "node src/cli.ts stage",
     "verify": "node --env-file-if-exists=.env src/cli.ts verify",
-    "check": "node --env-file-if-exists=.env src/cli.ts check",
+    "smoke": "node --env-file-if-exists=.env src/cli.ts smoke",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
     "test": "vp test run",
@@ -27,6 +27,12 @@
   "nx": {
     "tags": [
       "type:tool"
+    ],
+    "includedScripts": [
+      "lint",
+      "lint:fix",
+      "test",
+      "test:types"
     ]
   }
 }

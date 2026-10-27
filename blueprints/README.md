@@ -18,7 +18,7 @@ name by `.github/workflows/sync-blueprints.yaml` (see `adr/0022-sync-blueprints-
 5. Create the `storyblok/<repo-name>` repo, install the sync's GitHub App on it, and add it to the
    template list of `storyblok create` (`packages/cli/src/commands/create/constants.ts`).
 
-Pull requests that touch `blueprints/**` or an SDK build and smoke-check the affected blueprints
+Pull requests that touch `blueprints/**` or an SDK build and smoke-test the affected blueprints
 against the workspace SDK source (the `blueprints` job in `ci.yaml`, ADR-0022).
 
 ## How nx sees blueprints
@@ -28,18 +28,18 @@ against the workspace SDK source (the `blueprints` job in `ci.yaml`, ADR-0022).
   `dev` or `start`, because `project.json` cannot remove an inferred target. `stage` drops that key.
 - `project.json` sets what `build` gets wrong: the `blueprint` tag, `outputs` per framework, `inputs`
   that skip `node_modules` and include the token, and an implicit dependency on
-  `@storyblok/blueprint-sync`, so a change to the smoke check selects all seven. The `smoke` target
+  `@storyblok/blueprint-sync`, so a change to the smoke test selects all seven. The `smoke` target
   is a default in `nx.json`, which each `project.json` opts into with `"smoke": {}`.
 - The `blueprint` named input lists `blueprints/.pnpmfile.cjs` and `pnpm-workspace.yaml`, so a change
   to either selects all seven. `nx.json` is in `.nxignore`: editing the smoke default or the named
   input selects nothing, so run `pnpm nx smoke <blueprint>` by hand.
 - There are two build targets. `build` is cached and token-free, with `STORYBLOK_DELIVERY_API_TOKEN`
   as a hash input, so a build made with a token never serves one made without. `smoke` is never
-  cached: it builds with the token, which is baked into the output, and runs the check. Smoke tasks
-  run one at a time (`parallelism: false`) because the blueprints share ports 3000 and 4173.
+  cached: it builds with the token, which is baked into the output, and runs the smoke test.
+  Smoke tasks run one at a time (`parallelism: false`) because the blueprints share ports 3000 and 4173.
 - The `blueprints` job passes `--skip-nx-cache`. With `injectWorkspacePackages`, each blueprint holds
   a hard-linked copy of the SDK that pnpm refreshes only when the SDK's `build` script runs. After
-  switching branches or restoring a build from the cache, `nx smoke` can check another branch's SDK
+  switching branches or restoring a build from the cache, `nx smoke` can test another branch's SDK
   build: run `pnpm install`, or the SDK build with `--skip-nx-cache`.
 
 ## Syncing

@@ -14,7 +14,7 @@ Terms:
 
 - **Blueprint:** the source folder `blueprints/<repo-name>/` in this repo.
 - **Target:** the template repo `storyblok/<repo-name>` that the sync pushes a blueprint to.
-- **Smoke check:** a browser check of the demo story. No page errors or `console.error`, the demo
+- **Smoke test:** a browser test of the demo story. No page errors or `console.error`, the demo
   content rendered, and hydration for Next.js, Nuxt and Svelte. `verify` runs it on a staged tree,
   `nx smoke` on the workspace.
 
@@ -24,7 +24,7 @@ Four challenges shape the design:
    scripts. Those scripts must never reach the GitHub App token, and must not change what is pushed.
 2. **Two questions.** "Does an SDK change break a blueprint?" is answered against the workspace
    source, before release. "Does the template install and run as users get it?" is answered against
-   npm, after release. Neither check replaces the other.
+   npm, after release. Neither one replaces the other.
 3. **What ships.** A target is a plain npm project, not a copy of a monorepo folder.
 4. **Cost.** Making blueprints workspace members costs a trust-policy exception, a `.pnpmfile.cjs`
    hook, and some care with the lockfile. It pays off only if CI uses it.
@@ -32,7 +32,7 @@ Four challenges shape the design:
 ## Decision
 
 **Blueprint sources live in `blueprints/<repo-name>/` as pnpm workspace members and nx projects. A
-`blueprints` job checks the affected ones against the workspace SDK source on every PR.
+`blueprints` job smoke-tests the affected ones against the workspace SDK source on every PR.
 `.github/workflows/sync-blueprints.yaml` verifies each one as users get it, and only then pushes it
 to `main` of its target.**
 
@@ -53,7 +53,7 @@ flowchart LR
 - **`stage` builds a tarball from this repo** with no secrets and no blueprint code, and outputs its
   sha256. Only `stage` can set that output. It is one job for all blueprints, because the outputs of
   matrix legs overwrite each other.
-- **`verify` runs the untrusted code:** `npm ci`, the build, and the smoke check. It references no
+- **`verify` runs the untrusted code:** `npm ci`, the build, and the smoke test. It references no
   App secret, uses no environment, and sets `cache: "false"`. The read-only demo token is a
   repository variable, which install scripts can read. It is in every template's build anyway.
 - **`push` holds the token** (environment `blueprint-sync`, `main` only). It checks the tarball
@@ -75,21 +75,21 @@ flowchart LR
 ```mermaid
 flowchart TB
   subgraph PR["Every PR, before release"]
-    W["SDK source in the workspace"] --> B1["build + smoke check"]
+    W["SDK source in the workspace"] --> B1["build + smoke test"]
     B1 --> Q1(["does the SDK change break a blueprint?"])
   end
   subgraph SYNC["Sync, after release"]
-    N["SDKs from npm"] --> V1["stage, npm ci, build, smoke check"]
+    N["SDKs from npm"] --> V1["stage, npm ci, build, smoke test"]
     V1 --> Q2(["does the template work as users get it?"])
   end
 ```
 
 - **The `blueprints` job in `ci.yaml`** runs on pull requests and pushes to the same branches as
-  `build`. It builds and smoke-checks only the blueprints `nx affected` selects: a PR that touches
-  an SDK, a package it depends on, or a blueprint's own files, never all seven unconditionally. It
+  `build`. It builds and smoke-tests only the blueprints `nx affected` selects: a PR that touches an
+  SDK, a package it depends on, or a blueprint's own files, never all seven unconditionally. It
   skips the nx cache (see below).
-- **The check is the one `verify` uses** (`tools/blueprint-sync`), run against the workspace instead
-  of a staged tree: no `stage`, no `npm install`, no lockfile.
+- **The smoke test is the one `verify` uses** (`tools/blueprint-sync`), run against the workspace
+  instead of a staged tree: no `stage`, no `npm install`, no lockfile.
 - **`verify` runs on every sync**, because change detection needs the target checkout, which belongs
   to `push`. A red run never touches a target.
 - **Affected base:** `nrwl/nx-set-shas`, pinned to a commit. For pull requests it is the merge base
@@ -165,7 +165,7 @@ flowchart LR
 - **Blueprints outside the workspace, resolved with `pnpm pack`.** Tried first and rejected: adding
   them re-resolved the monorepo lockfile, moved existing packages, and failed `trustPolicy` on old
   versions from existing tooling. Workspace membership accepts the churn and the exceptions instead,
-  because the PR check needs the SDK source link.
+  because the PR job needs the SDK source link.
 - **A personal access token.** Rejected: long-lived, tied to a person, and scoped to all they can
   reach.
 - **`npm install` without a lockfile in the job that holds the App token.** Tried first and
@@ -175,7 +175,7 @@ flowchart LR
 - **Lockfiles committed in the targets, or in this repo.** Rejected: they go stale.
 - **Leave blueprints out of nx** and add a PR workflow that runs `stage` and `verify`. Tests what
   users get, but never the SDK source in the PR.
-- **Build only, no smoke check, in the PR job.** Cheaper, but a compile-clean SDK change can still
+- **Build only, no smoke test, in the PR job.** Cheaper, but a compile-clean SDK change can still
   break hydration or the editor attributes.
 - **Run the blueprints in the existing `build` job.** Least config, but every PR pays for seven
   framework builds and the main job needs the demo token.
@@ -185,7 +185,7 @@ flowchart LR
 **Benefits**
 
 - SDK changes that break a blueprint fail the PR, not the post-release sync. PRs that touch an SDK
-  take longer, by the affected blueprints' builds and smoke checks.
+  take longer, by the affected blueprints' builds and smoke tests.
 - This repo owns blueprint dependency updates.
 
 **Trade-offs we accept**
@@ -220,9 +220,9 @@ flowchart LR
   `@storyblok/*` version just released: with `--min-release-age=1`, npm fails with `ETARGET` for it.
   npm 11 has `min-release-age` but no exclude option, which arrives in npm 12 as
   `min-release-age-exclude`. So the window waits until CI has npm 12, then
-  `--min-release-age=1 --min-release-age-exclude=@storyblok/*`. Until then the smoke check is the
+  `--min-release-age=1 --min-release-age-exclude=@storyblok/*`. Until then the smoke test is the
   only gate on third-party releases.
-- **Gaps in the PR check.** A PR that only changes Markdown skips the `blueprints` job, so an
+- **Gaps in the PR job.** A PR that only changes Markdown skips the `blueprints` job, so an
   `AGENTS.md` that names a missing npm script fails at the sync. A change that only touches
   `pnpm-lock.yaml` selects no blueprint. `nx.json` is in `.nxignore`, so editing the smoke default
   or the named input selects nothing: run `pnpm nx smoke <blueprint>` by hand. "Passed" for the
@@ -245,8 +245,8 @@ Not decided, not in this change. Each closes a gap named above or in `blueprints
 - **Release-age window** for the lockfile, once CI has npm 12.
 - **Isolating `verify`:** a container or an unprivileged user.
 - **Server-side rendering for Angular.** `ng build` prerenders no routes, so `serverRendered` is off
-  in its config. Fixing the blueprint turns the check on.
-- **Cheaper PR checks.** The job builds each affected blueprint twice (the token-free `build`, then
+  in its config. Fixing the blueprint turns the server-rendering assertion on.
+- **Cheaper PR jobs.** The job builds each affected blueprint twice (the token-free `build`, then
   the build inside `smoke`), and a change to a core SDK selects all seven. Dropping the first build
   and smoking a subset on PRs would cut the time.
 - **A guard for implicit inputs.** A CI check that fails when `nx.json` changes without all seven

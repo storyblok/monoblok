@@ -1,9 +1,9 @@
-/** How `verify` and `check` run one blueprint: `configs/<repo-name>.ts`, one per folder in `blueprints/`. */
+/** How `verify` and `smoke` run one blueprint: `configs/<repo-name>.ts`, one per `blueprints/` folder. */
 export type SmokeConfig = {
   /** Runs in the installed project before `build`, for setup a user would do by hand. */
   beforeBuild?: (projectDir: string) => void;
   /**
-   * Files `beforeBuild` rewrites, relative to the project. `check` runs in the workspace, not in a
+   * Files `beforeBuild` rewrites, relative to the project. `smoke` runs in the workspace, not in a
    * temp copy, so it puts them back afterwards: a token must not stay in a tracked file.
    */
   writes?: string[];
@@ -21,7 +21,7 @@ export type SmokeConfig = {
   ready?: () => boolean;
   /**
    * The texts must also be in the HTML the server sends, before any JS runs. Set for blueprints that
-   * server-render: the browser check alone passes when a server falls back to client rendering.
+   * server-render: the smoke test alone passes when a server falls back to client rendering.
    */
   serverRendered?: boolean;
   /** Texts the demo story must render, matched exactly. */

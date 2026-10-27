@@ -1,7 +1,7 @@
 // pnpm --filter @storyblok/blueprint-sync stage <blueprint> <target-dir>
 // pnpm --filter @storyblok/blueprint-sync verify <blueprint> [dir]
 // pnpm --filter @storyblok/blueprint-sync verify <blueprint> --from <staged-dir>
-// pnpm --filter @storyblok/blueprint-sync check <blueprint>
+// pnpm --filter @storyblok/blueprint-sync smoke <blueprint>
 // See ../README.md.
 import { type SpawnSyncOptions, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -62,7 +62,7 @@ function requireBlueprint(blueprint: string): void {
   }
 }
 
-// Without it every server answers with errors and the check ends in a timeout a minute later.
+// Without it every server answers with errors and the smoke test ends in a timeout a minute later.
 function requireToken(): string {
   const token = process.env.STORYBLOK_DELIVERY_API_TOKEN;
   if (!token) {
@@ -103,7 +103,7 @@ function lock(projectDir: string): void {
 }
 
 // `fromDir` is a tree `stage` already wrote (the sync's `stage` job uploads it): it is installed,
-// built, and checked as is, so the lockfile tested is the lockfile that ships. Without it, the
+// built, and smoke-tested as is, so the lockfile tested is the lockfile that ships. Without it, the
 // blueprint is staged and locked into `projectDir` first.
 async function verify(blueprint: string, dir?: string, fromDir?: string): Promise<void> {
   requireBlueprint(blueprint);
@@ -140,10 +140,10 @@ async function verify(blueprint: string, dir?: string, fromDir?: string): Promis
   config.beforeBuild?.(projectDir);
   const env = usesEnvFile ? withoutBlueprintEnv(userEnv()) : userEnv();
   run(config.build, [], { cwd: projectDir, shell: true, env });
-  smoke(blueprint, projectDir, {}, env);
+  runSmokeTest(blueprint, projectDir, {}, env);
 }
 
-function smoke(
+function runSmokeTest(
   blueprint: string,
   projectDir: string,
   extra: Record<string, string> = {},
@@ -156,11 +156,11 @@ function smoke(
 }
 
 // The nx `smoke` target (ADR-0022): builds `blueprints/<blueprint>` in the workspace, where
-// `workspace:^` links the SDK source nx has just built, and checks it. No stage, no install, no
-// lockfile: `verify` owns what users get. The build runs here and not in the nx `build` target
+// `workspace:^` links the SDK source nx has just built, and smoke-tests it. No stage, no
+// install, no lockfile: `verify` owns what users get. The build runs here and not in the nx `build` target
 // because the demo token is baked into it. Build output lands in the blueprint folder, which its
 // `.gitignore` covers; what `beforeBuild` rewrites is put back, even on failure.
-async function check(blueprint: string): Promise<void> {
+async function smoke(blueprint: string): Promise<void> {
   requireBlueprint(blueprint);
   requireToken();
   const projectDir = join(REPO_ROOT, "blueprints", blueprint);
@@ -175,9 +175,9 @@ async function check(blueprint: string): Promise<void> {
   config.beforeBuild?.(projectDir);
   run(config.build, [], { cwd: projectDir, shell: true });
   // A set SMOKE_RESULTS_DIR (CI uploads it) gets one folder per blueprint: Playwright empties its
-  // output directory, and several blueprints are checked in one run.
+  // output directory, and several blueprints are tested in one run.
   const resultsDir = process.env.SMOKE_RESULTS_DIR;
-  smoke(blueprint, projectDir, {
+  runSmokeTest(blueprint, projectDir, {
     SMOKE_RESULTS_DIR: resultsDir
       ? join(resultsDir, blueprint)
       : mkdtempSync(join(tmpdir(), `${blueprint}-smoke-`)),
@@ -185,7 +185,7 @@ async function check(blueprint: string): Promise<void> {
 }
 
 const USAGE =
-  "Usage: stage <blueprint> <target-dir> | verify <blueprint> [dir] | verify <blueprint> --from <staged-dir> | check <blueprint>";
+  "Usage: stage <blueprint> <target-dir> | verify <blueprint> [dir] | verify <blueprint> --from <staged-dir> | smoke <blueprint>";
 
 const {
   values: { from, help },
@@ -204,8 +204,8 @@ if (help) {
   lock(projectDir);
 } else if (command === "verify" && blueprint && !(from && dir)) {
   await verify(blueprint, dir ? fromUserCwd(dir) : undefined, from ? fromUserCwd(from) : undefined);
-} else if (command === "check" && blueprint && !from) {
-  await check(blueprint);
+} else if (command === "smoke" && blueprint && !from) {
+  await smoke(blueprint);
 } else {
   console.error(USAGE);
   process.exit(2);

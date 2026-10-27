@@ -61,7 +61,7 @@ describe("input checks", () => {
     expect(result.stdout).toContain("Usage:");
   });
 
-  it.each(["verify", "check"])("should exit early without a token on %s", (command) => {
+  it.each(["verify", "smoke"])("should exit early without a token on %s", (command) => {
     const result = cli(command, "blueprint-core-vue");
 
     expect(result.status).toBe(2);
@@ -69,9 +69,9 @@ describe("input checks", () => {
   });
 });
 
-// `check` runs in the workspace, so what a config's `beforeBuild` writes (the token, in Angular's
+// `smoke` runs in the workspace, so what a config's `beforeBuild` writes (the token, in Angular's
 // environment files) must be put back even when the build fails.
-describe.skipIf(process.platform === "win32")("check", () => {
+describe.skipIf(process.platform === "win32")("smoke", () => {
   it("should restore the files beforeBuild rewrote when the build fails", () => {
     const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
     const files = ["environment.ts", "environment.development.ts"].map((name) =>
@@ -84,7 +84,7 @@ describe.skipIf(process.platform === "win32")("check", () => {
       symlinkSync(process.execPath, join(bin, "node"));
       symlinkSync("/bin/sh", join(bin, "sh"));
 
-      const result = spawnSync("node", [CLI, "check", "blueprint-core-angular"], {
+      const result = spawnSync("node", [CLI, "smoke", "blueprint-core-angular"], {
         encoding: "utf8",
         env: { PATH: bin, STORYBLOK_DELIVERY_API_TOKEN: "token-that-must-not-stay" },
       });

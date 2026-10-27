@@ -151,10 +151,6 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
       addDependency(componentId, groupId);
     }
 
-    // No dependency on the default preset (`preset_id`): it is one of the
-    // component's own presets, so it is linked once both exist (see
-    // `ComponentNode.linkPendingPreset`).
-
     if (component.schema) {
       const dependencies = collectWhitelistDependencies(component.schema);
 
@@ -728,6 +724,8 @@ export class ComponentNode extends GraphNode<Component> {
         if (presetNode?.targetData) {
           updatedData.preset_id = presetNode.targetData.id as number;
         } else {
+          // The default preset is one of the component's own presets, so it can
+          // only be created after the component; `linkPendingPreset` sets it then.
           updatedData.preset_id = undefined;
           this.pendingPresetNodeId = presetNodeId;
         }

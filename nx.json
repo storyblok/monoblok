@@ -3,6 +3,7 @@
   "defaultProject": "main",
   "parallel": 5,
   "namedInputs": {
+    "cjsInterop": ["{workspaceRoot}/tools/cjs-interop-plugin.ts"],
     "openapiCodegen": [
       "{workspaceRoot}/tools/openapi-codegen/spec.lock",
       "{workspaceRoot}/tools/openapi-codegen/src/**",
@@ -13,6 +14,7 @@
   "targetDefaults": {
     "build": {
       "dependsOn": ["^build"],
+      "inputs": ["default", "^default", "cjsInterop"],
       "outputs": ["{projectRoot}/dist"],
       "cache": true
     },

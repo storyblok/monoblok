@@ -61,6 +61,28 @@ function isUnset(value: unknown): boolean {
   return value === undefined || value === null || value === "";
 }
 
+/**
+ * The rest of the backend's `blank?` check: `false`, whitespace-only strings,
+ * and empty arrays and objects. Only custom fields apply it, because a plugin
+ * value can be any of these, while other field types have their own wire forms.
+ */
+function isBlank(value: unknown): boolean {
+  if (isUnset(value) || value === false) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value.trim() === "";
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+  return isRecord(value) && Object.keys(value).length === 0;
+}
+
+function isMissingRequiredValue(field: SchemaFieldLike, value: unknown): boolean {
+  return field.type === "custom" ? isBlank(value) : isUnset(value);
+}
+
 /** Capitalizes and gives the text exactly one trailing period. */
 function asSentence(text: string): string {
   const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
@@ -844,7 +866,7 @@ function validateBlokContent(
     // true, so an empty string is unset rather than a value. That matters most
     // for `number`, whose unset wire form *is* `''` — the value branch below
     // legitimately skips it, leaving the required check as the only diagnostic.
-    if (field.required && isUnset(value)) {
+    if (field.required && isMissingRequiredValue(field, value)) {
       issues.push({
         severity: "error",
         code: "missing_required_field",

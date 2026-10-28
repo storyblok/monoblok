@@ -284,7 +284,15 @@ describe("validateStory", () => {
       },
     );
 
-    it.each([undefined, null, ""])("should reject a required unset plugin value: %j", (value) => {
+    it.each([
+      { value: undefined, validator: z.string() },
+      { value: null, validator: z.string() },
+      { value: "", validator: z.string() },
+      { value: "   ", validator: z.string() },
+      { value: false, validator: z.boolean() },
+      { value: [], validator: z.array(z.string()) },
+      { value: {}, validator: z.looseObject({}) },
+    ])("should reject a required blank plugin value: $value", ({ value, validator }) => {
       const requiredPage = defineBlock({
         name: "page",
         is_root: true,
@@ -297,7 +305,7 @@ describe("validateStory", () => {
         {
           blocks: { requiredPage },
           fieldPlugins: {
-            text: defineFieldPlugin({ fieldType: "text-plugin", value: z.string() }),
+            text: defineFieldPlugin({ fieldType: "text-plugin", value: validator }),
           },
         },
       );

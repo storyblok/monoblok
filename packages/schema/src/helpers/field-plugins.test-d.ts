@@ -64,6 +64,11 @@ describe("custom field plugin resolution (read + write share one type)", () => {
     fields: [
       defineField("bg", { type: "custom", field_type: "my-color" }),
       defineField("legacy", { type: "custom", field_type: "unregistered-plugin" }),
+      defineField("legacyRequired", {
+        type: "custom",
+        field_type: "unregistered-plugin",
+        required: true,
+      }),
       defineField("text", { type: "custom", field_type: "text-plugin" }),
       defineField("branded", { type: "custom", field_type: "branded-plugin" }),
       defineField("any", { type: "custom", field_type: "any-plugin" }),
@@ -150,6 +155,12 @@ describe("custom field plugin resolution (read + write share one type)", () => {
       string | ColorEnvelope
     >();
     expectTypeOf<NonNullable<HeroInput["union"]>>().toEqualTypeOf<string | ColorEnvelope>();
+  });
+
+  it("should exclude null from a required unregistered field", () => {
+    expectTypeOf<HeroStory["content"]["legacyRequired"]>().toEqualTypeOf<
+      NonNullable<PluginFieldValue>
+    >();
   });
 
   it("should resolve an unknown plugin output to PluginFieldValue", () => {

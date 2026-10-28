@@ -331,6 +331,9 @@ export type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TF
 
 type JsonPrimitive = string | number | boolean | null;
 
+/** A set custom field value. Optional fields add `null` through {@link ContentFields}. */
+type SetPluginFieldValue = NonNullable<PluginFieldValue>;
+
 // `any` is checked first because it would otherwise match the object branch and
 // widen to an index signature. An `unknown` output (a pass-through placeholder)
 // narrows to the JSON values a plugin can store. Primitives come before
@@ -338,7 +341,7 @@ type JsonPrimitive = string | number | boolean | null;
 type WithPluginMetadata<TValue> = 0 extends 1 & TValue
   ? TValue
   : unknown extends TValue
-    ? PluginFieldValue
+    ? SetPluginFieldValue
     : TValue extends JsonPrimitive | readonly unknown[]
       ? TValue
       : TValue extends object
@@ -355,8 +358,8 @@ type WithPluginMetadata<TValue> = 0 extends 1 & TValue
 type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F extends string }
   ? F extends keyof TFieldPlugins
     ? WithPluginMetadata<TFieldPlugins[F]>
-    : PluginFieldValue
-  : PluginFieldValue;
+    : SetPluginFieldValue
+  : SetPluginFieldValue;
 
 /** Whether a field declares a block restriction at all. */
 export type HasRestriction<TField> = TField extends { allow: readonly unknown[] }

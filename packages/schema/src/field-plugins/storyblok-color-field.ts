@@ -7,10 +7,10 @@ import { isRecord } from "../utils/is-record";
  * writes `plugin: "official-colorpicker"` (not the field type) and stores a
  * cleared color as `""`.
  */
-export interface StoryblokColorFieldValue {
+export type StoryblokColorFieldValue = {
   color: string;
   plugin: "official-colorpicker";
-}
+};
 
 /**
  * Hand-written [Standard Schema](https://standardschema.dev) validator for

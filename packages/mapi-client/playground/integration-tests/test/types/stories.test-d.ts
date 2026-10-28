@@ -360,9 +360,9 @@ describe("createManagementApiClient with .withTypes() — field plugins", () => 
     const client = createManagementApiClient(CLIENT_CONFIG).withTypes<Schema>();
     const result = await client.stories.get(123);
     if (result.data?.story && result.data.story.content.component === "themed") {
-      expectTypeOf<
-        NonNullable<typeof result.data.story.content.legacy>
-      >().toEqualTypeOf<PluginFieldValue>();
+      expectTypeOf<NonNullable<typeof result.data.story.content.legacy>>().toEqualTypeOf<
+        NonNullable<PluginFieldValue>
+      >();
     }
   });
 });

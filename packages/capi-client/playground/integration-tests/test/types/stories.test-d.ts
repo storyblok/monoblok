@@ -817,9 +817,9 @@ describe("createApiClient with .withTypes() — field plugins", () => {
     const client = createApiClient({ accessToken: "test-token" }).withTypes<Schema>();
     const result = await client.stories.get("home");
     if (result.data && result.data.story.content.component === "themed") {
-      expectTypeOf<
-        NonNullable<typeof result.data.story.content.legacy>
-      >().toEqualTypeOf<PluginFieldValue>();
+      expectTypeOf<NonNullable<typeof result.data.story.content.legacy>>().toEqualTypeOf<
+        NonNullable<PluginFieldValue>
+      >();
     }
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expectTypeOf, it } from "vitest";
-import type { Block, BlockContent } from "./index";
+import type { Block, BlockContent, Story } from "./index";
 import type { BlockContentInput } from "./generated/types/field";
 
 type PluginBlock = Block<
@@ -37,5 +37,13 @@ describe("registered field plugin values", () => {
     expectTypeOf<WriteValue<readonly [string, number]>>().toEqualTypeOf<
       readonly [string, number]
     >();
+  });
+
+  // `onStoryblokEditorEvent<TStory extends Story>` requires typed content to fit the loose content type.
+  it("should keep content with any plugin output assignable to loose story content", () => {
+    type Content<T> = BlockContent<PluginBlock, false, { "test-plugin": T }>;
+    expectTypeOf<Content<unknown>>().toExtend<Story["content"]>();
+    expectTypeOf<Content<{ color: string }>>().toExtend<Story["content"]>();
+    expectTypeOf<Content<number[]>>().toExtend<Story["content"]>();
   });
 });

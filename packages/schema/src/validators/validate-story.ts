@@ -39,17 +39,9 @@ const EXPECTED_SHAPE = {
     'expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }',
   richtext: 'expected a richtext document: { type: "doc", content: [...] }',
   table: 'expected a table object: { fieldtype: "table", thead: [...], tbody: [...] }',
-  plugin: 'expected a field plugin object carrying a "plugin" key',
 } as const;
 
-/**
- * Relaxed plugin envelope used by the `custom` case. Mirrors the generated
- * `zPluginFieldValue` but relaxes `_uid` from a UUID to a plain string, matching
- * the CMS, which persists arbitrary `_uid` strings. Kept local so a codegen
- * regenerate cannot revert it.
- */
-const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
-const zRegisteredPluginMetadata = zPluginEnvelope.pick({ _uid: true });
+const zRegisteredPluginMetadata = z.object({ _uid: z.optional(z.string()) });
 
 /**
  * Whether a content value counts as "no value". Mirrors the backend's required
@@ -294,9 +286,11 @@ function validateFieldValue(
       break;
     case "custom": {
       const validator = field.field_type ? fieldPluginsByType.get(field.field_type) : undefined;
+      // Without a registered validator, a plugin value can be any JSON value.
       if (!validator) {
-        checkValue(zPluginEnvelope, value, path, entity, issues, EXPECTED_SHAPE.plugin);
-      } else if (isRecord(value)) {
+        break;
+      }
+      if (isRecord(value)) {
         checkValue(zRegisteredPluginMetadata, value, path, entity, issues);
         // Reserved metadata sits alongside the plugin's own keys; strip it so the
         // plugin validator sees only its value. Sibling keys keep issue paths

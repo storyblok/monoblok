@@ -93,7 +93,7 @@ describe("custom field plugin resolution (read + write share one type)", () => {
   });
 
   it("leaves an unregistered custom field as PluginFieldValue", () => {
-    expectTypeOf<NonNullable<HeroStory["content"]["legacy"]>>().toEqualTypeOf<PluginFieldValue>();
+    expectTypeOf<HeroStory["content"]["legacy"]>().toEqualTypeOf<PluginFieldValue | undefined>();
   });
 
   it("should resolve the same optional metadata on the write (input) side", () => {
@@ -152,6 +152,19 @@ describe("custom field plugin resolution (read + write share one type)", () => {
     expectTypeOf<NonNullable<HeroInput["union"]>>().toEqualTypeOf<string | ColorEnvelope>();
   });
 
+  it("should resolve an unknown plugin output to PluginFieldValue", () => {
+    expectTypeOf<HeroStory["content"]["placeholder"]>().toEqualTypeOf<
+      PluginFieldValue | undefined
+    >();
+    expectTypeOf<HeroInput["placeholder"]>().toEqualTypeOf<PluginFieldValue | undefined>();
+  });
+
+  it("should accept primitive, array and object values without plugin for an unregistered field", () => {
+    type Values = 4 | "x" | string[] | { color: string };
+    expectTypeOf<Values>().toExtend<HeroStory["content"]["legacy"]>();
+    expectTypeOf<Values>().toExtend<HeroInput["legacy"]>();
+  });
+
   it("should allow primitive, array and object values for an unrestricted placeholder", () => {
     type Values = string | number | boolean | string[] | { color: string } | null | undefined;
     expectTypeOf<Values>().toExtend<HeroStory["content"]["placeholder"]>();
@@ -162,7 +175,7 @@ describe("custom field plugin resolution (read + write share one type)", () => {
     const _bareSchema = defineSchema({ blocks: { heroBlock } });
     type Bare = Schema<typeof _bareSchema>;
     type BareStory = Story<Bare["blocks"], Bare["fieldPlugins"]>;
-    expectTypeOf<NonNullable<BareStory["content"]["bg"]>>().toEqualTypeOf<PluginFieldValue>();
+    expectTypeOf<BareStory["content"]["bg"]>().toEqualTypeOf<PluginFieldValue | undefined>();
   });
 });
 

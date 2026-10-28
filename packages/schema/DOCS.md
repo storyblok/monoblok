@@ -40,8 +40,8 @@ Field plugin values follow these rules:
 - Declare `plugin` in the validator if the field plugin stores it.
 - A required custom field treats `false`, whitespace-only strings, and empty arrays and objects as
   missing, as the Management API does.
-- Custom fields without a registered field plugin use `PluginFieldValue`, an object with a required
-  `plugin` string.
+- Custom fields without a registered field plugin use `PluginFieldValue`, which is any JSON value.
+  `validateStory()` doesn't check their shape.
 
 Register field plugins under a `fieldPlugins` key so the `Schema` type maps each `fieldType` to its
 validator output. The matching exported type is `FieldPlugin`.

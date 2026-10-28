@@ -332,21 +332,25 @@ export type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TF
 type JsonPrimitive = string | number | boolean | null;
 
 // `any` is checked first because it would otherwise match the object branch and
-// widen to an index signature. Primitives come before `object` so a branded
-// primitive (`string & { __brand: "Hex" }`) stays a primitive.
+// widen to an index signature. An `unknown` output (a pass-through placeholder)
+// narrows to the JSON values a plugin can store. Primitives come before
+// `object` so a branded primitive (`string & { __brand: "Hex" }`) stays a primitive.
 type WithPluginMetadata<TValue> = 0 extends 1 & TValue
   ? TValue
-  : TValue extends JsonPrimitive | readonly unknown[]
-    ? TValue
-    : TValue extends object
-      ? Prettify<TValue & { _uid?: string }>
-      : TValue;
+  : unknown extends TValue
+    ? PluginFieldValue
+    : TValue extends JsonPrimitive | readonly unknown[]
+      ? TValue
+      : TValue extends object
+        ? Prettify<TValue & { _uid?: string }>
+        : TValue;
 
 /**
  * Resolves a `custom` field to its registered plugin value. When the field's
  * `field_type` is registered, primitives and arrays keep the validator's output
  * type; object payloads may also carry optional `_uid` metadata.
- * Unregistered fields retain {@link PluginFieldValue}. Same shape for read and write.
+ * Unregistered fields resolve to {@link PluginFieldValue}, any JSON value. Same
+ * shape for read and write.
  */
 type ResolveCustom<TField, TFieldPlugins> = TField extends { field_type: infer F extends string }
   ? F extends keyof TFieldPlugins

@@ -346,45 +346,34 @@ describe("validateStory", () => {
       expect(colorIssue?.path).toEqual(["content", "accent", "color"]);
     });
 
-    it("checks only the envelope for an unregistered field_type", () => {
-      const pageWithUnknownPlugin = defineBlock({
+    it.each([
+      { accent: "hello" },
+      { accent: 4 },
+      { accent: ["one"] },
+      { accent: { color: "#fff" } },
+      { accent: { plugin: "unregistered-plugin", _uid: "abc-123", color: 12345 } },
+    ])("should accept any value for an unregistered plugin: $accent", ({ accent }) => {
+      const result = validateStory(
+        { content: { component: "page", headline: "Hi", accent } },
+        { blocks: { page: pageWithPlugin } },
+      );
+      expect(result).toEqual({ ok: true, issues: [] });
+    });
+
+    it("should still reject a blank value for a required unregistered plugin", () => {
+      const requiredPage = defineBlock({
         name: "page",
         is_root: true,
         fields: [
-          defineField("headline", { type: "text", required: true }),
-          defineField("accent", { type: "custom", field_type: "unregistered-plugin" }),
+          defineField("accent", { type: "custom", field_type: "unregistered", required: true }),
         ],
       });
       const result = validateStory(
-        {
-          content: {
-            component: "page",
-            headline: "Hi",
-            accent: { plugin: "unregistered-plugin", _uid: "abc-123", color: 12345 },
-          },
-        },
-        { blocks: { page: pageWithUnknownPlugin }, fieldPlugins: { colorPlugin } },
+        { content: { component: "page", accent: [] } },
+        { blocks: { requiredPage } },
       );
-      expect(result.ok).toBe(true);
+      expect(codesFor(result)).toEqual(["missing_required_field"]);
     });
-
-    it.each([{ accent: "hello" }, { accent: ["one"] }, { accent: { color: "#fff" } }])(
-      "should still require an envelope for an unregistered plugin: $accent",
-      ({ accent }) => {
-        const result = validateStory(
-          {
-            content: {
-              component: "page",
-              headline: "Hi",
-              accent,
-            },
-          },
-          { blocks: { page: pageWithPlugin } },
-        );
-        expect(result.ok).toBe(false);
-        expect(codesFor(result)).toContain("invalid_value");
-      },
-    );
 
     it("accepts a non-UUID _uid string (envelope relaxation)", () => {
       const result = validateStory(

@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve } from "pathe";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -32,6 +32,14 @@ describe("module format: require() (CJS)", () => {
   it("should export apiPlugin as a function", () => {
     const mod = req(cjsEntry);
     expect(typeof mod.apiPlugin).toBe("function");
+  });
+
+  // Regression test for https://github.com/storyblok/monoblok/issues/891:
+  // node-mode interop turned `storyblok-js-client`'s default into the exports object.
+  it("should create a client when calling apiPlugin", () => {
+    const mod = req(cjsEntry);
+    const { storyblokApi } = mod.apiPlugin({ apiOptions: { accessToken: "x" } });
+    expect(typeof storyblokApi.get).toBe("function");
   });
 });
 

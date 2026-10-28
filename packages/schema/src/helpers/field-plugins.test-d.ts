@@ -32,6 +32,8 @@ const fieldPlugins = {
     value: z.strictObject({ plugin: z.number(), v: z.string() }),
   }),
   text: defineFieldPlugin({ fieldType: "text-plugin", value: z.string() }),
+  branded: defineFieldPlugin({ fieldType: "branded-plugin", value: z.string().brand<"Hex">() }),
+  any: defineFieldPlugin({ fieldType: "any-plugin", value: z.any() }),
   number: defineFieldPlugin({ fieldType: "number-plugin", value: z.number() }),
   boolean: defineFieldPlugin({ fieldType: "boolean-plugin", value: z.boolean() }),
   array: defineFieldPlugin({ fieldType: "array-plugin", value: z.array(z.string()) }),
@@ -63,6 +65,8 @@ describe("custom field plugin resolution (read + write share one type)", () => {
       defineField("bg", { type: "custom", field_type: "my-color" }),
       defineField("legacy", { type: "custom", field_type: "unregistered-plugin" }),
       defineField("text", { type: "custom", field_type: "text-plugin" }),
+      defineField("branded", { type: "custom", field_type: "branded-plugin" }),
+      defineField("any", { type: "custom", field_type: "any-plugin" }),
       defineField("number", { type: "custom", field_type: "number-plugin" }),
       defineField("boolean", { type: "custom", field_type: "boolean-plugin" }),
       defineField("array", { type: "custom", field_type: "array-plugin" }),
@@ -119,6 +123,17 @@ describe("custom field plugin resolution (read + write share one type)", () => {
     expectTypeOf<NonNullable<HeroInput["number"]>>().toEqualTypeOf<number>();
     expectTypeOf<NonNullable<HeroStory["content"]["boolean"]>>().toEqualTypeOf<boolean>();
     expectTypeOf<NonNullable<HeroInput["boolean"]>>().toEqualTypeOf<boolean>();
+  });
+
+  it("should keep a branded primitive output a primitive on read and write", () => {
+    type Hex = string & z.$brand<"Hex">;
+    expectTypeOf<NonNullable<HeroStory["content"]["branded"]>>().toEqualTypeOf<Hex>();
+    expectTypeOf<NonNullable<HeroInput["branded"]>>().toEqualTypeOf<Hex>();
+  });
+
+  it("should keep an any output as any on read and write", () => {
+    expectTypeOf<HeroStory["content"]["any"]>().toBeAny();
+    expectTypeOf<HeroInput["any"]>().toBeAny();
   });
 
   it("should preserve arrays and readonly tuples on read and write", () => {

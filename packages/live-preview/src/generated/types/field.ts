@@ -332,11 +332,18 @@ type ApplyDeny<TField, TBlocks> = TField extends {
  */
 export type ApplyRestrictions<TField, TBlocks> = ApplyDeny<TField, ApplyAllow<TField, TBlocks>>;
 
-type WithPluginMetadata<TValue> = TValue extends readonly unknown[]
+type JsonPrimitive = string | number | boolean | null;
+
+// `any` is checked first because it would otherwise match the object branch and
+// widen to an index signature. Primitives come before `object` so a branded
+// primitive (`string & { __brand: "Hex" }`) stays a primitive.
+type WithPluginMetadata<TValue> = 0 extends 1 & TValue
   ? TValue
-  : TValue extends object
-    ? Prettify<TValue & { _uid?: string }>
-    : TValue;
+  : TValue extends JsonPrimitive | readonly unknown[]
+    ? TValue
+    : TValue extends object
+      ? Prettify<TValue & { _uid?: string }>
+      : TValue;
 
 /**
  * Resolves a `custom` field to its registered plugin value. When the field's
@@ -423,65 +430,67 @@ export type FieldValue<
   TField extends Field = Field,
   TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
-> = Prettify<
-  TField extends { type: "bloks" }
-    ? // guard `never` first: `[never] extends [Block]` is structurally true, so an
-      // empty registry would otherwise be mistaken for a populated one
-      [TBlocks] extends [never]
-      ? BlockContentBase[]
-      : [TBlocks] extends [Block]
-        ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
-        : BlockContentBase[]
-    : TField extends { type: "richtext" }
-      ? [TBlocks] extends [never]
-        ? RichTextFieldValue
-        : [TBlocks] extends [Block]
-          ? HasRestriction<TField> extends true
-            ? RestrictRichText<
-                RichTextFieldValue,
-                BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>
-              >
-            : RichTextFieldValue
-          : RichTextFieldValue
-      : TField extends { type: "custom" }
-        ? ResolveCustom<TField, TFieldPlugins>
-        : TField extends { type: "option" }
-          ? ResolveOptionValue<TField> | ""
-          : TField extends { type: "options" }
-            ? ResolveOptionValue<TField>[]
-            : FieldTypeValueMap[TField["type"]]
->;
+> = TField extends { type: "custom" }
+  ? // kept outside `Prettify`, which flattens `any` and branded primitives into objects
+    ResolveCustom<TField, TFieldPlugins>
+  : Prettify<
+      TField extends { type: "bloks" }
+        ? // guard `never` first: `[never] extends [Block]` is structurally true, so an
+          // empty registry would otherwise be mistaken for a populated one
+          [TBlocks] extends [never]
+          ? BlockContentBase[]
+          : [TBlocks] extends [Block]
+            ? BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+            : BlockContentBase[]
+        : TField extends { type: "richtext" }
+          ? [TBlocks] extends [never]
+            ? RichTextFieldValue
+            : [TBlocks] extends [Block]
+              ? HasRestriction<TField> extends true
+                ? RestrictRichText<
+                    RichTextFieldValue,
+                    BlockContent<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>
+                  >
+                : RichTextFieldValue
+              : RichTextFieldValue
+          : TField extends { type: "option" }
+            ? ResolveOptionValue<TField> | ""
+            : TField extends { type: "options" }
+              ? ResolveOptionValue<TField>[]
+              : FieldTypeValueMap[TField["type"]]
+    >;
 
 /** Resolves a field definition to its input value type (write). */
 export type FieldValueInput<
   TField extends Field = Field,
   TBlocks extends Block | NoBlocks = NoBlocks,
   TFieldPlugins = Record<never, never>,
-> = Prettify<
-  TField extends { type: "bloks" }
-    ? // guard `never` first: `[never] extends [Block]` is structurally true, so an
-      // empty registry would otherwise be mistaken for a populated one
-      [TBlocks] extends [never]
-      ? BlockContentInputBase[]
-      : [TBlocks] extends [Block]
-        ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
-        : BlockContentInputBase[]
-    : TField extends { type: "richtext" }
-      ? [TBlocks] extends [never]
-        ? RichTextFieldValue
-        : [TBlocks] extends [Block]
-          ? HasRestriction<TField> extends true
-            ? RestrictRichText<
-                RichTextFieldValue,
-                BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>
-              >
-            : RichTextFieldValue
-          : RichTextFieldValue
-      : TField extends { type: "custom" }
-        ? ResolveCustom<TField, TFieldPlugins>
-        : TField extends { type: "option" }
-          ? ResolveOptionValue<TField> | ""
-          : TField extends { type: "options" }
-            ? ResolveOptionValue<TField>[]
-            : FieldTypeValueMap[TField["type"]]
->;
+> = TField extends { type: "custom" }
+  ? // kept outside `Prettify`, which flattens `any` and branded primitives into objects
+    ResolveCustom<TField, TFieldPlugins>
+  : Prettify<
+      TField extends { type: "bloks" }
+        ? // guard `never` first: `[never] extends [Block]` is structurally true, so an
+          // empty registry would otherwise be mistaken for a populated one
+          [TBlocks] extends [never]
+          ? BlockContentInputBase[]
+          : [TBlocks] extends [Block]
+            ? BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>[]
+            : BlockContentInputBase[]
+        : TField extends { type: "richtext" }
+          ? [TBlocks] extends [never]
+            ? RichTextFieldValue
+            : [TBlocks] extends [Block]
+              ? HasRestriction<TField> extends true
+                ? RestrictRichText<
+                    RichTextFieldValue,
+                    BlockContentInput<ApplyRestrictions<TField, TBlocks>, TBlocks, TFieldPlugins>
+                  >
+                : RichTextFieldValue
+              : RichTextFieldValue
+          : TField extends { type: "option" }
+            ? ResolveOptionValue<TField> | ""
+            : TField extends { type: "options" }
+              ? ResolveOptionValue<TField>[]
+              : FieldTypeValueMap[TField["type"]]
+    >;

@@ -1959,12 +1959,12 @@ describe("stories push command", () => {
       await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
 
       const warnCalls = (console.warn as unknown as ReturnType<typeof vi.fn>).mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("official-colorpicker"),
+        (call) => typeof call[0] === "string" && call[0].includes("storyblok-colorpicker"),
       );
       expect(warnCalls).toHaveLength(1);
       const logFile = getLogFileContents(LOG_PREFIX);
       expect(logFile).toContain(
-        'The custom plugin \\"official-colorpicker\\" may contain references that require manual updates.',
+        'The custom plugin \\"storyblok-colorpicker\\" may contain references that require manual updates.',
       );
     });
 
@@ -2005,9 +2005,61 @@ describe("stories push command", () => {
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          'The custom plugin "official-colorpicker" may contain references that require manual updates.',
+          'The custom plugin "storyblok-colorpicker" may contain references that require manual updates.',
         ),
       );
+    });
+
+    it.each([
+      { value: 4 },
+      { value: "linked-story-uuid" },
+      { value: ["linked-story-uuid"] },
+      { value: { storyId: 123 } },
+    ])(
+      "should warn about a custom plugin value without a plugin key: $value",
+      async ({ value }) => {
+        const storyA = makeMockStory({
+          slug: "story-a",
+          content: { _uid: randomUUID(), component: "page", related: value },
+        });
+        preconditions.canLoadStories([storyA]);
+        preconditions.canLoadComponents([
+          makeMockComponent({
+            name: "page",
+            schema: { related: { type: "custom", field_type: "my-story-picker" } },
+          }),
+        ]);
+        const remoteStories = preconditions.canCreateStories([storyA]);
+        preconditions.canUpdateStories(remoteStories);
+
+        await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'The custom plugin "my-story-picker" may contain references that require manual updates.',
+          ),
+        );
+      },
+    );
+
+    it("should not warn about an empty custom plugin value", async () => {
+      const storyA = makeMockStory({
+        slug: "story-a",
+        content: { _uid: randomUUID(), component: "page", related: "" },
+      });
+      preconditions.canLoadStories([storyA]);
+      preconditions.canLoadComponents([
+        makeMockComponent({
+          name: "page",
+          schema: { related: { type: "custom", field_type: "my-story-picker" } },
+        }),
+      ]);
+      const remoteStories = preconditions.canCreateStories([storyA]);
+      preconditions.canUpdateStories(remoteStories);
+
+      await storiesCommand.parseAsync(["node", "test", "push", "--space", DEFAULT_SPACE]);
+
+      expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining("my-story-picker"));
     });
 
     it("should handle errors when reading local stories fails", async () => {

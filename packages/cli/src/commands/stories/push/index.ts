@@ -14,6 +14,7 @@ import {
 import { session } from "../../../session";
 import { storiesCommand } from "../command";
 import { loadManifest, resolveCommandPath } from "../../../utils/filesystem";
+import { isRecord } from "../../../utils/object";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";
@@ -29,6 +30,7 @@ import {
   writeStoryStream,
 } from "../streams";
 import { findComponentSchemas } from "../utils";
+import { baseFieldName } from "../content-fields";
 import { loadAssetMap } from "../../assets/utils";
 import { prefetchTargetStoriesByKeys } from "../actions";
 import { collectSchemaIssues, formatSchemaIssues, hasSchemaIssues } from "../validate-story";
@@ -150,12 +152,23 @@ pushCmd.action(async (options, command) => {
       }
     }
 
-    // Warn when story content includes custom plugin payloads. References
+    // Warn when story content includes custom plugin values. References
     // embedded inside a plugin's opaque JSON can't be auto-remapped, so the
-    // user may need to update them manually. Emitted once per plugin name
-    // per story during Pass 2.
+    // user may need to update them manually. Custom fields are found through
+    // the component schema, because most field plugins store no `plugin` key;
+    // that key is only the fallback for blocks without a local schema.
+    // Emitted once per plugin name per story during Pass 2.
     const warnAboutCustomPlugins = (story: Story) => {
       const warned = new Set<string>();
+      const warnOnce = (pluginName: string) => {
+        if (warned.has(pluginName)) {
+          return;
+        }
+        warned.add(pluginName);
+        const message = `The custom plugin "${pluginName}" may contain references that require manual updates.`;
+        pendingWarnings.push(message);
+        logger.warn(message, { storyId: story.uuid });
+      };
       const visit = (node: unknown): void => {
         if (Array.isArray(node)) {
           for (const item of node) {
@@ -163,18 +176,25 @@ pushCmd.action(async (options, command) => {
           }
           return;
         }
-        if (!node || typeof node !== "object") {
+        if (!isRecord(node)) {
           return;
         }
-        const obj = node as Record<string, unknown>;
-        const plugin = obj.plugin;
-        if (typeof plugin === "string" && !warned.has(plugin)) {
-          warned.add(plugin);
-          const message = `The custom plugin "${plugin}" may contain references that require manual updates.`;
-          pendingWarnings.push(message);
-          logger.warn(message, { storyId: story.uuid });
+        const schema = typeof node.component === "string" ? schemas[node.component] : undefined;
+        if (schema) {
+          for (const [fieldName, value] of Object.entries(node)) {
+            const field = schema[baseFieldName(fieldName)];
+            if (field?.type !== "custom") {
+              visit(value);
+            } else if (value !== null && value !== undefined && value !== "") {
+              warnOnce(typeof field.field_type === "string" ? field.field_type : fieldName);
+            }
+          }
+          return;
         }
-        for (const value of Object.values(obj)) {
+        if (typeof node.plugin === "string") {
+          warnOnce(node.plugin);
+        }
+        for (const value of Object.values(node)) {
           visit(value);
         }
       };

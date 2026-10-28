@@ -155,8 +155,7 @@ pushCmd.action(async (options, command) => {
     // Warn when story content includes custom plugin values. References
     // embedded inside a plugin's opaque JSON can't be auto-remapped, so the
     // user may need to update them manually. Custom fields are found through
-    // the component schema, because most field plugins store no `plugin` key;
-    // that key is only the fallback for blocks without a local schema.
+    // the component schema, because most field plugins store no `plugin` key.
     // Emitted once per plugin name per story during Pass 2.
     const warnAboutCustomPlugins = (story: Story) => {
       const warned = new Set<string>();
@@ -190,9 +189,6 @@ pushCmd.action(async (options, command) => {
             }
           }
           return;
-        }
-        if (typeof node.plugin === "string") {
-          warnOnce(node.plugin);
         }
         for (const value of Object.values(node)) {
           visit(value);

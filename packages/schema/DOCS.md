@@ -35,9 +35,11 @@ _Updated in_ <Badge text="0.6.0" variant="note" />
 Field plugin values follow these rules:
 
 - A value can be any JSON value: a string, number, boolean, array, or object.
-- Object values accept an optional `_uid` string. `validateStory()` removes it before it runs the
-  validator.
+- Object values accept an optional `_uid` string. `_uid` is reserved: `validateStory()` removes it
+  before it runs the validator, so leave it out of the validator.
 - Declare `plugin` in the validator if the field plugin stores it.
+- A required custom field treats `false`, whitespace-only strings, and empty arrays and objects as
+  missing, as the Management API does.
 - Custom fields without a registered field plugin use `PluginFieldValue`, an object with a required
   `plugin` string.
 

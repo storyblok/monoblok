@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@storyblok/live-preview": "workspace:^",
-    "@storyblok/region-helper": "workspace:^",
+    "@storyblok/region-helper": "workspace:^1.6.0",
     "axe-core": "^4.14.0"
   },
   "devDependencies": {

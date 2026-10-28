@@ -1,5 +1,6 @@
 import { defineConfig } from "vite-plus";
 import { resolve } from "node:path";
+import { cjsInterop } from "../../tools/cjs-interop-plugin.ts";
 
 export default defineConfig({
   pack: [
@@ -14,6 +15,7 @@ export default defineConfig({
         ssr: "./src/ssr/index.ts",
       },
       format: ["esm", "cjs"],
+      plugins: [cjsInterop()],
       outDir: "./dist",
       publint: true,
       // Keeps one output file per source module, which is what preserves the

@@ -60,9 +60,9 @@ export interface StoryblokBlocksResult<TExtraProps extends object = {}> {
    *
    * @example
    * ```tsx
-   * const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>({
+   * const { StoryblokBlock } = defineStoryblokBlocks<{ locale: string }>(() => ({
    *   components: { page: Page, teaser: Teaser },
-   * });
+   * }));
    *
    * <StoryblokBlock block={story.content} />
    * // Extra props declared in TExtraProps are forwarded to every rendered block:
@@ -71,22 +71,6 @@ export interface StoryblokBlocksResult<TExtraProps extends object = {}> {
    * ```
    */
   StoryblokBlock: (props: { block: StoryblokBlockData } & TExtraProps) => ReactNode;
-  /**
-   * Renders an array of blocks, delegating each entry to `StoryblokBlock`.
-   *
-   * Convenience over mapping manually: `key` is derived from `block._uid`
-   * and every entry receives the same `TExtraProps`.
-   *
-   * @example
-   * ```tsx
-   * const { StoryblokBlocks } = defineStoryblokBlocks({
-   *   components: { page: Page, teaser: Teaser },
-   * });
-   *
-   * <StoryblokBlocks blocks={block.columns} />
-   * ```
-   */
-  StoryblokBlocks: (props: { blocks: StoryblokBlockData[] } & TExtraProps) => ReactNode;
   /** Renders a richtext document, resolving embedded blocks via the same component map. */
   StoryblokRichText: ReturnType<typeof createStoryblokRichText>;
 }
@@ -142,20 +126,33 @@ type ResolvedEntry = {
   fallbackNode: ReactNode;
 };
 
+/** Registry built from a resolved {@link StoryblokBlocksOptions}, cached after the first render. */
+type ResolvedRegistry = {
+  registry: Map<string, ResolvedEntry>;
+  fallback?: AnyBlockComponent;
+};
+
 /**
  * Maps Storyblok block types to React components and returns pre-wired
- * `StoryblokBlock`, `StoryblokBlocks`, and `StoryblokRichText`.
+ * `StoryblokBlock` and `StoryblokRichText`.
  *
  * Pass `TExtraProps` as an explicit type argument to type the extra props
- * `StoryblokBlock`/`StoryblokBlocks` forward to every rendered block
- * component, with real excess-property checking on every call site. Without
- * it, they only accept `block`/`blocks`.
+ * `StoryblokBlock` forwards to every rendered block component, with real
+ * excess-property checking on every call site. Without it, it only accepts
+ * `block`.
+ *
+ * Takes a factory rather than the options object directly: block components
+ * often import `StoryblokBlock` back from this same registry (to recurse
+ * into `body` fields), making this an import cycle. A factory defers
+ * reading `components` until the first render, by which point the cycle has
+ * finished initializing, instead of capturing a component binding before
+ * it's assigned.
  *
  * @example
  * ```tsx
- * export const { StoryblokBlock, StoryblokBlocks, StoryblokRichText } = defineStoryblokBlocks<{
+ * export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks<{
  *   locale: string;
- * }>({
+ * }>(() => ({
  *   components: {
  *     page: Page,
  *     teaser: Teaser,
@@ -167,44 +164,65 @@ type ResolvedEntry = {
  *   },
  *   fallback: FallbackBlock,
  *   suspenseFallback: <GlobalSkeleton />,
- * });
+ * }));
  * ```
  */
 export function defineStoryblokBlocks<TExtraProps extends object = {}>(
-  config: StoryblokBlocksOptions,
+  factory: () => StoryblokBlocksOptions,
 ): StoryblokBlocksResult<TExtraProps> {
-  const defaultSuspenseFallback = config.suspenseFallback ?? null;
+  // Cached after the first call so a factory with side effects only ever
+  // runs once, no matter how many blocks render.
+  let resolved: ResolvedRegistry | undefined;
 
-  if (!config.components) {
-    throw new Error('[Storyblok] defineStoryblokBlocks: "components" is required.');
-  }
-
-  // ── Build the registry once at factory time ────────────────────────────────
+  // ── Build the registry lazily, on first render ──────────────────────────
   // normalizeEntry, isLazyComponent (Symbol.for allocation), and fallback
-  // resolution all run here — never inside the render function.
-  const registry = new Map<string, ResolvedEntry>();
-  for (const [type, entry] of Object.entries(config.components)) {
-    if (entry == null) {
-      throw new Error(
-        `[Storyblok] defineStoryblokBlocks: components["${type}"] is undefined. Check for ` +
-          "a typo, or a circular import that hasn't finished initializing yet.",
-      );
+  // resolution all run here — never more than once, and never at module-init
+  // time, which is what makes the import-cycle case above resolve correctly.
+  function resolveRegistry(): ResolvedRegistry {
+    if (resolved) {
+      return resolved;
     }
-    if (
-      typeof entry === "object" &&
-      !("component" in entry) &&
-      ("fallback" in entry || "suspense" in entry)
-    ) {
-      throw new Error(
-        `[Storyblok] defineStoryblokBlocks: components["${type}"] is missing "component".`,
-      );
+
+    const config = factory();
+    const defaultSuspenseFallback = config.suspenseFallback ?? null;
+
+    if (!config.components) {
+      throw new Error('[Storyblok] defineStoryblokBlocks: "components" is required.');
     }
-    const { component: Component, fallback, suspense } = normalizeEntry(entry);
-    registry.set(type, {
-      Component,
-      needsSuspense: suspense ?? isLazyComponent(Component),
-      fallbackNode: fallback ?? defaultSuspenseFallback,
-    });
+
+    const registry = new Map<string, ResolvedEntry>();
+    for (const [type, entry] of Object.entries(config.components)) {
+      if (entry == null) {
+        // The factory defers reading `components` to first render, which
+        // closes the ordinary import-cycle hazard (see
+        // circular-import-fixtures/circular-import.test.tsx). This still
+        // fires for a genuine typo, or if something calls StoryblokBlock as
+        // a plain function during module evaluation instead of through
+        // React's render — see circular-import-fixtures/eager-call.test.tsx.
+        throw new Error(
+          `[Storyblok] defineStoryblokBlocks: components["${type}"] is undefined. Check for ` +
+            "a typo, or a circular import that hasn't finished initializing yet.",
+        );
+      }
+      if (
+        typeof entry === "object" &&
+        !("component" in entry) &&
+        ("fallback" in entry || "suspense" in entry)
+      ) {
+        throw new Error(
+          `[Storyblok] defineStoryblokBlocks: components["${type}"] is missing "component".`,
+        );
+      }
+      const { component: Component, fallback, suspense } = normalizeEntry(entry);
+      registry.set(type, {
+        Component,
+        needsSuspense: suspense ?? isLazyComponent(Component),
+        fallbackNode: fallback ?? defaultSuspenseFallback,
+      });
+    }
+
+    resolved = { registry, fallback: config.fallback };
+    return resolved;
   }
 
   function StoryblokBlock({
@@ -217,20 +235,22 @@ export function defineStoryblokBlocks<TExtraProps extends object = {}>(
       return null;
     }
 
+    const { registry, fallback } = resolveRegistry();
+
     // ── Single block path — O(1) Map.get + one branch ───────────────────────
-    const resolved = registry.get(block.component);
+    const resolvedEntry = registry.get(block.component);
     const editable = storyblokEditable(block);
 
-    if (!resolved) {
-      if (config.fallback) {
-        const FallbackComponent = config.fallback;
+    if (!resolvedEntry) {
+      if (fallback) {
+        const FallbackComponent = fallback;
         return <FallbackComponent block={block} editable={editable} {...rest} />;
       }
       console.warn(`[Storyblok] No component registered for "${block.component}".`);
       return null;
     }
 
-    const { Component, needsSuspense, fallbackNode } = resolved;
+    const { Component, needsSuspense, fallbackNode } = resolvedEntry;
 
     if (needsSuspense) {
       return (
@@ -245,20 +265,6 @@ export function defineStoryblokBlocks<TExtraProps extends object = {}>(
 
   StoryblokBlock.displayName = "StoryblokBlock";
 
-  function StoryblokBlocks({
-    blocks,
-    ...rest
-  }: { blocks: StoryblokBlockData[] } & Record<string, unknown>): ReactNode {
-    if (!blocks) {
-      console.error("[Storyblok] StoryblokBlocks: 'blocks' prop is required.");
-      return null;
-    }
-
-    return blocks.map((block) => <StoryblokBlock key={block._uid} block={block} {...rest} />);
-  }
-
-  StoryblokBlocks.displayName = "StoryblokBlocks";
-
   // Pre-compute once so every access returns the same function reference.
   // A getter would call createStoryblokRichText() on each access, producing a
   // new component type per render and causing React to unmount + remount the
@@ -270,7 +276,6 @@ export function defineStoryblokBlocks<TExtraProps extends object = {}>(
     // spreads onto fixed-type components, which is a safe superset of whatever
     // `TExtraProps` the caller supplied as a type argument to this function.
     StoryblokBlock: StoryblokBlock as StoryblokBlocksResult<TExtraProps>["StoryblokBlock"],
-    StoryblokBlocks: StoryblokBlocks as StoryblokBlocksResult<TExtraProps>["StoryblokBlocks"],
     StoryblokRichText,
   };
 }

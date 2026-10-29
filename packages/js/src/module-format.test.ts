@@ -4,6 +4,8 @@ import { resolve } from "pathe";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import { resolveCjsEntry } from "../../../tools/resolve-cjs-entry.ts";
+
 // Regression test for https://github.com/storyblok/monoblok/issues/437:
 // "type":"module" caused CJS/UMD dist files to be misidentified as ESM,
 // breaking require() callers (UMD silently returned an empty object {}).
@@ -16,7 +18,7 @@ const req = createRequire(import.meta.url);
 const pkgRoot = resolve(__dirname, "..");
 const pkg = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf8"));
 
-const cjsEntry = resolve(pkgRoot, pkg.exports["."].require.default);
+const cjsEntry = resolveCjsEntry(pkgRoot);
 const esmEntry = resolve(pkgRoot, pkg.exports["."].import.default);
 
 describe("module format: require() (CJS)", () => {

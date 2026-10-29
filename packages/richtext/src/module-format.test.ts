@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
 import { resolve } from "pathe";
 import { expect, it } from "vitest";
+
+import { resolveCjsEntry } from "../../../tools/resolve-cjs-entry.ts";
 
 // Regression test: node-mode interop in the CJS build turned the default export of
 // `@tiptap/extension-*` into the whole module, so the parsers threw
@@ -12,8 +13,7 @@ import { expect, it } from "vitest";
 
 const req = createRequire(import.meta.url);
 const pkgRoot = resolve(__dirname, "..");
-const pkg = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf8"));
-const cjsEntry = (subpath: string) => resolve(pkgRoot, pkg.exports[subpath].require);
+const cjsEntry = (subpath: string) => resolveCjsEntry(pkgRoot, subpath);
 
 it("should parse HTML when html-parser is loaded with require()", () => {
   const { htmlToStoryblokRichtext } = req(cjsEntry("./html-parser"));

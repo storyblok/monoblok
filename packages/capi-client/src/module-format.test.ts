@@ -1,9 +1,10 @@
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
 import { resolve } from "pathe";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
+
+import { resolveCjsEntry } from "../../../tools/resolve-cjs-entry.ts";
 
 // Regression test for https://github.com/storyblok/monoblok/issues/866:
 // node-mode interop in the CJS build turned the `ky` default export into an object.
@@ -18,8 +19,7 @@ afterAll(() => server.close());
 
 const req = createRequire(import.meta.url);
 const pkgRoot = resolve(__dirname, "..");
-const pkg = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf8"));
-const cjsEntry = resolve(pkgRoot, pkg.exports["."].require);
+const cjsEntry = resolveCjsEntry(pkgRoot);
 
 it("should perform requests when loaded with require()", async () => {
   const { createApiClient } = req(cjsEntry);

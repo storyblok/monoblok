@@ -5,7 +5,6 @@ import mkcert from "vite-plugin-mkcert";
 
 export default defineConfig({
   define: {
-    "import.meta.env.STORYBLOK_ACCESS_TOKEN": JSON.stringify(process.env.STORYBLOK_ACCESS_TOKEN),
     "import.meta.env.STORYBLOK_PREVIEW_TOKEN": JSON.stringify(process.env.STORYBLOK_PREVIEW_TOKEN),
   },
   plugins: [sveltekit(), mkcert()] as PluginOption[],

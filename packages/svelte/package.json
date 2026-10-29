@@ -48,21 +48,22 @@
     "playground": "pnpm run --filter ./playground/sveltekit dev",
     "playground:integration-tests": "pnpm run --filter ./playground/integration-tests dev",
     "qa:editor": "playwright test --config test/visual-editor/playwright.config.ts",
-    "test:e2e": "playwright test",
-    "playwright:run": "playwright test",
-    "playwright:open": "playwright test --ui",
+    "test:e2e": "pnpm run pw:run",
+    "pw:install": "playwright install chromium",
+    "pw:run": "pnpm run pw:install && playwright test",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "test:watch": "vp test",
     "test:ui": "vp test --ui",
-    "test:e2e:watch": "playwright test --ui",
+    "test:e2e:watch": "pnpm run pw:install && playwright test --ui",
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
     "@storyblok/live-preview": "workspace:^",
-    "@storyblok/richtext": "workspace:^"
+    "@storyblok/richtext": "workspace:^",
+    "esm-env": "^1.2.2"
   },
   "devDependencies": {
     "@playwright/test": "catalog:",

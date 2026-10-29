@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { DEV } from 'esm-env';
   import { storyblokEditable } from '@storyblok/live-preview';
   import type { Component } from 'svelte';
   import type { StoryblokBlockData, StoryblokComponentMap } from '../types';
@@ -35,6 +36,8 @@
   const editable = $derived(block ? storyblokEditable(block) : undefined);
 
   $effect(() => {
+    if (!DEV) return;
+
     if (!block) {
       console.warn(
         '[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. ' +

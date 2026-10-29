@@ -1,7 +1,19 @@
 <script lang="ts">
-  import type { StoryblokBlockProps } from '../../lib/types';
+  import type { StoryblokBlockComponentProps } from '../../lib/types';
 
-  const { block, ...rest }: StoryblokBlockProps<{}> & Record<string, unknown> = $props();
+  type Props = StoryblokBlockComponentProps<{ headline?: string }, {
+    components?: string;
+    fallback?: string;
+    name?: string;
+  }>;
+
+  const { block, editable, ...rest }: Props = $props();
 </script>
 
-<div data-testid="teaser" data-name={rest.name as string | undefined}>{block?.headline}</div>
+<div
+  data-testid="teaser"
+  data-name={rest.name}
+  data-components={rest.components}
+  data-fallback={rest.fallback}
+  {...editable}
+>{block?.headline}</div>

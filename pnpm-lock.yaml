@@ -1665,6 +1665,9 @@ importers:
       '@storyblok/richtext':
         specifier: workspace:^
         version: link:../richtext
+      esm-env:
+        specifier: ^1.2.2
+        version: 1.2.2
     devDependencies:
       '@playwright/test':
         specifier: 'catalog:'

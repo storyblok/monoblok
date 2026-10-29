@@ -29,5 +29,8 @@ test.describe("the Visual Editor live-updates the Svelte playground", () => {
     await expect(editor.block("teaser-home-1")).toContainText("QA teaser edited", {
       timeout: 30_000,
     });
+    await expect(editor.block("featured-articles-home-1")).toContainText("First Article", {
+      timeout: 30_000,
+    });
   });
 });

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 5174",
     "qa:dev": "vite dev --port 5174",
-    "qa:stop": "true",
+    "qa:stop": "true # intentionally a no-op; Vite exits with the test process",
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

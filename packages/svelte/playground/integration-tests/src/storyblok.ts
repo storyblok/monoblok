@@ -7,10 +7,7 @@ import Grid from "./components/blocks/Grid.svelte";
 import FeaturedArticles from "./components/blocks/FeaturedArticles.svelte";
 
 export const client = createApiClient({
-  accessToken:
-    import.meta.env.STORYBLOK_ACCESS_TOKEN ??
-    import.meta.env.STORYBLOK_PREVIEW_TOKEN ??
-    "OurklwV5XsDJTIE1NJaD2wtt",
+  accessToken: import.meta.env.STORYBLOK_PREVIEW_TOKEN ?? "OurklwV5XsDJTIE1NJaD2wtt",
   inlineRelations: true,
 });
 

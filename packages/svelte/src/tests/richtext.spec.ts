@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   customRendererFixture,
   integrationFixtures,
@@ -16,6 +16,7 @@ import Heading from "./richtext/Heading.svelte";
 import CustomLink from "./richtext/CustomLink.svelte";
 import CustomText from "./richtext/CustomText.svelte";
 import HeadingWithRichText from "./richtext/HeadingWithRichText.svelte";
+import Blok from "./richtext/Blok.svelte";
 
 // Helper function to clean up the HTML output for easier comparison
 export function cleanHtml(html: string) {
@@ -136,6 +137,53 @@ describe("storyblok Richtext", () => {
     });
   });
   describe("custom renderers", () => {
+    it("should render embedded bloks with a custom renderer", () => {
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [
+              {
+                type: "blok",
+                attrs: {
+                  id: "blok-1",
+                  body: [{ _uid: "1", component: "teaser", title: "Embedded teaser" }],
+                },
+              },
+            ],
+          },
+          components: { blok: Blok },
+        },
+      });
+      flushSync();
+
+      expect(target.querySelector('[data-testid="embedded-block"]')?.textContent).toBe(
+        "Embedded teaser",
+      );
+      unmount(component);
+    });
+
+    it("should warn when embedded bloks have no custom renderer", () => {
+      const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const target = document.createElement("div");
+      const component = mount(StoryblokRichText, {
+        target,
+        props: {
+          document: {
+            type: "doc",
+            content: [{ type: "blok", attrs: { id: "blok-1", body: [] } }],
+          },
+        },
+      });
+      flushSync();
+
+      expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining('"blok" nodes'));
+      unmount(component);
+      consoleWarn.mockRestore();
+    });
+
     const node_and_mark = customRendererFixture.node_and_mark;
     it(node_and_mark.title, () => {
       const target = document.createElement("div");

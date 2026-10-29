@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { StoryblokBlockProps } from '../../lib/types';
+  import type { StoryblokBlockComponentProps } from '../../lib/types';
 
-  const { block }: StoryblokBlockProps = $props();
+  const { block }: StoryblokBlockComponentProps = $props();
 </script>
 
 <div data-testid="fallback">unknown: {block?.component}</div>

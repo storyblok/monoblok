@@ -4,6 +4,7 @@
   import { StoryblokBlock } from '../../storyblok';
   import Heading from '../richtext/Heading.svelte';
   import Bold from '../richtext/Bold.svelte';
+  import Blok from '../richtext/Blok.svelte';
 
   const { block, editable }: StoryblokBlockComponentProps<{ body: any[]; richText: any }> =
     $props();
@@ -13,5 +14,8 @@
   {#each block.body as bodyBlock (bodyBlock._uid)}
     <StoryblokBlock block={bodyBlock} />
   {/each}
-  <StoryblokRichText document={block.richText} components={{ heading: Heading, bold: Bold }} />
+  <StoryblokRichText
+    document={block.richText}
+    components={{ heading: Heading, bold: Bold, blok: Blok }}
+  />
 </div>

@@ -45,22 +45,23 @@ longer has a default preset.
 
 ## Block properties
 
-`schema push` resets most block properties to their default when a block omits them. It treats four
-properties differently: `image`, `preview_tmpl`, `content_type_asset_preview`, and `metadata`. A
-block controls each of them as follows:
+`schema push` resets most block properties to their default when a block omits them. It treats three
+properties differently: `image`, `preview_tmpl`, and `content_type_asset_preview`. A block controls
+each of them as follows:
 
 - A property set to a value overwrites the value in the space.
 - A property set to `null` clears the value in the space.
 - A property missing from the block leaves the value in the space unchanged, so values set in the
   Storyblok UI survive a push.
 
-[`schema rollback`](/docs/tooling/cli/schema-rollback) restores these four properties only for
+[`schema rollback`](/docs/tooling/cli/schema-rollback) restores these three properties only for
 blocks that set them.
 
 The space removes some HTML tags from `preview_tmpl`, such as `<h1>` and `<img>`. A template that
 uses them differs from the stored value, so every push updates it again.
 
-`schema push` ignores `preset_id`. Presets are specific to a space.
+`schema push` ignores `preset_id`, because presets are specific to a space. It also ignores
+`metadata`, which apps such as the Figma app use to link a block to their own data.
 
 <Aside type="caution">
   `schema init` writes `image` as is. A block pushed to another space still points to the asset in the original space.

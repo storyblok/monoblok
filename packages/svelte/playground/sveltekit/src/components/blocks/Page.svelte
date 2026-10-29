@@ -1,9 +1,9 @@
 <script lang="ts">
   import { StoryblokRichText } from '@storyblok/svelte';
   import type { StoryblokBlockComponentProps } from '@storyblok/svelte';
-  import { StoryblokBlock } from './storyblok';
-  import Heading from './richtext/Heading.svelte';
-  import Bold from './richtext/Bold.svelte';
+  import { StoryblokBlock } from '../../storyblok';
+  import Heading from '../richtext/Heading.svelte';
+  import Bold from '../richtext/Bold.svelte';
 
   const { block, editable }: StoryblokBlockComponentProps<{ body: any[]; richText: any }> =
     $props();

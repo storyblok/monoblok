@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { StoryblokBlockComponentProps } from '@storyblok/svelte';
-  import { StoryblokBlock } from './storyblok';
+  import { StoryblokBlock } from '../../storyblok';
 
   const { block, editable }: StoryblokBlockComponentProps<{ columns: any[] }> = $props();
 </script>

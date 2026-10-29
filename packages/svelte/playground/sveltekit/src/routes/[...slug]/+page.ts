@@ -1,5 +1,5 @@
 import type { PageLoad } from "./$types";
-import { client } from "$lib/storyblok";
+import { client } from "../../storyblok";
 
 export const load: PageLoad = async ({ params }) => {
   const slug = params.slug && params.slug !== "" ? params.slug : "home";

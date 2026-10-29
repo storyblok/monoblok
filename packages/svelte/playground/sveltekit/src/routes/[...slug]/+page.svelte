@@ -2,7 +2,7 @@
   import { onStoryblokEditorEvent } from '@storyblok/svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
-  import { StoryblokBlock } from '$lib/storyblok';
+  import { StoryblokBlock } from '../../storyblok';
 
   let { data = $bindable() }: { data: PageData } = $props();
   let story = $state(data.story);

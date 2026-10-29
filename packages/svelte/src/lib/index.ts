@@ -17,8 +17,6 @@ export {
 } from "@storyblok/live-preview";
 export type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 
-export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
-
 export type {
   StoryblokRichTextElement,
   StoryblokRichTextImageOptions,
@@ -31,32 +29,4 @@ export type {
   StoryblokRichTextRenderContext,
   StoryblokRichTextRenderSpec,
   StoryblokRichTextTextNode,
-} from "@storyblok/richtext";
-
-// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
-export type {
-  RenderSpec,
-  SbRichTextDoc,
-  SbRichTextElement,
-  SbRichTextImageOptions,
-  SbRichTextInput,
-  SbRichTextMark,
-  SbRichTextNode,
-  SbRichTextProps,
-  SbRichTextRenderContext,
-  SbRichTextTextNode,
-} from "@storyblok/richtext";
-
-// Re-exporting helpers and types from @storyblok/richtext for StoryblokRichText.svelte component.
-export {
-  attrsToHtmlString,
-  getInnerMarks,
-  getStaticChildren,
-  groupLinkNodes,
-  hasContent,
-  isSelfClosing,
-  normalizeNodes,
-  processAttrs,
-  resolveTag,
-  styleToString,
 } from "@storyblok/richtext";

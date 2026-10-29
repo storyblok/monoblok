@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Component } from 'svelte';
-  import type { StoryblokBlockComponentProps, StoryblokBlockData, StoryblokComponentMap } from '../types';
+  import type { StoryblokBlockData, StoryblokComponentMap } from '../types';
 
   type Props = {
     /** The block to render. */
@@ -14,7 +14,7 @@
      */
     __storyblokComponents: StoryblokComponentMap;
     /** Rendered for block types that are not present in `__storyblokComponents`. */
-    __storyblokFallback?: Component<StoryblokBlockComponentProps<any, any>>;
+    __storyblokFallback?: Component<any>;
   } & Record<string, unknown>;
 
   const {

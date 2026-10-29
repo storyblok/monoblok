@@ -15,10 +15,7 @@ export type StoryblokBlockData<T extends Record<string, any> = Record<string, an
 /**
  * Map of Storyblok technical block names to the components rendering them.
  */
-export type StoryblokComponentMap = Record<
-  string,
-  Component<StoryblokBlockComponentProps<any, any>>
->;
+export type StoryblokComponentMap = Record<string, Component<any>>;
 
 /**
  * Props received by a component registered in `defineStoryblokBlocks`.
@@ -52,7 +49,7 @@ export interface DefineStoryblokBlocksOptions {
    * Rendered for block types that are not present in `components`. Receives
    * the same props as a registered component.
    */
-  fallback?: Component<StoryblokBlockComponentProps<any, any>>;
+  fallback?: Component<any>;
 }
 
 /** Return value of `defineStoryblokBlocks()`. */

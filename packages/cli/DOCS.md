@@ -16,8 +16,10 @@ space:
 
 The local file controls each property as follows:
 
-- A property set to `null` clears the value in the target space. `internal_tag_ids: null` removes
-  all tags, the same as `[]`.
+- Setting one of these properties to `null` clears its value in the target space: `display_name`,
+  `description`, `preview_tmpl`, `image`, `preview_field`, `preset_id`, `component_group_uuid`,
+  `color`, `icon`, `content_type_asset_preview`, `internal_tag_ids`, and `metadata`.
+  `internal_tag_ids: null` removes all tags, the same as `[]`.
 - A property missing from the local file leaves the value in the target space unchanged.
 - `schema: null` leaves the schema in the target space unchanged.
 
@@ -36,5 +38,5 @@ If the local `preset_id` doesn’t match one of the component’s presets in the
 leaves the default preset in the target space unchanged and logs a warning.
 
 For each component that pushes successfully, the CLI deletes presets in the target space that aren’t
-in the local files. If a deleted preset was the default preset, the CLI clears the default preset in
-the target space.
+in the local files. If a deleted preset was the default preset, the component in the target space no
+longer has a default preset.

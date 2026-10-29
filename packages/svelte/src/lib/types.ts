@@ -1,3 +1,4 @@
+import type { storyblokEditable } from "@storyblok/live-preview";
 import type { Component } from "svelte";
 
 /**
@@ -11,6 +12,12 @@ export type StoryblokBlockData<T extends Record<string, any> = Record<string, an
   component: string;
   _editable?: string;
 };
+
+/**
+ * Editable attributes for the Visual Editor, as returned by
+ * `storyblokEditable(block)`. Spread onto the component's root element.
+ */
+export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
 
 /**
  * Map of Storyblok technical block names to the components rendering them.
@@ -29,6 +36,8 @@ export type StoryblokBlockComponentProps<
 > = {
   /** The block content being rendered. */
   block: StoryblokBlockData<T>;
+  /** Editable attributes injected by `StoryblokBlock`. Spread onto the component's root element. */
+  editable?: StoryblokEditableProps;
 } & TExtraProps;
 
 /** Props accepted by the `StoryblokBlock` component returned from `defineStoryblokBlocks`. */

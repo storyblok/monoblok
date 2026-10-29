@@ -33,7 +33,7 @@
 - Connect frontend components with the Visual Editor via StoryblokBridge
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
 - Svelte-specific components: `defineStoryblokBlocks` for scoped block-component registries
-- Svelte actions: `storyblokEditable` for Visual Editor integration
+- Editable attributes injected on every block's `editable` prop for Visual Editor integration
 - Svelte 5 compatibility with modern syntax and runes
 - Built-in TypeScript support with comprehensive type definitions
 - SSR/SSG compatibility for SvelteKit applications

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { storyblokEditable } from '@storyblok/live-preview';
   import type { Component } from 'svelte';
   import type { StoryblokBlockData, StoryblokComponentMap } from '../types';
 
@@ -31,6 +32,8 @@
     return registered ?? fallback;
   });
 
+  const editable = $derived(block ? storyblokEditable(block) : undefined);
+
   $effect(() => {
     if (!block) {
       console.warn(
@@ -51,5 +54,5 @@
 </script>
 
 {#if Resolved && block}
-  <Resolved {block} {...rest} />
+  <Resolved {block} {editable} {...rest} />
 {/if}

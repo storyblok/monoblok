@@ -344,6 +344,9 @@ describe("push", () => {
       canUpsertPreset() {
         vi.mocked(upsertComponentPreset).mockResolvedValue(createdPreset);
       },
+      failsToUpsertPreset() {
+        vi.mocked(upsertComponentPreset).mockRejectedValue(new Error("Upsert failed"));
+      },
       canSetDefaultPreset() {
         vi.mocked(updateComponent).mockResolvedValue({ ...targetComponent, preset_id: 900 });
       },
@@ -398,6 +401,22 @@ describe("push", () => {
         undefined,
       );
       expect(vi.mocked(updateComponent)).not.toHaveBeenCalled();
+      expect(ui.warn).toHaveBeenCalledWith(
+        "Default preset ID 20 of component test-component is not one of its presets in local data. Keeping the target's default preset.",
+      );
+    });
+
+    it("should warn and leave the default preset unset when it fails to push", async () => {
+      preconditions.hasLocalComponentWithDefaultPreset(10);
+      preconditions.canUpsertComponent();
+      preconditions.failsToUpsertPreset();
+
+      await push();
+
+      expect(vi.mocked(updateComponent)).not.toHaveBeenCalled();
+      expect(ui.warn).toHaveBeenCalledWith(
+        'Default preset "default" of component test-component failed to push. The default preset was not set.',
+      );
     });
 
     it("should not set the default preset of a component that failed to push", async () => {

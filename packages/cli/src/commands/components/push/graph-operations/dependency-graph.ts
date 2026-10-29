@@ -657,9 +657,16 @@ export class ComponentNode extends GraphNode<Component> {
   /** Default preset that did not exist in the target when references were resolved. */
   private pendingPresetNodeId?: string;
   private upserted = false;
+  /** Shown in the terminal once processing ends, so they don't break the progress bars. */
+  readonly warnings: string[] = [];
 
   constructor(id: string, data: Component, targetComponent?: Component) {
     super(id, "component", data.name, data, targetComponent);
+  }
+
+  private warn(message: string): void {
+    getLogger().warn(message);
+    this.warnings.push(message);
   }
 
   async linkPendingPreset(space: string, graph: DependencyGraph): Promise<void> {
@@ -673,8 +680,8 @@ export class ComponentNode extends GraphNode<Component> {
       return;
     }
     if (typeof presetId !== "number") {
-      getLogger().warn(
-        `Default preset "${presetNode?.name}" of component ${this.name} failed to push. Keeping the component's current default preset.`,
+      this.warn(
+        `Default preset "${presetNode?.name}" of component ${this.name} failed to push. The default preset was not set.`,
       );
       return;
     }
@@ -729,8 +736,8 @@ export class ComponentNode extends GraphNode<Component> {
       const presetNode = graph.nodes.get(presetNodeId);
 
       if (!(presetNode instanceof PresetNode) || !this.ownsPreset(presetNode)) {
-        // The MAPI stores any preset other than the component's own as `null`.
-        getLogger().warn(
+        // The MAPI returns `preset_id: null` for any preset other than the component's own.
+        this.warn(
           `Default preset ID ${this.sourceData.preset_id} of component ${this.name} is not one of its presets in local data. Keeping the target's default preset.`,
         );
         updatedData.preset_id = undefined;

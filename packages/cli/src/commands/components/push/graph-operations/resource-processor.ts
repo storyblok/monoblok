@@ -90,6 +90,12 @@ export async function processAllResources(
     ui.stopAllProgressBars();
   }
 
+  for (const node of graph.nodes.values()) {
+    if (node instanceof ComponentNode) {
+      node.warnings.forEach((warning) => ui.warn(warning));
+    }
+  }
+
   return results;
 }
 

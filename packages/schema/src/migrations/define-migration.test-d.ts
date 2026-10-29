@@ -409,7 +409,7 @@ describe("value typing of a path", () => {
       NonNullable<ValueOfPath<ProbeFieldTypesSchema, "probe_hero.accent_color">>
     >().toEqualTypeOf<{
       color: string;
-      plugin: string;
+      plugin: "official-colorpicker";
       _uid?: string;
     }>();
   });

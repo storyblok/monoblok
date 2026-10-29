@@ -1666,9 +1666,9 @@ importers:
         specifier: workspace:^
         version: link:../richtext
     devDependencies:
-      '@cypress/svelte':
-        specifier: ^3.0.0
-        version: 3.0.0(cypress@15.21.0)(svelte@5.57.0(@typescript-eslint/types@8.56.1))
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.62.1
       '@rollup/plugin-typescript':
         specifier: ^12.1.2
         version: 12.3.0(rollup@4.60.2)(tslib@2.8.1)(typescript@6.0.3)
@@ -1687,9 +1687,6 @@ importers:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.3
         version: 5.1.1(svelte@5.57.0(@typescript-eslint/types@8.56.1))(vite@6.4.3(@types/node@25.6.0)(jiti@2.7.0)(less@4.6.4)(lightningcss@1.33.0)(sass@1.99.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.9.0))
-      cypress:
-        specifier: ^15.21.0
-        version: 15.21.0
       jsdom:
         specifier: 'catalog:'
         version: 27.4.0
@@ -1702,9 +1699,6 @@ importers:
       publint:
         specifier: 'catalog:'
         version: 0.3.22
-      start-server-and-test:
-        specifier: ^2.0.11
-        version: 2.1.5
       svelte:
         specifier: ^5.55.7
         version: 5.57.0(@typescript-eslint/types@8.56.1)
@@ -3314,12 +3308,6 @@ packages:
   '@cypress/request@4.0.1':
     resolution: {integrity: sha512-y20e+e6dFYkOUUJLVUZTsJRuTiXZaUQ32WD+R/ux/HBybbTx4ge7cNINcua0pU8+SNkKuRbOF12mBmzuzM8n5w==}
     engines: {node: '>= 14.17.0'}
-
-  '@cypress/svelte@3.0.0':
-    resolution: {integrity: sha512-IWzO4emiq4+iCk5mV27EWcswxvrYzK/8JfY279Rji9/iqOb8ud/ZgJdn848th+UmeNfBBVcgLVTkLf25Uk/CLg==}
-    peerDependencies:
-      cypress: ^15.21.0
-      svelte: '>=5.0.0'
 
   '@cypress/vite-dev-server@7.3.4':
     resolution: {integrity: sha512-a2W3H85OpNo1/20LGsCwdehRf37hNdGl5a9+ZAYomxubFDgL8raRCoAArsJDAW0LhTeSf3xQ38RMAMLHN8ObTQ==}
@@ -17819,11 +17807,6 @@ snapshots:
       safe-buffer: 5.2.1
       tough-cookie: 5.1.2
       tunnel-agent: 0.6.0
-
-  '@cypress/svelte@3.0.0(cypress@15.21.0)(svelte@5.57.0(@typescript-eslint/types@8.56.1))':
-    dependencies:
-      cypress: 15.21.0
-      svelte: 5.57.0(@typescript-eslint/types@8.56.1)
 
   '@cypress/vite-dev-server@7.3.4(cypress@15.21.0)':
     dependencies:

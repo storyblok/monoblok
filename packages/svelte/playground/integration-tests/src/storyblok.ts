@@ -8,9 +8,10 @@ import FeaturedArticles from "./components/blocks/FeaturedArticles.svelte";
 
 export const client = createApiClient({
   accessToken:
-    process.env.STORYBLOK_ACCESS_TOKEN ??
-    process.env.STORYBLOK_PREVIEW_TOKEN ??
+    import.meta.env.STORYBLOK_ACCESS_TOKEN ??
+    import.meta.env.STORYBLOK_PREVIEW_TOKEN ??
     "OurklwV5XsDJTIE1NJaD2wtt",
+  inlineRelations: true,
 });
 
 export const { StoryblokBlock } = defineStoryblokBlocks(() => ({

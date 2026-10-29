@@ -12,7 +12,6 @@ import {
   formatValue,
   INDENT,
   isRecord,
-  omitEmptyMetadata,
   quoteString,
   RawCode,
   stripKeys,
@@ -857,11 +856,9 @@ export function generateComponentFile(
   const resolvedVarName = varName ?? componentVarName(component.name);
   lines.push(`export const ${resolvedVarName} = defineBlock({`);
 
-  const clean = omitEmptyMetadata(
-    omitResetMetadata(
-      omitEmptyArrays(
-        stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
-      ),
+  const clean = omitResetMetadata(
+    omitEmptyArrays(
+      stripKeys(component as unknown as Record<string, unknown>, COMPONENT_STRIP_KEYS),
     ),
   );
 
@@ -902,9 +899,7 @@ export function generateComponentFile(
   }
 
   orderedKeys.forEach((key, i) => {
-    // A `null` inside `metadata` is user data, not an unset option.
-    const keepNullEntries = key === "metadata";
-    lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1, { keepNullEntries })},`);
+    lines.push(`${INDENT}${key}: ${formatValue(clean[key], 1)},`);
     // The folder ref is emitted right after the fixed name/display_name/is_root/
     // is_nestable block, regardless of which of those keys are actually present.
     if (folderRef && i === prefixKeyCount - 1) {

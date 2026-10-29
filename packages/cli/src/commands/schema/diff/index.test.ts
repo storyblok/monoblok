@@ -247,7 +247,11 @@ describe("schema diff command", () => {
     };
     vi.mocked(loadSchema).mockResolvedValue(local);
     spaceWith("222", [
-      { ...block, image: "https://a.storyblok.com/f/1/hero.png", metadata: {} } as MockComponent,
+      {
+        ...block,
+        image: "https://a.storyblok.com/f/1/hero.png",
+        metadata: [{ app_slug: "figma_to_storyblok", frame_id: "1:2" }],
+      } as MockComponent,
     ]);
 
     await schemaCommand.parseAsync([

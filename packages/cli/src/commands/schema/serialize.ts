@@ -3,7 +3,6 @@ import {
   DATASOURCE_DIMENSION_STRIP_KEYS,
   DATASOURCE_STRIP_KEYS,
   formatValue,
-  omitEmptyMetadata,
   RESTRICTION_LIST_KEYS,
   stripKeys,
 } from "./utils";
@@ -73,7 +72,7 @@ export function cleanComponent(
   const stripSet = options.includeGroupUuid
     ? new Set([...COMPONENT_STRIP_KEYS].filter((key) => key !== "component_group_uuid"))
     : COMPONENT_STRIP_KEYS;
-  const clean = omitEmptyMetadata(stripKeys(component, stripSet));
+  const clean = stripKeys(component, stripSet);
 
   if (clean.schema && typeof clean.schema === "object") {
     clean.schema = sortSchemaByPos(clean.schema as Record<string, Record<string, unknown>>);

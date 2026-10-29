@@ -1,11 +1,10 @@
 import { isAbsolute, relative } from "pathe";
 
 import type { Component } from "../../types";
-import { isRecord } from "../../utils/object";
 
 // Re-exported so the schema command tree keeps a single util import; the shared
 // definition lives in `src/utils/object.ts`.
-export { isRecord };
+export { isRecord } from "../../utils/object";
 
 /** Fields to strip from Component before serialization (read-only / API-assigned). */
 export const COMPONENT_STRIP_KEYS = new Set([
@@ -16,6 +15,7 @@ export const COMPONENT_STRIP_KEYS = new Set([
   "preset_id", // Space-specific; schema push does not manage presets
   "all_presets", // Computed list of presets, managed via /presets API
   "internal_tags_list", // Read-only expanded form of internal_tag_ids ({id, name} objects)
+  "metadata", // Owned by apps (e.g. Figma frame links); schema push leaves it untouched
   "component_group_uuid", // UI grouping; stripped by default — kept for diffing only when a block opts into the group escape hatch
 ]);
 
@@ -27,19 +27,9 @@ export const COMPONENT_OPTIONAL_KEYS = [
   "image",
   "preview_tmpl",
   "content_type_asset_preview",
-  "metadata",
 ] as const satisfies readonly (keyof Component)[];
 
 export type ComponentOptionalKey = (typeof COMPONENT_OPTIONAL_KEYS)[number];
-
-/** The API returns `metadata: {}` for a block without metadata. */
-export function omitEmptyMetadata<T extends Record<string, unknown>>(component: T): T {
-  const copy = { ...component };
-  if (isRecord(copy.metadata) && Object.keys(copy.metadata).length === 0) {
-    delete copy.metadata;
-  }
-  return copy;
-}
 
 /**
  * Every wire field key holding a restriction list. An empty list means what an
@@ -156,11 +146,7 @@ function formatKey(key: string): string {
  * All object properties are placed on separate lines.
  * Object keys are sorted alphabetically for stable output.
  */
-export function formatValue(
-  value: unknown,
-  depth: number,
-  options: { keepNullEntries?: boolean } = {},
-): string {
+export function formatValue(value: unknown, depth: number): string {
   const indent = INDENT.repeat(depth);
   const innerIndent = INDENT.repeat(depth + 1);
 
@@ -180,18 +166,18 @@ export function formatValue(
     if (value.length === 0) {
       return "[]";
     }
-    const items = value.map((item) => `${innerIndent}${formatValue(item, depth + 1, options)},`);
+    const items = value.map((item) => `${innerIndent}${formatValue(item, depth + 1)},`);
     return `[\n${items.join("\n")}\n${indent}]`;
   }
   if (typeof value === "object") {
     const entries = Object.entries(value)
-      .filter(([, v]) => v !== undefined && (options.keepNullEntries || v !== null))
+      .filter(([, v]) => v !== undefined && v !== null)
       .sort(([a], [b]) => a.localeCompare(b));
     if (entries.length === 0) {
       return "{}";
     }
     const props = entries.map(
-      ([key, val]) => `${innerIndent}${formatKey(key)}: ${formatValue(val, depth + 1, options)},`,
+      ([key, val]) => `${innerIndent}${formatKey(key)}: ${formatValue(val, depth + 1)},`,
     );
     return `{\n${props.join("\n")}\n${indent}}`;
   }

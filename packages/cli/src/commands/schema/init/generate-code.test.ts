@@ -25,7 +25,10 @@ function evaluateBlockFile(code: string): unknown {
   });
   expect(diagnostics).toEqual([]);
   const exports: Record<string, unknown> = {};
-  const schemaModule = { defineBlock: (block: unknown) => block };
+  const schemaModule = {
+    defineBlock: (block: unknown) => block,
+    defineField: (name: string, field: object) => ({ name, ...field }),
+  };
   new Function("require", "exports", outputText)(() => schemaModule, exports);
   return Object.values(exports)[0];
 }
@@ -923,30 +926,25 @@ describe("generateComponentFile", () => {
     const result = generateComponentFile(component as any);
 
     expect(result).toContain("internal_tag_ids");
-    expect(result).toContain("metadata");
+    expect(result).not.toContain("metadata");
     expect(result).toContain("name: 'hero',");
   });
 
-  it("should round-trip metadata keys that are not identifiers", () => {
-    const metadata = {
+  it("should round-trip field option keys that are not identifiers", () => {
+    const custom = {
       "weird key": "x",
       "a: 1, injected: (() => 1)(), b": 1,
       "it's": { "nested}\nkey": true },
     };
-    const component = { id: 1, name: "hero", metadata, schema: {} };
+    const component = {
+      id: 1,
+      name: "hero",
+      schema: { title: { type: "text", pos: 0, custom } },
+    };
 
     const block = evaluateBlockFile(generateComponentFile(component as any));
 
-    expect(block).toMatchObject({ metadata });
-  });
-
-  it("should keep metadata entries whose value is null", () => {
-    const metadata = { keep: "x", cleared: null };
-    const component = { id: 1, name: "hero", metadata, schema: {} };
-
-    const block = evaluateBlockFile(generateComponentFile(component as any));
-
-    expect(block).toMatchObject({ metadata });
+    expect(block).toMatchObject({ fields: [{ custom }] });
   });
 
   it("should generate camelCase variable name from snake_case component name", () => {

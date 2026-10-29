@@ -99,7 +99,6 @@ describe("buildRollbackOps", () => {
 
       expect(ops[0]?.payload).toMatchObject({ image: "https://a.storyblok.com/f/1/old.png" });
       expect(ops[0]?.payload).not.toHaveProperty("preview_tmpl");
-      expect(ops[0]?.payload).not.toHaveProperty("metadata");
     });
 
     it("should not preview optional properties the pushed block left untouched", () => {

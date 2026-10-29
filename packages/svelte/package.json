@@ -46,6 +46,7 @@
     "test": "pnpm run test:unit && pnpm run test:e2e",
     "test:unit": "vp test run",
     "playground": "pnpm run --filter ./playground/sveltekit dev",
+    "playground:integration-tests": "pnpm run --filter ./playground/integration-tests dev",
     "test:e2e": "playwright test",
     "playwright:run": "playwright test",
     "playwright:open": "playwright test --ui",

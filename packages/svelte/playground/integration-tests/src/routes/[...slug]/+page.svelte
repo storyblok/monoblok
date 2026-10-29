@@ -6,9 +6,7 @@
 
   let { data = $bindable() }: { data: PageData } = $props();
   let story = $state(data.story);
-  let loaded = $state(false);
   onMount(() => {
-    loaded = true;
     let cleanup: (() => void) | undefined;
     if (story) {
       onStoryblokEditorEvent((newStory) => (story = newStory as typeof story), {
@@ -23,9 +21,6 @@
 <main>
   {#key story}
     <h1>Welcome to StoryblokKit</h1>
-
-    {#if loaded}
-      <StoryblokBlock block={story.content} />
-    {/if}
+    <StoryblokBlock block={story.content} />
   {/key}
 </main>

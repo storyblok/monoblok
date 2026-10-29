@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 5174",
+    "qa:dev": "vite dev --port 5174",
+    "qa:stop": "true",
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -18,11 +20,11 @@
     "@sveltejs/adapter-auto": "^5.0.0",
     "@sveltejs/kit": "^2.70.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
-    "@vitejs/plugin-basic-ssl": "^2.0.0",
     "svelte": "^5.55.7",
     "svelte-check": "^4.1.5",
     "typescript": "catalog:",
-    "vite": "^6.4.3"
+    "vite": "^6.4.3",
+    "vite-plugin-mkcert": "^1.17.10"
   },
   "nx": {
     "projectType": "application"

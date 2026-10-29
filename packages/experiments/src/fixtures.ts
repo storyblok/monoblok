@@ -26,7 +26,7 @@ export const homepageExperiment: Experiment = {
   name: "homepage_hero",
   display_name: "Homepage Hero",
   story_ids: [1, 2],
-  stories: [{ id: 1, full_slug: "home" }],
+  stories: [{ id: 1, uuid: "uuid-home", full_slug: "home" }],
   variants: [
     {
       name: "control",
@@ -35,7 +35,14 @@ export const homepageExperiment: Experiment = {
       weight: 50,
       is_control: true,
       story_mappings: [
-        { original_story_id: 1, original_slug: "home", variant_story_id: 1, variant_slug: "home" },
+        {
+          original_story_id: 1,
+          original_uuid: "uuid-home",
+          original_slug: "home",
+          variant_story_id: 1,
+          variant_uuid: "uuid-home",
+          variant_slug: "home",
+        },
       ],
     },
     {
@@ -47,8 +54,10 @@ export const homepageExperiment: Experiment = {
       story_mappings: [
         {
           original_story_id: 1,
+          original_uuid: "uuid-home",
           original_slug: "home",
           variant_story_id: 2,
+          variant_uuid: "uuid-home-b",
           variant_slug: "home-b",
         },
       ],
@@ -66,7 +75,7 @@ export const pricingExperiment: Experiment = {
   name: "pricing_table",
   display_name: "Pricing Table",
   story_ids: [3, 4],
-  stories: [{ id: 3, full_slug: "pricing" }],
+  stories: [{ id: 3, uuid: "uuid-pricing", full_slug: "pricing" }],
   variants: [
     {
       name: "control",
@@ -77,8 +86,10 @@ export const pricingExperiment: Experiment = {
       story_mappings: [
         {
           original_story_id: 3,
+          original_uuid: "uuid-pricing",
           original_slug: "pricing",
           variant_story_id: 3,
+          variant_uuid: "uuid-pricing",
           variant_slug: "pricing",
         },
       ],
@@ -92,8 +103,10 @@ export const pricingExperiment: Experiment = {
       story_mappings: [
         {
           original_story_id: 3,
+          original_uuid: "uuid-pricing",
           original_slug: "pricing",
           variant_story_id: 4,
+          variant_uuid: "uuid-pricing-compact",
           variant_slug: "pricing-compact",
         },
       ],
@@ -108,15 +121,17 @@ export const pricingExperiment: Experiment = {
  */
 export const nestedHomepageExperiment: Experiment = {
   ...homepageExperiment,
-  stories: [{ id: 1, full_slug: "campaigns/summer/home" }],
+  stories: [{ id: 1, uuid: "uuid-home", full_slug: "campaigns/summer/home" }],
   variants: [
     {
       ...homepageExperiment.variants[0],
       story_mappings: [
         {
           original_story_id: 1,
+          original_uuid: "uuid-home",
           original_slug: "home",
           variant_story_id: 1,
+          variant_uuid: "uuid-home",
           variant_slug: "campaigns/summer/home",
         },
       ],
@@ -126,9 +141,50 @@ export const nestedHomepageExperiment: Experiment = {
       story_mappings: [
         {
           original_story_id: 1,
+          original_uuid: "uuid-home",
           original_slug: "home",
           variant_story_id: 2,
+          variant_uuid: "uuid-home-b",
           variant_slug: "campaigns/summer/home-b",
+        },
+      ],
+    },
+  ],
+};
+
+/**
+ * An experiment on a call-to-action story that pages pull in through
+ * `resolve_relations` rather than render by slug.
+ */
+export const ctaExperiment: Experiment = {
+  id: 789,
+  name: "cta_copy",
+  display_name: "CTA Copy",
+  story_ids: [5, 6],
+  stories: [{ id: 5, uuid: "uuid-cta", full_slug: "blocks/cta" }],
+  variants: [
+    {
+      name: "control",
+      display_name: "Control",
+      public_id: "var_cta_control",
+      weight: 50,
+      is_control: true,
+      story_mappings: [],
+    },
+    {
+      name: "urgent",
+      display_name: "Urgent",
+      public_id: "var_cta_urgent",
+      weight: 50,
+      is_control: false,
+      story_mappings: [
+        {
+          original_story_id: 5,
+          original_uuid: "uuid-cta",
+          original_slug: "cta",
+          variant_story_id: 6,
+          variant_uuid: "uuid-cta-urgent",
+          variant_slug: "blocks/cta-cta_copy-urgent",
         },
       ],
     },

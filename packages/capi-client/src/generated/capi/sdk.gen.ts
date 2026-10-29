@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, GetTaxonomyData, GetTaxonomyErrors, GetTaxonomyResponses, GetTaxonomyTermData, GetTaxonomyTermErrors, GetTaxonomyTermResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses, ListTaxonomiesData, ListTaxonomiesErrors, ListTaxonomiesResponses } from './types.gen';
+import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, GetTaxonomyData, GetTaxonomyErrors, GetTaxonomyResponses, GetTaxonomyTermData, GetTaxonomyTermErrors, GetTaxonomyTermResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses, ListTaxonomiesData, ListTaxonomiesErrors, ListTaxonomiesResponses, SearchCdnV2StrataIndexData, SearchCdnV2StrataIndexErrors, SearchCdnV2StrataIndexResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -81,7 +81,7 @@ export const getDatasourceById = <ThrowOnError extends boolean = false>(options:
 /**
  * List running experiments
  *
- * Retrieve all running experiments with their variants and associated stories (IDs and full slugs). Only experiments with status 'running' are returned. No pagination — the result set is expected to be small per space.
+ * Retrieve all running experiments with their variants and associated stories (IDs, UUIDs and full slugs). Only experiments with status 'running' are returned. No pagination — the result set is expected to be small per space.
  */
 export const listCdnExperimentsV2 = <ThrowOnError extends boolean = false>(options?: Options<ListCdnExperimentsV2Data, ThrowOnError>): RequestResult<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError> => (options?.client ?? client).get<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError>({
     security: [{
@@ -165,6 +165,21 @@ export const listStories = <ThrowOnError extends boolean = false>(options?: Opti
             type: 'apiKey'
         }],
     url: '/v2/cdn/stories',
+    ...options
+});
+
+/**
+ * Strata delivery search: semantic search over the Strata index
+ *
+ * Search the space's content by meaning. The space is resolved from the delivery token. A public token can search published content only. A preview token can also request draft content. A token limited to specific stories or folders searches only within them. Responses are not cached. The hit envelope shape (excerpt/score/story) is not yet stable and may change.
+ */
+export const searchCdnV2StrataIndex = <ThrowOnError extends boolean = false>(options?: Options<SearchCdnV2StrataIndexData, ThrowOnError>): RequestResult<SearchCdnV2StrataIndexResponses, SearchCdnV2StrataIndexErrors, ThrowOnError> => (options?.client ?? client).get<SearchCdnV2StrataIndexResponses, SearchCdnV2StrataIndexErrors, ThrowOnError>({
+    security: [{
+            in: 'query',
+            name: 'token',
+            type: 'apiKey'
+        }],
+    url: '/v2/cdn/strata/search',
     ...options
 });
 

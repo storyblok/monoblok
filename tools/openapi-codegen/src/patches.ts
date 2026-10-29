@@ -155,6 +155,14 @@ function patchMapiInput(spec: unknown): void {
   requireWebhookCreateFields(spec);
 }
 
+/**
+ * Whole-spec input patches per spec. Exported on their own so the fetch-time
+ * alias validation sees the same schemas the generator does.
+ */
+export const SPEC_INPUT_PATCHES: Partial<Record<SpecSource, (spec: unknown) => void>> = {
+  mapi: patchMapiInput,
+};
+
 const MAPI_PARSER: Parser = {
   patch: {
     input: patchMapiInput,

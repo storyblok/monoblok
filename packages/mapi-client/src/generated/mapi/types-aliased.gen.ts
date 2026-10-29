@@ -231,6 +231,10 @@ export type ComponentCreate = {
 
 export type ComponentUpdate = {
     /**
+     * The `updated_at` value of the component when the client loaded it. Compared at millisecond precision. Required when `enforce_version_validation` is true, otherwise ignored.
+     */
+    updated_at?: string;
+    /**
      * Name of the component
      */
     name?: string;
@@ -1070,6 +1074,10 @@ export type Space = {
      */
     blocked_at?: string | null;
     /**
+     * Why the space is blocked. If this list is not empty, the space is blocked. Some blocks do not set blocked_at (unpaid subscription before escalation, unpaid boost, UI and organization blocks), so do not use blocked_at alone. A block written outside the suspension flow (admin, legacy data) can carry no cause, so an empty list with blocked_at or unpaid_at set means the cause is unknown. Causes from one event can stack: an unpaid subscription invoice records subscription_unpaid first and adds payment_overdue on escalation. Group causes by kind instead of counting them. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+     */
+    suspension_causes: Array<SpaceSuspensionCause>;
+    /**
      * Whether the space is in development mode
      */
     development_mode: boolean;
@@ -1360,6 +1368,10 @@ export type SpaceUpdate = {
         code: string;
         name: string;
         ai_translation_code?: string | null;
+        /**
+         * Code of another language of the space whose values this language shows when it has no own value. The fallback language can't have a fallback itself.
+         */
+        fallback_lang?: string | null;
     }>;
     /**
      * Custom routes configuration
@@ -1376,7 +1388,9 @@ export type SpaceUpdate = {
         location: string;
     }>;
     /**
-     * Web crawling configuration
+     * Web crawling configuration. This field is deprecated and will be removed in a future release.
+     *
+     * @deprecated
      */
     crawl_config?: {
         base_url?: string;
@@ -1777,6 +1791,18 @@ export type Organization = {
      * Organization status
      */
     status?: string | null;
+    /**
+     * Yearly AI credits limit of the org
+     */
+    yearly_ai_credits_limit: number;
+    /**
+     * AI credits used by all spaces of the org within `usage_period`
+     */
+    yearly_ai_credits_used: number;
+    /**
+     * The period that the yearly limits and usage refer to
+     */
+    usage_period?: UsagePeriod;
     [key: string]: unknown;
 };
 
@@ -2583,6 +2609,11 @@ export type Dimension = {
 };
 
 /**
+ * A recorded reason for a suspension. Billing: subscription_unpaid, payment_overdue, invoice_unfinalized, boost_unpaid, traffic_boost_unpaid, limit_boost_unpaid. Usage: traffic_warning, traffic_overage, joyride_traffic_overage, api_request_overage. Organization: org_deactivation, org_disable. unknown: blocked before reasons were recorded.
+ */
+export type SpaceSuspensionCause = 'subscription_unpaid' | 'payment_overdue' | 'invoice_unfinalized' | 'boost_unpaid' | 'traffic_boost_unpaid' | 'limit_boost_unpaid' | 'traffic_warning' | 'traffic_overage' | 'joyride_traffic_overage' | 'api_request_overage' | 'org_deactivation' | 'org_disable' | 'unknown';
+
+/**
  * Organization details returned in user context. Empty object {} when user has no organization.
  */
 export type UserOrg = {
@@ -2989,6 +3020,20 @@ export type PublicApp = {
     }>;
 };
 
+/**
+ * The period that the yearly limits and usage refer to. Currently always the calendar year.
+ */
+export type UsagePeriod = {
+    /**
+     * First day of the period (UTC)
+     */
+    starts_on: string;
+    /**
+     * First day of the next period (UTC), when the yearly usage resets
+     */
+    resets_on: string;
+};
+
 export type BillingAddressRequest = {
     /**
      * Tax identification number
@@ -3146,6 +3191,11 @@ export type OrgSettings = {
     allow_dynamic_registration?: boolean | null;
     allow_space_ai_styles?: boolean | null;
     azure_ad_custom_service?: boolean | null;
+    /**
+     * No longer read. Kept because orgs that had it set still store it.
+     *
+     * @deprecated
+     */
     case_insensitive_saml_email?: boolean | null;
     cdn_force_filter_from_releases?: boolean | null;
     concept_room_enabled?: boolean | null;

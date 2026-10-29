@@ -7,8 +7,6 @@
   import RenderTable from './RenderTable.svelte';
   import RenderStaticChildren from './RenderStaticChildren.svelte';
   import ElementTag from './ElementTag.svelte';
-  import StoryblokComponent from '../StoryblokComponent.svelte';
-  import type { SbBlokData } from '../types';
 
   type Props = {
     node: StoryblokRichTextNodeWithKey;
@@ -27,6 +25,12 @@
       ? { ...options, components: { ...options.components, [node.type]: undefined } }
       : options,
   );
+
+  $effect(() => {
+    if (node.type === 'blok' && !CustomComponent) {
+      console.warn('[storyblok] "blok" nodes require a custom renderer passed through `components.blok`.');
+    }
+  });
 </script>
 
 {#if CustomComponent}
@@ -39,19 +43,13 @@
   <RenderTextNodeWithMarks {node} marks={node.marks} {options} />
 {:else if node.type === 'image'}
   <RenderImage {node} {options} />
-{:else if node.type === 'blok'}
-  {#if Array.isArray(node.attrs?.body)}
-    {#each node.attrs.body as blok (blok._uid)}
-      <StoryblokComponent blok={blok as SbBlokData} />
-    {/each}
-  {/if}
 {:else if node.type === 'table'}
   <RenderTable {node} {options} />
 {:else if node.type === 'emoji'}
   <ElementTag {node}>{node.attrs.emoji}</ElementTag>
-{:else if getStaticChildren(node)}
+{:else if node.type !== 'blok' && getStaticChildren(node)}
   <RenderStaticChildren {node} {options} />
-{:else}
+{:else if node.type !== 'blok'}
   <ElementTag {node}>
     {#if hasContent(node)}
       <RenderChildren nodes={node.content} {options} />

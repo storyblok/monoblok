@@ -32,7 +32,7 @@
 - Fetch content from the Content Delivery API
 - Connect frontend components with the Visual Editor via StoryblokBridge
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
-- Svelte-specific components: `StoryblokComponent` for dynamic component rendering
+- Svelte-specific components: `defineStoryblokBlocks` for scoped block-component registries
 - Svelte actions: `storyblokEditable` for Visual Editor integration
 - Svelte 5 compatibility with modern syntax and runes
 - Built-in TypeScript support with comprehensive type definitions

@@ -59,7 +59,7 @@
     "test:coverage": "vp test run --coverage"
   },
   "dependencies": {
-    "@storyblok/js": "workspace:^",
+    "@storyblok/live-preview": "workspace:^",
     "@storyblok/richtext": "workspace:^"
   },
   "devDependencies": {

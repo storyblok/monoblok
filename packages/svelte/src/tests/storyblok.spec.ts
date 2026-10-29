@@ -1,15 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { storyblokEditable } from "../lib/storyblok";
-import type { SbBlokData } from "../lib/types";
+import type { StoryblokBlockData } from "../lib/types";
 
-// Mock @storyblok/js
-vi.mock("@storyblok/js", () => ({
-  storyblokEditable: (blok: SbBlokData) => {
+// Mock @storyblok/live-preview
+vi.mock("@storyblok/live-preview", () => ({
+  storyblokEditable: (blok: StoryblokBlockData) => {
     if (blok._editable) {
       return {
         "data-blok-c": "1234",
         "data-blok-uid": "123-456",
-        class: "storyblok__outline",
       };
     }
     return {};
@@ -22,15 +21,15 @@ describe("storyblok utilities", () => {
       // Create a test DOM node
       const node = document.createElement("div");
 
-      // Mock Storyblok blok data
-      const mockBlok: SbBlokData = {
+      // Mock Storyblok block data
+      const mockBlock: StoryblokBlockData = {
         _uid: "123-456",
         component: "test-component",
         _editable: '<!--#storyblok#{"name":"test-component"}-->',
       };
 
       // Apply storyblokEditable action
-      storyblokEditable(node, mockBlok);
+      storyblokEditable(node, mockBlock);
 
       // Assert that the correct attributes were applied
       expect(node.hasAttribute("data-blok-c")).toBe(true);
@@ -42,14 +41,14 @@ describe("storyblok utilities", () => {
       // Create a test DOM node
       const node = document.createElement("div");
 
-      // Mock Storyblok blok data without _editable
-      const mockBlok: SbBlokData = {
+      // Mock Storyblok block data without _editable
+      const mockBlock: StoryblokBlockData = {
         _uid: "123-456",
         component: "test-component",
       };
 
       // Apply storyblokEditable action
-      storyblokEditable(node, mockBlok);
+      storyblokEditable(node, mockBlock);
 
       // Assert that no attributes were applied
       expect(node.getAttribute("data-blok-c")).toBe(null);

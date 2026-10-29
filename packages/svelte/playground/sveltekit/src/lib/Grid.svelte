@@ -1,14 +1,16 @@
 <script lang="ts">
-  import { StoryblokComponent, storyblokEditable } from '@storyblok/svelte';
+  import { storyblokEditable } from '@storyblok/svelte';
+  import type { StoryblokBlockComponentProps } from '@storyblok/svelte';
+  import { StoryblokBlock } from './storyblok';
 
-  let { blok } = $props();
+  const { block }: StoryblokBlockComponentProps<{ columns: any[] }> = $props();
 </script>
 
-<div use:storyblokEditable={blok} class="grid">
-  {#each blok.columns as item (item._uid)}
+<div use:storyblokEditable={block} class="grid">
+  {#each block.columns as item (item._uid)}
     <div>
       Component UID: {item._uid}
-      <StoryblokComponent blok={item} />
+      <StoryblokBlock block={item} />
     </div>
   {/each}
 </div>

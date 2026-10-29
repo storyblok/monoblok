@@ -12,12 +12,17 @@ export {
 } from "./richtext-helpers";
 
 export * from "./storyblok";
-export { default as StoryblokComponent } from "./StoryblokComponent.svelte";
 export { default as StoryblokRichText } from "./StoryblokRichText.svelte";
+export { defineStoryblokBlocks } from "./define-storyblok-blocks";
 export * from "./types";
 
-export { apiPlugin, useStoryblokBridge } from "@storyblok/js";
-export { editableField } from "@storyblok/js";
+export {
+  editableField,
+  isInEditor,
+  loadStoryblokBridge,
+  onStoryblokEditorEvent,
+} from "@storyblok/live-preview";
+export type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 
 export { buildStoryblokImage, renderRichText, splitTableRows } from "@storyblok/richtext";
 

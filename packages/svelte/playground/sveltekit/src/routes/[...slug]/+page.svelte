@@ -1,19 +1,22 @@
 <script lang="ts">
-  import { StoryblokComponent, useStoryblokBridge } from '@storyblok/svelte';
+  import { onStoryblokEditorEvent } from '@storyblok/svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
+  import { StoryblokBlock } from '$lib/storyblok';
 
   let { data = $bindable() }: { data: PageData } = $props();
   let story = $state(data.story);
   let loaded = $state(false);
   onMount(() => {
     loaded = true;
+    let cleanup: (() => void) | undefined;
     if (story) {
-      useStoryblokBridge(data.story.id, (newStory) => (story = newStory), {
+      onStoryblokEditorEvent((newStory) => (story = newStory as typeof story), {
         preventClicks: true,
         resolveLinks: 'url',
-      });
+      }).then((unsubscribe) => (cleanup = unsubscribe));
     }
+    return () => cleanup?.();
   });
 </script>
 
@@ -22,7 +25,7 @@
     <h1>Welcome to StoryblokKit</h1>
 
     {#if loaded}
-      <StoryblokComponent blok={story.content} />
+      <StoryblokBlock block={story.content} />
     {/if}
   {/key}
 </main>

@@ -95,6 +95,48 @@ The `license` commands help manage license compliance across the monorepo.
 pnpm monoblok license check @storyblok/js
 ```
 
+### Bundle size
+
+The `size` commands guard what each package costs the people who use it. On every PR, the
+`Bundle size` workflow builds the PR and its base branch in parallel, measures both builds with the
+PR's `size measure`, and compares them with `size compare`. Nothing is committed as a baseline: the
+base branch is the baseline. The report is posted as a PR comment, updated on every push, and only
+PRs that change a size get one. PRs from forks get the report in the job summary only, since their
+token can't comment.
+
+Every package under `packages/` is measured, except the ones in `IGNORED_PACKAGES` in
+`src/commands/size/size.ts`, which never reach a browser (the CLI, the lint config, the migration
+helpers). A new package is measured without any setup. Only ES modules are measured. Each package
+gets:
+
+| Measurement | What it covers                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entries     | What a browser downloads for each export (`exports`, `main`, `module`, `browser`): the export bundled with its dependencies and theirs, minified and gzipped. A dependency that the package importing it declares as a peer is left out, since the app provides it, and so are chunks that load lazily. A change in one package therefore shows up in every package that depends on it. |
+| Files       | Every published ES module in `dist` on its own, gzipped, matched across builds by its path. Chunk file names must not carry a content hash, or they never match.                                                                                                                                                                                                                        |
+
+`IGNORED_EXPORTS` skips exports that never reach a browser, such as the Nuxt module or the richtext
+HTML and Markdown parsers, and `EXTRA_ENTRIES` adds browser entries that `exports` does not list,
+such as the Nuxt runtime plugin. Svelte components are compiled with the package's own Svelte; Astro
+components are skipped, since Astro compiles them.
+
+An entry or a file fails the check when it grows by more than 5%. A package that is not built, or
+whose export cannot be bundled, always fails.
+
+If the growth is intended, add the `bundle-size-accepted` label to the PR and re-run the failed
+`compare` job. Growth is then reported as a warning.
+
+```bash
+# Measure the current build output (build first; entries resolve dependencies from node_modules)
+pnpm nx run-many -t build --exclude=storyblok
+pnpm monoblok size measure --out size-head.json
+
+# Measure another installed and built checkout, e.g. of main
+pnpm monoblok size measure --root ../monoblok-main --out size-base.json
+
+# Compare, and write the PR comment report
+pnpm monoblok size compare size-head.json size-base.json --base-label main --markdown bundle-size.md
+```
+
 ## Post-migration checklist
 
 After migrating a package into the monorepo:

@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { subtreeCommand } from "./commands/subtree";
 import { licenseCommand } from "./commands/license";
+import { sizeCommand } from "./commands/size";
 
 // Create the program
 const program = new Command();
@@ -14,6 +15,7 @@ program
 // Register commands
 subtreeCommand(program);
 licenseCommand(program);
+sizeCommand(program);
 
 // Parse command line arguments
 program.parse();

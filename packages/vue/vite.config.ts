@@ -19,6 +19,8 @@ export default defineConfig({
       dts: { vue: true },
       entry: { index: "./src/index.ts" },
       format: ["esm", "cjs"],
+      // Stable chunk names, so the bundle size check can match chunks across builds.
+      hash: false,
       outDir: "./dist",
       plugins: [Vue({ isProduction: true })],
       publint: true,

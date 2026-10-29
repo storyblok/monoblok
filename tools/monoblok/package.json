@@ -14,7 +14,9 @@
     "dev": "vp pack --watch",
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
-    "test:types": "tsc --noEmit --skipLibCheck"
+    "test:types": "tsc --noEmit --skipLibCheck",
+    "test": "vp test run",
+    "test:watch": "vp test"
   },
   "dependencies": {
     "@types/license-checker": "^25.0.6",
@@ -23,13 +25,15 @@
     "execa": "^5.1.1",
     "inquirer": "^8.2.5",
     "license-checker": "^25.0.1",
-    "ora": "^5.4.1"
+    "ora": "^5.4.1",
+    "rolldown": "1.2.8"
   },
   "devDependencies": {
     "@storyblok/lint-config": "workspace:*",
     "@types/inquirer": "^9.0.8",
     "@types/node": "catalog:",
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -22,6 +22,30 @@ const preconditions = {
   },
 };
 
+const mockUser: User = {
+  id: 1,
+  userid: "1",
+  friendly_name: "John Doe",
+  email: "john.doe@storyblok.com",
+  created_at: "2024-01-01T00:00:00Z",
+  use_username: false,
+  login_strategy: "password",
+  has_org: false,
+  has_partner: false,
+  org: {},
+  notified: [],
+  favourite_spaces: [],
+  favourite_ideas: [],
+  beta_user: false,
+  track_statistics: true,
+  ui_theme: {},
+  totp_factor_verified: false,
+  configured_2fa_options: ["otp_email"],
+  disclaimer_ids: [],
+  live_chat_enabled: false,
+  confirmed: true,
+};
+
 describe("userCommand", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -30,36 +54,34 @@ describe("userCommand", () => {
   });
 
   it("should show the user information", async () => {
-    const mockResponse: User = {
-      id: 1,
-      userid: "1",
-      friendly_name: "John Doe",
-      email: "john.doe@storyblok.com",
-      created_at: "2024-01-01T00:00:00Z",
-      use_username: false,
-      login_strategy: "password",
-      has_org: false,
-      has_partner: false,
-      org: {},
-      notified: [],
-      favourite_spaces: [],
-      favourite_ideas: [],
-      beta_user: false,
-      track_statistics: true,
-      ui_theme: {},
-      totp_factor_verified: false,
-      configured_2fa_options: ["otp_email"],
-      disclaimer_ids: [],
-      live_chat_enabled: false,
-      confirmed: true,
-    };
-    vi.mocked(getUser).mockResolvedValue(mockResponse);
+    vi.mocked(getUser).mockResolvedValue(mockUser);
     await userCommand.parseAsync(["node", "test"]);
 
-    expect(getUser).toHaveBeenCalledWith("valid-token", "eu");
+    expect(getUser).toHaveBeenCalledWith({ personalAccessToken: "valid-token" }, "eu");
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining(`Hi ${chalk.bold("John Doe")}`),
     );
+  });
+
+  it("should fetch the user with the OAuth access token for an OAuth session", async () => {
+    // Far-future expiry so the program preAction hook does not attempt a token refresh.
+    const oauthState = {
+      isLoggedIn: true,
+      region: "eu" as const,
+      authType: "oauth" as const,
+      oauthAccessToken: "oat-token",
+      oauthExpiresAt: "2099-01-01T00:00:00.000Z",
+      envLogin: false,
+    };
+    vi.mocked(session().initializeSession).mockImplementation(async () => {
+      session().state = { ...oauthState };
+    });
+    session().state = { ...oauthState };
+    vi.mocked(getUser).mockResolvedValue(mockUser);
+
+    await userCommand.parseAsync(["node", "test"]);
+
+    expect(getUser).toHaveBeenCalledWith({ oauthToken: "oat-token" }, "eu");
   });
 
   it("should show an error if the user is not logged in", async () => {

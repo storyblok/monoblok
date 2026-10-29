@@ -1,37 +1,29 @@
-import { existsSync, readFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-/**
- * Reads the `require` target of a package export. tsdown writes a plain string when the package has
- * no types for it and `{ types, default }` when it does, so both have to resolve.
- */
-const requireTarget = (pkg: unknown, subpath: string): string => {
-  const condition = isRecord(pkg) && isRecord(pkg.exports) ? pkg.exports[subpath] : undefined;
-  const target = isRecord(condition) ? condition.require : undefined;
-  const path = isRecord(target) ? target.default : target;
-  if (typeof path !== "string") {
-    throw new TypeError(`"${subpath}" has no CommonJS \`require\` entry in package.json exports.`);
-  }
-  return path;
-};
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
 
 /**
  * Resolves the built CommonJS entry of a package for the `module-format` tests, which load `dist`
  * and not the source.
  *
- * Run them through nx (`pnpm nx test <package>`), which builds first. A bare `vp test`, `test:watch`
- * or `test:ui` uses whatever `dist` is there, so a test can pass against a build made before the
- * plugin was removed.
+ * Node does the resolving, through the package's own name, so the `require` condition of `exports`
+ * is read the way a real consumer's `require()` reads it, whatever its shape (a plain string or
+ * `{ types, default }`).
+ *
+ * Run the tests through nx (`pnpm nx test <package>`), which builds first. A bare `vp test`,
+ * `test:watch` or `test:ui` uses whatever `dist` is there, so a test can pass against a build made
+ * before the plugin was removed.
  */
 export const resolveCjsEntry = (pkgRoot: string, subpath = "."): string => {
-  const pkg: unknown = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf8"));
-  const name = isRecord(pkg) && typeof pkg.name === "string" ? pkg.name : basename(pkgRoot);
-  const entry = resolve(pkgRoot, requireTarget(pkg, subpath));
-  if (!existsSync(entry)) {
-    throw new Error(`${entry} does not exist. Build it first: pnpm nx build ${name}`);
+  const manifest = resolve(pkgRoot, "package.json");
+  const { name }: { name: string } = JSON.parse(readFileSync(manifest, "utf8"));
+  try {
+    return createRequire(manifest).resolve(name + subpath.slice(1));
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "MODULE_NOT_FOUND") {
+      const [reason] = error.message.split("\n");
+      throw new Error(`${reason}. Build it first: pnpm nx build ${name}`, { cause: error });
+    }
+    throw error;
   }
-  return entry;
 };

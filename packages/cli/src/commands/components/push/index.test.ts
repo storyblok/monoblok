@@ -329,6 +329,12 @@ describe("push", () => {
           ".storyblok/components/source-space/presets.json": JSON.stringify(presets),
         });
       },
+      hasTargetComponentWithDefaultPreset() {
+        vi.mocked(fetchComponents).mockResolvedValue([targetComponent]);
+        vi.mocked(fetchComponentPresets).mockResolvedValue([
+          { ...localPreset, id: 800, component_id: 100 },
+        ]);
+      },
       hasTargetComponentWithStalePreset() {
         vi.mocked(fetchComponents).mockResolvedValue([targetComponent]);
         vi.mocked(fetchComponentPresets).mockResolvedValue([
@@ -404,6 +410,22 @@ describe("push", () => {
       expect(ui.warn).toHaveBeenCalledWith(
         "Default preset ID 20 of component test-component is not one of its presets in local data. Keeping the target's default preset.",
       );
+    });
+
+    it("should set a default preset that already exists in the target space when pushing the component", async () => {
+      preconditions.hasLocalComponentWithDefaultPreset(10);
+      preconditions.hasTargetComponentWithDefaultPreset();
+      preconditions.canUpsertComponent();
+      preconditions.canUpsertPreset();
+
+      await push();
+
+      expect(vi.mocked(upsertComponent)).toHaveBeenCalledWith(
+        "target-space",
+        expect.objectContaining({ preset_id: 800 }),
+        100,
+      );
+      expect(vi.mocked(updateComponent)).not.toHaveBeenCalled();
     });
 
     it("should warn and leave the default preset unset when it fails to push", async () => {

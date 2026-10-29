@@ -39,16 +39,9 @@ const EXPECTED_SHAPE = {
     'expected a link object: { fieldtype: "multilink", linktype: "story" | "url" | "email" | "asset", id, url, cached_url }',
   richtext: 'expected a richtext document: { type: "doc", content: [...] }',
   table: 'expected a table object: { fieldtype: "table", thead: [...], tbody: [...] }',
-  plugin: 'expected a field plugin object carrying a "plugin" key',
 } as const;
 
-/**
- * Relaxed plugin envelope used by the `custom` case. Mirrors the generated
- * `zPluginFieldValue` but relaxes `_uid` from a UUID to a plain string, matching
- * the CMS, which persists arbitrary `_uid` strings. Kept local so a codegen
- * regenerate cannot revert it.
- */
-const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string()) });
+const zRegisteredPluginMetadata = z.object({ _uid: z.optional(z.string()) });
 
 /**
  * Whether a content value counts as "no value". Mirrors the backend's required
@@ -58,6 +51,28 @@ const zPluginEnvelope = z.object({ plugin: z.string(), _uid: z.optional(z.string
  */
 function isUnset(value: unknown): boolean {
   return value === undefined || value === null || value === "";
+}
+
+/**
+ * The rest of the backend's `blank?` check: `false`, whitespace-only strings,
+ * and empty arrays and objects. Only custom fields apply it, because a plugin
+ * value can be any of these, while other field types have their own wire forms.
+ */
+function isBlank(value: unknown): boolean {
+  if (isUnset(value) || value === false) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value.trim() === "";
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+  return isRecord(value) && Object.keys(value).length === 0;
+}
+
+function isMissingRequiredValue(field: SchemaFieldLike, value: unknown): boolean {
+  return field.type === "custom" ? isBlank(value) : isUnset(value);
 }
 
 /** Capitalizes and gives the text exactly one trailing period. */
@@ -270,14 +285,20 @@ function validateFieldValue(
       validateRichtextBloks(value, field, blocksByName, fieldPluginsByType, path, entity, issues);
       break;
     case "custom": {
-      checkValue(zPluginEnvelope, value, path, entity, issues, EXPECTED_SHAPE.plugin);
       const validator = field.field_type ? fieldPluginsByType.get(field.field_type) : undefined;
-      if (validator && isRecord(value)) {
-        // Envelope keys sit alongside the plugin's own keys; strip them so the
+      // Without a registered validator, a plugin value can be any JSON value.
+      if (!validator) {
+        break;
+      }
+      if (isRecord(value)) {
+        checkValue(zRegisteredPluginMetadata, value, path, entity, issues);
+        // Reserved metadata sits alongside the plugin's own keys; strip it so the
         // plugin validator sees only its value. Sibling keys keep issue paths
         // accurate (an issue at ['color'] maps to [...path, 'color']).
-        const { plugin: _plugin, _uid, ...pluginValue } = value;
+        const { _uid, ...pluginValue } = value;
         checkValue(validator, pluginValue, path, entity, issues);
+      } else {
+        checkValue(validator, value, path, entity, issues);
       }
       break;
     }
@@ -839,7 +860,7 @@ function validateBlokContent(
     // true, so an empty string is unset rather than a value. That matters most
     // for `number`, whose unset wire form *is* `''` — the value branch below
     // legitimately skips it, leaving the required check as the only diagnostic.
-    if (field.required && isUnset(value)) {
+    if (field.required && isMissingRequiredValue(field, value)) {
       issues.push({
         severity: "error",
         code: "missing_required_field",

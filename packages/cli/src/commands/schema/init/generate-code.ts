@@ -286,6 +286,7 @@ export function generateFieldPluginFile(fieldType: string, varName: string): str
     "",
     "// Placeholder: accepts any value. Replace `value` with a Standard Schema validator",
     "// (Zod, Valibot, ArkType, or hand-written) for the value this plugin stores.",
+    "// Declare `plugin` if the plugin stores it (legacy plugins do).",
     `export const ${varName} = defineFieldPlugin({`,
     `${INDENT}fieldType: ${quoteString(fieldType)},`,
     `${INDENT}value: {`,

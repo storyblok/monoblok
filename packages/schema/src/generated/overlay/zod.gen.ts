@@ -523,12 +523,15 @@ export const zMultilinkFieldValue = z.union([
 export const zMultilinkFieldValue2 = zMultilinkFieldValue;
 
 /**
- * Plugin/Custom field type - field plugin with custom structure
+ * Custom field value stored by a field plugin. Any JSON value.
  */
-export const zPluginFieldValue = z.object({
-    plugin: z.string(),
-    _uid: z.uuid().optional()
-});
+export const zPluginFieldValue = z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.lazy((): any => zPluginFieldValue)),
+    z.record(z.string(), z.lazy((): any => zPluginFieldValue))
+]).nullable();
 
 export const zPluginFieldValue2 = zPluginFieldValue;
 

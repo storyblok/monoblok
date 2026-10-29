@@ -366,3 +366,45 @@ describe("createManagementApiClient with .withTypes() — field plugins", () => 
     }
   });
 });
+
+describe("stories pagination", () => {
+  it("should yield Story from stories.iterate()", async () => {
+    const client = createManagementApiClient({ personalAccessToken: "token", spaceId: 1 });
+    for await (const story of client.stories.iterate()) {
+      expectTypeOf(story).toEqualTypeOf<StoryMapi>();
+    }
+  });
+
+  it("should yield envelopes with defined data from stories.pages() with throwOnError", async () => {
+    const client = createManagementApiClient({
+      personalAccessToken: "token",
+      spaceId: 1,
+      throwOnError: true,
+    });
+    for await (const page of client.stories.pages()) {
+      expectTypeOf(page.data.stories).toEqualTypeOf<StoryMapi[] | undefined>();
+    }
+  });
+
+  it("should default pages() to the client's throwOnError on every paginated resource", async () => {
+    const client = createManagementApiClient({
+      personalAccessToken: "token",
+      spaceId: 1,
+      throwOnError: true,
+    });
+    for await (const page of client.experiments.pages()) {
+      expectTypeOf(page.data.experiments).not.toBeUndefined();
+    }
+    for await (const page of client.sharedAssets.pages()) {
+      expectTypeOf(page.data.assets).not.toBeUndefined();
+    }
+    for await (const page of client.sharedInternalTags.pages({
+      query: { asset_folder_id: 1 },
+    })) {
+      expectTypeOf(page.data.internal_tags).not.toBeUndefined();
+    }
+    for await (const page of client.assets.pages()) {
+      expectTypeOf(page.data.assets).not.toBeUndefined();
+    }
+  });
+});

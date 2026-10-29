@@ -46,8 +46,8 @@ export interface CacheEntry<TValue = unknown> {
   ttlMs: number;
   /**
    * The `cv` the response reported or, for endpoints that report none (`/cdn/tags`,
-   * `/cdn/links`), the `cv` it was requested under. The entry is served only while this
-   * matches the known `cv`. Absent means TTL-only invalidation.
+   * `/cdn/links`), the `cv` in its final URL, else the `cv` it was requested under. The entry
+   * is served only while this matches the known `cv`. Absent means TTL-only invalidation.
    */
   cv?: number;
 }

@@ -10,6 +10,7 @@ import type {
   UnifiedNode,
 } from "./types";
 import {
+  updateComponent,
   upsertComponent,
   upsertComponentGroup,
   upsertComponentInternalTag,
@@ -148,16 +149,6 @@ export function buildDependencyGraph(context: GraphBuildingContext): DependencyG
     if (component.component_group_uuid) {
       const groupId = `group:${component.component_group_uuid}`;
       addDependency(componentId, groupId);
-    }
-
-    // Add dependencies on preset_id (component preset reference)
-    if (component.preset_id) {
-      // Find the preset by ID and create dependency
-      const preset = spaceState.local.presets.find((p) => p.id === component.preset_id);
-      if (preset) {
-        const presetId = `preset:${preset.id}`;
-        addDependency(componentId, presetId);
-      }
     }
 
     if (component.schema) {
@@ -663,8 +654,47 @@ export class GroupNode extends GraphNode<ComponentFolder> {
 }
 
 export class ComponentNode extends GraphNode<Component> {
+  /** Default preset that did not exist in the target when references were resolved. */
+  private pendingPresetNodeId?: string;
+  private upserted = false;
+  /** Shown in the terminal once processing ends, so they don't break the progress bars. */
+  readonly warnings: string[] = [];
+
   constructor(id: string, data: Component, targetComponent?: Component) {
     super(id, "component", data.name, data, targetComponent);
+  }
+
+  private warn(message: string): void {
+    getLogger().warn(message);
+    this.warnings.push(message);
+  }
+
+  async linkPendingPreset(space: string, graph: DependencyGraph): Promise<void> {
+    if (!this.pendingPresetNodeId || !this.upserted) {
+      return;
+    }
+    const presetNode = graph.nodes.get(this.pendingPresetNodeId);
+    const presetId = presetNode?.targetData?.id;
+    const componentId = this.targetData?.id;
+    if (typeof componentId !== "number") {
+      return;
+    }
+    if (typeof presetId !== "number") {
+      this.warn(
+        `Default preset "${presetNode?.name}" of component ${this.name} failed to push. The default preset was not set.`,
+      );
+      return;
+    }
+    const errorMessage = `Failed to set the default preset of component ${this.name}`;
+    const result = await updateComponent(
+      space,
+      componentId,
+      { name: this.name, preset_id: presetId },
+      errorMessage,
+    );
+    if (!result) {
+      throw new Error(errorMessage);
+    }
   }
 
   resolveReferences(graph: DependencyGraph): void {
@@ -702,15 +732,22 @@ export class ComponentNode extends GraphNode<Component> {
 
     // Resolve preset reference
     if (this.sourceData.preset_id) {
-      // Find the preset by ID and resolve to target preset ID
-      const preset = this.findPresetById(this.sourceData.preset_id, graph);
-      if (preset) {
-        const presetNodeId = `preset:${preset.id}`;
-        const presetNode = graph.nodes.get(presetNodeId);
+      const presetNodeId = `preset:${this.sourceData.preset_id}`;
+      const presetNode = graph.nodes.get(presetNodeId);
 
-        if (presetNode?.targetData) {
-          updatedData.preset_id = presetNode.targetData.id as number;
-        }
+      if (!(presetNode instanceof PresetNode) || !this.ownsPreset(presetNode)) {
+        // The MAPI returns `preset_id: null` for any preset other than the component's own.
+        this.warn(
+          `Default preset ID ${this.sourceData.preset_id} of component ${this.name} is not one of its presets in local data. Keeping the target's default preset.`,
+        );
+        updatedData.preset_id = undefined;
+      } else if (presetNode.targetData) {
+        updatedData.preset_id = presetNode.targetData.resource.id;
+      } else {
+        // The default preset is one of the component's own presets, so it can
+        // only be created after the component; `linkPendingPreset` sets it then.
+        updatedData.preset_id = undefined;
+        this.pendingPresetNodeId = presetNodeId;
       }
     }
 
@@ -723,14 +760,8 @@ export class ComponentNode extends GraphNode<Component> {
     this.sourceData = updatedData;
   }
 
-  private findPresetById(presetId: number, graph: DependencyGraph): Preset | null {
-    // Find preset by matching source preset_id
-    for (const [_nodeId, node] of graph.nodes) {
-      if (node.type === "preset" && (node.sourceData as Preset).id === presetId) {
-        return node.sourceData as Preset;
-      }
-    }
-    return null;
+  private ownsPreset(presetNode: PresetNode): boolean {
+    return presetNode.sourceComponentId === this.sourceData.id;
   }
 
   private resolveSchemaReferences(
@@ -804,6 +835,7 @@ export class ComponentNode extends GraphNode<Component> {
     if (!result) {
       throw new Error(`Failed to upsert component ${this.name}`);
     }
+    this.upserted = true;
     return result;
   }
 }
@@ -817,12 +849,15 @@ class PresetNode implements UnifiedNode<Preset> {
   public readonly name: string;
   public readonly type: NodeType = "preset";
   public readonly sourceData: Preset;
+  /** `sourceData.component_id` changes to the target ID once references resolve. */
+  public readonly sourceComponentId: number;
   public targetData?: TargetResourceInfo<Preset>;
   public readonly dependencies = new Set<string>();
   public readonly dependents = new Set<string>();
 
   constructor(preset: Preset, targetData?: TargetResourceInfo<Preset>) {
     this.sourceData = preset;
+    this.sourceComponentId = preset.component_id;
     this.targetData = targetData;
     this.id = `preset:${preset.id}`;
     this.name = preset.name;

@@ -4,13 +4,6 @@ export {
   type StoryblokSvelteRichTextRenderContext,
 } from "./richtext-helpers";
 
-// ── Deprecated: Sb* aliases — will be removed in the next major version ───────
-export {
-  type SbSvelteRichTextComponentMap,
-  type SbSvelteRichTextProps,
-  type SbSvelteRichTextRenderContext,
-} from "./richtext-helpers";
-
 export * from "./storyblok";
 export { default as StoryblokRichText } from "./StoryblokRichText.svelte";
 export { defineStoryblokBlocks } from "./define-storyblok-blocks";

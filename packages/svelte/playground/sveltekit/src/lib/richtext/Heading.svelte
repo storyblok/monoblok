@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { SbSvelteRichTextProps } from '@storyblok/svelte';
-  type Props = SbSvelteRichTextProps<'heading'>;
+  import type { StoryblokSvelteRichTextProps } from '@storyblok/svelte';
+  type Props = StoryblokSvelteRichTextProps<'heading'>;
   const props: Props = $props();
 </script>
 

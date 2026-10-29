@@ -11,6 +11,7 @@ import type {
 } from "../generated/mapi/types.gen";
 import type { ApiResponse, FetchOptions, MapiResourceDeps } from "../client";
 import { resolveSpaceId, type SpaceIdPathOverride } from "./shared";
+import { buildCallOptions } from "../utils/call-options";
 
 /** Query parameters for `spaces.create()` (e.g. `in_org`, `assign_partner`, `space_type`, `dup_id`). */
 export type SpaceCreateQuery = NonNullable<CreateSpaceData["query"]>;
@@ -37,10 +38,7 @@ export function createSpacesResource<DefaultThrowOnError extends boolean = false
             client,
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -60,10 +58,7 @@ export function createSpacesResource<DefaultThrowOnError extends boolean = false
             body,
             query,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -83,10 +78,7 @@ export function createSpacesResource<DefaultThrowOnError extends boolean = false
             client,
             path: { space_id: resolvedSpaceId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -108,10 +100,7 @@ export function createSpacesResource<DefaultThrowOnError extends boolean = false
             path: { space_id: resolvedSpaceId },
             body,
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );
@@ -131,10 +120,7 @@ export function createSpacesResource<DefaultThrowOnError extends boolean = false
             client,
             path: { space_id: resolvedSpaceId },
             signal,
-            ...(throwOnError === undefined ? {} : { throwOnError }),
-            ...(fetchOptions
-              ? { kyOptions: { ...client.getConfig().kyOptions, ...fetchOptions } }
-              : {}),
+            ...buildCallOptions(client, throwOnError, fetchOptions),
           }),
         throwOnError,
       );

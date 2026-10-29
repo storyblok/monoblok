@@ -1,0 +1,28 @@
+---
+import { splitRichtext } from '../../lib/richtext';
+import StoryblokComponent from './storyblok-component.astro';
+
+interface Props {
+  document: Parameters<typeof splitRichtext>[0];
+}
+
+const { document } = Astro.props;
+const segments = splitRichtext(document);
+---
+
+{segments.map(segment =>
+  segment.kind === 'html'
+    ? <div class="prose max-w-none" set:html={segment.html} />
+    : (
+      <div class="my-4 border-l-4 border-indigo-300 pl-4">
+        <p class="mb-2 text-xs tracking-wide text-indigo-500 uppercase">Embedded</p>
+        {segment.blocks.map(child => <StoryblokComponent block={child} />)}
+        {segment.unrecognized.map(value => (
+          <div class="rounded border border-yellow-400 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+            Unrecognized embedded value
+            <pre class="overflow-x-auto text-xs">{JSON.stringify(value, null, 2)}</pre>
+          </div>
+        ))}
+      </div>
+    )
+)}

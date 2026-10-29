@@ -1,0 +1,36 @@
+---
+import type { Block } from '../../schema/schema';
+import { linkHref } from '../../lib/links';
+import Author from './author.astro';
+import Translations from './translations.astro';
+
+interface Props {
+  block: Block<'teaser'>;
+}
+
+const { block } = Astro.props;
+const href = linkHref(block.link);
+---
+
+<article class="overflow-hidden rounded-xl border border-gray-200 bg-white" data-block="teaser">
+  {block.image?.filename && (
+    <img
+      src={block.image.filename}
+      alt={block.image.alt ?? ''}
+      class="aspect-video w-full object-cover"
+      width="600"
+      height="337"
+    />
+  )}
+  <div class="p-5">
+    <h3 class="text-xl font-semibold text-balance text-gray-900">{block.title}</h3>
+    {block.description && <p class="mt-2 text-gray-600">{block.description}</p>}
+    {href && <a href={href} class="mt-3 inline-block text-sm text-indigo-600 hover:underline">Learn more &rarr;</a>}
+    {block.authors?.length ? (
+      <div class="mt-4 grid gap-3">
+        {block.authors.map(author => <Author block={author} />)}
+      </div>
+    ) : null}
+    <Translations block={block} />
+  </div>
+</article>

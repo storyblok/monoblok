@@ -1,0 +1,279 @@
+{
+  "translated": {
+    "_uid": "44444444-0000-4000-8000-000000000001",
+    "body": [
+      {
+        "_uid": "44444444-0000-4000-8000-000000000002",
+        "body": {
+          "type": "doc",
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "text": "The headline has a de and an fr sibling; the richtext has none.",
+                  "type": "text"
+                }
+              ]
+            }
+          ]
+        },
+        "link": null,
+        "slug": "translated-card",
+        "price": "12",
+        "images": [],
+        "headline": "Fully translated card",
+        "component": "card",
+        "headline__i18n__de": "Vollständig übersetzte Karte",
+        "headline__i18n__fr": "Carte entièrement traduite"
+      },
+      {
+        "_uid": "44444444-0000-4000-8000-000000000003",
+        "items": [
+          {
+            "_uid": "44444444-0000-4000-8000-000000000004",
+            "body": null,
+            "link": null,
+            "slug": "partly-translated-card",
+            "price": null,
+            "images": [],
+            "headline": "Only German is filled",
+            "component": "card",
+            "headline__i18n__de": "Nur Deutsch ist gefüllt",
+            "headline__i18n__fr": ""
+          },
+          {
+            "_uid": "44444444-0000-4000-8000-000000000005",
+            "text": "A translated quote.",
+            "authors": [],
+            "component": "quote",
+            "attribution": "The seed",
+            "source_link": null,
+            "text__i18n__de": "Ein übersetztes Zitat.",
+            "text__i18n__fr": "Une citation traduite."
+          },
+          {
+            "_uid": "44444444-0000-4000-8000-000000000006",
+            "items": [
+              {
+                "_uid": "44444444-0000-4000-8000-000000000007",
+                "answer": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "text": "Yes it does.",
+                          "type": "text"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "question": "Does the answer carry translations too?",
+                "component": "faq_item",
+                "answer__i18n__de": {
+                  "type": "doc",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "text": "Ja, das tut sie.",
+                          "type": "text"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "question__i18n__de": "Enthält die Antwort auch Übersetzungen?",
+                "question__i18n__fr": "La réponse contient-elle aussi des traductions ?"
+              }
+            ],
+            "headline": "Translated FAQ",
+            "component": "faq",
+            "categories": [
+              "basics"
+            ],
+            "headline__i18n__de": "Übersetzte FAQ"
+          }
+        ],
+        "theme": "brand",
+        "heading": "Partly translated section",
+        "component": "section",
+        "heading__i18n__de": "Teilweise übersetzter Abschnitt"
+      },
+      {
+        "_uid": "44444444-0000-4000-8000-000000000008",
+        "image": {
+          "id": 223407129002961,
+          "alt": "About image",
+          "filename": "https://a.storyblok.com/f/290020686946333/d8afd26e2f/media-image.png",
+          "fieldtype": "asset"
+        },
+        "credit": "Playground",
+        "caption": "A translated caption",
+        "component": "media",
+        "caption__i18n__de": "Eine übersetzte Bildunterschrift"
+      }
+    ],
+    "component": "page",
+    "seo_title": "Translated page",
+    "seo_description": "Field-level translations sit beside their source field.",
+    "seo_title__i18n__de": "Übersetzte Seite",
+    "seo_title__i18n__fr": "Page traduite"
+  },
+  "pricing": {
+    "_uid": "33333333-0000-4000-8000-000000000001",
+    "body": [
+      {
+        "_uid": "33333333-0000-4000-8000-000000000002",
+        "table": {
+          "tbody": [
+            {
+              "_uid": "33333333-0000-4000-8000-000000000006",
+              "body": [
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000007",
+                  "value": "Starter"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000008",
+                  "value": "9"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000009",
+                  "value": "1"
+                }
+              ]
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-00000000000a",
+              "body": [
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000b",
+                  "value": "Team"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000c",
+                  "value": "49"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000d",
+                  "value": "10"
+                }
+              ]
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-00000000000e",
+              "body": [
+                {
+                  "_uid": "33333333-0000-4000-8000-00000000000f",
+                  "value": "Enterprise"
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000010",
+                  "value": ""
+                },
+                {
+                  "_uid": "33333333-0000-4000-8000-000000000011",
+                  "value": "unlimited"
+                }
+              ]
+            }
+          ],
+          "thead": [
+            {
+              "_uid": "33333333-0000-4000-8000-000000000003",
+              "value": "Plan"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000004",
+              "value": "Price"
+            },
+            {
+              "_uid": "33333333-0000-4000-8000-000000000005",
+              "value": "Seats"
+            }
+          ],
+          "fieldtype": "table"
+        },
+        "currency": "eur",
+        "footnote": "All prices exclude VAT.",
+        "headline": "Plans",
+        "component": "pricing_table"
+      },
+      {
+        "_uid": "33333333-0000-4000-8000-000000000012",
+        "items": [
+          {
+            "_uid": "33333333-0000-4000-8000-000000000013",
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "Yes, at any point in the cycle.",
+                      "type": "text"
+                    }
+                  ]
+                }
+              ]
+            },
+            "question": "Can I change plan later?",
+            "component": "faq_item"
+          },
+          {
+            "_uid": "33333333-0000-4000-8000-000000000014",
+            "answer": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "text": "The answer embeds a card:",
+                      "type": "text"
+                    }
+                  ]
+                },
+                {
+                  "type": "blok",
+                  "attrs": {
+                    "id": "33333333-0000-4000-8000-000000000015",
+                    "body": [
+                      {
+                        "_uid": "33333333-0000-4000-8000-000000000015",
+                        "body": null,
+                        "link": null,
+                        "slug": "included",
+                        "price": "0",
+                        "images": [],
+                        "headline": "Everything in Starter, plus seats",
+                        "component": "card"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "question": "What is included?",
+            "component": "faq_item"
+          }
+        ],
+        "headline": "Questions about billing",
+        "component": "faq",
+        "categories": [
+          "payments",
+          "basics"
+        ]
+      }
+    ],
+    "component": "page",
+    "seo_title": "Pricing",
+    "seo_description": "A table field and an FAQ with richtext answers."
+  }
+}

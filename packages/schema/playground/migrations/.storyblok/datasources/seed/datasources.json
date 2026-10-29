@@ -1,0 +1,40 @@
+[
+  {
+    "id": 3001,
+    "name": "Section Themes",
+    "slug": "section_themes",
+    "dimensions": [],
+    "created_at": "2026-09-23T10:00:00.000Z",
+    "updated_at": "2026-09-23T10:00:00.000Z",
+    "entries": [
+      { "id": 3101, "name": "Light", "value": "light", "dimension_value": "" },
+      { "id": 3102, "name": "Dark", "value": "dark", "dimension_value": "" },
+      { "id": 3103, "name": "Brand", "value": "brand", "dimension_value": "" }
+    ]
+  },
+  {
+    "id": 3002,
+    "name": "FAQ Categories",
+    "slug": "faq_categories",
+    "dimensions": [],
+    "created_at": "2026-09-23T10:00:00.000Z",
+    "updated_at": "2026-09-23T10:00:00.000Z",
+    "entries": [
+      { "id": 3201, "name": "General", "value": "general", "dimension_value": "" },
+      { "id": 3202, "name": "Billing", "value": "billing", "dimension_value": "" },
+      { "id": 3203, "name": "Technical", "value": "technical", "dimension_value": "" }
+    ]
+  },
+  {
+    "id": 3003,
+    "name": "Currencies",
+    "slug": "currencies",
+    "dimensions": [],
+    "created_at": "2026-09-23T10:00:00.000Z",
+    "updated_at": "2026-09-23T10:00:00.000Z",
+    "entries": [
+      { "id": 3301, "name": "Euro", "value": "eur", "dimension_value": "" },
+      { "id": 3302, "name": "US Dollar", "value": "usd", "dimension_value": "" }
+    ]
+  }
+]

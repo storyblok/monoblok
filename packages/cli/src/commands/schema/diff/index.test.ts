@@ -238,6 +238,44 @@ describe("schema diff command", () => {
     expect(diffOutput()).toContain("- hero (removed)");
   });
 
+  it("should ignore optional block properties a local block omits in either direction", async () => {
+    const block = comp("hero", { title: { type: "text", pos: 0 } });
+    const local: SchemaData = {
+      components: [block as unknown as SchemaData["components"][number]],
+      datasources: [],
+      folders: [],
+    };
+    vi.mocked(loadSchema).mockResolvedValue(local);
+    spaceWith("222", [
+      {
+        ...block,
+        image: "https://a.storyblok.com/f/1/hero.png",
+        metadata: [{ app_slug: "figma_to_storyblok", frame_id: "1:2" }],
+      } as MockComponent,
+    ]);
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "./schema.ts",
+      "--to",
+      "222",
+    ]);
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "diff",
+      "--from",
+      "222",
+      "--to",
+      "./schema.ts",
+    ]);
+
+    expect(diffOutput().match(/Summary: 1 unchanged\n/g)).toHaveLength(2);
+  });
+
   it("should report which side failed to resolve when a file cannot be loaded", async () => {
     consoleError.mockImplementation(() => {});
     vi.mocked(loadSchema).mockRejectedValue(new Error("Cannot find module /abs/missing.ts"));

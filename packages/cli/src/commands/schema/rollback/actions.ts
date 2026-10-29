@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { createTwoFilesPatch } from "diff";
 
 import type { ChangesetData, ChangesetEntry, RemoteSchemaData } from "../types";
-import { applyDefaults, COMPONENT_DEFAULTS } from "../utils";
+import { applyDefaults, COMPONENT_DEFAULTS, COMPONENT_OPTIONAL_KEYS } from "../utils";
 import { serializeComponent, serializeDatasource } from "../serialize";
 import { getMapiClient } from "../../../api";
 import { handleAPIError } from "../../../utils";
@@ -24,7 +24,6 @@ const API_ASSIGNED_FIELDS = [
   "updated_at",
   "real_name",
   "all_presets",
-  "image",
   "uuid",
 ] as const;
 
@@ -35,6 +34,23 @@ function stripApiFields(payload: Record<string, unknown>): Record<string, unknow
     delete result[field];
   }
   return result;
+}
+
+/**
+ * The pre-push snapshot an update rolls back to, without the optional component
+ * properties the pushed block did not set: the push left those untouched, so
+ * rolling back must too.
+ */
+function restorableBefore(entry: ChangesetEntry): Record<string, unknown> {
+  const before = { ...entry.before };
+  if (entry.type === "component" && entry.after) {
+    for (const key of COMPONENT_OPTIONAL_KEYS) {
+      if (!(key in entry.after)) {
+        delete before[key];
+      }
+    }
+  }
+  return before;
 }
 
 /** A single rollback operation derived by inverting a `ChangesetEntry`. */
@@ -101,7 +117,7 @@ export function buildRollbackOps(changeset: ChangesetData): RollbackOp[] {
           type: entry.type,
           name: entry.name,
           action: "update",
-          payload: entry.before ?? {},
+          payload: restorableBefore(entry),
         };
       case "delete":
         return {
@@ -174,7 +190,7 @@ export function formatRollbackOutput(changes: ChangesetEntry[]): string {
 
         if (entry.type === "component") {
           fromStr = serializeComponent(applyDefaults(entry.after, COMPONENT_DEFAULTS));
-          toStr = serializeComponent(applyDefaults(entry.before, COMPONENT_DEFAULTS));
+          toStr = serializeComponent(applyDefaults(restorableBefore(entry), COMPONENT_DEFAULTS));
         } else if (entry.type === "datasource") {
           fromStr = serializeDatasource(entry.after);
           toStr = serializeDatasource(entry.before);

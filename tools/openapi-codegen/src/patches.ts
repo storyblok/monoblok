@@ -3,10 +3,10 @@
  * generates types (via `parser.patch.schemas`). Each patch mutates the parsed
  * OpenAPI schema object in place.
  *
- * Use these only to correct upstream OpenAPI gaps we cannot fix in the private
- * `storyblok/openapi` spec directly. A patch here is a deliberate, reviewed
- * divergence from upstream: keep the list small, document why each exists, and
- * migrate the fix upstream when the contract is owned there.
+ * Use these only to correct gaps in the upstream specs, which we never edit
+ * directly. A patch here is a deliberate, reviewed divergence from upstream:
+ * keep the list small, document why each exists, and migrate the fix upstream
+ * when the contract is owned there.
  */
 
 import type { UserConfig } from "@hey-api/openapi-ts";

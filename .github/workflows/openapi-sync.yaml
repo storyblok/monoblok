@@ -2,7 +2,7 @@ name: OpenAPI Spec Sync
 
 # Pulls the latest OpenAPI specs and opens (or updates) a single pull request
 # with them. CI on that pull request regenerates and checks every consumer.
-# See ADR-0024 and ADR-0025.
+# See ADR-0024.
 on:
   schedule:
     - cron: "0 5 * * *"

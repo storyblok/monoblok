@@ -13,7 +13,7 @@ export default defineConfig({
     "**/dist/",
     "**/node_modules/",
     "packages/",
-    // Blueprints ship their own ESLint config to users; see adr/0022.
+    // Blueprints ship their own ESLint config to users; see adr/0023.
     "blueprints/",
     // Not the tool projects' files, but the loose scripts in `tools/` itself.
     "tools/*/",

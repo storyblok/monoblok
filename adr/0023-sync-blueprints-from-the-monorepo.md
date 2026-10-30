@@ -1,4 +1,4 @@
-# ADR-0022: Sync Blueprints from the Monorepo
+# ADR-0023: Sync Blueprints from the Monorepo
 
 **Status:** Accepted  
 **Date:** 2026-10-15

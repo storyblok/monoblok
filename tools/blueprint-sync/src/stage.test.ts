@@ -199,7 +199,7 @@ describe("stage", () => {
   });
 });
 
-// ADR-0022: blueprints are nx projects in the workspace, but nothing nx-specific may reach a target.
+// ADR-0023: blueprints are nx projects in the workspace, but nothing nx-specific may reach a target.
 describe("stage of the real blueprints", () => {
   const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));
   const blueprints = readdirSync(join(repoRoot, "blueprints"), { withFileTypes: true })

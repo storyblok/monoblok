@@ -63,7 +63,7 @@ function blueprintFiles(source: string): string[] {
     { cwd: source, encoding: "utf8" },
   );
   // `--cached` still lists files deleted from the working tree but not yet from the index.
-  // `project.json` is nx config for the workspace (ADR-0022), not part of the template, and the
+  // `project.json` is nx config for the workspace (ADR-0023), not part of the template, and the
   // agents template is composed into `AGENTS.md` instead of shipped as it is.
   const files = output
     .split("\0")
@@ -74,7 +74,7 @@ function blueprintFiles(source: string): string[] {
         file !== AGENTS_TEMPLATE &&
         existsSync(join(source, file)),
     );
-  // The targets have no CI of their own (ADR-0022), and the App cannot push workflow files.
+  // The targets have no CI of their own (ADR-0023), and the App cannot push workflow files.
   const github = files.filter((file) => file === ".github" || file.startsWith(".github/"));
   if (github.length > 0) {
     throw new Error(

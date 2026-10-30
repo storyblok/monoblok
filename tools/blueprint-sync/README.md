@@ -27,7 +27,7 @@ empty or does not exist, and never one inside this repository (compared by real 
 
 `pnpm nx smoke blueprint-core-vue` runs `smoke`: it builds the blueprint in place, against the SDK
 source nx has built, and runs the smoke test (needs the token in `.env`). CI runs it for the
-affected blueprints (ADR-0022). It stages and installs nothing, so it does not test what users get:
+affected blueprints (ADR-0023). It stages and installs nothing, so it does not test what users get:
 use `verify` for that. Files a config's `beforeBuild` rewrites are restored afterwards.
 
 ## Verify a blueprint

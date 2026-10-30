@@ -25,9 +25,9 @@ export STORYBLOK_ACCESS_TOKEN="$STORYBLOK_PREVIEW_TOKEN"
 pnpm --filter @storyblok/astro qa:editor
 ```
 
-The token must be the key whose `access` is `private`. The playground requests `version: "draft"`,
-and a `public` key returns published content only, so a `public` token yields empty stories for
-unpublished seed data, with no error to tell you why.
+The token must be a `private` access key. See the
+[shared harness notes](../../../tools/visual-editor-qa/README.md#notes-for-every-package) for why,
+and for selectors and blank preview frames.
 
 The harness starts the https playground itself and reuses an already-running one. It runs
 single-worker: the specs share one seeded space, and a parallel re-seed produces failures that look
@@ -50,10 +50,6 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
   `full_slug`).
 - The `test` slug is special: `[...slug].astro` renders
   `<meta name="storyblok-live-preview" content="disabled">` for `test`, `about-us`, and `contact`.
-- Every app-side selector lives in `tools/visual-editor-qa/src/editor.page.ts`, which this package
-  shares with the other framework harnesses. When a Storyblok release breaks the harness, that is
-  the file to repair, and the fix lands for every package at once. This package supplies only its
-  own `test/visual-editor/qa.config.ts` and its specs.
 - No live-editing coverage for richtext. Driving the editor's contenteditable is brittle.
 
 ## Known quirks
@@ -75,6 +71,3 @@ Stop the server with `pnpm --filter @storyblok/astro qa:stop`.
 - **Publish opens a confirmation modal** ("Unpublished linked story") because the seeded relation
   targets are unpublished. `editor.publish()` dismisses it. Without that, the publish never happens
   and the missing preview reload reads as a broken bridge.
-- **A blank preview frame in your own browser is Chrome, not the bridge.** The harness disables the
-  Local Network Access checks via launch args; a browser you drive yourself blocks the iframe and
-  renders a `chrome-error` page instead.

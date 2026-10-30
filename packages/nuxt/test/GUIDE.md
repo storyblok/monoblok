@@ -21,9 +21,9 @@ export NUXT_PUBLIC_STORYBLOK_ACCESS_TOKEN="$STORYBLOK_PREVIEW_TOKEN"
 pnpm --filter @storyblok/nuxt qa:editor
 ```
 
-The token must be the key whose `access` is `private`. The playground requests `version: "draft"`,
-and a `public` key returns published content only, so a `public` token yields empty stories for
-unpublished seed data, with no error to tell you why.
+The token must be a `private` access key. See the
+[shared harness notes](../../../tools/visual-editor-qa/README.md#notes-for-every-package) for why,
+and for selectors and blank preview frames.
 
 The harness starts the https playground itself on port 3200 and reuses an already-running one. It
 runs single-worker: the specs share one seeded space, and a parallel re-seed produces failures that
@@ -51,10 +51,6 @@ For a check the specs do not cover, write a throwaway script instead of adding o
   back to default-language content; the shared demo space configures only `es` and works fine.
 - The editor previews a story at its `full_slug`, so it loads `/vue/articles/first-article`, which
   the catch-all route serves, not the playground's own `/articles/:slug`.
-- Every app-side selector lives in `tools/visual-editor-qa/src/editor.page.ts`, which this package
-  shares with the other framework harnesses. When a Storyblok release breaks the harness, that is
-  the file to repair, and the fix lands for every package at once. This package supplies only its
-  own `test/visual-editor/qa.config.ts` and its specs.
 - The `feature` component in the shared demo space has a `native-color-picker` field. The seed omits
   it deliberately: the playground never reads it, and a plugin field adds an install dependency.
 - No live-editing coverage for richtext. Driving the editor's contenteditable is brittle, and the
@@ -80,6 +76,3 @@ For a check the specs do not cover, write a throwaway script instead of adding o
 - **`WARN You might need NODE_TLS_REJECT_UNAUTHORIZED=0` from `qa:dev` is noise.** Nuxi prints it
   whenever it serves its own self-signed certificate. Playwright accepts that cert through
   `ignoreHTTPSErrors`, so nothing needs the variable.
-- **A blank preview frame in your own browser is Chrome, not the bridge.** The harness disables the
-  Local Network Access checks via launch args; a browser you drive yourself blocks the iframe and
-  renders a `chrome-error` page instead.

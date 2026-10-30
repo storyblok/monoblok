@@ -270,6 +270,20 @@ describe("applyMigration across ops and reruns", () => {
     expect(outcome.refusals[0].reason).toMatch(/op 0 \(alterBlock\) on block k was refused/);
   });
 
+  it.each([
+    ["null", null],
+    ["a string", "card"],
+    ["an array", [{ _uid: "k", component: "card" }]],
+  ])("should refuse an `alterBlock` callback that returns %s", (_, returned) => {
+    const outcome = run(
+      [alterBlock({ block: "card" }, () => returned as never)],
+      storyWith([{ _uid: "k", component: "card", title: "x" }]),
+    );
+
+    expect(outcome.writes).toEqual([]);
+    expect(outcome.refusals[0].reason).toMatch(/op 0 \(alterBlock\) on block k was refused/);
+  });
+
   it("should refuse a story whose shadowed duplicate uid is the one the migration targets", () => {
     const outcome = run(
       [renameField({ block: "card", field: "title", to: "headline" })],

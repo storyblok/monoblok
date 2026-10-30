@@ -24,53 +24,57 @@
   </a>
 </p>
 
-## Installation
+## Features
 
-```bash
-npm install @storyblok/accessibility-checker
-```
-
-## Usage
-
-Enable the checker in code that runs in the browser:
-
-```ts
-import { createAccessibilityChecker } from "@storyblok/accessibility-checker";
-
-const accessibilityChecker = createAccessibilityChecker();
-accessibilityChecker.enable();
-
-// later, for example when a component unmounts
-accessibilityChecker.disable();
-```
-
-It runs [axe-core](https://github.com/dequelabs/axe-core) when the Visual Editor requests a check
-and sends the results to the editor's A11y tab. Outside the Visual Editor, `enable()` does nothing.
+- Run [axe-core](https://github.com/dequelabs/axe-core) checks when the Visual Editor requests them
+- Send the results to the A11y tab in the Visual Editor
+- Configure the checked rules with axe rule tags, such as WCAG conformance levels
+- Load axe-core only when the Visual Editor requests the first check
+- Do nothing outside the Visual Editor, including on the server
 
 ## Documentation
 
-For complete documentation, including the options and the message protocol, please visit the
-[Accessibility Checker reference](https://www.storyblok.com/docs/libraries/js/accessibility-checker).
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/accessibility-checker).
 
-## Playground
+## Contributing
 
-To try the checker in the Visual Editor, copy `playground/.env.template` to `playground/.env`, set
-`VITE_STORYBLOK_TOKEN`, and run `pnpm --filter @storyblok/playground-accessibility-checker dev`. Set
-the space's preview URL to `https://localhost:5173/`.
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
-For help, best practices, or discussions:
+For help, discussion about best practices, or any other conversation that would benefit from being
+searchable:
 
-- [Storyblok GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
-- [Join the Storyblok Discord](https://storyblok.com/join-discord)
+- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
+
+For community support, chatting with other users, please visit:
+
+- [Discuss Storyblok on Discord](https://storyblok.com/join-discord)
 
 ## Support
 
 For bugs or feature requests, please
 [submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
+> [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
+> reproducible example will be closed.
+> [Why reproductions are Required](https://antfu.me/posts/why-reproductions-are-required).
+
+### I can't share my company project code
+
+We understand that you might not be able to share your company's project code. Please provide a
+minimal reproducible example that demonstrates the issue by using tools like
+[Stackblitz](https://stackblitz.com) or a link to a GitHub repo. Please make sure you include a
+README file with the instructions to build and run the project, important not to include any access
+token, password or personal information of any kind.
+
+### Feedback
+
+If you have a question, please ask in the
+[Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
+
 ## License
 
-[MIT](/LICENSE). The package depends on [axe-core](https://github.com/dequelabs/axe-core), which is
+[MIT](./LICENSE). The package depends on [axe-core](https://github.com/dequelabs/axe-core), which is
 licensed under the [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/).

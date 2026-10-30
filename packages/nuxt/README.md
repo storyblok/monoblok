@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/nuxt</h1>
  <p>
-     The Nuxt 3 module to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-nuxt" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-nuxt" target="_blank">Real-time Visual Editing Experience</a>.
+     The Nuxt module to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-nuxt" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/concepts/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-nuxt" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>
@@ -32,23 +32,23 @@
 - Fetch content from the Content Delivery API
 - Connect frontend components with the Visual Editor via StoryblokBridge
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
-- Nuxt 3 module with automatic setup and configuration
+- Nuxt module with automatic setup and configuration
 - Auto-imported composables: `useAsyncStoryblok`, `useStoryblok`, `useStoryblokApi`,
   `useStoryblokBridge`
 - Auto-imported components: `StoryblokComponent`, `StoryblokRichText`
 - Auto-imported utilities: `renderRichText`, `useStoryblokRichText`
 - Built-in TypeScript support with auto-generated types
 - SSR/SSG compatibility with proper hydration
-- DevTools integration for Storyblok management
+- Optional Nuxt DevTools integration
 
 ## Documentation
 
-For complete documentation, please visit
-[package reference](https://www.storyblok.com/docs/packages/storyblok-nuxt)
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/nuxt-sdk).
 
 ## Contributing
 
-If you'd like to contribute, please refer to the [contributing guidelines](CONTRIBUTING.md).
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
@@ -85,4 +85,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

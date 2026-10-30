@@ -1,0 +1,96 @@
+name: OpenAPI Spec Sync
+
+# Pulls the latest OpenAPI specs, regenerates every codegen consumer, and opens
+# (or updates) a single pull request with the result. See ADR-0024.
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  HUSKY: 0
+  SYNC_BRANCH: chore/openapi-spec-sync
+
+jobs:
+  sync:
+    if: github.repository == 'storyblok/monoblok'
+    runs-on: ubuntu-latest
+    steps:
+      # The specs live in a private repository, and a pull request opened with
+      # GITHUB_TOKEN would not trigger CI, so an app token does both.
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.OPENAPI_SYNC_APP_ID }}
+          private-key: ${{ secrets.OPENAPI_SYNC_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: monoblok,openapi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: ./.github/actions/setup-node
+
+      - name: Pull the latest specs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: pnpm --filter @storyblok/openapi-codegen pull:update
+
+      - name: Check for spec changes
+        id: changes
+        run: |
+          if git diff --quiet -- tools/openapi-codegen/spec.lock; then
+            echo "Specs unchanged; nothing to sync."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate every consumer
+        if: steps.changes.outputs.changed == 'true'
+        run: pnpm nx run-many -t generate:openapi --skip-nx-cache
+
+      - name: Open or update the pull request
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          open_pr=$(gh pr list --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number')
+
+          # The branch is rebuilt from main on every run, unless someone pushed
+          # fixes to the open pull request: replacing it would discard their work.
+          git fetch origin "$SYNC_BRANCH" || true
+          if [ -n "$open_pr" ] && git log --format='%ae' "HEAD..origin/$SYNC_BRANCH" | grep -qv 'github-actions\[bot\]'; then
+            echo "::warning::#$open_pr has commits from someone other than this workflow; leaving it untouched. Merge or close it to resume syncing."
+            exit 0
+          fi
+
+          git switch -c "$SYNC_BRANCH"
+          git add tools/openapi-codegen packages/*/src/generated
+          git commit -m "chore(tools): sync OpenAPI specs"
+          git push --force-with-lease origin "$SYNC_BRANCH"
+
+          if [ -z "$open_pr" ]; then
+            gh pr create --base main --head "$SYNC_BRANCH" \
+              --title "chore(tools): sync OpenAPI specs" \
+              --body-file - <<'EOF'
+          Regenerates every OpenAPI codegen consumer from the latest specs.
+
+          Before merging:
+
+          - Review the `packages/*/src/generated/` diff. If it changes the public types or SDK of a package, retitle this pull request to `feat(<packages>): …` or `fix(<packages>): …` so the change releases.
+          - Fix any consumer code that no longer type-checks by pushing to this branch. Once you push, later sync runs leave the branch alone until this pull request is merged or closed.
+          EOF
+          fi

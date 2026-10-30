@@ -13,8 +13,9 @@ up automatically.
 
 Generation reads from two places, and both of them can change the generated output:
 
-- `.openapi-cache/` holds the upstream specs fetched from the private `storyblok/openapi-wdx` repo.
-  It is git-ignored, pinned by `spec.lock`, and populated by `pull`.
+- `.openapi-cache/` holds the public Content Delivery API and Management API specs fetched from the
+  private `storyblok/openapi` repo. It is git-ignored, pinned by `spec.lock`, and populated by
+  `pull`.
 - `specs/` holds this repo's own overlay specs, including `specs/overlay.openapi.yaml` and the
   shared field-type shapes under `specs/shared/`. It **is** committed, so anyone can edit it in a
   normal PR without spec access.
@@ -36,8 +37,12 @@ pnpm --filter @storyblok/openapi-codegen pull
 pnpm --filter @storyblok/openapi-codegen verify
 ```
 
-Both `pull` commands require `gh auth status`. Specs live in the private `storyblok/openapi-wdx`
-repo.
+Both `pull` commands require `gh auth status`. Specs live in the private `storyblok/openapi` repo.
+`pull:update` leaves `spec.lock` untouched when the specs are unchanged upstream, even if the repo
+has new commits.
+
+You rarely need `pull:update` by hand: the [OpenAPI Spec Sync](#automated-sync) workflow runs it
+daily.
 
 `generate` verifies the cache content hash against `spec.lock` before running and fails fast on a
 mismatch, so a stale cache left over from a different SHA can never silently produce divergent
@@ -79,12 +84,12 @@ access because each consumer commits its own `src/generated/` output. The overla
 
 ## Why generated code IS committed
 
-Two reasons. First, external contributor access: people without `storyblok/openapi-wdx` access can
-still run `pnpm install && pnpm build` without fetching specs. Second, diff visibility: a spec
-update produces a real diff in the consumer packages' `src/generated/` only when something
-type-relevant changed. A PR that touches `spec.lock` or `specs/` with no consumer diff signals
-irrelevant churn. A PR that touches either and produces a consumer diff signals a real surface-area
-change worth reviewing.
+Two reasons. First, external contributor access: people without `storyblok/openapi` access can still
+run `pnpm install && pnpm build` without fetching specs. Second, diff visibility: a spec update
+produces a real diff in the consumer packages' `src/generated/` only when something type-relevant
+changed. A PR that touches `spec.lock` or `specs/` with no consumer diff signals irrelevant churn. A
+PR that touches either and produces a consumer diff signals a real surface-area change worth
+reviewing.
 
 ## Version policy
 
@@ -94,14 +99,30 @@ refreshes or internal refactors. Bump the version only when the exported API (`g
 
 ## CI contract
 
-CI never runs `pull`, `pull:update`, or any consumer `generate:openapi` target, because generation
-needs the private spec cache. CI builds from committed `src/generated/`.
+Pull request CI never runs `pull`, `pull:update`, or any consumer `generate:openapi` target, because
+generation needs the private spec cache. CI builds from committed `src/generated/`.
 
-Nothing in CI can therefore prove that the committed output is current. A PR that edits `specs/` and
-regenerates only some consumers passes every check, and the packages left behind stay stale until
-someone regenerates them for an unrelated reason. Reviewers are the only guard: when a PR touches
+Nothing in pull request CI can therefore prove that the committed output is current. A PR that edits
+`specs/` and regenerates only some consumers passes every check, and the packages left behind stay
+stale until the next sync regenerates them. Reviewers are the only guard: when a PR touches
 `spec.lock` or `specs/`, check that `packages/*/src/generated/` changed for every consumer the edit
 reaches, or that the author states why none of them do.
+
+## Automated sync
+
+The OpenAPI Spec Sync workflow (`.github/workflows/openapi-sync.yaml`) runs daily and on demand. It
+runs `pull:update` and, if `spec.lock` moved, regenerates every consumer and opens or updates one
+pull request from the `chore/openapi-spec-sync` branch. CI then type-checks and tests the
+regenerated output like any other change.
+
+- The pull request is titled `chore(tools): …`, which releases nothing. When the generated diff
+  changes a package's public types or SDK, retitle it to `feat(…)` or `fix(…)` before merging.
+- Push fixes for consumers that no longer compile to the sync branch. The workflow leaves an open
+  pull request with commits from anyone else untouched, so your fixes survive until it is merged or
+  closed.
+- The workflow authenticates as a GitHub App (`OPENAPI_SYNC_APP_ID`, `OPENAPI_SYNC_APP_PRIVATE_KEY`)
+  installed on this repo and the spec repo. The app token both reads the private specs and opens the
+  pull request; a pull request opened with the default `GITHUB_TOKEN` would not trigger CI.
 
 ## spec.lock
 
@@ -109,7 +130,7 @@ Committed. Pins the upstream commit SHA and a sha256 hash of the resulting cache
 
 ```json
 {
-  "repo": "storyblok/openapi-wdx",
+  "repo": "storyblok/openapi",
   "sha": "<upstream commit SHA>",
   "hash": "sha256:<hex>"
 }

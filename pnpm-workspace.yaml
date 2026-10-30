@@ -3,6 +3,7 @@ packages:
   - packages/*/playground
   - packages/*/playground/*
   - tools/*
+  - blueprints/*
 
 # Shared toolchain. Every package that uses one of these should reference it as
 # `catalog:` so a bump is a one-line change here instead of a repo-wide sweep.
@@ -21,6 +22,7 @@ catalog:
   typescript: 6.0.3
   vite-plugin-dts: ^5.0.3
   vitest: ^4.1.10
+  vue: ^3.5.44
   vue-tsc: ^3.3.10
   zod: ^4.6.5
 
@@ -69,6 +71,9 @@ packageExtensions:
       vue-tsc:
         optional: true
 
+# Workspace-only manifest tweaks for blueprints (ADR-0023).
+pnpmfile: blueprints/.pnpmfile.cjs
+
 injectWorkspacePackages: true
 syncInjectedDepsAfterScripts:
   - build
@@ -99,3 +104,10 @@ minimumReleaseAge: 1440
 
 # Resolution-time only; for false positives prefer `trustPolicyIgnoreAfter`.
 trustPolicy: no-downgrade
+# 30 days. Ignores trust evidence older than this, which clears false positives on old releases
+# (ADR-0023). Newer versions are still checked.
+trustPolicyIgnoreAfter: 43200
+# A genuine downgrade: earlier versions had provenance, 2.24.0 has none. Pulled in by
+# @astrojs/netlify (blueprint-core-astro). Pinned so a later version is checked again.
+trustPolicyExclude:
+  - "@netlify/serverless-functions-api@2.24.0"

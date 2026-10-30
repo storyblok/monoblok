@@ -9,6 +9,13 @@
       "{workspaceRoot}/tools/openapi-codegen/src/**",
       "{workspaceRoot}/tools/openapi-codegen/specs/**",
       "{workspaceRoot}/tools/openapi-codegen/templates/**"
+    ],
+    "blueprint": [
+      "default",
+      { "env": "STORYBLOK_DELIVERY_API_TOKEN" },
+      "{workspaceRoot}/blueprints/.pnpmfile.cjs",
+      "{workspaceRoot}/pnpm-workspace.yaml",
+      "!{projectRoot}/node_modules/**"
     ]
   },
   "targetDefaults": {
@@ -44,6 +51,16 @@
       "dependsOn": ["^build", "build"],
       "outputs": ["{projectRoot}/coverage"],
       "cache": true
+    },
+    "smoke": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm --filter @storyblok/blueprint-sync smoke {projectName}"
+      },
+      "dependsOn": ["^build"],
+      "inputs": ["blueprint", "^default"],
+      "cache": false,
+      "parallelism": false
     }
   },
   "tui": {

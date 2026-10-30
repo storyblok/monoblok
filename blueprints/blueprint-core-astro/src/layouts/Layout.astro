@@ -1,0 +1,23 @@
+---
+const currentYear = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Storyblok & Astro</title>
+		<link
+			rel="stylesheet"
+			href="https://a.storyblok.com/f/212319/x/e6ccda03b8/blueprint-blank.css"
+		/>
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+		<meta name="generator" content={Astro.generator} />
+	</head>
+	<body>
+		<slot />
+		<footer>All rights reserved © {currentYear}</footer>
+	</body>
+</html>

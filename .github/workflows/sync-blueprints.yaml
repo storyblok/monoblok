@@ -1,0 +1,298 @@
+name: Sync blueprints
+
+# Pushes blueprints/<name>/ to storyblok/<name> after verifying it. See adr/0023.
+# The GitHub settings it needs (environments, branch policies) are in blueprints/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      blueprints:
+        description: "Blueprints to sync: comma-separated folder names under blueprints/, or `all`"
+        required: true
+        default: all
+  # publish.yaml calls this after every publish on main, including one that published nothing. The
+  # approval below still applies.
+  workflow_call:
+    inputs:
+      blueprints:
+        type: string
+        required: false
+        default: all
+
+permissions:
+  contents: read
+
+# One sync at a time per ref, and a run that waits is replaced by a newer one. A run for an older
+# commit is also refused by `push`. A run on another ref cannot replace a waiting run on main (it
+# fails at `Require main` anyway).
+concurrency:
+  group: sync-blueprints-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TARGET_OWNER: storyblok
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Every other job needs this one. Prereleases come from other branches, and a blueprint must
+      # only point at what `latest` is on npm.
+      - name: Require main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::Blueprints sync from main only, not $REF"
+            exit 1
+          fi
+
+      - id: matrix
+        env:
+          INPUT: ${{ inputs.blueprints }}
+        run: |
+          input="${INPUT// /}"
+          if [ "$input" = "all" ]; then
+            names=$(find blueprints -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)
+          else
+            names=$(echo "$input" | tr ',' '\n' | sed '/^$/d' | sort -u)
+          fi
+          if [ -z "$names" ]; then
+            echo "::error::No blueprints selected"
+            exit 1
+          fi
+          for name in $names; do
+            if ! [[ "$name" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || [ ! -d "blueprints/$name" ] \
+              || [ ! -f "tools/blueprint-sync/configs/$name.ts" ]; then
+              echo "::error::Unknown blueprint: $name"
+              exit 1
+            fi
+          done
+          echo "matrix=$(echo "$names" | jq -R . | jq -sc '{blueprint: .}')" >> "$GITHUB_OUTPUT"
+
+  # Reviewers on the matrix job's environment would ask once per blueprint; this asks once per run.
+  approve:
+    needs: matrix
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - run: echo "Approved"
+
+  # Stages every selected blueprint and resolves its lockfile. Runs no blueprint code and has no
+  # secrets: `--ignore-scripts` keeps install scripts from running while the lockfile is written.
+  # The tarballs' sha256 goes out as a job output, which only this job can set. `verify` and `push`
+  # download the tarballs, which a compromised `verify` could replace, and `push` checks them
+  # against that output. It is one job, not one per blueprint, because the outputs of matrix legs
+  # overwrite each other.
+  stage:
+    needs: [matrix, approve]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      hashes: ${{ steps.stage.outputs.hashes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+        with:
+          cache: "false"
+          filter: "@storyblok/blueprint-sync"
+
+      - id: stage
+        env:
+          MATRIX: ${{ needs.matrix.outputs.matrix }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          hashes='{}'
+          for name in $(jq -r '.blueprint[]' <<<"$MATRIX"); do
+            pnpm --filter @storyblok/blueprint-sync stage "$name" "$RUNNER_TEMP/stage/$name"
+            tar -czf "$RUNNER_TEMP/tarballs/$name.tgz" -C "$RUNNER_TEMP/stage/$name" .
+            hash=$(sha256sum "$RUNNER_TEMP/tarballs/$name.tgz" | cut -d' ' -f1)
+            hashes=$(jq -c --arg name "$name" --arg hash "$hash" '. + {($name): $hash}' <<<"$hashes")
+          done
+          echo "hashes=$hashes" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blueprints
+          path: ${{ runner.temp }}/tarballs
+          retention-days: 1
+          if-no-files-found: error
+
+  # Runs install and build scripts, so it holds no App secret and never touches a target repo. It
+  # uses no environment: the read-only demo token is a repository variable, which install scripts can
+  # read. Each blueprint's own dependencies come from npm as a user would get them (ADR-0023), which
+  # is untrusted code: nothing in this job may be able to reach the App key or write to a target.
+  # It tests the tarball `stage` made, lockfile included, and caches nothing: a cache this job
+  # saved would be restored by later runs.
+  verify:
+    needs: [matrix, stage]
+    runs-on: ubuntu-latest
+    name: verify (${{ matrix.blueprint }})
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    env:
+      BLUEPRINT: ${{ matrix.blueprint }}
+      EXPECTED_SHA: ${{ fromJSON(needs.stage.outputs.hashes)[matrix.blueprint] }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-node
+        with:
+          cache: "false"
+          filter: "@storyblok/blueprint-sync"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: blueprints
+          path: ${{ runner.temp }}/tarballs
+
+      # Runs before any untrusted code, and checks the tarball like `push` does.
+      - name: Unpack staged blueprint
+        run: bash tools/blueprint-sync/scripts/unpack-tarball.sh "$RUNNER_TEMP/tarballs/$BLUEPRINT.tgz" "$EXPECTED_SHA" "$RUNNER_TEMP/verify"
+
+      - name: Verify
+        env:
+          STORYBLOK_DELIVERY_API_TOKEN: ${{ vars.BLUEPRINTS_DELIVERY_API_TOKEN }}
+          NEXT_TELEMETRY_DISABLED: 1
+          # Not hidden, so upload-artifact keeps it.
+          SMOKE_RESULTS_DIR: ${{ runner.temp }}/smoke-results
+        run: pnpm --filter @storyblok/blueprint-sync verify "$BLUEPRINT" --from "$RUNNER_TEMP/verify"
+
+      # Playwright traces of a failed smoke test. Only the browser's results: no blueprint files.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-results-${{ matrix.blueprint }}
+          path: ${{ runner.temp }}/smoke-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Holds the token. Runs no install, build, or blueprint code. It unpacks a tarball that `verify`
+  # could have replaced, so the tarball must match the hash `stage` published, and must not hold a
+  # `.git`. Git runs without hooks and fsmonitor. The token is used by the target checkout and the
+  # `git push` step, neither of which runs blueprint code.
+  push:
+    needs: [matrix, stage, verify]
+    runs-on: ubuntu-latest
+    name: push (${{ matrix.blueprint }})
+    environment: blueprint-sync
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
+    env:
+      BLUEPRINT: ${{ matrix.blueprint }}
+      TARGET_REPO: ${{ matrix.blueprint }}
+      EXPECTED_SHA: ${{ fromJSON(needs.stage.outputs.hashes)[matrix.blueprint] }}
+      # Every git call in this job, including the ones inside actions.
+      GIT_CONFIG_COUNT: 2
+      GIT_CONFIG_KEY_0: core.hooksPath
+      GIT_CONFIG_VALUE_0: /dev/null
+      GIT_CONFIG_KEY_1: core.fsmonitor
+      GIT_CONFIG_VALUE_1: "false"
+    steps:
+      # Scoped to this one target repo. GITHUB_TOKEN cannot reach other repos.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ vars.BLUEPRINTS_APP_ID }}
+          private-key: ${{ secrets.BLUEPRINTS_APP_PRIVATE_KEY }}
+          owner: ${{ env.TARGET_OWNER }}
+          repositories: ${{ env.TARGET_REPO }}
+          permission-contents: write
+
+      # Not persisted: the token stays out of target/.git/config.
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TARGET_OWNER }}/${{ env.TARGET_REPO }}
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+          path: target
+
+      # Only the script that checks the tarball, from the commit being synced.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: tools/blueprint-sync/scripts
+          path: monoblok
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: blueprints
+          path: ${{ runner.temp }}/tarballs
+
+      # A run for an older commit, or a re-run of one, would put older files over a newer sync.
+      # Only a target whose tip is a sync commit is checked: the first sync, or a commit made
+      # directly in the target, has nothing to compare.
+      - name: Refuse to go back in time
+        working-directory: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(git log -1 --format=%s | sed -n 's/^chore: sync (source: \([0-9a-f]\{40\}\))$/\1/p')
+          if [ -z "$last" ]; then
+            echo "The target's tip is not a sync commit, nothing to compare."
+            exit 0
+          fi
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$last...$GITHUB_SHA" --jq .status)
+          if [ "$status" != "ahead" ] && [ "$status" != "identical" ]; then
+            echo "::error::The target was last synced from $last, which is $status of $GITHUB_SHA. Run the sync from a newer commit."
+            exit 1
+          fi
+
+      # The tarball passed through `verify`, which runs untrusted code, so it is checked: it must
+      # be the one `stage` hashed and must not hold a `.git`. It is unpacked into an empty
+      # directory, then copied over the target's files.
+      - name: Unpack blueprint
+        run: |
+          bash monoblok/tools/blueprint-sync/scripts/unpack-tarball.sh "$RUNNER_TEMP/tarballs/$BLUEPRINT.tgz" "$EXPECTED_SHA" "$RUNNER_TEMP/unpacked"
+          find target -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -R "$RUNNER_TEMP/unpacked/." target/
+
+      - name: Stage changes
+        id: changes
+        working-directory: target
+        run: |
+          git add -A
+          # The lockfile is resolved fresh on every sync, so it moves whenever a dependency
+          # publishes. It only ships along with a change to the template itself: skip when the
+          # only change is a modification of package-lock.json (not an addition, not a rename).
+          changes=$(git diff --cached --name-status)
+          if [ -z "$changes" ] || [ "$changes" = "$(printf 'M\tpackage-lock.json')" ]; then
+            echo "**$BLUEPRINT**: $TARGET_OWNER/$TARGET_REPO is up to date, nothing to sync." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --stat
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: target
+        run: |
+          git config user.name 'storyblok-bot'
+          git config user.email 'bot@storyblok.com'
+          git commit --no-verify -m "chore: sync (source: $GITHUB_SHA)"
+
+      - name: Push to main
+        if: steps.changes.outputs.changed == 'true'
+        working-directory: target
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c http.extraheader="AUTHORIZATION: basic $auth" push --no-verify origin HEAD:main
+          echo "**$BLUEPRINT**: synced to $GITHUB_SERVER_URL/$TARGET_OWNER/$TARGET_REPO/commit/$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"

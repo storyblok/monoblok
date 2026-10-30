@@ -34,13 +34,13 @@ export default defineConfig({
 
 ### Framework presets
 
-| Preset                     | When to use it                         |
-| -------------------------- | -------------------------------------- |
-| `base` (or default export) | Default. Plain TS / JS libraries.      |
-| `vue`                      | Projects with `.vue` SFCs.             |
-| `svelte`                   | Projects with `.svelte` files.         |
-| `astro`                    | Projects with `.astro` files.          |
-| `nuxt`                     | Nuxt apps and modules (extends `vue`). |
+| Preset   | When to use it                         |
+| -------- | -------------------------------------- |
+| `base`   | Default. Plain TS / JS libraries.      |
+| `vue`    | Projects with `.vue` SFCs.             |
+| `svelte` | Projects with `.svelte` files.         |
+| `astro`  | Projects with `.astro` files.          |
+| `nuxt`   | Nuxt apps and modules (extends `vue`). |
 
 ```ts
 // oxlint.config.ts — a Nuxt project
@@ -124,6 +124,10 @@ Then update your `package.json`:
 +   "oxlint": "^0.15.0"
 + }
 ```
+
+## Contributing
+
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## License
 

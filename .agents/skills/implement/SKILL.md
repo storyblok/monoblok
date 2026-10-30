@@ -14,23 +14,23 @@ Implement the approved plan: $ARGUMENTS
 - Branch: !`git branch --show-current`
 - Working tree: !`git status --short 2>/dev/null | head -20`
 
-## Instructions
-
-1. **Follow the plan** - Execute the steps from the approved plan
-2. **Small diffs** - Make one logical change at a time
-3. **No scope creep** - Only implement what was planned
-4. **Verify as you go** - Run relevant checks after each change
-
 ## Rules
 
-- Do NOT add new dependencies unless explicitly in the plan
-- Do NOT refactor unrelated code
-- Do NOT add comments/docs unless specifically requested
-- Preserve existing code style and patterns
+- Implement only what the plan covers. No new dependencies unless planned, no unrelated refactors.
+- Don't add comments that restate code. Draft user-facing docs in `DOCS.md` (see
+  `docs/docs-platform.md`).
+- Before finishing, run for every affected package:
 
-## Output Format
+  ```bash
+  pnpm nx lint <package>
+  pnpm nx test <package>
+  pnpm nx test:types <package>
+  pnpm nx build <package>
+  ```
 
-```markdown
+## Output
+
+````markdown
 ## Changes Made
 
 | File            | Change       |
@@ -39,21 +39,12 @@ Implement the approved plan: $ARGUMENTS
 
 ## Verification
 
-\`\`\`bash
-
-# Commands run and output
-
-pnpm nx lint <package> pnpm nx test <package> pnpm nx run <package> test:types \`\`\`
+```bash
+# Commands run and their result
+```
 
 ## Notes
 
-- Any deviations from plan (with justification)
-- Any follow-up items discovered
-```
-
-## Post-Implementation Checklist
-
-- [ ] All planned changes completed
-- [ ] Lint passes: `pnpm nx lint <package>`
-- [ ] Tests pass: `pnpm nx test <package>`
-- [ ] Types check: `pnpm nx run <package> test:types`
+- Deviations from the plan (with justification)
+- Follow-up items discovered
+````

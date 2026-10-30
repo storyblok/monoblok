@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/astro</h1>
  <p>
-     The Astro SDK to interact with <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guides/astro/visual-preview#enable-live-preview-in-the-visual-editor" target="_blank">Real-time Visual Editing Experience</a>.
+     The Astro SDK to interact with <a href="https://www.storyblok.com/docs/api/content-delivery/v2" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/concepts/visual-editor" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>
@@ -40,12 +40,12 @@
 
 ## Documentation
 
-For complete documentation, please visit
-[package reference](https://www.storyblok.com/docs/packages/storyblok-astro).
+For complete documentation, please visit the
+[package reference](https://www.storyblok.com/docs/libraries/js/astro-sdk).
 
 ## Contributing
 
-If you'd like to contribute, please refer to the [contributing guidelines](CONTRIBUTING.md).
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
@@ -82,4 +82,4 @@ If you have a question, please ask in the
 
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

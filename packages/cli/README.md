@@ -3,13 +3,13 @@
 ![Storyblok ImagoType](https://raw.githubusercontent.com/storyblok/.github/refs/heads/main/profile/public/github-banner.png)
 
 <h1>Storyblok CLI</h1>
-  <p>A powerful CLI tool to improve the DX of your <a href="https://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok" target="_blank">Storyblok</a> projects.</p>
+  <p>The command-line interface for <a href="https://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok" target="_blank">Storyblok</a> projects.</p>
   <br />
 </div>
 
 <p align="center">
   <a href="https://npmjs.com/package/storyblok">
-    <img src="https://img.shields.io/npm/v/storyblok/latest.svg?style=flat-square&color=8d60ff" alt="Storyblok JS Client" />
+    <img src="https://img.shields.io/npm/v/storyblok/latest.svg?style=flat-square&color=8d60ff" alt="Storyblok CLI" />
   </a>
   <a href="https://npmjs.com/package/storyblok" rel="nofollow">
     <img src="https://img.shields.io/npm/dt/storyblok.svg?style=appveyor&color=8d60ff" alt="npm">
@@ -27,94 +27,32 @@
 
 ## Features
 
-- 🛡️ **Type Safety** - Generate TypeScript type definitions for your Storyblok components, ensuring
-  type safety in your frontend applications
-- 🔐 **Authentication** - Secure login system with support for different regions and CI environments
-- 🧩 **Component Management** - Pull and push component schemas, groups, presets, and internal tags
-  between spaces
-- 🔄 **Migration System** - Generate and run migrations to transform or update field values across
-  your Storyblok content
-- 🌐 **Language Management** - Pull and manage languages for your Storyblok space
-- 📁 **File Organization** - Organized file structure with the `.storyblok` directory as default
-- 🛠️ **Customizable Paths** - Flexible path configuration for all generated files
-- 📝 **Naming Conventions** - Consistent file naming with customizable suffixes and prefixes
-- 📂 **Separate Files Support** - Option to work with individual component files or consolidated
-  files
-- 👀 **Dry Run Mode** - Preview migrations changes before applying them to your Storyblok space
-- 🔍 **Filtering Capabilities** - Filter components and stories using glob patterns and Storyblok
-  query syntax
-- 🔎 **Content Search** - Find stories by text, block usage, tags, workflow stage, or a JSONPath
-  expression over their content, and stream the matches as JSONL for `jq` and other commands
-- 📊 **Verbose Logging** - Improved error handling and detailed logging options for debugging and
-  monitoring
-
-## Pre-requisites
-
-- [Node.js >= 18.0.0](https://nodejs.org/en/download/)
-- Storyblok account (sign up
-  [here](https://app.storyblok.com/#!/signup?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-cli))
-- Personal access token from Storyblok (get it
-  [here](https://app.storyblok.com/#/me/account?tab=token))
+- **Type generation**: Generate TypeScript types from component schemas
+- **Code-defined schema**: Validate, diff, push, and roll back schemas authored with
+  `@storyblok/schema`
+- **Content sync**: Pull and push stories, components, assets, datasources, and languages between
+  spaces
+- **Content migrations**: Generate, run, and roll back migrations that transform story content
+- **Content search**: Find stories by text, block, tag, workflow stage, or JSONPath expression and
+  stream the matches as JSONL
+- **Project scaffolding**: Create a project from a core blueprint, connected to a new space
+- **CI-friendly**: Token login, configuration files, logs, and run reports
 
 ## Documentation
 
 For complete documentation, please visit the
 [package reference](https://www.storyblok.com/docs/tooling/cli).
 
-## Setup
+## Contributing
 
-This package relies on [pnpm](https://pnpm.io/) to manage dependencies. For instructions on how to
-install pnpm, please visit [pnpm.io](https://pnpm.io/installation).
-
-```bash
-pnpm install
-```
-
-## Build
-
-```bash
-pnpm build
-```
-
-### Testing
-
-To run the tests you can use the following command:
-
-```bash
-pnpm run test
-```
-
-If you prefer a more visual experience while writing tests you can use this command powered by
-[vitest/ui](https://vitest.dev/guide/ui):
-
-```bash
-pnpm run test:ui
-```
-
-You can also check the coverage with:
-
-```bash
-pnpm run test:coverage
-```
-
-### Debugging
-
-To debug the CLI you can use the `launch.json` configuration in the `.vscode` folder. You can run
-any command with the debugger attached.
-
-![A screenshot of the Visual Studio Code debugger](/.github/assets/debug-vscode.png)
-
-Then you can set breakpoints directly to the typescript files and the debugger will handle the rest
-with sourcempaps.
-
-![A screenshot of a breakpoint set in the Visual Studio Code debugger](/.github/assets/breakpoints.png)
+If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
 
 ## Community
 
 For help, discussion about best practices, or any other conversation that would benefit from being
 searchable:
 
-- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/storyblok/discussions)
+- [Discuss Storyblok on GitHub Discussions](https://github.com/storyblok/monoblok/discussions)
 
 For community support, chatting with other users, please visit:
 
@@ -123,7 +61,7 @@ For community support, chatting with other users, please visit:
 ## Support
 
 For bugs or feature requests, please
-[submit an issue](https://github.com/storyblok/storyblok-cli/issues/new/choose).
+[submit an issue](https://github.com/storyblok/monoblok/issues/new/choose).
 
 > [!IMPORTANT] Please search existing issues before submitting a new one. Issues without a minimal
 > reproducible example will be closed.
@@ -137,16 +75,11 @@ minimal reproducible example that demonstrates the issue by using tools like
 README file with the instructions to build and run the project, important not to include any access
 token, password or personal information of any kind.
 
-### I only have a question
+### Feedback
 
 If you have a question, please ask in the
 [Discuss Storyblok on Discord](https://storyblok.com/join-discord) channel.
 
-## Contributing
-
-If you're interested in contributing to Storyblok CLI, please read our
-[contributing docs](../../CONTRIBUTING.md) before submitting a pull request.
-
 ## License
 
-[License](/LICENSE)
+[License](./LICENSE)

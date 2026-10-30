@@ -355,7 +355,8 @@ function getBroker(): BridgeEntry {
  * unsubscribe, or a later subscriber changing its options — briefly leaves
  * the page with no attached bridge. Subscriptions (and unsubscriptions) made
  * in the same synchronous tick, or that arrive while the bridge module is
- * still loading, share a single build instead.
+ * still loading, share a single build instead, so subscribe to known events
+ * together (e.g. with `Promise.all`) to avoid extra rebuilds.
  *
  * Behavior:
  * - **input** → Calls the provided callback with the updated story data.

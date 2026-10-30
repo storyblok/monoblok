@@ -1,8 +1,14 @@
 # Testing Patterns
 
-- Stack: Vitest + memfs (filesystem) + msw (API). Tests co-located as `*.test.ts`.
-- Place tests alongside source files (e.g., `program.ts` -> `program.test.ts`).
-- For unit tests, use the `qa-engineer-unit` skill.
+- Stack: Vitest, msw for HTTP, memfs for the filesystem.
+- Co-locate tests with the source as `*.test.ts` (`program.ts` → `program.test.ts`).
+- Test behavior, not implementation. Every behavior change needs integration coverage of the command
+  or public entry point, written before the implementation. Unit tests supplement it; see the
+  `qa-engineer-unit` skill.
+- Every bug fix needs a regression test.
+- Minimum set: happy path, a negative case, and 1-2 edge cases.
+- Titles start with `should` and describe behavior, not the function called:
+  `it('should pull stories into the local workspace')`.
 
 ## API mocking
 
@@ -16,9 +22,9 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 ```
 
-## Session mocking
+## Session mocking (CLI)
 
-The most common mock shape — matches the consumer's expectations:
+The most common shape for CLI command tests:
 
 ```typescript
 vi.mock("../../session", () => ({
@@ -33,7 +39,7 @@ vi.mock("../../session", () => ({
 
 ## Windows compatibility
 
-CI runs on both macOS and Windows. These are the non-obvious gotchas:
+CI runs every package on Linux and the CLI additionally on Windows. Non-obvious gotchas:
 
 - **Use `pathe`**, not `node:path` — avoids backslash paths and drive-letter prefixes on Windows
 - **memfs strips drive letters** — strip with `p.replace(/^[a-z]:/i, '')` before comparing against

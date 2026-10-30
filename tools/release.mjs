@@ -291,8 +291,7 @@ async function main() {
           log(`   - ${name}: ${oldVersion} -> ${newVersion}`, RED);
         }
         log("\nPushing this release would publish downstream packages with", YELLOW);
-        log("unresolvable dependency references (see RELEASING.md for the", YELLOW);
-        log("original incident — commit f824b398e).", YELLOW);
+        log("unresolvable dependency references (see commit f824b398e).", YELLOW);
         log("\nRecover with:", BLUE);
         log(`   git reset --hard ${baseSha}`, YELLOW);
         log(`   for t in $(git tag --points-at HEAD); do git tag -d "$t"; done`, YELLOW);

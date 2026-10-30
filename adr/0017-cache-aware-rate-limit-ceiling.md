@@ -1,6 +1,6 @@
 # ADR-0017: Cache-Aware Rate-Limit Ceiling in the Content API Client
 
-**Status:** Accepted  
+**Status:** Accepted, amended by ADR-0019  
 **Date:** 2026-09-21
 
 Amends ADR-0016.

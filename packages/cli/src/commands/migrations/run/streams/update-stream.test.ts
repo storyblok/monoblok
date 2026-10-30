@@ -36,7 +36,6 @@ describe("updateStream", () => {
       unpublished_changes: false,
       is_startpage: false,
       is_folder: false,
-      pinned: false,
       parent_id: 0,
       group_id: "group-1",
       parent: null,
@@ -44,7 +43,6 @@ describe("updateStream", () => {
       position: 0,
       sort_by_date: null,
       tag_list: [],
-      disble_fe_editor: false,
       disable_fe_editor: false,
       default_root: null,
       preview_token: {

@@ -1,5 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "pathe";
+import type { MigrationOpSource } from "@storyblok/schema/codegen";
+import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
 import { resolvePath } from "../../../../utils/filesystem";
 import { fileTimestamp } from "../../utils";
@@ -72,10 +74,10 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
 
       case "removed":
         if (change.renameHint) {
-          lines.push(
-            `  // If '${change.field}' was renamed to '${change.renameHint.newField}', uncomment:`,
-          );
-          lines.push(`  // block.${change.renameHint.newField} = block.${change.field};`);
+          for (const newField of change.renameHint.newFields) {
+            lines.push(`  // If '${change.field}' was renamed to '${newField}', uncomment:`);
+            lines.push(`  // block.${newField} = block.${change.field};`);
+          }
         } else {
           lines.push(`  // Removed field: ${change.field}`);
         }
@@ -131,6 +133,91 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
   const body = lines.length > 0 ? `\n${lines.join("\n")}` : "\n";
 
   return `export default function (block) {${body}  return block;\n}\n`;
+}
+
+/** A Storyblok `number` field stores its value as a string, so `""` is empty there too. */
+const STRING_STORED_FIELD_TYPES = new Set(["text", "textarea", "markdown", "number"]);
+
+/** `false` is the only default every required field of its type accepts. */
+function requiredDefaultFor(fieldType: string): false | undefined {
+  return fieldType === "boolean" ? false : undefined;
+}
+
+function defaultTodo(field: string, fieldType: string, value: unknown): string {
+  return value === undefined
+    ? `TODO: provide a default for the required ${fieldType} field '${field}'.`
+    : `TODO: replace the placeholder default for the required field '${field}'.`;
+}
+
+function renameHintTodo(field: string, newFields: string[], changes: BreakingChange[]): string {
+  const targets = newFields.map((newField) => `'${newField}'`).join(" or ");
+  const addsNewField = changes.some(
+    (change) => change.kind === "required_added" && newFields.includes(change.field),
+  );
+  return addsNewField
+    ? `TODO: if '${field}' was renamed to ${targets}, replace this removeField and the addField of the new field with renameField, or the content of '${field}' is lost.`
+    : `TODO: if '${field}' was renamed to ${targets}, replace removeField with renameField, or the content of '${field}' is lost.`;
+}
+
+export function toMigrationOps(block: string, changes: BreakingChange[]): MigrationOpSource[] {
+  return changes.flatMap((change): MigrationOpSource[] => {
+    switch (change.kind) {
+      case "rename":
+        return [{ kind: "renameField", block, field: change.oldField, to: change.field }];
+      case "removed":
+        return [
+          {
+            kind: "removeField",
+            block,
+            field: change.field,
+            todo: change.renameHint
+              ? [renameHintTodo(change.field, change.renameHint.newFields, changes)]
+              : undefined,
+          },
+        ];
+      case "type_changed": {
+        const coercion = coercionBetween(change.oldType, change.newType);
+        if (coercion) {
+          return [{ kind: "coerceField", block, field: change.field, ...coercion }];
+        }
+        return [
+          {
+            kind: "alterField",
+            block,
+            field: change.field,
+            todo: [
+              `TODO: convert '${change.field}' from ${change.oldType} to ${change.newType}. A rerun passes already-converted values.`,
+            ],
+          },
+        ];
+      }
+      case "required_added": {
+        const value = requiredDefaultFor(change.fieldType);
+        return [
+          {
+            kind: "addField",
+            block,
+            field: change.field,
+            value,
+            todo: [defaultTodo(change.field, change.fieldType, value)],
+          },
+        ];
+      }
+      case "required_changed": {
+        const value = requiredDefaultFor(change.fieldType);
+        return [
+          {
+            kind: "fillField",
+            block,
+            field: change.field,
+            value,
+            fillEmptyString: STRING_STORED_FIELD_TYPES.has(change.fieldType),
+            todo: [defaultTodo(change.field, change.fieldType, value)],
+          },
+        ];
+      }
+    }
+  });
 }
 
 /** Options for writing a migration file. */

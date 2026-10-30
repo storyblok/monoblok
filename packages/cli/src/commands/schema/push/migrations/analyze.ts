@@ -1,3 +1,5 @@
+import { coercionBetween } from "@storyblok/schema/internal/codegen";
+
 import type { DiffResult, RemoteSchemaData, SchemaData } from "../../types";
 import type { BreakingChange, ComponentBreakingChanges, RenameMatch } from "./types";
 
@@ -186,6 +188,12 @@ export function detectRenames(
   return { renames, unmatchedRemoved, unmatchedAdded };
 }
 
+/** Text, textarea, and markdown all store a string, so switching among them keeps content valid. */
+function storesSameValue(oldType: string, newType: string): boolean {
+  const coercion = coercionBetween(oldType, newType);
+  return coercion !== undefined && coercion.from === coercion.to;
+}
+
 /**
  * Analyzes all updated components for breaking field-level changes.
  * Only processes diffs with action `update` for entity type `component`.
@@ -223,7 +231,7 @@ export function analyzeBreakingChanges(
 
     // Detect renames from removed+added pairs (non-required only — required
     // additions signal developer intent for a new field, not a rename)
-    const { renames, unmatchedRemoved } = detectRenames(
+    const { renames, unmatchedRemoved, unmatchedAdded } = detectRenames(
       classification.removed,
       classification.added,
     );
@@ -232,11 +240,24 @@ export function analyzeBreakingChanges(
       changes.push({ kind: "rename", field: rename.newField, oldField: rename.oldField });
     }
 
+    // A rename the detection could not pair, or one onto a required field it
+    // skips, shows up as a removal plus an addition of the same type.
+    const unpairedAdded = [...unmatchedAdded, ...classification.requiredAdded];
     for (const removed of unmatchedRemoved) {
-      changes.push({ kind: "removed", field: removed.field });
+      const newFields = unpairedAdded
+        .filter((added) => added.type === removed.type)
+        .map((added) => added.field);
+      changes.push({
+        kind: "removed",
+        field: removed.field,
+        ...(newFields.length > 0 && { renameHint: { newFields } }),
+      });
     }
 
     for (const tc of classification.typeChanged) {
+      if (storesSameValue(tc.oldType, tc.newType)) {
+        continue;
+      }
       changes.push({
         kind: "type_changed",
         field: tc.field,

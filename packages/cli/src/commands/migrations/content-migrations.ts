@@ -1,21 +1,123 @@
 /**
- * What `apply`, `list`, and `undo` share: where a space's content migrations
- * and their journal live, the story fields the engine reads, and the guard
- * against pending releases.
+ * What the content migration commands share: where a space's content
+ * migrations and their journal live, writing a new one, the story fields the
+ * engine reads, and the guard against pending releases.
  */
+import { rm } from "node:fs/promises";
 import chalk from "chalk";
-import { checkPendingReleases, MigrationError, resolveJournal } from "@storyblok/schema/migrations";
+import { dirname, join, relative, resolve } from "pathe";
+import { generateMigrationSource, generateSnapshot } from "@storyblok/schema/codegen";
+import type { MigrationOpSource, WireComponent } from "@storyblok/schema/codegen";
+import { nextMigrationId } from "@storyblok/schema/internal/codegen";
+import {
+  checkPendingReleases,
+  discoverMigrations,
+  MigrationError,
+  resolveJournal,
+} from "@storyblok/schema/migrations";
 import type { Journal, StoryForMigration } from "@storyblok/schema/migrations";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";
 import { handleAPIError } from "../../utils/error/api-error";
-import { resolvePath } from "../../utils/filesystem";
+import { fileExists, resolvePath, saveToFile } from "../../utils/filesystem";
 import { fetchStory, updateStory } from "../stories/actions";
 import type { Story } from "../stories/constants";
 
 export function migrationsDirectory(path: string | undefined, space: string): string {
   return resolvePath(path, `migrations/${space}`);
+}
+
+/**
+ * The path relative to the current directory, or absolute when it lies outside
+ * and the relative form would be a chain of `..` segments.
+ */
+export function displayPath(file: string): string {
+  const relativePath = relative(process.cwd(), file);
+  return relativePath.startsWith("..") ? file : relativePath;
+}
+
+export type WriteContentMigrationOptions = {
+  path: string | undefined;
+  space: string;
+  /** Free text the filename slug is derived from. */
+  name: string;
+  /** The schema entry file, as given on the command line. */
+  schemaEntry: string;
+  ops: readonly MigrationOpSource[];
+  title?: string;
+  /**
+   * The space's components before the migration and the blocks it reads, for
+   * the `.before.ts` snapshot; omit to skip the snapshot.
+   */
+  before?: { components: readonly WireComponent[]; blocks: readonly string[] };
+};
+
+export type WrittenContentMigration = { migrationPath: string; beforePath?: string };
+
+const TS_TO_JS_EXTENSION: Record<string, string> = {
+  ".ts": ".js",
+  ".tsx": ".js",
+  ".mts": ".mjs",
+  ".cts": ".cjs",
+};
+
+/**
+ * The module specifier a file in `fromDirectory` imports `file` by. TypeScript
+ * resolves a `.js` specifier to its `.ts` source under every module resolution
+ * mode, including `nodenext`, which rejects one without an extension.
+ */
+function importSpecifier(fromDirectory: string, file: string): string {
+  const specifier = relative(fromDirectory, resolve(file)).replace(
+    /\.(?:tsx?|mts|cts)$/,
+    (extension) => TS_TO_JS_EXTENSION[extension] ?? extension,
+  );
+  return specifier.startsWith("../") ? specifier : `./${specifier}`;
+}
+
+/**
+ * Writes a `defineMigration` file named after its creation time, plus its
+ * `.before.ts` snapshot. Refuses to overwrite either, including a snapshot the
+ * migration would not write.
+ */
+export async function writeContentMigration(
+  options: WriteContentMigrationOptions,
+): Promise<WrittenContentMigration> {
+  const directory = migrationsDirectory(options.path, options.space);
+  const existing = await discoverMigrations(directory);
+  const id = nextMigrationId(
+    existing.map((migration) => migration.id),
+    options.name,
+  );
+  const migrationPath = join(directory, `${id}.ts`);
+  const beforePath = join(directory, `${id}.before.ts`);
+
+  for (const file of [migrationPath, beforePath]) {
+    if (await fileExists(file)) {
+      throw new CommandError(
+        `${displayPath(file)} already exists. Move or delete it, then run again.`,
+      );
+    }
+  }
+
+  const source = generateMigrationSource({
+    schemaImport: importSpecifier(dirname(migrationPath), options.schemaEntry),
+    beforeImport: options.before ? `./${id}.before.js` : undefined,
+    title: options.title,
+    ops: options.ops,
+  });
+  if (options.before) {
+    await saveToFile(beforePath, generateSnapshot({ ...options.before, migrationId: id }));
+  }
+  try {
+    await saveToFile(migrationPath, source);
+  } catch (error) {
+    // A snapshot left behind would block a retry within the same second.
+    await rm(beforePath, { force: true });
+    throw error;
+  }
+
+  return options.before ? { migrationPath, beforePath } : { migrationPath };
 }
 
 /** The journal sits beside the space directories, so one journal serves every space. */

@@ -20,11 +20,13 @@ This will generate a migration file for the specified component:
 
 ## Options
 
-| Option                    | Description                                                                                                               | Default                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                              | -                       |
-| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators | -                       |
-| `-p, --path <path>`       | Custom path to store the migration file                                                                                   | `.storyblok/migrations` |
+| Option                    | Description                                                                                                                                       | Default                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `-s, --space <space>`     | (Required) The ID of the space to generate the migration for                                                                                      | -                       |
+| `--su, --suffix <suffix>` | Suffix to add to the file name (e.g., `{component-name}.{suffix}.js`). Must be a valid file name, without path separators                         | -                       |
+| `-p, --path <path>`       | Custom path to store the migration file                                                                                                           | `.storyblok/migrations` |
+| `--schema <entry-file>`   | Schema entry file that exports `type Schema`. Generates a typed `defineMigration` file and its `.before.ts` snapshot instead of a `.js` migration | -                       |
+| `--no-before`             | With `--schema`, skip the `.before.ts` snapshot                                                                                                   | -                       |
 
 ## Examples
 
@@ -73,6 +75,22 @@ backup/
         └── hero.js  # Migration file
 ```
 
+4. Generate a typed content migration for `migrations apply`:
+
+```bash
+storyblok migrations generate hero --space 12345 --schema src/schema.ts
+```
+
+The command writes two files, named after the time they were created:
+
+```
+.storyblok/
+└── migrations/
+    └── 12345/
+        ├── 20261016090503-hero.ts         # defineMigration file, typed against Schema and Before
+        └── 20261016090503-hero.before.ts  # the hero block as the space holds it now
+```
+
 ## File Structure
 
 The command follows this pattern for file generation:
@@ -90,6 +108,10 @@ Where:
 - `{spaceId}` is your Storyblok space ID
 - `{componentName}` is the name of the component
 - `{suffix}` is the suffix in the file name if provided
+
+With `--schema`, the files are `{timestamp}-{slug}.ts` and its `.before.ts` snapshot, where
+`{timestamp}` is the UTC creation time as `YYYYMMDDHHmmss` and `{slug}` is the component name and
+suffix in lowercase, joined by hyphens.
 
 ### Component names that are not file names
 

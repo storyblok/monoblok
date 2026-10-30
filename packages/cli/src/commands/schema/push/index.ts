@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { confirm } from "@inquirer/prompts";
 import { Option } from "commander";
 
@@ -19,8 +20,40 @@ import { buildGroupPathByUuid } from "../folders";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
-import { renderMigrationCode, writeMigrationFile } from "./migrations/generate";
+import type { ComponentBreakingChanges } from "./migrations/types";
+import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
+import { writeContentMigration } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
+
+/** Quotes a path for pasting into a shell when it holds characters the shell would split or expand. */
+function shellQuote(path: string): string {
+  return /^[\w./:@-]+$/.test(path) ? path : `'${path.replaceAll("'", `'\\''`)}'`;
+}
+
+/**
+ * The blocks among `names` the space now holds as the local schema defines
+ * them, or `undefined` when the space cannot be read.
+ */
+async function pushedBlocks(
+  space: string,
+  local: SchemaData,
+  names: string[],
+): Promise<Set<string> | undefined> {
+  try {
+    const { remote } = await fetchRemoteSchema(space);
+    const diff = diffSchema(remoteToNormalized(remote), localToNormalized(local), {
+      compareGroupUuid: true,
+    });
+    const pending = new Set(
+      diff.diffs
+        .filter((d) => d.type === "component" && d.action !== "unchanged")
+        .map((d) => d.name),
+    );
+    return new Set(names.filter((name) => !pending.has(name)));
+  } catch {
+    return undefined;
+  }
+}
 
 schemaCommand
   .command("push <entry-file>")
@@ -31,6 +64,11 @@ schemaCommand
   .option("--delete", "Delete remote entities not present in local schema", false)
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
+  .option(
+    "--typed",
+    "Generate one defineMigration file for `migrations apply` instead of one .js migration per block for `migrations run`",
+  )
+  .option("--no-before", "With --typed, skip the .before.ts schema snapshot")
   .option(
     "--write-components",
     "Write component schemas as local JSON files after push (also removes local files for components deleted via --delete)",
@@ -60,6 +98,8 @@ schemaCommand
     }
 
     const summary = { total: 0, succeeded: 0, failed: 0 };
+    let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
+    const runCommand = options.typed ? "migrations apply" : "migrations run";
 
     try {
       // 1. Load local schema
@@ -95,6 +135,85 @@ schemaCommand
         return;
       }
       const { remote, rawComponents, rawComponentFolders, rawDatasources } = remoteResult;
+      const migrationTimestamp = new Date().toISOString();
+
+      const writeMigrations = async (changes: ComponentBreakingChanges[]): Promise<string[]> => {
+        if (!options.typed) {
+          const files: string[] = [];
+          for (const comp of changes) {
+            const file = await writeMigrationFile({
+              spaceId: space,
+              componentName: comp.componentName,
+              code: renderMigrationCode(comp.changes),
+              timestamp: migrationTimestamp,
+              basePath: resolvePath(basePath, ""),
+            });
+            logger.info("Migration generated", {
+              component: comp.componentName,
+              path: displayPath(file, basePath),
+            });
+            files.push(file);
+          }
+          return files;
+        }
+        const ops = changes.flatMap((comp) => toMigrationOps(comp.componentName, comp.changes));
+        if (ops.length === 0) {
+          return [];
+        }
+        const blocks = changes.map((comp) => comp.componentName);
+        const written = await writeContentMigration({
+          path: basePath,
+          space,
+          name: `update-${blocks.join("-")}`,
+          schemaEntry: entryFile,
+          ops,
+          before: options.before ? { components: rawComponents, blocks } : undefined,
+        });
+        const files = [written.migrationPath, written.beforePath].filter(
+          (file): file is string => file !== undefined,
+        );
+        logger.info("Migration generated", {
+          components: blocks,
+          paths: files.map((file) => displayPath(file, basePath)),
+        });
+        return files;
+      };
+
+      /**
+       * The push updates blocks independently, so a failed push can leave some
+       * of them updated. Their ops must survive, since a rerun of the push no
+       * longer sees their changes, while the ops for the rest are generated again.
+       */
+      const keepMigrationsForPushedBlocks = async (generated: {
+        files: string[];
+        changes: ComponentBreakingChanges[];
+      }): Promise<void> => {
+        const listed = (files: string[]) =>
+          files.map((file) => `  - ${displayPath(file, basePath)}`).join("\n");
+        const pushed = await pushedBlocks(
+          space,
+          local,
+          generated.changes.map((comp) => comp.componentName),
+        );
+        if (!pushed) {
+          ui.warn(
+            `The push failed after these migration files were written:\n${listed(generated.files)}\nThe space could not be read to tell which blocks were pushed. Keep the ops for the blocks the push already updated, delete the rest, then run schema push again.`,
+          );
+          return;
+        }
+        await Promise.all(generated.files.map((file) => rm(file, { force: true })));
+        const pushedChanges = generated.changes.filter((comp) => pushed.has(comp.componentName));
+        const files = pushedChanges.length > 0 ? await writeMigrations(pushedChanges) : [];
+        if (files.length === 0) {
+          ui.warn(
+            "The push failed before any block with breaking changes was updated, so no migration was kept. Fix the error and run schema push again.",
+          );
+          return;
+        }
+        ui.warn(
+          `The push failed, but it updated ${[...pushed].join(", ")}. The migration for them was kept:\n${listed(files)}\nFix the error and run schema push again to generate the migration for the other blocks.`,
+        );
+      };
       remoteSpinner.succeed(
         `Remote: ${remote.components.size} components, ${remote.datasources.size} datasources`,
       );
@@ -121,12 +240,25 @@ schemaCommand
           ui.warn(
             `${totalChanges} breaking change(s) detected in ${breakingChanges.length} component(s).`,
           );
-          ui.info(
-            "Generated migrations are scaffolds. Review and adjust them before running `storyblok migrations run`.",
-          );
+          if (!options.typed && !options.before) {
+            ui.warn("--no-before has no effect without --typed.");
+          }
 
           // Dry-run: show analysis only, no prompts, no file writes
-          if (!options.dryRun) {
+          if (options.dryRun) {
+            ui.info(
+              "Without --dry-run, schema push offers to generate a migration for these changes.",
+            );
+            for (const comp of breakingChanges) {
+              for (const change of comp.changes) {
+                if (change.kind === "rename") {
+                  ui.log(
+                    `  Detected rename in '${comp.componentName}': ${change.oldField} → ${change.field}`,
+                  );
+                }
+              }
+            }
+          } else {
             // Determine if --migrations was explicitly passed (auto-generate) or is just the default (prompt)
             const explicitMigrations = command.getOptionValueSource("migrations") === "cli";
             const shouldGenerate =
@@ -140,9 +272,6 @@ schemaCommand
               ));
 
             if (shouldGenerate) {
-              const migrationTimestamp = new Date().toISOString();
-              const resolvedBase = resolvePath(basePath, "");
-
               // Show detected renames for confirmation, or log them in explicit mode
               for (const comp of breakingChanges) {
                 const renames = comp.changes.filter((c) => c.kind === "rename");
@@ -177,32 +306,22 @@ schemaCommand
                         return {
                           kind: "removed" as const,
                           field: c.oldField,
-                          renameHint: { newField: c.field },
+                          renameHint: { newFields: [c.field] },
                         };
                       }
                       return c;
                     });
                   }
                 }
-
-                const code = renderMigrationCode(comp.changes);
-                const path = await writeMigrationFile({
-                  spaceId: space,
-                  componentName: comp.componentName,
-                  code,
-                  timestamp: migrationTimestamp,
-                  basePath: resolvedBase,
-                });
-                const migrationPath = displayPath(path, basePath);
-                logger.info("Migration generated", {
-                  component: comp.componentName,
-                  path: migrationPath,
-                });
-                ui.log(`  Generated: ${migrationPath}`);
               }
 
-              ui.br();
-              ui.info(`Run migrations when ready: storyblok migrations run --space ${space}`);
+              const files = await writeMigrations(breakingChanges);
+              for (const file of files) {
+                ui.log(`  Generated: ${displayPath(file, basePath)}`);
+              }
+              if (files.length > 0) {
+                generatedMigrations = { files, changes: breakingChanges };
+              }
             }
           }
         }
@@ -302,6 +421,9 @@ schemaCommand
           });
         } catch (error) {
           pushSpinner.failed("Failed to push schema");
+          if (generatedMigrations) {
+            await keepMigrationsForPushedBlocks(generatedMigrations);
+          }
           throw error;
         }
 
@@ -311,6 +433,14 @@ schemaCommand
         pushSpinner.succeed(
           `Pushed ${pushResult.created} creations, ${pushResult.updated} updates${pushResult.deleted > 0 ? `, ${pushResult.deleted} deletions` : ""}.`,
         );
+
+        if (generatedMigrations) {
+          ui.info(
+            `Generated migrations are scaffolds. Review and adjust them before running \`storyblok ${runCommand}\`.`,
+          );
+          const pathFlag = basePath ? ` --path ${shellQuote(basePath)}` : "";
+          ui.info(`Run migrations when ready: storyblok ${runCommand} --space ${space}${pathFlag}`);
+        }
 
         // Block tags are a dependency of the blocks that name them rather than a
         // diffed entity, so a created tag never appears in the diff output above.

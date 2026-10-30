@@ -43,6 +43,9 @@ import {
   toStoryForMigration,
 } from "../content-migrations";
 import type { StoryAccess } from "../content-migrations";
+import { fetchComponents } from "../../components";
+import { withoutStaleOps } from "./stale-ops";
+import type { LiveFields } from "./stale-ops";
 
 const PER_PAGE = 100;
 const PUBLISH_MODES: readonly PublishMode[] = ["all", "published", "published-with-changes"];
@@ -81,6 +84,16 @@ async function findCandidateStories(space: string, targets: readonly string[]): 
   }
 
   return [...ids];
+}
+
+async function liveFields(space: string): Promise<LiveFields> {
+  const components = (await fetchComponents(space)) ?? [];
+  return new Map(
+    components.map((component) => [
+      component.name,
+      new Map(Object.entries(component.schema ?? {}).map(([name, field]) => [name, field.type])),
+    ]),
+  );
 }
 
 function changeSummary(run: MigrationRun): string {
@@ -155,6 +168,20 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+/** The newest `snapshotFormat` this CLI reads. */
+const SUPPORTED_SNAPSHOT_FORMAT = 1;
+
+/** The `nameOnlyBlocks` of a snapshot, refusing a format this CLI cannot read. */
+async function loadNameOnlyBlocks(file: string): Promise<readonly string[] | undefined> {
+  const { nameOnlyBlocks, snapshotFormat } = await loadSchemaModule(file);
+  if (typeof snapshotFormat === "number" && snapshotFormat > SUPPORTED_SNAPSHOT_FORMAT) {
+    throw new CommandError(
+      `${relative(process.cwd(), file)} has snapshot format ${snapshotFormat}, but this version of the Storyblok CLI reads up to format ${SUPPORTED_SNAPSHOT_FORMAT}. Update the Storyblok CLI.`,
+    );
+  }
+  return isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined;
+}
+
 /** The `.before.ts` snapshot of the schema a migration was written against. */
 async function findBeforeSnapshot(file: string): Promise<string | undefined> {
   const snapshot = file.replace(MIGRATION_EXTENSION, ".before.ts");
@@ -168,12 +195,7 @@ async function loadSnapshotCheck(
 ): Promise<SchemaCheck | string> {
   try {
     const { schema } = await loadSchemaEntry(snapshot, { requireBlocks: true });
-    const { nameOnlyBlocks } = await loadSchemaModule(snapshot);
-    return {
-      entry,
-      schema,
-      nameOnlyBlocks: isStringArray(nameOnlyBlocks) ? nameOnlyBlocks : undefined,
-    };
+    return { entry, schema, nameOnlyBlocks: await loadNameOnlyBlocks(snapshot) };
   } catch (maybeError) {
     const [reason] = toError(maybeError).message.split("\n");
     return `${entry.id}: the schema snapshot ${relative(process.cwd(), snapshot)} could not be loaded: ${reason.trim()}`;
@@ -331,7 +353,8 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
         );
       }
       const { schema } = await loadSchemaEntry(schemaEntry, { requireBlocks: true });
-      assertMatchesSchemas([{ entry: selected[0], schema }]);
+      const nameOnlyBlocks = await loadNameOnlyBlocks(schemaEntry);
+      assertMatchesSchemas([{ entry: selected[0], schema, nameOnlyBlocks }]);
     } else if (validate) {
       const unchecked = await assertMatchesSnapshots(selected);
       if (unchecked.length > 0) {
@@ -347,6 +370,7 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       warnOnly: dryRun,
     });
 
+    const live = await liveFields(space);
     const journal = contentJournal(path);
     const planned = new Map<number, StoryForMigration>();
     const access = storyAccess(space);
@@ -354,16 +378,24 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
     let failed = 0;
 
     for (const entry of selected) {
+      const { migration, stale } = withoutStaleOps(entry.migration, live);
+      for (const { reason } of stale) {
+        ui.warn(`${entry.id}: ${reason}`);
+      }
+      if (migration.ops.length === 0) {
+        ui.info(`${entry.id}: later schema changes superseded every op, so nothing was applied.`);
+        continue;
+      }
       const spinner = ui.createSpinner(`${entry.id}: fetching stories...`);
-      const candidates = await findCandidateStories(space, entry.migration.targets);
+      const candidates = await findCandidateStories(space, migration.targets);
       const { stories, unread } = await readStories(space, candidates, planned, access);
       failed += unread;
       spinner.succeed(
-        `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${entry.migration.targets.join(", ")}`,
+        `${entry.id}: ${plural(candidates.length, "story contains", "stories contain")} ${migration.targets.join(", ")}`,
       );
 
       const outcome = applyMigration({
-        migration: entry.migration,
+        migration,
         id: entry.id,
         space,
         stories,

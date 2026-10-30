@@ -10,16 +10,17 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   `storyblok-js-client`). Note that some folder names differ from their package names: `capi-client`
   → `@storyblok/api-client`, `mapi-client` → `@storyblok/management-api-client`, `cli` →
   `storyblok`, `js-client` → `storyblok-js-client`.
-- Packages use [Vite+](https://viteplus.dev) (`vp` CLI) as the unified toolchain:
-  `vp pack`/`vp build` for bundling (tsdown / Vite under the hood), `vp test` for testing (Vitest),
-  `vp lint` for linting (Oxlint via `@storyblok/lint-config`), and `vp fmt` for formatting (Oxfmt).
-  Formatting is run from the repo root (`pnpm format`), not per package.
+- Packages use Vite+ (`vp` CLI) as the unified toolchain: `vp pack`/`vp build` for bundling (tsdown
+  / Vite under the hood), `vp test` for testing (Vitest), `vp lint` for linting (Oxlint via
+  `@storyblok/lint-config`), and `vp fmt` for formatting (Oxfmt). Formatting is run from the repo
+  root (`pnpm format`), not per package.
 
 ## Rules
 
 - **Be concise** - Drop: filler, pleasantries, hedging.
 - **Plan first** - For non-trivial changes, write a plan before coding
-- **Verify always** - Run lint/typecheck/tests before considering work done
+- **Verify always** - Run `lint`, `test`, and `test:types` (type-check) on affected packages before
+  considering work done, e.g. `pnpm nx test:types storyblok`.
 - **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the
   package. Prefer composing over writing new.
 - **Check versions** - Look up the latest version before installing a new npm package.
@@ -50,8 +51,7 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
   casts. Explicit return types on public APIs.
 - **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths).
   Prefer named imports.
-- **Linting:** Always lint and type-check affected packages after making changes. Default to
-  `lint:fix` or `--fix` and fix remaining issues.
+- **Linting:** Default to `lint:fix` and fix remaining issues.
 
 ## OpenAPI codegen
 
@@ -74,6 +74,9 @@ working with OpenAPI specs.
 
 When a significant architectural decision is made, add a concise new ADR in `adr/` following the
 existing numbering convention (`0001-`, `0002-`, …).
+
+ADRs record why something was built a certain way, not how it works. Read them before changing a
+design; don't cite them from guides or docs as a reference for current behavior.
 
 ## Git
 
@@ -111,7 +114,7 @@ For more context, read relevant files in `docs/`:
   (package or repo root). Delete it before merge, and only once a docs platform PR has been created
   from it. Load when changes need reference docs, when versioning docs for a major release, or when
   adding a package to the site navigation.
-- `storyblok-kotlin.md` - Kotlin Multiplatform SDK (Ktor plugin). Load when touching the Kotlin SDK.
-- `storyblok-swift.md` - Swift SDK (URLSession extension). Load when touching the Swift SDK.
-- `testing-patterns.md` - Test stack, file layout, session mocking, and Windows gotchas. Load when
-  writing, debugging, or reviewing tests.
+- `testing-patterns.md` - Test principles, stack, file layout, mocking, and Windows gotchas. Load
+  before changing behavior or fixing a bug, and when writing, debugging, or reviewing tests.
+
+For Kotlin/Swift SDK parity, read `../storyblok-kotlin/AGENTS.md` or `../storyblok-swift/AGENTS.md`.

@@ -1,15 +1,16 @@
 ---
 name: investigate
-description: Use when asked to investigate, analyze, or dig into a GitHub issue or reported bug
+description:
+  Use when asked to investigate, analyze, or dig into a GitHub issue, Linear ticket, or reported bug
 model: opus
 context: fork
 agent: investigator
 effort: high
 ---
 
-# Investigate GitHub Issue
+# Investigate
 
-Investigate the following GitHub issue: $ARGUMENTS
+Investigate the following issue: $ARGUMENTS
 
 ## Instructions
 
@@ -58,7 +59,7 @@ commands.
 ### Output Structure
 
 ```markdown
-# Investigation: Issue #<number>
+# Investigation: <identifier>
 
 **Title:** | **URL:** | **Created:** | **State:** | **Author:**
 

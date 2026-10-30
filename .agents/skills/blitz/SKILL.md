@@ -1,7 +1,8 @@
 ---
 name: blitz
 description:
-  Use when asked to blitz, batch-process, or drive multiple GitHub issues end to end in parallel
+  Use when asked to blitz, batch-process, or drive multiple GitHub issues or Linear tickets end to
+  end in parallel
 model: opus
 disable-model-invocation: true
 effort: high
@@ -9,7 +10,7 @@ effort: high
 
 # Blitz
 
-Blitz the following GitHub issues: $ARGUMENTS
+Blitz the following GitHub issues or Linear tickets: $ARGUMENTS
 
 ## Overview
 
@@ -48,21 +49,14 @@ Create worktrees **only when multiple issues are confirmed for implementation**:
 - Single issue: work in the current tree (no worktree needed)
 - Multiple issues: create a worktree per issue for parallel work
 
-Each new worktree branch starts from the latest `origin/main`: the script fetches `origin/main` and
-bases new branches on it, so worktrees never inherit unrelated work from whatever is currently
-checked out.
+Create each with `monotree.sh add <branch-name>` (usage in the root `AGENTS.md`), using the branch
+naming from the root `AGENTS.md`, e.g. `fix/368-<title>` → worktree `.worktrees/fix-368-<title>`.
+The script branches from the latest `origin/main`, copies `.env*` files,
+`.claude/settings.local.json`, `.zed/`, and `claude-output/`, runs `pnpm install` and
+`pnpm nx run-many -p="tag:npm:public" -t build`, then opens the worktree in Zed or VS Code.
 
-Use the bundled script:
-
-```bash
-bash .agents/skills/blitz/scripts/monotree.sh add <branch-name>
-bash .agents/skills/blitz/scripts/monotree.sh remove <branch-name>
-bash .agents/skills/blitz/scripts/monotree.sh list
-```
-
-**IMPORTANT:** Create worktrees **sequentially**, one at a time. The script runs `git worktree add`,
-`pnpm install`, and `pnpm nx build` which are not safe to run in parallel (git index locks, pnpm
-store contention, Nx cache races). Wait for each to complete before starting the next.
+**IMPORTANT:** Create worktrees **sequentially**. Install and build are not safe to run in parallel
+(git index locks, pnpm store contention, Nx cache races).
 
 ### Phase 4: Plan
 
@@ -90,10 +84,10 @@ Present final status:
 ```markdown
 ## Blitz Summary
 
-| Issue | Status      | Investigation        | Worktree  | Branch    |
-| ----- | ----------- | -------------------- | --------- | --------- |
-| #368  | implemented | `investigate-368.md` | `fix-368` | `fix-368` |
-| #509  | planned     | `investigate-509.md` | `fix-509` | `fix-509` |
+| Issue | Status      | Investigation        | Worktree          | Branch            |
+| ----- | ----------- | -------------------- | ----------------- | ----------------- |
+| #368  | implemented | `investigate-368.md` | `fix-368-<title>` | `fix/368-<title>` |
+| #509  | planned     | `investigate-509.md` | `fix-509-<title>` | `fix/509-<title>` |
 
 ### Results
 

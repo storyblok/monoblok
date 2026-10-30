@@ -28,10 +28,11 @@ option to change it. rolldown/rolldown#10308 and #10800 were closed as intended 
 
 ### 1. Rewrite node mode out of external imports with a shared plugin
 
-A rolldown plugin (`tools/cjs-interop-plugin.ts`) rewrites `__toESM(x, 1)` to `__toESM(x)` in CJS
-and UMD chunks. The pattern matches only an identifier argument, so it touches imports of external
-dependencies. Bundled CommonJS dependencies are emitted as `__toESM(require_dep(), 1)`, a call, and
-keep node mode, so the CJS build agrees with the ESM build for them. The ESM build is unchanged.
+A rolldown plugin (`tools/cjs/cjs-interop-plugin.ts`) rewrites `__toESM(x, 1)` to `__toESM(x)` in
+CJS and UMD chunks. The pattern matches only an identifier argument, so it touches imports of
+external dependencies. Bundled CommonJS dependencies are emitted as `__toESM(require_dep(), 1)`, a
+call, and keep node mode, so the CJS build agrees with the ESM build for them. The ESM build is
+unchanged.
 
 The plugin is temporary. Remove it once rolldown ships `output.interop`.
 

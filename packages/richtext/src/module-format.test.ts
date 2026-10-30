@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { resolve } from "pathe";
 import { expect, it } from "vitest";
 
-import { resolveCjsEntry } from "../../../tools/resolve-cjs-entry.ts";
+import { resolveCjsEntry } from "../../../tools/cjs/resolve-cjs-entry.ts";
 
 // Regression test: node-mode interop in the CJS build turned the default export of
 // `@tiptap/extension-*` into the whole module, so the parsers threw

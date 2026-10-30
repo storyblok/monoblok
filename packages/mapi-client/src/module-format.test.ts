@@ -4,7 +4,7 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
-import { resolveCjsEntry } from "../../../tools/resolve-cjs-entry.ts";
+import { resolveCjsEntry } from "../../../tools/cjs/resolve-cjs-entry.ts";
 
 // Regression test for https://github.com/storyblok/monoblok/issues/866:
 // node-mode interop in the CJS build turned the `ky` default export into an object.

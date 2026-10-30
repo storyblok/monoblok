@@ -29,10 +29,10 @@ Import:
 ```js
 // ESM
 import {} from "@storyblok/region-helper";
-
-// CommonJS
-const {} = require("@storyblok/region-helper");
 ```
+
+The CommonJS build is deprecated and will be removed in the next major version. `require()` still
+works until then and prints a deprecation warning. Use `import` instead.
 
 ## How it works
 

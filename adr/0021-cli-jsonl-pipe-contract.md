@@ -1,12 +1,12 @@
 # ADR-0021: CLI JSONL Pipe Contract
 
-**Status:** Accepted; consumer side (decision 4, `input.ts`) not yet implemented. **Date:**
-2026-08-27
+**Status:** Accepted; consumer side (decision 4, `input.ts`) not yet implemented  
+**Date:** 2026-08-27
 
 ## Context
 
-`stories find` ([ADR-0020](0020-cli-stories-find-command.md)) is the first CLI command whose result
-is data rather than a report, and the first written to be read by another command. The target
+`stories find` (ADR-0020, `adr/0020-cli-stories-find-command.md`) is the first CLI command whose
+result is data rather than a report, and the first written to be read by another command. The target
 pipeline, once a consumer accepts `-`:
 
 ```bash

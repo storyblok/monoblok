@@ -1,6 +1,7 @@
 # ADR-0013: Adopt Vite+ as the Unified Toolchain
 
-**Status:** Accepted **Date:** 2026-08-10
+**Status:** Accepted  
+**Date:** 2026-08-10
 
 ## Context
 

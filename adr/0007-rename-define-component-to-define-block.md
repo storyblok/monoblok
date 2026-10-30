@@ -1,6 +1,7 @@
 # ADR-0007: Rename defineComponent to defineBlock in schema package
 
-**Status:** Accepted **Date:** 2026-04-16
+**Status:** Accepted  
+**Date:** 2026-04-16
 
 ## Context
 

@@ -70,29 +70,9 @@ pnpm --filter @storyblok/migrations test:watch
 
 ### PR Previews
 
-When you create a pull request, our CI automatically:
-
-1. Builds all packages
-2. Generates a preview version (e.g., `0.0.0-pr123-a1b2c3d`)
-3. Publishes the packages to GitHub Packages
-4. Adds a comment to your PR with installation instructions
-
-To use a preview package:
-
-1. Add the following to your `.npmrc`:
-
-```ini
-@storyblok:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-2. Install the preview package:
-
-```bash
-npm install @storyblok/package-name@0.0.0-pr123-a1b2c3d
-```
-
-The preview version format is: `0.0.0-pr{PR_NUMBER}-{COMMIT_SHA}`
+Every push to a branch in this repository other than `main` publishes preview builds of all public
+packages through [pkg.pr.new](https://pkg.pr.new). The pkg.pr.new bot posts the install commands on
+the pull request.
 
 ### PR Requirements
 
@@ -100,7 +80,11 @@ The preview version format is: `0.0.0-pr{PR_NUMBER}-{COMMIT_SHA}`
 2. **Documentation**: Update documentation for any new features or changes
 3. **TypeScript**: Maintain type safety and add types for new features
 4. **Linting**: Ensure your code passes all linting checks
-5. **Commit Messages**: Use clear, descriptive commit messages
+5. **Commit Messages**: Use [Conventional Commits](https://www.conventionalcommits.org/) with a
+   mandatory scope: a package folder name under `packages/` (for example `feat(cli): …`) or one of
+   `release`, `repo`, `deps`, `ci`, `docs`, `tools`, or `agents`. Commitlint checks commits and PR
+   titles. `fix` and `feat` release the package, so use them only for changes its consumers can
+   observe; use `chore` for tests, playgrounds, tooling, CI, and repository docs.
 
 ### Review Process
 
@@ -125,7 +109,8 @@ The preview version format is: `0.0.0-pr{PR_NUMBER}-{COMMIT_SHA}`
 
 ## Documentation
 
-- Update README files when adding new features
+- Draft user-facing docs in a `DOCS.md` (see [`docs/docs-platform.md`](docs/docs-platform.md)); the
+  docs live on the Storyblok docs site, and package READMEs stay minimal
 - Add JSDoc comments for new functions and classes
 - Update type definitions
 - Add examples for new features

@@ -2,54 +2,54 @@
 
 export type Datasource = {
     /**
-     * ID.
+     * Data source ID.
      */
     id: number;
     /**
-     * Name.
+     * Data source name.
      */
     name: string;
     /**
-     * The unique slug of the datasource.
+     * Data source `slug`.
      */
     slug: string;
     /**
-     * Dimensions of the datasource.
+     * An array listing the dimensions defined for the data source.
      */
     dimensions: Array<Dimension>;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };
 
 export type Dimension = {
     /**
-     * ID.
+     * Dimension ID.
      */
     id: number;
     /**
-     * Name.
+     * Dimension name.
      */
     name: string;
     /**
-     * The value provided for the datasource dimension.
+     * Dimension value.
      */
     entry_value: string;
     /**
-     * The numeric ID of the datasource that the dimension belongs to.
+     * ID of the data source that contains this dimension.
      */
     datasource_id?: number;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };

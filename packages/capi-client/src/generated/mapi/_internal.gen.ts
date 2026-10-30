@@ -2,137 +2,140 @@
 
 export type Component = {
     /**
-     * Unique identifier for the component
+     * The component’s numeric ID.
      */
-    readonly id: number;
+    id: number;
     /**
-     * Technical name of the component.
+     * Technical name of a component. Visible in the content editor if the `display_name` is `null`.
      */
     name: string;
     /**
-     * Human-readable display name
+     * Human-readable display name.
      */
     display_name?: string | null;
     /**
-     * Component description
+     * Component description.
      */
     description?: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
-    readonly created_at: string;
+    created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
     /**
-     * Component field schema definition
+     * Key value pairs of the component fields.
      */
     schema: {
         [key: string]: {
             type?: 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group';
             /**
-             * Field ID
+             * Field ID.
              */
             id?: string;
             [key: string]: unknown;
         };
     };
     /**
-     * Component image URL
+     * URL of the component preview image (if uploaded).
      */
     image?: string | null;
     /**
-     * Field used for preview.
+     * The component preview field in the UI.
      */
     preview_field?: string | null;
     /**
-     * Whether this component can be used as a root component.
+     * Whether you can use the component as a content type block.
      */
     is_root: boolean;
     /**
-     * Preview template HTML.
+     * The component preview template. Learn how to [create a preview template](https://www.storyblok.com/docs/concepts/blocks#create-previews).
      */
     preview_tmpl?: string | null;
     /**
-     * Whether this component can be nested inside other components.
+     * Returns `true` if a component is a **Nestable block**.
      */
     is_nestable: boolean;
     /**
-     * All presets associated with this component.
+     * An array of presets for a component. Learn more about [presets](https://www.storyblok.com/docs/api/management/presets).
      */
     all_presets?: Array<{
         /**
-         * Preset ID
+         * The preset’s numeric ID.
          */
         id?: number;
         /**
-         * Preset name
+         * Name of a preset.
          */
         name?: string;
         /**
-         * Preset schema
+         * Preset schema.
          */
         preset?: {
             [key: string]: unknown;
         };
         /**
-         * ID of the component this preset belongs to
+         * Numeric ID of a component associated with the preset.
          */
         component_id?: number;
         /**
-         * Image URL for the preset preview
+         * Link to a preview image of the preset.
          */
         image?: string | null;
         /**
-         * Icon name for the preset
+         * Icon of the preset.
          */
         icon?: string | null;
         /**
-         * Color for the preset display
+         * Color of the icon.
          */
         color?: string | null;
         /**
-         * Description of the preset
+         * The description of the preset.
          */
         description?: string | null;
     }>;
     /**
-     * Default preset ID.
+     * Preset ID.
      */
     preset_id?: number | null;
     /**
-     * Display name if available, otherwise technical name.
+     * A read-only field used by Storyblok internally. Identical to the `display_name` if set. Otherwise, it’s set to the `name`.
      */
     real_name?: string;
     /**
-     * UUID of the component group this component belongs to.
+     * UUID of the component folder this component belongs to.
      */
     component_group_uuid?: string | null;
     /**
-     * Component color for UI display
+     * Color of the icon.
      */
     color?: string | null;
     /**
-     * Component icon name
+     * Icon of the component.
      */
     icon?: string | null;
+    /**
+     * List of objects containing the internal tags assigned to a component. Learn more about [internal tags](https://www.storyblok.com/docs/api/management/internal-tags).
+     */
     internal_tags_list?: Array<{
         /**
-         * ID
+         * The tag’s numeric ID.
          */
         id?: number;
         /**
-         * Name
+         * Name of a tag.
          */
         name?: string;
     }>;
     /**
-     * List of internal tag IDs
+     * List of IDs of the internal tags assigned to a component.
      */
     internal_tag_ids?: Array<string>;
     /**
-     * Content Type Asset preview.
+     * Asset preview field of a **content type block**.
      */
     content_type_asset_preview?: string | null;
     /**

@@ -4,7 +4,7 @@
  * spec.lock pins the upstream commit and the resulting cache contents:
  *
  *   {
- *     "repo": "storyblok/openapi-wdx",
+ *     "repo": "storyblok/openapi",
  *     "sha":  "<upstream commit SHA>",
  *     "hash": "sha256:<hex of cache contents>"
  *   }
@@ -19,7 +19,7 @@ import { relative, resolve } from "pathe";
 import { CACHE_DIR, LOCK_PATH } from "./paths.ts";
 
 export { CACHE_DIR, LOCK_PATH, TOOL_ROOT } from "./paths.ts";
-export const UPSTREAM_REPO = "storyblok/openapi-wdx";
+export const UPSTREAM_REPO = "storyblok/openapi";
 
 export interface SpecLock {
   repo: string;

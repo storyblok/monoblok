@@ -6,89 +6,89 @@ export type ClientOptions = {
 
 export type Alternate = {
     /**
-     * Translated slug (or parent slug if not installed).
+     * Translated story slug (learn more about the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
      */
     path: string;
     /**
-     * Translated name of the story or folder.
+     * Translated story name (learn more about the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
      */
     name: string;
     /**
-     * Language code of this story variant.
+     * The story’s language code.
      */
     lang: string;
     /**
-     * True if this variant is published.
+     * Returns `true` if story language version is currently published.
      */
     published: boolean;
     /**
-     * Translated slug of the story.
+     * Translated story slug (learn more about the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
      */
     translated_slug: string;
 };
 
-export type CdnExperiment = {
+export type ExperimentBase = {
     /**
-     * Numeric ID of the experiment
+     * Numeric ID of the experiment.
      */
     id: number;
     /**
-     * Internal name (lowercase, numbers, underscores)
+     * Internal name (lowercase letters, numbers, and underscores).
      */
     name: string;
     /**
-     * Human-readable display name
+     * Human-readable display name.
      */
     display_name: string;
     /**
-     * IDs of stories assigned to this experiment
+     * IDs of [stories](https://www.storyblok.com/docs/api/content-delivery/v2/stories/retrieve-a-single-story) assigned to the experiment.
      */
     story_ids: Array<number>;
     /**
-     * Variants belonging to this experiment
+     * Variants belonging to the experiment.
      */
-    variants: Array<CdnExperimentVariant>;
+    variants: Array<ExperimentVariant>;
 };
 
-export type CdnExperimentVariant = {
+export type ExperimentVariant = {
     /**
-     * Internal name (lowercase, numbers, underscores)
+     * Internal name (lowercase letters, numbers, and underscores).
      */
     name: string;
     /**
-     * Human-readable display name
+     * Human-readable display name.
      */
     display_name: string;
     /**
-     * Public identifier for stable bucketing
+     * Public identifier for stable bucketing.
      */
     public_id: string;
     /**
-     * Traffic weight percentage (0-100)
+     * Traffic weight percentage (0-100).
      */
     weight: number;
     /**
-     * Whether this is the control variant
+     * Returns `true` if the variant is the control.
      */
     is_control: boolean;
     /**
-     * Mappings between original stories and their variant copies
+     * Mappings between original stories and their variant copies.
      */
     story_mappings: Array<{
         /**
-         * ID of the original story
+         * Numeric ID of the original [story](https://www.storyblok.com/docs/api/content-delivery/v2/stories/retrieve-a-single-story).
          */
         original_story_id: number;
         /**
-         * Slug of the original story
+         * Slug of the original story.
          */
         original_slug: string | null;
         /**
-         * ID of the variant story copy
+         * Numeric ID of the variant story copy.
          */
         variant_story_id: number | null;
         /**
-         * Slug of the variant story copy
+         * Slug of the variant story copy.
          */
         variant_slug: string | null;
     }>;
@@ -96,7 +96,7 @@ export type CdnExperimentVariant = {
 
 export type ErrorResponse = {
     /**
-     * Error message.
+     * Error message
      */
     error: string;
     /**
@@ -105,82 +105,150 @@ export type ErrorResponse = {
     error_code?: string;
 };
 
+/**
+ * Array of message strings. Returned for an unknown path.
+ */
+export type LegacyArrayErrorResponse = Array<string>;
+
 export type Link = {
     /**
-     * ID.
+     * Story or folder ID.
      */
     id: number;
+    /**
+     * Story or folder UUID.
+     */
     uuid: string;
     /**
-     * The full slug of the story or folder.
+     * Story or folder `full_slug`.
      */
     slug: string;
     /**
-     * Real path defined in the story's entry configuration.
+     * Real path defined in the story’s entry configuration. Learn more in the [Visual Editor concept](https://www.storyblok.com/docs/concepts/visual-editor)).
      */
     path?: string | null;
     /**
-     * Either the full slug of the story or folder with a leading /, or, if existent, the value of the real path defined in the story's entry configuration with a leading /.
+     * Either the full slug of the story or folder with a leading `/`, or the value of the real path defined in the story’s entry configuration with a leading `/`.
      */
     real_path?: string | null;
     /**
-     * The complete name of the story or folder.
+     * Story or folder name.
      */
     name: string;
     /**
-     * true if a story is currently published, even if it has unpublished changes.
+     * Returns `true` if the story is currently published.
      */
     published: boolean;
     /**
-     * ID of the parent folder.
+     * Parent folder ID.
      */
     parent_id: number;
     /**
-     * true if the instance constitutes a folder.
+     * Returns `true` if the item is a folder.
      */
     is_folder: boolean;
     /**
-     * true if the story is defined as root for the folder.
+     * Returns `true` if the story is the folder’s root.
      */
     is_startpage: boolean;
     /**
-     * Numeric representation of the story's position in the folder.
+     * Numeric representation of the story’s position in the folder. Users [can change](https://www.storyblok.com/docs/manuals/stories#folders) this property in the **Content** tab.
      */
     position: number;
     /**
-     * Latest publication timestamp (format is ISO 8601 standard in UTC).
+     * Latest publication timestamp. Supports ISO 8601.
      */
     published_at?: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string | null;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string | null;
     /**
-     * Alternate language variants.
+     * An array that contains objects correlating to the language versions defined using [field-level translation](https://www.storyblok.com/docs/concepts/internationalization#field-level-translation).
+     *
+     * The `alternates` parameter is different from the story alternates defined in the [Dimensions app](https://www.storyblok.com/docs/apps/dimensions) when using
+     * [folder-level translation](https://www.storyblok.com/docs/concepts/internationalization#folder-level-translation).
      */
     alternates?: Array<Alternate>;
 };
 
 export type LinkWithFullSlug = Link & {
     /**
-     * Full slug including path and optional language prefix
+     * The story’s full slug, including parent folder and language paths.
      */
     full_slug: string;
 };
 
+export type Dimension = {
+    /**
+     * Dimension ID.
+     */
+    id: number;
+    /**
+     * Dimension name.
+     */
+    name: string;
+    /**
+     * Dimension value.
+     */
+    entry_value: string;
+    /**
+     * ID of the data source that contains this dimension.
+     */
+    datasource_id?: number;
+    /**
+     * Creation timestamp. Supports ISO 8601.
+     */
+    created_at?: string;
+    /**
+     * Latest update timestamp. Supports ISO 8601.
+     */
+    updated_at?: string;
+};
+
 export type RateLimitError = {
     /**
-     * Rate limit reached.
+     * Rate limit reached
      */
     error: string;
 };
 
 /**
- * Error shape used by the management Strata endpoints and the CDN v2 Strata search endpoint. Check `code` to detect the error type. Do not match on `message`: its wording can change.
+ * Linked story or folder in the `links` array when `resolve_links` is `url`.
+ */
+export type ResolvedLinkUrl = {
+    /**
+     * Story or folder ID.
+     */
+    id: number;
+    /**
+     * Story or folder UUID.
+     */
+    uuid: string;
+    /**
+     * Story or folder name.
+     */
+    name: string;
+    /**
+     * Story or folder slug.
+     */
+    slug: string;
+    /**
+     * The story’s full slug, including parent folder and language paths.
+     */
+    full_slug: string;
+    /**
+     * The `real_path` defined in the story or folder’s Config, or the `full_slug`.
+     */
+    url: string;
+};
+
+/**
+ * Error shape used by every Strata endpoint: management, CDN v1 and CDN v2. Check `code` to detect the error type. Do not match on `message`: its wording can change.
  */
 export type StrataErrorResponse = {
     error: {
@@ -189,9 +257,9 @@ export type StrataErrorResponse = {
          */
         message: string;
         /**
-         * A fixed error code for this failure.
+         * A fixed error code for this failure. `credits_exceeded` is reserved and no v1 endpoint returns it. `strata_space_limit_reached` means the organization is at its maximum number of Strata-enabled spaces. `writes_disabled` means writes are off for maintenance. `api_limit_exceeded` means the space is over its monthly API request limit. `org_inactive` means the organization is disabled. `insufficient_scope` means the token lacks a required scope. `invalid_json` means the request body is not valid JSON. `invalid_request` means the database rejected the query.
          */
-        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'already_running' | 'not_running' | 'rate_limited' | 'error' | 'unauthorized';
+        code: 'invalid_argument' | 'not_found' | 'feature_disabled' | 'ai_disabled' | 'forbidden' | 'blocked' | 'credits_exceeded' | 'strata_space_limit_reached' | 'already_running' | 'not_running' | 'rate_limited' | 'bad_request' | 'error' | 'unauthorized' | 'writes_disabled' | 'api_limit_exceeded' | 'org_inactive' | 'insufficient_scope' | 'invalid_json' | 'invalid_request';
         /**
          * Extra structured data about the error.
          */
@@ -206,19 +274,19 @@ export type StrataErrorResponse = {
 };
 
 /**
- * One search result: a single piece of matching story content.
+ * A search result object for one passage of story content that matches the search term.
  */
 export type StrataSearchHit = {
     /**
-     * The matching snippet of story content.
+     * The passage of story content that matches the search term.
      */
     excerpt: string;
     /**
-     * How closely this result matches the search term. Higher means a closer match.
+     * How closely the result matches the search term. A higher value means a closer match.
      */
     score: number;
     /**
-     * The story this result comes from.
+     * The story that contains the matching passage.
      */
     story: {
         /**
@@ -226,163 +294,223 @@ export type StrataSearchHit = {
          */
         id: number;
         /**
-         * The story's full slug.
+         * Full slug of the story.
          */
         slug: string;
         /**
-         * The story's name.
+         * Name of the story.
          */
         name: string;
     };
 };
 
 /**
- * Ranked results, best match first. Each entry is one matching piece of content. A story can appear more than once if it has multiple matches.
+ * An array of search result objects, ranked by `score` with the best match first. A story can appear more than once if it has multiple matching passages.
  */
 export type StrataSearchResults = Array<StrataSearchHit>;
 
-export type Dimension = {
-    /**
-     * ID.
-     */
-    id: number;
-    /**
-     * Name.
-     */
-    name: string;
-    /**
-     * The value provided for the datasource dimension.
-     */
-    entry_value: string;
-    /**
-     * The numeric ID of the datasource that the dimension belongs to.
-     */
-    datasource_id?: number;
-    /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
-     */
-    created_at?: string;
-    /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
-     */
-    updated_at?: string;
-};
-
 export type UnauthorizedError = {
     /**
-     * Unauthorized error message.
+     * Unauthorized error message
      */
     error: string;
 };
 
 export type StoryAlternate = {
+    /**
+     * Story ID.
+     */
     id: number;
+    /**
+     * Story name.
+     */
     name: string;
+    /**
+     * Story slug.
+     */
     slug: string;
+    /**
+     * Returns `true` if the story is currently published.
+     */
     published: boolean | null;
+    /**
+     * The story’s full slug, including parent folder and language paths.
+     */
     full_slug: string;
+    /**
+     * Returns `true` if the item is a folder.
+     */
     is_folder: boolean;
+    /**
+     * Parent folder ID.
+     */
     parent_id: number;
 };
 
 export type Datasource = {
     /**
-     * ID.
+     * Data source ID.
      */
     id: number;
     /**
-     * Name.
+     * Data source name.
      */
     name: string;
     /**
-     * The unique slug of the datasource.
+     * Data source `slug`.
      */
     slug: string;
     /**
-     * Dimensions of the datasource.
+     * An array listing the dimensions defined for the data source.
      */
     dimensions: Array<Dimension>;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };
 
 export type DatasourceEntry = {
     /**
-     * ID.
+     * Entry ID.
      */
     id: number;
     /**
-     * Name.
+     * Entry name.
      */
     name: string;
     /**
-     * Given value in default dimension.
+     * Entry value (default dimension).
      */
     value: string;
     /**
-     * Given value in the requested dimension.
+     * Entry value (requested dimension).
      */
     dimension_value: string | null;
 };
 
 export type DraftStory = {
+    /**
+     * Story name.
+     */
     name: string;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string | null;
     /**
-     * Latest publication timestamp (format is ISO 8601 standard in UTC).
+     * Latest publication timestamp. Supports ISO 8601.
      */
     published_at: string | null;
+    /**
+     * An array that contains objects that provide basic data of the stories defined as alternates of the current story.
+     */
     alternates: Array<StoryAlternate>;
+    /**
+     * Story ID.
+     */
     id: number;
+    /**
+     * Story UUID.
+     */
     uuid: string;
     /**
-     * Dynamic component data rendered by Storyblok, structure varies by component.
+     * An object that contains the field data associated with a content type’s specific structure. Also includes a `component` property with the content type’s technical name.
      */
     content: {
         _uid?: string;
         component?: string;
         [key: string]: unknown;
     };
+    /**
+     * Story.
+     */
     slug: string;
+    /**
+     * The story’s full slug, including parent folder and language paths.
+     */
     full_slug: string;
+    /**
+     * Contains the complete slug of the default language (requires the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
+     */
     default_full_slug: string | null;
+    /**
+     * Date defined in the story’s entry configuration. Supports ISO 8601.
+     */
     sort_by_date: string | null;
+    /**
+     * Numeric representation of the story’s position in the folder. Users [can change](https://www.storyblok.com/docs/manuals/stories#folders) this property in the **Content** tab.
+     */
     position: number;
+    /**
+     * An array of tags.
+     */
     tag_list: Array<string>;
+    /**
+     * Returns `true` if the story is the folder root.
+     */
     is_startpage: boolean;
+    /**
+     * Parent folder ID.
+     */
     parent_id: number;
     /**
-     * Custom metadata for the story.
+     * An object to store non-editable data that’s exclusively maintained with the [Management API](https://www.storyblok.com/docs/api/management).
      */
     meta_data: {
         [key: string]: unknown;
     } | null;
+    /**
+     * Group ID (UUID string), shared between stories defined as alternates.
+     */
     group_id: string;
+    /**
+     * First publication timestamp. Supports ISO 8601.
+     */
     first_published_at: string | null;
+    /**
+     * Current release ID (if requested via the `from_release` parameter).
+     */
     release_id: number | null;
+    /**
+     * The story’s language code.
+     */
     lang: string;
+    /**
+     * Real path defined in the story’s entry configuration. Learn more in the [Visual Editor concept](https://www.storyblok.com/docs/concepts/visual-editor)).
+     */
     path: string | null;
+    /**
+     * An array of translated slug objects (requires the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
+     */
     translated_slugs: Array<{
+        /**
+         * Translated slug.
+         */
         path: string;
+        /**
+         * Translated name.
+         */
         name: string | null;
+        /**
+         * The story’s language code.
+         */
         lang: string;
+        /**
+         * Returns `true` if story variant is currently published.
+         */
         published: boolean | null;
     }> | null;
     /**
-     * Story's assigned taxonomy terms. Present only when `with_taxonomy_terms=1` is requested and the taxonomy feature is enabled for the space
+     * To retrieve taxonomy terms assigned to the story, use `with_taxonomy_terms=1`.
      */
     taxonomy_terms?: Array<{
         id: string;
@@ -392,81 +520,147 @@ export type DraftStory = {
     }>;
 };
 
-export type PublicSpace = {
+export type Space = {
     /**
-     * The space ID.
+     * Space ID.
      */
     id: number;
     /**
-     * The space name.
+     * Space name.
      */
     name: string;
     /**
-     * The domain associated with the space.
+     * Domain associated with the space (configured under **Visual Editor** → **Location**).
      */
     domain: string;
     /**
-     * Cache version.
+     * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
      */
     version: number;
     /**
-     * List of language codes supported by the public space.
+     * An array of language codes configured in the space.
      */
     language_codes: Array<string>;
 };
 
 export type PublishedStory = {
+    /**
+     * Story name.
+     */
     name: string;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string | null;
     /**
-     * Latest publication timestamp (format is ISO 8601 standard in UTC).
+     * Latest publication timestamp. Supports ISO 8601.
      */
     published_at: string | null;
+    /**
+     * Story ID.
+     */
     id: number;
+    /**
+     * Story UUID.
+     */
     uuid: string;
     /**
-     * Dynamic component data rendered by Storyblok, structure varies by component.
+     * An object that contains the field data associated with a content type’s specific structure. Also includes a `component` property with the content type’s technical name.
      */
     content: {
         _uid?: string;
         component?: string;
         [key: string]: unknown;
     };
+    /**
+     * Story.
+     */
     slug: string;
+    /**
+     * The story’s full slug, including parent folder and language paths.
+     */
     full_slug: string;
+    /**
+     * Date defined in the story’s entry configuration. Supports ISO 8601.
+     */
     sort_by_date: string | null;
+    /**
+     * Numeric representation of the story’s position in the folder. Users [can change](https://www.storyblok.com/docs/manuals/stories#folders) this property in the **Content** tab.
+     */
     position: number;
+    /**
+     * An array of tags.
+     */
     tag_list: Array<string>;
+    /**
+     * Returns `true` if the story is the folder root.
+     */
     is_startpage: boolean;
+    /**
+     * Parent folder ID.
+     */
     parent_id: number;
     /**
-     * Custom metadata for the story.
+     * An object to store non-editable data that’s exclusively maintained with the [Management API](https://www.storyblok.com/docs/api/management).
      */
     meta_data: {
         [key: string]: unknown;
     } | null;
+    /**
+     * Group ID (`uuid` string), shared between stories defined as alternates.
+     */
     group_id: string;
+    /**
+     * First publication timestamp. Supports ISO 8601.
+     */
     first_published_at: string | null;
+    /**
+     * Current release ID (if requested via the `from_release` parameter).
+     */
     release_id?: number | null;
+    /**
+     * The story’s language code.
+     */
     lang: string;
+    /**
+     * Real path defined in the story’s entry configuration. Learn more in the [Visual Editor concept](https://www.storyblok.com/docs/concepts/visual-editor)).
+     */
     path: string | null;
+    /**
+     * An array that contains objects that provide basic data of the stories defined as alternates of the current story.
+     */
     alternates: Array<StoryAlternate>;
+    /**
+     * Contains the complete slug of the default language (requires the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
+     */
     default_full_slug: string | null;
+    /**
+     * An array of translated slug objects (requires the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
+     */
     translated_slugs: Array<{
+        /**
+         * Translated slug.
+         */
         path: string;
+        /**
+         * Translated name.
+         */
         name: string | null;
+        /**
+         * The story’s language code.
+         */
         lang: string;
+        /**
+         * Returns `true` if story variant is currently published.
+         */
         published: boolean | null;
     }> | null;
     /**
-     * Story's assigned taxonomy terms. Present only when `with_taxonomy_terms=1` is requested and the taxonomy feature is enabled for the space
+     * To retrieve taxonomy terms assigned to the story, use `with_taxonomy_terms=1`.
      */
     taxonomy_terms?: Array<{
         id: string;
@@ -478,119 +672,119 @@ export type PublishedStory = {
 
 export type Tag = {
     /**
-     * The name of the tag.
+     * The tag name.
      */
     name: string;
     /**
-     * The minimum value of `taggings_count` is 1, not 0.
-     * - The number of tags with this name that exist in the space, or
-     * - The number of draft or published stories with this tag, or
-     * - The number of deleted stories with this tag.
+     * The number of stories that include this tag.
      */
     taggings_count?: number;
     /**
-     * Only visible when passing the `all_tags` parameter. The number of stories currently associated with the tag, corresponding to the <strong>Assigned items</strong> column in the <a href='https://www.storyblok.com/docs/manuals/stories#tags'>Tags tab</a>.
+     * The number of distinct stories this tag appears on (only present when `all_tags` parameter is `true`).
      */
     tag_on_stories?: number;
 };
 
 /**
- * A row in the single taxonomy_terms table. A root taxonomy term (parent_id null) is what the client calls a "taxonomy"; every other row is a nested term within one.
+ * An object that contains a taxonomy.
  */
 export type TaxonomyTerm = {
     /**
-     * Snowflake ID of the term
+     * The taxonomy’s ID.
      */
     id: string;
     /**
-     * Human-readable label
+     * The taxonomy’s name.
      */
     display_name: string;
     /**
-     * URL-safe technical name
+     * The taxonomy’s technical name.
      */
     name: string;
     /**
-     * Optional free-text description
+     * The taxonomy’s description.
      */
     description: string | null;
     /**
-     * ID of parent space if this is a child space.
+     * The top-level term’s ID.
      */
     parent_id: string | null;
     /**
-     * User who created the term. Always present for root terms (taxonomies); may be null for nested terms.
+     * An object that contains the details of user who created the term.
      */
     last_author: {
         /**
-         * User's numeric ID
+         * The user’s numeric ID.
          */
         id: number;
         /**
-         * Username, or the user's email if no username is set
+         * The user’s username or email address.
          */
         userid: string;
         /**
-         * Display name derived from firstname/lastname, falling back to userid
+         * The user’s display name.
          */
         friendly_name: string;
         /**
-         * URL of the user's avatar image, null if not set
+         * The URL of the user’s avatar image.
          */
         avatar?: string | null;
     } | null;
     /**
-     * ID of the user who created the term. Always present for root terms (taxonomies); may be null for nested terms.
+     * The user’s ID.
      */
     last_author_id: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
     /**
-     * Nested child terms, recursively. Present on show/create/update/restore responses; omitted from the index listing.
+     * An array of sub-terms objects.
      */
     children?: Array<TaxonomyTerm>;
     /**
-     * Count of all descendant terms, any depth. Present only on the index listing.
+     * The number sub-terms (at any depth).
      */
     terms_count?: number;
     /**
-     * Timestamp of the most recent change anywhere in this taxonomy: the root itself or any nested term being added, edited, or archived. Present only on the index listing.
+     * Latest update timestamp. Supports ISO 8601.
      */
     last_activity_at?: string;
     /**
-     * Content currently assigned to this exact term (not its descendants), scoped to the requesting space. Only Story exists as a content type today; `type` is polymorphic so Asset can be added later without breaking this field. Present on the show response for the requested term and every nested term under `children`; always empty on a root term, since content can only ever be assigned to a nested term. Not present on the index listing -- use `GET /v1/spaces/{space_id}/taxonomy_terms/{taxonomy_term_id}/associated_content` for the content assigned anywhere within a given term's subtree (e.g. to warn before deleting it).
+     * An array of story objects associated with the taxonomy.
      */
     associated_content?: Array<{
         /**
-         * Snowflake ID of the content item
+         * The associated story’s ID.
          */
         id: string;
         /**
-         * Content type discriminator
+         * The associated block type’s name.
          */
         type: 'Story';
         name: string;
         /**
-         * Present for Story entries
+         * The story’s full slug, including parent folder and language paths.
          */
         full_slug?: string;
+        /**
+         * Latest update timestamp. Supports ISO 8601.
+         */
         updated_at: string;
     }>;
 };
 
 export type Asset = {
     /**
-     * The asset's alternative text in the default language.
+     * Alt text for the asset (default language).
      */
     alt: string | null;
     /**
-     * Id of the folder containing this asset.
+     * Id of the folder that contains this asset.
      */
     asset_folder_id: number | null;
     /**
@@ -598,7 +792,7 @@ export type Asset = {
      */
     content_length: number | null;
     /**
-     * The content type.
+     * The asset’s MIME type.
      */
     content_type: string | null;
     /**
@@ -606,13 +800,16 @@ export type Asset = {
      */
     copyright: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string | null;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string | null;
+    /**
+     * Expiration timestamp. Supports ISO 8601.
+     */
     expire_at: string | null;
     /**
      * Full path of the asset, including the file name.
@@ -637,17 +834,17 @@ export type Asset = {
     [key: string]: unknown;
 };
 
-export type CdnExperimentWithStories = CdnExperiment & {
+export type Experiment = ExperimentBase & {
     /**
      * Stories assigned to this experiment. Same stories as story_ids, with their full slug. The full_slug is the default-language slug; translated slugs are not applied.
      */
     stories: Array<{
         /**
-         * Numeric ID of the story
+         * Numeric ID of the story.
          */
         id: number;
         /**
-         * Full slug of the story in the default language
+         * The story’s full slug, including parent folder and language paths.
          */
         full_slug: string;
     }>;
@@ -660,7 +857,7 @@ export type GetAssetData = {
     path?: never;
     query: {
         /**
-         * Full path of the asset, including the file name.
+         * Complete URL of the asset.
          */
         filename: string;
     };
@@ -682,9 +879,12 @@ export type GetAssetError = GetAssetErrors[keyof GetAssetErrors];
 
 export type GetAssetResponses = {
     /**
-     * Asset returned.
+     * Asset returned
      */
     200: {
+        /**
+         * The asset object received in the response of a get signed URL request.
+         */
         asset: Asset;
     };
 };
@@ -696,23 +896,23 @@ export type ListDatasourceEntriesData = {
     path?: never;
     query?: {
         /**
-         * Datasource group id/slug.
+         * Data source `slug`.
          */
         datasource?: string;
         /**
-         * Dimension that you defined for your datasource.
+         * A datasource dimension.
          */
         dimension?: string;
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
         /**
-         * The paginated page number.
+         * Page number in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         page?: number;
         /**
-         * Number of items per page.
+         * The number of items per page in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         per_page?: number;
     };
@@ -734,10 +934,16 @@ export type ListDatasourceEntriesError = ListDatasourceEntriesErrors[keyof ListD
 
 export type ListDatasourceEntriesResponses = {
     /**
-     * Datasource_entries returned.
+     * Datasource_entries returned
      */
     200: {
+        /**
+         * An array of data source entry objects.
+         */
         datasource_entries: Array<DatasourceEntry>;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv?: number | null;
     };
 };
@@ -749,13 +955,11 @@ export type ListDatasourcesData = {
     path?: never;
     query?: {
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
         /**
@@ -763,15 +967,15 @@ export type ListDatasourcesData = {
          */
         search?: string;
         /**
-         * Filter by comma-separated IDs.
+         * Retrieve items by `id`. Supports a comma-separated string.
          */
         by_ids?: string;
         /**
-         * The paginated page number.
+         * Page number in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         page?: number;
         /**
-         * Number of items per page.
+         * The number of items per page in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         per_page?: number;
     };
@@ -793,10 +997,16 @@ export type ListDatasourcesError = ListDatasourcesErrors[keyof ListDatasourcesEr
 
 export type ListDatasourcesResponses = {
     /**
-     * Datasources returned.
+     * Datasources returned
      */
     200: {
+        /**
+         * An array of data source objects.
+         */
         datasources: Array<Datasource>;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv?: number | null;
     };
 };
@@ -807,19 +1017,17 @@ export type GetDatasourceByIdData = {
     body?: never;
     path: {
         /**
-         * Full_slug or numeric ID.
+         * The data source’s ID.
          */
         id: string;
     };
     query?: {
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
     };
@@ -832,7 +1040,7 @@ export type GetDatasourceByIdErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Invalid token or no custom complexity.
+     * Datasource not found
      */
     404: Array<string>;
     /**
@@ -845,10 +1053,16 @@ export type GetDatasourceByIdError = GetDatasourceByIdErrors[keyof GetDatasource
 
 export type GetDatasourceByIdResponses = {
     /**
-     * Datasource Found.
+     * Datasource Found
      */
     200: {
+        /**
+         * A single data source object.
+         */
         datasource: Datasource;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv: number | null;
     };
 };
@@ -860,7 +1074,7 @@ export type ListCdnExperimentsV2Data = {
     path?: never;
     query?: {
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
     };
@@ -885,7 +1099,13 @@ export type ListCdnExperimentsV2Responses = {
      * Running experiments returned
      */
     200: {
-        experiments: Array<CdnExperimentWithStories>;
+        /**
+         * The experiments object.
+         */
+        experiments: Array<Experiment>;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv?: number | null;
     };
 };
@@ -897,41 +1117,39 @@ export type ListLinksData = {
     path?: never;
     query?: {
         /**
-         * Filter entries whose full slug starts with the given value. For example, `starts_with=de/beitraege`, `starts_with=en/posts`.
+         * Filter by the story’s `full_slug` to return items starting with the given value.
          */
         starts_with?: string;
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
         /**
-         * Default: `0`. Set to `1` to include `published_at`, `created_at`, and `updated_at` in the response.
+         * Include or exclude the `created_at`, `updated_at` and `published_at` fields. To include these date fields in the response, set to `1`. To exclude them, set to `0` or omit the parameter.
          */
         include_dates?: string;
         /**
-         * Filter links by story or folder UUID.
+         * Filter links by `uuid`.
          */
         by_uuid?: string;
         /**
-         * Filter by folder ID to only return links from a particular folder. To return entries outside folders, set to `0`.
+         * To return links from a specific folder, filter by folder `id`. To return stories outside a folder, set to `0`.
          */
         with_parent?: string;
         /**
-         * To enable pagination, set to `1`.
+         * To enable a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response, set to `1`.
          */
         paginated?: string;
         /**
-         * The paginated page number.
+         * Page number in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         page?: number;
         /**
-         * Number of items per page.
+         * The number of items per page in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         per_page?: number;
     };
@@ -953,9 +1171,12 @@ export type ListLinksError = ListLinksErrors[keyof ListLinksErrors];
 
 export type ListLinksResponses = {
     /**
-     * An object of link objects, where each key represents a story or folder `UUID`.
+     * Links returned
      */
     200: {
+        /**
+         * An object that contains link objects. Each key represents a story or folder UUID.
+         */
         links: {
             [key: string]: Link;
         };
@@ -968,17 +1189,17 @@ export type GetLinkByUuIdData = {
     body?: never;
     path: {
         /**
-         * The `UUID` of the link.
+         * The link’s ID.
          */
         id: string;
     };
     query?: {
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
         /**
-         * Default: `0`. Set to `1` to include `published_at`, `created_at`, and `updated_at` in the response.
+         * Include or exclude the `created_at`, `updated_at` and `published_at` fields. To include these date fields in the response, set to `1`. To exclude them, set to `0` or omit the parameter.
          */
         include_dates?: string;
     };
@@ -1000,9 +1221,12 @@ export type GetLinkByUuIdError = GetLinkByUuIdErrors[keyof GetLinkByUuIdErrors];
 
 export type GetLinkByUuIdResponses = {
     /**
-     * A link object.
+     * Link Found
      */
     200: {
+        /**
+         * A link object.
+         */
         link: Link;
     };
 };
@@ -1014,9 +1238,7 @@ export type GetSpaceData = {
     path?: never;
     query?: {
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
     };
@@ -1034,10 +1256,13 @@ export type GetSpaceError = GetSpaceErrors[keyof GetSpaceErrors];
 
 export type GetSpaceResponses = {
     /**
-     * Space returned.
+     * Space returned
      */
     200: {
-        space: PublicSpace;
+        /**
+         * The complete space object.
+         */
+        space: Space;
     };
 };
 
@@ -1047,77 +1272,81 @@ export type GetStoryByIdData = {
     body?: never;
     path: {
         /**
-         * Full_slug or numeric ID or UUID.
+         * The story’s `id`, `uuid`, or `full_slug`.
          */
         id: string;
     };
     query?: {
         /**
-         * Added if you want to query by uuid.
+         * Required when using the story `uuid` as a path parameter.
          */
         find_by?: string;
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
         /**
-         * Used to resolve internal links of link fields used in a story. Resolved links are included in the links property of the response.
+         * Resolve [link fields](https://www.storyblok.com/docs/concepts/fields#link).
+         * The `links` property of the response includes resolved links:
+         * - `link`: provides access to additional information, such as a linked story’s `full_slug`, `path`, `parent_id`, `is_folder`, `published`, `is_startpage`, `position`, `alternates`, `real_path`, and more.
+         * - `url`: provides the minimum amount of information. Use when you only need the path of a linked story.
+         * - `story`: resolves and returns the complete story object of a linked story.
          */
         resolve_links?: 'story' | 'url' | 'link';
         /**
-         * Used to resolve up to two levels of links.
+         * Resolve up to two levels of links.
          */
         resolve_links_level?: 1 | 2;
         /**
-         * To resolve relations to other stories established via a multi-option/single-option field.
+         * Used to resolve [referenced stories](https://www.storyblok.com/docs/concepts/references). Resolved stories appear in the `rels` property of the response.
+         *
+         * A single request can resolve up to 50 stories. Afterward, all story `UUID` appear in the `rel_uuids` property of the response and need to resolve in subsequent API requests.
+         *
+         * To resolve the stories selected in one field, provide the technical name of the immediate parent component of the field, followed by a `.` and the field name. To resolve the stories selected in multiple fields, provide a comma-separated string.
+         *
+         * Example: `resolve_relations=page.author,page.categories`.
          */
         resolve_relations?: string;
         /**
-         * To access a story version associated with a specific release by providing the release ID.
+         * Access a story version in a specific release by providing the release ID.
          */
         from_release?: string;
         /**
-         * Retrieve stories of a specific content type.
+         * Retrieve stories of a specific content type block. For example, `content_type=page`.
          */
         content_type?: string;
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
         /**
-         * Exclude specific fields from the response (comma-separated list).
+         * To exclude specific fields of a content type, provide the field names as a comma-separated string. For example, `excluding_fields=body,meta_description`.
+         *
+         * Excluding the `component` field from the response, returns the content of the story in the default language instead of the requested `language`.
          */
         excluding_fields?: string;
         /**
-         * Exclude top-level story response fields (comma-separated list), e.g. alternates, translated_slugs
+         * Exclude top-level story response fields with a comma-separated list. For example, `excluding_story_fields=alternates,translated_slugs`.
          */
         excluding_story_fields?: string;
         /**
-         * Used to obtain translated versions of one or more stories. Accepts any language code that is configured in the Storyblok space.
+         * Retrieve translated story version. Supports languages defined in **Settings** → **Internationalization**.
          */
         language?: string;
         /**
-         * Used to define a custom fallback language to handle untranslated fields.
+         * Define a custom fallback language to handle untranslated fields. Supports languages defined in **Settings** → **Internationalization**. Provide language code with underscores. For example, `es_co` instead of `es-co`.
          */
         fallback_lang?: string;
         /**
-         * Resolve asset metadata (higher-tier plans only).
+         * Used to resolve asset metadata, including custom metadata. When `resolve_assets=1`, an array of assets associated with the stories appear in the `assets` property of the response.
          */
         resolve_assets?: number;
         /**
-         * Force second-level relation resolution when first level exceeds limit.
+         * Used to force resolve second-level relations when the first level reaches a limit of 100 relations.
+         *
+         * While resolving relations, if the first level exceeds 100 relations, the API stops looking for the second level. To resolve second-level relations regardless of the first-level relations’ limit, use `resolve_level=2`.
          */
         resolve_level?: 2;
-        /**
-         * Include each story's assigned taxonomy terms. Every term also carries its immediate `parent` and its root `taxonomy` as nested objects, each with id, name and display_name. An archived term is left out of the story's own assignments, but an archived ancestor is still returned, and unmarked, so a breadcrumb never loses a level.
-         */
-        with_taxonomy_terms?: '1';
-        /**
-         * has a value with string that contains null character
-         */
-        param_with_null_char?: string;
     };
     url: '/v2/cdn/stories/{id}';
 };
@@ -1140,7 +1369,7 @@ export type GetStoryByIdErrors = {
         error?: string;
     };
     /**
-     * Invalid token or no custom complexity.
+     * Story Not Found
      */
     404: Array<string>;
     /**
@@ -1153,25 +1382,31 @@ export type GetStoryByIdError = GetStoryByIdErrors[keyof GetStoryByIdErrors];
 
 export type GetStoryByIdResponses = {
     /**
-     * Story Found.
+     * Story Found
      */
     200: {
+        /**
+         * The complete story object.
+         */
         story: Story;
         /**
-         * Cache version
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv: number;
         /**
-         * Rels
+         * An array of resolved stories.
          */
         rels?: Array<Story>;
-        links?: Array<LinkWithFullSlug | Link | Story>;
         /**
-         * Array of story UUIDs returned instead of `rels` when relation resolution exceeds the space resolve limit
+         * An array of resolved links. The properties depend on the `resolve_links` value.
+         */
+        links?: Array<LinkWithFullSlug | ResolvedLinkUrl | Link | Story>;
+        /**
+         * An array of all referenced stories’ UUIDs.
          */
         rel_uuids?: Array<string>;
         /**
-         * Array of story UUIDs returned instead of `links` when link resolution exceeds the space resolve limit
+         * An array of all linked stories’ UUIDs.
          */
         link_uuids?: Array<string>;
     };
@@ -1184,181 +1419,195 @@ export type ListStoriesData = {
     path?: never;
     query?: {
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
         /**
-         * Access a particular cached version of a published story using its Unix timestamp.
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv?: number;
         /**
-         * Filter entries whose full slug starts with the given value. For example, `starts_with=de/beitraege`, `starts_with=en/posts`.
+         * Filter by the story’s `full_slug` to return items starting with the given value.
          */
         starts_with?: string;
         /**
-         * Performs a full-text search by passing a search query. When the `sort_by` parameter is not included with the request,
-         * the search results are ordered based on the following:
-         * - By relevance of the `full_slug`
-         * - By relevance of the `name`
-         * - By the `position` in ascending order. The position is the numeric representation of the story's position in its folder.
+         * Search for any string in stories. The response contains all stories where the string appears anywhere in the name, slug, full slug, or content object. This includes UUIDs, field values, asset file names, and rich text nodes and attributes, such as "bold". Combine this parameter with the `version` parameter to filter by `draft` or `published` stories.
          */
         search_term?: string;
         /**
          * Sort stories in ascending or descending order by a specific property. Possible properties are all default story properties and any custom fields defined in the schema of the story type.
-         * Default story properties can be used like this:
+         *
+         * Sort default story properties like so:
          * - `sort_by=created_at:desc`
          * - `sort_by=slug:asc`
          *
-         * Custom fields can be used like this:
+         * Sort custom fields can like so:
          * - `sort_by=content.meta_description:asc`
          * - `sort_by=content.event_title:desc`
          *
-         * By default, all custom fields are sorted as strings. To sort custom fields with numeric values, it needs to be specified whether they should be treated as float or integer. Examples:
+         * By default, all sorted custom fields are strings. To sort custom fields with numeric values, specify floats or integers:
          * - `sort_by=content.price:asc:float`
          * - `sort_by=content.event_number:asc:int`
          *
-         * Different sorts can be chained using commas like this:
-         * - `sort_by=name:desc,slug:asc`
+         * Chain different sorts with commas: `sort_by=name:desc,slug:asc`.
          *
-         * There is also a possibility to sort values keeping the null (or empty) ones first or last:
+         * Sort values and set the `null` or `empty` ones first or last:
          * - `sort_by=path:desc:nulls_first`
-         * - `sort_by=path:desc:nulls_last`
+         * - `sort_by=path:desc:nulls_last`.
          *
          * `nulls_last` is the default behavior.
          */
         sort_by?: string;
         /**
-         * Number of items per page.
+         * The number of items per page in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         per_page?: number;
         /**
-         * The paginated page number.
+         * Page number in a [paginated](https://www.storyblok.com/docs/api/content-delivery/v2#pagination) response.
          */
         page?: number;
         /**
-         * Retrieve stories by comma-separated `full_slug`. It is possible to specify wildcards by using *.
+         * Retrieve stories by comma-separated `full_slug`. For example, `by_slugs=posts/third-post,posts/second-post`.
          *
-         * Examples:
-         * - `by_slugs=posts/my-third-post,posts/my-second-post`
-         * - `by_slugs=posts*`.
+         * You can use `*` as a wildcard. For example, `by_slugs=posts*`.
          */
         by_slugs?: string;
         /**
-         * Exclude stories by specifying comma-separated values of full_slug.
+         * Exclude stories by comma-separated `full_slug`. For example, `excluding_slugs=posts/third-post,posts/second-post`.
+         *
+         * You can use `*` as a wildcard. For example, `excluding_slugs=posts*`.
          */
         excluding_slugs?: string;
         /**
-         * Retrieve stories published after the specified date (Format: yyyy-MM-dd HH:mm).
+         * Retrieve stories published after the specified date. Supports ISO 8601.
          */
         published_at_gt?: string;
         /**
-         * Retrieve stories published at or after the specified date. Supports ISO 8601 (e.g. 2025-07-16T08:00:00Z) and yyyy-MM-dd HH:mm formats.
+         * Retrieve stories published on or after the specified date. Supports ISO 8601.
          */
         published_at_gte?: string;
         /**
-         * Retrieve stories published before the specified date (Format: yyyy-MM-dd HH:mm).
+         * Retrieve stories published before the specified date. Supports ISO 8601.
          */
         published_at_lt?: string;
         /**
-         * Retrieve stories published at or before the specified date. Supports ISO 8601 (e.g. 2025-07-16T08:00:00Z) and yyyy-MM-dd HH:mm formats.
+         * Retrieve stories published on or before the specified date. Supports ISO 8601.
          */
         published_at_lte?: string;
         /**
-         * Retrieve stories first published after the specified date (Format: yyyy-MM-dd HH:mm).
+         * Retrieve stories first published after the specified date. Supports ISO 8601.
          */
         first_published_at_gt?: string;
         /**
-         * Retrieve stories first published at or after the specified date. Supports ISO 8601 (e.g. 2025-07-16T08:00:00Z) and yyyy-MM-dd HH:mm formats.
+         * Retrieve stories first published at or after the specified date. Supports ISO 8601.
          */
         first_published_at_gte?: string;
         /**
-         * Retrieve stories first published before the specified date (Format: yyyy-MM-dd HH:mm).
+         * Retrieve stories first published before the specified date Supports ISO 8601.
          */
         first_published_at_lt?: string;
         /**
-         * Retrieve stories first published at or before the specified date. Supports ISO 8601 (e.g. 2025-07-16T08:00:00Z) and yyyy-MM-dd HH:mm formats.
+         * Retrieve stories first published at or before the specified date. Supports ISO 8601.
          */
         first_published_at_lte?: string;
         /**
-         * Retrieve stories updated after the specified date (Format: yyyy-MM-dd HH:mm).
+         * Retrieve stories updated after the specified date. Supports ISO 8601.
          */
         updated_at_gt?: string;
         /**
-         * Filter records updated at or after the specified date. Supports ISO 8601 (e.g. 2025-07-16T08:00:00Z) and yyyy-MM-dd HH:mm formats.
+         * Retrieve stories updated at or after the specified date. Supports ISO 8601.
          */
         updated_at_gte?: string;
         /**
-         * Retrieve stories updated before the specified date (Format: yyyy-MM-dd HH:mm).
+         * Retrieve stories updated before the specified date. Supports ISO 8601.
          */
         updated_at_lt?: string;
         /**
-         * Filter records updated at or before the specified date. Supports ISO 8601 (e.g. 2025-07-16T08:00:00Z) and yyyy-MM-dd HH:mm formats.
+         * Retrieve stories updated at or before the specified date. Supports ISO 8601.
          */
         updated_at_lte?: string;
         /**
-         * Retrieve stories that are in a particular workflow stage by providing a comma-separated list of workflow stage IDs. Workflow stage IDs can be retrieved via the [Management API](https://www.storyblok.com/docs/api/management/core-resources/workflow-stage/workflow-stage).
+         * Retrieve stories in a particular workflow stage by providing a comma-separated list of workflow stage IDs. For example, `in_workflow_stages=325604,325605`.
          */
         in_workflow_stages?: string;
         /**
-         * Retrieve stories of a specific content type.
+         * Retrieve stories of a specific content type block. For example, `content_type=page`.
          */
         content_type?: string;
         /**
-         * Retrieve stories located in the specified folder level. Only the immediate child stories are included in the response. Stories defined as root for the folder are excluded.
+         * Retrieve stories in the specified folder level. Examples:
+         * - `level=1` retrieves stories from the root folder
+         * - `level=2` retrieves stories from top-level folders
+         * - `level=3` retrieves stories from second-level folders
+         *
+         * The response includes only the immediate child stories, excluding stories defined as root for the folder.
          */
         level?: number;
         /**
-         * To resolve relations to other stories established via a multi-option/single-option field.
+         * Used to resolve [referenced stories](https://www.storyblok.com/docs/concepts/references). Resolved stories appear in the `rels` property of the response.
+         *
+         * A single request can resolve up to 50 stories. Afterward, all story `UUID` appear in the `rel_uuids` property of the response and need to resolve in subsequent API requests.
+         *
+         * To resolve the stories selected in one field, provide the technical name of the immediate parent component of the field, followed by a `.` and the field name. To resolve the stories selected in multiple fields, provide a comma-separated string.
+         *
+         * Example: `resolve_relations=page.author,page.categories`.
          */
         resolve_relations?: string;
         /**
-         * Exclude specific stories by providing their IDs as a comma-separated string.
+         * Exclude specific stories by IDs in a comma-separated string. For example,
+         * `excluding_ids=335015953,335015954`.
          */
         excluding_ids?: string;
         /**
-         * Retrieve specific stories by providing their UUIDs as a comma-separated string.
+         * Retrieve specific stories by UUIDs in a comma-separated string. For example,
+         * `by_uuids=a78b2116-c26d-4d23-9cbe-fec477847b0e,9683820e-fc17-429e-ba23-eb41f26c0776`.
          */
         by_uuids?: string;
         /**
-         * Retrieve specific stories by providing their UUIDs as a comma-separated string. The order of the stories in the response matches the order in which the UUIDs are listed.
+         * Retrieve specific stories by UUIDs in a comma-separated string. The order of the stories in the response matches the order of the UUIDs. For example,
+         * `by_uuids_ordered=a78b2116-c26d-4d23-9cbe-fec477847b0e,9683820e-fc17-429e-ba23-eb41f26c0776`.
          */
         by_uuids_ordered?: string;
         /**
-         * Filter by comma-separated IDs.
+         * Retrieve items by `id`. Supports a comma-separated string.
          */
         by_ids?: string;
         /**
-         * Filter by specific tag(s). Multiple tags can be provided as a comma-separated string (treated like an OR operator).
+         * Filter by specific tag slug. For example, `with_tag=featured`.
+         *
+         * Filter multiple tags by comma-separated string (treated like an OR operator). For example, `with_tag=featured,editors_choice`.
          */
         with_tag?: string;
         /**
-         * Filter root‐level stories.
+         * Filter by stories defined as root for the folder.
          */
         is_startpage?: 0 | 1;
         /**
-         * Used to resolve internal links of link fields used in a story. Resolved links are included in the links property of the response.
+         * Resolve [link fields](https://www.storyblok.com/docs/concepts/fields#link).
+         * The `links` property of the response includes resolved links:
+         * - `link`: provides access to additional information, such as a linked story’s `full_slug`, `path`, `parent_id`, `is_folder`, `published`, `is_startpage`, `position`, `alternates`, `real_path`, and more.
+         * - `url`: provides the minimum amount of information. Use when you only need the path of a linked story.
+         * - `story`: resolves and returns the complete story object of a linked story.
          */
         resolve_links?: 'story' | 'url' | 'link';
         /**
-         * Used to resolve up to two levels of links.
+         * Resolve up to two levels of links.
          */
         resolve_links_level?: 1 | 2;
         /**
-         * To access a story version associated with a specific release by providing the release ID.
+         * Access a story version in a specific release by providing the release ID.
          */
         from_release?: string;
         /**
-         * Used to define a custom fallback language to handle untranslated fields.
+         * Define a custom fallback language to handle untranslated fields. Supports languages defined in **Settings** → **Internationalization**. Provide language code with underscores. For example, `es_co` instead of `es-co`.
          */
         fallback_lang?: string;
         /**
-         * Used to obtain translated versions of one or more stories. Accepts any language code that is configured in the Storyblok space.
+         * Retrieve translated story version. Supports languages defined in **Settings** → **Internationalization**.
          */
         language?: string;
         /**
-         * Filter by attributes and operations.
+         * Learn more in [Filter Queries](https://www.storyblok.com/docs/api/content-delivery/v2/filter-queries/).
          */
         filter_query?: {
             __or?: Array<{
@@ -1388,57 +1637,29 @@ export type ListStoriesData = {
             }> | undefined;
         };
         /**
-         * Exclude specific fields from the response (comma-separated list).
+         * To exclude specific fields of a content type, provide the field names as a comma-separated string. For example, `excluding_fields=body,meta_description`.
+         *
+         * Excluding the `component` field from the response, returns the content of the story in the default language instead of the requested `language`.
          */
         excluding_fields?: string;
         /**
-         * Exclude top-level story response fields (comma-separated list), e.g. alternates, translated_slugs
+         * Exclude top-level story response fields with a comma-separated list. For example, `excluding_story_fields=alternates,translated_slugs`.
          */
         excluding_story_fields?: string;
         /**
-         * Resolve asset metadata (higher-tier plans only).
+         * Used to resolve asset metadata, including custom metadata. When `resolve_assets=1`, an array of assets associated with the stories appear in the `assets` property of the response.
          */
         resolve_assets?: 1;
         /**
-         * Force second-level relation resolution when first level exceeds limit.
+         * Used to force resolve second-level relations when the first level reaches a limit of 100 relations.
+         *
+         * While resolving relations, if the first level exceeds 100 relations, the API stops looking for the second level. To resolve second-level relations regardless of the first-level relations’ limit, use `resolve_level=2`.
          */
         resolve_level?: 2;
         /**
-         * When set, returns only experiment variant stories
+         * When set, returns only experiment variant stories.
          */
         only_variants?: 'true';
-        /**
-         * Include each story's assigned taxonomy terms. Every term also carries its immediate `parent` and its root `taxonomy` as nested objects, each with id, name and display_name. An archived term is left out of the story's own assignments, but an archived ancestor is still returned, and unmarked, so a breadcrumb never loses a level.
-         */
-        with_taxonomy_terms?: '1';
-        /**
-         * Filter by taxonomy term id(s). IDs in a comma-separated group are ORed together;
-         * passing the parameter as an array ANDs across groups
-         */
-        by_taxonomy_term_ids?: string | Array<string>;
-        /**
-         * Filter by taxonomy term name(s). Names in a comma-separated group are ORed together;
-         * a 'root/leaf' path matches a term by its leaf name scoped to that root; passing the parameter
-         * as an array ANDs across groups
-         */
-        by_taxonomy_term_names?: string | Array<string>;
-        /**
-         * When set, expands by_taxonomy_term_ids/by_taxonomy_term_names to also match
-         * stories tagged only with a descendant of the requested term(s).
-         */
-        with_taxonomy_subterms?: '1';
-        /**
-         * Non existing sort parameter
-         */
-        non_existing_sort_by?: string;
-        /**
-         * Non existing updated_at_gt parameter
-         */
-        non_existing_updated_at_gt?: string;
-        /**
-         * has a value with string that contains null character
-         */
-        param_with_null_char?: string;
     };
     url: '/v2/cdn/stories';
 };
@@ -1461,7 +1682,7 @@ export type ListStoriesErrors = {
         error?: string;
     };
     /**
-     * Unable to remove space - user is not a space admin.
+     * Invalid query parameters
      */
     422: ErrorResponse;
     /**
@@ -1474,25 +1695,31 @@ export type ListStoriesError = ListStoriesErrors[keyof ListStoriesErrors];
 
 export type ListStoriesResponses = {
     /**
-     * Stories listed.
+     * Stories listed
      */
     200: {
+        /**
+         * An array of story objects.
+         */
         stories: Array<Story>;
         /**
-         * Cache version
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
          */
         cv: number;
         /**
-         * Related stories (resolved relations)
+         * An array of resolved stories.
          */
         rels?: Array<Story>;
-        links?: Array<LinkWithFullSlug | Link | Story>;
         /**
-         * Array of story UUIDs returned instead of `rels` when relation resolution exceeds the space resolve limit
+         * An array of resolved links. The properties depend on the `resolve_links` value.
+         */
+        links?: Array<LinkWithFullSlug | ResolvedLinkUrl | Link | Story>;
+        /**
+         * An array of all referenced stories’ UUIDs.
          */
         rel_uuids?: Array<string>;
         /**
-         * Array of story UUIDs returned instead of `links` when link resolution exceeds the space resolve limit
+         * An array of all linked stories’ UUIDs.
          */
         link_uuids?: Array<string>;
     };
@@ -1500,22 +1727,92 @@ export type ListStoriesResponses = {
 
 export type ListStoriesResponse = ListStoriesResponses[keyof ListStoriesResponses];
 
+export type SearchCdnV2StrataIndexData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * The search term. Write it as a natural-language question or phrase.
+         */
+        q?: string;
+        /**
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
+         */
+        version?: 'draft' | 'published';
+        /**
+         * The maximum number of results to return. Default is `25`. Maximum is `100`, or `50` when `starts_with` or `content_type` is set.
+         */
+        limit?: number;
+        /**
+         * Filter by the story’s `full_slug` to return items starting with the given value. Matches only the default-language slug, so language prefixes (for example, `de/`) and translated slugs return no results.
+         */
+        starts_with?: string;
+        /**
+         * Retrieve stories of a specific content type block. For example, `content_type=page`.
+         */
+        content_type?: string;
+    };
+    url: '/v2/cdn/strata/search';
+};
+
+export type SearchCdnV2StrataIndexErrors = {
+    /**
+     * Invalid version, a q that is not a string or is too long, a filter that is not a string, or a limit that is not a whole number in range
+     */
+    400: StrataErrorResponse;
+    /**
+     * Unauthorized. The token is invalid, or a public token requested draft content
+     */
+    401: StrataErrorResponse;
+    /**
+     * Forbidden. Strata is unavailable for the organization or disabled for the space, a release access token cannot search, or the request type is not allowed for the space (for example a GraphQL request without GraphQL access)
+     */
+    403: StrataErrorResponse;
+    /**
+     * Not found. StrataErrorResponse: the token's space no longer exists. LegacyArrayErrorResponse: the path is unknown or the HTTP method is not supported
+     */
+    404: StrataErrorResponse | LegacyArrayErrorResponse;
+    /**
+     * The space is blocked
+     */
+    422: StrataErrorResponse;
+    /**
+     * Too many requests. The search backend is throttled, the per-second request limit of the space is reached, or the space is over its monthly API limit (`api_limit_exceeded`). Only the search backend throttle sends a Retry-After header
+     */
+    429: StrataErrorResponse;
+    /**
+     * Search backend temporarily unavailable
+     */
+    503: StrataErrorResponse;
+};
+
+export type SearchCdnV2StrataIndexError = SearchCdnV2StrataIndexErrors[keyof SearchCdnV2StrataIndexErrors];
+
+export type SearchCdnV2StrataIndexResponses = {
+    /**
+     * Search results
+     */
+    200: {
+        results: StrataSearchResults;
+    };
+};
+
+export type SearchCdnV2StrataIndexResponse = SearchCdnV2StrataIndexResponses[keyof SearchCdnV2StrataIndexResponses];
+
 export type ListTagsData = {
     body?: never;
     path?: never;
     query?: {
         /**
-         * Filter entries whose full slug starts with the given value. For example, `starts_with=de/beitraege`, `starts_with=en/posts`.
+         * Filter by the story’s `full_slug` to return items starting with the given value.
          */
         starts_with?: string;
         /**
-         * Filter by publication status:
-         * - `draft` – Retrieves draft stories
-         * - `published` – Retrieves published stories
+         * The content version to retrieve: `draft` or `published`. Default is `published`. Retrieving `draft` requires a preview access token.
          */
         version?: 'draft' | 'published';
         /**
-         * Filter by attributes and operations.
+         * Filters tags with the `in`, `not_in`, `like`, and `not_like` operations. Learn more in [Filter Queries](https://www.storyblok.com/docs/api/content-delivery/v2/filter-queries/).
          */
         filter_query?: {
             [key: string]: {
@@ -1544,9 +1841,12 @@ export type ListTagsError = ListTagsErrors[keyof ListTagsErrors];
 
 export type ListTagsResponses = {
     /**
-     * Tags returned.
+     * Tags returned
      */
     200: {
+        /**
+         * An array of tag objects.
+         */
         tags: Array<Tag>;
     };
 };
@@ -1566,7 +1866,7 @@ export type ListTaxonomiesErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Forbidden
+     * The c19-taxonomy feature is unavailable
      */
     403: {
         error: string;
@@ -1585,6 +1885,9 @@ export type ListTaxonomiesResponses = {
      */
     200: {
         taxonomies: Array<TaxonomyTerm>;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv: number | null;
     };
 };
@@ -1595,7 +1898,7 @@ export type GetTaxonomyData = {
     body?: never;
     path: {
         /**
-         * Snowflake ID or name of the taxonomy (root term)
+         * The taxonomy’s name.
          */
         id: string;
     };
@@ -1609,13 +1912,13 @@ export type GetTaxonomyErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Forbidden
+     * The c19-taxonomy feature is unavailable
      */
     403: {
         error: string;
     };
     /**
-     * Invalid token or no custom complexity.
+     * Taxonomy not found
      */
     404: Array<string>;
     /**
@@ -1632,6 +1935,9 @@ export type GetTaxonomyResponses = {
      */
     200: {
         taxonomy: TaxonomyTerm;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv: number | null;
     };
 };
@@ -1642,7 +1948,7 @@ export type GetTaxonomyTermData = {
     body?: never;
     path: {
         /**
-         * Snowflake ID of the term (root or nested)
+         * The taxonomy term’s name.
          */
         id: string;
     };
@@ -1656,13 +1962,13 @@ export type GetTaxonomyTermErrors = {
      */
     401: UnauthorizedError;
     /**
-     * Forbidden
+     * The c19-taxonomy feature is unavailable
      */
     403: {
         error: string;
     };
     /**
-     * Invalid token or no custom complexity.
+     * Term not found
      */
     404: Array<string>;
     /**
@@ -1679,6 +1985,9 @@ export type GetTaxonomyTermResponses = {
      */
     200: {
         taxonomy_term: TaxonomyTerm;
+        /**
+         * Cached version Unix timestamp. Learn more in the [Caching concept](https://www.storyblok.com/docs/concepts/caching).
+         */
         cv: number | null;
     };
 };

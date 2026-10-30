@@ -2,184 +2,208 @@
 
 export type Datasource = {
     /**
-     * ID.
+     * Data source ID.
      */
     id: number;
     /**
-     * Name.
+     * Data source name.
      */
     name: string;
     /**
-     * The unique slug of the datasource.
+     * Data source `slug`.
      */
     slug: string;
     /**
-     * Dimensions of the datasource.
+     * An array listing the dimensions defined for the data source.
      */
     dimensions: Array<Dimension>;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };
 
 export type DatasourceEntry = {
     /**
-     * ID.
+     * Entry ID.
      */
     id: number;
     /**
-     * Name.
+     * Entry name.
      */
     name: string;
     /**
-     * Given value in default dimension.
+     * Entry value (default dimension).
      */
     value: string;
     /**
-     * Given value in the requested dimension.
+     * Entry value (requested dimension).
      */
     dimension_value: string | null;
 };
 
 export type Link = {
     /**
-     * ID.
+     * Story or folder ID.
      */
     id: number;
+    /**
+     * Story or folder UUID.
+     */
     uuid: string;
     /**
-     * The full slug of the story or folder.
+     * Story or folder `full_slug`.
      */
     slug: string;
     /**
-     * Real path defined in the story's entry configuration.
+     * Real path defined in the story’s entry configuration. Learn more in the [Visual Editor concept](https://www.storyblok.com/docs/concepts/visual-editor)).
      */
     path?: string | null;
     /**
-     * Either the full slug of the story or folder with a leading /, or, if existent, the value of the real path defined in the story's entry configuration with a leading /.
+     * Either the full slug of the story or folder with a leading `/`, or the value of the real path defined in the story’s entry configuration with a leading `/`.
      */
     real_path?: string | null;
     /**
-     * The complete name of the story or folder.
+     * Story or folder name.
      */
     name: string;
     /**
-     * true if a story is currently published, even if it has unpublished changes.
+     * Returns `true` if the story is currently published.
      */
     published: boolean;
     /**
-     * ID of the parent folder.
+     * Parent folder ID.
      */
     parent_id: number;
     /**
-     * true if the instance constitutes a folder.
+     * Returns `true` if the item is a folder.
      */
     is_folder: boolean;
     /**
-     * true if the story is defined as root for the folder.
+     * Returns `true` if the story is the folder’s root.
      */
     is_startpage: boolean;
     /**
-     * Numeric representation of the story's position in the folder.
+     * Numeric representation of the story’s position in the folder. Users [can change](https://www.storyblok.com/docs/manuals/stories#folders) this property in the **Content** tab.
      */
     position: number;
     /**
-     * Latest publication timestamp (format is ISO 8601 standard in UTC).
+     * Latest publication timestamp. Supports ISO 8601.
      */
     published_at?: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string | null;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string | null;
     /**
-     * Alternate language variants.
+     * An array that contains objects correlating to the language versions defined using [field-level translation](https://www.storyblok.com/docs/concepts/internationalization#field-level-translation).
+     *
+     * The `alternates` parameter is different from the story alternates defined in the [Dimensions app](https://www.storyblok.com/docs/apps/dimensions) when using
+     * [folder-level translation](https://www.storyblok.com/docs/concepts/internationalization#folder-level-translation).
      */
     alternates?: Array<Alternate>;
 };
 
 export type Tag = {
     /**
-     * The name of the tag.
+     * The tag name.
      */
     name: string;
     /**
-     * The minimum value of `taggings_count` is 1, not 0.
-     * - The number of tags with this name that exist in the space, or
-     * - The number of draft or published stories with this tag, or
-     * - The number of deleted stories with this tag.
+     * The number of stories that include this tag.
      */
     taggings_count?: number;
     /**
-     * Only visible when passing the `all_tags` parameter. The number of stories currently associated with the tag, corresponding to the <strong>Assigned items</strong> column in the <a href='https://www.storyblok.com/docs/manuals/stories#tags'>Tags tab</a>.
+     * The number of distinct stories this tag appears on (only present when `all_tags` parameter is `true`).
      */
     tag_on_stories?: number;
 };
 
 export type StoryAlternate = {
+    /**
+     * Story ID.
+     */
     id: number;
+    /**
+     * Story name.
+     */
     name: string;
+    /**
+     * Story slug.
+     */
     slug: string;
+    /**
+     * Returns `true` if the story is currently published.
+     */
     published: boolean | null;
+    /**
+     * The story’s full slug, including parent folder and language paths.
+     */
     full_slug: string;
+    /**
+     * Returns `true` if the item is a folder.
+     */
     is_folder: boolean;
+    /**
+     * Parent folder ID.
+     */
     parent_id: number;
 };
 
 export type Dimension = {
     /**
-     * ID.
+     * Dimension ID.
      */
     id: number;
     /**
-     * Name.
+     * Dimension name.
      */
     name: string;
     /**
-     * The value provided for the datasource dimension.
+     * Dimension value.
      */
     entry_value: string;
     /**
-     * The numeric ID of the datasource that the dimension belongs to.
+     * ID of the data source that contains this dimension.
      */
     datasource_id?: number;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };
 
 export type Alternate = {
     /**
-     * Translated slug (or parent slug if not installed).
+     * Translated story slug (learn more about the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
      */
     path: string;
     /**
-     * Translated name of the story or folder.
+     * Translated story name (learn more about the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
      */
     name: string;
     /**
-     * Language code of this story variant.
+     * The story’s language code.
      */
     lang: string;
     /**
-     * True if this variant is published.
+     * Returns `true` if story language version is currently published.
      */
     published: boolean;
     /**
-     * Translated slug of the story.
+     * Translated story slug (learn more about the [Translatable Slugs app](https://www.storyblok.com/docs/apps/translatable-slugs)).
      */
     translated_slug: string;
 };

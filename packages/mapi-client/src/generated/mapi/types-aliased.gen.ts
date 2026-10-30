@@ -2,137 +2,140 @@
 
 export type Component = {
     /**
-     * Unique identifier for the component
+     * The component’s numeric ID.
      */
-    readonly id: number;
+    id: number;
     /**
-     * Technical name of the component.
+     * Technical name of a component. Visible in the content editor if the `display_name` is `null`.
      */
     name: string;
     /**
-     * Human-readable display name
+     * Human-readable display name.
      */
     display_name?: string | null;
     /**
-     * Component description
+     * Component description.
      */
     description?: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
-    readonly created_at: string;
+    created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
     /**
-     * Component field schema definition
+     * Key value pairs of the component fields.
      */
     schema: {
         [key: string]: {
             type?: 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group';
             /**
-             * Field ID
+             * Field ID.
              */
             id?: string;
             [key: string]: unknown;
         };
     };
     /**
-     * Component image URL
+     * URL of the component preview image (if uploaded).
      */
     image?: string | null;
     /**
-     * Field used for preview.
+     * The component preview field in the UI.
      */
     preview_field?: string | null;
     /**
-     * Whether this component can be used as a root component.
+     * Whether you can use the component as a content type block.
      */
     is_root: boolean;
     /**
-     * Preview template HTML.
+     * The component preview template. Learn how to [create a preview template](https://www.storyblok.com/docs/concepts/blocks#create-previews).
      */
     preview_tmpl?: string | null;
     /**
-     * Whether this component can be nested inside other components.
+     * Returns `true` if a component is a **Nestable block**.
      */
     is_nestable: boolean;
     /**
-     * All presets associated with this component.
+     * An array of presets for a component. Learn more about [presets](https://www.storyblok.com/docs/api/management/presets).
      */
     all_presets?: Array<{
         /**
-         * Preset ID
+         * The preset’s numeric ID.
          */
         id?: number;
         /**
-         * Preset name
+         * Name of a preset.
          */
         name?: string;
         /**
-         * Preset schema
+         * Preset schema.
          */
         preset?: {
             [key: string]: unknown;
         };
         /**
-         * ID of the component this preset belongs to
+         * Numeric ID of a component associated with the preset.
          */
         component_id?: number;
         /**
-         * Image URL for the preset preview
+         * Link to a preview image of the preset.
          */
         image?: string | null;
         /**
-         * Icon name for the preset
+         * Icon of the preset.
          */
         icon?: string | null;
         /**
-         * Color for the preset display
+         * Color of the icon.
          */
         color?: string | null;
         /**
-         * Description of the preset
+         * The description of the preset.
          */
         description?: string | null;
     }>;
     /**
-     * Default preset ID.
+     * Preset ID.
      */
     preset_id?: number | null;
     /**
-     * Display name if available, otherwise technical name.
+     * A read-only field used by Storyblok internally. Identical to the `display_name` if set. Otherwise, it’s set to the `name`.
      */
     real_name?: string;
     /**
-     * UUID of the component group this component belongs to.
+     * UUID of the component folder this component belongs to.
      */
     component_group_uuid?: string | null;
     /**
-     * Component color for UI display
+     * Color of the icon.
      */
     color?: string | null;
     /**
-     * Component icon name
+     * Icon of the component.
      */
     icon?: string | null;
+    /**
+     * List of objects containing the internal tags assigned to a component. Learn more about [internal tags](https://www.storyblok.com/docs/api/management/internal-tags).
+     */
     internal_tags_list?: Array<{
         /**
-         * ID
+         * The tag’s numeric ID.
          */
         id?: number;
         /**
-         * Name
+         * Name of a tag.
          */
         name?: string;
     }>;
     /**
-     * List of internal tag IDs
+     * List of IDs of the internal tags assigned to a component.
      */
     internal_tag_ids?: Array<string>;
     /**
-     * Content Type Asset preview.
+     * Asset preview field of a **content type block**.
      */
     content_type_asset_preview?: string | null;
     /**
@@ -145,84 +148,84 @@ export type Component = {
 
 export type ComponentCreate = {
     /**
-     * Name of the component
+     * Name of the component.
      */
     name: string;
     /**
-     * Human-readable display name
+     * Human-readable display name.
      */
     display_name?: string | null;
     /**
-     * Component description
+     * Component description.
      */
     description?: string | null;
     /**
-     * Preview template HTML
+     * Preview template HTML.
      */
     preview_tmpl?: string | null;
     /**
-     * Component image URL
+     * Component image URL.
      */
     image?: string | null;
     /**
-     * Field used for preview
+     * Field used for preview.
      */
     preview_field?: string | null;
     /**
-     * Whether this component can be used as a root component
+     * Whether you can use the component as a content type block.
      */
     is_root?: boolean;
     /**
-     * Whether this component can be nested inside other components
+     * Whether you can nest this component inside other components.
      */
     is_nestable?: boolean;
     /**
-     * Default preset ID
+     * Preset ID.
      */
     preset_id?: number | null;
     /**
-     * UUID
+     * UUID.
      */
     component_group_uuid?: string | null;
     /**
-     * Component color for UI display
+     * Component color for UI display.
      */
     color?: string | null;
     /**
-     * Component icon name
+     * Component icon name.
      */
     icon?: string | null;
     /**
-     * Asset preview URL for content type
+     * Asset preview URL for content type.
      */
     content_type_asset_preview?: string | null;
     /**
-     * List of internal tag IDs
+     * List of internal tag IDs.
      */
     internal_tag_ids?: Array<number>;
     /**
-     * Component field schema definition
+     * Component field schema definition.
      */
     schema?: {
         [key: string]: {
             type?: 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group';
             /**
-             * Human-readable field name
+             * Human-readable display name.
              */
             display_name?: string;
             /**
-             * Whether this field is required
+             * Whether this field is required.
              */
             required?: boolean;
             /**
-             * Whether this field is translatable
+             * Whether this field is translatable.
              */
             translatable?: boolean;
             [key: string]: unknown;
         };
     };
     /**
-     * Component metadata
+     * Component metadata.
      */
     metadata?: {
         [key: string]: unknown;
@@ -231,84 +234,84 @@ export type ComponentCreate = {
 
 export type ComponentUpdate = {
     /**
-     * Name of the component
+     * Name of the component.
      */
     name?: string;
     /**
-     * Human-readable display name
+     * Human-readable display name.
      */
     display_name?: string | null;
     /**
-     * Component description
+     * Component description.
      */
     description?: string | null;
     /**
-     * Preview template HTML
+     * Preview template HTML.
      */
     preview_tmpl?: string | null;
     /**
-     * Component image URL
+     * Component image URL.
      */
     image?: string | null;
     /**
-     * Field used for preview
+     * Field used for preview.
      */
     preview_field?: string | null;
     /**
-     * Whether this component can be used as a root component
+     * Whether you can use the component as a content type block.
      */
     is_root?: boolean;
     /**
-     * Whether this component can be nested inside other components
+     * Whether you can nest this component inside other components.
      */
     is_nestable?: boolean;
     /**
-     * Default preset ID
+     * Preset ID.
      */
     preset_id?: number | null;
     /**
-     * UUID
+     * UUID.
      */
     component_group_uuid?: string | null;
     /**
-     * Component color for UI display
+     * Component color for UI display.
      */
     color?: string | null;
     /**
-     * Component icon name
+     * Component icon name.
      */
     icon?: string | null;
     /**
-     * Asset preview URL for content type
+     * Asset preview URL for content type.
      */
     content_type_asset_preview?: string | null;
     /**
-     * List of internal tag IDs
+     * List of internal tag IDs.
      */
     internal_tag_ids?: Array<number>;
     /**
-     * Component field schema definition
+     * Component field schema definition.
      */
     schema?: {
         [key: string]: {
             type?: 'bloks' | 'text' | 'textarea' | 'richtext' | 'markdown' | 'number' | 'datetime' | 'boolean' | 'options' | 'option' | 'asset' | 'multiasset' | 'multilink' | 'table' | 'section' | 'commerce' | 'custom' | 'image' | 'file' | 'tab' | 'link' | 'group';
             /**
-             * Human-readable field name
+             * Human-readable display name.
              */
             display_name?: string;
             /**
-             * Whether this field is required
+             * Whether this field is required.
              */
             required?: boolean;
             /**
-             * Whether this field is translatable
+             * Whether this field is translatable.
              */
             translatable?: boolean;
             [key: string]: unknown;
         };
     };
     /**
-     * Component metadata
+     * Component metadata.
      */
     metadata?: {
         [key: string]: unknown;
@@ -317,101 +320,116 @@ export type ComponentUpdate = {
 
 export type Asset = {
     /**
-     * Id of the asset.
+     * The numeric ID.
      */
     id: number;
     /**
-     * Full path of the asset, including the file name.
+     * The asset’s full path, including the file name.
      */
     filename: string;
     /**
-     * ID of the space this asset belongs to
+     * Numeric ID of the space.
      */
     space_id: number;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
     /**
-     * File object with upload details
+     * Represents a `File` object when uploading an asset. Returns `null` when retrieving asset details.
      */
     file?: {
         [key: string]: unknown;
     } | null;
     /**
-     * Id of the folder containing this asset.
+     * Asset folder ID.
      */
     asset_folder_id?: number | null;
+    /**
+     * Deletion timestamp. Supports ISO 8601.
+     */
     deleted_at?: string | null;
     /**
-     * file name
+     * The file name of the asset.
      */
     short_filename?: string;
     /**
-     * The content length in bytes.
+     * The file size in bytes.
      */
     content_length?: number | null;
     /**
-     * The content type.
+     * The asset’s MIME type.
      */
     content_type?: string | null;
     /**
-     * deleted?.
+     * deleted?
      */
     permanently_deleted?: boolean | null;
     /**
-     * Alt text for the asset (default language).
+     * The asset’s alt text.
      */
     alt?: string | null;
     /**
-     * Copyright text.
+     * The asset’s copyright information.
      */
     copyright?: string | null;
     /**
-     * User's job title or role.
+     * The asset’s title.
      */
     title?: string | null;
     /**
-     * Focus point.
+     * The image’s focus point.
      */
     focus?: string | null;
     /**
-     * Ext id
+     * The asset’s external ID.
      */
     ext_id?: string | null;
+    /**
+     * Expiration timestamp. Supports ISO 8601.
+     */
     expire_at?: string | null;
     /**
-     * source
+     * The asset’s source text.
      */
     source?: string | null;
     /**
-     * List of internal tag IDs
+     * IDs of the tags assigned to the asset.
      */
     internal_tag_ids?: Array<number>;
     /**
-     * If locked
+     * When set to `true`, the asset is locked for changes.
      */
     locked?: boolean;
     /**
-     * Defines if the asset should be inaccessible to the public.
+     * Whether the item is private.
      */
     is_private: boolean;
+    /**
+     * Publication timestamp. Supports ISO 8601.
+     */
     publish_at?: string | null;
     /**
-     * Additional metadata
+     * The asset’s default and custom metadata fields. Translated fields use keys in the format `<field>__i18n__<language code>`, for example `alt__i18n__es`.
      */
     meta_data?: {
         [key: string]: unknown;
     } | null;
     /**
-     * List of internal tags
+     * List of objects containing the details of tags used for the asset.
      */
     internal_tags_list?: Array<{
+        /**
+         * The tag’s ID.
+         */
         id: number;
+        /**
+         * Name of the tag.
+         */
         name: string;
     }>;
 };
@@ -419,43 +437,43 @@ export type Asset = {
 export type AssetCreate = {
     fields: {
         /**
-         * acl
+         * Access control list (ACL) setting that determines who can read the uploaded file, for example `public-read. Send the value unchanged in the upload to S3.
          */
         acl: string;
         /**
-         * Cache Control
+         * Cache Control.
          */
         'Cache-Control': string;
         /**
-         * Content Type
+         * Content Type.
          */
         'Content-Type': string;
         /**
-         * key
+         * key.
          */
         key: string;
         /**
-         * Expiration date (optional)
+         * Expiration date (optional).
          */
         Expires?: string;
         /**
-         * policy
+         * policy.
          */
         policy: string;
         /**
-         * credential
+         * credential.
          */
         'x-amz-credential': string;
         /**
-         * algorithm
+         * algorithm.
          */
         'x-amz-algorithm': string;
         /**
-         * date
+         * date.
          */
         'x-amz-date': string;
         /**
-         * signature
+         * signature.
          */
         'x-amz-signature': string;
     };
@@ -463,9 +481,12 @@ export type AssetCreate = {
     pretty_url: string;
     public_url: string;
     id: number;
+    /**
+     * When set to `true`, the asset is locked for changes. Default: `false`.
+     */
     locked: boolean;
     /**
-     * Custom metadata for the asset
+     * The asset’s default and custom metadata fields. Translated fields use keys in the format `<field>__i18n__<language code>`, for example `alt__i18n__es`.
      */
     meta_data: {
         [key: string]: unknown;
@@ -474,180 +495,192 @@ export type AssetCreate = {
 
 export type AssetUpdate = {
     /**
-     * Publish date
+     * Publication timestamp. Supports ISO 8601.
      */
     publish_at?: string;
     /**
-     * Expire date
+     * Expiration timestamp. Supports ISO 8601.
      */
     expire_at?: string;
     /**
-     * Whether the asset is private
+     * Whether the item is private.
      */
     is_private?: boolean | null;
     /**
-     * Asset folder ID
+     * Asset folder ID.
      */
     asset_folder_id?: number | null;
     /**
-     * Alt
+     * The asset’s alt text.
      */
     alt?: string | null;
     /**
-     * Title
+     * The asset’s title.
      */
     title?: string | null;
     /**
-     * Copyright
+     * The asset’s copyright information.
      */
     copyright?: string | null;
     /**
-     * Focus
+     * The image’s focus point.
      */
     focus?: string | null;
     /**
-     * External ID
+     * The asset’s external ID.
      */
     ext_id?: string | null;
     /**
-     * Source
+     * The asset’s source text.
      */
     source?: string | null;
     /**
-     * Internal tag IDs
+     * IDs of the tags assigned to the asset.
      */
     internal_tag_ids?: Array<number>;
     /**
-     * Metadata
+     * The asset’s default and custom metadata fields. Translated fields use keys in the format `<field>__i18n__<language code>`, for example `alt__i18n__es`.
      */
     meta_data?: {
         [key: string]: unknown;
     };
 };
 
-/**
- * Folder for organizing assets within a space
- */
 export type AssetFolder = {
+    /**
+     * The numeric ID.
+     */
     id: number;
+    /**
+     * Display name of your asset folder.
+     */
     name: string;
     /**
-     * ID of parent space if this is a child space.
+     * Parent asset folder ID.
      */
     parent_id: number | null;
     /**
-     * Unique UUID identifier for the discussion.
+     * UUID of the folder.
      */
     uuid: string;
+    /**
+     * UUID of the parent folder.
+     */
     parent_uuid: string | null;
 };
 
 export type AssetFolderCreate = {
+    /**
+     * Display name of your asset folder.
+     */
     name: string;
+    /**
+     * Parent asset folder ID.
+     */
     parent_id?: number | null;
 };
 
 export type AssetFolderUpdate = {
+    /**
+     * Display name of your asset folder.
+     */
     name?: string;
+    /**
+     * Parent asset folder ID.
+     */
     parent_id?: number | null;
 };
 
-/**
- * Logical grouping of components for organizational purposes
- */
 export type ComponentFolder = {
     /**
-     * Unique ID.
+     * The component group’s numeric ID.
      */
     id: number;
     /**
-     * The name of the component group.
+     * Name of the group.
      */
     name: string;
     /**
-     * Unique UUID identifier for the discussion.
+     * UUID of the group.
      */
     uuid: string;
     /**
-     * ID of parent space if this is a child space.
+     * The parent group’s numeric ID.
      */
     parent_id: number | null;
     /**
-     * The UUID of the parent component group
+     * UUID of the parent group.
      */
     parent_uuid: string | null;
 };
 
 export type ComponentFolderCreate = {
     /**
-     * Name of the component group
+     * Name of the component group.
      */
     name: string;
     /**
-     * Parent component group ID
+     * Parent component group ID.
      */
     parent_id?: number | null;
 };
 
 export type ComponentFolderUpdate = ComponentFolderCreate;
 
-/**
- * A named collection of key-value entries used for structured content options
- */
 export type MapiDatasource = {
     /**
-     * ID.
+     * The datasource’s numeric ID.
      */
     id: number;
     /**
-     * Name.
+     * The name a datasource.
      */
     name: string;
     /**
-     * URL-friendly identifier for the app category.
+     * Slug of a datasource.
      */
     slug: string;
     /**
-     * Dimensions of the datasource.
+     * An array of datasource dimensions.
      */
     dimensions: Array<Dimension>;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };
 
 export type DatasourceCreate = {
     /**
-     * The name of the datasource
+     * The name of the datasource.
      */
     name: string;
     /**
-     * The unique slug of the datasource
+     * The unique slug of the datasource.
      */
     slug: string;
     /**
-     * Array of dimensions to create for this datasource
+     * Array of dimensions to create for this datasource.
      */
     dimensions_attributes?: Array<{
         /**
-         * ID of existing dimension (for updates)
+         * ID of existing dimension (for updates).
          */
         id?: number;
         /**
-         * Name of the dimension
+         * Name of the dimension.
          */
         name?: string;
         /**
-         * Value for the dimension entry
+         * Value for the dimension entry.
          */
         entry_value?: string;
         /**
-         * Set to true to delete this dimension
+         * Set to `true` to delete this dimension.
          */
         _destroy?: boolean;
     }>;
@@ -655,130 +688,127 @@ export type DatasourceCreate = {
 
 export type DatasourceUpdate = {
     /**
-     * The name of the datasource
+     * The name of the datasource.
      */
     name?: string;
     /**
-     * The unique slug of the datasource
+     * The unique slug of the datasource.
      */
     slug?: string;
     /**
-     * Array of dimensions to update or create for this datasource
+     * Array of dimensions to update or create for this datasource.
      */
     dimensions_attributes?: Array<{
         /**
-         * ID of existing dimension (for updates)
+         * ID of existing dimension (for updates).
          */
         id?: number;
         /**
-         * Name of the dimension
+         * Name of the dimension.
          */
         name?: string;
         /**
-         * Value for the dimension entry
+         * Value for the dimension entry.
          */
         entry_value?: string;
         /**
-         * Set to true to delete this dimension
+         * Set to `true` to delete this dimension.
          */
         _destroy?: boolean;
     }>;
 };
 
-/**
- * A single key-value entry within a datasource
- */
 export type MapiDatasourceEntry = {
     /**
-     * ID.
+     * The datasource entry’s numeric ID.
      */
     id: number;
     /**
-     * Name.
+     * The `key` of a datasource entry.
      */
     name: string;
     /**
-     * Given value in default dimension
+     * The `value` of a datasource entry.
      */
     value: string;
     /**
-     * Given value in the requested dimension.
+     * The `value` of a datasource entry in the linked [dimension](https://www.storyblok.com/docs/concepts/datasources#datasource-dimensions).
      */
     dimension_value: string | null;
 };
 
 export type DatasourceEntryCreate = {
     /**
-     * The name (key) of the datasource entry
+     * The name (key) of the datasource entry.
      */
     name: string;
     /**
-     * The value of the datasource entry
+     * The value of the datasource entry.
      */
     value: string;
     /**
-     * The ID of the datasource this entry belongs to
+     * The ID of the datasource this entry belongs to.
      */
     datasource_id: number;
     /**
-     * The value for a specific dimension
+     * The value for a specific dimension.
      */
     dimension_value?: string;
     /**
-     * The position of the entry in the datasource
+     * The position of the entry in the datasource.
      */
     position?: number;
 };
 
 export type DatasourceEntryUpdate = {
     /**
-     * The name (key) of the datasource entry
+     * The name (key) of the datasource entry.
      */
     name?: string;
     /**
-     * The value of the datasource entry
+     * The value of the datasource entry.
      */
     value?: string;
     /**
-     * The ID of the datasource this entry belongs to
+     * The ID of the datasource this entry belongs to.
      */
     datasource_id?: number;
     /**
-     * The value for a specific dimension
+     * The value for a specific dimension.
      */
     dimension_value?: string;
     /**
-     * The position of the entry in the datasource
+     * The position of the entry in the datasource.
      */
     position?: number;
 };
 
 export type InternalTag = {
     /**
-     * Unique ID
+     * The internal tag’s numeric ID.
      */
     id: number;
     /**
-     * The name of the internal tag
+     * Name of the internal tag.
      */
     name: string;
     /**
-     * The type of object this tag is associated with
+     * The resource type that the internal tag belongs to. Can be `asset` or `component`.
      */
     object_type: 'asset' | 'component' | 'idea';
     /**
-     * Count of assets associated with this tag (only present when with_assets_count parameter is used)
+     * Count of assets associated with this tag (only present when you use the `with_assets_count` parameter).
      */
     assets_count?: number | null;
 };
 
 export type InternalTagCreate = {
     /**
-     * The name of the internal tag
+     * The name of the internal tag.
      */
     name: string;
     /**
-     * The type of object this tag is associated with
+     * The object type this tag belongs to.
      */
     object_type?: 'asset' | 'component' | 'idea';
 };
@@ -788,273 +818,321 @@ export type InternalTagUpdate = InternalTagCreate;
 export type SharedAssetFolder = {
     id: number;
     name: string;
-    /**
-     * ID of parent space if this is a child space.
-     */
     parent_id: number | null;
-    /**
-     * Unique UUID identifier for the discussion.
-     */
     uuid: string;
     parent_uuid: string | null;
     description?: string | null;
     color?: string | null;
     regions?: Array<'eu' | 'ap' | 'ca' | 'us' | 'cn' | 'all'>;
+    /**
+     * Spaces that can access the folder, each with an access level.
+     */
     asset_folder_access?: Array<{
+        /**
+         * Numeric ID of the space.
+         */
         space_id?: number;
         access_level?: 'write' | 'read';
     }>;
 };
 
 export type SharedAssetFolderCreate = {
+    /**
+     * Name of the shared asset folder.
+     */
     name: string;
+    /**
+     * The parent shared asset folder’s ID.
+     */
     parent_id?: number;
+    /**
+     * Description of the shared asset folder.
+     */
     description?: string;
+    /**
+     * Accent color shown in the library.
+     */
     color?: string;
+    /**
+     * Regions that the folder is available in. Possible values: `eu`, `ap`, `ca`, `us`, `cn`, and `all`.
+     */
     regions?: Array<'eu' | 'ap' | 'ca' | 'us' | 'cn' | 'all'>;
+    /**
+     * Spaces that can access the folder, each with an access level.
+     */
     asset_folder_access?: Array<{
+        /**
+         * ID of the space that gets access to the folder.
+         */
         space_id?: number;
+        /**
+         * Access level that the space has to the folder. Possible values: `read` and `write`.
+         */
         access_level?: 'read' | 'write';
     }>;
 };
 
 export type SharedAssetFolderUpdate = {
+    /**
+     * Name of the shared asset folder.
+     */
     name?: string;
+    /**
+     * The parent shared asset folder’s ID.
+     */
     parent_id?: number | null;
+    /**
+     * Description of the shared asset folder.
+     */
     description?: string;
+    /**
+     * Accent color shown in the library.
+     */
     color?: string;
+    /**
+     * Regions that the folder is available in. Possible values: `eu`, `ap`, `ca`, `us`, `cn`, and `all`.
+     */
     regions?: Array<'eu' | 'ap' | 'ca' | 'us' | 'cn' | 'all'>;
+    /**
+     * Spaces that can access the folder, each with an access level.
+     */
     asset_folder_access?: Array<{
+        /**
+         * ID of the space that gets access to the folder.
+         */
         space_id?: number;
+        /**
+         * Access level that the space has to the folder. Possible values: `read` and `write`.
+         */
         access_level?: 'read' | 'write';
     }>;
 };
 
 export type SharedInternalTagCreate = {
     /**
-     * The name of the shared internal tag
+     * The name of the shared internal tag.
      */
     name: string;
     /**
-     * The type of object this tag is associated with
+     * The object type this tag belongs to.
      */
     object_type?: 'asset' | 'component' | 'idea';
     /**
-     * The id of the root Shared Library asset_folder this tag is scoped to
+     * Asset folder ID.
      */
     asset_folder_id: number;
 };
 
 export type Preset = {
     /**
-     * Unique identifier of the preset
+     * The preset’s numeric ID.
      */
     id: number;
     /**
-     * Name of the preset
+     * Given name of your preset.
      */
     name: string;
     /**
-     * The preset content configuration as JSON object
+     * Fields of the component filled with content.
      */
     preset: {
         [key: string]: unknown;
     } | null;
     /**
-     * ID of the component this preset belongs to
+     * The ID of the component the preset is for.
      */
     component_id: number;
     /**
-     * ID of the space this preset belongs to
+     * Numeric ID of the space.
      */
     space_id: number;
     /**
-     * URL of the preset preview image
+     * screenshot or other preview image for your editor. Default: null.
      */
     image?: string | null;
     /**
-     * Color associated with the preset
+     * Color of the preset icon.
      */
     color?: string | null;
     /**
-     * Icon identifier for the preset
+     * Icon of the preset.
      */
     icon?: string | null;
     /**
-     * Description of the preset
+     * A description of the preset for the editors.
      */
     description?: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
 };
 
 export type PresetCreate = {
     /**
-     * Name of the preset
+     * Name of the preset.
      */
     name: string;
     /**
-     * The preset content configuration as JSON object
+     * The preset content configuration as JSON object.
      */
     preset?: {
         [key: string]: unknown;
     };
     /**
-     * ID of the component this preset belongs to
+     * ID of the component this preset belongs to.
      */
     component_id: number;
     /**
-     * URL of the preset preview image
+     * URL of the preset preview image.
      */
     image?: string;
     /**
-     * Icon identifier for the preset
+     * Icon identifier for the preset.
      */
     icon?: string;
     /**
-     * Color associated with the preset
+     * Color associated with the preset.
      */
     color?: string;
     /**
-     * Description of the preset
+     * Description of the preset.
      */
     description?: string;
 };
 
 export type PresetUpdate = {
     /**
-     * Name of the preset
+     * Name of the preset.
      */
     name?: string;
     /**
-     * The preset content configuration as JSON object
+     * The preset content configuration as JSON object.
      */
     preset?: {
         [key: string]: unknown;
     };
     /**
-     * ID of the component this preset belongs to
+     * ID of the component this preset belongs to.
      */
     component_id?: number;
     /**
-     * URL of the preset preview image
+     * URL of the preset preview image.
      */
     image?: string;
     /**
-     * Icon identifier for the preset
+     * Icon identifier for the preset.
      */
     icon?: string;
     /**
-     * Color associated with the preset
+     * Color associated with the preset.
      */
     color?: string;
     /**
-     * Description of the preset
+     * Description of the preset.
      */
     description?: string;
 };
 
 export type Space = {
     /**
-     * The unique identifier of the space
+     * The unique identifier of the space.
      */
-    readonly id: number;
+    id: number;
     /**
      * The name of the space.
      */
     name: string;
     /**
-     * External unique identifier
+     * External unique identifier.
      */
     euid?: string | null;
     /**
-     * The domain associated with the space
+     * The domain associated with the space.
      */
     domain?: string | null;
     /**
-     * The region where the space is hosted
+     * The region that hosts the space.
      */
     region: string;
     /**
-     * The ID of the space owner
+     * The space owner’s ID.
      */
     owner_id: number;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
-    readonly created_at: string;
+    created_at: string;
     /**
-     * The subscription plan name
+     * The subscription plan name.
      */
     plan: string;
     /**
-     * The plan level identifier
+     * The plan level identifier.
      */
     plan_level: number;
     /**
-     * Number of pending traffic boosts
+     * Number of pending traffic boosts.
      */
     pending_traffic_boosts?: number | null;
     /**
-     * Number of pending limit boosts
+     * Number of pending limit boosts.
      */
     pending_limit_boosts?: number | null;
     /**
-     * Whether the space is on a trial plan
+     * Whether the space is on a trial plan.
      */
     trial: boolean;
     /**
-     * Whether two-factor authentication is required
+     * Whether two-factor authentication is required.
      */
     requires_2fa: boolean;
     /**
-     * The organization ID if space belongs to an organization
+     * The organization ID if space belongs to an organization.
      */
     org_id?: number | null;
     /**
-     * The partner ID if space is associated with a partner
+     * The partner ID if the space belongs to a partner.
      */
     partner_id?: number | null;
     /**
-     * ID of the origin (production) space when this space is an environment; null for production spaces
+     * ID of the origin (production) space when this space is an environment; null for production spaces.
      */
     origin_id?: number | null;
     /**
-     * Content duplication status when the space was created as a copy of another space (e.g. an environment); null for spaces created from scratch
+     * Content duplication status when someone created the space as a copy of another space (for example, an environment); null for spaces created from scratch.
      */
     duplication_status?: 'pending' | 'running' | 'done' | 'failed' | null;
     /**
-     * Color of the space (max 255 chars)
+     * Color of the space (max 255 chars).
      */
     color?: string | null;
     /**
-     * The subscription status
+     * The subscription status.
      */
     subscription_status?: string | null;
     /**
-     * Stripe trial status
+     * Stripe trial status.
      */
     stripe_trial_status?: string | null;
     /**
-     * Stripe trial end date
+     * Stripe trial end timestamp. Supports ISO 8601.
      */
     stripe_trial_end?: string | null;
     /**
-     * The type of space (e.g., personal, team)
+     * The space type (for example, personal or team).
      */
     space_type?: string | null;
     /**
-     * The timestamp when the space was canceled
+     * Timestamp of the space cancellation. Supports ISO 8601.
      */
     canceled_at?: string | null;
     /**
@@ -1062,19 +1140,19 @@ export type Space = {
      */
     org_requires_2fa: boolean;
     /**
-     * The timestamp when the space became unpaid
+     * Timestamp when the space’s subscription went unpaid. Supports ISO 8601.
      */
     unpaid_at?: string | null;
     /**
-     * The timestamp when the space was blocked
+     * Timestamp of the space block. Supports ISO 8601.
      */
     blocked_at?: string | null;
     /**
-     * Whether the space is in development mode
+     * Whether the space is in development mode.
      */
     development_mode: boolean;
     /**
-     * Flags indicating which feature limits have been exceeded
+     * Flags indicating which feature limits have been exceeded.
      */
     feature_limit_exceeded_flags: {
         [key: string]: boolean | null;
@@ -1084,19 +1162,19 @@ export type Space = {
      */
     org_status?: string | null;
     /**
-     * Available roles in the space
+     * Available roles in the space.
      */
     space_roles?: Array<SpaceRole>;
     /**
-     * Whether the space is on a Joyride trial
+     * Whether the space is on a Joyride trial.
      */
     joyride_trial?: boolean;
     /**
-     * When the Joyride trial expires
+     * Timestamp when the Joyride trial expires. Supports ISO 8601.
      */
     joyride_trial_expires_at?: string | null;
     /**
-     * When the Joyride trial started
+     * Timestamp when the Joyride trial started. Supports ISO 8601.
      */
     joyride_trial_started_at?: string | null;
     /**
@@ -1108,313 +1186,372 @@ export type Space = {
 
 export type SpaceCreate = {
     /**
-     * The name of the space
+     * The name of the space.
      */
     name: string;
     /**
-     * The domain associated with the space
+     * The domain associated with the space.
      */
     domain?: string | null;
     /**
-     * ID of parent space if creating a child space
+     * ID of parent space if creating a child space.
      */
     parent_id?: number | null;
     /**
-     * Webhook URL for story published events
+     * Webhook URL that receives story published events.
      */
     story_published_hook?: string | null;
     /**
-     * Searchblok integration ID
-     */
-    searchblok_id?: string | null;
-    /**
-     * Whether this is a demo space
+     * Whether this is a demo space.
      */
     is_demo?: boolean;
     /**
-     * Blueprint reference for space initialization
+     * Blueprint reference for space initialization.
      */
     blueprint_reference?: string | null;
     /**
-     * Whether to disable the onboarding tour
+     * Whether to disable the onboarding tour.
      */
     onboarding_tour_disabled?: boolean;
     /**
-     * Initial environments configuration
+     * Initial environments configuration.
      */
     environments?: Array<{
+        /**
+         * Name of the environment, such as `production`.
+         */
         name: string;
+        /**
+         * Visual Editor location URL for the environment.
+         */
         location: string;
     }>;
 };
 
 export type SpaceUpdate = {
     /**
-     * The name of the space
+     * The name of the space.
      */
     name?: string;
     /**
-     * The domain associated with the space
+     * The domain associated with the space.
      */
     domain?: string;
     /**
-     * Webhook URL for story published events
+     * Webhook URL that receives story published events.
      */
     story_published_hook?: string | null;
     /**
-     * Unique domain for the space
-     */
-    uniq_domain?: string | null;
-    /**
-     * ID of the new owner (only changeable by current owner)
+     * ID of the new owner (only changeable by current owner).
      */
     owner_id?: number;
     /**
-     * Whether this is a demo space
+     * Whether this is a demo space.
      */
     is_demo?: boolean;
     /**
-     * Searchblok integration ID
-     */
-    searchblok_id?: string | null;
-    /**
-     * ID of parent space
+     * The parent space’s ID.
      */
     parent_id?: number | null;
     /**
-     * Cache version
+     * Cache version.
      */
     version?: number;
     /**
-     * Whether the space can be duplicated
+     * Whether you can duplicate the space.
      */
     duplicatable?: boolean;
     /**
-     * Default root component type
+     * Default root component type.
      */
     default_root?: string;
     /**
-     * AWS role for asset management
+     * AWS role for asset management.
      */
     asset_aws_role?: string | null;
     /**
-     * Personal S3 bucket for assets
+     * Personal S3 bucket for assets.
      */
     personal_s3_asset_bucket?: string | null;
     /**
-     * AWS region for assets
+     * AWS region for assets.
      */
     asset_region?: string | null;
     /**
-     * Token for webhook authentication
+     * Token for webhook authentication.
      */
     webhook_token?: string | null;
     /**
-     * Whether to use translated stories feature
+     * Whether to use translated stories feature.
      */
     use_translated_stories?: boolean;
     /**
-     * Backup schedule time
+     * Backup schedule time.
      */
     backup_time?: string | null;
     /**
-     * Current onboarding step
+     * Current onboarding step.
      */
     onboarding_step?: string | null;
     /**
-     * Webhook URL for release merged events
+     * Webhook URL for release merged events.
      */
     release_merged_hook?: string | null;
     /**
-     * Webhook URL for branch deployed events
+     * Webhook URL for branch deployed events.
      */
     branch_deployed_hook?: string | null;
     /**
-     * Webhook URL for datasource entry saved events
+     * Webhook URL for datasource entry saved events.
      */
     datasource_entry_saved_hook?: string | null;
     /**
-     * Webhook URL for story saved events
+     * Webhook URL for story saved events.
      */
     story_saved_hook?: string | null;
     /**
-     * Webhook URL for stage changed events
+     * Webhook URL for stage changed events.
      */
     stage_changed_hook?: string | null;
     /**
-     * S3 bucket name
+     * S3 bucket name.
      */
     s3_bucket?: string | null;
     /**
-     * AWS ARN for external integrations
+     * AWS ARN for external integrations.
      */
     aws_arn?: string | null;
     /**
-     * Cloudinary cloud name
+     * Cloudinary cloud name.
      */
     cloudinary_cloud_name?: string | null;
     /**
-     * Cloudinary API key
+     * Cloudinary API key.
      */
     cloudinary_api_key?: string | null;
     /**
-     * Backup frequency setting
+     * Backup frequency setting.
      */
     backup_frequency?: string | null;
     /**
-     * Day of week for weekly backups (0-6)
+     * Day of week for weekly backups (0-6).
      */
     backup_week_day?: number | null;
     /**
-     * Default language name
+     * Default language name.
      */
     default_lang_name?: string | null;
     /**
-     * Default AI translation language code (Ai::Languages::ALL); defaults to en
+     * Default AI translation language code (AiServices::TextService::LANGUAGES); defaults to en.
      */
     default_ai_lang_code?: string | null;
     /**
-     * Whether to use hosted backups
+     * Whether to use hosted backups.
      */
     hosted_backup?: boolean;
     /**
-     * Whether space is in maintenance mode
+     * Whether space is in maintenance mode.
      */
     maintenance?: boolean;
     /**
-     * Tablet screen size in pixels
+     * Tablet screen size in pixels.
      */
     tablet_size?: number | null;
     /**
-     * Mobile screen size in pixels
+     * Mobile screen size in pixels.
      */
     mobile_size?: number | null;
     /**
-     * Whether visual mode is disabled
+     * Whether visual mode is disabled.
      */
     visual_mode_disable?: boolean;
     /**
-     * Short description of the sandbox space's purpose (max 255 chars)
+     * Short description of the sandbox space’s purpose (max 255 chars).
      */
     short_description?: string | null;
     /**
-     * Whether the editor shows the environment identification bar (defaults to false)
+     * Whether the editor shows the environment identification bar (defaults to false).
      */
     show_environment_identification_bar?: boolean;
     /**
-     * Whether AI text generation is disabled
+     * Whether AI text generation is disabled.
      */
     ai_text_generator_disabled?: boolean;
     /**
-     * Whether to track usage statistics
+     * Whether to track usage statistics.
      */
     track_statistics?: boolean;
     /**
-     * Custom upload limit in megabytes
+     * Custom upload limit in megabytes.
      */
     custom_upload_limit_in_mb?: number | null;
     /**
-     * Whether strong authentication is required
+     * Whether strong authentication is required.
      */
     strong_auth?: boolean;
     /**
-     * Auto-delete old versions after specified days
+     * Delete old versions after the specified number of days.
      */
     auto_delete_old_versions_after_days?: number | null;
     /**
-     * Whether to encode preview URLs
+     * Whether to encode preview URLs.
      */
     encode_preview_urls?: boolean;
     /**
-     * Whether to enable extended character set in story slugs
+     * Whether to enable extended character set in story slugs.
      */
     enable_extended_char_set_in_stories_slug?: boolean;
     /**
-     * Whether to show alternative versions of stories
+     * Whether to show alternative versions of stories.
      */
     show_stories_alternative_versions?: boolean;
     /**
-     * Blueprint reference
+     * Blueprint reference.
      */
     blueprint_reference?: string | null;
     /**
-     * Whether to inherit organization AI configuration
+     * Whether to inherit organization AI configuration.
      */
     inherit_org_ai_configuration?: boolean;
     /**
-     * Whether to disable the onboarding tour
+     * Whether to disable the onboarding tour.
      */
     onboarding_tour_disabled?: boolean;
     /**
-     * Whether to hide language/country flags
+     * Whether to hide language/country flags.
      */
     hide_flag_icons?: boolean;
     /**
-     * Whether flags represent country or language (only applies when hide_flag_icons is false)
+     * Whether flags represent country or language (only applies when `hide_flag_icons` is false).
      */
     flag_icons_display_mode?: 'country' | 'language';
     /**
-     * Language configuration
+     * Language configuration.
      */
     languages?: Array<{
+        /**
+         * Language code, such as `en`.
+         */
         code: string;
+        /**
+         * Name of the language.
+         */
         name: string;
+        /**
+         * Language code that AI translation uses for this language.
+         */
         ai_translation_code?: string | null;
     }>;
     /**
-     * Custom routes configuration
-     */
-    routes?: Array<{
-        pattern: string;
-        template: string;
-    }>;
-    /**
-     * Environment configuration
+     * Environment configuration.
      */
     environments?: Array<{
+        /**
+         * Name of the environment, such as `production`.
+         */
         name: string;
+        /**
+         * Visual Editor location URL for the environment.
+         */
         location: string;
     }>;
     /**
-     * Web crawling configuration
+     * Web crawling configuration.
      */
     crawl_config?: {
+        /**
+         * Base URL that the crawler starts from.
+         */
         base_url?: string;
+        /**
+         * Whether the crawler is enabled.
+         */
         enabled?: boolean;
     };
     /**
-     * Billing address information
+     * Billing address information.
      */
     billing_address?: {
+        /**
+         * Tax number.
+         */
         tax_number?: string;
+        /**
+         * Order number that appears on invoices.
+         */
         order_number?: string;
+        /**
+         * Company name.
+         */
         company?: string;
+        /**
+         * Email address.
+         */
         email?: string;
+        /**
+         * Name of the billing contact.
+         */
         name?: string;
+        /**
+         * City.
+         */
         address_city?: string;
+        /**
+         * Country name.
+         */
         address_country?: string;
+        /**
+         * ISO country code.
+         */
         address_iso_country?: string;
+        /**
+         * First line of the street address.
+         */
         address_line1?: string;
+        /**
+         * Postal code.
+         */
         address_zip?: string;
     };
     /**
-     * Required asset fields configuration
+     * Required asset fields configuration.
      */
     required_assest_fields?: Array<string>;
     /**
-     * Custom metadata schema for assets
+     * Custom metadata schema for assets.
      */
     asset_custom_meta_data_schema?: Array<{
+        /**
+         * Technical key of the custom metadata field.
+         */
         key?: string;
+        /**
+         * Human-readable display name.
+         */
         display_name?: string;
+        /**
+         * Regular expression that values must match.
+         */
         regex?: string | null;
+        /**
+         * Message that appears when a value doesn’t match `regex`.
+         */
         regex_message?: string | null;
+        /**
+         * Define the field as mandatory.
+         */
         required?: boolean;
+        /**
+         * `true` enables translation.
+         */
         translatable?: boolean;
+        /**
+         * File types the field applies to, such as `image` or `video`.
+         */
         filetypes?: Array<string>;
     }>;
     /**
-     * Translatable asset fields configuration
+     * Translatable asset fields configuration.
      */
     translatable_asset_fields?: Array<string>;
     /**
@@ -1422,26 +1559,32 @@ export type SpaceUpdate = {
      */
     dimensions_app_folders?: Array<{
         /**
-         * The ID of the linked folder
+         * The linked folder’s ID.
          */
         folder_id: number;
         /**
-         * The AI translation code for this folder
+         * The AI translation code for this folder.
          */
         ai_translation_code: string | null;
     }>;
     /**
-     * Whether to enable AI translation for the dimensions app
+     * Whether to enable AI translation for the dimensions app.
      */
     enable_dimensions_app_ai_translation?: boolean;
 };
 
 export type User = {
+    /**
+     * Username, or the user’s email if the user has no username.
+     */
     userid: string;
+    /**
+     * Email address.
+     */
     email: string;
     organization?: string | null;
     /**
-     * Username
+     * Username.
      */
     username?: string | null;
     use_username: boolean;
@@ -1449,14 +1592,14 @@ export type User = {
     firstname?: string | null;
     lastname?: string | null;
     phone?: string | null;
-    readonly id: number;
+    id: number;
     login_strategy: 'otp_email' | 'otp_sms' | 'password' | 'twilio_totp';
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
-    readonly created_at: string;
+    created_at: string;
     /**
-     * User's role in the organization. Null if user has no org.
+     * User’s role in the organization. Null if user has no org.
      */
     org_role?: 'admin' | 'owner' | 'member' | null;
     has_org: boolean;
@@ -1467,14 +1610,17 @@ export type User = {
     partner_status?: string | null;
     org: UserOrg;
     timezone?: string | null;
+    /**
+     * The URL of the user’s avatar image.
+     */
     avatar?: string | null;
     /**
-     * Display name derived from firstname/lastname or email
+     * The user’s display name.
      */
     friendly_name: string;
     notified: Array<string>;
     /**
-     * The language code for this translation.
+     * Language code. Supports languages defined in **Settings** → **Internationalization**.
      */
     lang?: string | null;
     partner_role?: string | null;
@@ -1484,7 +1630,7 @@ export type User = {
      */
     favourite_ideas: Array<string>;
     /**
-     * User's system role
+     * User’s system role.
      */
     role?: 'admin' | 'normal' | 'banned' | 'sso' | 'superuser' | 'devops' | 'marketer' | null;
     /**
@@ -1492,11 +1638,11 @@ export type User = {
      */
     beta_user: boolean;
     /**
-     * Defaults to true if not set
+     * Defaults to true if not set.
      */
     track_statistics: boolean;
     /**
-     * User UI theme preferences. Defaults to {"theme": "default"} if not set.
+     * The UI theme preferences.
      */
     ui_theme: {
         [key: string]: unknown;
@@ -1513,53 +1659,134 @@ export type User = {
      */
     totp_factor_verified: boolean;
     /**
-     * Available 2FA methods for this user. Always includes otp_email; otp_sms if phone set; twilio_totp if TOTP configured.
+     * Available 2FA methods for this user. Must include `otp_email`. When you set a `phone`, you must provide `otp_sms`. When you configure time-based one-time password (TOTP), you must provide `twilio_totp`.
      */
     configured_2fa_options: Array<'otp_email' | 'otp_sms' | 'twilio_totp'>;
     disclaimer_ids: Array<number>;
     company_name?: string | null;
     live_chat_enabled: boolean;
     /**
-     * True if user confirmed email or uses SSO
+     * True if user confirmed email or uses SSO.
      */
     confirmed: boolean;
 };
 
 export type UserUpdate = {
+    /**
+     * Email address.
+     */
     email?: string;
+    /**
+     * Password of the user.
+     */
     password?: string;
+    /**
+     * Repeat of the password. Must match `password`.
+     */
     password_confirmation?: string;
+    /**
+     * Current password. Required to change the password.
+     */
     current_password?: string;
+    /**
+     * First name of the user.
+     */
     firstname?: string;
+    /**
+     * Last name of the user.
+     */
     lastname?: string;
+    /**
+     * Username of the user.
+     */
     username?: string;
+    /**
+     * The language code of the user interface.
+     */
     lang?: string;
+    /**
+     * Time zone of the user, such as `UTC`.
+     */
     timezone?: string;
+    /**
+     * Whether the user signs in with the username instead of the email address.
+     */
     use_username?: boolean;
+    /**
+     * Alternative email address of the user.
+     */
     alt_email?: string;
+    /**
+     * sign-in method: `password`, `otp_email`, or `otp_sms`.
+     */
     login_strategy?: 'password' | 'otp_email' | 'otp_sms';
+    /**
+     * Phone number of the user.
+     */
     phone?: string;
+    /**
+     * Whether the user is an editor.
+     */
     is_editor?: boolean;
+    /**
+     * Job role of the user.
+     */
     job_role?: string;
+    /**
+     * Job title of the user.
+     */
     job_title?: string;
+    /**
+     * Name of the user’s company.
+     */
     company_name?: string;
+    /**
+     * Size of the user’s company, as a range of employees.
+     */
     company_size?: string;
+    /**
+     * How the user uses Storyblok, such as `personal` or `professional`.
+     */
     usage_type?: string;
+    /**
+     * Frontend framework the user works with.
+     */
     framework_used?: string;
+    /**
+     * Whether the user opted into beta features.
+     */
     beta_user?: boolean;
+    /**
+     * Indicates whether statistics tracking is enabled.
+     */
     track_statistics?: boolean;
+    /**
+     * UI theme of the user.
+     */
     ui_theme?: {
         [key: string]: unknown;
     };
+    /**
+     * IDs of the user’s favorite spaces.
+     */
     favourite_spaces?: Array<number>;
+    /**
+     * IDs of the user’s favorite ideas.
+     */
     favourite_ideas?: Array<number>;
+    /**
+     * Notifications that the user already viewed.
+     */
     notified?: Array<string>;
+    /**
+     * IDs of the disclaimers that the user accepted.
+     */
     disclaimer_ids?: Array<number>;
 };
 
 export type MemberOrganization = {
     /**
-     * Organization name
+     * Organization name.
      */
     name: string;
     /**
@@ -1567,83 +1794,83 @@ export type MemberOrganization = {
      */
     sso_identifier?: string | null;
     /**
-     * Whether statistics tracking is enabled
+     * Whether statistics tracking is enabled.
      */
     track_statistics: boolean;
     /**
-     * Organization plan
+     * Organization plan.
      */
     plan: string;
     /**
-     * Plan level
+     * Plan level.
      */
     plan_level: number;
     /**
-     * Maximum number of spaces
+     * Maximum number of spaces.
      */
     max_spaces: number;
     /**
-     * Maximum number of collaborators
+     * Maximum number of collaborators.
      */
     max_collaborators: number;
     /**
-     * Traffic used
+     * Traffic used.
      */
     traffic_used: number;
     /**
-     * Traffic limit
+     * Traffic limit.
      */
     traffic_limit: number;
     /**
-     * List of restricted regions
+     * List of restricted regions.
      */
     restricted_regions: Array<string>;
     /**
-     * Whether AI text generator is disabled
+     * Whether AI text generator is disabled.
      */
     ai_text_generator_disabled: boolean;
     /**
-     * Whether AI translation is enabled
+     * Whether AI translation is enabled.
      */
     ai_translation_enabled: boolean;
     /**
-     * Whether concept room is enabled
+     * Whether concept room is enabled.
      */
     concept_room_enabled: boolean;
     /**
-     * Whether ideation room is enabled
+     * Whether ideation room is enabled.
      */
     ideation_room_enabled: boolean;
     /**
-     * Token timeout in seconds
+     * Token timeout in seconds.
      */
     token_timeout_in?: number | null;
     /**
-     * Whether private spaces are disabled
+     * Whether private spaces are disabled.
      */
     disable_private_spaces: boolean | null;
     /**
-     * Whether to force organization AI styles
+     * Whether to force organization AI styles.
      */
     force_org_ai_styles: boolean;
     /**
-     * Whether to allow space-level AI styles
+     * Whether to allow space-level AI styles.
      */
     allow_space_ai_styles: boolean;
     /**
-     * AI style composition mode for spaces
+     * AI style composition mode for spaces.
      */
     ai_style_space_composition_mode: string;
     /**
-     * Whether the confidentiality disclaimer is enabled
+     * Whether the confidentiality disclaimer is enabled.
      */
     confidentiality_disclaimer_enabled?: boolean | null;
     /**
-     * Confidentiality disclaimer message
+     * Confidentiality disclaimer message.
      */
     confidentiality_disclaimer_message?: string | null;
     /**
-     * Resolved feature limits for the organization
+     * Resolved feature limits for the organization.
      */
     feature_limits: Array<{
         key?: string;
@@ -1658,25 +1885,25 @@ export type MemberOrganization = {
     settings: {
         users_info: {
             /**
-             * Count of internal users
+             * Count of internal users.
              */
             saved_internal_users_count: number | null;
             /**
-             * Count of external users
+             * Count of external users.
              */
             saved_external_users_count: number | null;
             /**
-             * Count of pending invitations
+             * Count of pending invitations.
              */
             saved_invitations_count: number | null;
         };
         spaces_info: {
             /**
-             * Count of standard spaces
+             * Count of standard spaces.
              */
             standard_spaces_count: number | null;
             /**
-             * Count of pro spaces
+             * Count of pro spaces.
              */
             pro_spaces_count: number | null;
         };
@@ -1684,11 +1911,14 @@ export type MemberOrganization = {
 };
 
 export type Organization = {
-    readonly id?: number;
+    id?: number;
     name: string;
     users: Array<OrgUser>;
     spaces: Array<OrgSpace>;
     plan: string;
+    /**
+     * Billing address information.
+     */
     billing_address?: BillingAddress;
     euid?: string | null;
     user_count: number;
@@ -1709,6 +1939,9 @@ export type Organization = {
     sso_lastname?: string | null;
     sso_alt_email?: string | null;
     strong_auth?: boolean | null;
+    /**
+     * List of restricted regions.
+     */
     restricted_regions: Array<string>;
     ai_text_generator_disabled: boolean;
     ai_text_generator_feature_disabled: boolean;
@@ -1719,6 +1952,9 @@ export type Organization = {
     ai_translation_enabled: boolean;
     storyblok_agents_enabled?: boolean;
     strata_available?: boolean;
+    /**
+     * Token timeout in seconds.
+     */
     token_timeout_in?: number | null;
     disable_private_spaces?: boolean | null;
     enable_content_distributions_ai_translation?: boolean;
@@ -1728,6 +1964,9 @@ export type Organization = {
     custom_upload_limit_in_mb?: number | null;
     force_org_ai_styles: boolean;
     allow_space_ai_styles: boolean;
+    /**
+     * AI style composition mode for spaces.
+     */
     ai_style_space_composition_mode: string | null;
     flowmotion_access: boolean;
     scim_provisioning_enabled: boolean;
@@ -1744,37 +1983,37 @@ export type Organization = {
         }>;
     }>;
     /**
-     * Organization settings
+     * Organization settings.
      */
     settings?: {
         [key: string]: unknown;
     } | null;
     /**
-     * Subscription ID
+     * Subscription ID.
      */
     subscription_id?: string | null;
     /**
-     * Organization limits
+     * Organization limits.
      */
     limits?: {
         [key: string]: unknown;
     } | null;
     /**
-     * Identity provider metadata
+     * Identity provider metadata.
      */
     idp_meta?: {
         [key: string]: unknown;
     } | null;
     /**
-     * Organization domain
+     * Organization domain.
      */
     domain?: string | null;
     /**
-     * Organization domains
+     * Organization domains.
      */
     domains?: Array<string> | null;
     /**
-     * Organization status
+     * Organization status.
      */
     status?: string | null;
     [key: string]: unknown;
@@ -1782,573 +2021,646 @@ export type Organization = {
 
 export type OrganizationUpdate = {
     /**
-     * Name of the organization
+     * Name of the organization.
      */
     name?: string;
     /**
-     * Enable statistics tracking
+     * Enable statistics tracking.
      */
     track_statistics?: boolean;
     /**
-     * SSO field mapping for first name
+     * SSO field mapping for first name.
      */
     sso_firstname?: string | null;
     /**
-     * SSO field mapping for last name
+     * SSO field mapping for last name.
      */
     sso_lastname?: string | null;
     /**
-     * SSO field mapping for alternative email
+     * SSO field mapping for alternative email.
      */
     sso_alt_email?: string | null;
     /**
-     * Enable strong authentication
+     * Enable strong authentication.
      */
     strong_auth?: boolean;
     /**
-     * Disable AI text generator
+     * Disable AI text generator.
      */
     ai_text_generator_disabled?: boolean;
     /**
-     * Enable AI translation
+     * Enable AI translation.
      */
     ai_translation_enabled?: boolean;
     /**
-     * Enable concept room
+     * Enable concept room.
      */
     concept_room_enabled?: boolean;
     /**
-     * Enable ideation room
+     * Enable ideation room.
      */
     ideation_room_enabled?: boolean;
     /**
-     * Enable A/B Testing for org spaces
+     * Enable A/B Testing for org spaces.
      */
     ab_testing_enabled?: boolean;
     /**
-     * Enable Storyblok Agents for org spaces
+     * Enable Storyblok Agents for org spaces.
      */
     storyblok_agents_enabled?: boolean;
     /**
-     * Enable confidentiality disclaimer
+     * Enable confidentiality disclaimer.
      */
     confidentiality_disclaimer_enabled?: boolean;
     /**
-     * Confidentiality disclaimer message
+     * Confidentiality disclaimer message.
      */
     confidentiality_disclaimer_message?: string | null;
     /**
-     * Token timeout in seconds
+     * Token timeout in seconds.
      */
     token_timeout_in?: number | null;
     /**
-     * Disable private spaces
+     * Disable private spaces.
      */
     disable_private_spaces?: boolean;
     /**
-     * Enable AI translation in the Content Distribution
+     * Enable AI translation in the Content Distribution.
      */
     enable_content_distributions_ai_translation?: boolean;
     /**
-     * Minimum password length requirement
+     * Minimum password length requirement.
      */
     password_rule_min_length?: number | null;
     /**
-     * Force organization AI styles
+     * Force organization AI styles.
      */
     force_org_ai_styles?: boolean;
     /**
-     * Allow space-level AI styles
+     * Allow space-level AI styles.
      */
     allow_space_ai_styles?: boolean;
     /**
-     * AI style composition mode for spaces
+     * AI style composition mode for spaces.
      */
     ai_style_space_composition_mode?: string | null;
+    /**
+     * Billing address information.
+     */
     billing_address?: BillingAddressRequest;
     custom_settings?: CustomSettingsRequest;
     /**
-     * List of restricted regions
+     * List of restricted regions.
      */
     restricted_regions?: Array<string>;
     /**
-     * Default shared-asset metadata fields that must be filled in when uploading. Allowed values: alt, title, copyright, source.
+     * Default shared-asset metadata fields that users must fill in when uploading. Allowed values: alt, title, copyright, source.
      */
     required_shared_asset_fields?: Array<string>;
     /**
-     * Shared-asset metadata fields that are translatable. Allowed values: alt, title, copyright, source.
+     * shared-asset metadata fields that are translatable. Allowed values: alt, title, copyright, source.
      */
     shared_asset_translatable_asset_fields?: Array<string>;
     /**
-     * Custom metadata schema applied to shared assets across the organization
+     * Custom metadata schema applied to shared assets across the organization.
      */
     shared_asset_custom_meta_data_schema?: Array<{
+        /**
+         * Technical key of the custom metadata field.
+         */
         key?: string;
+        /**
+         * Human-readable display name.
+         */
         display_name?: string;
+        /**
+         * Regular expression that values must match.
+         */
         regex?: string | null;
+        /**
+         * Message that appears when a value doesn’t match `regex`.
+         */
         regex_message?: string | null;
+        /**
+         * Define the field as mandatory.
+         */
         required?: boolean;
+        /**
+         * `true` enables translation.
+         */
         translatable?: boolean;
+        /**
+         * File types the field applies to, such as `image` or `video`.
+         */
         filetypes?: Array<string>;
     }>;
 };
 
-/**
- * Custom role definition controlling permissions within a space
- */
 export type SpaceRole = {
     /**
-     * The unique identifier of the space role.
+     * The space role’s numeric ID.
      */
     id: number;
     /**
-     * The role name
+     * The name of the role. Can be admin, editor, or a custom role.
      */
     role: string;
     /**
-     * Optional subtitle for the role.
+     * Description of the role.
      */
     subtitle?: string | null;
     /**
-     * External ID for integrations
+     * The external role’s ID.
      */
     ext_id?: string | null;
     /**
-     * List of permissions
+     * An array of strings that define the role’s permissions. The following table includes all supported parameters.
+     *
+     * | Permission | Description |
+     * | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+     * | `read_stories` | Read-only access to stories |
+     * | `save_stories` | Edit and save stories |
+     * | `publish_stories` | Publish stories |
+     * | `unpublish_stories` | Unpublish stories |
+     * | `publish_folders` | Publish folders (including stories contained within) |
+     * | `unpublish_folders` | Unpublish folders (including stories contained within) |
+     * | `deploy_stories` | Deploy pipeline stories |
+     * | `delete_stories` | Permanently delete stories |
+     * | `allow_space_duplication` | Can duplicate the space (learn more in the [Duplicate space](https://www.storyblok.com/docs/api/management/spaces/duplicate-a-space) reference page) |
+     * | `edit_image` | Edit images in the Image Editor |
+     * | `view_composer` | Use the Visual Editor |
+     * | `change_alternate_group` | Change alternate content groupings (for internationalization or variants) |
+     * | `move_story` | Move stories between folders |
+     * | `edit_story_slug` | Edit a story URL |
+     * | `force_release` | A story must be part of a release (requires the Releases App) |
+     * | `private_releases_full_access` | Grant full access to any private release (requires the Releases App) |
+     * | `view_content` | If checked, hides all stories except those defined in `allowed_paths` (**Permissions** → **Content** → **Folder/Content item permissions**) |
+     * | `view_folders` | If checked, hides all folders except those defined in `allowed_paths` (**Permissions** → **Content** → **Folder/Content item permissions**) |
+     * | `view_draft_json` | View the draft `JSON` payload of stories |
+     * | `view_published_json` | View the published `JSON` payload of stories |
+     * | `manage_tags` | Create, edit, or delete tags |
+     * | `edit_datasources` | Edit datasources |
+     * | `edit_datasource_keys` | Edit datasources keys |
+     * | `access_commerce` | Access e-commerce features (if available) |
+     * | `access_tasks` | Access tasks (requires the Tasks App) |
+     * | `execute_tasks` | Trigger tasks (requires the Tasks App) |
+     * | `create_tasks` | Create new tasks (requires the Tasks App) |
+     * | `delete_tasks` | Delete existing tasks (requires the Tasks App) |
+     * | `edit_tasks` | Edit existing tasks (requires the Tasks App) |
+     * | `restrict_dimensionsapp` | Can’t access the Dimensions App functionalities (requires the Dimensions App) |
+     * | `restrict_dimensionsapp_clone` | Can’t clone within the Dimensions App (requires the Dimensions App) |
+     * | `restrict_dimensionsapp_overwrite` | Can’t overwrite within the Dimensions App (requires the Dimensions App) |
+     * | `restrict_dimensionsapp_merge` | Can’t merge within the Dimensions App (requires the Dimensions App) |
+     * | `manage_concepts` | Create, edit, or delete concepts (if the Concept Room is enabled) |
+     * | `manage_block_library` | Create, move, and edit blocks and folders |
+     * | `apply_to_block_subfolders` | Apply block-related permissions to sub-items (folders and blocks) |
+     * | `apply_to_sub_folders` | If checked, automatically applies asset folder permissions to their subfolders (**Permissions** → **Assets** → **Automatically apply permissions to asset subfolders**) |
+     * | `deny_uploading_assets` | Can’t upload assets |
+     * | `deny_editing_assets` | Can’t edit assets |
+     * | `deny_deleting_assets` | Can’t delete assets |
+     * | `deny_moving_assets` | Can’t move assets across folders |
+     * | `deny_creating_asset_folders` | Can’t create new asset folders |
+     * | `deny_updating_asset_folders` | Can’t change existing asset folders |
+     * | `deny_moving_asset_folders` | Can’t move assets between folders |
+     * | `deny_deleting_asset_folders` | Can’t delete existing asset folders |
+     * | `manage-non-translatable-fields` | Edit non-translatable fields only in the default language |
+     * | `deny_component_technical_name_update` | Can’t change a block’s technical name |
+     * | `deny_component_fields_name_update` | Can’t change a field’s technical name |
+     * | `hide_asset_folders` | If checked, hides all assets and folders except those defined in `asset_folder_ids` (**Permissions** → **Assets** → **Asset Folder Permissions**) |.
      */
     permissions: Array<string>;
     /**
-     * Allowed content paths.
+     * An array of content paths that the role can access. If none is selected, all stories are accessible.
      */
     allowed_paths: Array<string>;
     /**
-     * Resolved allowed paths with slugs.
+     * Slugs of the stories listed in `allowed_paths`.
      */
     resolved_allowed_paths: Array<string>;
     /**
-     * Blocked content paths.
+     * An array of content paths that the role can’t access. If none is selected, all stories are accessible.
      */
     blocked_paths: Array<string>;
     /**
-     * Resolved blocked paths with slugs.
+     * Slugs of the stories listed in `blocked_paths`.
      */
     resolved_blocked_paths: Array<string> | null;
     /**
-     * Field-level permissions
+     * An array of fields hidden from this role (based on the block schema). If none is selected, all fields are visible.
      */
     field_permissions: Array<string>;
     /**
-     * Allowed field permissions.
+     * An array of fields visible to this role (based on the block schema). If none is selected, all fields are visible.
      */
     allowed_field_permissions: Array<string>;
     /**
-     * Read-only field permissions.
+     * An array of read-only fields for this role (based on the block schema). If none is selected, users associated with this role can update all fields.
      */
     readonly_field_permissions: Array<string>;
     /**
-     * Allowed datasource IDs.
+     * An array of datasource IDs that the role can access. If none is selected, all datasources are accessible.
      */
     datasource_ids: Array<number>;
     /**
-     * Blocked datasource IDs.
+     * An array of datasource IDs that the role can’t access. If none is selected, all datasources are accessible.
      */
     blocked_datasource_ids: Array<number>;
     /**
-     * Blocked component IDs for usage.
+     * An array of block (component) IDs that the role can’t add to the Visual Editor. If none is selected, users associated with this role can add all components.
      */
     component_ids: Array<number>;
     /**
-     * Allowed component IDs for usage.
+     * An array of block (component) IDs that the role can add to the Visual Editor. If none is selected, users associated with this role can add all components.
      */
     allowed_component_ids: Array<number>;
     /**
-     * Managed component IDs.
+     * An array of block (component) IDs that the role can edit, duplicate, or delete. If none is selected, users associated with this role can manage all components.
      */
     managed_component_ids: Array<number>;
     /**
-     * Blocked manage component IDs.
+     * An array of block (component) IDs that the role can’t edit, duplicate, or delete. If none is selected, users associated with this role can manage all components.
      */
     blocked_manage_component_ids: Array<number>;
     /**
-     * Managed component group UUIDs.
+     * An array of block folders (component groups) UUIDs that the role can edit, duplicate, or delete. If none is selected, users associated with this role can manage all block folders.
      */
     managed_component_group_uuids: Array<string>;
     /**
-     * Blocked manage component group UUIDs.
+     * An array of block folders (component groups) UUIDs that the role can’t edit, duplicate, or delete. If none is selected, users associated with this role can manage all block folders.
      */
     blocked_manage_component_group_uuids: Array<string>;
     /**
-     * Allowed component group UUIDs for usage.
+     * An array of block folders (component groups) UUIDs that the role can add to the Visual Editor. If none is selected, users associated with this role can add all component groups.
      */
     component_group_uuids: Array<string>;
     /**
-     * Blocked component group UUIDs for usage.
+     * An array of block folders (component groups) UUIDs that the role can’t add to the Visual Editor. If none is selected, users associated with this role can add all component groups.
      */
     blocked_component_group_uuids: Array<string>;
     /**
-     * Allowed branch IDs.
+     * An array of pipeline IDs that the role can deploy. If none is selected, all pipelines are accessible.
      */
     branch_ids: Array<number>;
     /**
-     * Blocked branch IDs.
+     * An array of pipeline IDs that the role can’t deploy. If none is selected, all pipelines are accessible.
      */
     blocked_branch_ids: Array<number>;
     /**
-     * Allowed language codes.
+     * An array of languages (represented by language codes) that the role can access. If none is selected, all languages are accessible.
      */
     allowed_languages: Array<string>;
     /**
-     * Blocked language codes.
+     * An array of languages (represented by language codes) that the role can’t access. If none is selected, all languages are accessible.
      */
     blocked_languages: Array<string>;
     /**
-     * Allowed asset folder IDs.
+     * An array of asset folders IDs that the role can access. If none is selected, all asset folders are accessible.
      */
     asset_folder_ids: Array<number>;
     /**
-     * Blocked asset folder IDs.
+     * An array of asset folders IDs that the role can’t access. If none is selected, all asset folders are accessible.
      */
     blocked_asset_folder_ids: Array<number>;
 };
 
 export type SpaceRoleCreate = {
     /**
-     * User ID to associate with the role
+     * User ID to associate with the role.
      */
     user_id?: number;
     /**
-     * The role name (must be unique within the space)
+     * The role name (must be unique within the space).
      */
     role: string;
     /**
-     * Optional subtitle for the role
+     * Optional subtitle for the role.
      */
     subtitle?: string;
     /**
-     * External ID for integrations
+     * The external role’s ID.
      */
     ext_id?: string;
     /**
-     * List of permissions to grant
+     * List of permissions to grant.
      */
     permissions?: Array<string>;
     /**
-     * Allowed language codes
+     * Allowed language codes.
      */
     allowed_languages?: Array<string>;
     /**
-     * Blocked language codes
+     * Blocked language codes.
      */
     blocked_languages?: Array<string>;
     /**
-     * Allowed content paths (story IDs)
+     * Allowed content paths.
      */
     allowed_paths?: Array<string>;
     /**
-     * Blocked content paths (story IDs)
+     * Blocked content paths.
      */
     blocked_paths?: Array<string>;
     /**
-     * Field-level permissions
+     * Field-level permissions.
      */
     field_permissions?: Array<string>;
     /**
-     * Allowed field permissions
+     * Allowed field permissions.
      */
     allowed_field_permissions?: Array<string>;
     /**
-     * Read-only field permissions
+     * Read-only field permissions.
      */
     readonly_field_permissions?: Array<string>;
     /**
-     * Blocked permissions
+     * Blocked permissions.
      */
     blocked_permissions?: Array<string>;
     /**
-     * Allowed datasource IDs
+     * Allowed datasource IDs.
      */
     datasource_ids?: Array<number>;
     /**
-     * Component IDs for usage restriction
+     * Component IDs for usage restriction.
      */
     component_ids?: Array<number>;
     /**
-     * Allowed component IDs for usage
+     * Allowed component IDs for usage.
      */
     allowed_component_ids?: Array<number>;
     /**
-     * Managed component IDs
+     * Managed component IDs.
      */
     managed_component_ids?: Array<number>;
     /**
-     * Blocked manage component IDs
+     * Blocked manage component IDs.
      */
     blocked_manage_component_ids?: Array<number>;
     /**
-     * Managed component group UUIDs
+     * Managed component group UUIDs.
      */
     managed_component_group_uuids?: Array<string>;
     /**
-     * Blocked manage component group UUIDs
+     * Blocked manage component group UUIDs.
      */
     blocked_manage_component_group_uuids?: Array<string>;
     /**
-     * Allowed component group UUIDs for usage
+     * Allowed component group UUIDs for usage.
      */
     component_group_uuids?: Array<string>;
     /**
-     * Blocked component group UUIDs for usage
+     * Blocked component group UUIDs for usage.
      */
     blocked_component_group_uuids?: Array<string>;
     /**
-     * Allowed branch IDs
+     * Allowed branch IDs.
      */
     branch_ids?: Array<number>;
     /**
-     * Allowed asset folder IDs
+     * Allowed asset folder IDs.
      */
     asset_folder_ids?: Array<number>;
     /**
-     * Blocked asset folder IDs
+     * Blocked asset folder IDs.
      */
     blocked_asset_folder_ids?: Array<number>;
     /**
-     * Blocked datasource IDs
+     * Blocked datasource IDs.
      */
     blocked_datasource_ids?: Array<number>;
     /**
-     * Blocked branch IDs
+     * Blocked branch IDs.
      */
     blocked_branch_ids?: Array<number>;
 };
 
 export type SpaceRoleUpdate = {
     /**
-     * User ID to associate with the role
+     * User ID to associate with the role.
      */
     user_id?: number;
     /**
-     * The role name (must be unique within the space)
+     * The role name (must be unique within the space).
      */
     role?: string;
     /**
-     * Optional subtitle for the role
+     * Optional subtitle for the role.
      */
     subtitle?: string;
     /**
-     * External ID for integrations
+     * The external role’s ID.
      */
     ext_id?: string;
     /**
-     * List of permissions to grant
+     * List of permissions to grant.
      */
     permissions?: Array<string>;
     /**
-     * Allowed language codes
+     * Allowed language codes.
      */
     allowed_languages?: Array<string>;
     /**
-     * Blocked language codes
+     * Blocked language codes.
      */
     blocked_languages?: Array<string>;
     /**
-     * Allowed content paths (story IDs)
+     * Allowed content paths.
      */
     allowed_paths?: Array<string>;
     /**
-     * Blocked content paths (story IDs)
+     * Blocked content paths.
      */
     blocked_paths?: Array<string>;
     /**
-     * Field-level permissions
+     * Field-level permissions.
      */
     field_permissions?: Array<string>;
     /**
-     * Allowed field permissions
+     * Allowed field permissions.
      */
     allowed_field_permissions?: Array<string>;
     /**
-     * Read-only field permissions
+     * Read-only field permissions.
      */
     readonly_field_permissions?: Array<string>;
     /**
-     * Blocked permissions
+     * Blocked permissions.
      */
     blocked_permissions?: Array<string>;
     /**
-     * Allowed datasource IDs
+     * Allowed datasource IDs.
      */
     datasource_ids?: Array<number>;
     /**
-     * Component IDs for usage restriction
+     * Component IDs for usage restriction.
      */
     component_ids?: Array<number>;
     /**
-     * Allowed component IDs for usage
+     * Allowed component IDs for usage.
      */
     allowed_component_ids?: Array<number>;
     /**
-     * Managed component IDs
+     * Managed component IDs.
      */
     managed_component_ids?: Array<number>;
     /**
-     * Blocked manage component IDs
+     * Blocked manage component IDs.
      */
     blocked_manage_component_ids?: Array<number>;
     /**
-     * Managed component group UUIDs
+     * Managed component group UUIDs.
      */
     managed_component_group_uuids?: Array<string>;
     /**
-     * Blocked manage component group UUIDs
+     * Blocked manage component group UUIDs.
      */
     blocked_manage_component_group_uuids?: Array<string>;
     /**
-     * Allowed component group UUIDs for usage
+     * Allowed component group UUIDs for usage.
      */
     component_group_uuids?: Array<string>;
     /**
-     * Blocked component group UUIDs for usage
+     * Blocked component group UUIDs for usage.
      */
     blocked_component_group_uuids?: Array<string>;
     /**
-     * Allowed branch IDs
+     * Allowed branch IDs.
      */
     branch_ids?: Array<number>;
     /**
-     * Allowed asset folder IDs
+     * Allowed asset folder IDs.
      */
     asset_folder_ids?: Array<number>;
     /**
-     * Blocked asset folder IDs
+     * Blocked asset folder IDs.
      */
     blocked_asset_folder_ids?: Array<number>;
     /**
-     * Blocked datasource IDs
+     * Blocked datasource IDs.
      */
     blocked_datasource_ids?: Array<number>;
     /**
-     * Blocked branch IDs
+     * Blocked branch IDs.
      */
     blocked_branch_ids?: Array<number>;
 };
 
 export type Webhook = {
     /**
-     * ID of the webhook endpoint
+     * The webhook’s numeric ID.
      */
     id: number;
     /**
-     * Name of the webhook endpoint
+     * Name of this webhook.
      */
     name: string;
     /**
-     * Optional description
+     * A brief description of this webhook.
      */
     description?: string | null;
     /**
-     * URL to receive webhook payloads (http or https)
+     * Webhook endpoint.
      */
     endpoint: string;
     /**
-     * ID of the space
+     * Numeric ID of the space.
      */
     space_id: number;
     /**
-     * Optional secret for request signing
+     * Webhook secret.
      */
     secret?: string | null;
     /**
-     * List of event actions this webhook subscribes to
+     * Webhook triggers, refer to [actions](#actions) table below.
      */
     actions: Array<string>;
     /**
-     * Whether the webhook is active
+     * Activate or deactivate the current webhook. Default: true when creating a webhook.
      */
     activated: boolean;
     /**
-     * Soft-delete timestamp when set
+     * Deletion timestamp. Supports ISO 8601.
      */
     deleted_at?: string | null;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
 };
 
 export type WebhookCreate = {
     /**
-     * Name of the webhook endpoint
+     * Name of the webhook endpoint.
      */
     name: string;
     /**
-     * Optional description
+     * Optional description.
      */
     description?: string;
     /**
-     * URL to receive webhook payloads (http or https)
+     * URL to receive webhook payloads.
      */
     endpoint: string;
     /**
-     * Optional secret for request signing
+     * Optional secret for request signing.
      */
     secret?: string;
     /**
-     * Whether the webhook is active
+     * Whether the webhook is active.
      */
     activated?: boolean;
     /**
-     * List of event actions to subscribe to (e.g. story.published, asset.created)
+     * List of event actions to subscribe to (for example, story.published, asset.created).
      */
     actions: Array<string>;
 };
 
 export type WebhookUpdate = {
     /**
-     * Name of the webhook endpoint
+     * Name of the webhook endpoint.
      */
     name?: string;
     /**
-     * Optional description
+     * Optional description.
      */
     description?: string;
     /**
-     * URL to receive webhook payloads (http or https)
+     * URL to receive webhook payloads.
      */
     endpoint?: string;
     /**
-     * Optional secret for request signing
+     * Optional secret for request signing.
      */
     secret?: string;
     /**
-     * Whether the webhook is active
+     * Whether the webhook is active.
      */
     activated?: boolean;
     /**
-     * List of event actions to subscribe to (e.g. story.published, asset.created)
+     * List of event actions to subscribe to (for example, story.published, asset.created).
      */
     actions?: Array<string>;
 };
 
 export type Workflow = {
     /**
-     * Unique identifier for the workflow
+     * The numeric ID.
      */
-    readonly id: number;
+    id: number;
     /**
-     * Name of the workflow.
+     * Workflow name.
      */
     name: string;
     /**
-     * Array of content types this workflow applies to.
+     * Array of content types associated with this workflow. At least one content type is required for a custom workflow.
      */
     content_types: Array<string>;
     /**
-     * Whether this is the default workflow for the space
+     * True if the workflow is default one.
      */
     is_default: boolean;
     /**
@@ -2356,148 +2668,202 @@ export type Workflow = {
      */
     workflow_stages?: Array<WorkflowStage> | null;
     /**
-     * Whether stages are tracked per language
+     * Whether the workflow tracks stages per language.
      */
     per_language_stages: boolean;
 };
 
 export type WorkflowCreate = {
     /**
-     * Name of the workflow
+     * Name of the workflow.
      */
     name: string;
     /**
-     * Content types this workflow applies to
+     * Content types this workflow applies to.
      */
     content_types: Array<string>;
     /**
-     * Optional workflow stages to create
+     * Optional workflow stages to create.
      */
     workflow_stages?: Array<{
+        /**
+         * The numeric ID.
+         */
         id?: number;
+        /**
+         * Workflow stage ID that gets assigned after publishing.
+         */
         after_publish_id?: number | null;
+        /**
+         * Boolean to allow publishing for all the users in the stage.
+         */
         allow_publish?: boolean;
+        /**
+         * True if the workflow stage is the default one for a particular workflow. One workflow can only have one default stage.
+         */
         is_default?: boolean;
+        /**
+         * Numeric position of the workflow stage in the workflow.
+         */
         position?: number;
+        /**
+         * Boolean to allow all stages as the next available stages.
+         */
         allow_all_stages?: boolean;
+        /**
+         * Boolean to allow admin publishing.
+         */
         allow_admin_publish?: boolean;
+        /**
+         * Boolean to allow changing the workflow stage by all users.
+         */
         allow_all_users?: boolean;
+        /**
+         * Allow editors to change from the current stage to the next available stages.
+         */
         allow_editor_change?: boolean;
+        /**
+         * Allow admins to change from the current stage to the next available stages.
+         */
         allow_admin_change?: boolean;
+        /**
+         * Whether this stage locks stories for edits.
+         */
         story_editing_locked?: boolean;
+        /**
+         * Whether the stage removes the assignee when a story enters it.
+         */
         auto_remove_assignee?: boolean;
+        /**
+         * The workflow stage name, can’t be the same as another stage in the same workflow.
+         */
         name?: string;
+        /**
+         * Workflow stage color, two stages in the same workflow can’t have the same color.
+         */
         color?: string;
+        /**
+         * An array of user ids that are allowed to change the stage to next available stages.
+         */
         user_ids?: Array<number>;
+        /**
+         * Space role ids that are allowed to change the stage to the next available stages.
+         */
         space_role_ids?: Array<number>;
+        /**
+         * An array of IDs of next available stages.
+         */
         workflow_stage_ids?: Array<number>;
     }>;
     /**
-     * Enable per-language stage tracking
+     * Enable per-language stage tracking.
      */
     per_language_stages?: boolean;
 };
 
 export type WorkflowUpdate = {
     /**
-     * Name of the workflow
+     * Name of the workflow.
      */
     name?: string;
     /**
-     * Content types this workflow applies to
+     * Content types this workflow applies to.
      */
     content_types?: Array<string>;
     /**
-     * Array of workflow stage attributes to update (typically just position)
+     * Array of workflow stage attributes to update (typically only `position`).
      */
     workflow_stages_attributes?: Array<{
+        /**
+         * The numeric ID.
+         */
         id: number;
+        /**
+         * Numeric position of the workflow stage in the workflow.
+         */
         position?: number;
     }>;
     /**
-     * Enable per-language stage tracking
+     * Enable per-language stage tracking.
      */
     per_language_stages?: boolean;
 };
 
-/**
- * A stage within a workflow defining a step in the content lifecycle
- */
 export type WorkflowStage = {
     /**
-     * The unique identifier of the workflow stage.
+     * The numeric ID.
      */
     id: number;
     /**
-     * The name of the workflow stage.
+     * The workflow stage name, can’t be the same as another stage in the same workflow.
      */
     name: string;
     /**
-     * The color of the workflow stage
+     * Workflow stage color, two stages in the same workflow can’t have the same color.
      */
     color: string;
     /**
-     * Numeric representation of the story's position in the folder.
+     * Numeric position of the workflow stage in the workflow.
      */
     position: number;
     /**
-     * Whether this is the default workflow stage
+     * True if the workflow stage is the default one for a particular workflow. One workflow can only have one default stage.
      */
     is_default: boolean;
     /**
-     * Whether publishing is allowed in this stage
+     * Boolean to allow publishing for all the users in the stage.
      */
     allow_publish: boolean;
     /**
-     * Whether transitions to all stages are allowed
+     * Boolean to allow all stages as the next available stages.
      */
     allow_all_stages: boolean;
     /**
-     * Whether admin publishing is allowed in this stage
+     * Boolean to allow admin publishing.
      */
     allow_admin_publish: boolean;
     /**
-     * Whether all users can move content to this stage
+     * Boolean to allow changing the workflow stage by all users.
      */
     allow_all_users: boolean;
     /**
-     * Whether admins can change this stage
+     * Allow admins to change from the current stage to the next available stages.
      */
     allow_admin_change: boolean;
     /**
-     * Whether editors can change this stage
+     * Allow editors to change from the current stage to the next available stages.
      */
     allow_editor_change: boolean;
     /**
-     * Whether 'none' is allowed for next stages selection
+     * Whether `none` is allowed for next stages selection.
      */
     allow_none_for_next_stages: boolean;
     /**
-     * Whether story editing is locked in this stage
+     * Whether story editing is locked in this stage.
      */
     story_editing_locked: boolean;
     /**
-     * Whether assignees are automatically removed on stage change
+     * Whether assignees are automatically removed on stage change.
      */
     auto_remove_assignee: boolean;
     /**
-     * The ID of the workflow stage to transition to after publishing
+     * Workflow stage ID that gets assigned after publishing.
      */
     after_publish_id: number | null;
     /**
-     * The ID of the workflow this stage belongs to
+     * Numeric ID of the connected workflow. If empty when you create a new stage, the API creates the stage in the default workflow.
      */
     workflow_id: number | null;
     /**
-     * IDs of users assigned to this workflow stage
+     * An array of user ids that are allowed to change the stage to next available stages.
      */
     user_ids: Array<number>;
     /**
-     * IDs of space roles assigned to this workflow stage
+     * Space role ids that are allowed to change the stage to the next available stages.
      */
     space_role_ids: Array<number>;
     /**
-     * IDs of allowed next workflow stages
+     * An array of IDs of next available stages.
      */
     workflow_stage_ids: Array<number>;
 };
@@ -2511,73 +2877,73 @@ export type WorkflowStageUpdate = WorkflowStageAttributes;
 
 export type StoryTranslatedSlug = {
     /**
-     * id
+     * The translated slug’s numeric ID.
      */
     id: number;
     /**
-     * The name for this translated slug
+     * The translated name of the story.
      */
     name: string | null;
     /**
-     * URL-friendly identifier for the app category.
+     * The translated slug of the story.
      */
     slug: string;
     /**
-     * The language code for this translation.
+     * The current language code. Use the Content Delivery API’s [`language` parameter](https://www.storyblok.com/docs/api/content-delivery/v2/stories/examples/retrieving-stories-in-a-particular-language) for the request.
      */
     lang: string;
+    /**
+     * Is the story currently published.
+     */
     published: boolean | null;
 };
 
 export type StoryLocalizedPath = {
     /**
-     * The localized path
+     * The full translated slug of the story, which combines the parent folders and the designated story slug.
      */
     path: string;
     /**
-     * The translated name
+     * The translated name of the story.
      */
     name: string | null;
     /**
-     * The language code for this translation.
+     * The current language code. Use the Content Delivery API’s [`language` parameter](https://www.storyblok.com/docs/api/content-delivery/v2/stories/examples/retrieving-stories-in-a-particular-language) for the request.
      */
     lang: string;
     /**
-     * Published status or date
+     * Is the story currently published.
      */
     published: boolean | string | null;
     /**
-     * The translated slug (only present when folders are used).
+     * The translated slug (only present when the story uses folders).
      */
     translated_slug?: string;
 };
 
-/**
- * A dimension for datasource entries, enabling localized or context-specific values
- */
 export type Dimension = {
     /**
-     * ID
+     * The datasource dimension’s numeric ID.
      */
     id: number;
     /**
-     * Name
+     * The name of a datasource dimension.
      */
     name: string;
     /**
-     * The value provided for the datasource dimension.
+     * The value of a datasource dimension.
      */
     entry_value: string;
     /**
-     * The numeric ID of the datasource that the dimension belongs to.
+     * The linked datasource’s numeric ID.
      */
     datasource_id?: number;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at?: string;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at?: string;
 };
@@ -2592,28 +2958,25 @@ export type UserOrg = {
     settings?: OrgSettings;
 };
 
-/**
- * A user belonging to an organization with assigned role
- */
 export type OrgUser = {
     /**
-     * User ID string
+     * Username, or the user’s email if the user has no username.
      */
     userid: string;
     /**
-     * User email address
+     * Email address.
      */
     email: string;
     /**
-     * Username
+     * Username.
      */
     username: string | null;
     /**
-     * Real email address
+     * Real email address.
      */
     real_email: string;
     /**
-     * Avatar URL
+     * The URL of the user’s avatar image.
      */
     avatar: string | null;
     /**
@@ -2621,7 +2984,7 @@ export type OrgUser = {
      */
     id: number;
     /**
-     * Organization name
+     * Organization name.
      */
     organization: string | null;
     /**
@@ -2629,23 +2992,23 @@ export type OrgUser = {
      */
     sign_in_count: number;
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
     /**
-     * First name
+     * First name.
      */
     firstname: string | null;
     /**
-     * Last name
+     * Last name.
      */
     lastname: string | null;
     /**
-     * User's role in the organization
+     * User’s role in the organization.
      */
     org_role: 'owner' | 'admin' | 'member' | null;
     /**
-     * Last sign in timestamp.
+     * Last sign-in timestamp. Supports ISO 8601.
      */
     last_sign_in_at: string | null;
     /**
@@ -2657,11 +3020,11 @@ export type OrgUser = {
      */
     disabled: boolean;
     /**
-     * Partner role
+     * Partner role.
      */
     partner_role: 'partner_owner' | 'partner_member' | null;
     /**
-     * Friendly display name
+     * The user’s display name.
      */
     friendly_name: string;
     /**
@@ -2669,17 +3032,17 @@ export type OrgUser = {
      */
     on_spaces?: Array<number>;
     /**
-     * Map of space_id (as string) to an array of role names the user has on that space. "owner" indicates the space owner; other values are collaborator role names (including custom space roles). Returns an empty array when no per-user space-role data has been computed for the organization (i.e. users_info.users_on_spaces is not populated).
+     * Map of `space_id` (as string) to an array of role names the user has on that space. "owner" indicates the space owner; other values are collaborator role names (including custom space roles). Returns an empty array when the API has computed no per-user space-role data for the organization (that is, users_info.users_on_spaces isn’t populated).
      */
     roles_on_spaces?: {
         [key: string]: Array<string>;
     } | Array<unknown>;
     /**
-     * Whether user has FlowMotion access
+     * Whether user has FlowMotion access.
      */
     flowmotion_access?: boolean;
     /**
-     * FlowMotion role
+     * FlowMotion role.
      */
     flowmotion_role?: 'member' | 'admin' | null;
 };
@@ -2694,47 +3057,44 @@ export type OrgSpace = {
      */
     name: string;
     /**
-     * Number of users in space
+     * Number of users in space.
      */
     user_count: number;
     owner: {
         /**
-         * Owner user ID
+         * Owner user ID.
          */
         id: number;
         /**
-         * Owner user ID string
+         * Username, or the user’s email if the user has no username.
          */
         userid: string;
         /**
-         * Owner email address
+         * Owner email address.
          */
         real_email: string;
     };
     /**
-     * Creation timestamp (format is ISO 8601 standard in UTC).
+     * Creation timestamp. Supports ISO 8601.
      */
     created_at: string;
 };
 
-/**
- * Billing address associated with an organization or space subscription
- */
 export type BillingAddress = {
     /**
-     * Tax identification number
+     * Tax identification number.
      */
     tax_number?: string | null;
     /**
-     * Order number reference
+     * Order number reference.
      */
     order_number?: string | null;
     /**
-     * Company name
+     * Company name.
      */
     company?: string | null;
     /**
-     * Billing contact email
+     * Email address.
      */
     email?: string | null;
     /**
@@ -2742,78 +3102,78 @@ export type BillingAddress = {
      */
     name?: string | null;
     /**
-     * City
+     * City.
      */
     address_city?: string | null;
     /**
-     * Country name
+     * Country name.
      */
     address_country?: string | null;
     /**
-     * ISO country code
+     * ISO country code.
      */
     address_iso_country?: string | null;
     /**
-     * Address line 1
+     * Address line 1.
      */
     address_line1?: string | null;
     /**
-     * Postal/ZIP code
+     * Postal/ZIP code.
      */
     address_zip?: string | null;
 };
 
 export type Plan = {
     /**
-     * Plan ID
+     * Plan ID.
      */
     id: number;
     /**
-     * Plan name
+     * Plan name.
      */
     name: string;
     /**
-     * Plan price
+     * Plan price.
      */
     price: number;
     /**
-     * Plan currency
+     * Plan currency.
      */
     currency: string;
     /**
-     * Maximum collaborators
+     * Maximum collaborators.
      */
     max?: number;
     /**
-     * Minimum collaborators
+     * Minimum collaborators.
      */
     min?: number;
     /**
-     * Plan level
+     * Plan level.
      */
     level?: number;
     /**
-     * Number of users included
+     * Number of users included.
      */
     users?: number;
     /**
-     * Maximum spaces
+     * Maximum spaces.
      */
     max_spaces?: number;
     /**
-     * Feature set identifier
+     * Feature set identifier.
      */
     feature_set?: string;
     /**
-     * Billing interval
+     * Billing interval.
      */
     payment_interval?: string;
     /**
-     * Unique UUID identifier for the discussion.
+     * Plan UUID.
      */
     uuid?: string | null;
     /**
-     * Subscriber type
+     * Subscriber type.
      */
     subscriber?: string | null;
 };
@@ -2823,48 +3183,45 @@ export type Plan = {
  */
 export type Invitations = {
     /**
-     * Invitation ID
+     * Invitation ID.
      */
     id: number;
     /**
-     * Invited user email
+     * Email address.
      */
     email: string;
     /**
-     * Associated organization ID
+     * Associated organization ID.
      */
     org_id?: number | null;
     /**
-     * ID of the invited user once they have registered
+     * The invited user’s ID. Available after the user registers.
      */
     user_id?: number | null;
     /**
-     * Invitation expiration timestamp
+     * Expiration timestamp. Supports ISO 8601.
      */
     expires_at: string;
     /**
-     * Role the invited user will have in the organization
+     * Role of the invited user in the organization.
      */
     org_role?: string | null;
     /**
-     * ID of the user who sent the invitation
+     * ID of the user who sent the invitation.
      */
     inviter_id: number;
     /**
-     * Whether the invited user has registered
+     * Whether the invited user has registered.
      */
     registered: boolean;
     /**
-     * The registered user associated with this invitation, or an empty object if the user has not registered
+     * The registered user associated with this invitation, or an empty object if the user hasn’t registered.
      */
     user: OrgUser | {
         [key: string]: never;
     };
 };
 
-/**
- * Public marketplace app
- */
 export type PublicApp = {
     /**
      * Unique identifier for the app.
@@ -2875,135 +3232,138 @@ export type PublicApp = {
      */
     name: string;
     /**
-     * URL-friendly identifier for the app category.
+     * URL-friendly identifier.
      */
     slug: string;
     /**
-     * Coarse classification of the app
+     * Coarse classification of the app.
      */
     app_type?: 'extension' | 'integration';
     /**
-     * URL
+     * URL.
      */
     icon?: string | null;
     /**
-     * Minimum plan level required to use this app
+     * Minimum plan level required to use this app.
      */
     plan_level: number | null;
     /**
-     * URL to a preview video
+     * URL to a preview video.
      */
     preview_video?: string | null;
     /**
-     * Main URL
+     * Main URL.
      */
     app_url?: string | null;
     /**
-     * Description
+     * Description.
      */
     description?: string | null;
     /**
-     * Introduction text for the app
+     * Introduction text for the app.
      */
     intro?: string | null;
     /**
-     * URL to a screenshot
+     * URL to a screenshot.
      */
     screenshot?: string | null;
     /**
-     * Current status
+     * Current status.
      */
     status: 'created' | 'in_review' | 'approved' | 'rejected' | 'approved_unlisted';
     /**
-     * Official website
+     * Official website.
      */
     website?: string | null;
     /**
-     * Author or company that created the app
+     * Author or company that created the app.
      */
     author?: string | null;
     /**
-     * Latest update timestamp (format is ISO 8601 standard in UTC).
+     * Latest update timestamp. Supports ISO 8601.
      */
     updated_at: string;
     /**
-     * Array of field type IDs
+     * Array of field type IDs.
      */
     field_type_ids: Array<number>;
     /**
-     * URL for the embedded version
+     * URL for the embedded version.
      */
     embedded_app_url?: string | null;
     /**
-     * Development URL for the embedded version
+     * Development URL for the embedded version.
      */
     dev_embedded_app_url?: string | null;
     /**
-     * Development OAuth redirect URI
+     * Development OAuth redirect URI.
      */
     dev_oauth_redirect_uri?: string | null;
     /**
-     * Whether the app appears in the sidebar
+     * Whether the app appears in the sidebar.
      */
     in_sidebar: boolean;
     /**
-     * Whether the app appears in the toolbar
+     * Whether the app appears in the toolbar.
      */
     in_toolbar: boolean;
     /**
-     * Icon to display in the sidebar
+     * Icon to display in the sidebar.
      */
     sidebar_icon?: string | null;
     /**
-     * Whether the app has space-level settings
+     * Whether the app has space-level settings.
      */
     enable_space_settings: boolean;
     /**
-     * Whether the app uses Storyblok's App Bridge
+     * Whether the app uses Storyblok’s App Bridge.
      */
     use_app_bridge: boolean;
     /**
-     * Array of terms and conditions for the app
+     * Array of terms and conditions for the app.
      */
     terms: Array<{
         /**
-         * Unique key for the terms
+         * Unique key for the terms.
          */
         key: string;
         /**
-         * ID of the terms record
+         * The terms record’s ID.
          */
         id: number;
         /**
-         * Display name of the terms
+         * Display name of the terms.
          */
         name: string;
         /**
-         * URL
+         * URL.
          */
         url: string;
         /**
-         * Version of the terms
+         * Version of the terms.
          */
         version: string;
     }>;
 };
 
+/**
+ * Billing address of the organization.
+ */
 export type BillingAddressRequest = {
     /**
-     * Tax identification number
+     * Tax identification number.
      */
     tax_number?: string | null;
     /**
-     * Order number reference
+     * Order number reference.
      */
     order_number?: string | null;
     /**
-     * Company name
+     * Company name.
      */
     company?: string | null;
     /**
-     * Billing contact email
+     * Email address.
      */
     email?: string | null;
     /**
@@ -3011,42 +3371,45 @@ export type BillingAddressRequest = {
      */
     name?: string | null;
     /**
-     * City
+     * City.
      */
     address_city?: string | null;
     /**
-     * Country name
+     * Country name.
      */
     address_country?: string | null;
     /**
-     * ISO country code
+     * ISO country code.
      */
     address_iso_country?: string | null;
     /**
-     * Address line 1
+     * Address line 1.
      */
     address_line1?: string | null;
     /**
-     * Postal/ZIP code
+     * Postal/ZIP code.
      */
     address_zip?: string | null;
 };
 
+/**
+ * Custom branding and editor settings of the organization.
+ */
 export type CustomSettingsRequest = {
     /**
-     * Organization logo URL
+     * Organization logo URL.
      */
     logo?: string | null;
     /**
-     * Custom editor URL
+     * Custom editor URL.
      */
     editor_url?: string | null;
     /**
-     * Primary color hex code
+     * Primary color hex code.
      */
     primary_color?: string | null;
     /**
-     * Primary background color hex code
+     * Primary background color hex code.
      */
     primary_bg_color?: string | null;
 };
@@ -3057,55 +3420,55 @@ export type WorkflowStageAttributes = {
      */
     name?: string;
     /**
-     * The color of the workflow stage
+     * The color of the workflow stage.
      */
     color?: string;
     /**
-     * The ID of the workflow this stage belongs to
+     * The ID of the workflow this stage belongs to.
      */
     workflow_id?: number;
     /**
-     * Whether this is the default workflow stage
+     * Whether this is the default workflow stage.
      */
     is_default?: boolean;
     /**
-     * Whether publishing is allowed in this stage
+     * Whether publishing is allowed in this stage.
      */
     allow_publish?: boolean;
     /**
-     * Whether transitions to all stages are allowed
+     * Whether transitions to all stages are allowed.
      */
     allow_all_stages?: boolean;
     /**
-     * Whether admin publishing is allowed
+     * Whether admin publishing is allowed.
      */
     allow_admin_publish?: boolean;
     /**
-     * Whether all users can move content to this stage
+     * Whether all users can move content to this stage.
      */
     allow_all_users?: boolean;
     /**
-     * Whether admins can change this stage
+     * Whether admins can change this stage.
      */
     allow_admin_change?: boolean;
     /**
-     * Whether editors can change this stage
+     * Whether editors can change this stage.
      */
     allow_editor_change?: boolean;
     /**
-     * Whether 'none' is allowed for next stages selection
+     * Whether `none` is allowed for next stages selection.
      */
     allow_none_for_next_stages?: boolean;
     /**
-     * Whether story editing is locked in this stage
+     * Whether story editing is locked in this stage.
      */
     story_editing_locked?: boolean;
     /**
-     * Whether assignees are automatically removed on stage change
+     * Whether assignees are automatically removed on stage change.
      */
     auto_remove_assignee?: boolean;
     /**
-     * Numeric representation of the story's position in the folder.
+     * The position of the workflow stage.
      */
     position?: number;
     /**
@@ -3113,19 +3476,19 @@ export type WorkflowStageAttributes = {
      */
     update_position?: boolean;
     /**
-     * The ID of the stage to transition to after publishing
+     * The ID of the stage to transition to after publishing.
      */
     after_publish_id?: number | null;
     /**
-     * IDs of users to assign to this workflow stage
+     * IDs of users to assign to this workflow stage.
      */
     user_ids?: Array<number>;
     /**
-     * IDs of space roles to assign to this workflow stage
+     * IDs of space roles to assign to this workflow stage.
      */
     space_role_ids?: Array<number>;
     /**
-     * IDs of allowed next workflow stages
+     * IDs of allowed next workflow stages.
      */
     workflow_stage_ids?: Array<number>;
 };
@@ -3139,6 +3502,9 @@ export type OrgSettings = {
     ai_credits_limit_alert_sent?: boolean | null;
     ai_credits_limit_warning_sent?: boolean | null;
     ai_features_disabled?: boolean | null;
+    /**
+     * AI style composition mode for spaces.
+     */
     ai_style_space_composition_mode?: 'combine' | 'override' | null;
     ai_text_generator_disabled?: boolean | null;
     ai_text_generator_feature_disabled?: boolean | null;
@@ -3150,6 +3516,9 @@ export type OrgSettings = {
     cdn_force_filter_from_releases?: boolean | null;
     concept_room_enabled?: boolean | null;
     confidentiality_disclaimer_enabled?: boolean | null;
+    /**
+     * Confidentiality disclaimer message.
+     */
     confidentiality_disclaimer_message?: string | null;
     custom_upload_limit_in_mb?: number | null;
     default_ai_configuration_id?: number | null;
@@ -3172,6 +3541,9 @@ export type OrgSettings = {
     propagate_field_defaults?: boolean | null;
     propagate_field_removal?: boolean | null;
     required_shared_asset_fields?: Array<string> | null;
+    /**
+     * List of restricted regions.
+     */
     restricted_regions?: Array<string> | null;
     s3_asset_bucket?: string | null;
     scim_allowed_ips?: Array<string> | null;
@@ -3192,6 +3564,9 @@ export type OrgSettings = {
     sso_servers_webhook?: string | null;
     storyblok_agents_enabled?: boolean | null;
     strong_auth?: boolean | null;
+    /**
+     * Token timeout in seconds.
+     */
     token_timeout_in?: number | null;
     track_statistics?: boolean | null;
     trigger_release_webhook_first?: boolean | null;

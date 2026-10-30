@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, GetTaxonomyData, GetTaxonomyErrors, GetTaxonomyResponses, GetTaxonomyTermData, GetTaxonomyTermErrors, GetTaxonomyTermResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses, ListTaxonomiesData, ListTaxonomiesErrors, ListTaxonomiesResponses } from './types.gen';
+import type { GetAssetData, GetAssetErrors, GetAssetResponses, GetDatasourceByIdData, GetDatasourceByIdErrors, GetDatasourceByIdResponses, GetLinkByUuIdData, GetLinkByUuIdErrors, GetLinkByUuIdResponses, GetSpaceData, GetSpaceErrors, GetSpaceResponses, GetStoryByIdData, GetStoryByIdErrors, GetStoryByIdResponses, GetTaxonomyData, GetTaxonomyErrors, GetTaxonomyResponses, GetTaxonomyTermData, GetTaxonomyTermErrors, GetTaxonomyTermResponses, ListCdnExperimentsV2Data, ListCdnExperimentsV2Errors, ListCdnExperimentsV2Responses, ListDatasourceEntriesData, ListDatasourceEntriesErrors, ListDatasourceEntriesResponses, ListDatasourcesData, ListDatasourcesErrors, ListDatasourcesResponses, ListLinksData, ListLinksErrors, ListLinksResponses, ListStoriesData, ListStoriesErrors, ListStoriesResponses, ListTagsData, ListTagsErrors, ListTagsResponses, ListTaxonomiesData, ListTaxonomiesErrors, ListTaxonomiesResponses, SearchCdnV2StrataIndexData, SearchCdnV2StrataIndexErrors, SearchCdnV2StrataIndexResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -19,9 +19,9 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
- * Retrieve asset
+ * Get Signed URL
  *
- * Retrieve asset details.
+ * Retrieves a signed URL to access a private asset.
  */
 export const getAsset = <ThrowOnError extends boolean = false>(options: Options<GetAssetData, ThrowOnError>): RequestResult<GetAssetResponses, GetAssetErrors, ThrowOnError> => (options.client ?? client).get<GetAssetResponses, GetAssetErrors, ThrowOnError>({
     security: [{
@@ -34,9 +34,9 @@ export const getAsset = <ThrowOnError extends boolean = false>(options: Options<
 });
 
 /**
- * List data source entries
+ * Retrieve Multiple Data Source Entries
  *
- * Retrieve all data source entries from the CDN with optional filtering parameters.
+ * Retrieve multiple datasource entries with filtering by data source and dimension.
  */
 export const listDatasourceEntries = <ThrowOnError extends boolean = false>(options?: Options<ListDatasourceEntriesData, ThrowOnError>): RequestResult<ListDatasourceEntriesResponses, ListDatasourceEntriesErrors, ThrowOnError> => (options?.client ?? client).get<ListDatasourceEntriesResponses, ListDatasourceEntriesErrors, ThrowOnError>({
     security: [{
@@ -49,9 +49,9 @@ export const listDatasourceEntries = <ThrowOnError extends boolean = false>(opti
 });
 
 /**
- * List data sources
+ * Retrieve Multiple Data Sources
  *
- * Retrieve all data sources from the CDN with optional filtering parameters.
+ * Retrieve all data sources from your Storyblok space with pagination support.
  */
 export const listDatasources = <ThrowOnError extends boolean = false>(options?: Options<ListDatasourcesData, ThrowOnError>): RequestResult<ListDatasourcesResponses, ListDatasourcesErrors, ThrowOnError> => (options?.client ?? client).get<ListDatasourcesResponses, ListDatasourcesErrors, ThrowOnError>({
     security: [{
@@ -64,9 +64,9 @@ export const listDatasources = <ThrowOnError extends boolean = false>(options?: 
 });
 
 /**
- * Retrieve a single datasource by Id, full_slug.
+ * Retrieve a Single Data Source
  *
- * Fetch a single datasource by full_slug, numeric ID, slug.
+ * Retrieve a single data source by `id`.
  */
 export const getDatasourceById = <ThrowOnError extends boolean = false>(options: Options<GetDatasourceByIdData, ThrowOnError>): RequestResult<GetDatasourceByIdResponses, GetDatasourceByIdErrors, ThrowOnError> => (options.client ?? client).get<GetDatasourceByIdResponses, GetDatasourceByIdErrors, ThrowOnError>({
     security: [{
@@ -79,9 +79,9 @@ export const getDatasourceById = <ThrowOnError extends boolean = false>(options:
 });
 
 /**
- * List running experiments
+ * Retrieve Running Experiments
  *
- * Retrieve all running experiments with their variants and associated stories (IDs and full slugs). Only experiments with status 'running' are returned. No pagination — the result set is expected to be small per space.
+ * Retrieve all running experiments from your Storyblok space.
  */
 export const listCdnExperimentsV2 = <ThrowOnError extends boolean = false>(options?: Options<ListCdnExperimentsV2Data, ThrowOnError>): RequestResult<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError> => (options?.client ?? client).get<ListCdnExperimentsV2Responses, ListCdnExperimentsV2Errors, ThrowOnError>({
     security: [{
@@ -94,9 +94,9 @@ export const listCdnExperimentsV2 = <ThrowOnError extends boolean = false>(optio
 });
 
 /**
- * List Links
+ * Retrieve Multiple Links
  *
- * Retrieve all links (story references) in the space.
+ * Retrieve a compact representation of stories and folders with optional filtering parameters.
  */
 export const listLinks = <ThrowOnError extends boolean = false>(options?: Options<ListLinksData, ThrowOnError>): RequestResult<ListLinksResponses, ListLinksErrors, ThrowOnError> => (options?.client ?? client).get<ListLinksResponses, ListLinksErrors, ThrowOnError>({
     security: [{
@@ -109,9 +109,9 @@ export const listLinks = <ThrowOnError extends boolean = false>(options?: Option
 });
 
 /**
- * Retrieve a single link by uuid.
+ * Retrieve a Single Link
  *
- * Fetch a single link by UUID.
+ * Retrieve a single link object by its UUID.
  */
 export const getLinkByUuId = <ThrowOnError extends boolean = false>(options: Options<GetLinkByUuIdData, ThrowOnError>): RequestResult<GetLinkByUuIdResponses, GetLinkByUuIdErrors, ThrowOnError> => (options.client ?? client).get<GetLinkByUuIdResponses, GetLinkByUuIdErrors, ThrowOnError>({
     security: [{
@@ -124,9 +124,9 @@ export const getLinkByUuId = <ThrowOnError extends boolean = false>(options: Opt
 });
 
 /**
- * Retrieve space
+ * Retrieve Current Space
  *
- * Retrieve space details including its ID, name, and domain.
+ * Retrieve information about the current Storyblok space including cache version, domain, and language configuration.
  */
 export const getSpace = <ThrowOnError extends boolean = false>(options?: Options<GetSpaceData, ThrowOnError>): RequestResult<GetSpaceResponses, GetSpaceErrors, ThrowOnError> => (options?.client ?? client).get<GetSpaceResponses, GetSpaceErrors, ThrowOnError>({
     security: [{
@@ -139,9 +139,9 @@ export const getSpace = <ThrowOnError extends boolean = false>(options?: Options
 });
 
 /**
- * Retrieve a single story by Id, UUID or full_slug.
+ * Retrieve a Single Story
  *
- * Fetch a single story by full_slug, numeric ID, or UUID, with optional resolution parameters.
+ * Retrieve a single story by full slug, ID, or UUID. Includes parameters for resolving links and relations.
  */
 export const getStoryById = <ThrowOnError extends boolean = false>(options: Options<GetStoryByIdData, ThrowOnError>): RequestResult<GetStoryByIdResponses, GetStoryByIdErrors, ThrowOnError> => (options.client ?? client).get<GetStoryByIdResponses, GetStoryByIdErrors, ThrowOnError>({
     security: [{
@@ -154,9 +154,9 @@ export const getStoryById = <ThrowOnError extends boolean = false>(options: Opti
 });
 
 /**
- * List all stories
+ * Retrieve Multiple Stories
  *
- * Retrieve all published stories from the CDN with optional filtering parameters.
+ * Retrieve multiple stories from Storyblok with filtering, pagination, sorting, and relation resolution options.
  */
 export const listStories = <ThrowOnError extends boolean = false>(options?: Options<ListStoriesData, ThrowOnError>): RequestResult<ListStoriesResponses, ListStoriesErrors, ThrowOnError> => (options?.client ?? client).get<ListStoriesResponses, ListStoriesErrors, ThrowOnError>({
     security: [{
@@ -169,9 +169,24 @@ export const listStories = <ThrowOnError extends boolean = false>(options?: Opti
 });
 
 /**
- * List tags
+ * Search
  *
- * Retrieve all tags from the CDN with optional filtering parameters.
+ * Retrieve stories by meaning through a natural-language query.
+ */
+export const searchCdnV2StrataIndex = <ThrowOnError extends boolean = false>(options?: Options<SearchCdnV2StrataIndexData, ThrowOnError>): RequestResult<SearchCdnV2StrataIndexResponses, SearchCdnV2StrataIndexErrors, ThrowOnError> => (options?.client ?? client).get<SearchCdnV2StrataIndexResponses, SearchCdnV2StrataIndexErrors, ThrowOnError>({
+    security: [{
+            in: 'query',
+            name: 'token',
+            type: 'apiKey'
+        }],
+    url: '/v2/cdn/strata/search',
+    ...options
+});
+
+/**
+ * Retrieve Multiple Tags
+ *
+ * Returns an array of tag objects used in a space. The response includes only tags assigned to at least one story.
  */
 export const listTags = <ThrowOnError extends boolean = false>(options?: Options<ListTagsData, ThrowOnError>): RequestResult<ListTagsResponses, ListTagsErrors, ThrowOnError> => (options?.client ?? client).get<ListTagsResponses, ListTagsErrors, ThrowOnError>({
     security: [{
@@ -184,9 +199,9 @@ export const listTags = <ThrowOnError extends boolean = false>(options?: Options
 });
 
 /**
- * List taxonomies
+ * Retrieve Multiple Taxonomies
  *
- * Retrieve the flat list of taxonomies (root terms) assigned to the space, without their descendant tree. Use show to retrieve one taxonomy's full tree.
+ * Retrieve all taxonomies in the space.
  */
 export const listTaxonomies = <ThrowOnError extends boolean = false>(options?: Options<ListTaxonomiesData, ThrowOnError>): RequestResult<ListTaxonomiesResponses, ListTaxonomiesErrors, ThrowOnError> => (options?.client ?? client).get<ListTaxonomiesResponses, ListTaxonomiesErrors, ThrowOnError>({
     security: [{
@@ -199,9 +214,9 @@ export const listTaxonomies = <ThrowOnError extends boolean = false>(options?: O
 });
 
 /**
- * Retrieve a taxonomy and its full descendant tree
+ * Retrieve a Single Taxonomy
  *
- * Retrieve a single taxonomy (root term) with its full descendant tree, by numeric ID or by name.
+ * Retrieve a single taxonomy by `name`.
  */
 export const getTaxonomy = <ThrowOnError extends boolean = false>(options: Options<GetTaxonomyData, ThrowOnError>): RequestResult<GetTaxonomyResponses, GetTaxonomyErrors, ThrowOnError> => (options.client ?? client).get<GetTaxonomyResponses, GetTaxonomyErrors, ThrowOnError>({
     security: [{
@@ -214,9 +229,9 @@ export const getTaxonomy = <ThrowOnError extends boolean = false>(options: Optio
 });
 
 /**
- * Retrieve a taxonomy term and its own descendant subtree
+ * Retrieve a Single Taxonomy Term
  *
- * Retrieve a single taxonomy term, root or nested, with only its own descendant subtree attached, no siblings or ancestors.
+ * Retrieve a single taxonomy term and its sub-terms.
  */
 export const getTaxonomyTerm = <ThrowOnError extends boolean = false>(options: Options<GetTaxonomyTermData, ThrowOnError>): RequestResult<GetTaxonomyTermResponses, GetTaxonomyTermErrors, ThrowOnError> => (options.client ?? client).get<GetTaxonomyTermResponses, GetTaxonomyTermErrors, ThrowOnError>({
     security: [{

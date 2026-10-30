@@ -1,13 +1,14 @@
 pnpm-lock.yaml
 
-# Committed OpenAPI codegen output. Ignored for the same reason every
-# `oxlint.config.ts` ignores it: the generators own these files, and formatting
-# them would drift on the next regeneration.
+# OpenAPI codegen output. Ignored for the same reason every `oxlint.config.ts`
+# ignores it: the generators own these files.
 **/src/generated/
 
-# Vendored OpenAPI specs, mirrored from storyblok/openapi-wdx and pinned by
-# spec.lock. Reformatting them would diverge from upstream and be undone by the
-# next `pnpm --filter @storyblok/openapi-codegen pull`.
+# Upstream OpenAPI specs, copied byte for byte and hashed against spec.lock.
+tools/openapi-codegen/upstream/
+
+# Overlay OpenAPI specs read by the codegen tool. Kept in the layout the
+# generator expects, so reformatting them only churns the review diff.
 tools/openapi-codegen/specs/
 
 # Tool-generated output. Mirrors the root oxlint.config.ts ignorePatterns: some

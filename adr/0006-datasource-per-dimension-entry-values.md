@@ -37,8 +37,8 @@ falls through to the warn-and-skip path.
 
 **Forward `dimension_id` from the mapi-client wrapper instead of patching the spec.** The MAPI
 update endpoint reads `params[:dimension_id]` to write a dimension child row, but
-`storyblok/openapi-wdx` does not model that query parameter, so the generated `UpdateData['query']`
-is `never`. The generated sdk forwards `query` verbatim at runtime, so the hand-written
+`storyblok/openapi` does not model that query parameter, so the generated `UpdateData['query']` is
+`never`. The generated sdk forwards `query` verbatim at runtime, so the hand-written
 `datasourceEntries.update` wrapper exposes `query.dimension_id` and passes it through with a
 localized cast. This keeps the fix within the monorepo, with no cross-repo spec change or
 `spec.lock` bump.
@@ -57,7 +57,7 @@ localized cast. This keeps the fix within the monorepo, with no cross-repo spec 
   `dimensions_attributes` diffing. Values for a code with no matching target dimension are skipped
   with a warning.
 - The wrapper cast is a deliberate, documented divergence from the generated types. Modeling
-  `dimension_id` upstream in `openapi-wdx` and regenerating would remove the cast; that is a
+  `dimension_id` upstream in `storyblok/openapi` and regenerating would remove the cast; that is a
   follow-up, not a prerequisite.
 
 Links: DX-466, GitHub #656.

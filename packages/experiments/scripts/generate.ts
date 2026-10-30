@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types --no-warnings=ExperimentalWarning
 /**
  * Generates `@storyblok/experiments`'s typed public surface from the pinned
- * OpenAPI cache. The tool resolves transitive deps, applies aliases, slices
+ * OpenAPI specs. The tool resolves transitive deps, applies aliases, slices
  * unused types, and writes the result into `src/generated/`.
  *
  * Re-run after `pnpm --filter @storyblok/openapi-codegen pull[:update]`.

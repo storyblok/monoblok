@@ -83,12 +83,14 @@
       },
       "build": {
         "dependsOn": [
-          "^build"
+          "^build",
+          "generate:openapi"
         ]
       },
       "test": {
         "dependsOn": [
-          "build"
+          "build",
+          "generate:openapi"
         ]
       }
     }

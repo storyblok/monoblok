@@ -55,20 +55,16 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 
 ## OpenAPI codegen
 
-`tools/openapi-codegen/` owns OpenAPI spec fetching, the committed overlay specs in
-`tools/openapi-codegen/specs/`, and the shared generator. Consumer packages commit their
-`src/generated/` output so external contributors can build without spec access and so type-relevant
-spec changes surface as reviewable diffs. The commit-generated-code rule applies to OpenAPI codegen
-output specifically, not all generated code in the repo! Read `tools/openapi-codegen/README.md` when
-working with OpenAPI specs.
+`tools/openapi-codegen/` owns the committed upstream specs in `tools/openapi-codegen/upstream/`, our
+overlay specs in `tools/openapi-codegen/specs/`, and the shared generator. Each consumer's
+`src/generated/` is git-ignored output of its `generate:openapi` target, which `build`, `test`,
+`test:types`, and `lint` depend on. Read `tools/openapi-codegen/README.md` when working with OpenAPI
+specs.
 
-- **IMPORTANT:** After changing anything under `tools/openapi-codegen/`, including the committed
-  specs in `specs/`, regenerate **every** consumer with `pnpm nx run-many -t generate:openapi` and
-  commit the resulting `packages/*/src/generated/` diff. Never regenerate only the package you are
-  working on: the consumers export the same public types, so a partial regeneration makes them
-  disagree, and nothing in CI catches it.
-- Editing `specs/` does not move `spec.lock`, so there is no lock diff to hint that regeneration is
-  due.
+- **IMPORTANT:** Never edit `upstream/` by hand; `generate` rejects specs that don't match
+  `spec.lock`. Correct upstream gaps in `src/patches.ts`, or add missing schemas to `specs/`.
+- Run `pnpm nx run-many -t generate:openapi` after changing the specs or the generator if your
+  editor shows stale types. Nx only regenerates when a task that depends on it runs.
 
 ## Architecture Decision Records
 

@@ -1,29 +1,24 @@
 /**
- * Shared helpers for spec.lock and cache content hashing.
+ * Shared helpers for spec.lock and upstream spec hashing.
  *
- * spec.lock pins the upstream commit and the resulting cache contents:
+ * spec.lock records a hash of the downloaded `upstream/` contents:
  *
  *   {
- *     "repo": "storyblok/openapi-wdx",
- *     "sha":  "<upstream commit SHA>",
- *     "hash": "sha256:<hex of cache contents>"
+ *     "hash": "sha256:<hex of upstream/ contents>"
  *   }
  *
- * The hash protects against partial fetches and hand edits — `verify` fails
- * if the cache on disk doesn't match what spec.lock claims.
+ * The hash protects against hand edits: `generate` fails when `upstream/`
+ * doesn't match it. Correct upstream gaps in `patches.ts` instead.
  */
 
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { relative, resolve } from "pathe";
-import { CACHE_DIR, LOCK_PATH } from "./paths.ts";
+import { LOCK_PATH, UPSTREAM_DIR } from "./paths.ts";
 
-export { CACHE_DIR, LOCK_PATH, TOOL_ROOT } from "./paths.ts";
-export const UPSTREAM_REPO = "storyblok/openapi-wdx";
+export { LOCK_PATH, TOOL_ROOT, UPSTREAM_DIR } from "./paths.ts";
 
 export interface SpecLock {
-  repo: string;
-  sha: string;
   hash: string;
 }
 
@@ -39,12 +34,12 @@ export function writeLock(lock: SpecLock): void {
 }
 
 /**
- * Walks `.openapi-cache/` and returns `sha256:<hex>` of the sorted
+ * Walks `upstream/` and returns `sha256:<hex>` of the sorted
  * (relativePath, content) pairs. Independent of filesystem order.
  */
-export function hashCache(): string {
-  if (!existsSync(CACHE_DIR)) {
-    throw new Error(`Cache directory not found: ${CACHE_DIR}`);
+export function hashUpstream(): string {
+  if (!existsSync(UPSTREAM_DIR)) {
+    throw new Error(`Upstream spec directory not found: ${UPSTREAM_DIR}`);
   }
 
   const files: string[] = [];
@@ -58,12 +53,12 @@ export function hashCache(): string {
       }
     }
   }
-  walk(CACHE_DIR);
+  walk(UPSTREAM_DIR);
   files.sort();
 
   const hash = createHash("sha256");
   for (const file of files) {
-    hash.update(relative(CACHE_DIR, file));
+    hash.update(relative(UPSTREAM_DIR, file));
     hash.update("\0");
     hash.update(readFileSync(file));
     hash.update("\0");

@@ -1,0 +1,2 @@
+# Hashed against spec.lock byte for byte, so line endings must not change on checkout.
+tools/openapi-codegen/upstream/** -text

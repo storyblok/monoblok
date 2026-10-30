@@ -1,21 +1,21 @@
 /**
- * Internal codegen tool. Drives `@hey-api/openapi-ts` against the spec cache,
+ * Internal codegen tool. Drives `@hey-api/openapi-ts` against the upstream specs,
  * applies aliases + slicing + envelope-strips via an AST post-processor, then
  * stamps wrapper-type templates (`Block<T>`, `Story<T>`, `BlockContent<T>`)
  * into each consumer's `src/generated/`.
  *
  * Public API: `generate({ outDir, include, sdk, verbose })`. Upstream type
- * names never appear in committed output; each consumer commits only the
- * aliased `types.gen.ts` plus the wrapper templates it needs.
+ * names never appear in the output; each consumer gets only the aliased
+ * `types.gen.ts` plus the wrapper templates it needs.
  */
 
 import { createClient } from "@hey-api/openapi-ts";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "pathe";
 import { ALIAS_BY_EMIT_NAME, ALIASES, type SpecSource } from "./aliases.ts";
 import type { KnownType } from "./known-types.ts";
-import { hashCache, readLock } from "./lock.ts";
+import { hashUpstream, readLock } from "./lock.ts";
 import { SPEC_PATHS, TEMPLATES_DIR } from "./paths.ts";
 import { SPEC_PARSERS } from "./patches.ts";
 import { templateFor, TEMPLATES, type WrapperFile } from "./templates.ts";
@@ -38,29 +38,18 @@ export interface GenerateConfig {
 }
 
 export async function generate(config: GenerateConfig): Promise<void> {
-  const cacheMissing = !existsSync(SPEC_PATHS.capi) || !existsSync(SPEC_PATHS.mapi);
-  if (cacheMissing) {
-    throw new Error(
-      `OpenAPI cache missing. Run \`pnpm --filter @storyblok/openapi-codegen pull\` first.`,
-    );
-  }
-  // Guard against a stale cache silently producing output that diverges from
-  // the pinned spec. `existsSync` alone can't catch a cache left over from a
-  // different SHA, so verify the content hash against spec.lock here — this
-  // covers every caller (nx, `pnpm … generate`, direct `tsx`), not just nx.
+  // `upstream/` is committed, so a mismatch means someone edited a spec by hand.
   const lock = readLock();
   if (!lock) {
-    throw new Error(
-      `spec.lock not found. Run \`pnpm --filter @storyblok/openapi-codegen pull\` first.`,
-    );
+    throw new Error(`spec.lock not found. Run \`pnpm --filter @storyblok/openapi-codegen pull\`.`);
   }
-  const cacheHash = hashCache();
-  if (cacheHash !== lock.hash) {
+  const upstreamHash = hashUpstream();
+  if (upstreamHash !== lock.hash) {
     throw new Error(
-      `OpenAPI cache is out of sync with spec.lock.\n` +
+      `The specs in upstream/ do not match spec.lock.\n` +
         `  expected (spec.lock): ${lock.hash}\n` +
-        `  computed:             ${cacheHash}\n` +
-        `Run \`pnpm --filter @storyblok/openapi-codegen pull\` to resync the cache.`,
+        `  computed:             ${upstreamHash}\n` +
+        `Revert hand edits and correct upstream gaps in patches.ts instead.`,
     );
   }
   const { wrappers, publicPerSpec, leafPerSpec, leafLocation } = resolveInclude(config.include);

@@ -75,7 +75,8 @@
       },
       "build": {
         "dependsOn": [
-          "^build"
+          "^build",
+          "generate:openapi"
         ],
         "outputs": [
           "{projectRoot}/dist/**"

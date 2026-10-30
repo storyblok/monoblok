@@ -24,152 +24,46 @@
 
 This monorepo contains the following official Storyblok SDKs and integrations:
 
-### Core SDKs
+### Core SDKs and API clients
 
-| Package                                            | Description                                                       | Version                                                                                                                                     | Downloads                                                                                                                                    |
-| -------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| [@storyblok/js](packages/js)                       | Core JavaScript SDK for Storyblok                                 | [![](https://img.shields.io/npm/v/@storyblok/js?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/js)                       | [![](https://img.shields.io/npm/dm/@storyblok/js?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/js)                       |
-| [storyblok-js-client](packages/js-client)          | JavaScript client for Storyblok's Content Delivery API            | [![](https://img.shields.io/npm/v/storyblok-js-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok-js-client)           | [![](https://img.shields.io/npm/dm/storyblok-js-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok-js-client)           |
-| [storyblok-cli](packages/cli)                      | A powerful CLI tool to improve the DX of your Storyblok projects. | [![](https://img.shields.io/npm/v/storyblok?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok)                               | [![](https://img.shields.io/npm/dm/storyblok?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok)                               |
-| [@storyblok/region-helper](packages/region-helper) | A helper package to handle Storyblok APIs in different regions.   | [![](https://img.shields.io/npm/v/@storyblok/region-helper?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/region-helper) | [![](https://img.shields.io/npm/dm/@storyblok/region-helper?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/region-helper) |
+| Package                                                  | Description                                      | Version                                                                                                                                                     | Downloads                                                                                                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [@storyblok/js](packages/js)                             | Core JavaScript SDK                              | [![](https://img.shields.io/npm/v/@storyblok/js?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/js)                                       | [![](https://img.shields.io/npm/dm/@storyblok/js?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/js)                                       |
+| [@storyblok/api-client](packages/capi-client)            | Content Delivery API client                      | [![](https://img.shields.io/npm/v/@storyblok/api-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/api-client)                       | [![](https://img.shields.io/npm/dm/@storyblok/api-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/api-client)                       |
+| [@storyblok/management-api-client](packages/mapi-client) | Management API client                            | [![](https://img.shields.io/npm/v/@storyblok/management-api-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/management-api-client) | [![](https://img.shields.io/npm/dm/@storyblok/management-api-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/management-api-client) |
+| [storyblok-js-client](packages/js-client)                | Universal JavaScript client for Storyblok's APIs | [![](https://img.shields.io/npm/v/storyblok-js-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok-js-client)                           | [![](https://img.shields.io/npm/dm/storyblok-js-client?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok-js-client)                           |
+| [storyblok](packages/cli)                                | Storyblok CLI                                    | [![](https://img.shields.io/npm/v/storyblok?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok)                                               | [![](https://img.shields.io/npm/dm/storyblok?color=8d60ff&label=%20)](https://www.npmjs.com/package/storyblok)                                               |
+| [@storyblok/schema](packages/schema)                     | Schema types and helpers                         | [![](https://img.shields.io/npm/v/@storyblok/schema?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/schema)                               | [![](https://img.shields.io/npm/dm/@storyblok/schema?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/schema)                               |
+| [@storyblok/migrations](packages/migrations)             | Migration utilities                              | [![](https://img.shields.io/npm/v/@storyblok/migrations?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/migrations)                       | [![](https://img.shields.io/npm/dm/@storyblok/migrations?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/migrations)                       |
+| [@storyblok/region-helper](packages/region-helper)       | Helpers for Storyblok API regions                | [![](https://img.shields.io/npm/v/@storyblok/region-helper?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/region-helper)                 | [![](https://img.shields.io/npm/dm/@storyblok/region-helper?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/region-helper)                 |
 
-### Framework Integrations
+### Framework integrations
 
-| Package                              | Description              | Version                                                                                                                       | Downloads                                                                                                                      |
-| ------------------------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| [@storyblok/react](packages/react)   | React SDK for Storyblok  | [![](https://img.shields.io/npm/v/@storyblok/react?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/react)   | [![](https://img.shields.io/npm/dm/@storyblok/react?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/react)   |
-| [@storyblok/vue](packages/vue)       | Vue SDK for Storyblok    | [![](https://img.shields.io/npm/v/@storyblok/vue?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/vue)       | [![](https://img.shields.io/npm/dm/@storyblok/vue?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/vue)       |
-| [@storyblok/nuxt](packages/nuxt)     | Nuxt SDK for Storyblok   | [![](https://img.shields.io/npm/v/@storyblok/nuxt?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/nuxt)     | [![](https://img.shields.io/npm/dm/@storyblok/nuxt?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/nuxt)     |
-| [@storyblok/svelte](packages/svelte) | Svelte SDK for Storyblok | [![](https://img.shields.io/npm/v/@storyblok/svelte?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/svelte) | [![](https://img.shields.io/npm/dm/@storyblok/svelte?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/svelte) |
-| [@storyblok/astro](packages/astro)   | Astro SDK for Storyblok  | [![](https://img.shields.io/npm/v/@storyblok/astro?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/astro)   | [![](https://img.shields.io/npm/dm/@storyblok/astro?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/astro)   |
+| Package                                | Description         | Version                                                                                                                         | Downloads                                                                                                                        |
+| -------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [@storyblok/react](packages/react)     | React SDK           | [![](https://img.shields.io/npm/v/@storyblok/react?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/react)     | [![](https://img.shields.io/npm/dm/@storyblok/react?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/react)     |
+| [@storyblok/vue](packages/vue)         | Vue SDK             | [![](https://img.shields.io/npm/v/@storyblok/vue?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/vue)         | [![](https://img.shields.io/npm/dm/@storyblok/vue?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/vue)         |
+| [@storyblok/nuxt](packages/nuxt)       | Nuxt module         | [![](https://img.shields.io/npm/v/@storyblok/nuxt?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/nuxt)       | [![](https://img.shields.io/npm/dm/@storyblok/nuxt?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/nuxt)       |
+| [@storyblok/svelte](packages/svelte)   | Svelte SDK          | [![](https://img.shields.io/npm/v/@storyblok/svelte?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/svelte)   | [![](https://img.shields.io/npm/dm/@storyblok/svelte?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/svelte)   |
+| [@storyblok/astro](packages/astro)     | Astro integration   | [![](https://img.shields.io/npm/v/@storyblok/astro?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/astro)     | [![](https://img.shields.io/npm/dm/@storyblok/astro?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/astro)     |
+| [@storyblok/angular](packages/angular) | Angular integration | [![](https://img.shields.io/npm/v/@storyblok/angular?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/angular) | [![](https://img.shields.io/npm/dm/@storyblok/angular?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/angular) |
 
 ### Utilities
 
-| Package                                  | Description                      | Version                                                                                                                           | Downloads                                                                                                                          |
-| ---------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [@storyblok/richtext](packages/richtext) | Rich Text Renderer for Storyblok | [![](https://img.shields.io/npm/v/@storyblok/richtext?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/richtext) | [![](https://img.shields.io/npm/dm/@storyblok/richtext?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/richtext) |
+| Package                                                            | Description                                   | Version                                                                                                                                                     | Downloads                                                                                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [@storyblok/richtext](packages/richtext)                           | Rich text renderer                            | [![](https://img.shields.io/npm/v/@storyblok/richtext?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/richtext)                           | [![](https://img.shields.io/npm/dm/@storyblok/richtext?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/richtext)                           |
+| [@storyblok/live-preview](packages/live-preview)                   | Live preview integration                      | [![](https://img.shields.io/npm/v/@storyblok/live-preview?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/live-preview)                   | [![](https://img.shields.io/npm/dm/@storyblok/live-preview?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/live-preview)                   |
+| [@storyblok/experiments](packages/experiments)                     | A/B testing utilities for the experiments API | [![](https://img.shields.io/npm/v/@storyblok/experiments?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/experiments)                     | [![](https://img.shields.io/npm/dm/@storyblok/experiments?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/experiments)                     |
+| [@storyblok/accessibility-checker](packages/accessibility-checker) | Accessibility checks for the Visual Editor    | [![](https://img.shields.io/npm/v/@storyblok/accessibility-checker?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/accessibility-checker) | [![](https://img.shields.io/npm/dm/@storyblok/accessibility-checker?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/accessibility-checker) |
+| [@storyblok/lint-config](packages/lint-config)                     | Shared Oxlint configuration                   | [![](https://img.shields.io/npm/v/@storyblok/lint-config?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/lint-config)                     | [![](https://img.shields.io/npm/dm/@storyblok/lint-config?color=8d60ff&label=%20)](https://www.npmjs.com/package/@storyblok/lint-config)                     |
 
-## 🚧 Migration Status
+## 🛠️ Contributing
 
-This repository represents an ongoing migration from a polyrepo structure to a unified monorepo.
-While we're actively working on this transition, please note:
-
-- All new development should be done in this repository
-- Existing packages are being migrated gradually
-- Some packages may still be in their original repositories during the transition
-- We're working to ensure a smooth migration with minimal disruption
-
-## 🛠️ Development
-
-### Prerequisites
-
-- Node.js (v18 or later)
-- pnpm (v10 or later)
-- Git
-
-### Setup
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/storyblok/monoblok.git
-   cd monoblok
-   ```
-
-2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-
-### Package management
-
-This repository uses pnpm workspaces (configured in the root `package.json`) for dependency
-management.
-
-```bash
-# Install dependencies
-pnpm install
-
-# Add a dependency to a specific package
-pnpm add <package> --filter @storyblok/react
-
-# Run a script in a specific package
-pnpm --filter @storyblok/react <script>
-```
-
-### Tooling
-
-Packages share a unified toolchain via [Vite+](https://viteplus.dev) (`vp` CLI):
-
-- `vp pack` / `vp build` for bundling (tsdown / Vite under the hood)
-- `vp test` for testing (Vitest)
-- `vp lint` for linting (Oxlint via `@storyblok/lint-config`)
-- `vp fmt` for formatting (Oxfmt)
-
-Framework-specific builders (Angular CLI, Nuxt module builder, svelte-package, Redocly) are kept
-where Vite+ doesn't apply.
-
-Every package exposes the same canonical script names. See [`AGENTS.md`](./AGENTS.md) for the full
-table.
-
-### Common commands
-
-NX orchestrates tasks across the monorepo with caching and affected-only execution:
-
-```bash
-# Build all packages
-pnpm nx run-many --target=build
-
-# Build a specific package
-pnpm nx build @storyblok/react
-
-# Run all tests (or affected only)
-pnpm test
-pnpm nx affected --target=test
-
-# Lint, format, type-check the whole repo
-pnpm lint
-pnpm format
-pnpm test:types
-
-# Watch-build a single package while developing
-pnpm --filter @storyblok/react dev
-
-# Re-run a package's tests on change
-pnpm --filter @storyblok/migrations test:watch
-
-# Show the dependency graph
-pnpm nx graph
-```
-
-For more advanced NX usage:
-
-- [NX Documentation](https://nx.dev/docs)
-- [NX Cache](https://nx.dev/concepts/how-caching-works)
-- [NX Affected](https://nx.dev/concepts/affected)
-- [NX Project Configuration](https://nx.dev/concepts/project-configuration)
-
-### Repository administration
-
-For repository administrators, the internal `monoblok` CLI helps manage the monorepo (license
-checks, migration helpers, etc.). See [`tools/monoblok`](tools/monoblok) for details.
-
-## 📄 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
-
-- Code style and standards
-- Pull request process
-- Development workflow
-- Testing requirements
+See the [Contributing Guide](CONTRIBUTING.md) for setup, commands, and commit conventions, and
+[RELEASING.md](RELEASING.md) for the release process. The internal `monoblok` CLI in
+[`tools/monoblok`](tools/monoblok) helps administer the repository.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🔗 Links
-
-- [Storyblok Documentation](https://www.storyblok.com/docs)
-- [Storyblok Website](https://www.storyblok.com)
-- [Storyblok Status](https://status.storyblok.com)
-- [Storyblok GitHub Organization](https://github.com/storyblok)
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

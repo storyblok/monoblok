@@ -7,9 +7,8 @@ description:
 
 # QA Engineer for Manual Testing
 
-Use this skill when the user requests manual testing of features. We try to have good unit test
-coverage too, so focus on testing features that are heavily dependent on the usage and behavior of
-the Storyblok API.
+Focus on behavior that depends on the real Storyblok API; logic is already covered by automated
+tests.
 
 - Create and execute plans for manually testing and validating the requested feature.
 - Seed Storyblok QA spaces with reproducible test scenarios.
@@ -21,14 +20,14 @@ the Storyblok API.
 
 1. Run `pnpm nx build PACKAGE_NAME` to build the latest version of the package(s).
 2. Create a comprehensive test plan based on the assignment.
-   - Focus on what's best tested manually, not on what is already well covered by unit tests.
+   - Focus on what's best tested manually, not on what automated tests already cover.
    - Test all happy paths.
    - Test error scenarios.
    - Consider possible edge cases.
 3. If the feature holds state, keeps working after it has responded, or ships to more than one
-   runtime, load [Runtime and lifetime checks](./runtime-checklist.md).
+   runtime, load `runtime-checklist.md`.
 4. If the feature renders Storyblok content that an editor can change while the page is open, or
-   registers the Storyblok Bridge, load [Visual Editor checks](./visual-editor-checklist.md).
+   registers the Storyblok Bridge, load `visual-editor-checklist.md`.
 
 ## Seeding
 
@@ -39,17 +38,10 @@ You seed Storyblok QA spaces with predefined test scenarios. Packages might defi
   unless you pass `--no-clean`, so re-seeding deletes whatever the previous seed created. If data
   you seeded earlier looks like it vanished, suspect a later re-seed or a failed push, not the space
   resetting itself.
-- **Trust the seed's exit status, not just its log.** The seed now verifies each staged resource
-  actually landed remotely and exits non-zero with a `Verification FAILED` message when a push
-  reports success but creates nothing, so check the exit status.
-- **A green seed proves the API accepted your JSON, not that the JSON is shaped like something the
-  editor would produce.** The Management API checks a component schema field's `type` against a
-  closed list and 422s on an unknown one, but everything past that is an opaque blob: the rest of
-  the schema always, and story content unless the space enables field constraints. Seeding a fixture
-  and reading it back is circular, because you authored the input, so it can never validate a shape.
-  It is still a useful fixed-point check, and whatever the API enforces it can prove: a bogus `type`
-  returns a 422 listing the permitted values, and normalization and server-set defaults show up the
-  same way.
+- **Trust the seed's exit status, not just its log.** The seed verifies each staged resource landed
+  remotely and exits non-zero with `Verification FAILED` when a push reports success but creates
+  nothing.
+- **A green seed proves storage, not shape.** See the Management API rule in the root `AGENTS.md`.
 
 ### Grounding a shape
 
@@ -72,19 +64,13 @@ spaces hold keys the editor no longer offers.
 
 ### Prerequisites
 
-- Storyblok CLI built: `pnpm nx build storyblok`
-- `.env.qa-engineer-manual` file in repo root with `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID`
-
-> [!NOTE] The seed resolves the CLI and the `.storyblok` staging directory from
-> `git rev-parse --show-toplevel`, i.e. the repo of your current working directory. To exercise
-> changes in a worktree, build the CLI in that worktree and run the seed from inside it; otherwise
-> it falls back to the main checkout's `dist`.
-
-```bash
-# .env.qa-engineer-manual
-STORYBLOK_TOKEN=your_personal_access_token
-STORYBLOK_SPACE_ID=your_space_id
-```
+- Run all scripts from the repo root: they read `./.env.qa-engineer-manual` and `cleanup-local.sh`
+  deletes `./.storyblok/` relative to the working directory.
+- `.env.qa-engineer-manual` in the repo root, created from `.env.qa-engineer-manual.template`.
+  `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID` are required.
+- Storyblok CLI built: `pnpm nx build storyblok`. The seed runs `packages/cli/dist/index.mjs` and
+  stages into `.storyblok/` under `git rev-parse --show-toplevel`, so in a worktree it uses that
+  worktree's build and fails if it is not built.
 
 `seed-scenario.sh` logs the CLI in for you. When you drive the CLI **directly** (e.g. running
 `schema init`/`push` against the space without seeding), log in first with the same token — the CLI
@@ -111,9 +97,8 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
   --scenario has-stories
 ```
 
-Seeding wipes the space first, then pushes the scenario data (pass `--no-clean` to prevent wiping).
-The space is read from `STORYBLOK_SPACE_ID` in the environment (loaded from
-`.env.qa-engineer-manual`). You can override it with `--space <id>`.
+The space defaults to `STORYBLOK_SPACE_ID`. `--space` accepts an ID or the name of an env var from
+`.env.qa-engineer-manual` (e.g. `--space STORYBLOK_SPACE_ID_TARGET`).
 
 Packages might define their own scenarios in `./packages/PACKAGE_NAME/test/scenarios`. You can find
 additional information about these scenarios in
@@ -146,8 +131,7 @@ Flags: `--skip-components`, `--skip-datasources`, `--skip-assets`, `--skip-stori
 
 ### Seed without cleaning (`--no-clean`)
 
-By default, seeding wipes the space first. Use `--no-clean` to push additively — useful for layering
-multiple scenarios or adding data to an existing space.
+Use `--no-clean` to push additively, e.g. to layer multiple scenarios.
 
 ```bash
 bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
@@ -164,9 +148,8 @@ bash .agents/skills/qa-engineer-manual/scripts/seed-scenario.sh \
 bash .agents/skills/qa-engineer-manual/scripts/cleanup-remote.sh
 ```
 
-Deletes all stories, components (except the default `page` component), assets, asset folders, and
-internal tags in the space. Uses `STORYBLOK_SPACE_ID` from env by default (override with
-`--space <id>`). This runs automatically before every seed, but can also be used standalone.
+Deletes all stories, components (except `page`), component folders, assets, asset folders, internal
+tags, and datasources in the space.
 
 ### Shared asset libraries
 
@@ -231,8 +214,8 @@ seeded in the QA space. Running tests in parallel causes race conditions where o
 space while another is mid-flight, leading to false failures. Execute each test group fully before
 moving to the next.
 
-- Clean up local artifacts with `./scripts/cleanup-local.sh`. Don't hesitate to clean up between
-  tests to start with a clean slate.
+- Clean up local artifacts with `cleanup-local.sh`. Don't hesitate to clean up between tests to
+  start with a clean slate.
 - Place test scripts in `./.claude/tmp/`. Import from the built package:
   `../../packages/PACKAGE_NAME/dist/index.mjs`.
 - Export env vars before running:
@@ -244,24 +227,22 @@ moving to the next.
 
 ## Helper scripts
 
-These scripts provide inspection and cleanup during manual tests. Each script loads
-`.env.qa-engineer-manual` automatically. Paths are relative to this `SKILL.md`.
+Scripts live in `.agents/skills/qa-engineer-manual/scripts/`; run them from the repo root. Scripts
+that call the API load `.env.qa-engineer-manual` themselves.
 
-| Script                                 | Purpose                                                                                                                                                                                                                                                                                           |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `./scripts/cleanup-local.sh`           | Deletes local QA artifacts in `.storyblok/`.                                                                                                                                                                                                                                                      |
-| `./scripts/cleanup-remote.sh`          | Deletes all stories, components (except `page`), assets, asset folders, and internal tags in the space. Accepts `--space <id>`. Add `--shared --library <id>` to instead delete all shared resources in the given org library's folder tree, never the root (see "Shared asset libraries" below). |
-| `./scripts/list.sh`                    | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. For org libraries: `--resource shared-assets\|shared-tags --library <id>` or `--resource shared-folders`.                                                              |
-| `./scripts/save-storyblok-session.mjs` | Opens a headed browser so you can log in to app.storyblok.com once; saves the session to `.storyblok-qa/session.json` for Playwright harnesses and one-off scripts to reuse. Run with `node`, no env needed. Never reads or stores a credential.                                                  |
-| `./scripts/configure-space.sh`         | Reads a space's Visual Editor preview domain, and sets it with `--domain <https-url> --confirm`. Read-only without `--confirm`; refuses non-https domains. Accepts `--space <id>`.                                                                                                                |
-| `./scripts/generate-story.sh`          | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`.                                                                                                                                     |
-| `./scripts/generate-asset.sh`          | Writes an asset sidecar JSON to stdout. Use `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path.                                                                                                             |
+| Script                       | Purpose                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cleanup-local.sh`           | Deletes local QA artifacts in `.storyblok/`.                                                                                                                                                                                                                                                                                |
+| `cleanup-remote.sh`          | Deletes all stories, components (except `page`), component folders, assets, asset folders, internal tags, and datasources in the space. Accepts `--space <id>`. Add `--shared --library <id>` to instead delete all shared resources in the given org library's folder tree, never the root (see "Shared asset libraries"). |
+| `list.sh`                    | Lists resources in the QA space. Pass `--resource stories\|assets\|components\|datasources` and optionally `--space <id>`. For org libraries: `--resource shared-assets\|shared-tags --library <id>` or `--resource shared-folders`.                                                                                        |
+| `save-storyblok-session.mjs` | Opens a headed browser so you can log in to app.storyblok.com once; saves the session to `.storyblok-qa/session.json` for Playwright harnesses and one-off scripts to reuse. Run with `node`, no env needed. Never reads or stores a credential.                                                                            |
+| `configure-space.sh`         | Reads a space's Visual Editor preview domain, and sets it with `--domain <https-url> --confirm`. Read-only without `--confirm`; refuses non-https domains. Accepts `--space <id>`.                                                                                                                                          |
+| `generate-story.sh`          | Writes a story JSON to stdout. All fields optional — use flags to override `--slug`, `--full-slug`, `--name`, `--component`, `--parent-id`, `--is-folder`, `--id`, `--uuid`.                                                                                                                                                |
+| `generate-asset.sh`          | Writes an asset sidecar JSON to stdout. Use `--id`, `--filename`, `--alt`, `--title`, `--is-private`, `--folder-id`. Pass `--copy-png <path>` to also copy the template PNG to a target path.                                                                                                                               |
 
 ## Troubleshooting
 
-- Load the `STORYBLOK_SPACE_ID`, `STORYBLOK_SPACE_ID_TARGET`, `STORYBLOK_ASSET_TOKEN`,
-  `STORYBLOK_ASSET_TOKEN_TARGET`, `STORYBLOK_TOKEN`, `STORYBLOK_PREVIEW_TOKEN`, and
-  `STORYBLOK_PREVIEW_TOKEN_TARGET` environment variables by running
+- Load the variables listed in `.env.qa-engineer-manual.template` with
   `source ./.env.qa-engineer-manual` (do not attempt to read this file).
 - When running `.mjs` test files, env vars must be **exported**
   (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to
@@ -276,9 +257,6 @@ These scripts provide inspection and cleanup during manual tests. Each script lo
   ```
 - **Assets list does NOT support `sort_by`** — passing `sort_by: 'id:asc'` returns HTTP 422 and
   `data: undefined`.
-- **Story `content.body` is not always an array** — `body` can be a string or other type depending
-  on the component schema. Never spread it directly (e.g., `...content.body`). Use
-  `Array.isArray(content.body)` or walk content recursively to find nested blocks.
 
 **CLI:**
 

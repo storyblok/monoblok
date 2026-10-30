@@ -21,12 +21,11 @@ integration tests. Integration coverage is required for every behavior change.
 - Keep the test subject pure: avoid filesystem and network interactions, and use plain inputs and
   outputs.
 - Prefer `describe` and focused `it` cases that each validate one behavior.
-- Test titles must always start with `should`.
 
 ## Patterns to follow
 
-- **Setup:** Create minimal fixtures with helpers (e.g., `makeMockEntity`, `makeSchema`,
-  `makeMaps`).
+- **Setup:** Create minimal fixtures with small `make*` helpers (e.g. `makeMockAsset` in
+  `packages/cli/src/commands/assets/__tests__/helpers.ts`).
 - **Action:** Call the function under test directly with explicit inputs.
 - **Assertions:** Verify each output field or side effect with `expect(...).toBe(...)` or
   `toEqual(...)`.
@@ -37,7 +36,8 @@ Example shape (simplified):
 ```ts
 import { describe, expect, it } from "vitest";
 import { transformEntity } from "./transform-entity";
-import { makeMockEntity } from "./__tests__/helpers";
+
+const makeMockEntity = () => ({ id: "old-id", component: "entity" });
 
 describe("transformEntity", () => {
   it("should map identifiers from the map", () => {

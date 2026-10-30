@@ -1,4 +1,4 @@
-import type { Component } from "svelte";
+import type { Component, ComponentProps } from "svelte";
 import RawStoryblokBlock from "./components/StoryblokBlock.svelte";
 import type {
   DefineStoryblokBlocksOptions,
@@ -62,33 +62,36 @@ export function defineStoryblokBlocks<TExtraProps extends object = {}>(
   let resolved: DefineStoryblokBlocksOptions | undefined;
   const getComponents = () => (resolved ??= factory()).components ?? {};
   const getFallback = () => (resolved ??= factory()).fallback;
+  // Block types already warned about, so the Visual Editor's frequent
+  // re-renders don't repeat the same warning for every update.
+  const warned = new Set<string>();
 
   // A Svelte component is just a `(internals, props) => exports` function
   // (see svelte's `Component` type), so it's wrapped directly instead of
   // going through a `.svelte` file. The wrapper proxies `props` rather than
   // spreading it, preserving the live getters Svelte's compiler generates
   // for the caller's props (e.g. `block`) so reactivity keeps working.
-  const StoryblokBlock = ((internals: unknown, props: object) => {
+  const StoryblokBlock: Component<StoryblokBlockProps<TExtraProps>> = (internals, props) => {
     const proxiedProps = new Proxy(props, {
       get(target, key, receiver) {
         if (key === "__storyblokComponents") return getComponents();
         if (key === "__storyblokFallback") return getFallback();
+        if (key === "__storyblokWarned") return warned;
         return Reflect.get(target, key, receiver);
       },
       has(target, key) {
         return (
           key === "__storyblokComponents" ||
           key === "__storyblokFallback" ||
+          key === "__storyblokWarned" ||
           Reflect.has(target, key)
         );
       },
     });
 
-    return (RawStoryblokBlock as unknown as (internals: unknown, props: unknown) => unknown)(
-      internals,
-      proxiedProps,
-    );
-  }) as Component<StoryblokBlockProps<TExtraProps>>;
+    // The proxy adds the registry props, which TypeScript can't see.
+    return RawStoryblokBlock(internals, proxiedProps as ComponentProps<typeof RawStoryblokBlock>);
+  };
 
   return { StoryblokBlock };
 }

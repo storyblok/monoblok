@@ -4,6 +4,7 @@ import { defineStoryblokBlocks } from "../lib/define-storyblok-blocks";
 import Teaser from "./blocks/Teaser.svelte";
 import Fallback from "./blocks/Fallback.svelte";
 import BlockHost from "./blocks/BlockHost.svelte";
+import { StoryblokBlock as CyclicStoryblokBlock } from "./blocks/cycle/registry";
 
 describe("defineStoryblokBlocks", () => {
   it("should render the component registered for the block's type", () => {
@@ -162,5 +163,44 @@ describe("defineStoryblokBlocks", () => {
     flushSync();
     expect(target.textContent).toContain("After");
     unmount(host);
+  });
+
+  it("should render nested blocks when a block component imports StoryblokBlock from its registry", () => {
+    const target = document.createElement("div");
+    const block = {
+      _uid: "1",
+      component: "branch",
+      body: [{ _uid: "2", component: "leaf", text: "Nested" }],
+    };
+    const component = mount(CyclicStoryblokBlock, { target, props: { block } });
+    flushSync();
+
+    expect(target.querySelector('[data-testid="branch"] [data-testid="leaf"]')?.textContent).toBe(
+      "Nested",
+    );
+    unmount(component);
+  });
+
+  it("should warn only once per unregistered block type across updates", () => {
+    const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+    const target = document.createElement("div");
+    const host = mount(BlockHost, {
+      target,
+      props: { StoryblokBlock, block: { _uid: "1", component: "unregistered" } },
+    });
+    flushSync();
+    host.update({ _uid: "1", component: "unregistered", headline: "changed" });
+    flushSync();
+    const other = mount(StoryblokBlock, {
+      target,
+      props: { block: { _uid: "2", component: "unregistered" } },
+    });
+    flushSync();
+
+    expect(consoleWarn).toHaveBeenCalledTimes(1);
+    unmount(host);
+    unmount(other);
+    consoleWarn.mockRestore();
   });
 });

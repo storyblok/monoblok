@@ -6,6 +6,7 @@ export {
 
 export { default as StoryblokRichText } from "./StoryblokRichText.svelte";
 export { defineStoryblokBlocks } from "./define-storyblok-blocks";
+export { storyblokEditable } from "./storyblok-editable";
 export * from "./types";
 
 export {
@@ -13,7 +14,6 @@ export {
   isInEditor,
   loadStoryblokBridge,
   onStoryblokEditorEvent,
-  storyblokEditable,
 } from "@storyblok/live-preview";
 export type { BridgeParams, LivePreviewStory } from "@storyblok/live-preview";
 

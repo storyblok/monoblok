@@ -42,7 +42,11 @@ export type StoryblokBlockComponentProps<
 
 /** Props accepted by the `StoryblokBlock` component returned from `defineStoryblokBlocks`. */
 export type StoryblokBlockProps<TExtraProps extends object = {}> = {
-  /** The block to render. */
+  /**
+   * The block to render. Optional so `story?.content` can be passed while the
+   * story may be missing; an undefined block renders nothing and warns in
+   * development.
+   */
   block?: StoryblokBlockData;
 } & TExtraProps;
 

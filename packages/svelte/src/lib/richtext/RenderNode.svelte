@@ -27,7 +27,6 @@
       ? { ...options, components: { ...options.components, [node.type]: undefined } }
       : options,
   );
-
 </script>
 {#if CustomComponent}
   <CustomComponent {...node} context={contextForCustom}>

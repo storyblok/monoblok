@@ -17,12 +17,15 @@
     __storyblokComponents: StoryblokComponentMap;
     /** Rendered for block types that are not present in `__storyblokComponents`. */
     __storyblokFallback?: Component<any>;
+    /** Warnings already printed by this registry, so each one prints only once. */
+    __storyblokWarned?: Set<string>;
   } & Record<string, unknown>;
 
   const {
     block,
     __storyblokComponents: components,
     __storyblokFallback: fallback,
+    __storyblokWarned: warned = new Set(),
     ...rest
   }: Props = $props();
 
@@ -35,11 +38,16 @@
 
   const editable = $derived(block ? storyblokEditable(block) : undefined);
 
-  $effect(() => {
-    if (!DEV) return;
+  function warnOnce(key: string, message: string) {
+    if (warned.has(key)) return;
+    warned.add(key);
+    console.warn(message);
+  }
 
+  function warnIfNothingRendered() {
     if (!block) {
-      console.warn(
+      warnOnce(
+        'undefined-block',
         '[storyblok] <StoryblokBlock /> received an undefined `block` prop and rendered nothing. ' +
           "Check that the value you're passing in exists, e.g. `story?.content` when the fetch " +
           'may have failed, or a typo in the prop name (`block`, not `blok`).',
@@ -48,12 +56,19 @@
     }
 
     if (!Resolved) {
-      console.warn(
+      warnOnce(
+        `missing:${block.component}`,
         `[storyblok] No component registered for block type "${block.component}". ` +
           'Register it in `defineStoryblokBlocks(() => ({ components }))` or provide a `fallback`.',
       );
     }
-  });
+  }
+
+  if (DEV) {
+    // Effects don't run during SSR, so check once up front on the server.
+    if (typeof window === 'undefined') warnIfNothingRendered();
+    $effect(warnIfNothingRendered);
+  }
 </script>
 
 {#if Resolved && block}

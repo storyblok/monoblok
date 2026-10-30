@@ -7,6 +7,8 @@
   "scripts": {
     "lint": "vp lint",
     "lint:fix": "vp lint --fix",
+    "test": "vp test run",
+    "test:watch": "vp test",
     "test:types": "tsc --noEmit"
   },
   "devDependencies": {

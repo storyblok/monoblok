@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { resolveCjsEntry } from "../../../tools/cjs/resolve-cjs-entry.ts";
+import { warnsOnCjsEntry } from "../../../tools/cjs/warn-on-cjs-entry.ts";
 
 // Regression test for https://github.com/storyblok/monoblok/issues/437:
 // "type":"module" caused CJS/UMD dist files to be misidentified as ESM,
@@ -22,6 +23,10 @@ const cjsEntry = resolveCjsEntry(pkgRoot);
 const esmEntry = resolve(pkgRoot, pkg.exports["."].import.default);
 
 describe("module format: require() (CJS)", () => {
+  it("should warn that the CJS build is deprecated", () => {
+    expect(warnsOnCjsEntry(pkgRoot, cjsEntry)).toBe(true);
+  });
+
   it("should load without throwing", () => {
     expect(() => req(cjsEntry)).not.toThrow();
   });

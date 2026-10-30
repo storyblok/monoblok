@@ -4,6 +4,7 @@ import { resolve } from "pathe";
 import { expect, it } from "vitest";
 
 import { resolveCjsEntry } from "../../../tools/cjs/resolve-cjs-entry.ts";
+import { warnsOnCjsEntry } from "../../../tools/cjs/warn-on-cjs-entry.ts";
 
 // Regression test: node-mode interop in the CJS build turned the default export of
 // `@tiptap/extension-*` into the whole module, so the parsers threw
@@ -14,6 +15,10 @@ import { resolveCjsEntry } from "../../../tools/cjs/resolve-cjs-entry.ts";
 const req = createRequire(import.meta.url);
 const pkgRoot = resolve(__dirname, "..");
 const cjsEntry = (subpath: string) => resolveCjsEntry(pkgRoot, subpath);
+
+it("should warn that the CJS build is deprecated", () => {
+  expect(warnsOnCjsEntry(pkgRoot, cjsEntry("."))).toBe(true);
+});
 
 it("should parse HTML when html-parser is loaded with require()", () => {
   const { htmlToStoryblokRichtext } = req(cjsEntry("./html-parser"));

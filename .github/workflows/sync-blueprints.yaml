@@ -1,6 +1,6 @@
 name: Sync blueprints
 
-# Pushes blueprints/<name>/ to storyblok/<name> after verifying it. See adr/0022.
+# Pushes blueprints/<name>/ to storyblok/<name> after verifying it. See adr/0023.
 # The GitHub settings it needs (environments, branch policies) are in blueprints/README.md.
 
 on:
@@ -129,7 +129,7 @@ jobs:
 
   # Runs install and build scripts, so it holds no App secret and never touches a target repo. It
   # uses no environment: the read-only demo token is a repository variable, which install scripts can
-  # read. Each blueprint's own dependencies come from npm as a user would get them (ADR-0022), which
+  # read. Each blueprint's own dependencies come from npm as a user would get them (ADR-0023), which
   # is untrusted code: nothing in this job may be able to reach the App key or write to a target.
   # It tests the tarball `stage` made, lockfile included, and caches nothing: a cache this job
   # saved would be restored by later runs.
@@ -208,8 +208,8 @@ jobs:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
-          client-id: ${{ vars.SYNC_APP_CLIENT_ID }}
-          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          app-id: ${{ vars.BLUEPRINTS_APP_ID }}
+          private-key: ${{ secrets.BLUEPRINTS_APP_PRIVATE_KEY }}
           owner: ${{ env.TARGET_OWNER }}
           repositories: ${{ env.TARGET_REPO }}
           permission-contents: write

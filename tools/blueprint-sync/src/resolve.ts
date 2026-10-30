@@ -63,7 +63,7 @@ export function resolveWorkspaceDependencies(
     throw new Error(`Cannot resolve workspace dependencies:\n- ${problems.join("\n- ")}`);
   }
 
-  // Nothing nx-specific ships to a template repo (ADR-0022). Tags and targets belong in project.json.
+  // Nothing nx-specific ships to a template repo (ADR-0023). Tags and targets belong in project.json.
   delete manifest.nx;
 
   // Keep the blueprint's own indentation, so the target's package.json diff stays readable.

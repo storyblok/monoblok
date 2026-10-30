@@ -155,7 +155,7 @@ function runSmokeTest(
   });
 }
 
-// The nx `smoke` target (ADR-0022): builds `blueprints/<blueprint>` in the workspace, where
+// The nx `smoke` target (ADR-0023): builds `blueprints/<blueprint>` in the workspace, where
 // `workspace:^` links the SDK source nx has just built, and smoke-tests it. No stage, no
 // install, no lockfile: `verify` owns what users get. The build runs here and not in the nx `build` target
 // because the demo token is baked into it. Build output lands in the blueprint folder, which its

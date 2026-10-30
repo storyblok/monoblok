@@ -112,14 +112,14 @@ jobs:
 
       - name: Check
         if: needs.changes.outputs.code == 'true'
-        # Blueprints are nx projects, but the `blueprints` job owns them (ADR-0022).
+        # Blueprints are nx projects, but the `blueprints` job owns them (ADR-0023).
         run: pnpm nx run-many --target=build,lint,test,test:types --parallel=3 -p="${{ matrix.projects }}" --exclude="tag:blueprint"
         env:
           VITE_ACCESS_TOKEN: ${{ secrets.VITE_ACCESS_TOKEN }}
           VITE_SPACE_ID: ${{ vars.VITE_SPACE_ID }}
 
   # Builds and smoke-tests the blueprints nx marks affected against the workspace SDK source, so a
-  # PR that breaks an SDK for a blueprint fails here and not in the post-release sync (ADR-0022).
+  # PR that breaks an SDK for a blueprint fails here and not in the post-release sync (ADR-0023).
   # It tests "does the SDK change break the blueprint"; the sync workflow checks "does the template
   # install and run as shipped".
   blueprints:
@@ -159,7 +159,7 @@ jobs:
       # `--skip-nx-cache`: pnpm injects each SDK into the blueprints as a hard-linked copy and
       # refreshes it only when the SDK's `build` script runs. A cache hit restores `dist` into the
       # package but not into the copy, which a fresh install leaves without `dist`, so the
-      # blueprint could not resolve `@storyblok/*` (ADR-0022).
+      # blueprint could not resolve `@storyblok/*` (ADR-0023).
       - name: Build affected blueprints
         if: steps.affected.outputs.projects != ''
         env:

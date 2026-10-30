@@ -1,7 +1,7 @@
 # Blueprints
 
 Source of the template repos `storyblok create` uses. Each folder is synced to the repo of the same
-name by `.github/workflows/sync-blueprints.yaml` (see `adr/0022-sync-blueprints-from-the-monorepo.md`).
+name by `.github/workflows/sync-blueprints.yaml` (see `adr/0023-sync-blueprints-from-the-monorepo.md`).
 `stage` composes each blueprint's `AGENTS.template.md` with `AGENTS.storyblok.md` into the target's
 `AGENTS.md`. The template has another name so that agents working in this repo do not load it.
 
@@ -20,7 +20,7 @@ name by `.github/workflows/sync-blueprints.yaml` (see `adr/0022-sync-blueprints-
    template list of `storyblok create` (`packages/cli/src/commands/create/constants.ts`).
 
 Pull requests that touch `blueprints/**` or an SDK build and smoke-test the affected blueprints
-against the workspace SDK source (the `blueprints` job in `ci.yaml`, ADR-0022).
+against the workspace SDK source (the `blueprints` job in `ci.yaml`, ADR-0023).
 
 ## How nx sees blueprints
 
@@ -74,7 +74,7 @@ The workflow cannot enforce these itself: a branch brings its own copy of the wo
 | Environment      | Used by                | Holds                                                        | Settings                                |
 | ---------------- | ---------------------- | ------------------------------------------------------------ | --------------------------------------- |
 | `production`     | `approve`, `publish.yaml` | nothing the sync reads                                    | required reviewers, deploy from `main`  |
-| `blueprint-sync` | `push`                 | variable `SYNC_APP_CLIENT_ID`, secret `SYNC_APP_PRIVATE_KEY` | deploy from `main`                      |
+| `blueprint-sync` | `push`                 | variable `BLUEPRINTS_APP_ID`, secret `BLUEPRINTS_APP_PRIVATE_KEY` | deploy from `main`                      |
 
 `approve` reuses `production` as a plain approval gate. `blueprint-sync` stays separate so the App
 key is never reachable from a job that runs under `production`.

@@ -4,7 +4,7 @@ We use `nx` and `pnpm` workspaces. Use commands like `pnpm nx build <package>` a
 `pnpm nx run-many` to build, test, lint, and run parallel CI checks across projects. E.g.,
 `pnpm nx build storyblok` or `pnpm nx lint:fix @storyblok/migrations`. `pnpm build` and the CI build
 job skip the `blueprints/*` projects (tag `blueprint`); build one with
-`pnpm nx build blueprint-core-<framework>` (ADR-0022).
+`pnpm nx build blueprint-core-<framework>` (ADR-0023).
 
 - `packages/`: Public packages and integrations.
 - `tools/`: Internal development tools and scripts.

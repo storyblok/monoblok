@@ -24,8 +24,7 @@ jobs:
     if: github.repository == 'storyblok/monoblok'
     runs-on: ubuntu-latest
     steps:
-      # The specs live in a private repository, and a pull request opened with
-      # GITHUB_TOKEN would not trigger CI, so an app token does both.
+      # A pull request opened with GITHUB_TOKEN would not trigger CI.
       - name: Create app token
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -33,7 +32,7 @@ jobs:
           app-id: ${{ secrets.OPENAPI_SYNC_APP_ID }}
           private-key: ${{ secrets.OPENAPI_SYNC_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: monoblok,openapi
+          repositories: monoblok
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -42,8 +41,6 @@ jobs:
       - uses: ./.github/actions/setup-node
 
       - name: Pull the latest specs
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: pnpm --filter @storyblok/openapi-codegen pull
 
       - name: Check for spec changes

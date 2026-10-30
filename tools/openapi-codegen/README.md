@@ -13,9 +13,9 @@ is picked up automatically.
 
 Generation reads from two places, and both are committed:
 
-- `upstream/` holds the public Content Delivery API and Management API specs, copied from
-  `storyblok/openapi` by `pull` and pinned by `spec.lock`. Never edit them by hand: `generate` fails
-  when they don't match `spec.lock`. Correct upstream gaps in `src/patches.ts` instead.
+- `upstream/` holds the public Content Delivery API and Management API specs, downloaded from the
+  Storyblok docs by `pull` and pinned by `spec.lock`. Never edit them by hand: `generate` fails when
+  they don't match `spec.lock`. Correct upstream gaps in `src/patches.ts` instead.
 - `specs/` holds this repo's own overlay specs, including `specs/overlay.openapi.yaml` and the
   shared field-type shapes under `specs/shared/`.
 
@@ -41,9 +41,9 @@ affected.
 pnpm --filter @storyblok/openapi-codegen pull
 ```
 
-`pull` requires `gh auth status`, because `storyblok/openapi` is private. It copies the specs from
-its `HEAD`, regenerates `src/known-types.ts`, and updates `spec.lock`. When the specs are unchanged,
-`spec.lock` keeps its SHA, even if the repo has new commits.
+`pull` downloads the specs from `https://www.storyblok.com/docs/openapi-spec/`, regenerates
+`src/known-types.ts`, and updates `spec.lock`. It needs no access to private repositories, so anyone
+can update the specs.
 
 You rarely need `pull` by hand: the [OpenAPI Spec Sync](#automated-sync) workflow runs it daily.
 
@@ -59,9 +59,9 @@ the new specs.
 - Push fixes for consumers that no longer compile to the sync branch. The workflow leaves an open
   pull request with commits from anyone else untouched, so your fixes survive until it is merged or
   closed.
-- The workflow authenticates as a GitHub App (`OPENAPI_SYNC_APP_ID`, `OPENAPI_SYNC_APP_PRIVATE_KEY`)
-  installed on this repo and the spec repo. The app token both reads the private repo and opens the
-  pull request; a pull request opened with the default `GITHUB_TOKEN` would not trigger CI.
+- The workflow opens the pull request as a GitHub App (`OPENAPI_SYNC_APP_ID`,
+  `OPENAPI_SYNC_APP_PRIVATE_KEY`) installed on this repo, because a pull request opened with the
+  default `GITHUB_TOKEN` would not trigger CI.
 
 ## Version policy
 
@@ -71,13 +71,10 @@ refreshes or internal refactors. Bump the version only when the exported API (`g
 
 ## spec.lock
 
-Committed. Records the upstream commit `upstream/` was copied from and a sha256 hash of its
-contents:
+Committed. Records a sha256 hash of the contents of `upstream/`:
 
 ```json
 {
-  "repo": "storyblok/openapi",
-  "sha": "<upstream commit SHA>",
   "hash": "sha256:<hex>"
 }
 ```

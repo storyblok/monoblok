@@ -1,12 +1,9 @@
 /**
  * Shared helpers for spec.lock and upstream spec hashing.
  *
- * spec.lock records which upstream commit `upstream/` was copied from, and a
- * hash of its contents:
+ * spec.lock records a hash of the downloaded `upstream/` contents:
  *
  *   {
- *     "repo": "storyblok/openapi",
- *     "sha":  "<upstream commit SHA>",
  *     "hash": "sha256:<hex of upstream/ contents>"
  *   }
  *
@@ -20,11 +17,8 @@ import { relative, resolve } from "pathe";
 import { LOCK_PATH, UPSTREAM_DIR } from "./paths.ts";
 
 export { LOCK_PATH, TOOL_ROOT, UPSTREAM_DIR } from "./paths.ts";
-export const UPSTREAM_REPO = "storyblok/openapi";
 
 export interface SpecLock {
-  repo: string;
-  sha: string;
   hash: string;
 }
 

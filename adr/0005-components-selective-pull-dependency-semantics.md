@@ -1,6 +1,7 @@
 # ADR-0005: Components Selective Pull and Push Dependency Semantics
 
-**Status:** Accepted **Date:** 2026-07-07
+**Status:** Accepted  
+**Date:** 2026-07-07
 
 ## Context
 

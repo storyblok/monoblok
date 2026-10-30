@@ -1,4 +1,4 @@
-# ADR-0017: Block Tag Identity by Name
+# ADR-0023: Block Tag Identity by Name
 
 **Status:** Accepted  
 **Date:** 2026-09-14

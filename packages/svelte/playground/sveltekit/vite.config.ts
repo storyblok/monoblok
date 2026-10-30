@@ -1,10 +1,10 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig, type PluginOption } from "vite";
-import basicSsl from "@vitejs/plugin-basic-ssl";
 import { resolve } from "pathe";
+import mkcert from "vite-plugin-mkcert";
 
 export default defineConfig({
-  plugins: [sveltekit(), basicSsl()] as PluginOption[],
+  plugins: [sveltekit(), mkcert()] as PluginOption[],
   resolve: {
     alias: {
       "@storyblok/svelte": resolve(import.meta.dirname, "../../src/lib/index.ts"),

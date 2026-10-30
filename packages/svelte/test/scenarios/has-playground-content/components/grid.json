@@ -1,0 +1,8 @@
+{
+  "name": "grid",
+  "display_name": "Grid",
+  "component_group_uuid": null,
+  "is_root": false,
+  "is_nestable": true,
+  "schema": { "columns": { "type": "bloks", "pos": 0 } }
+}

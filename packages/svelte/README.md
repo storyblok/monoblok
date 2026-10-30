@@ -4,7 +4,7 @@
 
 <h1 align="center">@storyblok/svelte</h1>
  <p>
-     The Svelte SDK to interact with <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Storyblok API</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Real-time Visual Editing Experience</a>.
+     The Svelte SDK to render <a href="http://www.storyblok.com?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Storyblok content</a> and enable the <a href="https://www.storyblok.com/docs/guide/essentials/visual-editor?utm_source=github.com&utm_medium=readme&utm_campaign=storyblok-svelte" target="_blank">Real-time Visual Editing Experience</a>.
   </p>
   <br />
 </div>
@@ -29,11 +29,11 @@
 
 ## Features
 
-- Fetch content from the Content Delivery API
+- Render Storyblok content with Svelte components
 - Connect frontend components with the Visual Editor via StoryblokBridge
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`
-- Svelte-specific components: `StoryblokComponent` for dynamic component rendering
-- Svelte actions: `storyblokEditable` for Visual Editor integration
+- Svelte-specific block registry function: `defineStoryblokBlocks`
+- Editable attributes injected on every block's `editable` prop for Visual Editor integration
 - Svelte 5 compatibility with modern syntax and runes
 - Built-in TypeScript support with comprehensive type definitions
 - SSR/SSG compatibility for SvelteKit applications

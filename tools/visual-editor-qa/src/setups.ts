@@ -18,8 +18,12 @@ export const registerAuthSetup = (config: QaConfig): void => {
       waitUntil: "domcontentloaded",
     });
     await expect(page, `Session expired. Refresh it with: ${REGENERATE}`).not.toHaveURL(
-      /#!?\/login/,
+      /\/login(?:[/?#]|$)/,
     );
+    await expect(
+      page.getByRole("heading", { name: /login to storyblok/i }),
+      `Session expired. Refresh it with: ${REGENERATE}`,
+    ).not.toBeVisible();
   });
 };
 

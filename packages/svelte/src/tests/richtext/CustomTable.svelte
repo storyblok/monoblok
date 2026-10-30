@@ -1,10 +1,10 @@
 <script lang="ts">
   import { splitTableRows } from '@storyblok/richtext';
 
-  import type { SbSvelteRichTextProps } from '$lib';
+  import type { StoryblokSvelteRichTextProps } from '$lib';
   import StoryblokRichText from '$lib/StoryblokRichText.svelte';
 
-  const { content, context }: SbSvelteRichTextProps<'table'> = $props();
+  const { content, context }: StoryblokSvelteRichTextProps<'table'> = $props();
   const { headerRows, bodyRows } = $derived(splitTableRows(content));
 </script>
 

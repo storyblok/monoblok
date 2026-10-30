@@ -1,28 +1,36 @@
 <script lang="ts">
-  import { StoryblokComponent, useStoryblokBridge } from '@storyblok/svelte';
+  import { onStoryblokEditorEvent } from '@storyblok/svelte';
+  import type { LivePreviewStory } from '@storyblok/svelte';
   import type { PageData } from './$types';
   import { onMount } from 'svelte';
+  import { StoryblokBlock } from '../../storyblok';
 
-  let { data = $bindable() }: { data: PageData } = $props();
-  let story = $state(data.story);
-  let loaded = $state(false);
+  const { data }: { data: PageData } = $props();
+  // Resets to the loaded story on navigation, and takes Visual Editor updates in between.
+  let story = $derived<LivePreviewStory>(data.story);
+
   onMount(() => {
-    loaded = true;
-    if (story) {
-      useStoryblokBridge(data.story.id, (newStory) => (story = newStory), {
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    onStoryblokEditorEvent((newStory) => {
+      if (!disposed) story = newStory;
+    }, {
         preventClicks: true,
         resolveLinks: 'url',
-      });
-    }
+    })
+      .then((unsubscribe) => {
+        if (disposed) unsubscribe();
+        else cleanup = unsubscribe;
+      })
+      .catch((error) => console.error(error));
+    return () => {
+      disposed = true;
+      cleanup?.();
+    };
   });
 </script>
 
 <main>
-  {#key story}
-    <h1>Welcome to StoryblokKit</h1>
-
-    {#if loaded}
-      <StoryblokComponent blok={story.content} />
-    {/if}
-  {/key}
+  <h1>Welcome to StoryblokKit</h1>
+  <StoryblokBlock block={story.content} />
 </main>

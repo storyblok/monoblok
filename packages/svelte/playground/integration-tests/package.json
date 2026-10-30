@@ -1,0 +1,32 @@
+{
+  "name": "@storyblok/playground-svelte-integration-tests",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 5174",
+    "qa:dev": "vite dev --port 5174",
+    "qa:stop": "true # intentionally a no-op; Vite exits with the test process",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+  },
+  "dependencies": {
+    "@storyblok/api-client": "workspace:*",
+    "@storyblok/svelte": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^5.0.0",
+    "@sveltejs/kit": "^2.70.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "svelte": "^5.55.7",
+    "svelte-check": "^4.1.5",
+    "typescript": "catalog:",
+    "vite": "^6.4.3",
+    "vite-plugin-mkcert": "^1.17.10"
+  },
+  "nx": {
+    "projectType": "application"
+  }
+}

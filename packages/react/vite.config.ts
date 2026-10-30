@@ -1,5 +1,6 @@
 import { defineConfig } from "vite-plus";
 import { resolve } from "node:path";
+import { cjsDeprecation } from "../../tools/cjs/cjs-deprecation-plugin.ts";
 import { cjsInterop } from "../../tools/cjs/cjs-interop-plugin.ts";
 
 export default defineConfig({
@@ -15,7 +16,7 @@ export default defineConfig({
         ssr: "./src/ssr/index.ts",
       },
       format: ["esm", "cjs"],
-      plugins: [cjsInterop()],
+      plugins: [cjsInterop(), cjsDeprecation()],
       outDir: "./dist",
       publint: true,
       // Keeps one output file per source module, which is what preserves the

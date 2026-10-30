@@ -5,6 +5,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 
 import { resolveCjsEntry } from "../../../tools/cjs/resolve-cjs-entry.ts";
+import { warnsOnCjsEntry } from "../../../tools/cjs/warn-on-cjs-entry.ts";
 
 // Regression test for https://github.com/storyblok/monoblok/issues/866:
 // node-mode interop in the CJS build turned the `ky` default export into an object.
@@ -20,6 +21,10 @@ afterAll(() => server.close());
 const req = createRequire(import.meta.url);
 const pkgRoot = resolve(__dirname, "..");
 const cjsEntry = resolveCjsEntry(pkgRoot);
+
+it("should warn that the CJS build is deprecated", () => {
+  expect(warnsOnCjsEntry(pkgRoot, cjsEntry)).toBe(true);
+});
 
 it("should perform requests when loaded with require()", async () => {
   const { createApiClient } = req(cjsEntry);

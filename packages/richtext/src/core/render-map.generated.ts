@@ -1,5 +1,5 @@
 // THIS FILE IS AUTO-GENERATED. DO NOT EDIT.
-import { resolveHeadingTag } from "../core/dynamic-resolvers";
+import { resolveHeadingTag } from "./dynamic-resolvers";
 /**
  * Render config for Tiptap nodes
  */

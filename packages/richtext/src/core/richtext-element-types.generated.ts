@@ -19,7 +19,7 @@ import type {
   TableCellNode,
   TableHeaderNode,
   TextStyleMark,
-} from "./overlay/types.gen";
+} from "../generated/overlay/types.gen";
 
 export interface StoryblokRichTextElementByType<TContext = unknown> {
   doc: {

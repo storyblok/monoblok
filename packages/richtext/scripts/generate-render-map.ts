@@ -81,7 +81,7 @@ export function generateRenderMap() {
   const schema = getSchema(extensions as AnyExtension[]);
   let output = "";
   output += "// THIS FILE IS AUTO-GENERATED. DO NOT EDIT.\n";
-  output += `import { resolveHeadingTag } from '../core/dynamic-resolvers';\n`;
+  output += `import { resolveHeadingTag } from './dynamic-resolvers';\n`;
   output += `/**
   * Render config for Tiptap nodes
   */
@@ -102,7 +102,7 @@ export function generateRenderMap() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const OUT_PATH = path.join(
     path.dirname(fileURLToPath(import.meta.url)),
-    "../src/generated/render-map.generated.ts",
+    "../src/core/render-map.generated.ts",
   );
   fs.writeFileSync(OUT_PATH, generateRenderMap(), "utf-8");
   formatGeneratedFile(OUT_PATH);

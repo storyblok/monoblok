@@ -6,6 +6,7 @@
   "bugs": {
     "url": "https://github.com/storyblok/monoblok/issues"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/storyblok/monoblok.git",

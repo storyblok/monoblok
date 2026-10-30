@@ -1,6 +1,7 @@
 # ADR-0024: Automated OpenAPI Spec Sync
 
-**Status:** Accepted **Date:** 2026-10-30
+**Status:** Accepted; amended by [ADR-0025](0025-commit-openapi-specs-generate-on-build.md)
+**Date:** 2026-10-30
 
 Amends [ADR-0004](0004-openapi-specs-pulled-on-demand.md).
 

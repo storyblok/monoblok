@@ -1,6 +1,6 @@
 # ADR-0004: OpenAPI Specs Pulled on Demand
 
-**Status:** Accepted; amended by [ADR-0024](0024-automated-openapi-spec-sync.md) **Date:**
+**Status:** Superseded by [ADR-0025](0025-commit-openapi-specs-generate-on-build.md) **Date:**
 2026-05-27
 
 ## Context

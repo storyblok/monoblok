@@ -1,7 +1,8 @@
 name: OpenAPI Spec Sync
 
-# Pulls the latest OpenAPI specs, regenerates every codegen consumer, and opens
-# (or updates) a single pull request with the result. See ADR-0024.
+# Pulls the latest OpenAPI specs and opens (or updates) a single pull request
+# with them. CI on that pull request regenerates and checks every consumer.
+# See ADR-0024 and ADR-0025.
 on:
   schedule:
     - cron: "0 5 * * *"
@@ -43,7 +44,7 @@ jobs:
       - name: Pull the latest specs
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: pnpm --filter @storyblok/openapi-codegen pull:update
+        run: pnpm --filter @storyblok/openapi-codegen pull
 
       - name: Check for spec changes
         id: changes
@@ -54,10 +55,6 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Regenerate every consumer
-        if: steps.changes.outputs.changed == 'true'
-        run: pnpm nx run-many -t generate:openapi --skip-nx-cache
 
       - name: Open or update the pull request
         if: steps.changes.outputs.changed == 'true'
@@ -78,7 +75,7 @@ jobs:
           fi
 
           git switch -c "$SYNC_BRANCH"
-          git add tools/openapi-codegen packages/*/src/generated
+          git add tools/openapi-codegen
           git commit -m "chore(tools): sync OpenAPI specs"
           git push --force-with-lease origin "$SYNC_BRANCH"
 
@@ -86,11 +83,11 @@ jobs:
             gh pr create --base main --head "$SYNC_BRANCH" \
               --title "chore(tools): sync OpenAPI specs" \
               --body-file - <<'EOF'
-          Regenerates every OpenAPI codegen consumer from the latest specs.
+          Updates the OpenAPI specs in `tools/openapi-codegen/upstream/`. CI regenerates, type-checks, and tests every consumer against them.
 
           Before merging:
 
-          - Review the `packages/*/src/generated/` diff. If it changes the public types or SDK of a package, retitle this pull request to `feat(<packages>): …` or `fix(<packages>): …` so the change releases.
+          - Review the spec diff. If it changes the public types or SDK of a package, retitle this pull request to `feat(<packages>): …` or `fix(<packages>): …` so the change releases. Run `pnpm nx run-many -t generate:openapi` locally to inspect the generated code.
           - Fix any consumer code that no longer type-checks by pushing to this branch. Once you push, later sync runs leave the branch alone until this pull request is merged or closed.
           EOF
           fi

@@ -149,7 +149,8 @@
     "targets": {
       "generate": {
         "dependsOn": [
-          "^build"
+          "^build",
+          "generate:openapi"
         ],
         "outputs": [
           "{projectRoot}/src/core/render-map.generated.ts",
@@ -173,7 +174,8 @@
       "build": {
         "dependsOn": [
           "generate",
-          "^build"
+          "^build",
+          "generate:openapi"
         ],
         "outputs": [
           "{projectRoot}/dist/**"

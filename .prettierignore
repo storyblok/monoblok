@@ -1,9 +1,11 @@
 pnpm-lock.yaml
 
-# Committed OpenAPI codegen output. Ignored for the same reason every
-# `oxlint.config.ts` ignores it: the generators own these files, and formatting
-# them would drift on the next regeneration.
+# OpenAPI codegen output. Ignored for the same reason every `oxlint.config.ts`
+# ignores it: the generators own these files.
 **/src/generated/
+
+# Upstream OpenAPI specs, copied byte for byte and hashed against spec.lock.
+tools/openapi-codegen/upstream/
 
 # Overlay OpenAPI specs read by the codegen tool. Kept in the layout the
 # generator expects, so reformatting them only churns the review diff.

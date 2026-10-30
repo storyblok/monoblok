@@ -31,7 +31,8 @@ pnpm --filter @storyblok/mapi-integration-tests test:e2e
 ## Fetch via MAPI client and check content types
 
 `stories.get(storyId)` takes a numeric/string ID as its first positional argument — there is no
-`getBySlug`. Fetch the ID from `stories.list` first:
+`getBySlug`. The `list` response doesn't include `content`, so fetch the ID from `stories.list`
+first:
 
 ```ts
 import { createManagementApiClient } from "@storyblok/management-api-client";
@@ -48,7 +49,7 @@ console.info(result.data?.story?.content);
 
 ## Push component JSONs via the CLI
 
-To push `defineComponent` components, serialize the component objects to JSON and stage them under
+To push `defineBlock` blocks, serialize the component objects to JSON and stage them under
 `.storyblok/components/<space_id>/`:
 
 ```bash
@@ -72,9 +73,6 @@ content update) to silently skip all stories.
 - **Stories require a content type component (`is_root: true`).** The MAPI rejects story creation
   with `"please select a content type component as your root component"` if the component used as
   the story root does not have `is_root: true`.
-- **MAPI `stories.get` takes a positional ID, not an options object:** `client.stories.get(id)` —
-  there is no `getBySlug`. The `list` response does not include `content`; call `get(id)` for full
-  content.
 - **MAPI client constructor uses `personalAccessToken`:**
   `createManagementApiClient({ personalAccessToken: '...', spaceId: ... })`.
 - **Delete methods are `delete`:** Use `client.RESOURCE.delete(id)`.

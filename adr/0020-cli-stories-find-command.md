@@ -1,6 +1,7 @@
 # ADR-0020: CLI `stories find` Command
 
-**Status:** Accepted **Date:** 2026-08-03
+**Status:** Accepted, amended by ADR-0021  
+**Date:** 2026-08-03
 
 ## Context
 
@@ -175,5 +176,5 @@ live. It is not `--published` because that name reads as a publish state, or as 
   `--help`.
 - **Downstream commands read the payload, not just the ids.** Each line is a complete story as the
   Management API returned it, so a consumer takes what it needs off the line rather than fetching
-  the story again. See [ADR-0021](0021-cli-jsonl-pipe-contract.md), which supersedes an earlier
+  the story again. See ADR-0021 (`adr/0021-cli-jsonl-pipe-contract.md`), which supersedes an earlier
   position here that had consumers refetch before mutating.

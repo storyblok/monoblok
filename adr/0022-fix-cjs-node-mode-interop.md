@@ -1,6 +1,7 @@
 # ADR-0022: Fix CJS Node-Mode Interop
 
-**Status:** Accepted. **Date:** 2026-10-29
+**Status:** Accepted  
+**Date:** 2026-10-29
 
 ## Context
 

@@ -1,6 +1,6 @@
 # ADR-0016: Adaptive and Pluggable Rate Limiting in the API Clients
 
-**Status:** Accepted, amended by ADR-0017  
+**Status:** Accepted, amended by ADR-0017 and ADR-0019  
 **Date:** 2026-09-21
 
 ## Context

@@ -1,5 +1,6 @@
 import { defineConfig } from "vite-plus";
-import { cjsInterop } from "../../tools/cjs-interop-plugin.ts";
+import { cjsDeprecation } from "../../tools/cjs/cjs-deprecation-plugin.ts";
+import { cjsInterop } from "../../tools/cjs/cjs-interop-plugin.ts";
 
 export default defineConfig({
   pack: {
@@ -14,7 +15,7 @@ export default defineConfig({
     exports: true,
     publint: true,
     unbundle: true,
-    plugins: [cjsInterop()],
+    plugins: [cjsInterop(), cjsDeprecation()],
   },
   test: {
     environment: "node",

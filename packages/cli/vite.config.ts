@@ -1,5 +1,5 @@
 import { defineConfig } from "vite-plus";
-import { cjsInterop } from "../../tools/cjs-interop-plugin.ts";
+import { cjsInterop } from "../../tools/cjs/cjs-interop-plugin.ts";
 
 export default defineConfig({
   pack: [

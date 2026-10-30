@@ -1,0 +1,19 @@
+{
+  "name": "@storyblok/cjs-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal: CommonJS build plugins and test helpers shared by the packages. Remove the folder together with the CJS builds. Not published.",
+  "type": "module",
+  "scripts": {
+    "lint": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "test:types": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@storyblok/lint-config": "workspace:*",
+    "@types/node": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

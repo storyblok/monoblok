@@ -3,7 +3,7 @@
   "defaultProject": "main",
   "parallel": 5,
   "namedInputs": {
-    "cjsInterop": ["{workspaceRoot}/tools/cjs-interop-plugin.ts"],
+    "cjsInterop": ["{workspaceRoot}/tools/cjs/cjs-interop-plugin.ts"],
     "openapiCodegen": [
       "{workspaceRoot}/tools/openapi-codegen/spec.lock",
       "{workspaceRoot}/tools/openapi-codegen/src/**",

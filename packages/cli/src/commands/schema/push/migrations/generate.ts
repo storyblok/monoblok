@@ -108,6 +108,20 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         break;
       }
 
+      case "options_removed": {
+        const values = change.values.map((value) => JSON.stringify(value)).join(", ");
+        lines.push(`  // Options no longer offered by ${change.field}: ${values}`);
+        lines.push(`  // TODO: map each removed value to one the field still offers`);
+        for (const value of change.values.map((value) => JSON.stringify(value))) {
+          lines.push(
+            change.multiple
+              ? `  // block.${change.field} = block.${change.field}?.map((value) => (value === ${value} ? <value> : value));`
+              : `  // if (block.${change.field} === ${value}) block.${change.field} = <value>;`,
+          );
+        }
+        break;
+      }
+
       case "required_changed": {
         const defaultValue = defaultForType(change.fieldType);
         lines.push(`  // Field is now required: ${change.field} (${change.fieldType})`);
@@ -191,6 +205,19 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
           },
         ];
       }
+      case "options_removed":
+        return [
+          {
+            kind: "alterField",
+            block,
+            field: change.field,
+            removedValues: change.values,
+            multiple: change.multiple,
+            todo: [
+              `TODO: map the values '${change.field}' no longer offers to ones it does. A rerun passes already-mapped values.`,
+            ],
+          },
+        ];
       case "required_added": {
         const value = requiredDefaultFor(change.fieldType);
         return [

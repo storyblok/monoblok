@@ -14,7 +14,12 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
   | (OpTarget & { kind: "renameField"; to: string })
   | (OpTarget & { kind: "removeField" })
   | (OpTarget & { kind: "coerceField"; from?: CoercionTarget; to: CoercionTarget })
-  | (OpTarget & { kind: "alterField" })
+  /**
+   * With `removedValues`, the callback leaves every other value alone and the
+   * placeholder only throws on those, as stored by an option field, or held
+   * among the values of an options field when `multiple` is set.
+   */
+  | (OpTarget & { kind: "alterField"; removedValues?: readonly string[]; multiple?: boolean })
   /** Backfills absent keys with `value`. */
   | (OpTarget & { kind: "addField"; value?: unknown })
   /**
@@ -61,8 +66,22 @@ function renderOp(op: MigrationOpSource, depth: number): string {
       const from = op.from ? `, from: ${quoteString(op.from)}` : "";
       return `coerceField(${target(op)}${from}, to: ${quoteString(op.to)} })`;
     }
-    case "alterField":
-      return `alterField(${target(op)} }, () => ${throwPlaceholder(op, depth)})`;
+    case "alterField": {
+      if (!op.removedValues?.length) {
+        return `alterField(${target(op)} }, () => ${throwPlaceholder(op, depth)})`;
+      }
+      const isRemoved = (value: string) =>
+        op.removedValues!.map((removed) => `${value} === ${quoteString(removed)}`).join(" || ");
+      const condition = op.multiple
+        ? `Array.isArray(value) && value.some((item) => ${isRemoved("item")})`
+        : isRemoved("value");
+      return [
+        `alterField(${target(op)} }, (value) => {`,
+        `${INDENT.repeat(depth + 1)}if (${condition}) ${throwPlaceholder(op, depth + 1)}`,
+        `${INDENT.repeat(depth + 1)}return undefined;`,
+        `${INDENT.repeat(depth)}})`,
+      ].join("\n");
+    }
     case "addField": {
       if (op.value === undefined) {
         return `addField(${target(op)} }, () => ${throwPlaceholder(op, depth)})`;

@@ -417,11 +417,12 @@ storyblok migrations generate hero-section --schema src/schema.ts
 <!-- target: src/content/docs/docs/tooling/cli/schema-push.mdx#breaking-changes-and-migrations (replace the section body) -->
 
 ```mdx
-When a push contains breaking changes (field removals, type changes, renames, or new required
-fields), the command analyzes them and, unless `--no-migrations` is set, writes one `.js` migration
-per changed block for [`migrations run`](/docs/tooling/cli/migrations-run). The command confirms
-detected renames interactively. Switching a field among text, textarea, and markdown isn’t a
-breaking change, because all three store a string.
+When a push contains breaking changes (field removals, type changes, renames, new required fields,
+or values an option or options field no longer offers), the command analyzes them and, unless
+`--no-migrations` is set, writes one `.js` migration per changed block for
+[`migrations run`](/docs/tooling/cli/migrations-run). The command confirms detected renames
+interactively. Switching a field among text, textarea, and markdown isn’t a breaking change, because
+all three store a string.
 
 ### Typed content migrations
 
@@ -437,6 +438,9 @@ changes:
 - Fills new required boolean fields with `false` where the field is absent, and newly required
   boolean fields where it is absent or `null`. For a newly required text, textarea, markdown, or
   number field, an empty string also counts as missing.
+- Marks the values an option or options field no longer offers. The op leaves every other value
+  alone and throws on a removed value until you map it to one the field still offers. Options that a
+  datasource supplies aren’t checked.
 
 Comments starting with `TODO` mark the ops to complete, such as a conversion between other field
 types or a default value for a required field of another type. Such an op throws until you replace

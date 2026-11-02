@@ -272,6 +272,81 @@ describe("generateMigrationSource", () => {
     }
   });
 
+  it("should generate a placeholder that refuses only the option values the schema removed", async () => {
+    const schema = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema as InferSchema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('size', { type: 'option', options: [{ name: 'Normal', value: 'normal' }] }),",
+      "  defineField('tags', { type: 'options', options: [{ name: 'New', value: 'new' }] }),",
+      "] });",
+      "const schema = defineSchema({ blocks: { hero } });",
+      "export type Schema = InferSchema<typeof schema>;",
+    ].join("\n");
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const hero = defineBlock({ name: 'hero', fields: [",
+      "  defineField('size', { type: 'option', options: [",
+      "    { name: 'Normal', value: ' ' }, { name: 'Huge', value: 'huge' },",
+      "    { name: 'Normal', value: 'normal' },",
+      "  ] }),",
+      "  defineField('tags', { type: 'options', options: [",
+      "    { name: 'Old', value: 'old' }, { name: 'New', value: 'new' },",
+      "  ] }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { hero } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": schema,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [
+          { kind: "alterField", block: "hero", field: "size", removedValues: [" ", "huge"] },
+          {
+            kind: "alterField",
+            block: "hero",
+            field: "tags",
+            removedValues: ["old"],
+            multiple: true,
+          },
+        ],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+      const { default: migration } = await import(path.join(modules.directory, "0001.ts"));
+      const story = (id: number, content: Record<string, unknown>) => ({
+        id,
+        slug: `s${id}`,
+        content: { _uid: `u${id}`, component: "hero", ...content },
+      });
+      const outcome = applyMigration({
+        migration,
+        id: "0001",
+        space: "1",
+        stories: [
+          story(1, { size: "normal", tags: ["new"] }),
+          story(2, { size: " " }),
+          story(3, { size: "huge" }),
+          story(4, { tags: ["new", "old"] }),
+        ],
+      });
+
+      expect(outcome.writes).toEqual([]);
+      expect(outcome.refusals.map((refusal) => refusal.slug)).toEqual(["s2", "s3", "s4"]);
+      expect(outcome.refusals[0].reason).toContain(
+        "Replace this placeholder for hero.size before applying the migration.",
+      );
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
   it("should throw on an op kind it does not know", () => {
     expect(() =>
       generateMigrationSource({

@@ -194,6 +194,42 @@ function storesSameValue(oldType: string, newType: string): boolean {
   return coercion !== undefined && coercion.from === coercion.to;
 }
 
+const OPTION_FIELD_TYPES = new Set(["option", "options"]);
+
+/** The values a field offers itself, or `undefined` when a datasource or other source supplies them. */
+function ownOptionValues(field: Record<string, unknown>): Set<string> | undefined {
+  if (!OPTION_FIELD_TYPES.has(String(field.type))) return undefined;
+  if (field.source !== undefined && field.source !== "" && field.source !== "self") {
+    return undefined;
+  }
+  const options = Array.isArray(field.options) ? field.options : [];
+  return new Set(
+    options.flatMap((option: unknown) =>
+      typeof option === "object" && option !== null && "value" in option
+        ? [String(option.value)]
+        : [],
+    ),
+  );
+}
+
+/** Option fields of the same type on both sides whose local options drop values the space offers. */
+function removedOptionValues(
+  remoteSchema: Record<string, Record<string, unknown>>,
+  localSchema: Record<string, Record<string, unknown>>,
+): BreakingChange[] {
+  return Object.entries(localSchema).flatMap(([field, localField]): BreakingChange[] => {
+    const remoteField = remoteSchema[field];
+    if (!remoteField || remoteField.type !== localField.type) return [];
+    const before = ownOptionValues(remoteField);
+    const after = ownOptionValues(localField);
+    if (!before || !after) return [];
+    const values = [...before].filter((value) => !after.has(value));
+    return values.length > 0
+      ? [{ kind: "options_removed", field, values, multiple: localField.type === "options" }]
+      : [];
+  });
+}
+
 /**
  * Analyzes all updated components for breaking field-level changes.
  * Only processes diffs with action `update` for entity type `component`.
@@ -273,6 +309,13 @@ export function analyzeBreakingChanges(
     for (const rc of classification.requiredChanged) {
       changes.push({ kind: "required_changed", field: rc.field, fieldType: rc.type });
     }
+
+    changes.push(
+      ...removedOptionValues(
+        remoteComp.schema as Record<string, Record<string, unknown>>,
+        localComp.schema as Record<string, Record<string, unknown>>,
+      ),
+    );
 
     if (changes.length > 0) {
       results.push({ componentName: diff.name, changes });

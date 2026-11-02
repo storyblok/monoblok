@@ -1015,6 +1015,54 @@ describe("schema push command", () => {
     ).toContain("defineField('author_name'");
   });
 
+  it("should generate an alterField for option values the schema removed", async () => {
+    const options = (...values: string[]) => values.map((value) => ({ name: value, value }));
+    const remoteComp = makeMockComponent({
+      name: "hero",
+      schema: {
+        size: { type: "option", pos: 0, options: options(" ", "normal", "large") },
+        tags: { type: "options", pos: 1, options: options("new", "old") },
+        source: { type: "option", pos: 2, source: "internal", datasource_slug: "sizes" },
+      },
+    });
+    const localComp = makeMockComponent({
+      name: "hero",
+      schema: {
+        size: { type: "option", pos: 0, options: options("normal", "large", "huge") },
+        tags: { type: "options", pos: 1, options: options("new") },
+        source: { type: "option", pos: 2, source: "internal", datasource_slug: "other" },
+      },
+    });
+    preconditions.hasLocalSchema({ components: [localComp] as any, datasources: [] });
+    preconditions.hasRemoteComponents([remoteComp]);
+    preconditions.hasRemoteFolders([]);
+    preconditions.hasRemoteDatasources([]);
+    preconditions.hasRemoteTags([]);
+    preconditions.canUpdateComponents();
+
+    await schemaCommand.parseAsync([
+      "node",
+      "test",
+      "push",
+      "schema.ts",
+      "--space",
+      DEFAULT_SPACE,
+      "--typed",
+      "--migrations",
+    ]);
+
+    const migration = writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.ts`);
+    expect(migration).toContain("alterField({ block: 'hero', field: 'size' }, (value) => {");
+    expect(migration).toContain("if (value === ' ') {");
+    expect(migration).toContain(
+      "if (Array.isArray(value) && value.some((item) => item === 'old')) {",
+    );
+    expect(migration).not.toContain("field: 'source'");
+    expect(
+      writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.before.ts`),
+    ).toContain("value: ' '");
+  });
+
   it("should skip the snapshot with --no-before", async () => {
     const remoteComp = makeMockComponent({
       name: "hero",

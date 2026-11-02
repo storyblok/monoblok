@@ -1,6 +1,7 @@
 import { DENIABLE_FIELD_TYPES } from "../restrictions";
 import { isRecord } from "../utils/is-record";
-import { formatValue, quoteString, RawCode } from "./format";
+import { partitionFieldOptions } from "./field-options";
+import { formatValue, INDENT, quoteString, RawCode } from "./format";
 
 /** Fields to strip from individual schema field entries (`pos` is implicit in array order). */
 const FIELD_STRIP_KEYS = new Set(["id", "pos"]);
@@ -268,7 +269,7 @@ function toDslField(
   field: Record<string, unknown>,
   folderVarByUuid?: Map<string, string>,
   tagNameById?: Map<string, string>,
-): Record<string, unknown> {
+): { out: Record<string, unknown>; unchecked: Record<string, unknown> } {
   const {
     component_whitelist,
     component_denylist,
@@ -282,18 +283,25 @@ function toDslField(
     ...rest
   } = field;
   const out: Record<string, unknown> = { ...rest };
+  const unchecked: Record<string, unknown> = {};
   const restriction = resolveFieldRestriction(field, folderVarByUuid, tagNameById);
   const restrictable = RESTRICTABLE_FIELD_TYPES.has(String(field.type));
 
   // A tag list the DSL could not name passes through verbatim whenever the field
   // type owns it, whichever dimension is actually in force. A resolved one is
   // emitted as `allow`/`deny` refs below instead, so it must not be written twice.
+  //
+  // Beside a name or folder `allow`/`deny`, `defineField` rejects the raw tag
+  // lists. The editor reads a tag allow list only under `restrict_type: 'tags'`,
+  // which those dimensions rule out, so it is dropped. Its tag arm reads the
+  // denylist under any `restrict_type`, so that one is kept, untyped.
+  const emitsDslRestriction = restriction.kind === "names" || restriction.kind === "folders";
   if (restrictable && restriction.kind !== "tagRefs") {
-    if (component_tag_whitelist !== undefined) {
+    if (component_tag_whitelist !== undefined && !emitsDslRestriction) {
       out.component_tag_whitelist = component_tag_whitelist;
     }
     if (component_tag_denylist !== undefined) {
-      out.component_tag_denylist = component_tag_denylist;
+      (emitsDslRestriction ? unchecked : out).component_tag_denylist = component_tag_denylist;
     }
   }
 
@@ -365,7 +373,31 @@ function toDslField(
   if (datasource_slug !== undefined) {
     out.datasource = datasource_slug;
   }
-  return out;
+  return { out, unchecked };
+}
+
+/**
+ * Formats a field config, appending `unchecked` options as an untyped spread:
+ * `defineField` rejects them, but they still reach the space on push.
+ */
+function formatFieldConfig(
+  config: Record<string, unknown>,
+  unchecked: Record<string, unknown>,
+  depth: number,
+): string {
+  const formatted = formatValue(config, depth);
+  if (Object.keys(unchecked).length === 0) {
+    return formatted;
+  }
+  const indent = INDENT.repeat(depth);
+  const innerIndent = INDENT.repeat(depth + 1);
+  const body = formatted === "{}" ? "{\n" : formatted.slice(0, -`${indent}}`.length);
+  return [
+    body,
+    `${innerIndent}// Not typed for this field type; kept so \`schema push\` writes it back.\n`,
+    `${innerIndent}...(${formatValue(unchecked, depth + 1)} as object),\n`,
+    `${indent}}`,
+  ].join("");
 }
 
 /**
@@ -396,10 +428,16 @@ export function generateFieldCode(
   folderVarByUuid?: Map<string, string>,
   tagNameById?: Map<string, string>,
 ): string {
-  const clean = omitEmptyArrays(
-    toDslField(stripKeys(fieldData, FIELD_STRIP_KEYS), folderVarByUuid, tagNameById),
+  const { known, unchecked: uncheckedOptions } = partitionFieldOptions(
+    stripKeys(fieldData, FIELD_STRIP_KEYS),
   );
-  return `defineField(${quoteString(fieldName)}, ${formatValue(clean, depth)})`;
+  const { out, unchecked } = toDslField(known, folderVarByUuid, tagNameById);
+  const config = formatFieldConfig(
+    omitEmptyArrays(out),
+    omitEmptyArrays({ ...uncheckedOptions, ...unchecked }),
+    depth,
+  );
+  return `defineField(${quoteString(fieldName)}, ${config})`;
 }
 
 /**
@@ -417,7 +455,8 @@ export function collectRestrictionFolderVars(
     if (!isRecord(field)) {
       continue;
     }
-    const restriction = resolveFieldRestriction(field, folderVarByUuid);
+    const { known } = partitionFieldOptions(field);
+    const restriction = resolveFieldRestriction(known, folderVarByUuid);
     if (restriction.kind !== "folders") {
       continue;
     }

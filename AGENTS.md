@@ -19,8 +19,8 @@ job skip the `blueprints/*` projects (tag `blueprint`); build one with
 
 ## Rules
 
-- **Verify always** - Run `lint`, `test`, and `test:types` on affected packages, e.g.
-  `pnpm nx test:types storyblok`.
+- **Verify always** - Run `lint:fix`, `test`, and `test:types` on affected packages, e.g.
+  `pnpm nx test:types storyblok`, and fix remaining issues.
 - **Check versions** - Look up the latest version before installing a new npm package.
 - **IMPORTANT:** The Management API validates a component schema field's `type` against a closed
   list and rejects an unknown one outright. Everything else it treats as an opaque blob: the rest of
@@ -49,7 +49,6 @@ job skip the `blueprints/*` projects (tag `blueprint`); build one with
   casts. Explicit return types on public APIs.
 - **Imports:** Group as external deps → workspace deps (`@storyblok/...`) → local (relative paths).
   Prefer named imports.
-- **Linting:** Default to `lint:fix` and fix remaining issues.
 
 ## OpenAPI codegen
 

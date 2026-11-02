@@ -3,10 +3,10 @@
  * generates types (via `parser.patch.schemas`). Each patch mutates the parsed
  * OpenAPI schema object in place.
  *
- * Use these only to correct upstream OpenAPI gaps we cannot fix in the private
- * `storyblok/openapi-wdx` spec directly. A patch here is a deliberate, reviewed
- * divergence from upstream: keep the list small, document why each exists, and
- * migrate the fix upstream when the contract is owned there.
+ * Use these only to correct gaps in the upstream specs, which we never edit
+ * directly. A patch here is a deliberate, reviewed divergence from upstream:
+ * keep the list small, document why each exists, and migrate the fix upstream
+ * when the contract is owned there.
  */
 
 import type { UserConfig } from "@hey-api/openapi-ts";
@@ -179,7 +179,53 @@ const MAPI_PARSER: Parser = {
   },
 };
 
+const ACCESS_TOKEN_PARAM = "token";
+
+function isAccessTokenParam(parameter: unknown): boolean {
+  return isRecord(parameter) && parameter.in === "query" && parameter.name === ACCESS_TOKEN_PARAM;
+}
+
+/**
+ * Drop the explicit `token` query parameter from every CAPI operation.
+ *
+ * Upstream declares it as a required parameter on each operation in addition
+ * to the `ApiKeyAuth` security scheme. The client injects the token through the
+ * security scheme, so the parameter would only force callers to pass a value
+ * the client already sends.
+ */
+function removeAccessTokenParams(spec: unknown): void {
+  if (!isRecord(spec) || !isRecord(spec.paths)) {
+    return;
+  }
+  for (const pathItem of Object.values(spec.paths)) {
+    if (!isRecord(pathItem)) {
+      continue;
+    }
+    for (const node of [pathItem, ...Object.values(pathItem)]) {
+      if (isRecord(node) && Array.isArray(node.parameters)) {
+        node.parameters = node.parameters.filter((parameter) => !isAccessTokenParam(parameter));
+      }
+    }
+  }
+}
+
+/**
+ * Whole-spec patches per spec. Exposed separately from `SPEC_PARSERS` because
+ * they can add schemas, so anything listing a spec's schemas must apply them.
+ */
+export const SPEC_INPUT_PATCHES: Partial<Record<SpecSource, (spec: unknown) => void>> = {
+  capi: removeAccessTokenParams,
+  mapi: patchMapiInput,
+};
+
+const CAPI_PARSER: Parser = {
+  patch: {
+    input: removeAccessTokenParams,
+  },
+};
+
 /** Parser config per spec, or `undefined` when a spec needs no patches. */
 export const SPEC_PARSERS: Partial<Record<SpecSource, Parser>> = {
+  capi: CAPI_PARSER,
   mapi: MAPI_PARSER,
 };

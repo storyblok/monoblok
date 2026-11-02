@@ -8,7 +8,8 @@
  * grepping the YAMLs.
  *
  * Validation runs before writing: every `ALIASES[].source` must exist as a
- * schema in its declared `spec`, and every `TEMPLATES[*].sourceLeaves` entry
+ * schema in its declared `spec` after the parser patches ran (they can add
+ * schemas), and every `TEMPLATES[*].sourceLeaves` entry
  * must match an `ALIASES[].emitAs`. Mismatches throw — the generator fails
  * loud rather than emitting a stale catalog.
  */
@@ -19,15 +20,10 @@ import { resolve } from "pathe";
 import { parse as parseYaml } from "yaml";
 import { ALIASES, type SpecSource } from "../src/aliases.ts";
 import { TEMPLATES } from "../src/templates.ts";
-import { CACHE_DIR, TOOL_ROOT } from "../src/lock.ts";
+import { SPEC_INPUT_PATCHES } from "../src/patches.ts";
+import { SPEC_PATHS, TOOL_ROOT } from "../src/paths.ts";
 
 const KNOWN_TYPES_PATH = resolve(TOOL_ROOT, "src/known-types.ts");
-const OVERLAY_PATH = resolve(TOOL_ROOT, "specs/overlay.openapi.yaml");
-const SPEC_PATHS: Record<SpecSource, string> = {
-  capi: resolve(CACHE_DIR, "capi/cdn-v2.openapi.yaml"),
-  mapi: resolve(CACHE_DIR, "mapi/management-v1.openapi.yaml"),
-  overlay: OVERLAY_PATH,
-};
 
 interface OpenApiDoc {
   components: { schemas: Record<string, unknown> | undefined };
@@ -44,11 +40,14 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 }
 
 /**
- * Parses an OpenAPI YAML and narrows it to the slice this script reads. Anything
- * malformed or missing collapses to empty records, so callers can index freely.
+ * Parses a spec, applies its parser patches, and narrows it to the slice this
+ * script reads. Anything malformed or missing collapses to empty records, so
+ * callers can index freely.
  */
-function loadSpec(yamlPath: string): OpenApiDoc {
-  const root = asRecord(parseYaml(readFileSync(yamlPath, "utf8"))) ?? {};
+function loadSpec(spec: SpecSource): OpenApiDoc {
+  const parsed: unknown = parseYaml(readFileSync(SPEC_PATHS[spec], "utf8"));
+  SPEC_INPUT_PATCHES[spec]?.(parsed);
+  const root = asRecord(parsed) ?? {};
   const components = asRecord(root.components);
   return {
     components: { schemas: asRecord(components?.schemas) },
@@ -60,10 +59,10 @@ function loadSpec(yamlPath: string): OpenApiDoc {
 /**
  * Extracts top-level schema names from `components.schemas` in an OpenAPI spec.
  */
-export function listSchemaNames(yamlPath: string): string[] {
-  const { schemas } = loadSpec(yamlPath).components;
+export function listSchemaNames(spec: SpecSource): string[] {
+  const { schemas } = loadSpec(spec).components;
   if (!schemas) {
-    throw new Error(`Could not locate \`components.schemas\` block in ${yamlPath}`);
+    throw new Error(`Could not locate \`components.schemas\` block in ${SPEC_PATHS[spec]}`);
   }
   return Object.keys(schemas).sort();
 }
@@ -77,8 +76,8 @@ function toPascalCase(input: string): string {
  * `operationId` (e.g. `createAssetFolder` → `CreateAssetFolderData`). Aliases
  * may target these in addition to `components.schemas` entries.
  */
-export function listOperationDataNames(yamlPath: string): string[] {
-  const { paths, webhooks } = loadSpec(yamlPath);
+export function listOperationDataNames(spec: SpecSource): string[] {
+  const { paths, webhooks } = loadSpec(spec);
 
   const names = new Set<string>();
   for (const pathItem of [...Object.values(paths), ...Object.values(webhooks)]) {
@@ -152,15 +151,15 @@ export const UPSTREAM_SCHEMAS = {
 
 export function generateKnownTypes(): void {
   const schemasBySpec: Record<SpecSource, readonly string[]> = {
-    capi: listSchemaNames(SPEC_PATHS.capi),
-    mapi: listSchemaNames(SPEC_PATHS.mapi),
-    overlay: listSchemaNames(SPEC_PATHS.overlay),
+    capi: listSchemaNames("capi"),
+    mapi: listSchemaNames("mapi"),
+    overlay: listSchemaNames("overlay"),
   };
 
   const validSourcesBySpec: Record<SpecSource, ReadonlySet<string>> = {
-    capi: new Set([...schemasBySpec.capi, ...listOperationDataNames(SPEC_PATHS.capi)]),
-    mapi: new Set([...schemasBySpec.mapi, ...listOperationDataNames(SPEC_PATHS.mapi)]),
-    overlay: new Set([...schemasBySpec.overlay, ...listOperationDataNames(SPEC_PATHS.overlay)]),
+    capi: new Set([...schemasBySpec.capi, ...listOperationDataNames("capi")]),
+    mapi: new Set([...schemasBySpec.mapi, ...listOperationDataNames("mapi")]),
+    overlay: new Set([...schemasBySpec.overlay, ...listOperationDataNames("overlay")]),
   };
 
   validate(validSourcesBySpec);

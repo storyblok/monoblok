@@ -3,7 +3,7 @@ info:
   title: Storyblok overlay schemas
   version: 1.0.0
   description: >-
-    Supplementary schemas not (yet) modeled in storyblok/openapi-wdx.
+    Supplementary schemas not (yet) modeled in storyblok/openapi.
     Restored from the deprecated @storyblok/openapi package so wrapper
     templates have a deterministic source for BlockContent, field-value
     shapes, and the discriminated ComponentSchemaField union. Migrate

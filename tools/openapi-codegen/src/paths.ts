@@ -4,10 +4,9 @@
  * `injectWorkspacePackages: true` (pnpm-workspace.yaml) makes consumers import
  * a *copied* instance of this package from the pnpm store rather than a symlink
  * to `tools/openapi-codegen`. Resolving assets relative to the running module
- * therefore points at the injected copy — whose git-ignored `.openapi-cache` is
- * never refreshed by `pull`/`pull:update` (those run in the source package). That
- * divergence silently fed stale specs into `generate` (a fresh `pnpm install`
- * even wipes the injected cache entirely).
+ * therefore points at the injected copy, which `pull` never updates (it runs in
+ * the source package) and which only holds the files listed in `files`. That
+ * divergence silently fed stale specs into `generate`.
  *
  * To make "pull then generate" just work regardless of injection, every
  * filesystem asset resolves to the one source package, located by walking up to
@@ -37,13 +36,13 @@ function findSourceToolRoot(): string {
 }
 
 export const TOOL_ROOT = findSourceToolRoot();
-export const CACHE_DIR = resolve(TOOL_ROOT, ".openapi-cache");
+export const UPSTREAM_DIR = resolve(TOOL_ROOT, "upstream");
 export const OVERLAY_PATH = resolve(TOOL_ROOT, "specs/overlay.openapi.yaml");
 export const TEMPLATES_DIR = resolve(TOOL_ROOT, "templates");
 export const LOCK_PATH = resolve(TOOL_ROOT, "spec.lock");
 
 export const SPEC_PATHS = {
-  capi: resolve(CACHE_DIR, "capi/cdn-v2.openapi.yaml"),
-  mapi: resolve(CACHE_DIR, "mapi/management-v1.openapi.yaml"),
+  capi: resolve(UPSTREAM_DIR, "capi/cdn-v2.openapi.yaml"),
+  mapi: resolve(UPSTREAM_DIR, "mapi/management-v1.openapi.yaml"),
   overlay: OVERLAY_PATH,
 } as const;

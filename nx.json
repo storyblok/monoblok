@@ -8,40 +8,41 @@
       "{workspaceRoot}/tools/openapi-codegen/spec.lock",
       "{workspaceRoot}/tools/openapi-codegen/src/**",
       "{workspaceRoot}/tools/openapi-codegen/specs/**",
-      "{workspaceRoot}/tools/openapi-codegen/templates/**"
+      "{workspaceRoot}/tools/openapi-codegen/templates/**",
+      "{workspaceRoot}/tools/openapi-codegen/upstream/**"
     ]
   },
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "generate:openapi"],
       "inputs": ["default", "^default", "cjsInterop"],
       "outputs": ["{projectRoot}/dist"],
       "cache": true
     },
     "test": {
-      "dependsOn": ["^build", "build"]
+      "dependsOn": ["^build", "build", "generate:openapi"]
     },
     "test:types": {
-      "dependsOn": ["^build", "build"]
+      "dependsOn": ["^build", "build", "generate:openapi"]
     },
     "lint": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "generate:openapi"],
       "cache": true
     },
     "dev": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "generate:openapi"],
       "cache": false
     },
     "test:watch": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "generate:openapi"],
       "cache": false
     },
     "test:ui": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "generate:openapi"],
       "cache": false
     },
     "test:coverage": {
-      "dependsOn": ["^build", "build"],
+      "dependsOn": ["^build", "build", "generate:openapi"],
       "outputs": ["{projectRoot}/coverage"],
       "cache": true
     }

@@ -63,6 +63,6 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "oxlint": ">=0.15.0"
+    "oxlint": ">=1.45.0"
   }
 }

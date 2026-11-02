@@ -3,6 +3,7 @@ import type { DiffResult, EntityDiff, FieldChange, LocalFolder, NormalizedSchema
 import {
   applyDefaults,
   COMPONENT_DEFAULTS,
+  COMPONENT_OPTIONAL_KEYS,
   DATASOURCE_DEFAULTS,
   formatValue,
   isRecord,
@@ -400,6 +401,24 @@ function toPathSpace(
   return copy;
 }
 
+/**
+ * An optional key either side omits is unmanaged, so it must never show as a
+ * diff. A block held by one side only keeps them all: that side's values are
+ * what creating or deleting the block sets or discards.
+ */
+function omitUnmanagedOptionalKeys(comp: Component, other: Component | undefined): Component {
+  if (!other) {
+    return comp;
+  }
+  const copy = { ...comp };
+  for (const key of COMPONENT_OPTIONAL_KEYS) {
+    if (comp[key] === undefined || other[key] === undefined) {
+      delete copy[key];
+    }
+  }
+  return copy;
+}
+
 function diffComponent(
   name: string,
   fromComp: Component | undefined,
@@ -425,7 +444,11 @@ function diffComponent(
   const fromClean = fromComp
     ? cleanComponent(
         applyDefaults(
-          toPathSpace(toTagSpace(fromComp, fromTag, byTagName), uuidToPath, manageFolder),
+          toPathSpace(
+            toTagSpace(omitUnmanagedOptionalKeys(fromComp, toComp), fromTag, byTagName),
+            uuidToPath,
+            manageFolder,
+          ),
           COMPONENT_DEFAULTS,
         ),
         { includeGroupUuid },
@@ -434,7 +457,11 @@ function diffComponent(
   const toClean = toComp
     ? cleanComponent(
         applyDefaults(
-          toPathSpace(toTagSpace(toComp, toTag, byTagName), uuidToPath, manageFolder),
+          toPathSpace(
+            toTagSpace(omitUnmanagedOptionalKeys(toComp, fromComp), toTag, byTagName),
+            uuidToPath,
+            manageFolder,
+          ),
           COMPONENT_DEFAULTS,
         ),
         { includeGroupUuid },

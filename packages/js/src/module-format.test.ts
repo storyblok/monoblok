@@ -1,8 +1,10 @@
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve } from "pathe";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+
+import { resolveCjsEntry } from "../../../tools/resolve-cjs-entry.ts";
 
 // Regression test for https://github.com/storyblok/monoblok/issues/437:
 // "type":"module" caused CJS/UMD dist files to be misidentified as ESM,
@@ -16,7 +18,7 @@ const req = createRequire(import.meta.url);
 const pkgRoot = resolve(__dirname, "..");
 const pkg = JSON.parse(readFileSync(resolve(pkgRoot, "package.json"), "utf8"));
 
-const cjsEntry = resolve(pkgRoot, pkg.exports["."].require.default);
+const cjsEntry = resolveCjsEntry(pkgRoot);
 const esmEntry = resolve(pkgRoot, pkg.exports["."].import.default);
 
 describe("module format: require() (CJS)", () => {
@@ -32,6 +34,14 @@ describe("module format: require() (CJS)", () => {
   it("should export apiPlugin as a function", () => {
     const mod = req(cjsEntry);
     expect(typeof mod.apiPlugin).toBe("function");
+  });
+
+  // Regression test for https://github.com/storyblok/monoblok/issues/891:
+  // node-mode interop turned `storyblok-js-client`'s default into the exports object.
+  it("should create a client when calling apiPlugin", () => {
+    const mod = req(cjsEntry);
+    const { storyblokApi } = mod.apiPlugin({ apiOptions: { accessToken: "x" } });
+    expect(typeof storyblokApi.get).toBe("function");
   });
 });
 

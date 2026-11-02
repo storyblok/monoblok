@@ -36,14 +36,28 @@ function toWritableSchema(
 /**
  * Converts component `internal_tag_ids` from the response shape (`string[]`) to
  * the create/update request shape (`number[]`) — a known upstream inconsistency
- * where the component serializer returns tag IDs as strings.
+ * where the component serializer returns tag IDs as strings. `null` maps to
+ * `[]`, which clears the tags.
  */
-function toRequestTagIds(tagIds: ReadonlyArray<string | number> | undefined): number[] | undefined {
+function toRequestTagIds(
+  tagIds: ReadonlyArray<string | number> | null | undefined,
+): number[] | undefined {
+  if (tagIds === null) {
+    return [];
+  }
   if (!tagIds) {
     return undefined;
   }
   return tagIds.map((id) => Number(id));
 }
+
+/**
+ * Requires every request property to be listed, so a property added to the API
+ * fails type-checking until it is mapped. A property that references another
+ * resource by ID also needs translating in `ComponentNode.resolveReferences`.
+ */
+type ExhaustiveComponentRequest = ComponentCreate &
+  Record<keyof ComponentCreate | keyof ComponentUpdate, unknown>;
 
 // Component actions
 export const pushComponent = async (
@@ -73,6 +87,7 @@ export const updateComponent = async (
   space: string,
   componentId: number,
   component: ComponentUpdate,
+  errorMessage = `Failed to update component ${component.name}`,
 ): Promise<Component | undefined> => {
   try {
     const client = getMapiClient();
@@ -89,11 +104,7 @@ export const updateComponent = async (
 
     return data?.component;
   } catch (error) {
-    handleAPIError(
-      "update_component",
-      error as Error,
-      `Failed to update component ${component.name}`,
-    );
+    handleAPIError("update_component", error as Error, errorMessage);
   }
 };
 
@@ -102,37 +113,25 @@ export const upsertComponent = async (
   component: Component | ComponentCreate,
   existingId?: number,
 ): Promise<Component | undefined> => {
-  // Extract only the fields relevant for create/update, dropping read-only
-  // properties (`id`, `created_at`, `updated_at`, etc.) that exist on
-  // `Component` but not on `ComponentCreate`/`ComponentUpdate`.
-  const {
-    name,
-    display_name,
-    description,
-    schema,
-    is_root,
-    is_nestable,
-    component_group_uuid,
-    color,
-    icon,
-    preview_field,
-    preview_tmpl,
-    internal_tag_ids,
-  } = component;
   const payload = {
-    name,
-    display_name: display_name ?? undefined,
-    description: description ?? undefined,
-    schema: toWritableSchema(schema),
-    is_root,
-    is_nestable,
-    component_group_uuid: component_group_uuid ?? undefined,
-    color: color ?? undefined,
-    icon: icon ?? undefined,
-    preview_field: preview_field ?? undefined,
-    preview_tmpl: preview_tmpl ?? undefined,
-    internal_tag_ids: toRequestTagIds(internal_tag_ids),
-  };
+    name: component.name,
+    display_name: component.display_name,
+    description: component.description,
+    preview_tmpl: component.preview_tmpl,
+    image: component.image,
+    preview_field: component.preview_field,
+    is_root: component.is_root,
+    is_nestable: component.is_nestable,
+    preset_id: component.preset_id,
+    component_group_uuid: component.component_group_uuid,
+    color: component.color,
+    icon: component.icon,
+    content_type_asset_preview: component.content_type_asset_preview,
+    internal_tag_ids: toRequestTagIds(component.internal_tag_ids),
+    schema: toWritableSchema(component.schema),
+    // MAPI ignores `metadata: null`; only an empty object clears it.
+    metadata: component.metadata === null ? {} : component.metadata,
+  } satisfies ExhaustiveComponentRequest;
 
   if (existingId) {
     return await updateComponent(space, existingId, payload);

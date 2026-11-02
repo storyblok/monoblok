@@ -2,6 +2,7 @@ import { defineConfig } from "vite-plus";
 import Vue from "unplugin-vue/rolldown";
 
 import pkg from "./package.json" with { type: "json" };
+import { cjsInterop } from "../../tools/cjs-interop-plugin.ts";
 
 const banner = `/**\n * name: ${pkg.name}\n * (c) ${new Date().getFullYear()}\n * description: ${pkg.description}\n * author: ${pkg.author}\n */`;
 
@@ -22,7 +23,7 @@ export default defineConfig({
       // Stable chunk names, so the bundle size check can match chunks across builds.
       hash: false,
       outDir: "./dist",
-      plugins: [Vue({ isProduction: true })],
+      plugins: [Vue({ isProduction: true }), cjsInterop()],
       publint: true,
     },
   ],

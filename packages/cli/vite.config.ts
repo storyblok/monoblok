@@ -1,4 +1,5 @@
 import { defineConfig } from "vite-plus";
+import { cjsInterop } from "../../tools/cjs-interop-plugin.ts";
 
 export default defineConfig({
   pack: [
@@ -16,6 +17,7 @@ export default defineConfig({
     {
       entry: { "config/index": "./src/entrypoints/config.ts" },
       format: ["esm", "cjs"],
+      plugins: [cjsInterop()],
       outDir: "./dist",
       sourcemap: true,
       clean: false,

@@ -151,23 +151,23 @@ export type ComponentCreate = {
     /**
      * Human-readable display name
      */
-    display_name?: string;
+    display_name?: string | null;
     /**
      * Component description
      */
-    description?: string;
+    description?: string | null;
     /**
      * Preview template HTML
      */
-    preview_tmpl?: string;
+    preview_tmpl?: string | null;
     /**
      * Component image URL
      */
-    image?: string;
+    image?: string | null;
     /**
      * Field used for preview
      */
-    preview_field?: string;
+    preview_field?: string | null;
     /**
      * Whether this component can be used as a root component
      */
@@ -179,7 +179,7 @@ export type ComponentCreate = {
     /**
      * Default preset ID
      */
-    preset_id?: number;
+    preset_id?: number | null;
     /**
      * UUID
      */
@@ -187,15 +187,15 @@ export type ComponentCreate = {
     /**
      * Component color for UI display
      */
-    color?: string;
+    color?: string | null;
     /**
      * Component icon name
      */
-    icon?: string;
+    icon?: string | null;
     /**
      * Asset preview URL for content type
      */
-    content_type_asset_preview?: string;
+    content_type_asset_preview?: string | null;
     /**
      * List of internal tag IDs
      */
@@ -237,23 +237,23 @@ export type ComponentUpdate = {
     /**
      * Human-readable display name
      */
-    display_name?: string;
+    display_name?: string | null;
     /**
      * Component description
      */
-    description?: string;
+    description?: string | null;
     /**
      * Preview template HTML
      */
-    preview_tmpl?: string;
+    preview_tmpl?: string | null;
     /**
      * Component image URL
      */
-    image?: string;
+    image?: string | null;
     /**
      * Field used for preview
      */
-    preview_field?: string;
+    preview_field?: string | null;
     /**
      * Whether this component can be used as a root component
      */
@@ -265,7 +265,7 @@ export type ComponentUpdate = {
     /**
      * Default preset ID
      */
-    preset_id?: number;
+    preset_id?: number | null;
     /**
      * UUID
      */
@@ -273,15 +273,15 @@ export type ComponentUpdate = {
     /**
      * Component color for UI display
      */
-    color?: string;
+    color?: string | null;
     /**
      * Component icon name
      */
-    icon?: string;
+    icon?: string | null;
     /**
      * Asset preview URL for content type
      */
-    content_type_asset_preview?: string;
+    content_type_asset_preview?: string | null;
     /**
      * List of internal tag IDs
      */

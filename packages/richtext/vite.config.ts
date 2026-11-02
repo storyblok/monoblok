@@ -1,4 +1,5 @@
 import { defineConfig } from "vite-plus";
+import { cjsInterop } from "../../tools/cjs-interop-plugin.ts";
 
 const tiptapGlobals: Record<string, string> = {
   "@tiptap/core": "TiptapCore",
@@ -28,6 +29,7 @@ const tiptapGlobals: Record<string, string> = {
 };
 
 const sharedConfig = {
+  plugins: [cjsInterop()],
   attw: true,
   clean: true,
   dts: true,

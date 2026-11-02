@@ -1,14 +1,17 @@
 # See: https://www.storyblok.com/docs/api/management/components/possible-field-types
-type: object
-description: Plugin/Custom field type - field plugin with custom structure
-required:
-  - plugin
-properties:
-  plugin:
-    type: string
-    description: Technical name of the field plugin
-  _uid:
-    type: string
-    format: uuid
-    description: Unique identifier for this plugin field instance
-additionalProperties: true
+#
+# A field plugin stores whatever JSON value it sends to the editor. Legacy
+# plugins and the official Colorpicker store an object with a `plugin` key;
+# Field Plugin SDK plugins store any shape, including primitives and arrays.
+description: Custom field value stored by a field plugin. Any JSON value.
+oneOf:
+  - type: 'null'
+  - type: string
+  - type: number
+  - type: boolean
+  - type: array
+    items:
+      $ref: '#'
+  - type: object
+    additionalProperties:
+      $ref: '#'

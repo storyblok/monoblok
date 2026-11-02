@@ -779,15 +779,37 @@ describe("createApiClient with .withTypes() — field plugins", () => {
   });
   type Schema = InferSchema<typeof _schema>;
 
-  it("resolves a registered custom field to the validator output merged with the plugin envelope", async () => {
+  it("should preserve the official color field's required plugin literal", async () => {
     const client = createApiClient({ accessToken: "test-token" }).withTypes<Schema>();
     const result = await client.stories.get("home");
     if (result.data && result.data.story.content.component === "themed") {
       expectTypeOf<NonNullable<typeof result.data.story.content.bg>>().toEqualTypeOf<{
         color: string;
-        plugin: string;
+        plugin: "official-colorpicker";
         _uid?: string;
       }>();
+    }
+  });
+
+  it("should preserve primitive values and declared plugin properties in story content", async () => {
+    const _textBlock = defineBlock({
+      name: "text",
+      is_root: true,
+      fields: [
+        defineField("value", { type: "custom", field_type: "text-plugin" }),
+        defineField("object", { type: "custom", field_type: "object-plugin" }),
+      ],
+    });
+    const client = createApiClient({ accessToken: "test-token" }).withTypes<{
+      blocks: typeof _textBlock;
+      fieldPlugins: { "text-plugin": string; "object-plugin": { plugin: number; v: string } };
+    }>();
+    const result = await client.stories.get("home");
+    if (result.data) {
+      expectTypeOf(result.data.story.content.value).toEqualTypeOf<string | null | undefined>();
+      expectTypeOf(result.data.story.content.object).toEqualTypeOf<
+        { plugin: number; v: string; _uid?: string } | null | undefined
+      >();
     }
   });
 
@@ -795,9 +817,9 @@ describe("createApiClient with .withTypes() — field plugins", () => {
     const client = createApiClient({ accessToken: "test-token" }).withTypes<Schema>();
     const result = await client.stories.get("home");
     if (result.data && result.data.story.content.component === "themed") {
-      expectTypeOf<
-        NonNullable<typeof result.data.story.content.legacy>
-      >().toEqualTypeOf<PluginFieldValue>();
+      expectTypeOf<NonNullable<typeof result.data.story.content.legacy>>().toEqualTypeOf<
+        NonNullable<PluginFieldValue>
+      >();
     }
   });
 });

@@ -284,7 +284,7 @@ function svelteCompiler(packageDir: string): Plugin {
  * minified. A dependency the importing package declares as a peer is left out, since the app
  * provides it, and so are Node built-ins and specifiers nothing resolves (framework virtual
  * modules). Only the entry chunk and the chunks it imports statically count: dynamic imports load
- * lazily.
+ * later and only when their feature runs, so they are not part of the up-front cost of an import.
  */
 export async function bundleEntry(
   packageDir: string,

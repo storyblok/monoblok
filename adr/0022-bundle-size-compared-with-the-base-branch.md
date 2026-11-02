@@ -25,6 +25,11 @@ leaving out peer dependencies the app provides and chunks that load lazily. Ever
 also measured on its own. Growth of more than both 5% and 100 B fails. The `bundle-size-accepted`
 label turns failing growth into a warning.
 
+The entry size is the up-front cost of importing an export: what every page that uses it downloads
+before it runs. Lazily loaded chunks still reach the browser, but later and only when their feature
+runs, so adding them would blur that cost, and moving code into a lazy chunk, which improves the
+initial load, would not show. A package's own lazy chunks are still covered by the per-file check.
+
 ## Consequences
 
 - New packages and entry points are covered without setup, and there is no baseline to maintain.
@@ -35,4 +40,6 @@ label turns failing growth into a warning.
 - Sizes include dependencies, so a change in one package shows up in every package that depends on
   it, as it does for their users. Measuring a build needs that build's own `node_modules`, so the
   compare job installs the base branch as well.
+- Lazily loaded dependencies, such as the preview bridge or `axe-core`, are not measured. A separate
+  report of lazy chunks can be added if one becomes a problem.
 - Files are matched across builds by path, so chunk file names must not carry a content hash.

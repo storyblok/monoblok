@@ -216,6 +216,21 @@ describe("measure", () => {
     expect(pkg.entries["."].size).toBeLessThan(200);
   });
 
+  it("should leave out framework virtual modules that nothing resolves", async () => {
+    writePackage(
+      "pkg",
+      { name: "@storyblok/pkg", type: "module", exports: { ".": "./dist/index.mjs" } },
+      {
+        "dist/index.mjs": `import { app } from "#app";\nimport { init } from "virtual:storyblok-init";\nexport const all = [app, init];\n`,
+      },
+    );
+
+    const pkg = (await measure(root)).packages["@storyblok/pkg"];
+
+    expect(pkg.error).toBeUndefined();
+    expect(pkg.entries["."].size).toBeGreaterThan(0);
+  });
+
   it("should measure only ES modules, skipping CommonJS, UMD, and CSS", async () => {
     writePackage(
       "pkg",

@@ -16,6 +16,17 @@ describe("renderMigrationCode", () => {
     expect(code).toContain("return block");
   });
 
+  it("should comment a mapping for each option value the field no longer offers", () => {
+    const code = renderMigrationCode([
+      { kind: "options_removed", field: "size", values: [" "], multiple: false },
+      { kind: "options_removed", field: "tags", values: ["old"], multiple: true },
+    ]);
+    expect(code).toContain('// if (block.size === " ") block.size = <value>;');
+    expect(code).toContain(
+      '// block.tags = block.tags?.map((value) => (value === "old" ? <value> : value));',
+    );
+  });
+
   it("should generate removal code", () => {
     const changes: BreakingChange[] = [{ kind: "removed", field: "subtitle" }];
     const code = renderMigrationCode(changes);

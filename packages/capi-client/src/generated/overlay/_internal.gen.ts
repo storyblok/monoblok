@@ -111,7 +111,7 @@ export type RichtextField = BaseField & ValueField & {
     /**
      * Array of enabled toolbar elements
      */
-    toolbar?: Array<'ai-complete' | 'ai-shorten' | 'ai-extend' | 'ai-rephrase' | 'ai-summarize' | 'ai-simplify' | 'ai-tone' | 'ai-emoji' | 'ai-translate' | 'ai-tldr' | 'ai-spelling' | 'blok' | 'ltr' | 'rtl' | 'export' | 'import' | 'bold' | 'list' | 'inlinecode' | 'code' | 'color' | 'copy' | 'cut' | 'emoji' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'highlight' | 'unset' | 'hrule' | 'image' | 'italic' | 'link' | 'anchor' | 'olist' | 'paragraph' | 'paste-action' | 'paste' | 'quote' | 'redo' | 'strike' | 'subscript' | 'superscript' | 'underline' | 'undo' | 'align-left' | 'align-center' | 'align-right' | 'align-justify'>;
+    toolbar?: Array<'ai-complete' | 'ai-shorten' | 'ai-extend' | 'ai-rephrase' | 'ai-summarize' | 'ai-simplify' | 'ai-tone' | 'ai-emoji' | 'ai-translate' | 'ai-tldr' | 'ai-spelling' | 'blok' | 'ltr' | 'rtl' | 'export' | 'import' | 'bold' | 'list' | 'inlinecode' | 'code' | 'color' | 'copy' | 'cut' | 'emoji' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'highlight' | 'unset' | 'hrule' | 'image' | 'italic' | 'link' | 'anchor' | 'olist' | 'paragraph' | 'paste-action' | 'paste' | 'quote' | 'redo' | 'strike' | 'subscript' | 'superscript' | 'underline' | 'undo' | 'align-left' | 'align-center' | 'align-right' | 'align-justify' | 'background-color' | 'add-table' | 'insert-column-before' | 'insert-column-after' | 'insert-row-above' | 'insert-row-below' | 'toggle-header-column' | 'toggle-header-row' | 'toggle-header-cell' | 'delete-row' | 'delete-column' | 'merge-cells' | 'split-cells' | 'cell-color' | 'delete-table'>;
     /**
      * Custom CSS styles for the rich text field
      */
@@ -339,13 +339,17 @@ export type OptionField = BaseField & ValueField & {
      */
     allow_advanced_search?: boolean;
     /**
-     * Maximum number of selectable options
+     * Maximum number of selectable options. The schema form writes a number;
+     * older spaces hold the same value as a numeric string.
+     *
      */
-    max_options?: string;
+    max_options?: number | string;
     /**
-     * Minimum number of selectable options
+     * Minimum number of selectable options. The schema form writes a number;
+     * older spaces hold the same value as a numeric string.
+     *
      */
-    min_options?: string;
+    min_options?: number | string;
     /**
      * Whether multiple values are allowed
      */
@@ -412,13 +416,17 @@ export type OptionsField = BaseField & ValueField & {
      */
     allow_advanced_search?: boolean;
     /**
-     * Maximum number of selectable options
+     * Maximum number of selectable options. The schema form writes a number;
+     * older spaces hold the same value as a numeric string.
+     *
      */
-    max_options?: string;
+    max_options?: number | string;
     /**
-     * Minimum number of selectable options
+     * Minimum number of selectable options. The schema form writes a number;
+     * older spaces hold the same value as a numeric string.
+     *
      */
-    min_options?: string;
+    min_options?: number | string;
     /**
      * Whether multiple values are allowed
      */

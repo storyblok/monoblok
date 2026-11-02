@@ -70,8 +70,8 @@ working with OpenAPI specs.
 ## Architecture Decision Records
 
 When a significant architectural decision is made, add a concise new ADR in `adr/` following the
-existing numbering convention (`0001-`, `0002-`, …). Don't cite ADRs as a reference for current
-behavior.
+existing numbering convention (`0001-`, `0002-`, …). Cite an ADR to explain why something was built
+a certain way, not as a reference for how it works now; point to the code or docs for that.
 
 ## Git
 

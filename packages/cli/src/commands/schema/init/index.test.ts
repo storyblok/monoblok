@@ -705,12 +705,24 @@ describe("schema init command", () => {
             pos: 0,
           },
           "tab-empty": { type: "tab", name: "tab-empty", display_name: "Empty", keys: [], pos: 1 },
-          title: { type: "text", pos: 1, conditional_settings: [] },
+          // Legacy options: a `key`, and a toolbar left from when this was a
+          // `richtext` field.
+          title: {
+            type: "text",
+            pos: 1,
+            key: "title",
+            conditional_settings: [],
+            customize_toolbar: true,
+            toolbar: ["bold"],
+          },
           subtitle: { type: "text", pos: 5 },
           image: { type: "asset", pos: 5, filetypes: [], asset_folder_id: null },
           body: {
             type: "bloks",
             pos: 9,
+            // The editor's number inputs used to store their raw string.
+            maximum: "2",
+            minimum: "",
             restrict_components: true,
             restrict_type: "tags",
             component_tag_whitelist: [1],

@@ -1,5 +1,8 @@
-import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
-import { formatValue, sortSchemaByPos } from "@storyblok/schema/internal/codegen";
+import {
+  formatValue,
+  partitionFieldOptions,
+  sortSchemaByPos,
+} from "@storyblok/schema/internal/codegen";
 
 import {
   COMPONENT_STRIP_KEYS,
@@ -8,22 +11,6 @@ import {
   RESTRICTION_LIST_KEYS,
   stripKeys,
 } from "./utils";
-
-/**
- * Restriction keys only `bloks` and `richtext` fields read. The editor ignores
- * them on every other field type (a space keeps them there after a field's type
- * was changed), so they carry no state and are dropped. `component_whitelist`
- * is not among them: on `multilink` it selects story content types.
- */
-const BLOCK_RESTRICTION_ONLY_KEYS = [
-  "restrict_components",
-  "restrict_type",
-  "component_denylist",
-  "component_group_whitelist",
-  "component_group_denylist",
-  "component_tag_whitelist",
-  "component_tag_denylist",
-] as const;
 
 /**
  * Whether an empty list is the field's real state rather than an unset key. A
@@ -39,18 +26,11 @@ function isMeaningfulEmptyList(field: Record<string, unknown>, key: string): boo
  * Drops the restriction keys the editor does not read for this field, so a list
  * a space still stores but no longer enforces does not diff against a schema
  * that omits it:
- * - on a field type that has no block restriction at all,
  * - every list while `restrict_components` is explicitly `false`,
  * - a folder or tag whitelist while `restrict_type` selects another dimension.
  *   Denylists are not gated on `restrict_type` and are kept.
  */
 function omitInertRestrictions(field: Record<string, unknown>): void {
-  if (!DENIABLE_FIELD_TYPES.includes(String(field.type))) {
-    for (const key of BLOCK_RESTRICTION_ONLY_KEYS) {
-      delete field[key];
-    }
-    return;
-  }
   if (field.restrict_components === false) {
     for (const key of RESTRICTION_LIST_KEYS) {
       delete field[key];
@@ -69,10 +49,15 @@ function omitInertRestrictions(field: Record<string, unknown>): void {
  * Reduces a schema field to the state the editor acts on, so two fields that
  * behave the same compare equal: API-assigned `id` stripped, `null` treated as
  * absent, and a `name` that repeats the field's schema key (the editor writes
- * one onto tabs it reorders) dropped.
+ * one onto tabs it reorders) dropped. Options are read the way `schema init`
+ * reads them (see `partitionFieldOptions`): an option another field type owns,
+ * the inert `key`, and `""` where a number or boolean belongs are dropped, and a
+ * numeric or boolean string is coerced to the type the option wants.
  */
 function normalizeField(key: string, field: Record<string, unknown>): Record<string, unknown> {
-  const { id, ...rest } = field;
+  const { id, ...options } = field;
+  const { known, unchecked } = partitionFieldOptions(options);
+  const rest: Record<string, unknown> = { ...known, ...unchecked };
   if (rest.name === key) {
     delete rest.name;
   }

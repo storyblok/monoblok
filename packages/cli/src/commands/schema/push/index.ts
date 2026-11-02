@@ -20,7 +20,8 @@ import { buildGroupPathByUuid } from "../folders";
 import { buildChangesetEntries, executePush, formatDiffOutput } from "./actions";
 import { saveChangeset } from "../changeset";
 import { analyzeBreakingChanges } from "./migrations/analyze";
-import type { ComponentBreakingChanges } from "./migrations/types";
+import type { BreakingChange, ComponentBreakingChanges } from "./migrations/types";
+import { applyDeclaredRenames } from "./migrations/declared-renames";
 import { renderMigrationCode, toMigrationOps, writeMigrationFile } from "./migrations/generate";
 import { writeContentMigration } from "../../migrations/content-migrations";
 import { writeLocalComponents } from "./write-local-components";
@@ -33,6 +34,16 @@ import {
   renameFolderRestrictions,
 } from "./story-folders";
 import { plural } from "../../migrations/content-migrations";
+
+function collect(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
+/** Splits `a:b` into its two names, or `undefined` when either is missing. */
+function pairOf(value: string): [string, string] | undefined {
+  const [from, to, ...rest] = value.split(":");
+  return from && to && rest.length === 0 ? [from, to] : undefined;
+}
 
 /** Quotes a path for pasting into a shell when it holds characters the shell would split or expand. */
 function shellQuote(path: string): string {
@@ -74,6 +85,24 @@ schemaCommand
   .option("--dry-run", "Show diffs without applying changes", false)
   .option("--delete", "Delete remote entities not present in local schema", false)
   .option("--force", "With --delete, delete blocks that stories still use", false)
+  .option(
+    "-y, --yes",
+    "Accept every block and field rename schema push detects without asking",
+    false,
+  )
+  .option(
+    "--rename <block.field:new-field>",
+    "Rename a field of a block in the generated migration (repeatable)",
+    collect,
+    [],
+  )
+  .option(
+    "--rename-block <block:new-block>",
+    "Rename a block in place instead of creating a new one (repeatable)",
+    collect,
+    [],
+  )
+  .option("--no-renames", "Treat detected renames as removals and new blocks or fields")
   .option("--migrations", "Generate scaffold migration files for breaking changes", true)
   .addOption(new Option("--no-migrations", "Skip migration generation for breaking changes"))
   .option(
@@ -112,6 +141,19 @@ schemaCommand
     const summary = { total: 0, succeeded: 0, failed: 0 };
     let generatedMigrations: { files: string[]; changes: ComponentBreakingChanges[] } | undefined;
     const runCommand = options.typed ? "migrations apply" : "migrations run";
+
+    /**
+     * Asks a yes/no question, or fails when no one can answer it, so a script
+     * or CI run never waits on a prompt or answers the wrong one.
+     */
+    const ask = async (message: string, flags: string): Promise<boolean> => {
+      if (!process.stdin.isTTY) {
+        throw new CommandError(
+          `schema push needs an answer to "${message}", but stdin is not a terminal. ${flags}`,
+        );
+      }
+      return confirm({ message, default: true }, stderrPromptContext);
+    };
 
     try {
       // 1. Load local schema
@@ -297,6 +339,22 @@ schemaCommand
       // from = remote (base), to = local (target): the diff describes the push.
       // The local DSL opts into group-uuid diffing, so a block that sets
       // `component_group_uuid` explicitly gets its membership pushed.
+      const declaredRenames = new Map(
+        options.rename.map((value) => {
+          const pair = pairOf(value);
+          const dot = pair?.[0].indexOf(".") ?? -1;
+          if (!pair || dot <= 0) {
+            throw new CommandError(
+              `Invalid --rename "${value}". Use --rename block.field:new-field.`,
+            );
+          }
+          return [
+            pair[0],
+            { block: pair[0].slice(0, dot), field: pair[0].slice(dot + 1), to: pair[1] },
+          ];
+        }),
+      );
+
       const diff = () =>
         diffSchema(remoteToNormalized(remote), localToNormalized(local), {
           compareGroupUuid: true,
@@ -314,21 +372,48 @@ schemaCommand
       };
       const usage = (count: number | undefined) =>
         count === undefined ? "" : ` (${plural(count, "story", "stories")})`;
-      for (const rename of detectBlockRenames(diffResult, local, remote)) {
+      const declaredBlockRenames = options.renameBlock.map((value) => {
+        const pair = pairOf(value);
+        if (!pair) {
+          throw new CommandError(`Invalid --rename-block "${value}". Use --rename-block old:new.`);
+        }
+        return { from: pair[0], to: pair[1] };
+      });
+      const detectedBlockRenames = detectBlockRenames(diffResult, local, remote);
+      for (const declared of declaredBlockRenames) {
+        const actionOf = (name: string) =>
+          diffResult.diffs.find((d) => d.type === "component" && d.name === name)?.action;
+        if (actionOf(declared.from) !== "stale" || actionOf(declared.to) !== "create") {
+          throw new CommandError(
+            `--rename-block ${declared.from}:${declared.to} needs a block ${declared.from} that only the space has and a block ${declared.to} that only the schema has.`,
+          );
+        }
+        blockRenames.push(declared);
+      }
+      for (const rename of detectedBlockRenames) {
+        if (
+          blockRenames.some(
+            (declared) => declared.from === rename.from || declared.to === rename.to,
+          )
+        ) {
+          continue;
+        }
         const stories = usage(await storiesUsing(rename.from));
+        if (!options.renames) {
+          continue;
+        }
         if (options.dryRun) {
           ui.info(
             `Possible block rename: ${rename.from} → ${rename.to}${stories}. Without --dry-run, schema push asks whether to rename the block in place.`,
           );
           continue;
         }
-        const confirmed = await confirm(
-          {
-            message: `Rename block ${rename.from} → ${rename.to}${stories}? Otherwise ${rename.to} is created as a new block.`,
-            default: true,
-          },
-          stderrPromptContext,
-        );
+        const confirmed =
+          options.yes ||
+          (await ask(
+            `Rename block ${rename.from} → ${rename.to}${stories}? Otherwise ${rename.to} is created as a new block.`,
+            `Pass --yes or --rename-block ${rename.from}:${rename.to} to rename it, or --no-renames to create ${rename.to} as a new block.`,
+          ));
         if (confirmed) blockRenames.push(rename);
       }
       if (blockRenames.length > 0) {
@@ -370,6 +455,7 @@ schemaCommand
           // Last, so the field ops before it address the block by its old name.
           entry.changes.push({ kind: "block_renamed", from, to });
         }
+        applyDeclaredRenames(breakingChanges, declaredRenames);
 
         if (breakingChanges.length > 0) {
           const totalChanges = breakingChanges.reduce((sum, c) => sum + c.changes.length, 0);
@@ -396,60 +482,51 @@ schemaCommand
               }
             }
           } else {
-            // Determine if --migrations was explicitly passed (auto-generate) or is just the default (prompt)
+            // --migrations generates without asking, and has always taken
+            // detected field renames as given.
             const explicitMigrations = command.getOptionValueSource("migrations") === "cli";
             const shouldGenerate =
               explicitMigrations ||
-              (await confirm(
-                {
-                  message: "Generate migration files for breaking changes?",
-                  default: true,
-                },
-                stderrPromptContext,
+              options.yes ||
+              (await ask(
+                "Generate migration files for breaking changes?",
+                "Pass --migrations to generate them or --no-migrations to skip them.",
               ));
 
             if (shouldGenerate) {
-              // Show detected renames for confirmation, or log them in explicit mode
               for (const comp of breakingChanges) {
-                const renames = comp.changes.filter((c) => c.kind === "rename");
-                if (renames.length > 0 && explicitMigrations) {
-                  for (const r of renames) {
-                    if (r.kind === "rename") {
-                      ui.log(
-                        `  Assumed rename in '${comp.componentName}': ${r.oldField} → ${r.field}`,
-                      );
-                    }
+                const kept: BreakingChange[] = [];
+                for (const change of comp.changes) {
+                  if (
+                    change.kind !== "rename" ||
+                    declaredRenames.has(`${comp.componentName}.${change.oldField}`)
+                  ) {
+                    kept.push(change);
+                    continue;
                   }
-                }
-                if (renames.length > 0 && !explicitMigrations) {
-                  ui.br();
-                  ui.log(`Detected renames in '${comp.componentName}':`);
-                  for (const r of renames) {
-                    if (r.kind === "rename") {
-                      ui.log(`  ${r.oldField} → ${r.field}`);
-                    }
+                  const label = `${comp.componentName}.${change.oldField} → ${change.field}`;
+                  const confirmed =
+                    options.renames &&
+                    (explicitMigrations ||
+                      options.yes ||
+                      (await ask(
+                        `Rename field ${label}? Otherwise ${change.oldField} is removed and ${change.field} added.`,
+                        `Pass --yes or --rename ${comp.componentName}.${change.oldField}:${change.field} to rename it, or --no-renames to remove ${change.oldField}.`,
+                      )));
+                  if (confirmed && explicitMigrations && !options.yes) {
+                    ui.log(`  Assumed rename: ${label}`);
                   }
-                  const renameConfirmed = await confirm(
-                    {
-                      message: "Are these renames correct?",
-                      default: true,
-                    },
-                    stderrPromptContext,
+                  kept.push(
+                    confirmed
+                      ? change
+                      : {
+                          kind: "removed",
+                          field: change.oldField,
+                          renameHint: { newFields: [change.field] },
+                        },
                   );
-                  if (!renameConfirmed) {
-                    // Convert renames to separate removals
-                    comp.changes = comp.changes.map((c) => {
-                      if (c.kind === "rename") {
-                        return {
-                          kind: "removed" as const,
-                          field: c.oldField,
-                          renameHint: { newFields: [c.field] },
-                        };
-                      }
-                      return c;
-                    });
-                  }
                 }
+                comp.changes = kept;
               }
 
               const files = await writeMigrations(breakingChanges);

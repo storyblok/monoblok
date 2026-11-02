@@ -6,25 +6,28 @@ export type LiveFields = ReadonlyMap<string, ReadonlyMap<string, string | undefi
 
 export type StaleOp = { op: MigrationOp; reason: string };
 
-/** The fields an op writes and the fields it removes, on the block it targets. */
-function fieldEffects(op: MigrationOp): { writes: readonly string[]; removes: readonly string[] } {
+/**
+ * The fields an op creates and the fields it removes, on the block it targets.
+ * Ops that only change a value a block already holds create nothing: they skip
+ * blocks without the field, so a rerun on migrated content changes nothing,
+ * while content that still holds the field reaches a later migration
+ * consuming it in the shape that migration expects.
+ */
+function fieldEffects(op: MigrationOp): { creates: readonly string[]; removes: readonly string[] } {
   switch (op.kind) {
     case "renameField":
     case "moveField":
-      return { writes: [op.to], removes: [op.field] };
+      return { creates: [op.to], removes: [op.field] };
     case "removeField":
-      return { writes: [], removes: [op.field] };
+      return { creates: [], removes: [op.field] };
     case "addField":
-    case "alterField":
-    case "coerceField":
-    case "reorderField":
-      return { writes: [op.field], removes: [] };
+      return { creates: [op.field], removes: [] };
     case "splitField":
-      return { writes: op.into, removes: op.into.includes(op.field) ? [] : [op.field] };
+      return { creates: op.into, removes: op.into.includes(op.field) ? [] : [op.field] };
     case "mergeFields":
-      return { writes: [op.into], removes: op.fields.filter((field) => field !== op.into) };
+      return { creates: [op.into], removes: op.fields.filter((field) => field !== op.into) };
     default:
-      return { writes: [], removes: [] };
+      return { creates: [], removes: [] };
   }
 }
 
@@ -51,7 +54,7 @@ function describeOp(op: MigrationOp): string {
 }
 
 /**
- * Splits off the ops a later schema change superseded: one that writes a field
+ * Splits off the ops a later schema change superseded: one that creates a field
  * the block no longer has, removes a field the block has again, or coerces a
  * field to a type it no longer has. Every migration reruns, so without this an
  * old op would undo the later change, such as adding back a field that was
@@ -67,8 +70,8 @@ export function withoutStaleOps(
     if (!fields) {
       return true;
     }
-    const { writes, removes } = fieldEffects(op);
-    const missing = writes.find((field) => !fields.has(field));
+    const { creates, removes } = fieldEffects(op);
+    const missing = creates.find((field) => !fields.has(field));
     const restored = removes.find((field) => fields.has(field));
     const retyped = retypedField(op, fields);
     const prefix = `${describeOp(op)} skipped: the ${op.block} block in the space`;

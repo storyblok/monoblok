@@ -46,6 +46,7 @@ import {
 import type { StoryAccess } from "../content-migrations";
 import { fetchComponents } from "../../components";
 import { withoutStaleOps } from "./stale-ops";
+import { describeFolder, foldersNaming } from "../../schema/push/story-folders";
 import type { LiveFields } from "./stale-ops";
 
 const PER_PAGE = 100;
@@ -95,6 +96,32 @@ async function liveFields(space: string): Promise<LiveFields> {
       new Map(Object.entries(component.schema ?? {}).map(([name, field]) => [name, field.type])),
     ]),
   );
+}
+
+/**
+ * Folders name their default and allowed content types by block name, and a
+ * migration only changes story content, so a folder can keep naming a block
+ * after its stories were renamed away from it.
+ */
+async function warnAboutFoldersNaming(
+  space: string,
+  renamedBlocks: ReadonlyMap<string, string>,
+): Promise<void> {
+  if (renamedBlocks.size === 0) return;
+  try {
+    const folders = await foldersNaming(space, new Set(renamedBlocks.keys()));
+    for (const folder of folders) {
+      for (const name of new Set([folder.defaultRoot, ...folder.contentTypes])) {
+        const to = name === undefined ? undefined : renamedBlocks.get(name);
+        if (to === undefined) continue;
+        getUI().warn(
+          `Folder ${describeFolder(folder)} still names ${name} as a content type. Change it to ${to}, or schema push renames it when it renames the block.`,
+        );
+      }
+    }
+  } catch (maybeError) {
+    getLogger().warn("Failed to check folders for renamed blocks", { error: toError(maybeError) });
+  }
 }
 
 function changeSummary(run: MigrationRun): string {
@@ -378,9 +405,13 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
     const refusedEverything: string[] = [];
     let failed = 0;
     const notPublished: string[] = [];
+    const renamedBlocks = new Map<string, string>();
 
     for (const entry of selected) {
       const { migration, stale } = withoutStaleOps(entry.migration, live);
+      for (const op of migration.ops) {
+        if (op.kind === "renameBlock") renamedBlocks.set(op.block, op.to);
+      }
       for (const { reason } of stale) {
         ui.warn(`${entry.id}: ${reason}`);
       }
@@ -491,6 +522,8 @@ applyCmd.action(async (rawName: string | undefined, _options: unknown, command: 
       await journal.record(run, recorded);
       ui.info(`${entry.id}: changed ${changeSummary(run)}, recorded as ${chalk.bold(run.id)}.`);
     }
+
+    await warnAboutFoldersNaming(space, renamedBlocks);
 
     const problems = [
       ...refusedEverything.map((id) => `${id} refused every story it matched`),

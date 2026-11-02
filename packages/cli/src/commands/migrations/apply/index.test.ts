@@ -194,6 +194,27 @@ describe("migrations apply command", () => {
     ]);
   });
 
+  it("should warn about folders that still name a block the migration renamed", async () => {
+    space.hasMigrations(["0001-rename-card-to-teaser", renameCardToTeaser]);
+    space.hasStories(storyWithCard(), {
+      id: 9,
+      name: "Cards",
+      slug: "cards",
+      full_slug: "cards",
+      is_folder: true,
+      default_root: "card",
+      content: { content_types: ["card"], lock_subfolders_content_types: false },
+    });
+    space.canUpdateStories();
+    const warn = vi.spyOn(getUI(), "warn");
+
+    await apply();
+
+    expect(warn).toHaveBeenCalledWith(
+      "Folder cards still names card as a content type. Change it to teaser, or schema push renames it when it renames the block.",
+    );
+  });
+
   it("should keep a field a later schema change added back", async () => {
     space.hasMigrations([
       "0001-remove-accent",

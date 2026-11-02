@@ -214,6 +214,61 @@ const preconditions = {
       }),
     );
   },
+  /**
+   * Stories by the blocks they contain, and story folders. A folder restricts
+   * content types through `default_root` and `content.content_types`.
+   */
+  hasStories(
+    usage: Record<string, number>,
+    folders: {
+      id: number;
+      full_slug: string;
+      default_root?: string;
+      content_types?: string[];
+    }[] = [],
+  ) {
+    const folderUpdates: { id: number; story: Record<string, unknown> }[] = [];
+    const storyFolder = (folder: (typeof folders)[number]) => ({
+      id: folder.id,
+      name: folder.full_slug,
+      slug: folder.full_slug,
+      full_slug: folder.full_slug,
+      is_folder: true,
+      default_root: folder.default_root,
+      content: { content_types: folder.content_types ?? [], lock_subfolders_content_types: false },
+    });
+    server.use(
+      http.get(`https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories`, ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        if (params.get("folder_only") === "true") {
+          return HttpResponse.json(
+            { stories: folders.map(({ id, full_slug }) => ({ id, full_slug, is_folder: true })) },
+            { headers: { Total: String(folders.length), "Per-Page": "100" } },
+          );
+        }
+        const total = usage[params.get("contain_component") ?? ""] ?? 0;
+        return HttpResponse.json({ stories: [] }, { headers: { Total: String(total) } });
+      }),
+      http.get(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`,
+        ({ params }) => {
+          const folder = folders.find((candidate) => candidate.id === Number(params.id));
+          return folder
+            ? HttpResponse.json({ story: storyFolder(folder) })
+            : HttpResponse.json({ error: "Not Found" }, { status: 404 });
+        },
+      ),
+      http.put(
+        `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/stories/:id`,
+        async ({ request, params }) => {
+          const body = (await request.json()) as { story: Record<string, unknown> };
+          folderUpdates.push({ id: Number(params.id), story: body.story });
+          return HttpResponse.json({ story: { id: Number(params.id), ...body.story } });
+        },
+      ),
+    );
+    return folderUpdates;
+  },
   confirmsMigrations() {
     vi.mocked(confirm).mockResolvedValue(true);
   },
@@ -238,6 +293,7 @@ describe("schema push command", () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-16T09:05:03Z"));
+    preconditions.hasStories({});
   });
 
   afterEach(() => {
@@ -249,6 +305,7 @@ describe("schema push command", () => {
     pushCmd?.setOptionValueWithSource("legacy", undefined, "default");
     pushCmd?.setOptionValueWithSource("before", true, "default");
     pushCmd?.setOptionValueWithSource("path", undefined, "default");
+    pushCmd?.setOptionValueWithSource("force", false, "default");
     vi.useRealTimers();
   });
 
@@ -1061,6 +1118,184 @@ describe("schema push command", () => {
     expect(
       writtenFile(`migrations/${DEFAULT_SPACE}/20261016090503-update-hero.before.ts`),
     ).toContain("value: ' '");
+  });
+
+  describe("when a block is renamed", () => {
+    const banner = () =>
+      makeMockComponent({
+        name: "banner",
+        is_root: true,
+        schema: { headline: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
+      });
+    const hero = () =>
+      makeMockComponent({
+        name: "hero",
+        is_root: true,
+        schema: { title: { type: "text", pos: 0 }, body: { type: "textarea", pos: 1 } },
+      });
+    const componentWrites = () => {
+      const writes: { method: string; id?: string; name?: string }[] = [];
+      const record =
+        (method: string) =>
+        async ({ request, params }: { request: Request; params: Record<string, unknown> }) => {
+          const body = method === "DELETE" ? undefined : await request.json();
+          const name = (body as { component?: { name?: string } } | undefined)?.component?.name;
+          writes.push({
+            method,
+            id: params.id === undefined ? undefined : String(params.id),
+            name,
+          });
+          return HttpResponse.json({ component: { id: getID(), name } });
+        };
+      const url = `https://mapi.storyblok.com/v1/spaces/${DEFAULT_SPACE}/components`;
+      server.use(
+        http.post(url, record("POST")),
+        http.put(`${url}/:id`, record("PUT")),
+        http.delete(`${url}/:id`, record("DELETE")),
+      );
+      return writes;
+    };
+    const push = (...args: string[]) =>
+      schemaCommand.parseAsync([
+        "node",
+        "test",
+        "push",
+        "schema.ts",
+        "--space",
+        DEFAULT_SPACE,
+        ...args,
+      ]);
+
+    beforeEach(() => {
+      preconditions.hasRemoteFolders([]);
+      preconditions.hasRemoteDatasources([]);
+      preconditions.hasRemoteTags([]);
+    });
+
+    it("should rename the block in place and migrate its stories when the rename is confirmed", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      preconditions.hasStories({ banner: 3 });
+      const writes = componentWrites();
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--typed", "--delete");
+
+      expect(confirm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining("Rename block banner → hero (3 stories)?"),
+        }),
+        expect.anything(),
+      );
+      expect(writes).toEqual([{ method: "PUT", id: String(remoteBanner.id), name: "hero" }]);
+      const migration = writtenFile("20261016090503-update-hero.ts");
+      expect(migration).toContain(
+        "renameField({ block: 'banner', field: 'headline', to: 'title' })",
+      );
+      expect(migration).toContain("renameBlock({ block: 'banner', to: 'hero' })");
+      expect(migration!.indexOf("renameField")).toBeLessThan(migration!.indexOf("renameBlock({"));
+      expect(writtenFile("20261016090503-update-hero.before.ts")).toContain("name: 'banner'");
+    });
+
+    it("should point folders that restrict content types to the block at its new name", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
+        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner", "page"] },
+        { id: 8, full_slug: "pages", default_root: "page", content_types: ["page"] },
+      ]);
+      componentWrites();
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      expect(folderUpdates).toEqual([
+        {
+          id: 7,
+          story: expect.objectContaining({
+            default_root: "hero",
+            content: expect.objectContaining({ content_types: ["hero", "page"] }),
+          }),
+        },
+      ]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Updated the content types of 1 folder to the renamed blocks: banners.",
+        ),
+      );
+    });
+
+    it("should refuse to delete a block stories still use when the rename is declined", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      preconditions.hasStories({ banner: 3 });
+      const writes = componentWrites();
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      await push("--no-migrations", "--delete");
+
+      expect(writes).toEqual([]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "Stories still use this block, which --delete would delete: banner (3 stories).",
+        ),
+      );
+    });
+
+    it("should delete a block stories still use with --force and warn about folders naming it", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
+        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner"] },
+      ]);
+      const writes = componentWrites();
+      vi.mocked(confirm).mockResolvedValue(false);
+
+      await push("--no-migrations", "--delete", "--force");
+
+      expect(writes).toEqual([
+        { method: "POST", id: undefined, name: "hero" },
+        { method: "DELETE", id: String(remoteBanner.id), name: undefined },
+      ]);
+      expect(folderUpdates).toEqual([]);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Folder banners still names the deleted banner as a content type."),
+      );
+    });
+
+    it("should name the possible rename on a dry run without asking", async () => {
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([banner()]);
+      preconditions.hasStories({ banner: 3 });
+
+      await push("--dry-run");
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Possible block rename: banner → hero (3 stories)."),
+      );
+    });
+
+    it("should not pair blocks that share too few fields", async () => {
+      preconditions.hasLocalSchema({
+        components: [
+          makeMockComponent({
+            name: "hero",
+            is_root: true,
+            schema: { cta: { type: "text", pos: 0 } },
+          }),
+        ] as any,
+        datasources: [],
+      });
+      preconditions.hasRemoteComponents([banner()]);
+      componentWrites();
+
+      await push("--no-migrations");
+
+      expect(confirm).not.toHaveBeenCalled();
+    });
   });
 
   it("should skip the snapshot with --no-before", async () => {

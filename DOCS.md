@@ -424,6 +424,19 @@ or values an option or options field no longer offers), the command analyzes the
 interactively. Switching a field among text, textarea, and markdown isn’t a breaking change, because
 all three store a string.
 
+### Renamed blocks
+
+When a block is missing locally and a new block shares most of its fields and is a content type
+exactly when the old one is, the command asks whether the block was renamed and names the number of
+stories that use it. On confirmation, it renames the block in place, so it keeps its ID, and updates
+the folders whose default content type or allowed content types name the block. The migration
+renames the block in the stories. Otherwise the new block is created next to the old one. With
+`--dry-run`, the command names the possible rename without asking.
+
+With `--delete`, the command refuses to delete a block that stories still use. Rename the block,
+migrate its stories first, or pass `--force` to delete it anyway. The command then names the folders
+that still name the deleted block as a content type.
+
 ### Typed content migrations
 
 Pass `--typed` to write one typed content migration for all changed blocks instead, for
@@ -438,6 +451,8 @@ changes:
 - Fills new required boolean fields with `false` where the field is absent, and newly required
   boolean fields where it is absent or `null`. For a newly required text, textarea, markdown, or
   number field, an empty string also counts as missing.
+- Renames a block that was renamed in place, after the ops that change its fields. Those ops address
+  the block by its old name.
 - Marks the values an option or options field no longer offers. The op leaves every other value
   alone and throws on a removed value until you map it to one the field still offers. Options that a
   datasource supplies aren’t checked.
@@ -476,3 +491,4 @@ doesn’t write migration files.
 | ------------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
 | `--typed`     | boolean | _Optional._ Generate one typed content migration for `migrations apply` instead of one `.js` migration per block. |
 | `--no-before` | boolean | _Optional._ With `--typed`, skip the schema snapshot next to the content migration.                               |
+| `--force`     | boolean | _Optional._ With `--delete`, delete blocks that stories still use.                                                |

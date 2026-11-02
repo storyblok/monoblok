@@ -108,6 +108,11 @@ export function renderMigrationCode(changes: BreakingChange[]): string {
         break;
       }
 
+      case "block_renamed":
+        lines.push(`  // Block renamed: ${change.from} → ${change.to}`);
+        lines.push(`  block.component = '${change.to}';`);
+        break;
+
       case "options_removed": {
         const values = change.values.map((value) => JSON.stringify(value)).join(", ");
         lines.push(`  // Options no longer offered by ${change.field}: ${values}`);
@@ -205,6 +210,8 @@ export function toMigrationOps(block: string, changes: BreakingChange[]): Migrat
           },
         ];
       }
+      case "block_renamed":
+        return [{ kind: "renameBlock", block, to: change.to }];
       case "options_removed":
         return [
           {

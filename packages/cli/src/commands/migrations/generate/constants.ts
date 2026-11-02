@@ -4,4 +4,5 @@ export interface MigrationsGenerateOptions extends CommandOptions {
   suffix?: string;
   schema?: string;
   before: boolean;
+  beforePush?: boolean;
 }

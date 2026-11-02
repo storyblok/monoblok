@@ -391,15 +391,21 @@ the build.
 Commit both files, and keep the snapshot unchanged once the migration ships. The command refuses to
 overwrite an existing migration or snapshot.
 
+Generate the migration before you push the schema change, so the snapshot holds the fields the
+migration reads. When `schema push` already changed the block, pass `--before-push` to snapshot the
+block as it was before the latest push that changed it. The command reads that state from the
+changeset `schema push` saved.
+
 Pass `--no-before` to skip the snapshot.
 ````
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx#flags (add the rows after `--suffix`) -->
 
-| Flag          | Type    | Description                                                                                                                                                           |
-| ------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--schema`    | string  | _Optional._ Path to the schema entry file, which must export `type Schema`. Generates a typed content migration and its schema snapshot instead of a `.js` migration. |
-| `--no-before` | boolean | _Optional._ With `--schema`, skip the schema snapshot.                                                                                                                |
+| Flag            | Type    | Description                                                                                                                                                           |
+| --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--schema`      | string  | _Optional._ Path to the schema entry file, which must export `type Schema`. Generates a typed content migration and its schema snapshot instead of a `.js` migration. |
+| `--no-before`   | boolean | _Optional._ With `--schema`, skip the schema snapshot.                                                                                                                |
+| `--before-push` | boolean | _Optional._ With `--schema`, snapshot the block as it was before the latest `schema push` that changed it.                                                            |
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations-generate.mdx#examples (append to the code block) -->
 

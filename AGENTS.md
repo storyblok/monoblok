@@ -19,11 +19,8 @@ job skip the `blueprints/*` projects (tag `blueprint`); build one with
 
 ## Rules
 
-- **Plan first** - For non-trivial changes, write a plan before coding
 - **Verify always** - Run `lint`, `test`, and `test:types` on affected packages, e.g.
   `pnpm nx test:types storyblok`.
-- **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the
-  package. Prefer composing over writing new.
 - **Check versions** - Look up the latest version before installing a new npm package.
 - **IMPORTANT:** The Management API validates a component schema field's `type` against a closed
   list and rejects an unknown one outright. Everything else it treats as an opaque blob: the rest of

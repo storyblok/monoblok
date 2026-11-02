@@ -347,6 +347,47 @@ describe("generateMigrationSource", () => {
     }
   });
 
+  it("should rename a block after changing its fields under the name it had before", async () => {
+    const before = [
+      "import { defineBlock, defineField, defineSchema } from '@storyblok/schema';",
+      "import type { Schema } from '@storyblok/schema';",
+      "const banner = defineBlock({ name: 'banner', fields: [",
+      "  defineField('headline', { type: 'text' }),",
+      "] });",
+      "export const schema = defineSchema({ blocks: { banner } });",
+      "export type Before = Schema<typeof schema>;",
+    ].join("\n");
+    const modules = await writeModules({
+      "schema.ts": SCHEMA,
+      "0001.before.ts": before,
+      "0001.ts": generateMigrationSource({
+        schemaImport: "./schema",
+        beforeImport: "./0001.before",
+        ops: [
+          { kind: "renameField", block: "banner", field: "headline", to: "title" },
+          { kind: "renameBlock", block: "banner", to: "hero" },
+        ],
+      }),
+    });
+
+    try {
+      expect(modules.typeErrors()).toEqual([]);
+      const { default: migration } = await import(path.join(modules.directory, "0001.ts"));
+      const outcome = applyMigration({
+        migration,
+        id: "0001",
+        space: "1",
+        stories: [
+          { id: 1, slug: "home", content: { _uid: "a", component: "banner", headline: "Hi" } },
+        ],
+      });
+
+      expect(outcome.writes[0].content).toEqual({ _uid: "a", component: "hero", title: "Hi" });
+    } finally {
+      await modules.cleanup();
+    }
+  });
+
   it("should throw on an op kind it does not know", () => {
     expect(() =>
       generateMigrationSource({

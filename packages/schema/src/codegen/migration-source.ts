@@ -27,6 +27,7 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
    * `value`. Translations are left as they are.
    */
   | (OpTarget & { kind: "fillField"; value?: unknown; fillEmptyString?: boolean })
+  | { kind: "renameBlock"; block: string; to: string }
 );
 
 export type GenerateMigrationSourceOptions = {
@@ -62,6 +63,8 @@ function renderOp(op: MigrationOpSource, depth: number): string {
       return `renameField(${target(op)}, to: ${quoteString(op.to)} })`;
     case "removeField":
       return `removeField(${target(op)} })`;
+    case "renameBlock":
+      return `renameBlock({ block: ${quoteString(op.block)}, to: ${quoteString(op.to)} })`;
     case "coerceField": {
       const from = op.from ? `, from: ${quoteString(op.from)}` : "";
       return `coerceField(${target(op)}${from}, to: ${quoteString(op.to)} })`;

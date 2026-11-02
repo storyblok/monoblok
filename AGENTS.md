@@ -21,8 +21,8 @@ job skip the `blueprints/*` projects (tag `blueprint`); build one with
 
 - **Be concise** - Drop: filler, pleasantries, hedging.
 - **Plan first** - For non-trivial changes, write a plan before coding
-- **Verify always** - Run `lint`, `test`, and `test:types` (type-check) on affected packages before
-  considering work done, e.g. `pnpm nx test:types storyblok`.
+- **Verify always** - Run `lint`, `test`, and `test:types` on affected packages, e.g.
+  `pnpm nx test:types storyblok`.
 - **Reuse first** - Before implementing, search for existing utilities, helpers, and modules in the
   package. Prefer composing over writing new.
 - **Check versions** - Look up the latest version before installing a new npm package.

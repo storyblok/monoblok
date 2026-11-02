@@ -337,6 +337,86 @@ describe("migrations generate command", () => {
       );
     });
 
+    describe("after schema push changed the block", () => {
+      const pushedAt = "2026-10-16T09:00:00.000Z";
+      const changesetFor = (
+        spaceId: number,
+        changed: string,
+        timestamp = pushedAt,
+        field = "old_title",
+      ) => ({
+        [`.storyblok/schema/changesets/${timestamp.replace(/[:.]/g, "-")}.json`]: JSON.stringify({
+          timestamp,
+          spaceId,
+          remote: {
+            components: [
+              { ...mockComponent, schema: { [field]: { type: "text", pos: 0 } } },
+              childComponent,
+            ],
+            componentFolders: [],
+            datasources: [],
+          },
+          changes: [{ type: "component", name: changed, action: "update" }],
+        }),
+      });
+
+      it("should snapshot the block as it was before the push with --before-push", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON(changesetFor(12345, "component-name"));
+
+        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+
+        const before = writtenFile(`${ID}.before.ts`);
+        expect(before).toContain("defineField('old_title'");
+        expect(before).not.toContain("defineField('title'");
+      });
+
+      it("should use the latest push to the space that changed the block", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON({
+          ...changesetFor(12345, "component-name"),
+          ...changesetFor(12345, "unrelated", "2026-10-16T09:01:00.000Z", "newer_title"),
+          ...changesetFor(99999, "component-name", "2026-10-16T09:02:00.000Z", "other_title"),
+        });
+
+        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+
+        expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('old_title'");
+      });
+
+      it("should warn that the snapshot describes the pushed block without --before-push", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON(changesetFor(12345, "component-name"));
+
+        await generate("component-name", "--schema", "src/schema.ts");
+
+        expect(writtenFile(`${ID}.before.ts`)).toContain("defineField('title'");
+        expect(console.warn).toHaveBeenCalledWith(
+          expect.stringContaining(
+            `schema push changed component-name at ${pushedAt}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
+          ),
+        );
+      });
+
+      it("should refuse --before-push when no push to the space changed the block", async () => {
+        preconditions.componentExists();
+        preconditions.hasSchemaEntry();
+        vol.fromJSON(changesetFor(99999, "component-name"));
+
+        await generate("component-name", "--schema", "src/schema.ts", "--before-push");
+
+        expect(console.error).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "No schema push to space 12345 recorded a change to component-name",
+          ),
+        );
+        expect(writtenFile(`${ID}.ts`)).toBeUndefined();
+      });
+    });
+
     it("should refuse to write next to a leftover snapshot, even without a snapshot of its own", async () => {
       preconditions.componentExists();
       preconditions.hasSchemaEntry();

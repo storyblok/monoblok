@@ -7,7 +7,7 @@ import { CommandError, handleError, requireAuthentication } from "../../../utils
 import { session } from "../../../session";
 import { fetchComponent, fetchComponents } from "../../../commands/components";
 import { migrationsCommand } from "../command";
-import { generateMigration } from "./actions";
+import { generateMigration, latestPushChanging } from "./actions";
 import { displayPath, writeContentMigration } from "../content-migrations";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
@@ -25,7 +25,11 @@ const generateCmd = migrationsCommand
     "--schema <entry-file>",
     "schema entry file that exports `type Schema`; generates a typed defineMigration file instead of a .js migration",
   )
-  .option("--no-before", "with --schema, skip the .before.ts schema snapshot");
+  .option("--no-before", "with --schema, skip the .before.ts schema snapshot")
+  .option(
+    "--before-push",
+    "with --schema, snapshot the block as it was before the latest schema push that changed it",
+  );
 
 generateCmd.action(
   async (
@@ -45,7 +49,7 @@ generateCmd.action(
     );
 
     const { space, path, verbose } = command.optsWithGlobals();
-    const { suffix, schema: schemaEntry, before } = options;
+    const { suffix, schema: schemaEntry, before, beforePush } = options;
 
     logger.info("Migration generation started", {
       componentName,
@@ -96,10 +100,34 @@ generateCmd.action(
     if (!schemaEntry && !before) {
       ui.warn("--no-before has no effect without --schema.");
     }
+    if (!schemaEntry && beforePush) {
+      ui.warn("--before-push has no effect without --schema.");
+    }
 
     const spinner = ui.createSpinner(`Generating migration for component ${componentName}...`);
     try {
-      const components = schemaEntry && before ? await fetchComponents(space) : undefined;
+      const snapshotted = schemaEntry && before;
+      const push = snapshotted ? await latestPushChanging(path, space, componentName) : undefined;
+      if (beforePush && !push) {
+        spinner.failed(`Failed to generate migration for component ${componentName}`);
+        handleError(
+          new CommandError(
+            `No schema push to space ${space} recorded a change to ${componentName}, so there is no earlier state to snapshot. Run without --before-push.`,
+          ),
+          verbose,
+        );
+        return;
+      }
+      if (push && !beforePush) {
+        ui.warn(
+          `schema push changed ${componentName} at ${push.timestamp}, so the snapshot describes the block after that push. Pass --before-push to snapshot it as it was before.`,
+        );
+      }
+      const components = !snapshotted
+        ? undefined
+        : beforePush && push
+          ? push.components
+          : await fetchComponents(space);
       const component = components
         ? components.find((candidate) => candidate.name === componentName)
         : await fetchComponent(space, componentName);

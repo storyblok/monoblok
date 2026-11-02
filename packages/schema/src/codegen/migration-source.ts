@@ -28,6 +28,8 @@ export type MigrationOpSource = { todo?: readonly string[] } & (
    */
   | (OpTarget & { kind: "fillField"; value?: unknown; fillEmptyString?: boolean })
   | { kind: "renameBlock"; block: string; to: string }
+  /** Splits a field into new ones; the callback throws until the author writes the split. */
+  | (OpTarget & { kind: "splitField"; into: readonly string[] })
 );
 
 export type GenerateMigrationSourceOptions = {
@@ -63,6 +65,10 @@ function renderOp(op: MigrationOpSource, depth: number): string {
       return `renameField(${target(op)}, to: ${quoteString(op.to)} })`;
     case "removeField":
       return `removeField(${target(op)} })`;
+    case "splitField": {
+      const into = op.into.map(quoteString).join(", ");
+      return `splitField(${target(op)}, into: [${into}] }, () => ${throwPlaceholder(op, depth)})`;
+    }
     case "renameBlock":
       return `renameBlock({ block: ${quoteString(op.block)}, to: ${quoteString(op.to)} })`;
     case "coerceField": {

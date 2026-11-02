@@ -41,7 +41,8 @@ You seed Storyblok QA spaces with predefined test scenarios. Packages might defi
 - **Trust the seed's exit status, not just its log.** The seed verifies each staged resource landed
   remotely and exits non-zero with `Verification FAILED` when a push reports success but creates
   nothing.
-- **A green seed proves storage, not shape.** See the Management API rule in the root `AGENTS.md`.
+- **A green seed proves storage, not shape.** You authored the fixture, so reading it back can't
+  validate its shape.
 
 ### Grounding a shape
 
@@ -242,8 +243,19 @@ that call the API load `.env.qa-engineer-manual` themselves.
 
 ## Troubleshooting
 
-- Load the variables listed in `.env.qa-engineer-manual.template` with
-  `source ./.env.qa-engineer-manual` (do not attempt to read this file).
+- Load the environment variables with `source ./.env.qa-engineer-manual` (do not attempt to read
+  this file). It defines:
+  - `STORYBLOK_TOKEN`: personal access token (required).
+  - `STORYBLOK_SPACE_ID`, `STORYBLOK_SPACE_ID_TARGET`: the QA space (required) and a second space
+    for cross-space tests.
+  - `STORYBLOK_PREVIEW_TOKEN`, `STORYBLOK_PREVIEW_TOKEN_TARGET`: Content Delivery API preview tokens
+    for each space.
+  - `STORYBLOK_ASSET_TOKEN`, `STORYBLOK_ASSET_TOKEN_TARGET`: asset tokens for private assets in each
+    space.
+
+  `STORYBLOK_MAPI_URL`, `STORYBLOK_APP_URL`, and `STORYBLOK_QA_SESSION` optionally override the
+  Management API URL, the Storyblok app URL, and the saved browser session path.
+
 - When running `.mjs` test files, env vars must be **exported**
   (`set -a && source ./.env.qa-engineer-manual && set +a`) — plain `source` does not propagate to
   `node` subprocesses.

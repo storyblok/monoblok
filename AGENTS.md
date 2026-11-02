@@ -78,7 +78,7 @@ When a significant architectural decision is made, add a concise new ADR in `adr
 existing numbering convention (`0001-`, `0002-`, …).
 
 ADRs record why something was built a certain way, not how it works. Read them before changing a
-design; don't cite them from guides or docs as a reference for current behavior.
+design; don't cite them as a reference for current behavior.
 
 ## Git
 
@@ -119,4 +119,4 @@ For more context, read relevant files in `docs/`:
 - `testing-patterns.md` - Test principles, stack, file layout, mocking, and Windows gotchas. Load
   before changing behavior or fixing a bug, and when writing, debugging, or reviewing tests.
 
-For Kotlin/Swift SDK parity, read `../storyblok-kotlin/AGENTS.md` or `../storyblok-swift/AGENTS.md`.
+For Kotlin/Swift SDK parity, follow the instructions in those SDKs' own repositories.

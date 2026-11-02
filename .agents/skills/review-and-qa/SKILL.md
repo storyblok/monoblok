@@ -11,25 +11,72 @@ effort: high
 
 Review the changes for: $ARGUMENTS.
 
+## Instructions
+
+Perform a two-phase review:
+
+1. **Code review** - Review quality, architecture, and best practices.
+2. **QA review** - Create manual test cases to validate behavior.
+
 ## Phase 1: Code review
 
-Review against the root `AGENTS.md`, the affected package's `AGENTS.md`, and
-`docs/testing-patterns.md`. Check in particular:
+Analyze the code changes for:
+
+## PR checklist
+
+### Required for all PRs
 
 - [ ] **Small diff** - One logical change. If the PR does multiple things, split it.
-- [ ] **Tests** - Behavior changes have integration coverage; bug fixes have a regression test.
-- [ ] **No secrets** - No tokens, passwords, or credentials in code, fixtures, or test scripts.
-- [ ] **Commit type** - `fix`/`feat` only for changes consumers can observe; everything else is
-      `chore`.
-- [ ] **Docs** - User-facing changes have a `DOCS.md` draft (see `docs/docs-platform.md`).
-- [ ] **Errors** - New error messages say what went wrong and how to fix it.
-- [ ] **Breaking changes** - Migration notes with before/after examples; deprecation warnings when
-      an old API stays temporarily.
-- [ ] **Dependencies** - Justified, latest version, MIT-compatible license.
-- [ ] **OpenAPI** - Changes under `tools/openapi-codegen/` come with regenerated output for every
-      consumer.
-- [ ] **CLI** - Every spinner stopped on all return paths; prompts pass `stderrPromptContext`; paths
-      via `pathe`.
+- [ ] **Tests included** - New functionality has tests. Bug fixes have regression tests.
+- [ ] **No secrets** - No tokens, passwords, or credentials in the code.
+
+### If user-facing changes
+
+- [ ] **Docs drafted** - User-facing changes have a `DOCS.md` draft (see `docs/docs-platform.md`).
+- [ ] **Examples work** - Code examples in the documentation are tested and copy-paste ready.
+- [ ] **Error messages helpful** - New errors explain what went wrong and how to fix it.
+
+### If breaking changes
+
+- [ ] **Migration notes** - Provide clear before and after examples showing how to upgrade.
+- [ ] **Changelog entry** - Follow conventional commits for release notes.
+- [ ] **Deprecation warnings** - If keeping an old API temporarily, warn users.
+
+### If adding dependencies
+
+- [ ] **Justified** - No existing solution exists in the codebase.
+- [ ] **License compatible** - Use MIT or a compatible license.
+- [ ] **Maintained** - Use an active project with recent updates.
+- [ ] **Size reasonable** - Avoid adding significant bundle weight.
+
+### Quality and clean code
+
+- [ ] Functions are small and single-purpose.
+- [ ] Variable and function names are descriptive.
+- [ ] No dead code or commented-out blocks exist.
+- [ ] No magic numbers exist (use constants).
+- [ ] Error messages are helpful.
+
+### Architecture and design
+
+- [ ] Changes fit existing patterns in the codebase.
+- [ ] No unnecessary coupling exists between modules.
+- [ ] Proper separation of concerns exists (actions vs. commands vs. utils).
+- [ ] Types and interfaces are defined appropriately.
+
+### Reusability and centralization
+
+- [ ] Duplicated logic is extracted to shared utilities.
+- [ ] Existing helpers are used where applicable.
+- [ ] New utilities are generic enough for reuse.
+- [ ] Constants are centralized (not scattered).
+
+### Best practices
+
+- [ ] Async and await are used consistently (no mixed patterns).
+- [ ] Errors are propagated correctly (not swallowed).
+- [ ] Edge cases are handled (null, empty, invalid input).
+- [ ] No security issues exist (injection, secrets exposure).
 
 ### Output format (code review)
 

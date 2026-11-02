@@ -61,3 +61,15 @@ Follow `docs/testing-patterns.md`. CLI specifics:
   own setup. Example: `src/commands/stories/push/index.test.ts`.
 - Resolve paths with `resolveCommandPath` and the `directories` constants instead of hardcoding
   `.storyblok/...`, so a layout change does not break every test.
+- Mock the session for commands that need a logged-in user:
+
+  ```typescript
+  vi.mock("../../session", () => ({
+    session: () => ({
+      state: { isLoggedIn: true, password: "test-token", region: "eu", login: "test@example.com" },
+      initializeSession: vi.fn(),
+      updateSession: vi.fn(),
+      persistCredentials: vi.fn(),
+    }),
+  }));
+  ```

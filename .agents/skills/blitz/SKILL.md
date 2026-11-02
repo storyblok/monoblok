@@ -49,14 +49,21 @@ Create worktrees **only when multiple issues are confirmed for implementation**:
 - Single issue: work in the current tree (no worktree needed)
 - Multiple issues: create a worktree per issue for parallel work
 
-Create each with `monotree.sh add <branch-name>` (usage in the root `AGENTS.md`), using the branch
-naming from the root `AGENTS.md`, e.g. `fix/368-<title>` → worktree `.worktrees/fix-368-<title>`.
-The script branches from the latest `origin/main`, copies `.env*` files,
-`.claude/settings.local.json`, `.zed/`, and `claude-output/`, runs `pnpm install` and
-`pnpm nx run-many -p="tag:npm:public" -t build`, then opens the worktree in Zed or VS Code.
+Each new worktree branch starts from the latest `origin/main`: the script fetches `origin/main` and
+bases new branches on it, so worktrees never inherit unrelated work from whatever is currently
+checked out.
 
-**IMPORTANT:** Create worktrees **sequentially**. Install and build are not safe to run in parallel
-(git index locks, pnpm store contention, Nx cache races).
+Use the bundled script:
+
+```bash
+bash .agents/skills/blitz/scripts/monotree.sh add <branch-name>
+bash .agents/skills/blitz/scripts/monotree.sh remove <branch-name>
+bash .agents/skills/blitz/scripts/monotree.sh list
+```
+
+**IMPORTANT:** Create worktrees **sequentially**, one at a time. The script runs `git worktree add`,
+`pnpm install`, and `pnpm nx build` which are not safe to run in parallel (git index locks, pnpm
+store contention, Nx cache races). Wait for each to complete before starting the next.
 
 ### Phase 4: Plan
 

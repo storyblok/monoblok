@@ -22,21 +22,6 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 ```
 
-## Session mocking (CLI)
-
-The most common shape for CLI command tests:
-
-```typescript
-vi.mock("../../session", () => ({
-  session: () => ({
-    state: { isLoggedIn: true, password: "test-token", region: "eu", login: "test@example.com" },
-    initializeSession: vi.fn(),
-    updateSession: vi.fn(),
-    persistCredentials: vi.fn(),
-  }),
-}));
-```
-
 ## Windows compatibility
 
 CI runs every package on Linux and the CLI additionally on Windows. Non-obvious gotchas:

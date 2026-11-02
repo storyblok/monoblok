@@ -10,8 +10,8 @@ Astro + Starlight docs site. MDX files for API/package reference, Storyblok CMS 
   has actual content/API changes
 - **Badge tags:** `<Badge text="X.Y.Z" variant="success" />` with `_Introduced in_` for new minor
   features, `variant="note"` with `_Updated in_` for changes. Remove all badges on new major release
-- **Navigation:** `src/config/navigation/libraries.ts` for library sidebar entries
-- **Always run `pnpm lint`** before pushing — CI checks Prettier, ESLint, and Stylelint
+- **Contributing:** navigation, workflows, and linters are in the docs platform's
+  `editorial/CONTRIBUTING.md`
 - **Storyblok space IDs:** dev `286748359290148`, prod `212319`
 
 ## Stage docs in a PR

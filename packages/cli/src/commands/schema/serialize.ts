@@ -1,4 +1,5 @@
-import { formatValue } from "@storyblok/schema/internal/codegen";
+import { DENIABLE_FIELD_TYPES } from "@storyblok/schema";
+import { formatValue, sortSchemaByPos } from "@storyblok/schema/internal/codegen";
 
 import {
   COMPONENT_STRIP_KEYS,
@@ -8,40 +9,109 @@ import {
   stripKeys,
 } from "./utils";
 
-/** Sorts schema fields by `pos` for stable ordering and strips API-assigned field-level keys. */
-function sortSchemaByPos(
+/**
+ * Restriction keys only `bloks` and `richtext` fields read. The editor ignores
+ * them on every other field type (a space keeps them there after a field's type
+ * was changed), so they carry no state and are dropped. `component_whitelist`
+ * is not among them: on `multilink` it selects story content types.
+ */
+const BLOCK_RESTRICTION_ONLY_KEYS = [
+  "restrict_components",
+  "restrict_type",
+  "component_denylist",
+  "component_group_whitelist",
+  "component_group_denylist",
+  "component_tag_whitelist",
+  "component_tag_denylist",
+] as const;
+
+/**
+ * Whether an empty list is the field's real state rather than an unset key. A
+ * field plugin rejects a schema whose `options` is not a list, so a `custom`
+ * field without `options` breaks its plugin, while every other empty list reads
+ * the same as an absent key.
+ */
+function isMeaningfulEmptyList(field: Record<string, unknown>, key: string): boolean {
+  return field.type === "custom" && key === "options";
+}
+
+/**
+ * Drops the restriction keys the editor does not read for this field, so a list
+ * a space still stores but no longer enforces does not diff against a schema
+ * that omits it:
+ * - on a field type that has no block restriction at all,
+ * - every list while `restrict_components` is explicitly `false`,
+ * - a folder or tag whitelist while `restrict_type` selects another dimension.
+ *   Denylists are not gated on `restrict_type` and are kept.
+ */
+function omitInertRestrictions(field: Record<string, unknown>): void {
+  if (!DENIABLE_FIELD_TYPES.includes(String(field.type))) {
+    for (const key of BLOCK_RESTRICTION_ONLY_KEYS) {
+      delete field[key];
+    }
+    return;
+  }
+  if (field.restrict_components === false) {
+    for (const key of RESTRICTION_LIST_KEYS) {
+      delete field[key];
+    }
+    return;
+  }
+  if (field.restrict_type !== "groups") {
+    delete field.component_group_whitelist;
+  }
+  if (field.restrict_type !== "tags") {
+    delete field.component_tag_whitelist;
+  }
+}
+
+/**
+ * Reduces a schema field to the state the editor acts on, so two fields that
+ * behave the same compare equal: API-assigned `id` stripped, `null` treated as
+ * absent, and a `name` that repeats the field's schema key (the editor writes
+ * one onto tabs it reorders) dropped.
+ */
+function normalizeField(key: string, field: Record<string, unknown>): Record<string, unknown> {
+  const { id, ...rest } = field;
+  if (rest.name === key) {
+    delete rest.name;
+  }
+  // `restrict_type: ''` is the wire byproduct of a component whitelist (the
+  // "restrict by component" mode). The Visual Editor treats `''` and absent
+  // identically, so a value re-derived from the DSL `allow` must not diff
+  // against a remote that lacks the key. A non-empty `restrict_type`
+  // (`'groups'`/`'tags'`) is real state and is kept.
+  if (rest.restrict_type === "") {
+    delete rest.restrict_type;
+  }
+  omitInertRestrictions(rest);
+  for (const [prop, value] of Object.entries(rest)) {
+    const isEmptyList = Array.isArray(value) && value.length === 0;
+    if (value === null || (isEmptyList && !isMeaningfulEmptyList(rest, prop))) {
+      delete rest[prop];
+    }
+  }
+  return rest;
+}
+
+/**
+ * Sorts schema fields into editor order and normalizes each (see
+ * {@link normalizeField}).
+ *
+ * The editor orders fields by `pos` and reads nothing else from it, and a space
+ * routinely holds gaps, duplicates, and fields without one (reordering tabs
+ * renumbers the tabs only), while a schema written in code numbers its fields
+ * contiguously. So `pos` is replaced by each field's rank: only the order is
+ * compared.
+ */
+function normalizeSchemaFields(
   schema: Record<string, Record<string, unknown>>,
 ): Record<string, Record<string, unknown>> {
-  const entries = Object.entries(schema)
-    .filter(([key]) => key !== "_uid" && key !== "component")
-    .sort(([, a], [, b]) => {
-      const posA = typeof a.pos === "number" ? a.pos : Infinity;
-      const posB = typeof b.pos === "number" ? b.pos : Infinity;
-      return posA - posB;
-    });
   return Object.fromEntries(
-    entries.map(([key, field]) => {
-      const { id, ...rest } = field;
-      // `restrict_type: ''` is the wire byproduct of a component whitelist (the
-      // "restrict by component" mode). MAPI never reads it and omits it on read,
-      // and the Visual Editor treats `''` and absent identically — so a value
-      // re-derived from the DSL `allow` must not diff against a remote that
-      // lacks the key. A non-empty `restrict_type` (`'groups'`/`'tags'`) is real
-      // state and is kept.
-      if (rest.restrict_type === "") {
-        delete rest.restrict_type;
-      }
-      // An empty restriction list carries no more meaning than an absent key, and
-      // a space holds one for every dimension the field is not restricted by. Kept,
-      // it would diff forever against a DSL that simply omits the key.
-      for (const listKey of RESTRICTION_LIST_KEYS) {
-        const list = rest[listKey];
-        if (Array.isArray(list) && list.length === 0) {
-          delete rest[listKey];
-        }
-      }
-      return [key, rest];
-    }),
+    sortSchemaByPos(schema).map(([key, field], rank) => [
+      key,
+      { ...normalizeField(key, field), pos: rank },
+    ]),
   );
 }
 
@@ -56,7 +126,7 @@ export const FOLDER_UNGROUPED = "__FOLDER_UNGROUPED__";
 
 /**
  * Returns a component reduced to a normalized, stably-ordered object: API-assigned
- * fields stripped, schema fields sorted by `pos`. Shared by
+ * fields stripped, schema fields normalized and sorted by `pos`. Shared by
  * {@link serializeComponent} and field-level diffing.
  *
  * `component_group_uuid` is stripped by default (groups are a UI concern), but
@@ -76,7 +146,7 @@ export function cleanComponent(
   const clean = stripKeys(component, stripSet);
 
   if (clean.schema && typeof clean.schema === "object") {
-    clean.schema = sortSchemaByPos(clean.schema as Record<string, Record<string, unknown>>);
+    clean.schema = normalizeSchemaFields(clean.schema as Record<string, Record<string, unknown>>);
   }
 
   // Enforce property order: name, display_name, is_root, is_nestable, folder, then rest, schema last

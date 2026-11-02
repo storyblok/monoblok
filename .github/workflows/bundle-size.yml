@@ -71,7 +71,7 @@ jobs:
           path: |
             packages/*/package.json
             packages/*/dist
-          retention-days: 1
+          retention-days: 7
 
   compare:
     needs: [head, base]
@@ -80,6 +80,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    outputs:
+      report: ${{ steps.compare.outputs.report }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -92,32 +94,37 @@ jobs:
           name: size-head
 
       # Entries are bundled with their dependencies, so the base build needs
-      # the base branch's own `node_modules` next to its `dist`.
+      # the base branch's own `node_modules` next to its `dist`. Only a failed
+      # base build skips the comparison: once it succeeded, measuring it must
+      # too, so an expired artifact can't turn a re-run green. Re-run all jobs
+      # then.
       - uses: actions/checkout@v4
+        if: needs.base.result == 'success'
         with:
           ref: ${{ github.base_ref }}
           path: base
           persist-credentials: false
 
       - name: Install base
-        continue-on-error: true
+        if: needs.base.result == 'success'
         working-directory: base
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - uses: actions/download-artifact@v4
-        continue-on-error: true
+        if: needs.base.result == 'success'
         with:
           name: dist-base
           # upload-artifact drops the common `packages/` prefix, so restore it.
           path: base/packages
 
       - name: Measure base
-        continue-on-error: true
+        if: needs.base.result == 'success'
         run: pnpm monoblok size measure --root base --out size-base.json
 
       # Labels are read when the job runs, not from the event, so adding the
       # label and re-running this job accepts the growth.
       - name: Compare
+        id: compare
         env:
           BASE_REF: ${{ github.base_ref }}
           GH_TOKEN: ${{ github.token }}
@@ -157,12 +164,13 @@ jobs:
       - name: Post or update PR comment
         if: steps.download.outcome == 'success'
         uses: actions/github-script@v7
+        env:
+          REPORT: ${{ needs.compare.outputs.report }}
         with:
           script: |
             const fs = require('fs');
             const marker = '<!-- monoblok-bundle-size -->';
             const body = fs.readFileSync('bundle-size.md', 'utf8');
-            const unchanged = body.includes('No package changed size');
 
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
@@ -178,8 +186,8 @@ jobs:
                 comment_id: existing.id,
                 body,
               });
-            } else if (!unchanged) {
-              // Only PRs that change a package's size get a comment.
+            } else if (process.env.REPORT === 'true') {
+              // Only PRs with something to report get a comment.
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,

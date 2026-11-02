@@ -37,6 +37,12 @@ export type Kind = "entry" | "file";
 /** Growth over the base, in percent, past which an entry or a file fails the check. */
 export const THRESHOLD_PERCENT = 5;
 
+/**
+ * Growth in gzipped bytes that an entry or a file must also exceed to fail the check. Files are not
+ * minified, so without it a comment added to a file of a few hundred bytes would fail.
+ */
+export const THRESHOLD_BYTES = 100;
+
 export type Measured = {
   /** Gzipped size in bytes. */
   size: number;
@@ -448,9 +454,14 @@ const KIND_ITEMS: Array<[Kind, "entries" | "files"]> = [
   ["file", "files"],
 ];
 
-export function isOver(size: number, base: number, percent = THRESHOLD_PERCENT): boolean {
+export function isOver(
+  size: number,
+  base: number,
+  percent = THRESHOLD_PERCENT,
+  bytes = THRESHOLD_BYTES,
+): boolean {
   const growth = size - base;
-  return growth > 0 && (base === 0 || (growth / base) * 100 > percent);
+  return growth > bytes && (base === 0 || (growth / base) * 100 > percent);
 }
 
 export function compare(head: Measurement, base: Measurement | undefined): Comparison {
@@ -510,6 +521,21 @@ export function hasFailed(comparison: Comparison, accepted = false): boolean {
   );
 }
 
+/**
+ * Whether the report has anything to show: a changed entry, a file past the threshold, a package
+ * that could not be measured, or no base to compare with. CI only opens a PR comment for these.
+ */
+export function hasReport(comparison: Comparison): boolean {
+  const { changes, errors } = comparison;
+  return (
+    errors.length > 0 ||
+    changes.every((change) => change.status === "no-base") ||
+    changes.some(
+      (change) => change.status === "over" || (change.kind === "entry" && isChanged(change)),
+    )
+  );
+}
+
 /** Whether a change is worth listing outside the collapsed full table. */
 export function isChanged(change: Change): boolean {
   return change.status !== "no-base" && change.size !== change.base;
@@ -542,7 +568,7 @@ export function formatDelta(size: number | undefined, base: number | undefined):
 }
 
 export function describe(change: Change): string {
-  return `${change.package} ${change.name} grew ${formatDelta(change.size, change.base)} to ${formatBytes(change.size ?? 0)} gzip, past the ${THRESHOLD_PERCENT}% threshold.`;
+  return `${change.package} ${change.name} grew ${formatDelta(change.size, change.base)} to ${formatBytes(change.size ?? 0)} gzip, past the ${THRESHOLD_PERCENT}% and ${THRESHOLD_BYTES} B threshold.`;
 }
 
 function changeCell(change: Change): string {
@@ -607,6 +633,8 @@ export function toMarkdown(comparison: Comparison, baseLabel = "Base", accepted 
   let intro: string;
   if (!hasBase) {
     intro = `No measurement of \`${baseLabel}\` to compare with, so only this branch's sizes are listed.`;
+  } else if (changed.length === 0 && hasReport(comparison)) {
+    intro = `No export changed size compared with \`${baseLabel}\`.`;
   } else if (changed.length === 0) {
     intro = `No package changed size compared with \`${baseLabel}\`.`;
   } else {
@@ -645,7 +673,7 @@ export function toMarkdown(comparison: Comparison, baseLabel = "Base", accepted 
           "",
         ]
       : []),
-    `<sub>Each export minified and gzipped with its dependencies, without peers. Fails past ${THRESHOLD_PERCENT}% growth.</sub>`,
+    `<sub>Each export minified and gzipped with its dependencies, without peers. Fails past ${THRESHOLD_PERCENT}% and ${THRESHOLD_BYTES} B growth.</sub>`,
     "",
     "<details>",
     "<summary>All packages</summary>",

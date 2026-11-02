@@ -10,6 +10,7 @@ import {
   formatBytes,
   formatDelta,
   hasFailed,
+  hasReport,
   isChanged,
   measure,
   readMeasurement,
@@ -61,7 +62,7 @@ export function sizeCommand(program: Command): void {
   size
     .command("compare")
     .description(
-      "Compare a measurement with one of the base build, and fail on more than 5% growth",
+      "Compare a measurement with one of the base build, and fail on more than 5% and 100 B growth",
     )
     .argument("<head>", "Measurement of this branch")
     .argument("[base]", "Measurement of the base build; a missing file compares with nothing")
@@ -111,6 +112,10 @@ export function sizeCommand(program: Command): void {
           }
           if (options.markdown) {
             fs.writeFileSync(options.markdown, markdown);
+          }
+          if (github && process.env.GITHUB_OUTPUT) {
+            // Tells CI whether to open a PR comment, so it never depends on the report's wording.
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `report=${hasReport(comparison)}\n`);
           }
 
           if (hasFailed(comparison, accepted)) {

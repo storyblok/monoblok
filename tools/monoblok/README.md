@@ -101,8 +101,9 @@ The `size` commands guard what each package costs the people who use it. On ever
 `Bundle size` workflow builds the PR and its base branch in parallel, measures both builds with the
 PR's `size measure`, and compares them with `size compare`. Nothing is committed as a baseline: the
 base branch is the baseline. The report is posted as a PR comment, updated on every push, and only
-PRs that change a size get one. PRs from forks get the report in the job summary only, since their
-token can't comment.
+PRs with something to report (a changed export, a file past the threshold, or a package that could
+not be measured) get one. PRs from forks get the report in the job summary only, since their token
+can't comment.
 
 Every package under `packages/` is measured, except the ones in `IGNORED_PACKAGES` in
 `src/commands/size/size.ts`, which never reach a browser (the CLI, the lint config, the migration
@@ -119,8 +120,9 @@ HTML and Markdown parsers, and `EXTRA_ENTRIES` adds browser entries that `export
 such as the Nuxt runtime plugin. Svelte components are compiled with the package's own Svelte; Astro
 components are skipped, since Astro compiles them.
 
-An entry or a file fails the check when it grows by more than 5%. A package that is not built, or
-whose export cannot be bundled, always fails.
+An entry or a file fails the check when it grows by more than 5% and more than 100 B gzipped. Files
+are not minified, so without the byte threshold a comment added to a small file would fail. A
+package that is not built, or whose export cannot be bundled, always fails.
 
 If the growth is intended, add the `bundle-size-accepted` label to the PR and re-run the failed
 `compare` job. Growth is then reported as a warning.

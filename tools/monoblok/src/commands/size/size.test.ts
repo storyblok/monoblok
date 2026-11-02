@@ -7,6 +7,7 @@ import {
   entryPoints,
   firstError,
   hasFailed,
+  hasReport,
   isPublished,
   loadProjects,
   measure,
@@ -290,11 +291,21 @@ describe("firstError", () => {
 });
 
 describe("compare", () => {
-  it("should fail growth past 5%, however few bytes it is", () => {
-    const comparison = compare(single(withEntry(106)), single(withEntry(100)));
+  it("should fail growth past both 5% and 100 B", () => {
+    const comparison = compare(single(withEntry(1200)), single(withEntry(1000)));
 
     expect(comparison.changes[0]).toMatchObject({ name: ".", status: "over" });
     expect(hasFailed(comparison)).toBe(true);
+  });
+
+  it("should pass growth past 5% of 100 B or less, such as a comment in a small file", () => {
+    const file = (size: number) => measured({ files: { "dist/utils/isBrowser.mjs": { size } } });
+    const comparison = compare(single(file(205)), single(file(152)));
+
+    expect(comparison.changes.find((change) => change.kind === "file")).toMatchObject({
+      status: "ok",
+    });
+    expect(hasFailed(comparison)).toBe(false);
   });
 
   it("should pass growth within 5%", () => {
@@ -336,11 +347,51 @@ describe("compare", () => {
   });
 });
 
+describe("hasReport", () => {
+  it("should have nothing to report when no size changed", () => {
+    expect(hasReport(compare(single(measured()), single(measured())))).toBe(false);
+  });
+
+  it("should report a changed entry, even within the threshold", () => {
+    expect(hasReport(compare(single(withEntry(1010)), single(withEntry(1000))))).toBe(true);
+  });
+
+  it("should report this branch's sizes without a base", () => {
+    expect(hasReport(compare(single(measured()), undefined))).toBe(true);
+  });
+});
+
 describe("toMarkdown", () => {
   it("should say when no package changed size", () => {
     const markdown = toMarkdown(compare(single(measured()), single(measured())), "main");
 
     expect(markdown).toContain("No package changed size compared with `main`.");
+  });
+
+  it("should report a file past the threshold when no export changed size", () => {
+    const file = (size: number) => measured({ files: { "dist/chunk.mjs": { size } } });
+    const comparison = compare(single(file(2000)), single(file(1000)));
+    const markdown = toMarkdown(comparison, "main");
+
+    expect(hasReport(comparison)).toBe(true);
+    expect(markdown).toContain("No export changed size compared with `main`.");
+    expect(markdown).toContain("Files past the threshold:");
+    expect(markdown).not.toContain("No package changed size");
+  });
+
+  it("should report a package this branch could not measure when no export changed size", () => {
+    const head: Measurement = {
+      packages: {
+        "@storyblok/pkg": measured(),
+        "@storyblok/other": measured({ error: "not built" }),
+      },
+    };
+    const comparison = compare(head, single(measured()));
+    const markdown = toMarkdown(comparison, "main");
+
+    expect(hasReport(comparison)).toBe(true);
+    expect(markdown).toContain("No export changed size compared with `main`.");
+    expect(markdown).toContain("`@storyblok/other`: not built");
   });
 
   it("should list growth past the threshold and how to accept it", () => {

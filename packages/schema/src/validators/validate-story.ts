@@ -714,8 +714,8 @@ function isMultipleOf(value: number, step: number, base: number): boolean {
   return Math.abs(ratio - Math.round(ratio)) <= tolerance;
 }
 
-/** Parses a numeric constraint stored as a string (e.g. `min_options`). Empty/non-numeric → undefined. */
-function toCount(value: string | undefined): number | undefined {
+/** Parses a numeric constraint that may be stored as a string (e.g. `min_options`). Empty/non-numeric → undefined. */
+function toCount(value: number | string | undefined): number | undefined {
   if (value == null || value === "") {
     return undefined;
   }

@@ -78,6 +78,12 @@ Analyze the code changes for:
 - [ ] Edge cases are handled (null, empty, invalid input).
 - [ ] No security issues exist (injection, secrets exposure).
 
+### API integration (when applicable)
+
+- [ ] Error codes are handled (401, 403, 404, 422, 429).
+- [ ] Request and response formats match the API.
+- [ ] Rate limiting is considered.
+
 ### Output format (code review)
 
 ```markdown

@@ -169,14 +169,18 @@ storyblok migrations apply --publish published
 ---
 title: "migrations list"
 description:
-  "Lists the content migration runs that migrations apply recorded for a Storyblok space."
+  "Lists the content migration runs that migrations apply recorded for a Storyblok space, and the
+  migrations still pending."
 ---
 
 Lists the content migration runs that [`migrations apply`](/docs/tooling/cli/migrations-apply)
 recorded for a Storyblok space, oldest first. Each line shows the run ID, the migration title (or
 file name), the number of stories and blocks the run changed, and when the run was undone, or partly
 undone when an undo restored some blocks and left others in place. A run that stopped before it
-finished shows as interrupted. The command reads local records only, so it doesn’t require a login.
+finished shows as interrupted. After the runs, it lists the migrations in the space’s migrations
+directory that have no run still in place on this machine. Runs are recorded on the machine that ran
+them, so a migration applied elsewhere shows as pending here. The command reads local records only,
+so it doesn’t require a login.
 
 ## Usage
 
@@ -190,6 +194,7 @@ storyblok migrations list [flags]
 | --------------- | ------- | ------------------------------------------------------------------------------------ |
 | `--space`, `-s` | integer | _Required._ The ID of the Storyblok space to list runs for.                          |
 | `--path`, `-p`  | string  | _Optional._ Base path for migration files and run records. Defaults to `.storyblok`. |
+| `--pending`     | boolean | _Optional._ List only the migrations with no run still in place, one ID per line.    |
 
 ## Examples
 
@@ -197,6 +202,12 @@ The following example assumes that a `space` has been defined in a configuration
 
 ```bash
 storyblok migrations list
+```
+
+List the migrations that haven’t been applied from this machine:
+
+```bash
+storyblok migrations list --pending
 ```
 ````
 

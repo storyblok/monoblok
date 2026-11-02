@@ -14,7 +14,8 @@ Typed content migrations, written as `.ts`, `.js`, or `.mjs` files with `defineM
 `@storyblok/schema`:
 
 - `apply`: Apply content migrations and record each run.
-- `list`: List the content migration runs recorded for a space.
+- `list`: List the content migration runs recorded for a space on this machine, and the migrations
+  without one (`--pending` lists only those).
 - `undo`: Revert a recorded content migration run block by block.
 
 > See each subcommand for detailed usage, options, and examples.

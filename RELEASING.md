@@ -147,8 +147,11 @@ alpha-only package to stable, add `"main"` back.
 | Package               | Channels                |
 | --------------------- | ----------------------- |
 | `@storyblok/astro`    | `main`, `alpha`, `next` |
+| `@storyblok/js`       | `main`                  |
 | `@storyblok/nuxt`     | `main`, `next`          |
 | `@storyblok/react`    | `main`, `rc`            |
+| `@storyblok/svelte`   | `main`                  |
+| `@storyblok/vue`      | `main`                  |
 | `storyblok-js-client` | `main`, `beta`, `next`  |
 
 #### Alpha-only packages and downstream consumers
@@ -323,9 +326,10 @@ with different trees.
 
 This affects any edge where a package **and** its workspace dependency both release from the same
 pre-release channel, because only then is the dependency at a pre-release version when the dependent
-is packed. A dependency that releases from `main` only is never at a pre-release version, so its
-published range is an ordinary caret and this does not apply, which is why `@storyblok/nuxt` and its
-`@storyblok/vue` dependency are unaffected.
+is packed. `storyblok` (the CLI), `@storyblok/angular`, `@storyblok/migrations`, and
+`@storyblok/astro` all have such edges today. A dependency that releases from `main` only is never
+at a pre-release version, so its published range is an ordinary caret and this does not apply, which
+is why `@storyblok/nuxt` and its `@storyblok/vue` dependency are unaffected.
 
 This is accepted rather than solved. Pre-release consumers are already opted into instability, and
 the alternatives (per-branch specifier overrides, publish-time channel checks) cost more than the

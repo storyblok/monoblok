@@ -125,10 +125,6 @@ Then update your `package.json`:
 + }
 ```
 
-## Contributing
-
-If you'd like to contribute, please refer to the [contributing guidelines](../../CONTRIBUTING.md).
-
 ## License
 
 MIT — see [LICENSE](./LICENSE).

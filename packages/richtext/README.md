@@ -29,13 +29,17 @@
 
 ## Features
 
-- Render rich text to an HTML string with `renderRichText`
-- Override how individual nodes and marks render with custom renderers
-- Optimize images with the Storyblok Image Service
-- Convert HTML and Markdown to Storyblok rich text with `@storyblok/richtext/html-parser` and
-  `@storyblok/richtext/markdown-parser`
-- Build framework-specific renderers on top of the shared core
-- TypeScript types for every rich text node and mark
+- **Framework-Agnostic Rendering**: Outputs raw HTML by default but can be configured to produce
+  framework-specific elements, such as React components or Vue nodes.
+- **Custom Resolvers**: Allows developers to override default rendering behavior for specific
+  elements like links, images, and embedded components. This enables integration with custom
+  components or styling frameworks like Tailwind CSS.
+- **Image Optimization**: Supports image optimization options, including lazy loading, responsive
+  sizing, and format conversion (e.g., to WebP), enhancing performance and user experience.
+- **TypeScript Support**: Provides full TypeScript typings with generics, ensuring type safety and
+  improved developer experience across different frameworks.
+- **Markdown to Rich Text Conversion**: Converts Markdown content to Storyblok's rich text nodes,
+  allowing for seamless integration with markdown-based content management systems.
 
 ## Documentation
 

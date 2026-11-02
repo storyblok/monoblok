@@ -39,7 +39,7 @@
 - Auto-imported utilities: `renderRichText`, `useStoryblokRichText`
 - Built-in TypeScript support with auto-generated types
 - SSR/SSG compatibility with proper hydration
-- Optional Nuxt DevTools integration
+- DevTools integration for Storyblok management
 
 ## Documentation
 

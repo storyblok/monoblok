@@ -77,6 +77,45 @@ describe("generateComponentFile", () => {
     expect(result).toContain("color: '#fff',");
   });
 
+  it("should keep an empty options list on a custom field", () => {
+    // A field plugin rejects a schema whose `options` is not a list.
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        color: { type: "custom", field_type: "acme-color", options: [], pos: 0 },
+        theme: { type: "option", options: [], pos: 1 },
+      },
+    };
+
+    const block = evaluateBlockFile(generateComponentFile(component as any));
+
+    expect(block).toMatchObject({ fields: [{ name: "color", options: [] }, { name: "theme" }] });
+    expect(block).not.toMatchObject({ fields: [{}, { options: expect.anything() }] });
+  });
+
+  it("should order fields the way the editor shows them when some have no pos", () => {
+    const component = {
+      id: 1,
+      name: "page",
+      created_at: "",
+      updated_at: "",
+      schema: {
+        last: { type: "text", pos: 1 },
+        unpositioned: { type: "text" },
+        first: { type: "text", pos: 0 },
+      },
+    };
+
+    const block = evaluateBlockFile(generateComponentFile(component as any));
+
+    expect(block).toMatchObject({
+      fields: [{ name: "unpositioned" }, { name: "first" }, { name: "last" }],
+    });
+  });
+
   it("should generate a defineBlock() file with a fields array", () => {
     const component = {
       id: 1,

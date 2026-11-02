@@ -1120,6 +1120,27 @@ describe("diffSchema field equivalence", () => {
     expect(diffPage(remote, local)?.action).toBe("unchanged");
   });
 
+  it("should ignore options the field type does not read", () => {
+    const remote = {
+      title: { type: "text", pos: 0, key: "title", toolbar: [], customize_toolbar: true },
+      body: { type: "bloks", pos: 1, filetypes: ["images"], maximum: "" },
+    };
+    const local = { title: { type: "text", pos: 0 }, body: { type: "bloks", pos: 1 } };
+
+    expect(diffPage(remote, local)?.action).toBe("unchanged");
+  });
+
+  it("should compare a legacy numeric string as the number it holds", () => {
+    const remote = { body: { type: "bloks", pos: 0, maximum: "2" } };
+
+    expect(diffPage(remote, { body: { type: "bloks", pos: 0, maximum: 2 } })?.action).toBe(
+      "unchanged",
+    );
+    expect(diffPage(remote, { body: { type: "bloks", pos: 0, maximum: 3 } })?.changes).toEqual([
+      { field: "schema.body.maximum", change: "modified", before: 2, after: 3 },
+    ]);
+  });
+
   it("should report a story content type filter removed from a link field", () => {
     const remote = { link: { type: "multilink", pos: 0, component_whitelist: ["article"] } };
     const local = { link: { type: "multilink", pos: 0 } };

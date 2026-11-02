@@ -6,7 +6,9 @@ export type BreakingChange =
   | { kind: "required_added"; field: string; fieldType: string }
   | { kind: "required_changed"; field: string; fieldType: string }
   /** Values an option or options field no longer offers, which stories may still hold. */
-  | { kind: "options_removed"; field: string; values: string[]; multiple: boolean };
+  | { kind: "options_removed"; field: string; values: string[]; multiple: boolean }
+  /** The block itself was renamed in place; the change list addresses it by its new name. */
+  | { kind: "block_renamed"; from: string; to: string };
 
 /** All breaking changes for a single component. */
 export interface ComponentBreakingChanges {

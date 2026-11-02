@@ -5,12 +5,14 @@ import { vol } from "memfs";
 import { defineBlock, defineField } from "@storyblok/schema";
 import {
   addField,
+  alterField,
   coerceField,
   defineMigration,
   mergeFields,
   removeField,
   renameBlock,
   renameField,
+  splitField,
   wrapChildren,
 } from "@storyblok/schema";
 import "../index";
@@ -154,6 +156,42 @@ describe("migrations apply command", () => {
       ),
     );
     expect(process.exitCode).toBeUndefined();
+  });
+
+  it("should alter a field a later migration split, in stories that still hold it", async () => {
+    space.hasMigrations(
+      [
+        "0001-trim-name",
+        defineMigration([
+          alterField({ block: "card", field: "name" }, (name) => String(name).trim()),
+        ]),
+      ],
+      [
+        "0002-split-name",
+        defineMigration([
+          splitField({ block: "card", field: "name", into: ["first", "last"] }, (name) =>
+            String(name).split(" "),
+          ),
+        ]),
+      ],
+    );
+    space.hasBlocks({ card: ["first", "last"] });
+    space.hasStories(
+      storyWithCard({
+        content: {
+          _uid: "root",
+          component: "page",
+          body: [{ _uid: "card-1", component: "card", name: " Ada Lovelace " }],
+        },
+      }),
+    );
+    space.canUpdateStories();
+
+    await apply();
+
+    expect(space.story(1)?.content.body).toEqual([
+      { _uid: "card-1", component: "card", first: "Ada", last: "Lovelace" },
+    ]);
   });
 
   it("should keep a field a later schema change added back", async () => {

@@ -112,8 +112,11 @@ ran it, so no run can tell which migrations a space has already received.
   value's shape before converting it. Typing reads as "before or after" is a possible follow-up.
 - `alterBlock` callbacks aren't checked for staleness, because the fields they touch aren't
   declared.
-- An op on a field a later push renamed or removed is skipped, even in stories that still hold the
-  field, so each migration is applied before the next schema change is pushed.
+- An op that creates a field a later push renamed or removed is skipped, even in stories that still
+  hold the source field, so each migration is applied before the next schema change is pushed. Ops
+  that only change an existing value (`alterField`, `coerceField`, `reorderField`) are not skipped
+  for a missing field: they leave blocks without it alone, and stories that still hold it reach the
+  later migration in the shape it expects.
 - Snapshots carry a `snapshotFormat`, and `migrations apply` refuses a format newer than it reads.
 - `migrations run` exits with an error when the directory holds only content migrations, so a script
   that runs it after `schema push --typed` fails instead of passing silently.

@@ -19,7 +19,6 @@ job skip the `blueprints/*` projects (tag `blueprint`); build one with
 
 ## Rules
 
-- **Be concise** - Drop: filler, pleasantries, hedging.
 - **Plan first** - For non-trivial changes, write a plan before coding
 - **Verify always** - Run `lint`, `test`, and `test:types` on affected packages, e.g.
   `pnpm nx test:types storyblok`.

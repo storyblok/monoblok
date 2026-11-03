@@ -24,9 +24,6 @@
     "*": {
       "field-plugins": [
         "./dist/field-plugins/index.d.cts"
-      ],
-      "migrations": [
-        "./dist/migrations/index.d.cts"
       ]
     }
   },
@@ -38,10 +35,6 @@
     "./field-plugins": {
       "import": "./dist/field-plugins/index.mjs",
       "require": "./dist/field-plugins/index.cjs"
-    },
-    "./migrations": {
-      "import": "./dist/migrations/index.mjs",
-      "require": "./dist/migrations/index.cjs"
     },
     "./package.json": "./package.json"
   },

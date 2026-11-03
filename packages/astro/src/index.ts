@@ -8,7 +8,7 @@ import type { StoryblokRichTextImageOptions, StoryblokRichTextInput } from "@sto
 export { defineStoryblokBlocks } from "./define-storyblok-blocks";
 export { storyblokPreviewMiddleware } from "./live-preview/middleware";
 export { getPayload } from "./get-payload";
-export { storyblokEditable, isInEditor } from "@storyblok/live-preview";
+export { editableField, storyblokEditable, isInEditor } from "@storyblok/live-preview";
 export type { BridgeParams } from "@storyblok/live-preview";
 export { sanitizeJSON } from "./sanitize-json";
 

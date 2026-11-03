@@ -6,7 +6,7 @@ type OpTarget = { block: string; field: string };
 
 /**
  * A migration op described as data, rendered to the matching call from
- * `@storyblok/schema/migrations`. `todo` lines are emitted as comments above
+ * `@storyblok/schema`. `todo` lines are emitted as comments above
  * the call. An op whose callback the generator cannot write gets one that
  * throws, so `migrations apply` refuses the op until the author replaces it.
  */
@@ -129,7 +129,7 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   const typeArgs = beforeImport ? "Schema, Before" : "Schema";
 
   const lines: string[] = [
-    `import { ${imports.join(", ")} } from '@storyblok/schema/migrations';`,
+    `import { ${imports.join(", ")} } from '@storyblok/schema';`,
     "",
     `import type { Schema } from ${quoteString(schemaImport)};`,
   ];
@@ -143,7 +143,7 @@ export function generateMigrationSource(options: GenerateMigrationSourceOptions)
   const opIndent = INDENT.repeat(depth);
   if (ops.length === 0) {
     opLines.push(
-      `${opIndent}// Import each op from '@storyblok/schema/migrations', for example:`,
+      `${opIndent}// Import each op from '@storyblok/schema', for example:`,
       `${opIndent}// renameField({ block: '<block>', field: '<field>', to: '<new field>' }),`,
     );
   }

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { setupServer } from "msw/node";
-import { defineMigration, renameBlock, renameField } from "@storyblok/schema/migrations";
+import { defineMigration, renameBlock, renameField } from "@storyblok/schema";
 import "../index";
 import { migrationsCommand } from "../command";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";

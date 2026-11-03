@@ -2,13 +2,14 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
-import { defineBlock, defineField } from "@storyblok/schema";
 import {
+  defineBlock,
+  defineField,
   defineMigration,
   renameBlock,
   renameField,
   wrapChildren,
-} from "@storyblok/schema/migrations";
+} from "@storyblok/schema";
 import "../index";
 import { migrationsCommand } from "../command";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";

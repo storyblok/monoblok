@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import type { MigrationRun } from "@storyblok/schema/migrations";
+import type { MigrationRun } from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import { CommandError, handleError } from "../../../utils";
 import { getLogger } from "../../../lib/logger/logger";

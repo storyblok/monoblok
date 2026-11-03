@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import chalk from "chalk";
-import { discoverMigrations } from "@storyblok/schema/migrations";
+import { discoverMigrations } from "@storyblok/schema";
 import { getUI } from "../../../lib/ui";
 import { getLogger } from "../../../lib/logger/logger";
 import { getReporter } from "../../../lib/reporter/reporter";

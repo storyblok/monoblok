@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resolve } from "pathe";
-import { defineMigration, renameField } from "@storyblok/schema/migrations";
+import { defineMigration, renameField } from "@storyblok/schema";
 import { vol } from "memfs";
 // Import the main module first to ensure proper initialization
 import "../index";

@@ -4,8 +4,8 @@
  * against pending releases.
  */
 import chalk from "chalk";
-import { checkPendingReleases, MigrationError, resolveJournal } from "@storyblok/schema/migrations";
-import type { Journal, StoryForMigration } from "@storyblok/schema/migrations";
+import { checkPendingReleases, MigrationError, resolveJournal } from "@storyblok/schema";
+import type { Journal, StoryForMigration } from "@storyblok/schema";
 import { getMapiClient } from "../../api";
 import { getUI } from "../../lib/ui";
 import { CommandError, toError } from "../../utils";

@@ -11,7 +11,7 @@ updating component structures or content.
 - [`rollback`](./rollback/README.md): Revert previously applied migrations.
 
 Typed content migrations, written as `.ts`, `.js`, or `.mjs` files with `defineMigration()` from
-`@storyblok/schema/migrations`:
+`@storyblok/schema`:
 
 - `apply`: Apply content migrations and record each run.
 - `list`: List the content migration runs recorded for a space.

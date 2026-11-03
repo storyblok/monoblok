@@ -3,8 +3,8 @@ import { normalizeNodes } from "@storyblok/richtext";
 import type { StoryblokRichTextComponentProps as Props } from "../richtext-helpers";
 import RenderChildren from "./richtext/RenderChildren.astro";
 
-const { document, components, optimizeImage, data } = Astro.props;
+const { document, components, optimizeImage, data, warnings } = Astro.props;
 const nodes = normalizeNodes(document);
 ---
 
-<RenderChildren nodes={nodes} options={{ components, optimizeImage, data }} />
+<RenderChildren nodes={nodes} options={{ components, optimizeImage, data, warnings }} />

@@ -16,6 +16,7 @@ export interface StoryblokAstroRichTextRenderContext {
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   components?: StoryblokAstroRichTextComponentMap;
   data?: unknown;
+  warnings?: boolean;
 }
 
 export type StoryblokAstroRichTextProps<T extends StoryblokRichTextElement> = Omit<
@@ -33,8 +34,41 @@ export interface StoryblokRichTextComponentProps {
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   /** Overrides the default renderer for specific node/mark types. */
   components?: StoryblokAstroRichTextComponentMap;
-  /** Arbitrary data forwarded to custom `components`. */
+  /**
+   * Arbitrary data forwarded to custom `components`. With the
+   * `StoryblokRichText` returned by `defineStoryblokBlocks()`, a plain object
+   * is also passed to every embedded block as extra props.
+   */
   data?: unknown;
+  /**
+   * Logs a warning when content renders nothing: a `blok` node without a
+   * renderer, or (registry-bound) an embedded block with no registered
+   * component. Set to `false` to silence it.
+   *
+   * @default true
+   */
+  warnings?: boolean;
+}
+
+let warnedMissingBlok = false;
+
+/**
+ * Warns that a `blok` node rendered nothing because no `components.blok`
+ * renderer was passed. Prints once per environment; `warnings === false`
+ * skips it without silencing other `StoryblokRichText` instances.
+ */
+export function warnMissingBlokOnce(warnings: boolean | undefined): void {
+  if (warnings === false || warnedMissingBlok) return;
+  warnedMissingBlok = true;
+  console.warn(
+    '[storyblok] "blok" nodes require a custom renderer passed through `components.blok`, ' +
+      "or use the `StoryblokRichText` returned by `defineStoryblokBlocks()`.",
+  );
+}
+
+/** Test-only: lets each test observe the once-per-environment warning. */
+export function resetMissingBlokWarning(): void {
+  warnedMissingBlok = false;
 }
 
 /**

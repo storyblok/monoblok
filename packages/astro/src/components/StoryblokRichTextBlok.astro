@@ -1,0 +1,41 @@
+---
+import type { StoryblokBlockRegistry } from "../block-registry";
+import type { StoryblokAstroRichTextProps } from "../richtext-helpers";
+import type { StoryblokBlockData } from "../types";
+import StoryblokBlock from "./StoryblokBlock.astro";
+
+// The default `blok` renderer of the `StoryblokRichText` returned by
+// `defineStoryblokBlocks()`: renders each embedded block through the same
+// registry as `StoryblokBlock`.
+type Props = StoryblokAstroRichTextProps<"blok"> & {
+  /** Matches `REGISTRY_PROP`; `Astro.props` can't destructure a computed key. */
+  __storyblokRegistry: StoryblokBlockRegistry;
+};
+
+const { attrs, context, __storyblokRegistry: registry } = Astro.props;
+
+const blocks = (Array.isArray(attrs?.body) ? attrs.body : []).filter(
+  (block: unknown): block is StoryblokBlockData =>
+    typeof block === "object" &&
+    block !== null &&
+    typeof Reflect.get(block, "component") === "string",
+);
+
+// A plain-object `data` passed to `StoryblokRichText` is forwarded to every
+// embedded block as extra props, like the extra props `StoryblokBlock`
+// passes to a block it renders directly.
+const data = context?.data;
+const extraProps = typeof data === "object" && data !== null && !Array.isArray(data) ? data : {};
+
+// `warnings={false}` on `StoryblokRichText` also silences the registry's
+// warnings for the embedded blocks it renders.
+const blockRegistry = context?.warnings === false ? registry.withoutWarnings() : registry;
+---
+
+{
+  /* `StoryblokBlock` passes `block` after the extra props, so a `data.block`
+     can't replace the block. */
+  blocks.map((block) => (
+    <StoryblokBlock {...extraProps} block={block} __storyblokRegistry={blockRegistry} />
+  ))
+}

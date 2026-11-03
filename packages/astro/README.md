@@ -29,9 +29,11 @@
 
 ## Features
 
-- Independent, closure-scoped block registries via `defineStoryblokBlocks({ components, fallback })`
-  — call it more than once for separate registries that never share state
-- `StoryblokBlock` for rendering single or nested blocks
+- Independent, closure-scoped block registries via
+  `defineStoryblokBlocks(() => ({ components, fallback }))` — call it more than once for separate
+  registries that never share state
+- `StoryblokBlock` for rendering single or nested blocks, and a registry-bound `StoryblokRichText`
+  that renders embedded blocks through the same components
 - Visual Editor integration using `storyblokEditable`
 - Real-time Live Preview via `storyblokPreviewMiddleware`, `getPayload`, and `StoryblokPreview`
 - Render rich text content with the Storyblok Rich Text Renderer based on `@storyblok/richtext`

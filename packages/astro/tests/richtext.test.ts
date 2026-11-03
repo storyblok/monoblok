@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   customRendererFixture,
   integrationFixtures,
@@ -17,6 +17,7 @@ import CodeBlock from "./richtext/CodeBlock.astro";
 import CustomTable from "./richtext/CustomTable.astro";
 import CustomText from "./richtext/CustomText.astro";
 import Blok from "./richtext/Blok.astro";
+import { resetMissingBlokWarning } from "../src/richtext-helpers";
 // Removes source file and location attributes that Astro adds for hydration
 const clean = (result: string) =>
   result
@@ -224,7 +225,11 @@ describe("storyblok Richtext", async () => {
       ],
     };
 
-    it("renders nothing and warns when no `components.blok` is provided", async () => {
+    beforeEach(() => {
+      resetMissingBlokWarning();
+    });
+
+    it("should render nothing and warn when no `components.blok` is provided", async () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const container = await AstroContainer.create();
 
@@ -239,20 +244,43 @@ describe("storyblok Richtext", async () => {
       warn.mockRestore();
     });
 
-    it("does not warn outside dev when no `components.blok` is provided", async () => {
+    it("should warn outside dev too", async () => {
       vi.stubEnv("DEV", false);
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const container = await AstroContainer.create();
 
-      const result = await container.renderToString(StoryblokRichText, {
-        props: { document },
-      });
+      await container.renderToString(StoryblokRichText, { props: { document } });
 
-      expect(result.trim()).toBe("");
-      expect(warn).not.toHaveBeenCalled();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("components.blok"));
 
       warn.mockRestore();
       vi.unstubAllEnvs();
+    });
+
+    it("should warn only once across renders and blok nodes", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+      const twoBloks = { ...document, content: [...document.content, ...document.content] };
+
+      await container.renderToString(StoryblokRichText, { props: { document: twoBloks } });
+      await container.renderToString(StoryblokRichText, { props: { document } });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      warn.mockRestore();
+    });
+
+    it("should not warn with `warnings={false}`, without silencing other instances", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const container = await AstroContainer.create();
+
+      await container.renderToString(StoryblokRichText, { props: { document, warnings: false } });
+      expect(warn).not.toHaveBeenCalled();
+
+      await container.renderToString(StoryblokRichText, { props: { document } });
+      expect(warn).toHaveBeenCalledTimes(1);
+
+      warn.mockRestore();
     });
 
     it("renders through the component passed in `components.blok`", async () => {

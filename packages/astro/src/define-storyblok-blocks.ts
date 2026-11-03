@@ -1,14 +1,17 @@
 import { createComponent, render, renderComponent } from "astro/compiler-runtime";
+import { createBlockRegistry, REGISTRY_PROP } from "./block-registry";
 import RawStoryblokBlock from "./components/StoryblokBlock.astro";
+import RawStoryblokRichText from "./components/StoryblokRichText.astro";
+import StoryblokRichTextBlok from "./components/StoryblokRichTextBlok.astro";
 import type {
   DefineStoryblokBlocksOptions,
   DefineStoryblokBlocksResult,
-  StoryblokBlockComponent,
+  StoryblokExtraProps,
 } from "./types";
 
 /**
  * Registers the components that render Storyblok blocks and returns a
- * `StoryblokBlock` component bound to them.
+ * `StoryblokBlock` and a `StoryblokRichText` bound to them.
  *
  * Each call is fully independent: nothing is shared globally, so you can
  * define as many registries as you like (e.g. one per content area) without
@@ -21,69 +24,94 @@ import type {
  * finished initializing.
  *
  * @example
- * ```astro
- * ---
+ * ```ts
+ * // src/storyblok.ts
  * import { defineStoryblokBlocks } from '@storyblok/astro';
- * import Page from '~/components/Page.astro';
- * import Teaser from '~/components/Teaser.astro';
- * import Fallback from '~/components/Fallback.astro';
+ * import Page from './components/Page.astro';
+ * import Teaser from './components/Teaser.astro';
+ * import Fallback from './components/Fallback.astro';
  *
- * const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+ * export const { StoryblokBlock, StoryblokRichText } = defineStoryblokBlocks(() => ({
  *   components: { page: Page, teaser: Teaser },
  *   fallback: Fallback,
  * }));
- * ---
+ * ```
  *
+ * ```astro
  * <StoryblokBlock block={story.content} />
  * {block.body?.map((child) => <StoryblokBlock block={child} />)}
+ * <StoryblokRichText document={block.text} />
  * ```
  *
  * @example Extra props shared by every registered component
- * ```astro
- * ---
+ * ```ts
  * import { defineStoryblokBlocks } from '@storyblok/astro';
- * import Branch from '~/components/Branch.astro';
- * import Leaf from '~/components/Leaf.astro';
+ * import Branch from './components/Branch.astro';
+ * import Leaf from './components/Leaf.astro';
  *
  * type ExtraComponentProps = { locale: string };
  *
- * const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>(() => ({
+ * export const { StoryblokBlock } = defineStoryblokBlocks<ExtraComponentProps>(() => ({
  *   components: { branch: Branch, leaf: Leaf },
  * }));
- * ---
+ * ```
  *
+ * ```astro
  * <StoryblokBlock block={root} locale="fr" />
  * ```
  */
-export function defineStoryblokBlocks<TExtraProps extends object = {}>(
-  factory: () => DefineStoryblokBlocksOptions,
+export function defineStoryblokBlocks<TExtraProps extends StoryblokExtraProps = {}>(
+  // `NoInfer` makes `TExtraProps` come from the type argument only. Inferred
+  // from the registered components, it would accept any of them.
+  factory: () => DefineStoryblokBlocksOptions<NoInfer<TExtraProps>>,
 ): DefineStoryblokBlocksResult<TExtraProps> {
-  // Cached after the first call so a factory with side effects (e.g. logging)
-  // only ever runs once, no matter how many blocks render.
-  let resolved: DefineStoryblokBlocksOptions | undefined;
-  const getComponents = () => (resolved ??= factory()).components ?? {};
-  const getFallback = () => (resolved ??= factory()).fallback;
+  const registry = createBlockRegistry(factory);
 
-  // `StoryblokBlock.astro` can't be parameterized by calling it directly, so
-  // this wraps it with Astro's own low-level render primitives, closing over
-  // this call's registry so multiple `defineStoryblokBlocks()` calls never
-  // share state.
+  // `.astro` components can't be parameterized by calling them directly, so
+  // these wrap them with Astro's own low-level render primitives, closing
+  // over this call's registry so multiple `defineStoryblokBlocks()` calls
+  // never share state.
   const StoryblokBlock = createComponent(
     (result, props, slots) =>
       render`${renderComponent(
         result,
         "StoryblokBlock",
         RawStoryblokBlock,
-        // Namespaced so a user-declared `components`/`fallback` extra prop
-        // doesn't collide with the registry.
-        {
-          ...props,
-          __storyblokComponents: getComponents(),
-          __storyblokFallback: getFallback(),
-        },
+        { ...props, [REGISTRY_PROP]: registry },
         slots,
       )}`,
   );
 
-  return { StoryblokBlock: StoryblokBlock as StoryblokBlockComponent<TExtraProps> };
+  // Renders embedded rich text bloks through this registry.
+  const Blok = createComponent(
+    (result, props, slots) =>
+      render`${renderComponent(
+        result,
+        "StoryblokRichTextBlok",
+        StoryblokRichTextBlok,
+        { ...props, [REGISTRY_PROP]: registry },
+        slots,
+      )}`,
+  );
+
+  // A caller's own `components.blok` replaces the registry-bound one.
+  const StoryblokRichText = createComponent(
+    (result, props, slots) =>
+      render`${renderComponent(
+        result,
+        "StoryblokRichText",
+        RawStoryblokRichText,
+        { ...props, components: { blok: Blok, ...props.components } },
+        slots,
+      )}`,
+  );
+
+  // `createComponent` always returns the untyped `AstroComponentFactory`
+  // shape, so the props each wrapper accepts are asserted here. The same
+  // `(props) => any` call signature is how Astro types `.astro` imports.
+  return {
+    StoryblokBlock: StoryblokBlock as DefineStoryblokBlocksResult<TExtraProps>["StoryblokBlock"],
+    StoryblokRichText:
+      StoryblokRichText as DefineStoryblokBlocksResult<TExtraProps>["StoryblokRichText"],
+  };
 }

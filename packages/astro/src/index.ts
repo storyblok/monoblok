@@ -72,7 +72,10 @@ export const StoryblokServerData = RawStoryblokServerData as (
 ) => any;
 
 /**
- * Renders a Storyblok rich text field.
+ * Renders a Storyblok rich text field, without a block registry: embedded
+ * bloks render only through `components.blok`, and warn otherwise unless
+ * `warnings={false}`. To render them through your registered components, use
+ * the `StoryblokRichText` returned by `defineStoryblokBlocks()` instead.
  *
  * @example Basic
  * ```astro
@@ -106,6 +109,8 @@ export const StoryblokRichText = RawStoryblokRichText as (props: {
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;
   components?: StoryblokAstroRichTextComponentMap;
   data?: unknown;
+  /** Set to `false` to silence the warning for a `blok` node without a renderer. */
+  warnings?: boolean;
 }) => any;
 
 export type {
@@ -117,6 +122,7 @@ export type {
   StoryblokBlockProps,
   StoryblokComponentMap,
   StoryblokEditableProps,
+  StoryblokExtraProps,
   StoryblokPreviewProps,
 } from "./types";
 

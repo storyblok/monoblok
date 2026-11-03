@@ -4,6 +4,9 @@ import { defineStoryblokBlocks } from "../src/define-storyblok-blocks";
 import Teaser from "./block-fixtures/Teaser.astro";
 import Fallback from "./block-fixtures/Fallback.astro";
 
+const EDITOR_URL =
+  "https://example.com/?_storyblok=123&_storyblok_c=456&_storyblok_tk[space_id]=789";
+
 describe("StoryblokBlock", () => {
   it("renders the component resolved for the block type", async () => {
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
@@ -116,19 +119,103 @@ describe("StoryblokBlock", () => {
     warn.mockRestore();
   });
 
-  it("does not warn outside dev when `block` is undefined", async () => {
+  it("should warn outside dev too when `block` is undefined", async () => {
     vi.stubEnv("DEV", false);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
+    const container = await AstroContainer.create();
+
+    await container.renderToString(StoryblokBlock, { props: {} });
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("undefined `block` prop"));
+    warn.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("should not warn about an undefined `block` inside the Visual Editor", async () => {
+    // The Visual Editor's visual history sends a story without `content`.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: { teaser: Teaser } }));
     const container = await AstroContainer.create();
 
     const result = await container.renderToString(StoryblokBlock, {
       props: {},
+      request: new Request(EDITOR_URL),
     });
 
     expect(result.trim()).toBe("");
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
-    vi.unstubAllEnvs();
+  });
+
+  it("should warn only once per registry and block type", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({ components: {} }));
+    const container = await AstroContainer.create();
+
+    await container.renderToString(StoryblokBlock, { props: { block: { component: "a" } } });
+    await container.renderToString(StoryblokBlock, { props: { block: { component: "a" } } });
+    await container.renderToString(StoryblokBlock, { props: { block: { component: "b" } } });
+
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenNthCalledWith(1, expect.stringContaining('"a"'));
+    expect(warn).toHaveBeenNthCalledWith(2, expect.stringContaining('"b"'));
+    warn.mockRestore();
+  });
+
+  it("should not warn with `warnings: false`", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { teaser: {} as any },
+      fallback: (() => "") as any,
+      warnings: false,
+    }));
+    const container = await AstroContainer.create();
+
+    await container.renderToString(StoryblokBlock, { props: {} });
+    await container.renderToString(StoryblokBlock, { props: { block: { component: "teaser" } } });
+    await container.renderToString(StoryblokBlock, { props: { block: { component: "unknown" } } });
+
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("should not resolve a block type named after an `Object.prototype` member", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: {},
+      fallback: Fallback,
+    }));
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: { block: { component: "constructor" } },
+    });
+
+    expect(result).toContain("Missing component for constructor");
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("should not let an extra prop replace the injected `block` or `editable`", async () => {
+    const { StoryblokBlock } = defineStoryblokBlocks(() => ({
+      components: { teaser: Teaser },
+    }));
+    const container = await AstroContainer.create();
+
+    const result = await container.renderToString(StoryblokBlock, {
+      props: {
+        block: {
+          component: "teaser",
+          headline: "Real",
+          _editable: '<!--#storyblok#{"name": "teaser", "id": "1", "uid": "real-uid"}-->',
+        },
+        editable: { "data-blok-uid": "fake-uid" },
+      },
+    });
+
+    expect(result).toContain("Real");
+    expect(result).toContain("real-uid");
+    expect(result).not.toContain("fake-uid");
   });
 });

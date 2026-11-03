@@ -1,5 +1,6 @@
 import { storyblokEditable } from "@storyblok/live-preview";
 import type { BridgeParams } from "@storyblok/live-preview";
+import type { StoryblokRichTextComponentProps } from "./richtext-helpers";
 
 /**
  * Structural stand-in for Astro's own `AstroComponentFactory` (defined in
@@ -33,6 +34,12 @@ export type StoryblokBlockData<T extends Record<string, any> = Record<string, an
 export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
 
 /**
+ * Extra props shared by every component of a registry. `block` and
+ * `editable` are reserved: `StoryblokBlock` injects them.
+ */
+export type StoryblokExtraProps = object & { block?: never; editable?: never };
+
+/**
  * Props received by a component registered in `defineStoryblokBlocks`.
  *
  * `T` describes the block's own fields, `TExtraProps` any additional props the
@@ -49,7 +56,7 @@ export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
  *   { headline: string },
  *   { showCount?: boolean }
  * >;
- * const { block, editable, showCount } = Astro.props as Props;
+ * const { block, editable, showCount } = Astro.props;
  * ---
  *
  * <div {...editable}>{block.headline}</div>
@@ -57,21 +64,34 @@ export type StoryblokEditableProps = ReturnType<typeof storyblokEditable>;
  */
 export type StoryblokBlockComponentProps<
   T extends object = object,
-  TExtraProps extends object = {},
+  TExtraProps extends StoryblokExtraProps = {},
 > = {
   /** The block content being rendered. */
   block: StoryblokBlockData<T>;
-  /** Editable attributes injected by `StoryblokBlock`. */
+  /** Editable attributes injected by `StoryblokBlock`. Spread onto the component's root element. */
   editable?: StoryblokEditableProps;
 } & TExtraProps;
 
 /**
- * Components that render blocks must be `.astro` components. A framework
- * component (React, Vue, ...) can't be registered directly: wrap it in an
- * `.astro` component and apply the `client:*` directive there, the way the
- * playgrounds' `ReactCounter.astro` wraps `Counter.jsx`.
+ * A component that renders a Storyblok block: it accepts the props
+ * `StoryblokBlock` passes, and requires no prop beyond `TExtraProps`.
+ *
+ * Must be an `.astro` component. A framework component (React, Vue, ...)
+ * can't be registered directly: wrap it in an `.astro` component and apply
+ * the `client:*` directive there.
  */
-export type StoryblokComponentMap = Record<string, AstroComponentFactory>;
+export type StoryblokBlockComponent<TExtraProps extends StoryblokExtraProps = {}> = (
+  // `any` so components can narrow `block` to their own fields.
+  props: StoryblokBlockComponentProps<any, TExtraProps>,
+) => any;
+
+/**
+ * Map of Storyblok technical block names to the components rendering them.
+ */
+export type StoryblokComponentMap<TExtraProps extends StoryblokExtraProps = {}> = Record<
+  string,
+  StoryblokBlockComponent<TExtraProps>
+>;
 
 /**
  * Props accepted by the `StoryblokBlock` component returned from
@@ -81,22 +101,13 @@ export type StoryblokComponentMap = Record<string, AstroComponentFactory>;
  * `TExtraProps` itself: a required field there makes every `StoryblokBlock`
  * usage, including recursive ones, supply it.
  */
-export type StoryblokBlockProps<TExtraProps extends object = {}> = {
-  /** The block to render. */
-  block: StoryblokBlockData;
+export type StoryblokBlockProps<TExtraProps extends StoryblokExtraProps = {}> = {
+  /**
+   * The block to render. Optional so `story?.content` can be passed while the
+   * story may be missing; an undefined block renders nothing and warns.
+   */
+  block?: StoryblokBlockData;
 } & TExtraProps;
-
-/**
- * An `AstroComponentFactory` carrying a `(props: Props) => any` call
- * signature so `.astro`/`.tsx` files type-check the props passed to it, the
- * same mechanism Astro's own framework integrations rely on. `createComponent`
- * itself can't express this: it always returns the untyped
- * `AstroComponentFactory` shape.
- */
-export type StoryblokBlockComponent<TExtraProps extends object = {}> = ((
-  props: StoryblokBlockProps<TExtraProps>,
-) => any) &
-  AstroComponentFactory;
 
 /** Props accepted by the `StoryblokPreview` component. */
 export interface StoryblokPreviewProps {
@@ -112,23 +123,37 @@ export interface StoryblokPreviewProps {
   liveUpdate?: boolean;
 }
 
-export interface DefineStoryblokBlocksOptions {
+export interface DefineStoryblokBlocksOptions<TExtraProps extends StoryblokExtraProps = {}> {
   /**
    * Map of Storyblok technical block names to the components rendering them.
    *
    * @example { page: Page, teaser: Teaser }
    */
-  components?: StoryblokComponentMap;
+  components?: StoryblokComponentMap<TExtraProps>;
 
   /**
    * Rendered for block types that are not present in `components`. Receives
    * the same props as a registered component.
+   *
+   * Without a fallback, an unregistered block type renders nothing and logs a
+   * warning (see `warnings`). To report it elsewhere, provide a fallback that
+   * does so.
    */
-  fallback?: AstroComponentFactory;
+  fallback?: StoryblokBlockComponent<TExtraProps>;
+
+  /**
+   * Logs a warning when `StoryblokBlock` renders nothing: for an undefined
+   * `block`, for a block type with no registered component and no
+   * `fallback`, or for a component that isn't a valid Astro component. Each
+   * warning prints once per registry. Set to `false` to silence them.
+   *
+   * @default true
+   */
+  warnings?: boolean;
 }
 
 /** Return value of `defineStoryblokBlocks()`. */
-export interface DefineStoryblokBlocksResult<TExtraProps extends object = {}> {
+export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraProps = {}> {
   /**
    * Renders a block using the components registered in this
    * `defineStoryblokBlocks()` call.
@@ -138,8 +163,20 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends object = {}> {
    * {block.body?.map((child) => <StoryblokBlock block={child} />)}
    * ```
    */
-  // Inlined (not cast through `StoryblokBlockComponent`) so hovers show the
-  // real props instead of just the type name, matching StoryblokPreview,
-  // StoryblokServerData, and StoryblokRichText. Keep both in sync.
-  StoryblokBlock: (props: { block: StoryblokBlockData } & TExtraProps) => any;
+  // Inlined (not aliased to `StoryblokBlockProps`) so hovers show the real
+  // props instead of just the type name. Keep both in sync.
+  StoryblokBlock: (props: { block?: StoryblokBlockData } & TExtraProps) => any;
+
+  /**
+   * Renders a rich text field. Embedded blocks render through this
+   * registry, like `StoryblokBlock`. A `components.blok` renderer replaces
+   * that, and a plain-object `data` is passed to every embedded block as
+   * extra props. `data` isn't checked against `TExtraProps`: use
+   * `satisfies` to check it.
+   *
+   * ```astro
+   * <StoryblokRichText document={block.text} data={{ locale } satisfies ExtraProps} />
+   * ```
+   */
+  StoryblokRichText: (props: StoryblokRichTextComponentProps) => any;
 }

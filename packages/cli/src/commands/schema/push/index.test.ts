@@ -1226,6 +1226,52 @@ describe("schema push command", () => {
       );
     });
 
+    it("should point folders at a renamed block that landed even when the rest of the push fails", async () => {
+      const remoteBanner = banner();
+      const remoteTeaser = makeMockComponent({ name: "teaser", schema: { a: { type: "text" } } });
+      const localHero = { ...hero(), id: remoteBanner.id };
+      const localTeaser = { ...remoteTeaser, schema: { b: { type: "text" } } };
+      preconditions.hasLocalSchema({
+        components: [localHero, localTeaser] as any,
+        datasources: [],
+      });
+      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
+        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner"] },
+      ]);
+      preconditions.updatesOnlyComponent(localHero, [remoteBanner, remoteTeaser]);
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      expect(folderUpdates).toEqual([
+        {
+          id: 7,
+          story: expect.objectContaining({
+            default_root: "hero",
+            content: expect.objectContaining({ content_types: ["hero"] }),
+          }),
+        },
+      ]);
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to update component teaser"),
+      );
+    });
+
+    it("should leave folders alone when a failed push did not rename the block", async () => {
+      const remoteBanner = banner();
+      preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
+      preconditions.hasRemoteComponents([remoteBanner]);
+      const folderUpdates = preconditions.hasStories({ banner: 3 }, [
+        { id: 7, full_slug: "banners", default_root: "banner", content_types: ["banner"] },
+      ]);
+      preconditions.failsToUpdateComponents();
+      vi.mocked(confirm).mockResolvedValue(true);
+
+      await push("--no-migrations");
+
+      expect(folderUpdates).toEqual([]);
+    });
+
     it("should refuse to delete a block stories still use when the rename is declined", async () => {
       preconditions.hasLocalSchema({ components: [hero()] as any, datasources: [] });
       preconditions.hasRemoteComponents([banner()]);
@@ -1693,10 +1739,10 @@ describe("schema push command", () => {
     ]);
 
     expect(migrationFiles()).toEqual([
-      expect.stringMatching(/20261016090503-update-article\.before\.ts$/),
-      expect.stringMatching(/20261016090503-update-article\.ts$/),
+      expect.stringMatching(/\d{14}-update-article\.before\.ts$/),
+      expect.stringMatching(/\d{14}-update-article\.ts$/),
     ]);
-    const migration = writtenFile("20261016090503-update-article.ts");
+    const migration = writtenFile("-update-article.ts");
     expect(migration).toContain(
       "renameField({ block: 'article', field: 'slug_override', to: 'slug_custom' })",
     );

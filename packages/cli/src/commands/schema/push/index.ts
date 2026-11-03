@@ -43,6 +43,8 @@ function shellQuote(path: string): string {
  * The blocks among `names` the space now holds as the local schema defines
  * them, or `undefined` when the space cannot be read.
  */
+const describeRename = ({ from, to }: BlockRename): string => `${from} → ${to}`;
+
 async function pushedBlocks(
   space: string,
   local: SchemaData,
@@ -201,26 +203,32 @@ schemaCommand
        * of them updated. Their ops must survive, since a rerun of the push no
        * longer sees their changes, while the ops for the rest are generated again.
        */
-      const keepMigrationsForPushedBlocks = async (generated: {
-        files: string[];
-        changes: ComponentBreakingChanges[];
-      }): Promise<void> => {
+      const keepMigrationsForPushedBlocks = async (
+        generated: { files: string[]; changes: ComponentBreakingChanges[] },
+        pushed: ReadonlySet<string> | undefined,
+      ): Promise<void> => {
         const listed = (files: string[]) =>
           files.map((file) => `  - ${displayPath(file, basePath)}`).join("\n");
-        const pushed = await pushedBlocks(
-          space,
-          local,
-          generated.changes.map((comp) => comp.componentName),
-        );
         if (!pushed) {
           ui.warn(
             `The push failed after these migration files were written:\n${listed(generated.files)}\nThe space could not be read to tell which blocks were pushed. Keep the ops for the blocks the push already updated, delete the rest, then run schema push again.`,
           );
           return;
         }
-        await Promise.all(generated.files.map((file) => rm(file, { force: true })));
         const pushedChanges = generated.changes.filter((comp) => pushed.has(comp.componentName));
-        const files = pushedChanges.length > 0 ? await writeMigrations(pushedChanges) : [];
+        // Write the kept ops before removing anything, so a failed write loses no ops.
+        const files =
+          pushedChanges.length === generated.changes.length
+            ? generated.files
+            : pushedChanges.length > 0
+              ? await writeMigrations(pushedChanges)
+              : [];
+        const kept = new Set(files);
+        await Promise.all(
+          generated.files
+            .filter((file) => !kept.has(file))
+            .map((file) => rm(file, { force: true })),
+        );
         if (files.length === 0) {
           ui.warn(
             "The push failed before any block with breaking changes was updated, so no migration was kept. Fix the error and run schema push again.",
@@ -250,6 +258,10 @@ schemaCommand
             ),
           );
           await renameFolderRestrictions(space, renamedFolders, renames);
+          logger.info("Folder content types updated", {
+            renames: renames.map(describeRename),
+            folders: renamedFolders.map(describeFolder),
+          });
           if (renamedFolders.length > 0) {
             ui.info(
               `Updated the content types of ${plural(renamedFolders.length, "folder", "folders")} to the renamed blocks: ${renamedFolders.map(describeFolder).join(", ")}.`,
@@ -266,8 +278,13 @@ schemaCommand
             }
           }
         } catch (maybeError) {
+          const { message } = toError(maybeError);
+          logger.warn("Failed to update folder content types", {
+            renames: renames.map(describeRename),
+            error: message,
+          });
           ui.warn(
-            `The folders that name renamed or deleted blocks as content types could not be updated: ${toError(maybeError).message}`,
+            `The folders that name renamed or deleted blocks as content types could not be updated: ${message}`,
           );
         }
       };
@@ -541,8 +558,26 @@ schemaCommand
           });
         } catch (error) {
           pushSpinner.failed("Failed to push schema");
-          if (generatedMigrations) {
-            await keepMigrationsForPushedBlocks(generatedMigrations);
+          if (generatedMigrations || blockRenames.length > 0) {
+            // Blocks are updated independently, so some may have landed. A rerun
+            // no longer sees their changes, so handle them now.
+            const pushed = await pushedBlocks(space, local, [
+              ...(generatedMigrations?.changes.map((comp) => comp.componentName) ?? []),
+              ...blockRenames.map((rename) => rename.to),
+            ]);
+            if (generatedMigrations) {
+              await keepMigrationsForPushedBlocks(generatedMigrations, pushed);
+            }
+            if (pushed) {
+              await updateFolderRestrictions(
+                blockRenames.filter((rename) => pushed.has(rename.to)),
+                [],
+              );
+            } else if (blockRenames.length > 0) {
+              ui.warn(
+                `The space could not be read to tell whether these blocks were renamed: ${blockRenames.map(describeRename).join(", ")}. Folders that name the old blocks as content types must be updated in the Storyblok UI.`,
+              );
+            }
           }
           throw error;
         }

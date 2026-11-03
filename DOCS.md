@@ -16,7 +16,7 @@ heading it belongs to.
   ```
 
 - **Existing pages:** `src/content/docs/docs/tooling/cli/index.mdx` gets three link cards,
-  `src/content/docs/docs/libraries/js/schema/migrations.mdx` gets a pointer to the CLI, and
+  `src/content/docs/docs/libraries/js/schema/index.mdx` gets a pointer to the CLI, and
   `src/content/docs/docs/libraries/js/management-api-client/index.mdx` gets the `releases` resource.
 
 <!-- target: src/content/docs/docs/tooling/cli/migrations-apply.mdx (new page) -->
@@ -32,7 +32,7 @@ description:
 Applies content migrations to the stories in a Storyblok space and records each run so
 [`migrations undo`](/docs/tooling/cli/migrations-undo) can revert it. A **content migration** is a
 file whose default export is the result of `defineMigration()` from
-[@storyblok/schema/migrations](/docs/libraries/js/schema/migrations).
+[@storyblok/schema](/docs/libraries/js/schema#content-migrations).
 
 ## Prerequisites
 
@@ -290,7 +290,7 @@ storyblok migrations undo --run 2026-10-07T14-03-12-511Z-0001-rename-article-aut
 />
 ```
 
-<!-- target: src/content/docs/docs/libraries/js/schema/migrations.mdx#usage (before "Apply migrations") -->
+<!-- target: src/content/docs/docs/libraries/js/schema/index.mdx#programmatic-use (end of section) -->
 
 ```mdx
 <Aside type="tip">

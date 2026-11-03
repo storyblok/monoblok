@@ -6,15 +6,15 @@ import {
   discoverMigrations,
   loadMigrations,
   validateMigration,
-} from "@storyblok/schema/migrations";
+} from "@storyblok/schema";
 import type {
   ApplyMigrationOutcome,
   LoadedMigration,
   MigrationRun,
   PublishMode,
+  SchemaLike,
   StoryForMigration,
-} from "@storyblok/schema/migrations";
-import type { SchemaLike } from "@storyblok/schema";
+} from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import {
   CommandError,

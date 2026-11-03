@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import type { SetupServerApi } from "msw/node";
 import { vol } from "memfs";
 import { vi } from "vitest";
-import type { CompiledMigration } from "@storyblok/schema/migrations";
+import type { CompiledMigration } from "@storyblok/schema";
 import { DEFAULT_SPACE } from "../../__tests__/helpers";
 import { isRecord } from "../../../utils";
 import { importUserModuleDefault } from "../../../utils/user-module";

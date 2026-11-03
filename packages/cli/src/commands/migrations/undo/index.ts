@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import type { Command } from "commander";
-import { planUndo, undoStories } from "@storyblok/schema/migrations";
-import type { StoryForMigration } from "@storyblok/schema/migrations";
+import { planUndo, undoStories } from "@storyblok/schema";
+import type { StoryForMigration } from "@storyblok/schema";
 import { colorPalette, commands } from "../../../constants";
 import {
   CommandError,

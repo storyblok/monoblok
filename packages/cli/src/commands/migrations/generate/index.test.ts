@@ -372,6 +372,41 @@ describe("migrations generate command", () => {
         expect(before).not.toContain("defineField('title'");
       });
 
+      it.each(["renamed-block", "component-name"])(
+        "should snapshot a block a push renamed when asked for it as %s with --before-push",
+        async (name) => {
+          preconditions.componentExists();
+          preconditions.hasSchemaEntry();
+          vol.fromJSON({
+            [`.storyblok/schema/changesets/${pushedAt.replace(/[:.]/g, "-")}.json`]: JSON.stringify(
+              {
+                timestamp: pushedAt,
+                spaceId: 12345,
+                remote: {
+                  components: [
+                    { ...mockComponent, schema: { old_title: { type: "text", pos: 0 } } },
+                  ],
+                  componentFolders: [],
+                  datasources: [],
+                },
+                changes: [
+                  {
+                    type: "component",
+                    name: "renamed-block",
+                    action: "update",
+                    before: { ...mockComponent },
+                  },
+                ],
+              },
+            ),
+          });
+
+          await generate(name, "--schema", "src/schema.ts", "--before-push");
+
+          expect(writtenFile(".before.ts")).toContain("defineField('old_title'");
+        },
+      );
+
       it("should use the latest push to the space that changed the block", async () => {
         preconditions.componentExists();
         preconditions.hasSchemaEntry();

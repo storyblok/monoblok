@@ -39,17 +39,29 @@ export const generateMigration = async (
   return migrationPath;
 };
 
-/** The pre-push space state of the latest `schema push` to `space` that changed `block`. */
+/**
+ * The pre-push space state of the latest `schema push` to `space` that changed
+ * `block`, and the name `block` had before it. A push that renamed the block
+ * records it under its new name, so either name finds it.
+ */
 export async function latestPushChanging(
   path: string | undefined,
   space: string,
   block: string,
-): Promise<{ timestamp: string; components: Component[] } | undefined> {
+): Promise<{ timestamp: string; components: Component[]; blockBefore: string } | undefined> {
   for (const file of await listChangesets(resolvePath(path, ""))) {
     const changeset = await loadChangeset(file);
     if (String(changeset.spaceId) !== space) continue;
-    if (changeset.changes.some((change) => change.type === "component" && change.name === block)) {
-      return { timestamp: changeset.timestamp, components: changeset.remote.components };
+    for (const change of changeset.changes) {
+      if (change.type !== "component") continue;
+      const nameBefore = typeof change.before?.name === "string" ? change.before.name : change.name;
+      if (change.name === block || nameBefore === block) {
+        return {
+          timestamp: changeset.timestamp,
+          components: changeset.remote.components,
+          blockBefore: nameBefore,
+        };
+      }
     }
   }
   return undefined;

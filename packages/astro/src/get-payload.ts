@@ -6,6 +6,10 @@ import type { Story } from "@storyblok/live-preview";
  * This function is primarily useful when working with the Storyblok Visual Editor
  * and live preview updates in an Astro project.
  *
+ * `serverData` is sent back by the browser on every live update, so anyone can
+ * forge it. Treat it as untrusted display data, never for IDs, permissions, or
+ * anything else the server relies on.
+ *
  * @template ServerData - The type of server data
  * @template TStory - The type of story data
  * @param {object} params - The function parameters

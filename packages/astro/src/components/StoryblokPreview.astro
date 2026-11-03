@@ -34,9 +34,12 @@ if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
    * Exactly one instance is allowed per page — a second one would create its
    * own bridge subscription and, with `liveUpdate`, its own morph handler,
    * doubling every POST and morph. Dev throws so the mistake is obvious;
-   * production silently ignores the second instance.
+   * production ignores the second instance and warns once.
    */
+  const DUPLICATE_INSTANCE_MESSAGE =
+    '[storyblok] More than one <StoryblokPreview /> is mounted on this page.';
   let hasActiveInstance = false;
+  let hasWarnedDuplicate = false;
 
   class StoryblokPreviewElement extends HTMLElement {
     #cleanup?: Promise<() => void>;
@@ -46,9 +49,11 @@ if (import.meta.env.DEV && liveUpdate && Astro.isPrerendered) {
     connectedCallback(): void {
       if (hasActiveInstance) {
         if (import.meta.env.DEV) {
-          throw new Error(
-            '[storyblok] More than one <StoryblokPreview /> is mounted on this page.',
-          );
+          throw new Error(DUPLICATE_INSTANCE_MESSAGE);
+        }
+        if (!hasWarnedDuplicate) {
+          hasWarnedDuplicate = true;
+          console.warn(`${DUPLICATE_INSTANCE_MESSAGE} Only the first one is active.`);
         }
         return;
       }

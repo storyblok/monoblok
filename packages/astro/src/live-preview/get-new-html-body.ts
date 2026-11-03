@@ -32,7 +32,10 @@ export async function getNewHTMLBody(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch updated HTML: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch updated HTML: ${response.status} ${response.statusText}. ` +
+        "If this route is prerendered, `<StoryblokPreview liveUpdate />` needs it rendered on demand instead.",
+    );
   }
 
   const html = await response.text();

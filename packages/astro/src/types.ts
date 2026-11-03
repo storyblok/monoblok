@@ -1,5 +1,5 @@
 import { storyblokEditable } from "@storyblok/live-preview";
-import type { BridgeParams } from "@storyblok/live-preview";
+import type { BridgeParams, Story } from "@storyblok/live-preview";
 import type { StoryblokRichTextComponentProps } from "./richtext-helpers";
 
 /**
@@ -164,7 +164,7 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
    * ```
    */
   // Inlined (not aliased to `StoryblokBlockProps`) so hovers show the real
-  // props instead of just the type name. Keep both in sync.
+  // props instead of just the type name. `tests/index.test-d.ts` checks they match.
   StoryblokBlock: (props: { block?: StoryblokBlockData } & TExtraProps) => any;
 
   /**
@@ -179,4 +179,16 @@ export interface DefineStoryblokBlocksResult<TExtraProps extends StoryblokExtraP
    * ```
    */
   StoryblokRichText: (props: StoryblokRichTextComponentProps) => any;
+}
+
+declare global {
+  interface DocumentEventMap {
+    /**
+     * Dispatched by `<StoryblokPreview liveUpdate />` before a live update is
+     * applied. Cancelable: call `event.preventDefault()` to skip the update.
+     */
+    "storyblok-live-preview-updating": CustomEvent<{ story: Story }>;
+    /** Dispatched by `<StoryblokPreview liveUpdate />` after a live update is applied. */
+    "storyblok-live-preview-updated": CustomEvent<{ story: Story }>;
+  }
 }

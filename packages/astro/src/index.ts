@@ -39,7 +39,7 @@ export { sanitizeJSON } from "./sanitize-json";
  * ```
  */
 // Inlined (not cast through `StoryblokPreviewProps`) so hovers show the
-// real props instead of just the type name. Keep both in sync.
+// real props instead of just the type name. `tests/index.test-d.ts` checks they match.
 export const StoryblokPreview = RawStoryblokPreview as (props: {
   bridgeOptions?: BridgeParams;
   /** Debounce delay for consecutive input events. Defaults to 500ms. */
@@ -103,7 +103,7 @@ export const StoryblokServerData = RawStoryblokServerData as (
  * ```
  */
 // Inlined (not cast through `StoryblokRichTextComponentProps`) so hovers show
-// the real props instead of just the type name. Keep both in sync.
+// the real props instead of just the type name. `tests/index.test-d.ts` checks they match.
 export const StoryblokRichText = RawStoryblokRichText as (props: {
   document: StoryblokRichTextInput;
   optimizeImage?: boolean | Partial<StoryblokRichTextImageOptions>;

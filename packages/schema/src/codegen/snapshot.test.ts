@@ -142,7 +142,7 @@ describe("generateSnapshot", () => {
         blocks: ["hero"],
       }),
       "0001.ts": [
-        "import { alterField, defineMigration } from '@storyblok/schema/migrations';",
+        "import { alterField, defineMigration } from '@storyblok/schema';",
         "import type { Before } from './0001.before';",
         "export default defineMigration<Before, Before>([",
         "  alterField({ block: 'hero', field: 'headline', under: ['page', 'section'] }, (v) => v),",

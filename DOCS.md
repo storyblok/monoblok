@@ -378,11 +378,11 @@ snapshot next to it:
 The slug is the component name and suffix in lowercase letters, digits, and hyphens.
 
 The migration file default-exports an empty `defineMigration()` call from
-[@storyblok/schema](/docs/libraries/js/schema#content-migrations), typed against the `Schema`
-type your schema entry file exports and the `Before` type the snapshot exports. The snapshot holds
-the block’s fields as they are in the space now, so the migration can name fields your schema no
-longer has. The snapshot lists the other blocks the migration can name, such as the blocks a field
-allows, by name only. To change fields of a nested block, generate a migration for that block too.
+[@storyblok/schema](/docs/libraries/js/schema#content-migrations), typed against the `Schema` type
+your schema entry file exports and the `Before` type the snapshot exports. The snapshot holds the
+block’s fields as they are in the space now, so the migration can name fields your schema no longer
+has. The snapshot lists the other blocks the migration can name, such as the blocks a field allows,
+by name only. To change fields of a nested block, generate a migration for that block too.
 
 The migrations directory sits outside most `tsconfig.json` `include` patterns. Add
 `.storyblok/migrations` to `include`, or run `tsc` on it in CI, so a type error in a migration fails

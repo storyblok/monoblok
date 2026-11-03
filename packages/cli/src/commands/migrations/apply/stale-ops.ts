@@ -1,4 +1,4 @@
-import type { CompiledMigration, MigrationOp } from "@storyblok/schema/migrations";
+import type { CompiledMigration, MigrationOp } from "@storyblok/schema";
 import { coercionBetween } from "@storyblok/schema/internal/codegen";
 
 /** The fields of each block the space holds now, mapped to their field types. */

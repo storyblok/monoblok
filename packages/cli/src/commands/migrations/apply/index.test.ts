@@ -2,11 +2,12 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { vol } from "memfs";
-import { defineBlock, defineField } from "@storyblok/schema";
 import {
   addField,
   alterField,
   coerceField,
+  defineBlock,
+  defineField,
   defineMigration,
   mergeFields,
   removeField,

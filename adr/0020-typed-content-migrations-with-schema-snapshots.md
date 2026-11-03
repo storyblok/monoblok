@@ -8,9 +8,9 @@ Supersedes the file format decision in [ADR-0009](0009-schema-push-migration-gen
 ## Context
 
 ADR-0009 generated per-component `.js` functions for `migrations run` and rejected a schema-level
-migration DSL because it needed a new engine. `@storyblok/schema/migrations` now provides that
-engine: `defineMigration()` ops typed against the schema, run by `migrations apply` with a journal
-and undo. Generated migrations should be able to use it.
+migration DSL because it needed a new engine. `@storyblok/schema` now provides that engine:
+`defineMigration()` ops typed against the schema, run by `migrations apply` with a journal and undo.
+Generated migrations should be able to use it.
 
 The fields a migration reads are often the ones the project's schema no longer has, so typing reads
 against the live schema checks nothing.

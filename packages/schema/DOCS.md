@@ -12,7 +12,9 @@ _Introduced in_ <Badge text="0.6.0" variant="success" />
 
 A **content migration** is an ordered list of operations (ops) that reshapes story content after a
 block schema changes, for example to rename a field or convert its values. The ops are typed against
-your schema, and a recorded run can be undone.
+your schema. The Storyblok CLI applies migrations with
+[`migrations apply`](/docs/tooling/cli/migrations/apply) and reverts a run with
+[`migrations undo`](/docs/tooling/cli/migrations/undo).
 
 ### Write a migration
 
@@ -193,7 +195,7 @@ in the page. This op changes only the heroes inside an `enterprise_page`:
 
 ```ts
 alterField({ block: "hero", field: "headline_size", under: "enterprise_page" }, (size) =>
-  size === " " ? "normal" : size,
+  size === " " ? "normal" : undefined,
 );
 ```
 

@@ -1,4 +1,4 @@
-import { defineMigration, renameField } from "../../../index";
+import { defineMigration, renameField } from "../../../../index";
 
 export default defineMigration({
   title: "Rename the card title",

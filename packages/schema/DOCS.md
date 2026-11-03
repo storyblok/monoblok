@@ -171,7 +171,7 @@ it had before the migration:
 - After `renameBlock({ block: "changelog_entry_v2", to: "changelog_entry" })`, later ops in the same
   migration still address the block as `changelog_entry_v2`.
 - An op that addresses a name an earlier op introduced reaches the block only on a rerun, so the
-  story is refused.
+  migration refuses the story.
 - Blocks the migration creates, such as the container of `wrapChildren()`, have no pre-migration
   name, so no op reaches them.
 

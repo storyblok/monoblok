@@ -1,8 +1,7 @@
 # Staged docs: content migrations in `@storyblok/schema`
 
-Staged docs-site content for content migrations. Each section starts with a `target` marker naming
-the docs platform heading it belongs to. Everything goes on the existing `@storyblok/schema` page,
-`src/content/docs/docs/libraries/js/schema/index.mdx`. Add `Badge` to its
+Staged docs-site content for content migrations. Everything goes on the existing `@storyblok/schema`
+page, `src/content/docs/docs/libraries/js/schema/index.mdx`. Add `Badge` to its
 `@astrojs/starlight/components` import.
 
 <!-- target: src/content/docs/docs/libraries/js/schema/index.mdx#content-migrations (new h2 after "API", before "Further resources") -->
@@ -12,63 +11,61 @@ the docs platform heading it belongs to. Everything goes on the existing `@story
 _Introduced in_ <Badge text="0.6.0" variant="success" />
 
 A **content migration** is an ordered list of operations (ops) that reshapes story content after a
-block schema changes, for example to rename a field, convert a value, or restructure nested blocks.
-`defineMigration()` and the ops are exported from `@storyblok/schema`. The ops are typed against the
-schema, and every run is recorded, so it can be undone.
+block schema changes, for example to rename a field or convert its values. The ops are typed against
+your schema, and a recorded run can be undone.
 
 ### Write a migration
 
 A migration file default-exports the result of `defineMigration()`. This migration renames the
-`author` field of the `article` block to `byline` and converts its `price` field from text to a
-number:
+`twitter_account` field of the `author` and `mvp` blocks:
 
-```ts title=".storyblok/migrations/12345/0002-rename-article-author.ts"
-import { coerceField, defineMigration, renameField } from "@storyblok/schema";
-import type { Schema } from "../../../schema";
-import type { Before } from "./0002-rename-article-author.before";
+```ts title=".storyblok/migrations/12345/20261029141150-rename-twitter-to-x.ts"
+import { defineMigration, renameField } from "@storyblok/schema";
+import type { Schema } from "../../../src/schema/schema.js";
+import type { Before } from "./20261029141150-rename-twitter-to-x.before.js";
 
 export default defineMigration<Schema, Before>({
-  title: "Rename article.author to byline",
+  title: "Rename twitter_account to x_account on authors and MVPs",
   ops: [
-    renameField({ block: "article", field: "author", to: "byline" }),
-    coerceField({ block: "article", field: "price", from: "string", to: "number" }),
+    renameField({ block: "author", field: "twitter_account", to: "x_account" }),
+    renameField({ block: "mvp", field: "twitter_account", to: "x_account" }),
   ],
 });
 ```
 
-The filename without its extension is the migration ID. It holds a numeric prefix, which sets the
-run order, followed by lowercase letters, digits, and hyphens. The `title` is optional and
-descriptive only. Pass the ops directly when a migration needs no title:
-`defineMigration<Schema>([...ops])`.
+The file name without its extension is the migration ID: a numeric prefix that sets the run order,
+followed by lowercase letters, digits, and hyphens. The `title` is optional. Without one, pass the
+ops directly: `defineMigration<Schema, Before>([...ops])`.
 
-`Schema` is the project’s current schema type, as described in [`Schema`](#schema). `Before` is the
-same type for the schema as it stood before the migration, saved next to the migration file:
+`Schema` is the type your schema entry file exports, as described in [`Schema`](#schema). `Before`
+is the same type for the schema as it was before the migration, exported by a snapshot next to the
+migration:
 
-```ts title=".storyblok/migrations/12345/0002-rename-article-author.before.ts"
-import {
-  defineBlock,
-  defineField,
-  defineSchema,
-  type Schema as InferSchema,
-} from "@storyblok/schema";
+```ts title=".storyblok/migrations/12345/20261029141150-rename-twitter-to-x.before.ts"
+import { defineBlock, defineField, defineSchema } from "@storyblok/schema";
+import type { Schema } from "@storyblok/schema";
 
-const articleBlock = defineBlock({
-  name: "article",
+const authorBlock = defineBlock({
+  name: "author",
   is_root: true,
+  is_nestable: false,
   fields: [
-    defineField("title", { type: "text", required: true }),
-    defineField("author", { type: "text" }),
-    defineField("price", { type: "text" }),
+    defineField("given_name", { type: "text", required: true }),
+    defineField("twitter_account", { type: "text" }),
+    // ...
   ],
 });
 
-export const schema = defineSchema({ blocks: { articleBlock } });
+// ...
 
-export type Before = InferSchema<typeof schema>;
+export const schema = defineSchema({ blocks: { authorBlock, mvpBlock } });
+
+export type Before = Schema<typeof schema>;
 ```
 
-Keep the snapshot unchanged once the migration ships. Later schema changes then can’t break the
-migration’s types.
+Keep the snapshot unchanged once the migration ships, so the names the migration reads stay typed.
+The names it writes are typed against `Schema`, so a later rename or removal of such a field is a
+type error in the migration. Once every space has applied the migration, delete it and its snapshot.
 
 ### Schema types
 
@@ -79,44 +76,34 @@ The type arguments of `defineMigration()` decide which names the ops accept:
 | `defineMigration<Schema>`         | Names from `Schema`, plus any other string | Names from `Schema`               |
 | `defineMigration<Schema, Before>` | Names from `Before` only                   | Names from `Schema`               |
 
-With a single schema type, a field the migration renames away no longer exists in that type, so
-reads accept any string. Autocomplete still lists the names the schema has, but a typo in a name the
-op reads compiles. The following migration compiles even though `Schema` has no `subtitle` field:
+Without `Before`, a field the migration renames away no longer exists in any type, so reads accept
+any string, and a typo in a name an op reads compiles. Callbacks receive values typed from `Before`,
+and `alterBlock()` returns content typed from `Schema`.
 
-```ts
-import { defineMigration, removeField } from "@storyblok/schema";
-import type { Schema } from "../../../schema";
-
-export default defineMigration<Schema>([removeField({ block: "article", field: "subtitle" })]);
-```
-
-Callbacks receive values and block content typed from `Before`, and `alterBlock()` returns content
-typed from `Schema`.
-
-Ops infer the schema types from the `defineMigration()` call they’re passed to. An op created
-outside that call, for example in a variable, has nothing to infer them from and fails to compile.
-Pass the schema types and the block name explicitly, or annotate the op list:
+Ops infer their types from the `defineMigration()` call they’re passed to. An op created outside
+that call, for example in a variable, fails to compile. Pass the types and the block name, or
+annotate the list:
 
 ```ts
 import { defineMigration, renameField, type MigrationOps } from "@storyblok/schema";
-import type { Schema } from "../../../schema";
-import type { Before } from "./0002-rename-article-author.before";
+import type { Schema } from "../../../src/schema/schema.js";
+import type { Before } from "./20261029141150-rename-twitter-to-x.before.js";
 
-const renameAuthor = renameField<Schema, Before, "article">({
-  block: "article",
-  field: "author",
-  to: "byline",
+const renameAuthorAccount = renameField<Schema, Before, "author">({
+  block: "author",
+  field: "twitter_account",
+  to: "x_account",
 });
 
-const ops: MigrationOps<Schema, Before> = [renameAuthor];
+const ops: MigrationOps<Schema, Before> = [renameAuthorAccount];
 
 export default defineMigration<Schema, Before>(ops);
 ```
 
 ### Ops
 
-`block` names the block the op applies to. Key ops apply to every instance of the block, and value
-ops accept `under` (see [Key ops and value ops](#key-ops-and-value-ops)):
+`block` names the block the op applies to. Key ops apply to every instance of the block. Value ops
+accept `under` (see [Key ops and value ops](#key-ops-and-value-ops)):
 
 | Op                                                    | Kind  | Effect                                                                                                                                                                                                                    |
 | ----------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -135,7 +122,26 @@ ops accept `under` (see [Key ops and value ops](#key-ops-and-value-ops)):
 | `expandBlock({ block, under? }, fn)`                  | Value | Replaces the block in its `bloks` field with the blocks `fn(block)` returns.                                                                                                                                              |
 | `reorderField({ block, field, under? }, compare)`     | Value | Sorts the child blocks of a `bloks` field with `compare(a, b, { siblings, index })`. `siblings` is the list before sorting, and `index(child)` returns a block’s original position.                                       |
 
-A callback that throws refuses the story, and the refusal names the op and the block.
+A callback that throws refuses the story, and the refusal names the op and the block. Throw for a
+value the callback can’t convert, so an editor can fix that story by hand:
+
+```ts
+splitField(
+  {
+    block: "metric",
+    field: "value",
+    into: ["prefix", "amount", "suffix"],
+    merge: (values) => values.filter(Boolean).join(" "),
+  },
+  (value) => {
+    // "£2M+" → "£", "2", "M+"
+    const match = /^(\D*?)\s*(\d[\d,]*(?:\.\d+)?)\s*(.*)$/.exec(value?.trim() ?? "");
+    if (!match) throw new Error(`metric value "${value}" holds no amount`);
+    const [, prefix, amount, suffix] = match;
+    return [prefix, amount.replaceAll(",", ""), suffix];
+  },
+);
+```
 
 `coerceField()` converts values as follows:
 
@@ -148,26 +154,26 @@ A callback that throws refuses the story, and the refusal names the op and the b
 `null` and `undefined` stay unchanged. Any other value, including objects and arrays, refuses the
 story.
 
-`expandBlock()` differs from the other ops in these ways:
+`expandBlock()` differs from the other ops:
 
 - It runs after all other ops, so `fn` receives the block as the other ops left it.
 - It only replaces blocks inside a `bloks` field. A story’s root block stays in place.
-- Every returned block needs a `_uid`. Derive it from the replaced block’s `_uid` (for example,
-  `` `${block._uid}-image` ``), so running the migration again produces the same blocks.
+- Every returned block needs a `_uid`. Derive it from the replaced block’s `_uid`, such as
+  `` `${block._uid}-image` ``, so a rerun produces the same blocks.
 - Returning a block of the type it replaces refuses the story, because a rerun would expand it
   again.
 
 ### Op order and block names
 
 Ops run in order, over every block of a story at any depth. Every op addresses a block by the name
-the block had before the migration ran:
+it had before the migration:
 
-- After `renameBlock({ block: "card", to: "teaser" })`, later ops in the same migration still
-  address the block as `card`.
-- An op that addresses a name an earlier op introduced, such as `teaser` in the example above,
-  reaches the block only when the migration runs again, so the story is refused.
-- Blocks the migration creates, such as the container of `wrapChildren()` or the blocks
-  `expandBlock()` returns, carry no pre-migration name, so no op reaches them.
+- After `renameBlock({ block: "changelog_entry_v2", to: "changelog_entry" })`, later ops in the same
+  migration still address the block as `changelog_entry_v2`.
+- An op that addresses a name an earlier op introduced reaches the block only on a rerun, so the
+  story is refused.
+- Blocks the migration creates, such as the container of `wrapChildren()`, have no pre-migration
+  name, so no op reaches them.
 
 A migration has no `down` function. An undo replays what the run recorded, or an inverse derived
 from the ops.
@@ -176,22 +182,19 @@ from the ops.
 
 Ops fall into two kinds:
 
-- **Key ops** change which keys a block holds, which is part of the block schema. A block schema
-  applies to every instance of the block, so key ops apply to every instance and reject `under`.
+- **Key ops** change which keys a block holds, which is part of its block schema. A block schema
+  applies to every instance, so key ops do too and reject `under`.
 - **Value ops** change values and keep the keys. `alterField()`, `alterBlock()`, `expandBlock()`,
-  and `reorderField()` are value ops and accept `under` to limit the op to some instances.
+  and `reorderField()` accept `under` to limit the op to some instances.
 
 `under` takes one block name, matched anywhere above the block, or an array of names, outermost
-first, in which each name has to appear above the next. Gaps are allowed, so
-`under: ["page", "card"]` also matches a block inside a card that sits in a grid inside the page. A
-migration keeps working when an editor nests content one level deeper.
+first. Gaps are allowed, so `under: ["page", "card"]` also matches a block inside a card in a grid
+in the page. This op changes only the heroes inside an `enterprise_page`:
 
 ```ts
-defineMigration<Schema>([
-  alterField({ block: "meta", field: "og_title", under: ["section", "card"] }, (title) =>
-    title?.trim(),
-  ),
-]);
+alterField({ block: "hero", field: "headline_size", under: "enterprise_page" }, (size) =>
+  size === " " ? "normal" : size,
+);
 ```
 
 ### Translations
@@ -201,47 +204,36 @@ Storyblok stores each translated value next to the base key as `<field>__i18n__<
 in the language code written as `_` (for example, `title__i18n__en_US`). The ops treat a field as
 the base key plus all its translation keys:
 
-- `renameField()`, `moveField()`, `removeField()`, and `coerceField()` rename, delete, or convert
-  all keys together. A rename or move first deletes the target’s translation keys, so old
-  translations don’t attach to the new value.
+- `renameField()`, `moveField()`, `removeField()`, and `coerceField()` change all keys together. A
+  rename or move first deletes the target’s translation keys, so old translations don’t attach to
+  the new value.
 - `alterField()` calls its callback once per key. `context.language` is `undefined` for the base key
-  (the default language) and the language code, such as `en-US`, for a translation key.
-  `context.key` is the key being written.
-- `splitField()` and `mergeFields()` refuse a story when a source or target field holds translation
-  keys, because a split of the default-language value doesn’t define how to split its translations.
-  Use `alterBlock()` instead.
+  and the language code, such as `en-US`, for a translation key. `context.key` is the key being
+  written.
+- `splitField()` and `mergeFields()` refuse a story whose source or target field holds translation
+  keys. Use `alterBlock()` instead.
 - `alterBlock()` receives the raw keys, translation keys included.
 - `addField()` sets the base key only.
 
 Languages come from the keys a block holds, not from the schema, so one migration works across
 spaces with different languages.
 
-```ts
-defineMigration<Schema>([
-  alterField({ block: "article", field: "title" }, (title, { language }) =>
-    language === undefined ? title.trim() : title,
-  ),
-]);
-```
-
 ### Refused stories
 
-A refused story stays unchanged. A migration refuses a story when one of the following applies:
+A refused story stays unchanged. A migration refuses a story when:
 
 - The story already holds repeated block `_uid` values, and the migration reaches one of its blocks.
   Saving such a story assigns new `_uid` values and breaks the undo record.
 - The migration leaves blocks with a repeated or missing `_uid`.
 - `splitField()` or `mergeFields()` touches a translated field.
-- An op refuses a block, for example a rename onto a field that holds a value.
-- The migration isn’t idempotent. Every run applies the migration a second time over its own output,
-  and any op that changes the story again refuses it. A callback that toggles a value and an op that
-  addresses a name an earlier op introduced both fail this check.
+- An op refuses a block, for example a rename onto a field that holds a value, or a callback throws.
+- A second pass of the migration over its own output changes the story again, as a callback that
+  toggles a value does.
 
 ### Undo
 
-An undo of a recorded run keeps every block an editor changed since the run and reports it as a
-conflict. Without a recorded run, the inverse is derived from the ops alone, which can’t detect
-those changes. Each op inverts as follows:
+An undo of a recorded run keeps every block changed since the run and reports it as a conflict.
+Without a recorded run, the inverse derives from the ops alone and can’t detect those changes:
 
 | Op                                                        | Inverse                                                                                  |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -252,22 +244,19 @@ those changes. Each op inverts as follows:
 | `splitField()` with `merge`, `mergeFields()` with `split` | The counterpart op. Lossy.                                                               |
 | `unwrapChildren()`                                        | `wrapChildren()`. Lossy: it rebuilds one container and drops the containers’ own fields. |
 
-`removeField()`, `reorderField()`, `alterField()`, `alterBlock()`, and `expandBlock()` have no
-inverse, and neither do `coerceField()` without `from`, `splitField()` without `merge`, and
-`mergeFields()` without `split`.
+The other ops have no inverse, and neither do `coerceField()` without `from`, `splitField()` without
+`merge`, and `mergeFields()` without `split`.
 
 ### Programmatic use
 
-`applyMigration()` applies a migration to a set of stories fetched with the Management API and
-returns the content to write back. It doesn’t receive the schema, so it can’t detect an op that
-addresses an unknown block or field, a `renameBlock()` onto an existing block, or a `wrapChildren()`
-into an existing block that lacks the `into` field. Check the migration with `validateMigration()`
-against the schema as it was before the migration, and apply it only when it returns no errors:
+`applyMigration()` applies a migration to stories fetched with the Management API and returns the
+content to write back. It doesn’t receive the schema, so first check the migration with
+`validateMigration()` against the schema as it was before the migration:
 
 ```ts
 import { applyMigration, validateMigration } from "@storyblok/schema";
-import migration from "./.storyblok/migrations/12345/0002-rename-article-author";
-import { schema } from "./.storyblok/migrations/12345/0002-rename-article-author.before";
+import migration from "./.storyblok/migrations/12345/20261029141150-rename-twitter-to-x.js";
+import { schema } from "./.storyblok/migrations/12345/20261029141150-rename-twitter-to-x.before.js";
 
 const errors = validateMigration(migration, schema).filter((issue) => issue.severity === "error");
 if (errors.length > 0) {
@@ -276,12 +265,12 @@ if (errors.length > 0) {
 
 const { writes, refusals } = applyMigration({
   migration,
-  id: "0002-rename-article-author",
+  id: "20261029141150-rename-twitter-to-x",
   space: "12345",
   stories,
 });
 ```
 
-Pass `{ nameOnlyBlocks }` as the third argument to name blocks that exist but whose fields the
-schema doesn’t describe. An op that reads their fields is an error. A check that needs their fields,
-such as wrapping blocks into one of them, returns a warning.
+Pass `{ nameOnlyBlocks }` as the third argument of `validateMigration()` to name blocks that exist
+but whose fields the schema doesn’t describe. An op that reads their fields is an error. A check
+that needs their fields, such as wrapping blocks into one of them, returns a warning.

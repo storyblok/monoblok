@@ -1,3 +1,3 @@
-import { defineMigration, removeField } from "../../../index";
+import { defineMigration, removeField } from "../../../../index";
 
 export default defineMigration([removeField({ block: "card", field: "subtitle" })]);

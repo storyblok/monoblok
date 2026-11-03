@@ -1,4 +1,4 @@
-# Staged docs: `@storyblok/schema/migrations`
+# Staged docs: content migrations in `@storyblok/schema`
 
 Staged docs-site content for content migrations. Each section starts with a `target` marker naming
 the docs platform heading it belongs to. Everything goes on the existing `@storyblok/schema` page,
@@ -13,8 +13,8 @@ _Introduced in_ <Badge text="0.6.0" variant="success" />
 
 A **content migration** is an ordered list of operations (ops) that reshapes story content after a
 block schema changes, for example to rename a field, convert a value, or restructure nested blocks.
-`defineMigration()` and the ops are exported from the `@storyblok/schema/migrations` subpath. The
-ops are typed against the schema, and every run is recorded, so it can be undone.
+`defineMigration()` and the ops are exported from `@storyblok/schema`. The ops are typed against the
+schema, and every run is recorded, so it can be undone.
 
 ### Write a migration
 
@@ -23,7 +23,7 @@ A migration file default-exports the result of `defineMigration()`. This migrati
 number:
 
 ```ts title=".storyblok/migrations/12345/0002-rename-article-author.ts"
-import { coerceField, defineMigration, renameField } from "@storyblok/schema/migrations";
+import { coerceField, defineMigration, renameField } from "@storyblok/schema";
 import type { Schema } from "../../../schema";
 import type { Before } from "./0002-rename-article-author.before";
 
@@ -84,7 +84,7 @@ reads accept any string. Autocomplete still lists the names the schema has, but 
 op reads compiles. The following migration compiles even though `Schema` has no `subtitle` field:
 
 ```ts
-import { defineMigration, removeField } from "@storyblok/schema/migrations";
+import { defineMigration, removeField } from "@storyblok/schema";
 import type { Schema } from "../../../schema";
 
 export default defineMigration<Schema>([removeField({ block: "article", field: "subtitle" })]);
@@ -98,7 +98,7 @@ outside that call, for example in a variable, has nothing to infer them from and
 Pass the schema types and the block name explicitly, or annotate the op list:
 
 ```ts
-import { defineMigration, renameField, type MigrationOps } from "@storyblok/schema/migrations";
+import { defineMigration, renameField, type MigrationOps } from "@storyblok/schema";
 import type { Schema } from "../../../schema";
 import type { Before } from "./0002-rename-article-author.before";
 
@@ -265,7 +265,7 @@ into an existing block that lacks the `into` field. Check the migration with `va
 against the schema as it was before the migration, and apply it only when it returns no errors:
 
 ```ts
-import { applyMigration, validateMigration } from "@storyblok/schema/migrations";
+import { applyMigration, validateMigration } from "@storyblok/schema";
 import migration from "./.storyblok/migrations/12345/0002-rename-article-author";
 import { schema } from "./.storyblok/migrations/12345/0002-rename-article-author.before";
 

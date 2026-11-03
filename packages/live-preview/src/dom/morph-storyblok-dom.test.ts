@@ -324,6 +324,70 @@ describe("morphStoryblokDom", () => {
     );
   });
 
+  it("should keep morphing the rest of the tree when a file input has a chosen file", () => {
+    document.body.innerHTML = `
+      <main data-blok-uid="main"><input type="file" id="upload" /><p id="text">Before</p></main>
+    `;
+    // jsdom can't pick a file; emulate the browser's fakepath value after a user picks one.
+    Object.defineProperty(document.querySelector("#upload"), "value", {
+      configurable: true,
+      get: () => "C:\\fakepath\\photo.png",
+      set: () => {},
+    });
+
+    const nextBody = document.implementation.createHTMLDocument().body;
+    nextBody.innerHTML = `
+      <main data-blok-uid="main"><input type="file" id="upload" /><p id="text">After</p></main>
+    `;
+
+    expect(() => morphStoryblokDom(document.body, nextBody)).not.toThrow();
+    expect(document.querySelector("#text")?.textContent).toBe("After");
+  });
+
+  it("should apply a new server selection to an untouched multiple select", () => {
+    document.body.innerHTML = `
+      <main data-blok-uid="main">
+        <select multiple id="tags"><option value="a">A</option><option value="b">B</option></select>
+      </main>
+    `;
+    const nextBody = document.implementation.createHTMLDocument().body;
+    nextBody.innerHTML = `
+      <main data-blok-uid="main">
+        <select multiple id="tags"><option value="a">A</option><option value="b" selected>B</option></select>
+      </main>
+    `;
+
+    morphStoryblokDom(document.body, nextBody);
+
+    const selected = Array.from(
+      document.querySelector<HTMLSelectElement>("#tags")?.selectedOptions ?? [],
+    ).map((option) => option.value);
+    expect(selected).toEqual(["b"]);
+  });
+
+  it("should keep a user's picks in a multiple select", () => {
+    document.body.innerHTML = `
+      <main data-blok-uid="main">
+        <select multiple id="tags"><option value="a">A</option><option value="b">B</option></select>
+      </main>
+    `;
+    document.querySelector<HTMLOptionElement>('#tags option[value="a"]')!.selected = true;
+
+    const nextBody = document.implementation.createHTMLDocument().body;
+    nextBody.innerHTML = `
+      <main data-blok-uid="main">
+        <select multiple id="tags"><option value="a">A</option><option value="b">B</option></select>
+      </main>
+    `;
+
+    morphStoryblokDom(document.body, nextBody);
+
+    const selected = Array.from(
+      document.querySelector<HTMLSelectElement>("#tags")?.selectedOptions ?? [],
+    ).map((option) => option.value);
+    expect(selected).toEqual(["a"]);
+  });
+
   it("falls back to id-based keying when the key attribute is absent", () => {
     document.body.innerHTML = `
       <main data-blok-uid="main">

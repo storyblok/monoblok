@@ -200,7 +200,9 @@ function preserveInteractiveState(fromEl: Element, toEl: Element): void {
     case "INPUT": {
       const fromInput = fromEl as HTMLInputElement;
       const toInput = toEl as HTMLInputElement;
-      if (fromInput.value !== fromInput.defaultValue) {
+      // A file input's value is a read-only fakepath: assigning it throws
+      // `InvalidStateError`, which would abort the whole morph.
+      if (fromInput.type !== "file" && fromInput.value !== fromInput.defaultValue) {
         toInput.value = fromInput.value;
       }
       if (fromInput.checked !== fromInput.defaultChecked) {
@@ -217,6 +219,10 @@ function preserveInteractiveState(fromEl: Element, toEl: Element): void {
     }
     case "SELECT": {
       const fromSelect = fromEl as HTMLSelectElement;
+      // A multiple select has no single value; its options carry the state (`OPTION` case).
+      if (fromSelect.multiple) {
+        return;
+      }
       const defaultOption = Array.from(fromSelect.options).find((option) => option.defaultSelected);
       const defaultValue = defaultOption?.value ?? fromSelect.options[0]?.value;
       if (fromSelect.value !== defaultValue) {
